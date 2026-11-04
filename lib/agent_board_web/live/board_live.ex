@@ -149,6 +149,16 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, push_event(socket, "dictate", %{})}
   end
 
+  defp time(nil), do: ""
+
+  defp time(dt) do
+    dt |> DateTime.to_time() |> Time.to_string() |> String.slice(0, 5)
+  end
+
+  defp payload_summary(payload) do
+    Enum.map_join(payload, " · ", fn {k, v} -> "#{k}: #{v}" end)
+  end
+
   defp empty_copy(:running), do: "No task is running."
   defp empty_copy(:ready), do: "Nothing is waiting on a review."
   defp empty_copy(:merged), do: "No pull request merged yet."
@@ -265,9 +275,19 @@ defmodule AgentBoardWeb.BoardLive do
           <% end %>
         </main>
 
-        <div class="border-t border-[#2a2925] px-5 py-2 text-[11px] text-[#a39f93]">
-          <div :for={e <- @events}>{e.kind} · {e.subject}</div>
-        </div>
+        <section :if={@events != []} class="border-t border-[#2a2925] px-5 py-4">
+          <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-[#a39f93]">Activity</h2>
+          <ol class="space-y-1">
+            <li :for={e <- @events} class="flex gap-3 text-[11px]">
+              <span class="w-24 shrink-0 text-[#a39f93]">{time(e.inserted_at)}</span>
+              <span class="w-14 shrink-0 uppercase">{e.kind}</span>
+              <span class="text-[#e8e6df]">{e.subject}</span>
+              <span :if={e.payload && e.payload != %{}} class="text-[#6b675c]">
+                {payload_summary(e.payload)}
+              </span>
+            </li>
+          </ol>
+        </section>
 
         <section :if={@conversation} class="border-t border-[#2a2925] px-5 py-4">
           <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-[#a39f93]">
