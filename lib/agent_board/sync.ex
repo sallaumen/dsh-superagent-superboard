@@ -19,9 +19,7 @@ defmodule AgentBoard.Sync do
   @state_db "/state/superagent/orchestrator.sqlite"
 
   @doc "Sync every active repository. Returns how many it touched."
-  def all do
-    client = GitHub.client()
-
+  def all(client \\ GitHub.client()) do
     Repo.all(from r in Repository, where: r.active)
     |> Enum.map(&sync_repo(client, &1))
     |> length()

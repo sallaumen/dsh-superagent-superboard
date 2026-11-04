@@ -48,6 +48,18 @@ defmodule AgentBoard.SyncRepoTest do
              Repo.one(from t in Task, where: t.number == 7)
   end
 
+  test "all/1 syncs every active repository with the given client", %{repo: _repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(11, "open")])
+        _ -> Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.all(client()) == 1
+    assert %Task{state: "queued"} = Repo.one(from t in Task, where: t.number == 11)
+  end
+
   test "a closed issue becomes a done task", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
