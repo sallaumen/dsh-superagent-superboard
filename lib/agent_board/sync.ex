@@ -273,16 +273,7 @@ defmodule AgentBoard.Sync do
   end
 
   defp normalize(ticket) do
-    scope = get_in(ticket, ["mandate", "basis", "scope"]) || %{}
-    numbers = if is_integer(scope["number"]), do: [scope["number"]], else: []
-    channels = ticket["channels"] || []
-
-    numbers =
-      numbers ++
-        (channels
-         |> Enum.map(&to_int(get_in(&1, ["address", "number"])))
-         |> Enum.reject(&is_nil/1))
-
+    numbers = ticket_numbers(ticket)
     last = List.last(ticket["assignments"] || []) || %{}
     report = last["report"] || %{}
     ended = ticket["ended"] || %{}
@@ -295,6 +286,17 @@ defmodule AgentBoard.Sync do
       "stopped" => ticket["stopped"] || false,
       "archived" => ticket["archived"] || false
     }
+  end
+
+  defp ticket_numbers(ticket) do
+    scope = get_in(ticket, ["mandate", "basis", "scope"]) || %{}
+    base = if is_integer(scope["number"]), do: [scope["number"]], else: []
+
+    base ++
+      (ticket["channels"] ||
+         []
+         |> Enum.map(&to_int(get_in(&1, ["address", "number"])))
+         |> Enum.reject(&is_nil/1))
   end
 
   defp state_db do
