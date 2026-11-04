@@ -52,6 +52,28 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "pulls: 8"
   end
 
+  test "closing the conversation hides the panel", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 89,
+      title: "Close me",
+      state: "queued"
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view |> element("button", "Open") |> render_click()
+    assert render(view) =~ "Conversation"
+
+    view |> element("button", "Close") |> render_click()
+    refute render(view) =~ "Conversation"
+  end
+
   test "the speak event pushes the summary", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
     {:ok, view, _html} = live(conn, ~p"/")
