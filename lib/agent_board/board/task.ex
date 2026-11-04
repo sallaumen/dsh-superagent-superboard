@@ -17,6 +17,7 @@ defmodule AgentBoard.Board.Task do
     field :archived, :boolean, default: false
 
     belongs_to :repository, AgentBoard.Board.Repository
+    has_many :comments, AgentBoard.Board.Comment
 
     timestamps(type: :utc_datetime)
   end

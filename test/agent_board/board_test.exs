@@ -109,3 +109,54 @@ defmodule AgentBoard.BoardTest do
     assert length(Board.events(repo)) == 1
   end
 end
+
+defmodule AgentBoard.Board.ConversationTest do
+  @moduledoc "The conversation: the comments on a task."
+  use AgentBoard.DataCase, async: true
+
+  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.Board.Task
+
+  defp task(repo) do
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 77,
+      title: "Talk to me",
+      state: "queued"
+    })
+    |> Repo.insert!()
+  end
+
+  test "a comment is upserted and listed" do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    t = task(repo)
+
+    assert {:ok, _} =
+             Board.upsert_comment(
+               t,
+               %{"id" => 1, "user" => %{"login" => "sallaumen-agent"}, "body" => "On it."},
+               "sallaumen-agent"
+             )
+
+    assert [comment] = Board.comments(t)
+    assert comment.kind == "agent"
+    assert comment.body == "On it."
+  end
+
+  test "a user comment is marked as user" do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    t = task(repo)
+
+    assert {:ok, _} =
+             Board.upsert_comment(
+               t,
+               %{"id" => 2, "user" => %{"login" => "sallaumen"}, "body" => "Please add a boss."},
+               "sallaumen-agent"
+             )
+
+    assert [comment] = Board.comments(t)
+    assert comment.kind == "user"
+  end
+end

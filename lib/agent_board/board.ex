@@ -5,7 +5,7 @@ defmodule AgentBoard.Board do
   """
   import Ecto.Query, warn: false
 
-  alias AgentBoard.Board.{Event, PullRequest, Repository, Review, Task}
+  alias AgentBoard.Board.{Comment, Event, PullRequest, Repository, Review, Task}
   alias AgentBoard.Repo
 
   @doc "Every tracked repository."
@@ -122,6 +122,52 @@ defmodule AgentBoard.Board do
     result = task |> Task.changeset(attrs) |> Repo.update()
     broadcast(task.repository_id)
     result
+  end
+
+  @doc "The conversation of a task: its comments, oldest first."
+  def comments(task) do
+    Repo.all(from c in Comment, where: c.task_id == ^task.id, order_by: [asc: c.inserted_at])
+  end
+
+  @doc "Ask the agent: post a comment on the task's issue that mentions the agent."
+  def ask(task, body, client) do
+    text = String.trim(body) <> "\n\n@sallaumen-agent"
+
+    with {:ok, comment} <-
+           AgentBoard.GitHub.create_comment(
+             client,
+             task.repository.owner,
+             task.repository.name,
+             task.number,
+             text
+           ) do
+      %Comment{}
+      |> Comment.changeset(%{
+        task_id: task.id,
+        github_id: comment["id"],
+        author: get_in(comment, ["user", "login"]) || "board",
+        body: text,
+        kind: "user"
+      })
+      |> Repo.insert()
+      |> tap(fn _ -> broadcast(task.repository_id) end)
+    end
+  end
+
+  @doc "Upsert a comment pulled from GitHub."
+  def upsert_comment(task, comment, agent_login) do
+    author = get_in(comment, ["user", "login"]) || "unknown"
+    kind = if author == agent_login, do: "agent", else: "user"
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: task.id,
+      github_id: comment["id"],
+      author: author,
+      body: comment["body"] || "",
+      kind: kind
+    })
+    |> Repo.insert(on_conflict: :nothing, conflict_target: [:task_id, :github_id])
   end
 
   @doc "The recent activity for a repository."

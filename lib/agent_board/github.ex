@@ -46,6 +46,20 @@ defmodule AgentBoard.GitHub do
     |> Map.get("check_runs", [])
   end
 
+  @doc "The comments on an issue."
+  def issue_comments(client, owner, repo, number) do
+    client
+    |> Req.get!(url: "/repos/#{owner}/#{repo}/issues/#{number}/comments", params: [per_page: 100])
+    |> Map.fetch!(:body)
+  end
+
+  @doc "Comment on an issue."
+  def create_comment(client, owner, repo, number, body) do
+    client
+    |> Req.post!(url: "/repos/#{owner}/#{repo}/issues/#{number}/comments", json: %{body: body})
+    |> Map.fetch!(:body)
+  end
+
   @doc "Open an issue."
   def create_issue(client, owner, repo, title, body) do
     client

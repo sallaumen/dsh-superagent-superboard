@@ -17,7 +17,9 @@ defmodule AgentBoardWeb.BoardLive do
         repo: nil,
         board: empty(),
         events: [],
-        live: false
+        live: false,
+        conversation: nil,
+        comments: []
       )
 
     {:ok, load(socket, List.first(repos))}
@@ -110,6 +112,34 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("open", %{"id" => id}, socket) do
+    {task_id, _} = Integer.parse(id)
+
+    case Repo.get(Task, task_id) |> Repo.preload(:repository) do
+      nil -> {:noreply, socket}
+      task -> {:noreply, assign(socket, conversation: task, comments: Board.comments(task))}
+    end
+  end
+
+  @impl true
+  def handle_event("ask", %{"body" => body}, socket) do
+    case socket.assigns.conversation do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Open a task first")}
+
+      task ->
+        _ = Board.ask(task, body, GitHub.client())
+
+        {:noreply,
+         assign(socket,
+           conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
+           comments: Board.comments(task)
+         )
+         |> put_flash(:info, "Question sent")}
+    end
+  end
+
+  @impl true
   def handle_event("speak", _params, socket) do
     {:noreply, push_event(socket, "speak", %{text: Voice.summary(socket.assigns.board)})}
   end
@@ -194,6 +224,7 @@ defmodule AgentBoardWeb.BoardLive do
                 </span>
 
                 <div :if={key in [:running, :ready, :queued]} class="mt-2 flex gap-1 text-[11px]">
+                  <button phx-click="open" phx-value-id={item.id}>Open</button>
                   <button phx-click="act" phx-value-id={item.id} phx-value-action="stop">Stop</button>
                   <button phx-click="act" phx-value-id={item.id} phx-value-action="archive">
                     Archive
@@ -209,6 +240,40 @@ defmodule AgentBoardWeb.BoardLive do
         <div class="border-t border-[#2a2925] px-5 py-2 text-[11px] text-[#8a877d]">
           <div :for={e <- @events}>{e.kind} · {e.subject}</div>
         </div>
+
+        <section :if={@conversation} class="border-t border-[#2a2925] px-5 py-4">
+          <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-[#8a877d]">
+            <span>Conversation · #{@conversation.number} {String.slice(@conversation.title, 0, 40)}</span>
+            <button phx-click="speak" class="border border-[#2a2925] px-2 py-1 text-[10px]">
+              Speak
+            </button>
+          </h2>
+
+          <div :for={c <- @comments} class="mb-2 flex gap-2">
+            <span class={[
+              "w-14 shrink-0 text-[10px] uppercase",
+              c.kind == "agent" && "text-[#7bc47f]",
+              c.kind != "agent" && "text-[#6fa8dc]"
+            ]}>
+              {c.kind}
+            </span>
+            <p class="text-[12px] text-[#e8e6df]">{c.body}</p>
+          </div>
+
+          <p :if={@comments == []} class="text-xs text-[#8a877d]">
+            No messages yet. Ask the agent below.
+          </p>
+
+          <form phx-submit="ask" class="mt-3 flex gap-2">
+            <input
+              name="body"
+              placeholder="Ask the agent…"
+              class="flex-1 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm"
+              required
+            />
+            <button class="bg-[#e8a33d] px-4 py-2 text-sm font-bold text-[#12120f]">Send</button>
+          </form>
+        </section>
 
         <footer class="border-t border-[#2a2925] p-5">
           <form phx-submit="create" class="flex flex-wrap gap-2">

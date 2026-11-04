@@ -35,6 +35,7 @@ defmodule AgentBoard.Sync do
     Enum.each(issues, &upsert_issue(repository, &1))
     Enum.each(pulls, &upsert_pull(client, repository, &1))
     apply_tickets(repository, issues)
+    sync_comments(repository, client)
 
     Board.log_event(repository.id, "sync", "#{repository.owner}/#{repository.name}", %{
       "issues" => length(issues),
@@ -42,6 +43,39 @@ defmodule AgentBoard.Sync do
     })
 
     Board.broadcast(repository.id)
+  end
+
+  # -- the conversation -------------------------------------------------------
+
+  defp sync_comments(repository, client) do
+    agent_login = Application.get_env(:agent_board, :agent_login, "sallaumen-agent")
+
+    repository.id
+    |> active_tasks()
+    |> Enum.each(fn task ->
+      case AgentBoard.GitHub.issue_comments(
+             client,
+             repository.owner,
+             repository.name,
+             task.number
+           ) do
+        comments when is_list(comments) ->
+          Enum.each(comments, &Board.upsert_comment(task, &1, agent_login))
+
+        _ ->
+          :ok
+      end
+    end)
+  end
+
+  defp active_tasks(repository_id) do
+    Repo.all(
+      from(t in Task,
+        where: t.repository_id == ^repository_id and t.state in ["running", "ready", "queued"],
+        order_by: [desc: t.updated_at],
+        limit: 10
+      )
+    )
   end
 
   # -- the issues -------------------------------------------------------------
