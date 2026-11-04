@@ -49,17 +49,18 @@ The dev database is on the local Postgres at `127.0.0.1:5434`.
 ## The gates
 
 ```sh
-mix format --check-formatted
-mix credo --strict
-mix test
+mix gate   # check-only: compile warnings + format + credo + tests (CI runs this)
+mix precommit  # same gates, formatting fixed in place (for developers)
+scripts/ci-local.sh all   # pre-flight: backend + frontend + library pipelines
 ```
 
-`mix lint` runs the first two; `mix precommit` runs the three.
+Which script to run when — backend, frontend, library or the mixed release
+path — is in [PIPELINES.md](PIPELINES.md).
 
 ## The tests
 
-37 tests, each layer covered: the state mapping (the ticket overlay, the review
-and check rollups), the voice summary, the context, and the LiveView (the
+59 tests, each layer covered: the state mapping (the ticket overlay, the review
+and check rollups), the voice summary, the context, the LiveView (the
 columns, the empty state, the voice events, the PubSub broadcast).
 
 ## The limits
