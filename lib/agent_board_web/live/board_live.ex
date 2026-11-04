@@ -140,6 +140,11 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("close", _params, socket) do
+    {:noreply, assign(socket, conversation: nil, comments: [])}
+  end
+
+  @impl true
   def handle_event("speak", _params, socket) do
     {:noreply, push_event(socket, "speak", %{text: Voice.summary(socket.assigns.board)})}
   end
@@ -306,6 +311,9 @@ defmodule AgentBoardWeb.BoardLive do
             <button phx-click="speak" class="border border-[#2a2925] px-2 py-1 text-[10px]">
               Speak
             </button>
+            <button phx-click="close" class="border border-[#2a2925] px-2 py-1 text-[10px]">
+              Close
+            </button>
           </h2>
 
           <div :for={c <- @comments} class="mb-2 flex gap-2">
@@ -316,7 +324,10 @@ defmodule AgentBoardWeb.BoardLive do
             ]}>
               {c.kind}
             </span>
-            <p class="text-[12px] text-[#e8e6df]">{c.body}</p>
+            <div class="min-w-0">
+              <p class="whitespace-pre-wrap text-[12px] leading-relaxed text-[#e8e6df]">{c.body}</p>
+              <span :if={c.inserted_at} class="text-[10px] text-[#6b675c]">{time(c.inserted_at)}</span>
+            </div>
           </div>
 
           <p :if={@comments == []} class="text-xs text-[#a39f93]">
