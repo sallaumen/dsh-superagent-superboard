@@ -1,18 +1,60 @@
-# AgentBoard
+# agent-board
 
-To start your Phoenix server:
+The board for the agent's work, in Elixir: **Ecto** for the data, **Oban** for
+the durable sync, **LiveView** for the real-time UI and **Req** for GitHub.
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+## Why Elixir
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+- The **sync is a durable job**, not a hand-rolled loop: Oban retries it, the
+  supervisor restarts it, and the dashboard shows it. Cron runs it every minute.
+- The **board is real-time**: a `Phoenix.PubSub` broadcast updates every connected
+  LiveView when the sync or an action changes a task — no browser polling.
+- The **data is migrations**, not a SQL file applied on boot: Ecto owns the
+  schema, the changesets and the history.
+- **One language** with the game and the rest of the system.
 
-Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
+## Run it
 
-## Learn more
+```sh
+mix setup            # deps, database, assets
+mix phx.server       # http://127.0.0.1:4002
+```
 
-* Official website: https://www.phoenixframework.org/
-* Guides: https://phoenix.hexdocs.pm/overview.html
-* Docs: https://phoenix.hexdocs.pm
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+The dev database is on the local Postgres at `127.0.0.1:5434`.
+
+## What it does
+
+- **Syncs** the tracked repositories' issues and pull requests (the Oban
+  `Sync.Worker`, one cron run per minute).
+- **Syncs reviews and CI** per pull request: `review_state` (approved, changes
+  requested, pending) and `checks_state` (success, failure, pending), with the
+  failing check named.
+- **Reads the agent's tickets** (read-only, from the mounted sqlite) and overlays
+  the live state on the issue: running, ready, blocked — while the issue is open.
+- **Creates a task** by opening a GitHub issue that mentions the agent.
+- **Stops** (the flag plus closing the issue) and **archives** a task.
+- **Speaks**: "Speak status" reads the board out loud (the Web Speech API);
+  "Dictate task" turns a sentence into a task title.
+
+## The gates
+
+```sh
+mix format --check-formatted
+mix credo --strict
+mix test
+```
+
+`mix lint` runs the first two; `mix precommit` runs the three.
+
+## The tests
+
+37 tests, each layer covered: the state mapping (the ticket overlay, the review
+and check rollups), the voice summary, the context, and the LiveView (the
+columns, the empty state, the voice events, the PubSub broadcast).
+
+## The limits
+
+- **Stop** is the board's flag plus closing the issue. A worker already running
+  finishes its current ticket: the Super-Agent API has no cancel endpoint.
+- The board **reads** the agent's state; it never writes to it.
+- The voice uses the browser's speech APIs; no server-side TTS.
