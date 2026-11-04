@@ -215,6 +215,7 @@ defmodule AgentBoard.Sync do
   @doc "The state a ticket imposes on the task, or nil to keep the issue baseline."
   def ticket_state(ticket) do
     cond do
+      ticket["stopped"] || ticket["archived"] -> nil
       ticket["assignment"] == "running" -> "running"
       ticket["report"] == "ready" -> "ready"
       ticket["report"] == "blocked" or ticket["assignment"] == "blocked" -> "blocked"
@@ -290,7 +291,9 @@ defmodule AgentBoard.Sync do
       "numbers" => Enum.uniq(numbers),
       "assignment" => last["state"],
       "report" => report["state"],
-      "ended_outcome" => ended["outcome"]
+      "ended_outcome" => ended["outcome"],
+      "stopped" => ticket["stopped"] || false,
+      "archived" => ticket["archived"] || false
     }
   end
 

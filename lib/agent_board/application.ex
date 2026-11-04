@@ -11,6 +11,7 @@ defmodule AgentBoard.Application do
       AgentBoardWeb.Telemetry,
       AgentBoard.Repo,
       {Oban, Application.fetch_env!(:agent_board, Oban)},
+      AgentBoard.Live,
       {DNSCluster, query: Application.get_env(:agent_board, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: AgentBoard.PubSub},
       # Start a worker by calling: AgentBoard.Worker.start_link(arg)
