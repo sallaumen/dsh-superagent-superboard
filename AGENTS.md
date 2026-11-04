@@ -8,7 +8,11 @@ The board for the agent's work, in Elixir. Read this before changing code.
 - `mix credo --strict` (`.credo.exs`, the Phoenix-generated files excluded)
 - `mix test`
 
-`mix lint` runs the first two; `mix precommit` runs the three.
+`mix lint` runs the first two; `mix precommit` runs the three (formatting in
+place) plus compile warnings and the unused-dependency check. `mix gate` runs
+the three as checks only — it never modifies files, so CI and local pre-push
+use `mix gate` while `mix precommit` stays the fix-up command for developers.
+Every PR must pass `mix gate` locally and in CI.
 
 ## The data
 
