@@ -28,6 +28,9 @@ Regra de ouro: **o alvo `make` e o job da CI executam os mesmos comandos** — l
 | `validar_biblioteca.py` | Ao alterar `capabilities/`; CI library | Python 3.10+ | nenhum (somente leitura) | `OK` com 0 erros |
 | `test_validar_biblioteca.py` | Ao alterar o validador | Python 3.10+ | temporários | 20/20 testes |
 | `make backend/frontend/library/check` | Entrada única por pipeline | máquina local | os dos scripts acima | cada pipeline verde |
+| `scripts/ci-local.sh [pipeline]` | Pré-voo completo antes de abrir PR | máquina local | os dos scripts acima (release é opt-in) | todos os pipelines verdes |
+
+O `scripts/ci-local.sh` é o pré-voo de PR: roda os mesmos comandos dos jobs da CI na ordem deles e falha no primeiro pipeline vermelho. Use `make` para um pipeline isolado durante o trabalho e `scripts/ci-local.sh all` (ou `release`) antes de entregar.
 
 ## Por que separar backend e frontend
 
