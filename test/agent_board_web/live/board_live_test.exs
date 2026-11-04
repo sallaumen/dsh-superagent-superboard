@@ -28,7 +28,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   test "the board renders without a repository", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "nothing here"
+    assert html =~ "No task is running."
   end
 
   test "a broadcast reaches the board subscribers", %{conn: conn} do
