@@ -60,6 +60,6 @@ Use **testes-redundantes** quando o problema for redundância de cobertura. Use 
 
 **coordenar-entregas** coordena dependências e entregas; **seguranca-e-permissoes/migracoes-e-compatibilidade/build-ci-dependencias** entram somente quando segurança, compatibilidade ou build forem parte real do risco. **validar-entrega** reúne a evidência final. A etapa de publicação segue a autorização da sessão e as regras do projeto.
 
-## Transformação desta biblioteca em skills
+## Incorporação de novas fontes a esta biblioteca
 
-Use apenas `99-incorporar-biblioteca-ao-projeto.md` com o pacote completo. Essa tarefa analisa e organiza o material. Não deve disparar coordenar-entregas a simulacao-e-producao contra o repositório de skills. A IA decide quais workflows merecem skills próprias, quais são referências e quais devem ser unificados, mantendo a rastreabilidade da decisão.
+Use [INCORPORACAO.md](../INCORPORACAO.md) para registrar origem, destino e decisão de cada conteúdo novo. Essa tarefa analisa e organiza o material; não deve disparar as skills contra o repositório que abriga a biblioteca. A IA decide quais workflows merecem skills próprias, quais são referências e quais devem ser unificados, mantendo a rastreabilidade da decisão.
