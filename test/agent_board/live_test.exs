@@ -51,6 +51,20 @@ defmodule AgentBoard.LiveTest do
     assert Repo.get(Task, t.id).state == "running"
   end
 
+  test "a second poll with the same tickets does not broadcast again", %{db: db} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @running <> "')")
+
+    Board.subscribe(repo.id)
+
+    state = AgentBoard.Live.poll(%{})
+    assert_receive :board_updated
+
+    _state = AgentBoard.Live.poll(state)
+    refute_receive :board_updated, 150
+  end
+
   test "a stopped ticket is not overlaid", %{db: db} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
     t = task(repo)
