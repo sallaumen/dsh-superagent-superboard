@@ -111,6 +111,11 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  defp empty_copy(:running), do: "No task is running."
+  defp empty_copy(:ready), do: "Nothing is waiting on a review."
+  defp empty_copy(:merged), do: "No pull request merged yet."
+  defp empty_copy(:queued), do: "No queued task."
+
   @impl true
   def handle_event("open", %{"id" => id}, socket) do
     {task_id, _} = Integer.parse(id)
@@ -158,7 +163,10 @@ defmodule AgentBoardWeb.BoardLive do
           <h1 class="text-sm tracking-[0.16em] uppercase">Agent board</h1>
 
           <form id="repo-select" phx-change="select" class="contents">
-            <select name="repo" class="border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm">
+            <select
+              name="repo"
+              class="border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#e8a33d]"
+            >
               <option :if={@repo == nil} value="">select a repository</option>
               <option
                 :for={r <- @repos}
@@ -170,16 +178,22 @@ defmodule AgentBoardWeb.BoardLive do
             </select>
           </form>
 
-          <button phx-click="speak" class="border border-[#2a2925] px-3 py-2 text-sm">
+          <button
+            phx-click="speak"
+            class="border border-[#2a2925] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#e8a33d] hover:bg-[#23221c]"
+          >
             Speak status
           </button>
-          <button phx-click="dictate" class="border border-[#2a2925] px-3 py-2 text-sm">
+          <button
+            phx-click="dictate"
+            class="border border-[#2a2925] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#e8a33d] hover:bg-[#23221c]"
+          >
             Dictate task
           </button>
 
           <span class="flex-1"></span>
 
-          <span class={["text-[11px]", if(@live, do: "text-[#7bc47f]", else: "text-[#8a877d]")]}>
+          <span class={["text-[11px]", if(@live, do: "text-[#7bc47f]", else: "text-[#a39f93]")]}>
             {if @live, do: "live", else: "static"}
           </span>
 
@@ -194,14 +208,14 @@ defmodule AgentBoardWeb.BoardLive do
               placeholder="repo name"
               class="w-36 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm"
             />
-            <button class="border border-[#2a2925] px-3 py-2 text-sm">Track repo</button>
+            <button class="border border-[#2a2925] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#e8a33d] hover:bg-[#23221c]">Track repo</button>
           </form>
         </header>
 
         <main class="grid grid-cols-4 gap-px bg-[#2a2925]">
           <%= for {title, key} <- [{"Running", :running}, {"Ready", :ready}, {"Merged", :merged}, {"Queued", :queued}] do %>
             <section class="bg-[#12120f] p-4">
-              <h2 class="mb-3 flex justify-between text-[11px] uppercase tracking-[0.16em] text-[#8a877d]">
+              <h2 class="mb-3 flex justify-between text-[11px] uppercase tracking-[0.16em] text-[#a39f93]">
                 <span>{title}</span>
                 <span>{length(Map.get(@board, key))}</span>
               </h2>
@@ -209,7 +223,7 @@ defmodule AgentBoardWeb.BoardLive do
               <div
                 :for={item <- Map.get(@board, key)}
                 class={[
-                  "mb-2 border border-[#2a2925] border-l-2 bg-[#191813] px-3 py-2",
+                  "mb-2 border border-[#2a2925] border-l-2 bg-[#191813] px-3 py-2 transition-colors hover:bg-[#1f1e18]",
                   key == :running && "border-l-[#e8a33d]",
                   key == :ready && "border-l-[#6fa8dc]",
                   key == :merged && "border-l-[#7bc47f]",
@@ -219,7 +233,7 @@ defmodule AgentBoardWeb.BoardLive do
                 <a :if={item.url} href={item.url} target="_blank" class="text-[13px] hover:underline">
                   {item.title}
                 </a>
-                <span :if={item.number} class="ml-2 text-[11px] text-[#8a877d]">
+                <span :if={item.number} class="ml-2 text-[11px] text-[#a39f93]">
                   #{item.number}
                 </span>
 
@@ -232,17 +246,17 @@ defmodule AgentBoardWeb.BoardLive do
                 </div>
               </div>
 
-              <p :if={Map.get(@board, key) == []} class="text-xs text-[#8a877d]">nothing here</p>
+              <p :if={Map.get(@board, key) == []} class="text-xs text-[#a39f93]">{empty_copy(key)}</p>
             </section>
           <% end %>
         </main>
 
-        <div class="border-t border-[#2a2925] px-5 py-2 text-[11px] text-[#8a877d]">
+        <div class="border-t border-[#2a2925] px-5 py-2 text-[11px] text-[#a39f93]">
           <div :for={e <- @events}>{e.kind} · {e.subject}</div>
         </div>
 
         <section :if={@conversation} class="border-t border-[#2a2925] px-5 py-4">
-          <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-[#8a877d]">
+          <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-[#a39f93]">
             <span>Conversation · #{@conversation.number} {String.slice(@conversation.title, 0, 40)}</span>
             <button phx-click="speak" class="border border-[#2a2925] px-2 py-1 text-[10px]">
               Speak
@@ -260,7 +274,7 @@ defmodule AgentBoardWeb.BoardLive do
             <p class="text-[12px] text-[#e8e6df]">{c.body}</p>
           </div>
 
-          <p :if={@comments == []} class="text-xs text-[#8a877d]">
+          <p :if={@comments == []} class="text-xs text-[#a39f93]">
             No messages yet. Ask the agent below.
           </p>
 
@@ -271,7 +285,7 @@ defmodule AgentBoardWeb.BoardLive do
               class="flex-1 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm"
               required
             />
-            <button class="bg-[#e8a33d] px-4 py-2 text-sm font-bold text-[#12120f]">Send</button>
+            <button class="bg-[#e8a33d] px-4 py-2 text-sm font-bold text-[#12120f] hover:bg-[#f0b356] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8a33d]">Send</button>
           </form>
         </section>
 
@@ -284,7 +298,7 @@ defmodule AgentBoardWeb.BoardLive do
               class="flex-1 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm"
               required
             />
-            <button class="bg-[#e8a33d] px-4 py-2 text-sm font-bold text-[#12120f]">Create issue</button>
+            <button class="bg-[#e8a33d] px-4 py-2 text-sm font-bold text-[#12120f] hover:bg-[#f0b356] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8a33d]">Create issue</button>
             <textarea
               name="body"
               placeholder="Details (optional). The agent is mentioned automatically."
