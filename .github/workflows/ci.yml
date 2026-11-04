@@ -6,8 +6,13 @@ on:
   pull_request:
 
 jobs:
-  gates:
+  backend:
+    name: "backend · partição ${{ matrix.partition }}"
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2, 3, 4]
 
     services:
       postgres:
@@ -24,6 +29,7 @@ jobs:
 
     env:
       MIX_ENV: test
+      MIX_TEST_PARTITION: ${{ matrix.partition }}
 
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +39,7 @@ jobs:
           elixir-version: "1.19"
           otp-version: "27"
 
-      - name: Cache deps
+      - name: Cache deps e builds
         uses: actions/cache@v4
         with:
           path: |
@@ -42,8 +48,46 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
 
       - run: mix deps.get
-      - run: mix format --check-formatted
-      - run: mix credo --strict
-      - run: mix ecto.create
-      - run: mix ecto.migrate
-      - run: mix test
+      - run: mix deps.unlock --check-unused
+      - run: mix gate
+
+  frontend:
+    name: "frontend · assets"
+    runs-on: ubuntu-latest
+
+    # esbuild/tailwind são dependências de dev, então o build de assets usa MIX_ENV=dev.
+    env:
+      MIX_ENV: dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19"
+          otp-version: "27"
+
+      - name: Cache deps e ferramentas de assets
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+
+      - run: mix deps.get
+      - run: mix assets.setup
+      - run: mix assets.build
+      - run: mix assets.deploy
+
+  library:
+    name: "biblioteca de capacidades"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Valida a biblioteca de capacidades
+        run: |
+          python3 capabilities/tools/validar_biblioteca.py
+          python3 capabilities/tools/test_validar_biblioteca.py
