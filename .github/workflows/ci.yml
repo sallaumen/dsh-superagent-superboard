@@ -4,6 +4,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# Um run novo no mesmo ref cancela o anterior: evita fila de jobs obsoletos
+# (importante com cota de runners limitada) e economiza tempo de espera.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
