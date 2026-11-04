@@ -133,24 +133,38 @@ defmodule AgentBoard.Board do
   def ask(task, body, client) do
     text = String.trim(body) <> "\n\n@sallaumen-agent"
 
-    with {:ok, comment} <-
-           AgentBoard.GitHub.create_comment(
-             client,
-             task.repository.owner,
-             task.repository.name,
-             task.number,
-             text
-           ) do
+    placeholder =
       %Comment{}
       |> Comment.changeset(%{
         task_id: task.id,
-        github_id: comment["id"],
-        author: get_in(comment, ["user", "login"]) || "board",
+        github_id: -System.unique_integer([:positive]),
+        author: "you",
         body: text,
         kind: "user"
       })
-      |> Repo.insert()
+      |> Repo.insert!()
       |> tap(fn _ -> broadcast(task.repository_id) end)
+
+    case AgentBoard.GitHub.create_comment(
+           client,
+           task.repository.owner,
+           task.repository.name,
+           task.number,
+           text
+         ) do
+      %{"id" => github_id} = comment when is_integer(github_id) ->
+        placeholder
+        |> Comment.changeset(%{
+          github_id: github_id,
+          author: get_in(comment, ["user", "login"]) || "you"
+        })
+        |> Repo.update()
+        |> tap(fn _ -> broadcast(task.repository_id) end)
+
+      _ ->
+        Repo.delete(placeholder)
+        broadcast(task.repository_id)
+        {:error, :github}
     end
   end
 
