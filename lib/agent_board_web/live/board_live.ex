@@ -236,7 +236,18 @@ defmodule AgentBoardWeb.BoardLive do
           </button>
         </div>
 
-        <main class="grid grid-cols-4 gap-px bg-[#2a2925]">
+        <div
+          :if={@repo == nil}
+          class="flex flex-col items-center gap-3 border-b border-[#2a2925] px-5 py-20 text-center"
+        >
+          <p class="text-sm text-[#e8e6df]">No repository tracked yet.</p>
+          <p class="max-w-md text-[12px] leading-relaxed text-[#a39f93]">
+            Track one below. The board syncs its issues and pull requests, shows
+            the agent's work in the four columns, and lets you create and ask.
+          </p>
+        </div>
+
+        <main :if={@repo} class="grid grid-cols-4 gap-px bg-[#2a2925]">
           <%= for {title, key} <- [{"Running", :running}, {"Ready", :ready}, {"Merged", :merged}, {"Queued", :queued}] do %>
             <section class="bg-[#12120f] p-4">
               <h2 class="mb-3 flex justify-between text-[11px] uppercase tracking-[0.16em] text-[#a39f93]">
