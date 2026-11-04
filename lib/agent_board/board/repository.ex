@@ -3,6 +3,8 @@ defmodule AgentBoard.Board.Repository do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @derive {Jason.Encoder, only: [:id, :owner, :name, :active]}
+
   schema "repositories" do
     field :owner, :string
     field :name, :string
