@@ -157,7 +157,7 @@ defmodule AgentBoardWeb.BoardLive do
         <header class="flex flex-wrap items-center gap-3 border-b border-[#2a2925] px-5 py-3">
           <h1 class="text-sm tracking-[0.16em] uppercase">Agent board</h1>
 
-          <form phx-change="select" class="contents">
+          <form id="repo-select" phx-change="select" class="contents">
             <select name="repo" class="border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm">
               <option :if={@repo == nil} value="">select a repository</option>
               <option
@@ -183,7 +183,7 @@ defmodule AgentBoardWeb.BoardLive do
             {if @live, do: "live", else: "static"}
           </span>
 
-          <form phx-submit="add" class="contents">
+          <form id="track-repo" phx-submit="add" class="contents">
             <input
               name="owner"
               placeholder="owner"
@@ -264,7 +264,7 @@ defmodule AgentBoardWeb.BoardLive do
             No messages yet. Ask the agent below.
           </p>
 
-          <form phx-submit="ask" class="mt-3 flex gap-2">
+          <form id="ask-agent" phx-submit="ask" class="mt-3 flex gap-2">
             <input
               name="body"
               placeholder="Ask the agent…"
@@ -276,7 +276,7 @@ defmodule AgentBoardWeb.BoardLive do
         </section>
 
         <footer class="border-t border-[#2a2925] p-5">
-          <form phx-submit="create" class="flex flex-wrap gap-2">
+          <form id="create-task" phx-submit="create" class="flex flex-wrap gap-2">
             <input
               name="title"
               id="task-title"
