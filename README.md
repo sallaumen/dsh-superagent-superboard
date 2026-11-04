@@ -68,3 +68,12 @@ columns, the empty state, the voice events, the PubSub broadcast).
   finishes its current ticket: the Super-Agent API has no cancel endpoint.
 - The board **reads** the agent's state; it never writes to it.
 - The voice uses the browser's speech APIs; no server-side TTS.
+
+## The capabilities library
+
+Reusable development workflows (architecture, product, UI/UX, testing, code
+review, integrations and operations) live in
+[`capabilities/`](capabilities/CATALOGO.md), adapted from the
+`biblioteca-prompts-desenvolvimento` package. The catalog is the entry point;
+the source-to-destination map and decisions are in
+[`capabilities/INCORPORACAO.md`](capabilities/INCORPORACAO.md).

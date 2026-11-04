@@ -42,3 +42,14 @@ The board for the agent's work, in Elixir. Read this before changing code.
 - The board **reads** the agent's state (the sqlite); it never writes to it.
 - The web layer never talks to GitHub directly: it goes through `AgentBoard.Board`
   and `AgentBoard.GitHub`.
+
+## Capabilities library
+
+- Reusable development workflows (architecture, product, UI/UX, testing, code
+  review, integrations, operations) live in
+  [`capabilities/`](capabilities/CATALOGO.md). The catalog is the entry point;
+  each skill loads only its own instructions plus the common contract.
+- The optional project contexts (Colmex, forró, Elixir/Phoenix/Oban) are never
+  loaded by default — see `capabilities/contextos/README.md`.
+- Validate the library with `python3 capabilities/tools/validar_biblioteca.py`
+  (tests: `python3 capabilities/tools/test_validar_biblioteca.py`).

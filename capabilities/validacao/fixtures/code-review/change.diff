@@ -1,0 +1,15 @@
+--- before.py
++++ after.py
+@@ -1,8 +1,9 @@
+ def eligible_suppliers(capabilities, variant_id, destination):
++    destination_capabilities = [
++        item for item in capabilities if destination in item["destinations"]
++    ]
+     return [
+         item["supplier_id"]
+-        for item in capabilities
++        for item in destination_capabilities
+         if item["active"]
+-        and item["variant_id"] == variant_id
+-        and destination in item["destinations"]
+     ]
