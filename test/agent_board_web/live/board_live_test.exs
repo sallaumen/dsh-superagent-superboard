@@ -72,6 +72,15 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert render(view) =~ "No messages yet"
   end
 
+  test "the network buttons disable while the request is in flight", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, view, html} = live(conn, ~p"/")
+
+    assert html =~ "phx-disable-with"
+    assert html =~ "Creating"
+    assert render(view) =~ "Track repo"
+  end
+
   test "the dictate event pushes the dictation request", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
     {:ok, view, _html} = live(conn, ~p"/")
