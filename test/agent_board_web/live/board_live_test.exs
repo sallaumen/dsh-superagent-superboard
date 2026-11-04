@@ -4,7 +4,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias AgentBoard.Board
+  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.Board.Task
 
   test "the board renders the columns", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
@@ -28,5 +29,34 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "nothing here"
+  end
+
+  test "a broadcast reaches the board subscribers", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _view, _html} = live(conn, ~p"/")
+
+    assert Board.subscribe(repo.id) == :ok
+    Board.broadcast(repo.id)
+
+    assert_receive :board_updated
+  end
+
+  test "the speak event pushes the summary", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view |> element("button", "Speak status") |> render_click()
+
+    assert_push_event(view, "speak", %{text: text})
+    assert text =~ "calm"
+  end
+
+  test "the dictate event pushes the dictation request", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view |> element("button", "Dictate task") |> render_click()
+
+    assert_push_event(view, "dictate", %{})
   end
 end

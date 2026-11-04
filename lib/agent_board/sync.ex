@@ -40,6 +40,8 @@ defmodule AgentBoard.Sync do
       "issues" => length(issues),
       "pulls" => length(pulls)
     })
+
+    Board.broadcast(repository.id)
   end
 
   # -- the issues -------------------------------------------------------------

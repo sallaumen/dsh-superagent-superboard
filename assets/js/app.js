@@ -81,3 +81,30 @@ if (process.env.NODE_ENV === "development") {
   })
 }
 
+
+// Voice out: the server pushes the summary, the browser speaks it.
+window.addEventListener("phx:speak", (event) => {
+  const text = event.detail.text;
+  if (!text || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = navigator.language || "en-US";
+  window.speechSynthesis.speak(utterance);
+});
+
+// Voice in: dictate a task title into the form.
+window.addEventListener("phx:dictate", () => {
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Rec) return;
+  const rec = new Rec();
+  rec.lang = navigator.language || "en-US";
+  rec.interimResults = false;
+  rec.onresult = (event) => {
+    const input = document.querySelector("#task-title");
+    if (input) {
+      input.value = event.results[0][0].transcript;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  };
+  rec.start();
+});

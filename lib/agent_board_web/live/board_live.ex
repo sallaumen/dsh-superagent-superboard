@@ -4,7 +4,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Board, GitHub, Repo}
+  alias AgentBoard.{Board, GitHub, Repo, Voice}
   alias AgentBoard.Board.{Repository, Task}
 
   @impl true
@@ -17,7 +17,7 @@ defmodule AgentBoardWeb.BoardLive do
         repo: nil,
         board: empty(),
         events: [],
-        counter: 0
+        live: false
       )
 
     {:ok, load(socket, List.first(repos))}
@@ -25,13 +25,30 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp empty, do: %{running: [], ready: [], merged: [], queued: []}
 
-  defp load(socket, nil), do: assign(socket, repo: nil, board: empty(), events: [])
+  defp load(socket, nil) do
+    assign(socket, repo: nil, board: empty(), events: [], live: false)
+  end
 
   defp load(socket, repo) do
+    if connected?(socket), do: Board.subscribe(repo.id)
+
     case Board.board("#{repo.owner}/#{repo.name}") do
-      {:ok, board} -> assign(socket, repo: repo, board: board, events: Board.events(repo))
-      _ -> assign(socket, repo: nil, board: empty(), events: [])
+      {:ok, board} ->
+        assign(socket,
+          repo: repo,
+          board: board,
+          events: Board.events(repo),
+          live: connected?(socket)
+        )
+
+      _ ->
+        assign(socket, repo: nil, board: empty(), events: [], live: false)
     end
+  end
+
+  @impl true
+  def handle_info(:board_updated, socket) do
+    {:noreply, load(socket, socket.assigns.repo)}
   end
 
   @impl true
@@ -93,6 +110,16 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("speak", _params, socket) do
+    {:noreply, push_event(socket, "speak", %{text: Voice.summary(socket.assigns.board)})}
+  end
+
+  @impl true
+  def handle_event("dictate", _params, socket) do
+    {:noreply, push_event(socket, "dictate", %{})}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
@@ -113,7 +140,18 @@ defmodule AgentBoardWeb.BoardLive do
             </select>
           </form>
 
+          <button phx-click="speak" class="border border-[#2a2925] px-3 py-2 text-sm">
+            Speak status
+          </button>
+          <button phx-click="dictate" class="border border-[#2a2925] px-3 py-2 text-sm">
+            Dictate task
+          </button>
+
           <span class="flex-1"></span>
+
+          <span class={["text-[11px]", if(@live, do: "text-[#7bc47f]", else: "text-[#8a877d]")]}>
+            {if @live, do: "live", else: "static"}
+          </span>
 
           <form phx-submit="add" class="contents">
             <input
@@ -148,19 +186,18 @@ defmodule AgentBoardWeb.BoardLive do
                   key == :queued && "border-l-[#8a877d]"
                 ]}
               >
-                <a
-                  :if={item[:url]}
-                  href={item[:url]}
-                  target="_blank"
-                  class="text-[13px] hover:underline"
-                >
-                  {item[:title]}
+                <a :if={item.url} href={item.url} target="_blank" class="text-[13px] hover:underline">
+                  {item.title}
                 </a>
-                <span :if={item[:number]} class="text-[11px] text-[#8a877d]">#{item[:number]}</span>
+                <span :if={item.number} class="ml-2 text-[11px] text-[#8a877d]">
+                  #{item.number}
+                </span>
 
                 <div :if={key in [:running, :ready, :queued]} class="mt-2 flex gap-1 text-[11px]">
-                  <button phx-click="act" phx-value-id={item[:id]} phx-value-action="stop">Stop</button>
-                  <button phx-click="act" phx-value-id={item[:id]} phx-value-action="archive">Archive</button>
+                  <button phx-click="act" phx-value-id={item.id} phx-value-action="stop">Stop</button>
+                  <button phx-click="act" phx-value-id={item.id} phx-value-action="archive">
+                    Archive
+                  </button>
                 </div>
               </div>
 
@@ -177,6 +214,7 @@ defmodule AgentBoardWeb.BoardLive do
           <form phx-submit="create" class="flex flex-wrap gap-2">
             <input
               name="title"
+              id="task-title"
               placeholder="New task: what should the agent build?"
               class="flex-1 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm"
               required

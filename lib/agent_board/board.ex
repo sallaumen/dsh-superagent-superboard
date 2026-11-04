@@ -11,6 +11,16 @@ defmodule AgentBoard.Board do
   @doc "Every tracked repository."
   def list_repositories, do: Repo.all(from r in Repository, order_by: r.id)
 
+  @doc "Subscribe to a repository's live updates."
+  def subscribe(repository_id) do
+    Phoenix.PubSub.subscribe(AgentBoard.PubSub, "board:#{repository_id}")
+  end
+
+  @doc "Tell the subscribers of a repository that the board changed."
+  def broadcast(repository_id) do
+    Phoenix.PubSub.broadcast(AgentBoard.PubSub, "board:#{repository_id}", :board_updated)
+  end
+
   @doc "Track a repository. It is a no-op if it already exists."
   def add_repository(owner, name) do
     %Repository{}
@@ -85,6 +95,7 @@ defmodule AgentBoard.Board do
         author: "board"
       })
       |> Repo.insert(on_conflict: :nothing)
+      |> tap(fn _ -> broadcast(repository.id) end)
     end
   end
 
@@ -108,9 +119,9 @@ defmodule AgentBoard.Board do
     do: update_state(task, %{stopped: false, archived: false, state: "queued"})
 
   defp update_state(task, attrs) do
-    task
-    |> Task.changeset(attrs)
-    |> Repo.update()
+    result = task |> Task.changeset(attrs) |> Repo.update()
+    broadcast(task.repository_id)
+    result
   end
 
   @doc "The recent activity for a repository."
