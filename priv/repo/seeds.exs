@@ -1,11 +1,12 @@
-# Script for populating the database. You can run it as:
+# The dev seed: the repositories the board tracks out of the box.
 #
-#     mix run priv/repo/seeds.exs
+#   mix run priv/repo/seeds.exs
 #
-# Inside the script, you can read and write to any of your
-# repositories directly:
-#
-#     AgentBoard.Repo.insert!(%AgentBoard.SomeSchema{})
-#
-# We recommend using the bang functions (`insert!`, `update!`
-# and so on) as they will fail if something goes wrong.
+# Idempotent: adding the same repository twice is a no-op.
+
+for {owner, name} <- [{"sallaumen", "arena-rogue"}, {"sallaumen", "o_colmex"}] do
+  case AgentBoard.Board.add_repository(owner, name) do
+    {:ok, repo} -> IO.puts("tracked #{repo.owner}/#{repo.name}")
+    {:error, changeset} -> IO.puts("skipped #{owner}/#{name}: #{inspect(changeset.errors)}")
+  end
+end
