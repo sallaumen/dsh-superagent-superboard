@@ -35,3 +35,7 @@ agent_board-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Python bytecode produced by the capabilities library tools.
+__pycache__/
+*.pyc
+
