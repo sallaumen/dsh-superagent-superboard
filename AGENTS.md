@@ -23,8 +23,13 @@ The board for the agent's work, in Elixir. Read this before changing code.
 
 ## Real-time
 
-- The sync and every task action call `Board.broadcast/1`; the LiveView
-  subscribes with `Board.subscribe/1` and reloads on `:board_updated`.
+- The sync (the Oban `Sync.Worker`, every minute) and every task action call
+  `Board.broadcast/1`; the LiveView subscribes with `Board.subscribe/1` and
+  reloads on `:board_updated`.
+- `AgentBoard.Live` polls the agent's tickets every 10s and broadcasts only
+  when their hash changed — the runner state reaches the board without waiting
+  for the sync. It is idempotent: the same tickets never broadcast twice
+  (`live_test.exs`).
 - Never poll the database from the browser; push.
 
 ## The voice

@@ -36,6 +36,16 @@ The dev database is on the local Postgres at `127.0.0.1:5434`.
 - **Speaks**: "Speak status" reads the board out loud (the Web Speech API);
   "Dictate task" turns a sentence into a task title.
 
+## What it costs
+
+- **The sync** reads the 100 most recently updated issues and pull requests per
+  repository (the `recent()` window), plus each pull request's reviews and check
+  runs, plus the comments of up to 10 active tasks. At the 1 min cron that is
+  real API traffic. On `o_colmex` (1,100+ pull requests) the **first** sync is
+  the slow one; later runs only refresh the recent window.
+- **The 10s poller does not touch GitHub**: it reads the agent's sqlite and
+  only broadcasts when the ticket hash changed.
+
 ## The gates
 
 ```sh
