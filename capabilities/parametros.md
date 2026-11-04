@@ -1,0 +1,55 @@
+# Parâmetros, modos e contexto
+
+## Uso mínimo
+
+Informe o projeto ou repositório, o escopo e o resultado desejado. O restante pode ser descoberto pela IA. Não é necessário preencher um questionário para começar.
+
+```text
+Projeto: meu aplicativo
+Escopo: fluxo de catálogo, seleção de variante e pedido de amostra
+Objetivo: tornar claros os fornecedores elegíveis e impedir escolhas incompatíveis
+Modo: analisar-e-corrigir
+Evidências disponíveis: duas imagens, acesso ao código e ambiente local
+Restrições: preservar os dados; usar apenas o sandbox do fornecedor
+```
+
+Uma pergunta de arquitetura pode usar apenas “Escopo: módulos de pedidos; objetivo: reduzir dependências cruzadas”. Uma revisão de PR deve incluir o diff ou uma referência verificável à base e à mudança. As evidências ausentes são limitações a registrar, não lacunas a preencher com invenção.
+
+## Modos
+
+| Modo | Resultado esperado | O que não está implícito |
+|---|---|---|
+| `analisar` | Diagnóstico, experimentos autorizados, proposta e evidências | Alterar comportamento do produto |
+| `revisar` | Achados sobre uma mudança ou artefato delimitado | Corrigir o código sob revisão |
+| `analisar-e-corrigir` | Diagnóstico e implementação local validada | Publicar, comprar ou alterar produção |
+| `coordenar` | Dividir, acompanhar e integrar entregas autorizadas | Autorização irrestrita para merge ou deploy |
+
+O modo padrão está no frontmatter de cada skill e no catálogo. Uma orientação explícita da sessão, como “somente analise”, prevalece. A ausência de autorização externa não exige uma pergunta antes de trabalho local reversível; a IA deve preparar o resultado concreto e pedir apenas a decisão realmente necessária.
+
+## Parâmetros opcionais úteis
+
+| Parâmetro | Quando informar | Padrão sensato |
+|---|---|---|
+| Área e fluxos | Projeto grande ou vários contextos abertos | Descobrir pelo pedido e declarar o recorte |
+| Perfis de usuário | Permissões ou jornadas diferentes | Identificar os papéis que existem no código |
+| Ambiente | Há sandbox, staging e produção | Inspecionar antes de executar efeitos |
+| Comandos de validação | Projeto tem gates conhecidos | Ler scripts e instruções do repositório |
+| Baseline | Há falhas anteriores relevantes | Registrar o estado inicial proporcional ao risco |
+| Identidade visual | Há referência ou design system | Preservar a identidade encontrada e criticá-la com evidência |
+| Entrega autorizada | A sessão já permite PR, merge ou deploy | Herdar a autorização concreta; senão, preparar localmente |
+| Limite de frentes | Há custo ou disputa por arquivos | Até duas executoras simultâneas, se isso ajudar |
+| Critério de parada | Existe uma meta de produto clara | Definir uma entrega observável e delimitada |
+
+Não inclua senhas, tokens ou dados pessoais em exemplos de parâmetros. A IA deve usar os mecanismos de acesso existentes, sem copiar segredos para prompts ou relatórios.
+
+## Contextos opcionais
+
+Os arquivos de `contextos/` registram requisitos e preferências descritos na conversa que originou esta biblioteca. Eles não são um inventário verificado dos repositórios. Leia [contextos/README.md](contextos/README.md) e carregue apenas o contexto pertinente, confirme a implementação atual e ignore exemplos que não existam no projeto.
+
+Os contextos de casas do Colmex dependem de `colmex-base`. O contexto de Elixir/Phoenix/Oban é independente: só deve ser usado quando essa stack for confirmada. O contexto do forró não importa a estética de jogo do Colmex. Nenhum contexto é carregado automaticamente por uma skill.
+
+## Carregar uma skill manualmente
+
+Com acesso aos arquivos, peça à IA para ler a skill pelo nome (a pasta `skills/<nome>/SKILL.md`), o contrato comum e, se necessário, os contextos pertinentes. Sem acesso aos arquivos, copie o contrato comum, os parâmetros e o corpo da skill. O catálogo lista os sinais de uso de cada capacidade; o validador em `tools/` confere a integridade da biblioteca, mas não executa as instruções.
+
+Evite combinar muitas skills em uma única solicitação. Escolha um objetivo principal. Se a investigação revelar um problema de outro tipo, a IA deve corrigir a dependência mínima indispensável ou registrar uma entrega posterior, em vez de abrir uma sequência automática de revisões.
