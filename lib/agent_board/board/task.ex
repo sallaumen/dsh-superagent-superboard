@@ -3,6 +3,9 @@ defmodule AgentBoard.Board.Task do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @derive {Jason.Encoder,
+           only: [:id, :kind, :number, :title, :state, :url, :author, :stopped, :archived]}
+
   @states ~w(queued running ready blocked done closed stopped archived)
 
   schema "tasks" do

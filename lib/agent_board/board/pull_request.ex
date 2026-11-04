@@ -3,6 +3,20 @@ defmodule AgentBoard.Board.PullRequest do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @derive {Jason.Encoder,
+           only: [
+             :id,
+             :number,
+             :title,
+             :url,
+             :author,
+             :state,
+             :merged_at,
+             :review_state,
+             :checks_state,
+             :checks_failed
+           ]}
+
   schema "pull_requests" do
     field :number, :integer
     field :title, :string
