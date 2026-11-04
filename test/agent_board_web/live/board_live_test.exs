@@ -51,6 +51,27 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert text =~ "calm"
   end
 
+  test "opening a task shows the conversation panel", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 88,
+      title: "Open me",
+      state: "queued"
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view |> element("button", "Open") |> render_click()
+
+    assert render(view) =~ "Conversation"
+    assert render(view) =~ "No messages yet"
+  end
+
   test "the dictate event pushes the dictation request", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
     {:ok, view, _html} = live(conn, ~p"/")
