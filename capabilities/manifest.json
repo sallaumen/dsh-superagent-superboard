@@ -627,25 +627,26 @@
     }
   ],
   "support_files": [
-    "README.md",
     "CATALOGO.md",
     "INCORPORACAO.md",
+    "README.md",
     "contextos/README.md",
     "referencias/fontes-e-conceitos.md",
-    "referencias/roteiros-de-uso.md",
     "referencias/mapa-das-frentes.md",
+    "referencias/roteiros-de-uso.md",
+    "templates/nova-capacidade.md",
     "templates/plano-de-entrega.md",
     "templates/registro-de-decisao.md",
     "templates/registro-de-diagnostico.md",
     "templates/resultado-e-validacao.md",
-    "templates/nova-capacidade.md",
-    "tools/validar_biblioteca.py",
+    "tools/README.md",
     "tools/test_validar_biblioteca.py",
-    "validacao/casos-de-avaliacao.md",
+    "tools/validar_biblioteca.py",
     "validacao/casos-de-avaliacao.json",
-    "validacao/relatorio-de-validacao.md",
-    "validacao/fixtures/code-review/before.py",
+    "validacao/casos-de-avaliacao.md",
     "validacao/fixtures/code-review/after.py",
-    "validacao/fixtures/code-review/change.diff"
+    "validacao/fixtures/code-review/before.py",
+    "validacao/fixtures/code-review/change.diff",
+    "validacao/relatorio-de-validacao.md"
   ]
 }
