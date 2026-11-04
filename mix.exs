@@ -89,7 +89,19 @@ defmodule AgentBoard.MixProject do
         "esbuild agent_board --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"],
+      precommit: [
+        "compile --warnings-as-errors",
+        "deps.unlock --unused",
+        "format",
+        "credo --strict",
+        "test"
+      ],
+      gate: [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "credo --strict",
+        "test"
+      ],
       lint: ["format --check-formatted", "credo --strict"]
     ]
   end

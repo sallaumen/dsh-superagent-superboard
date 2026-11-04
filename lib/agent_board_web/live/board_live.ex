@@ -111,11 +111,6 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
-  defp empty_copy(:running), do: "No task is running."
-  defp empty_copy(:ready), do: "Nothing is waiting on a review."
-  defp empty_copy(:merged), do: "No pull request merged yet."
-  defp empty_copy(:queued), do: "No queued task."
-
   @impl true
   def handle_event("open", %{"id" => id}, socket) do
     {task_id, _} = Integer.parse(id)
@@ -153,6 +148,11 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("dictate", _params, socket) do
     {:noreply, push_event(socket, "dictate", %{})}
   end
+
+  defp empty_copy(:running), do: "No task is running."
+  defp empty_copy(:ready), do: "Nothing is waiting on a review."
+  defp empty_copy(:merged), do: "No pull request merged yet."
+  defp empty_copy(:queued), do: "No queued task."
 
   @impl true
   def render(assigns) do
