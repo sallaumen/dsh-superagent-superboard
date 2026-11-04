@@ -91,3 +91,46 @@ jobs:
         run: |
           python3 capabilities/tools/validar_biblioteca.py
           python3 capabilities/tools/test_validar_biblioteca.py
+
+  release:
+    name: "release · caminho misto (backend + frontend)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19"
+          otp-version: "27"
+
+      - name: Cache deps e builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+
+      - run: mix deps.get
+
+      # esbuild/tailwind só existem no ambiente dev; os assets são
+      # construídos em dev e apenas digeridos/embalados no ambiente prod.
+      - name: Constrói assets (toolchain de dev)
+        env:
+          MIX_ENV: dev
+        run: |
+          mix assets.setup
+          mix assets.build
+
+      - name: Compila produção
+        env:
+          MIX_ENV: prod
+        run: mix compile --warnings-as-errors
+
+      - name: Digere assets e monta o release
+        env:
+          MIX_ENV: prod
+        run: |
+          mix phx.digest
+          mix release --overwrite
