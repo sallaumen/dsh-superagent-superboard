@@ -41,6 +41,17 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert_receive :board_updated
   end
 
+  test "the activity panel shows the recorded events", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    Board.log_event(repo.id, "sync", "sallaumen/arena-rogue", %{"pulls" => 8})
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ "Activity"
+    assert html =~ "sync"
+    assert html =~ "pulls: 8"
+  end
+
   test "the speak event pushes the summary", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
     {:ok, view, _html} = live(conn, ~p"/")
