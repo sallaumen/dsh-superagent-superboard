@@ -57,6 +57,8 @@ python3 capabilities/tools/test_validar_biblioteca.py     # testes do validador
 
 Cenários comportamentais de roteamento e limites estão em [validacao/casos-de-avaliacao.md](validacao/casos-de-avaliacao.md); a evidência desta incorporação está em [validacao/relatorio-de-validacao.md](validacao/relatorio-de-validacao.md). Requer Python 3.10+ (somente biblioteca padrão) apenas para as ferramentas; as skills são markdown legível por qualquer IA com acesso aos arquivos.
 
+O validador é genérico: qualquer biblioteca com o mesmo layout (`skills/<nome>/SKILL.md`, `manifest.json` schema 2) pode ser validada com `python3 validar_biblioteca.py --root /caminho/da/biblioteca`. Os IDs de origem vêm do campo `origin_ids` do manifesto e, sem esse campo, são derivados das próprias skills — a ferramenta acompanha outros projetos sem depender dos IDs P01–P34.
+
 ## Ambientes suportados
 
 As skills usam o formato de pasta `SKILL.md` com frontmatter `name`/`description`, documentado na [especificação de Agent Skills](https://agentskills.io/specification). Esta biblioteca **não** foi instalada em nenhum agente específico nem verificada em múltiplas plataformas; a validação desta edição cobre formato, integridade de referências e cenários controlados com um executor que lê arquivos. A instalação em um agente (ex.: catálogo de skills de uma sessão) é trabalho separado e deve ser verificada no ambiente correspondente.

@@ -29,6 +29,63 @@ def fresh_copy() -> Path:
     return tmp / "lib"
 
 
+MINI_SKILL = """---
+name: "%s"
+title: "%s"
+category: "teste"
+default_mode: "analisar"
+origem: ["%s"]
+related: []
+description: "Skill de teste para a biblioteca estrangeira."
+---
+
+# %s
+
+## Quando usar
+
+Quando o cenário de teste pedir.
+
+## Instrução
+
+Execute apenas o comportamento descrito no cenário de origem %s.
+
+## Referências
+
+- Contrato comum (obrigatório): [contrato.md](../../contrato.md)
+"""
+
+
+def mini_library(origins: list[str], declared: list[str] | None = None) -> Path:
+    """Constrói uma biblioteca mínima com IDs de origem arbitrários."""
+    root = Path(tempfile.mkdtemp(prefix="bib-estrangeira-"))
+    (root / "contrato.md").write_text("# Contrato\n\nRegras comuns.\n", encoding="utf-8")
+    (root / "parametros.md").write_text("# Parâmetros\n\nModos e parâmetros.\n", encoding="utf-8")
+    skills = []
+    for i, origin_id in enumerate(origins, start=1):
+        name = f"skill-{i}"
+        (root / "skills" / name).mkdir(parents=True)
+        (root / "skills" / name / "SKILL.md").write_text(
+            MINI_SKILL % (name, f"Skill {i}", origin_id, f"Skill {i}", origin_id), encoding="utf-8"
+        )
+        skills.append(
+            {"name": name, "title": f"Skill {i}", "category": "teste",
+             "default_mode": "analisar", "origem": [origin_id], "related": [],
+             "path": f"skills/{name}/SKILL.md"}
+        )
+    manifest = {
+        "schema_version": 2,
+        "kind": "capabilities-library",
+        "common_contract": "contrato.md",
+        "parameters": "parametros.md",
+        "skills": skills,
+        "contexts": [],
+    }
+    if declared is not None:
+        manifest["origin_ids"] = declared
+    (root / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    return root
+
+
 def skill_file(root: Path, name: str) -> Path:
     return root / "skills" / name / "SKILL.md"
 
@@ -42,9 +99,35 @@ class ValidatorTests(unittest.TestCase):
     def test_valid_library_passes(self) -> None:
         root = fresh_copy()
         report = vb.validate(root)
+        manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
         self.assertTrue(report["ok"], report["errors"])
-        self.assertEqual(report["skills"], 32)
-        self.assertEqual(report["contexts"], 6)
+        self.assertEqual(report["skills"], len(manifest["skills"]))
+        self.assertEqual(report["contexts"], len(manifest["contexts"]))
+        self.assertEqual(report["origins"], len(manifest.get("origin_ids", [])))
+
+    def test_foreign_library_with_custom_origins_passes(self) -> None:
+        root = mini_library(["A1", "A2"], declared=["A1", "A2"])
+        report = vb.validate(root)
+        self.assertTrue(report["ok"], report["errors"])
+        self.assertEqual(report["origins"], 2)
+
+    def test_foreign_library_derives_origins_when_absent(self) -> None:
+        root = mini_library(["X7", "Y9"])
+        report = vb.validate(root)
+        self.assertTrue(report["ok"], report["errors"])
+        self.assertEqual(report["origins"], 2)
+
+    def test_foreign_library_missing_origin_coverage_detected(self) -> None:
+        root = mini_library(["A1"], declared=["A1", "A2"])
+        report = vb.validate(root)
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("A2" in e and "sem destino" in e for e in report["errors"]))
+
+    def test_foreign_library_undeclared_origin_detected(self) -> None:
+        root = mini_library(["A1", "A2"], declared=["A1"])
+        report = vb.validate(root)
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("A2" in e and "não declarada" in e for e in report["errors"]))
 
     def test_manifest_divergence_detected(self) -> None:
         root = fresh_copy()

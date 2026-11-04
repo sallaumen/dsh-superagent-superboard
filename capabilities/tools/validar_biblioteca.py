@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
-"""Valida estrutura, referências locais e metadados da biblioteca de capacidades.
+"""Valida estrutura, referências locais e metadados de uma biblioteca de capacidades.
 
 Este script confere formato, caminhos, manifesto e links locais. Ele não avalia
 a eficácia das skills em projetos reais nem executa suas instruções.
 Requer Python 3.10 ou superior; somente biblioteca padrão.
+
+A ferramenta é genérica: qualquer biblioteca com o layout skills/<nome>/SKILL.md,
+manifest.json (schema_version 2) e frontmatter {name, title, category,
+default_mode, origem, related, description} pode ser validada com
+`python3 validar_biblioteca.py --root /caminho/da/biblioteca`. Os IDs de origem
+vêm do campo opcional `origin_ids` do manifesto; sem ele, são derivados das
+skills. Não valida uma biblioteca de prompts-fonte (v1): use o validador do
+pacote de origem para esse formato.
 """
 
 from __future__ import annotations
@@ -17,7 +25,6 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 MODES = {"analisar", "revisar", "analisar-e-corrigir", "coordenar"}
-ORIGIN_IDS = {f"P{i:02d}" for i in range(1, 35)}
 SKILL_SECTIONS = ("## Quando usar",)
 INSTRUCTION_HEADINGS = ("## Instrução", "### Instrução")
 
@@ -62,6 +69,14 @@ def load_manifest(root: Path) -> dict:
     support = manifest.get("support_files", [])
     if not isinstance(support, list) or not all(isinstance(item, str) for item in support):
         raise LibraryError("support_files precisa ser uma lista de caminhos relativos.")
+    origin_ids = manifest.get("origin_ids")
+    if origin_ids is not None:
+        if (
+            not isinstance(origin_ids, list)
+            or not all(isinstance(x, str) and x.strip() for x in origin_ids)
+            or len(origin_ids) != len(set(origin_ids))
+        ):
+            raise LibraryError("origin_ids, quando presente, precisa listar IDs únicos não vazios.")
     return manifest
 
 
@@ -108,11 +123,10 @@ def read_skill(path: Path) -> tuple[dict, str]:
     if (
         not isinstance(origem, list)
         or not origem
-        or not all(isinstance(x, str) for x in origem)
-        or any(x not in ORIGIN_IDS for x in origem)
+        or not all(isinstance(x, str) and x.strip() for x in origem)
         or len(origem) != len(set(origem))
     ):
-        raise LibraryError(f"{path.name}: origem precisa listar IDs P01–P34 sem repetição.")
+        raise LibraryError(f"{path.name}: origem precisa listar IDs de origem não vazios, sem repetição.")
     related = metadata["related"]
     if not isinstance(related, list) or not all(isinstance(x, str) for x in related):
         raise LibraryError(f"{path.name}: related precisa ser uma lista de nomes.")
@@ -216,11 +230,17 @@ def validate(root: Path) -> dict:
     origin_counts: dict[str, list[str]] = {}
     for origin_id, name in origins_seen:
         origin_counts.setdefault(origin_id, []).append(name)
-    for origin_id in sorted(ORIGIN_IDS):
+    declared_origins = manifest.get("origin_ids")
+    if declared_origins is None:
+        declared_origins = sorted(origin_counts)
+    for origin_id in declared_origins:
         if origin_id not in origin_counts:
             errors.append(f"{origin_id}: sem destino registrado no manifesto.")
         elif len(origin_counts[origin_id]) > 1:
             errors.append(f"{origin_id}: destino duplicado em {origin_counts[origin_id]}.")
+    unknown = set(origin_counts) - set(declared_origins)
+    for origin_id in sorted(unknown):
+        errors.append(f"{origin_id}: origem usada em uma skill, mas não declarada em origin_ids.")
     try:
         _check_contexts(root, manifest)
         for relative in [manifest["common_contract"], manifest["parameters"], *manifest.get("support_files", [])]:
@@ -244,6 +264,7 @@ def validate(root: Path) -> dict:
         "ok": not errors,
         "skills": len(stats),
         "contexts": len(manifest["contexts"]),
+        "origins": len(declared_origins),
         "body_words": sum(s["words"] for s in stats),
         "local_links_checked": local_links,
         "errors": errors,
@@ -255,9 +276,16 @@ def validate(root: Path) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="Retorna relatório estruturado")
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=None,
+        help="Raiz da biblioteca a validar (padrão: a biblioteca junto deste script).",
+    )
     args = parser.parse_args()
+    root = args.root.resolve() if args.root else library_root()
     try:
-        report = validate(library_root())
+        report = validate(root)
     except (LibraryError, OSError, UnicodeError) as exc:
         parser.exit(2, f"Erro: {exc}\n")
     if args.json:
