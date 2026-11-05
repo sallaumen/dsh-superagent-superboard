@@ -410,103 +410,171 @@ defmodule AgentBoardWeb.BoardLive do
   defp empty_copy(:merged), do: "No pull request merged yet."
   defp empty_copy(:queued), do: "No queued task."
 
+  attr :item, :any, required: true
+  attr :state, :atom, required: true
+
+  defp board_item(assigns) do
+    ~H"""
+    <article
+      class={["board-item", if(@state == :merged, do: "archive-row", else: "task-card")]}
+      data-state={@state}
+    >
+      <span class="item-number">{if @item.number, do: "##{@item.number}", else: "unknown"}</span>
+      <div class="item-title">
+        <a :if={@item.url} href={@item.url} target="_blank" rel="noopener noreferrer">{@item.title ||
+          "unknown"}</a>
+        <span :if={is_nil(@item.url)}>{@item.title || "unknown"}</span>
+      </div>
+      <div :if={review_badge(@item) || checks_badge(@item)} class="item-signals">
+        <span :if={review_badge(@item)} class={review_badge_class(@item)}>{review_badge(@item)}</span>
+        <span :if={checks_badge(@item)} class={checks_badge_class(@item)}>{checks_badge(@item)}</span>
+      </div>
+      <div :if={@state in [:running, :ready, :blocked, :queued]} class="task-actions">
+        <button
+          phx-click={JS.push_focus() |> JS.push("open")}
+          phx-value-id={@item.id}
+          aria-label={"Open task: " <> @item.title}
+        >Open</button>
+        <button
+          phx-click="act"
+          phx-value-id={@item.id}
+          phx-value-action="stop"
+          phx-disable-with="Stopping…"
+          title="Closes the GitHub issue and stops this task"
+          aria-label={"Stop task: " <> @item.title}
+        >Stop</button>
+        <button
+          phx-click="act"
+          phx-value-id={@item.id}
+          phx-value-action="archive"
+          phx-disable-with="Archiving…"
+          title="Hides this task from the board; keeps its history"
+          aria-label={"Archive task: " <> @item.title}
+        >Archive</button>
+      </div>
+    </article>
+    """
+  end
+
+  defp latency(nil), do: "unknown"
+  defp latency(value), do: "#{value}ms"
+
+  defp token_usage(%{input_tokens: input, output_tokens: output})
+       when is_integer(input) and is_integer(output), do: "#{input + output} tokens"
+
+  defp token_usage(_call), do: "unknown"
+
   @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
       <div class="agent-board min-h-screen bg-base-100 text-base-content font-mono">
-        <header class="flex flex-wrap items-center gap-3 border-b border-base-content/10 px-5 py-3">
-          <div class="flex flex-wrap items-baseline gap-2">
-            <h1 class="text-lg tracking-[0.16em] uppercase">Agent board</h1>
-            <span class="text-[10px] text-base-content/75">the agent's work, live</span>
+        <header class="board-header">
+          <div class="board-topbar">
+            <div class="board-identity">
+              <div class="flex flex-wrap items-baseline gap-2">
+                <h1 class="text-lg tracking-[0.16em] uppercase">Agent board</h1>
+                <span class="text-[10px] text-base-content/75">the agent's work, live</span>
+              </div>
+            </div>
+            <div class="board-repository">
+              <span class="board-eyebrow">Repository</span>
+              <form id="repo-select" phx-change="select" class="repository-select">
+                <select
+                  name="repo"
+                  aria-label="Repository"
+                  class="border border-base-content/10 bg-base-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  <option :if={@repo == nil} value="">select a repository</option>
+                  <option
+                    :for={r <- @repos}
+                    value={"#{r.owner}/#{r.name}"}
+                    selected={@repo && @repo.id == r.id}
+                  >
+                    {r.owner}/{r.name}
+                  </option>
+                </select>
+              </form>
+            </div>
+            <details class="repository-settings">
+              <summary>Repositories <span aria-hidden="true">+</span></summary>
+              <div class="repository-settings-body">
+                <p class="board-eyebrow">Track another repository</p>
+                <form id="track-repo" phx-submit="add" class="flex flex-wrap items-center gap-2">
+                  <input
+                    name="owner"
+                    placeholder="owner"
+                    aria-label="Owner"
+                    class="w-20 border border-base-content/10 bg-base-200 px-3 py-2 text-sm sm:w-28"
+                  />
+                  <input
+                    name="name"
+                    placeholder="repo name"
+                    aria-label="Repository name"
+                    class="w-24 border border-base-content/10 bg-base-200 px-3 py-2 text-sm sm:w-36"
+                  />
+                  <button
+                    class="border border-base-content/10 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary hover:bg-base-300"
+                    phx-disable-with="Tracking…"
+                  >Track repo</button>
+                </form>
+              </div>
+            </details>
           </div>
-
-          <form id="repo-select" phx-change="select" class="contents">
-            <select
-              name="repo"
-              aria-label="Repository"
-              class="border border-base-content/10 bg-base-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-            >
-              <option :if={@repo == nil} value="">select a repository</option>
-              <option
-                :for={r <- @repos}
-                value={"#{r.owner}/#{r.name}"}
-                selected={@repo && @repo.id == r.id}
+          <div class="board-commandbar">
+            <div class="board-health">
+              <span
+                id="connection-status"
+                role="status"
+                aria-live="polite"
+                data-connected={to_string(@live)}
+                phx-connected={JS.set_attribute({"data-connected", "true"})}
+                phx-disconnected={JS.set_attribute({"data-connected", "false"})}
+                class="text-xs"
               >
-                {r.owner}/{r.name}
-              </option>
-            </select>
-          </form>
+                <span class="connection-live text-success">live</span>
+                <span class="connection-offline text-base-content/75">{if @live,
+                  do: "reconnecting",
+                  else: "static"}</span>
+              </span>
+              <span role="status" aria-live="polite">
+                <button
+                  id="sync-status"
+                  type="button"
+                  aria-controls="activity"
+                  phx-click={
+                    JS.set_attribute({"open", ""}, to: "#activity")
+                    |> JS.focus(to: "#activity summary")
+                  }
+                  class={[
+                    "text-left text-xs underline underline-offset-4",
+                    if(@sync_event && has_errors?(@sync_event),
+                      do: "text-error",
+                      else: "text-base-content/75"
+                    )
+                  ]}
+                >
+                  {last_sync(@sync_event)}
+                </button>
+              </span>
+            </div>
+            <div class="board-utilities">
+              <button
+                phx-click="speak"
+                class="border border-base-content/10 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary hover:bg-base-300"
+              >
+                Speak status
+              </button>
+              <button
+                phx-click="dictate"
+                class="border border-base-content/10 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary hover:bg-base-300"
+              >
+                Dictate task
+              </button>
 
-          <button
-            phx-click="speak"
-            class="border border-base-content/10 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary hover:bg-base-300"
-          >
-            Speak status
-          </button>
-          <button
-            phx-click="dictate"
-            class="border border-base-content/10 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary hover:bg-base-300"
-          >
-            Dictate task
-          </button>
-
-          <Layouts.theme_toggle />
-
-          <span class="flex-1"></span>
-
-          <span
-            id="connection-status"
-            role="status"
-            aria-live="polite"
-            data-connected={to_string(@live)}
-            phx-connected={JS.set_attribute({"data-connected", "true"})}
-            phx-disconnected={JS.set_attribute({"data-connected", "false"})}
-            class="text-xs"
-          >
-            <span class="connection-live text-success">live</span>
-            <span class="connection-offline text-base-content/75">{if @live,
-              do: "reconnecting",
-              else: "static"}</span>
-          </span>
-          <span role="status" aria-live="polite">
-            <button
-              id="sync-status"
-              type="button"
-              aria-controls="activity"
-              phx-click={
-                JS.set_attribute({"open", ""}, to: "#activity") |> JS.focus(to: "#activity summary")
-              }
-              class={[
-                "text-left text-xs underline underline-offset-4",
-                if(@sync_event && has_errors?(@sync_event),
-                  do: "text-error",
-                  else: "text-base-content/75"
-                )
-              ]}
-            >
-              {last_sync(@sync_event)}
-            </button>
-          </span>
-
-          <form id="track-repo" phx-submit="add" class="flex flex-wrap items-center gap-2">
-            <input
-              name="owner"
-              placeholder="owner"
-              aria-label="Owner"
-              class="w-20 border border-base-content/10 bg-base-200 px-3 py-2 text-sm sm:w-28"
-            />
-            <input
-              name="name"
-              placeholder="repo name"
-              aria-label="Repository name"
-              class="w-24 border border-base-content/10 bg-base-200 px-3 py-2 text-sm sm:w-36"
-            />
-            <button
-              class="border border-base-content/10 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary hover:bg-base-300"
-              phx-disable-with="Tracking…"
-            >Track repo</button>
-          </form>
+              <Layouts.theme_toggle />
+            </div>
+          </div>
           <p
             id="voice-feedback"
             role="status"
@@ -524,110 +592,58 @@ defmodule AgentBoardWeb.BoardLive do
           <p class="text-sm text-base-content">No repository tracked yet.</p>
           <p class="max-w-md text-[12px] leading-relaxed text-base-content/75">
             Track one in the header. The board syncs its issues and pull requests, shows
-            the agent's work in the five columns, and lets you create and ask.
+            the agent's active work and recent merges, and lets you create and ask.
           </p>
         </div>
 
         <SystemPanel.version_panel version={@version} busy={@busy} />
 
-        <main
-          :if={@repo}
-          class="grid grid-cols-1 gap-px bg-base-content/10 sm:grid-cols-2 lg:grid-cols-5"
-        >
-          <%= for {title, key} <- [
-              {"Running", :running},
-              {"Ready", :ready},
-              {"Blocked", :blocked},
-              {"Merged", :merged},
-              {"Queued", :queued}
-            ] do %>
-            <section
-              aria-label={title <> " tasks"}
-              tabindex="0"
-              class="board-column min-w-0 overflow-y-auto bg-base-100 p-4 lg:max-h-[55vh]"
-            >
-              <h2 class="sticky top-0 z-10 mb-3 flex items-baseline justify-between bg-base-100 py-1 gap-2 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
-                <span>{title}</span>
-                <span class="rounded-full bg-base-200 px-2 py-0.5 text-[10px] tabular-nums">
-                  {if key == :merged, do: "latest "}{length(Map.get(@board, key))}
-                </span>
-              </h2>
-
-              <div
-                :for={item <- Map.get(@board, key)}
-                class={[
-                  "mb-2 border border-base-content/10 border-l-2 bg-base-200 px-3 py-2 transition-colors hover:bg-base-300",
-                  key == :running && "border-l-warning",
-                  key == :ready && "border-l-info",
-                  key == :blocked && "border-l-error",
-                  key == :merged && "border-l-success",
-                  key == :queued && "border-l-base-content/50"
-                ]}
+        <main :if={@repo} id="board-work" class="board-work">
+          <div class="active-lanes grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <%= for {title, key} <- [{"Running", :running}, {"Ready", :ready}, {"Blocked", :blocked}, {"Queued", :queued}] do %>
+              <section
+                aria-label={title <> " tasks"}
+                class={["board-column", Map.get(@board, key) == [] && "is-empty"]}
+                data-state={key}
               >
-                <a
-                  :if={item.url}
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="block break-words text-sm font-medium hover:underline"
-                >
-                  {item.title}
-                </a>
-                <span :if={is_nil(item.url)} class="block break-words text-sm font-medium">{item.title}</span>
-                <span
-                  :if={review_badge(item)}
-                  class={["ml-2 text-[11px] uppercase", review_badge_class(item)]}
-                >
-                  {review_badge(item)}
-                </span>
-                <span
-                  :if={checks_badge(item)}
-                  class={["ml-2 text-[11px] uppercase", checks_badge_class(item)]}
-                >
-                  {checks_badge(item)}
-                </span>
-                <span :if={item.number} class="ml-2 text-[11px] tabular-nums text-base-content/75">
-                  #{item.number}
-                </span>
-
+                <h2 class="lane-heading">
+                  <span>{title}</span>
+                  <span class="lane-count">{length(Map.get(@board, key))}</span>
+                </h2>
                 <div
-                  :if={key in [:running, :ready, :blocked, :queued]}
-                  class="mt-2 flex gap-1 text-[11px]"
+                  :if={Map.get(@board, key) != []}
+                  class="lane-items"
+                  role="region"
+                  tabindex="0"
+                  aria-label={title <> " task list"}
                 >
-                  <button
-                    phx-click={JS.push_focus() |> JS.push("open")}
-                    phx-value-id={item.id}
-                    aria-label={"Open task: " <> item.title}
-                    class="rounded-sm border border-base-content/15 px-2 py-1 hover:bg-base-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                  >Open</button>
-                  <button
-                    phx-click="act"
-                    phx-value-id={item.id}
-                    phx-value-action="stop"
-                    phx-disable-with="Stopping…"
-                    title="Closes the GitHub issue and stops this task"
-                    aria-label={"Stop task: " <> item.title}
-                    class="rounded-sm border border-base-content/15 px-2 py-1 hover:bg-base-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                  >Stop</button>
-                  <button
-                    phx-click="act"
-                    phx-value-id={item.id}
-                    phx-value-action="archive"
-                    phx-disable-with="Archiving…"
-                    title="Hides this task from the board; keeps its history"
-                    aria-label={"Archive task: " <> item.title}
-                    class="rounded-sm border border-base-content/15 px-2 py-1 hover:bg-base-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                  >
-                    Archive
-                  </button>
+                  <.board_item :for={item <- Map.get(@board, key)} item={item} state={key} />
                 </div>
+                <p :if={Map.get(@board, key) == []} class="lane-empty">{empty_copy(key)}</p>
+              </section>
+            <% end %>
+          </div>
+          <section id="merged-column" aria-label="Merged tasks" class="board-archive">
+            <div class="archive-heading">
+              <h2>Merged <span class="archive-count">{length(@board.merged)}</span></h2>
+              <span class="board-eyebrow">Recent history · latest {length(@board.merged)} loaded</span>
+            </div>
+            <div id="merged-preview">
+              <.board_item :for={item <- Enum.take(@board.merged, 5)} item={item} state={:merged} />
+            </div>
+            <p :if={@board.merged == []} class="lane-empty">{empty_copy(:merged)}</p>
+            <details :if={length(@board.merged) > 5} id="merged-history" class="archive-history">
+              <summary>Show {length(@board.merged) - 5} more merged pull requests</summary>
+              <div
+                class="archive-history-list"
+                role="region"
+                tabindex="0"
+                aria-label="More merged pull requests"
+              >
+                <.board_item :for={item <- Enum.drop(@board.merged, 5)} item={item} state={:merged} />
               </div>
-
-              <p :if={Map.get(@board, key) == []} class="text-xs text-base-content/75">
-                {empty_copy(key)}
-              </p>
-            </section>
-          <% end %>
+            </details>
+          </section>
         </main>
 
         <section
@@ -718,95 +734,108 @@ defmodule AgentBoardWeb.BoardLive do
           </ol>
         </details>
 
-        <section :if={@repo} class="border-t border-base-content/10 px-5 py-4">
-          <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
-            Split a request
-          </h2>
+        <div :if={@repo} class="board-workbench">
+          <section class="workbench-panel">
+            <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
+              Split a request
+            </h2>
 
-          <p
-            :if={@ai_status == :not_configured}
-            id="intake-unavailable"
-            class="mb-3 text-xs text-base-content/75"
-          >
-            AI is not configured. Split is unavailable until a model is configured.
-          </p>
-          <form id="intake-form" phx-submit="intake" class="flex gap-2">
-            <input
-              name="text"
-              placeholder="Describe what you want..."
-              aria-label="Request"
-              disabled={@ai_status == :not_configured}
-              aria-describedby={if @ai_status == :not_configured, do: "intake-unavailable"}
-              class="flex-1 border border-base-content/10 bg-base-200 px-3 py-2 text-sm"
-              required
-            />
-            <button
-              disabled={@ai_status == :not_configured}
-              phx-disable-with="Splitting…"
-              class="bg-primary px-4 py-2 text-sm font-bold text-primary-content hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            <p
+              :if={@ai_status == :not_configured}
+              id="intake-unavailable"
+              class="mb-3 text-xs text-base-content/75"
             >
-              Split
-            </button>
-          </form>
-
-          <div :if={@intake} class="mt-4">
-            <p class="text-[10px] uppercase text-base-content/75">Goal</p>
-            <p class="text-sm text-base-content">{@intake.spec["goal"]}</p>
-
-            <div :if={@intake.spec["open_questions"] != []} class="mt-2 text-[11px] text-warning">
-              <p class="uppercase text-[10px]">Open questions</p>
-              <p :for={q <- @intake.spec["open_questions"]}>{q}</p>
-            </div>
-
-            <ol class="mt-3 space-y-2">
-              <li
-                :for={{task, index} <- Enum.with_index(@intake.tasks)}
-                class="border border-base-content/10 border-l-2 border-l-info bg-base-200 px-3 py-2"
+              AI is not configured. Split is unavailable until a model is configured.
+            </p>
+            <form id="intake-form" phx-submit="intake" class="flex gap-2">
+              <input
+                name="text"
+                placeholder="Describe what you want..."
+                aria-label="Request"
+                disabled={@ai_status == :not_configured}
+                aria-describedby={if @ai_status == :not_configured, do: "intake-unavailable"}
+                class="flex-1 border border-base-content/10 bg-base-200 px-3 py-2 text-sm"
+                required
+              />
+              <button
+                disabled={@ai_status == :not_configured}
+                phx-disable-with="Splitting…"
+                class="bg-primary px-4 py-2 text-sm font-bold text-primary-content hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
-                <p class="text-[13px]">
-                  {task.title}
-                  <span class="ml-2 text-[10px] uppercase text-base-content/75">{task.kind}</span>
-                  <span class="ml-2 text-[10px] uppercase text-base-content/75">{task.size}</span>
-                </p>
-                <p class="mt-1 text-[11px] text-base-content/75">{task.body}</p>
-                <button
-                  phx-click="create_from_intake"
-                  phx-disable-with="Creating…"
-                  phx-value-index={index}
-                  class="mt-2 border border-base-content/10 px-2 py-1 text-[10px]"
+                Split
+              </button>
+            </form>
+
+            <div :if={@intake} class="mt-4">
+              <p class="text-[10px] uppercase text-base-content/75">Goal</p>
+              <p class="text-sm text-base-content">{@intake.spec["goal"]}</p>
+
+              <div :if={@intake.spec["open_questions"] != []} class="mt-2 text-[11px] text-warning">
+                <p class="uppercase text-[10px]">Open questions</p>
+                <p :for={q <- @intake.spec["open_questions"]}>{q}</p>
+              </div>
+
+              <ol class="mt-3 space-y-2">
+                <li
+                  :for={{task, index} <- Enum.with_index(@intake.tasks)}
+                  class="border border-base-content/10 border-l-2 border-l-info bg-base-200 px-3 py-2"
                 >
-                  Create
-                </button>
+                  <p class="text-[13px]">
+                    {task.title}
+                    <span class="ml-2 text-[10px] uppercase text-base-content/75">{task.kind}</span>
+                    <span class="ml-2 text-[10px] uppercase text-base-content/75">{task.size}</span>
+                  </p>
+                  <p class="mt-1 text-[11px] text-base-content/75">{task.body}</p>
+                  <button
+                    phx-click="create_from_intake"
+                    phx-disable-with="Creating…"
+                    phx-value-index={index}
+                    class="mt-2 border border-base-content/10 px-2 py-1 text-[10px]"
+                  >
+                    Create
+                  </button>
+                </li>
+              </ol>
+            </div>
+          </section>
+
+          <section class="workbench-panel">
+            <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
+              <span>AI · all repositories</span>
+              <span class={["text-[10px] normal-case", @ai_status != :logged_in && "text-warning"]}>
+                {ai_status_label(@ai_status)}
+              </span>
+            </h2>
+            <p :if={@ai_calls == []} class="text-xs text-base-content/75">
+              No AI calls recorded yet.
+            </p>
+            <p :if={@ai_calls != []} class="mb-2 text-xs text-base-content/75">
+              Latest {length(@ai_calls)} calls across the board.
+            </p>
+            <ol class="ai-calls">
+              <li :for={c <- @ai_calls} class="ai-call">
+                <div class="ai-call-identity">
+                  <strong>{c.name || "unknown"}</strong>
+                  <span>{c.engine || "unknown"} · {c.model || "unknown"}</span>
+                </div>
+                <span class={[
+                  "ai-call-status",
+                  c.status == "error" && "text-error",
+                  c.status == "ok" && "text-success"
+                ]}>{c.status || "unknown"}</span>
+                <dl class="ai-call-metrics">
+                  <div>
+                    <dt>Latency</dt><dd>{latency(c.duration_ms)}</dd>
+                  </div>
+                  <div>
+                    <dt>Usage</dt><dd>{token_usage(c)}</dd>
+                  </div>
+                </dl>
               </li>
             </ol>
-          </div>
-        </section>
-
-        <section :if={@repo} class="border-t border-base-content/10 px-5 py-4">
-          <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
-            <span>AI · all repositories</span>
-            <span class={["text-[10px] normal-case", @ai_status != :logged_in && "text-warning"]}>
-              {ai_status_label(@ai_status)}
-            </span>
-          </h2>
-          <p :if={@ai_calls == []} class="text-xs text-base-content/75">No AI calls recorded yet.</p>
-          <p :if={@ai_calls != []} class="mb-2 text-xs text-base-content/75">
-            Latest {length(@ai_calls)} calls across the board.
-          </p>
-          <ol class="space-y-1">
-            <li :for={c <- @ai_calls} class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-              <span class="min-w-0 break-words uppercase">{c.name}</span>
-              <span class="w-20 shrink-0 text-base-content/75">{c.engine}</span>
-              <span class={["w-16 shrink-0", c.status == "error" && "text-error"]}>
-                {c.status}
-              </span>
-              <span class="w-20 shrink-0 text-base-content/75">{c.duration_ms}ms</span>
-              <span class="text-base-content/75">{c.input_tokens + c.output_tokens} tokens</span>
-            </li>
-          </ol>
-        </section>
-
-        <footer :if={@repo} class="border-t border-base-content/10 p-5">
+          </section>
+        </div>
+        <footer :if={@repo} class="direct-create">
           <form id="create-task" phx-submit="create" class="flex flex-wrap gap-2">
             <input
               name="title"

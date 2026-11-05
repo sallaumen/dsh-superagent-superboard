@@ -153,6 +153,66 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert render(view) =~ "sm:w-14"
   end
 
+  test "merged history previews five newest pulls and preserves the remaining loaded pulls", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "history")
+    now = DateTime.utc_now()
+
+    for number <- 1..7 do
+      %PullRequest{}
+      |> PullRequest.changeset(%{
+        repository_id: repo.id,
+        number: number,
+        title: "Merged pull #{number}",
+        state: "merged",
+        merged_at: DateTime.add(now, number, :second)
+      })
+      |> Repo.insert!()
+    end
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/history")
+
+    assert has_element?(view, "#merged-column", "latest 7 loaded")
+    assert has_element?(view, "#merged-preview article:nth-child(5)", "Merged pull 3")
+    refute has_element?(view, "#merged-preview article:nth-child(6)")
+    assert has_element?(view, "#merged-history summary", "Show 2 more merged pull requests")
+    assert has_element?(view, "#merged-history article", "Merged pull 2")
+    assert has_element?(view, "#merged-history article", "Merged pull 1")
+    refute has_element?(view, "#merged-history[open]")
+    refute has_element?(view, "#merged-column button[phx-click=act]")
+  end
+
+  test "empty merged history has no expansion control", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("fixture", "empty-history")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/empty-history")
+
+    assert has_element?(view, "#merged-column", "No pull request merged yet.")
+    refute has_element?(view, "#merged-history")
+  end
+
+  test "missing AI measurements remain unknown", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("fixture", "measurements")
+
+    %Call{}
+    |> Call.changeset(%{
+      name: "refine_request",
+      engine: "deepseek",
+      status: "error",
+      duration_ms: nil,
+      input_tokens: nil,
+      output_tokens: nil
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/measurements")
+
+    assert has_element?(view, ".ai-call-metrics div:first-child", "Latencyunknown")
+    assert has_element?(view, ".ai-call-metrics div:last-child", "Usageunknown")
+    refute has_element?(view, ".ai-call-metrics", "0ms")
+    refute has_element?(view, ".ai-call-metrics", "0 tokens")
+  end
+
   test "a merged pull shows its review badge", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
@@ -439,7 +499,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "grid-cols-1"
-    assert html =~ "lg:grid-cols-5"
+    assert html =~ "lg:grid-cols-4"
   end
 
   test "the board renders the tracked repository", %{conn: conn} do
