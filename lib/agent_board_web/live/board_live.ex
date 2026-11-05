@@ -21,7 +21,8 @@ defmodule AgentBoardWeb.BoardLive do
         conversation: nil,
         comments: [],
         intake: nil,
-        ai_calls: []
+        ai_calls: [],
+        ai_status: AI.status()
       )
 
     repo =
@@ -42,7 +43,14 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp load(socket, nil) do
-    assign(socket, repo: nil, board: empty(), events: [], live: false, ai_calls: [])
+    assign(socket,
+      repo: nil,
+      board: empty(),
+      events: [],
+      live: false,
+      ai_calls: [],
+      ai_status: AI.status()
+    )
   end
 
   defp load(socket, repo) do
@@ -64,7 +72,14 @@ defmodule AgentBoardWeb.BoardLive do
         )
 
       _ ->
-        assign(socket, repo: nil, board: empty(), events: [], live: false, ai_calls: [])
+        assign(socket,
+          repo: nil,
+          board: empty(),
+          events: [],
+          live: false,
+          ai_calls: [],
+          ai_status: AI.status()
+        )
     end
   end
 
@@ -583,8 +598,13 @@ defmodule AgentBoardWeb.BoardLive do
           </div>
         </section>
 
-        <section :if={@ai_calls != []} class="border-t border-base-content/10 px-5 py-4">
-          <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-base-content/60">AI</h2>
+        <section :if={@repo} class="border-t border-base-content/10 px-5 py-4">
+          <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/60">
+            <span>AI</span>
+            <span class={["text-[10px] normal-case", @ai_status != :logged_in && "text-[#e8a33d]"]}>
+              {@ai_status}
+            </span>
+          </h2>
           <ol class="space-y-1">
             <li :for={c <- @ai_calls} class="flex gap-3 text-[11px]">
               <span class="w-40 shrink-0 uppercase">{c.name}</span>

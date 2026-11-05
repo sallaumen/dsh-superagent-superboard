@@ -68,6 +68,15 @@ defmodule AgentBoardWeb.IntakeUITest do
     assert html =~ "O sync roda a cada minuto."
   end
 
+  test "the panel says when the AI is not configured", %{conn: conn} do
+    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+    Application.put_env(:agent_board, :ai_api_key, "")
+
+    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    assert html =~ "not_configured"
+  end
+
   test "the form shows the goal, the open questions and the tasks", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
