@@ -7,7 +7,7 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
   @impl true
   def render(assigns) do
     ~H"""
-    <section id={@id} aria-label="Merged pull request history" class="board-archive">
+    <section id={@id} aria-label="Merged pull request history" tabindex="-1" class="board-archive">
       <header class="archive-heading">
         <div class="archive-title">
           <h2>Merged PRs</h2>
