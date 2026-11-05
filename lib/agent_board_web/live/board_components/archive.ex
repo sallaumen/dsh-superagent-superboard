@@ -24,6 +24,7 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
         role="region"
         tabindex="0"
         aria-label="Merged pull request list"
+        phx-viewport-bottom={if @has_more, do: "load_more_merged"}
       >
         <.live_component
           :for={item <- @items}
@@ -33,6 +34,14 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
           state={:merged}
         />
         <p :if={@items == []} class="lane-empty">{empty_copy(:merged)}</p>
+        <p
+          :if={@has_more && @items != []}
+          id={"merged-tail-#{List.last(@items).id}"}
+          class="archive-tail"
+        >
+          Scroll for older pull requests
+        </p>
+        <p :if={@items != [] && !@has_more} class="archive-tail">End of merged history</p>
       </div>
     </section>
     """
