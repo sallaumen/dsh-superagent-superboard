@@ -155,6 +155,20 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "Arena only"
   end
 
+  test "switching repos stops listening to the old one", %{conn: conn} do
+    {:ok, colmex} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, _arena} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/o_colmex")
+
+    view
+    |> element("#repo-select")
+    |> render_change(%{"repo" => "sallaumen/arena-rogue"})
+
+    Board.broadcast(colmex.id)
+    refute_receive :board_updated, 100
+  end
+
   test "selecting a repository updates the url", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "o_colmex")
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
