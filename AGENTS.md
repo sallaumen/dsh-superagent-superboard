@@ -14,6 +14,13 @@ The board for the agent's work, in Elixir. Read this before changing code.
 - Use the [local configuration instructions](README.md#local-secrets) when
   running the app or a worktree; never commit local secrets.
 
+## Working alongside another agent
+
+Two agents write to `main` here. **Never `git add -A`** -- it sweeps the other
+agent's files into your PR. Add the files you touched, by name. Fetch before
+you branch and before you merge. The full protocol is
+[`docs/agent/collaboration.md`](docs/agent/collaboration.md).
+
 ## The agent
 
 The agent is a separate process (DeepSeek Harness + `dsh-superagent`) that
