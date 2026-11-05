@@ -64,6 +64,49 @@ defmodule AgentBoard.BoardTest do
     assert pr.checks_state == "success"
   end
 
+  test "merged pages keep a stable order across tied times, new rows and missing dates" do
+    {:ok, repo} = Board.add_repository("fixture", "many-merges")
+    now = DateTime.truncate(DateTime.utc_now(), :second)
+
+    for number <- 1..120 do
+      %PullRequest{}
+      |> PullRequest.changeset(%{
+        repository_id: repo.id,
+        number: number,
+        title: "Merged #{number}",
+        state: "merged",
+        merged_at: if(rem(number, 31) == 0, do: nil, else: DateTime.add(now, -div(number, 10)))
+      })
+      |> Repo.insert!()
+    end
+
+    {:ok, board} = Board.board("fixture/many-merges")
+    assert length(board.merged) == 50
+    assert board.merged_has_more
+
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: 121,
+      title: "Arrived after first page",
+      state: "merged",
+      merged_at: DateTime.add(now, 1)
+    })
+    |> Repo.insert!()
+
+    last_first = List.last(board.merged)
+    second_rows = Board.merged_page(repo.id, {last_first.merged_at, last_first.id}, 51)
+    assert length(second_rows) == 51
+    second = Enum.take(second_rows, 50)
+    last_second = List.last(second)
+    third = Board.merged_page(repo.id, {last_second.merged_at, last_second.id}, 51)
+
+    ids = Enum.map(board.merged ++ second ++ third, & &1.id)
+    assert length(ids) == 120
+    assert length(Enum.uniq(ids)) == 120
+    assert List.last(third).merged_at == nil
+  end
+
   test "archiving removes the task from the board" do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 

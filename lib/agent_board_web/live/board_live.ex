@@ -40,7 +40,8 @@ defmodule AgentBoardWeb.BoardLive do
     {:ok, load(socket, repo)}
   end
 
-  defp empty, do: %{running: [], ready: [], blocked: [], merged: [], queued: []}
+  defp empty,
+    do: %{running: [], ready: [], blocked: [], merged: [], merged_has_more: false, queued: []}
 
   # The board opens on the project the agent is actually working on; the
   # first active repository is the fallback.
@@ -73,7 +74,12 @@ defmodule AgentBoardWeb.BoardLive do
         do: assign(socket, conversation: nil, comments: [], intake: nil),
         else: socket
 
-    case Board.board("#{repo.owner}/#{repo.name}") do
+    merged_limit =
+      if socket.assigns.repo == repo,
+        do: max(length(socket.assigns.board.merged), Board.merged_page_size()),
+        else: Board.merged_page_size()
+
+    case Board.board("#{repo.owner}/#{repo.name}", merged_limit) do
       {:ok, board} ->
         assign(socket,
           repo: repo,
@@ -144,6 +150,32 @@ defmodule AgentBoardWeb.BoardLive do
       {:noreply, socket}
     else
       {:noreply, push_patch(socket, to: "/?repo=#{URI.encode_www_form(slug)}")}
+    end
+  end
+
+  @impl true
+  def handle_event("load_more_merged", %{"id" => tail_id}, socket) do
+    case {socket.assigns.repo, socket.assigns.board} do
+      {%{id: repository_id}, %{merged_has_more: true, merged: [_ | _] = merged} = board} ->
+        last = List.last(merged)
+
+        if tail_id == "merged-tail-#{last.id}" do
+          page_size = Board.merged_page_size()
+          rows = Board.merged_page(repository_id, {last.merged_at, last.id}, page_size + 1)
+
+          updated = %{
+            board
+            | merged: Enum.uniq_by(merged ++ Enum.take(rows, page_size), & &1.id),
+              merged_has_more: length(rows) > page_size
+          }
+
+          {:noreply, assign(socket, :board, updated)}
+        else
+          {:noreply, socket}
+        end
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -408,7 +440,12 @@ defmodule AgentBoardWeb.BoardLive do
               />
             <% end %>
           </div>
-          <.live_component module={BoardComponents.Archive} id="merged-column" items={@board.merged} />
+          <.live_component
+            module={BoardComponents.Archive}
+            id="merged-column"
+            items={@board.merged}
+            has_more={@board.merged_has_more}
+          />
         </main>
 
         <BoardComponents.Panel.shell

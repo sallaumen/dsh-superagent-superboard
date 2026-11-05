@@ -8,6 +8,10 @@ defmodule AgentBoard.Board do
   alias AgentBoard.Board.{Comment, Event, PullRequest, Repository, Review, Task}
   alias AgentBoard.Repo
 
+  @merged_page_size 50
+
+  def merged_page_size, do: @merged_page_size
+
   @doc "Every tracked repository."
   def list_repositories, do: Repo.all(from r in Repository, order_by: r.id)
 
@@ -36,13 +40,41 @@ defmodule AgentBoard.Board do
   def delete_repository(id), do: Repo.delete_all(from r in Repository, where: r.id == ^id)
 
   @doc "The board for a repository (the slug) or the first one."
-  def board(nil), do: {:ok, board_for(first_repository())}
+  def board(slug, merged_limit \\ @merged_page_size)
 
-  def board(slug) do
+  def board(nil, merged_limit), do: {:ok, board_for(first_repository(), merged_limit)}
+
+  def board(slug, merged_limit) do
     case repository_by_slug(slug) do
       nil -> :error
-      repository -> {:ok, board_for(repository)}
+      repository -> {:ok, board_for(repository, merged_limit)}
     end
+  end
+
+  @doc "A stable page of merged pull requests, ordered newest first."
+  def merged_page(repository_id, cursor, limit \\ @merged_page_size) do
+    base =
+      from p in PullRequest,
+        where: p.repository_id == ^repository_id and p.state == "merged",
+        order_by: [desc_nulls_last: p.merged_at, desc: p.id],
+        limit: ^limit
+
+    query =
+      case cursor do
+        nil ->
+          base
+
+        {nil, id} ->
+          from p in base, where: is_nil(p.merged_at) and p.id < ^id
+
+        {%DateTime{} = merged_at, id} ->
+          from p in base,
+            where:
+              is_nil(p.merged_at) or p.merged_at < ^merged_at or
+                (p.merged_at == ^merged_at and p.id < ^id)
+      end
+
+    Repo.all(query)
   end
 
   defp first_repository,
@@ -58,12 +90,22 @@ defmodule AgentBoard.Board do
     end
   end
 
-  defp board_for(nil) do
-    %{repos: [], repo: nil, running: [], ready: [], blocked: [], merged: [], queued: []}
+  defp board_for(nil, _merged_limit) do
+    %{
+      repos: [],
+      repo: nil,
+      running: [],
+      ready: [],
+      blocked: [],
+      merged: [],
+      merged_has_more: false,
+      queued: []
+    }
   end
 
-  defp board_for(repository) do
+  defp board_for(repository, merged_limit) do
     base = from t in Task, where: t.repository_id == ^repository.id
+    merged_rows = merged_page(repository.id, nil, merged_limit + 1)
 
     %{
       repos: list_repositories(),
@@ -75,13 +117,8 @@ defmodule AgentBoard.Board do
         Repo.all(from t in base, where: t.state == "blocked", order_by: [desc: t.updated_at]),
       queued:
         Repo.all(from t in base, where: t.state == "queued", order_by: [desc: t.updated_at]),
-      merged:
-        Repo.all(
-          from p in PullRequest,
-            where: p.repository_id == ^repository.id and p.state == "merged",
-            order_by: [desc: p.merged_at],
-            limit: 30
-        )
+      merged: Enum.take(merged_rows, merged_limit),
+      merged_has_more: length(merged_rows) > merged_limit
     }
   end
 

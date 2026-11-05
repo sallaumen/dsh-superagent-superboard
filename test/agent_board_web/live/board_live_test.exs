@@ -200,6 +200,71 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#merged-column button[phx-click=act]")
   end
 
+  test "scrolling the merged list loads fifty more without duplicates or losing pages", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "scroll-history")
+    now = DateTime.utc_now()
+
+    for number <- 1..120 do
+      %PullRequest{}
+      |> PullRequest.changeset(%{
+        repository_id: repo.id,
+        number: number,
+        title: "Merged pull #{number}",
+        state: "merged",
+        merged_at: DateTime.add(now, number)
+      })
+      |> Repo.insert!()
+    end
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/scroll-history")
+    assert has_element?(view, "#merged-list[phx-viewport-bottom=load_more_merged]")
+    assert has_element?(view, "#merged-column", "latest 50 loaded")
+
+    first_tail = view |> element("#merged-list .archive-tail") |> render() |> tail_id()
+    render_hook(view, "load_more_merged", %{"id" => first_tail})
+    assert has_element?(view, "#merged-column", "latest 100 loaded")
+
+    render_hook(view, "load_more_merged", %{"id" => first_tail})
+    assert has_element?(view, "#merged-column", "latest 100 loaded")
+
+    second_tail = view |> element("#merged-list .archive-tail") |> render() |> tail_id()
+    render_hook(view, "load_more_merged", %{"id" => second_tail})
+    assert has_element?(view, "#merged-column", "latest 120 loaded")
+    refute has_element?(view, "#merged-list[phx-viewport-bottom]")
+    refute has_element?(view, "#merged-list .archive-tail[id]")
+
+    send(view.pid, :board_updated)
+    assert has_element?(view, "#merged-column", "latest 120 loaded")
+    assert length(Regex.scan(~r/id="pull-\d+"/, render(view))) == 120
+
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: 121,
+      title: "Newest merge",
+      state: "merged",
+      merged_at: DateTime.add(now, 121)
+    })
+    |> Repo.insert!()
+
+    send(view.pid, :board_updated)
+    assert has_element?(view, "#merged-column", "latest 120 loaded")
+    assert has_element?(view, "#merged-list", "Newest merge")
+    assert length(Regex.scan(~r/id="pull-\d+"/, render(view))) == 120
+
+    newest_tail = view |> element("#merged-list .archive-tail") |> render() |> tail_id()
+    render_hook(view, "load_more_merged", %{"id" => newest_tail})
+    assert has_element?(view, "#merged-column", "latest 121 loaded")
+    assert length(Regex.scan(~r/id="pull-\d+"/, render(view))) == 121
+  end
+
+  defp tail_id(html) do
+    [_, id] = Regex.run(~r/id="(merged-tail-\d+)"/, html)
+    id
+  end
+
   test "the merge chart counts only dated records within the visible UTC window", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "trend")
     today = DateTime.new!(Date.utc_today(), ~T[12:00:00], "Etc/UTC")
