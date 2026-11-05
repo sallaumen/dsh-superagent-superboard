@@ -8,7 +8,6 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Board.Task
   alias AgentBoard.System.{Updater, Version}
   alias AgentBoardWeb.{BoardComponents, BoardNavigation}
-  alias AgentBoardWeb.Components.SystemPanel
 
   @impl true
   def mount(params, _session, socket) do
@@ -365,6 +364,8 @@ defmodule AgentBoardWeb.BoardLive do
           live={@live}
           sync_event={@sync_event}
           last_activity={List.first(@events)}
+          version={@version}
+          busy={@busy}
         />
 
         <div
@@ -378,25 +379,16 @@ defmodule AgentBoardWeb.BoardLive do
           </p>
         </div>
 
-        <SystemPanel.version_panel version={@version} busy={@busy} />
-
         <nav :if={@repo} id="board-tools" aria-label="Board tools" class="board-tools">
           <button
-            :for={
-              {label, panel, icon} <- [
-                {"Activity", "activity", "hero-clock"},
-                {"Split a request", "intake", "hero-scissors"},
-                {"AI calls", "ai", "hero-cpu-chip"}
-              ]
-            }
-            id={"open-#{panel}"}
+            id="open-intake"
             type="button"
             phx-click="show_panel"
-            phx-value-panel={panel}
+            phx-value-panel="intake"
             data-panel-trigger
             aria-haspopup="dialog"
-            aria-controls={"panel-#{panel}"}
-          ><.icon name={icon} class="size-4 shrink-0" />{label}</button>
+            aria-controls="panel-intake"
+          ><.icon name="hero-scissors" class="size-4 shrink-0" />Split a request</button>
         </nav>
 
         <main :if={@repo} id="board-work" class="board-work">
