@@ -5,7 +5,7 @@ defmodule AgentBoardWeb.BoardLive do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{Board, GitHub, Repo, Voice}
-  alias AgentBoard.{Board, Intake}
+  alias AgentBoard.{AI, Board, Intake}
   alias AgentBoard.Board.Task
 
   @impl true
@@ -21,7 +21,8 @@ defmodule AgentBoardWeb.BoardLive do
         live: false,
         conversation: nil,
         comments: [],
-        intake: nil
+        intake: nil,
+        ai_calls: []
       )
 
     repo =
@@ -42,7 +43,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp load(socket, nil) do
-    assign(socket, repo: nil, board: empty(), events: [], live: false)
+    assign(socket, repo: nil, board: empty(), events: [], live: false, ai_calls: [])
   end
 
   defp load(socket, repo) do
@@ -59,11 +60,12 @@ defmodule AgentBoardWeb.BoardLive do
           repo: repo,
           board: board,
           events: Board.events(repo),
+          ai_calls: AI.recent(5),
           live: connected?(socket)
         )
 
       _ ->
-        assign(socket, repo: nil, board: empty(), events: [], live: false)
+        assign(socket, repo: nil, board: empty(), events: [], live: false, ai_calls: [])
     end
   end
 
@@ -541,6 +543,21 @@ defmodule AgentBoardWeb.BoardLive do
               </li>
             </ol>
           </div>
+        </section>
+
+        <section :if={@ai_calls != []} class="border-t border-[#2a2925] px-5 py-4">
+          <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-[#a39f93]">AI</h2>
+          <ol class="space-y-1">
+            <li :for={c <- @ai_calls} class="flex gap-3 text-[11px]">
+              <span class="w-40 shrink-0 uppercase">{c.name}</span>
+              <span class="w-20 shrink-0 text-[#a39f93]">{c.engine}</span>
+              <span class={["w-16 shrink-0", c.status == "error" && "text-[#f0b3b3]"]}>
+                {c.status}
+              </span>
+              <span class="w-20 shrink-0 text-[#6b675c]">{c.duration_ms}ms</span>
+              <span class="text-[#6b675c]">{c.input_tokens + c.output_tokens} tokens</span>
+            </li>
+          </ol>
         </section>
 
         <section :if={@conversation} class="border-t border-[#2a2925] px-5 py-4">

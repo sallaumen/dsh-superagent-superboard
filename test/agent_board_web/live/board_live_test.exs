@@ -224,6 +224,30 @@ defmodule AgentBoardWeb.BoardLiveTest do
            end)
   end
 
+  test "the AI panel shows the last calls", %{conn: conn} do
+    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %AgentBoard.AI.Call{}
+    |> AgentBoard.AI.Call.changeset(%{
+      name: "refine_request",
+      engine: "deepseek",
+      model: "deepseek-flash",
+      tier: "fast",
+      status: "ok",
+      input_tokens: 10,
+      output_tokens: 20,
+      duration_ms: 123
+    })
+    |> Repo.insert!()
+
+    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    assert html =~ "refine_request"
+    assert html =~ "deepseek"
+    assert html =~ "123ms"
+    assert html =~ "30 tokens"
+  end
+
   test "the board shows the blocked column", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
