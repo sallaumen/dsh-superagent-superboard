@@ -57,11 +57,14 @@ defmodule AgentBoard.AI.Engines.OpenAI do
     }
   end
 
+  # Thinking mode refuses a forced tool_choice, so a structured call turns it
+  # off explicitly; the schema is worth more than the reasoning here.
   defp body(%Request{json_schema: schema} = request) do
     %{
       model: request.model,
       messages: messages(request),
       max_tokens: request.max_output_tokens,
+      thinking: %{type: "disabled"},
       tools: [
         %{type: "function", function: %{name: "respond", parameters: schema, strict: true}}
       ],
