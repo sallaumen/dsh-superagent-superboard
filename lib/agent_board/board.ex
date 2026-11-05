@@ -179,10 +179,14 @@ defmodule AgentBoard.Board do
     author = get_in(comment, ["user", "login"]) || "unknown"
     kind = if author == agent_login, do: "agent", else: "user"
 
+    # A comment without an id (some API paths omit it) must still dedupe:
+    # derive a stable negative id from the task and the body.
+    github_id = comment["id"] || -:erlang.phash2({task.id, comment["body"]})
+
     %Comment{}
     |> Comment.changeset(%{
       task_id: task.id,
-      github_id: comment["id"],
+      github_id: github_id,
       author: author,
       body: comment["body"] || "",
       kind: kind
