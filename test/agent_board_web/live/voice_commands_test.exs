@@ -1,6 +1,6 @@
 defmodule AgentBoardWeb.VoiceCommandsTest do
   @moduledoc "Read-only command resolution from the saved board."
-  use AgentBoardWeb.ConnCase, async: true
+  use AgentBoardWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
 
@@ -171,6 +171,10 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
   end
 
   test "a confirmed voice ask posts the question to the open task", %{conn: conn} do
+    previous_rehearsal = Application.get_env(:agent_board, :ai_rehearsal)
+    Application.put_env(:agent_board, :ai_rehearsal, true)
+    on_exit(fn -> Application.put_env(:agent_board, :ai_rehearsal, previous_rehearsal) end)
+
     {:ok, repo} = Board.add_repository("fixture", "ask-voice")
 
     task =
@@ -210,11 +214,41 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
 
     assert render(view) =~ "Ask task #12: qual o estado da tarefa?"
 
-    view |> element("button", "Ask the agent") |> render_click()
+    render_hook(view, "voice_ask", %{"question" => "forged replacement"})
 
     html = render(view)
     assert html =~ "Question sent"
-    assert Repo.get_by(AgentBoard.Board.Comment, task_id: task.id, kind: "user")
+    comment = Repo.get_by!(AgentBoard.Board.Comment, task_id: task.id, kind: "user")
+    assert String.starts_with?(comment.body, "qual o estado da tarefa?")
+    refute comment.body =~ "forged replacement"
+    refute has_element?(view, "button", "Ask the agent")
+
+    render_hook(view, "voice_ask", %{"question" => "try again"})
+    assert Repo.aggregate(AgentBoard.Board.Comment, :count) == 1
+
+    assert Enum.any?(1..50, fn _ ->
+             if render(view) =~ "Modo de ensaio: esta é uma resposta de fixture" do
+               true
+             else
+               Process.sleep(20)
+               false
+             end
+           end)
+  end
+
+  test "a voice ask event without a reviewed question cannot post", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "unreviewed-ask")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{repository_id: repo.id, number: 23, title: "Do not message"})
+      |> Repo.insert!()
+
+    {:ok, view, _} = live(conn, AgentBoardWeb.BoardNavigation.path(repo, "conversation", task.id))
+    render_hook(view, "voice_ask", %{"question" => "send this without review"})
+
+    assert render(view) =~ "Review the question and task before sending"
+    assert Repo.get_by(AgentBoard.Board.Comment, task_id: task.id, kind: "user") == nil
   end
 
   test "the reviewed command form opens a read-only panel", %{conn: conn} do

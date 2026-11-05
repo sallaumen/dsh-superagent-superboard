@@ -395,14 +395,15 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("voice_ask", %{"question" => question}, socket)
-      when is_binary(question) and byte_size(question) > 0 do
-    voice_ask(socket, %{question: String.trim(question)})
-  end
-
   def handle_event("voice_ask", _params, socket) do
-    {:noreply,
-     assign(socket, voice_result: %{kind: :error, text: "The question is empty.", as_of: nil})}
+    case current_voice_ask(socket) do
+      {:ok, task, question} ->
+        socket = assign(socket, :voice_result, voice_action_result(:loading, "Sending question…"))
+        voice_ask(socket, task, question)
+
+      {:error, reason} ->
+        {:noreply, assign(socket, :voice_result, voice_action_result(:error, reason))}
+    end
   end
 
   @impl true
@@ -696,46 +697,62 @@ defmodule AgentBoardWeb.BoardLive do
      assign(socket, voice: %{socket.assigns.voice | speak_events: ElevenLabs.speak_events?()})}
   end
 
+  defp current_voice_ask(socket) do
+    case {socket.assigns.panel, socket.assigns.voice_result, socket.assigns.repo,
+          socket.assigns.conversation} do
+      {"voice",
+       %{
+         kind: :ask,
+         question: question,
+         task_id: task_id,
+         task_updated_at: updated_at,
+         repository_id: repository_id
+       }, %{id: repository_id}, %Task{id: task_id}}
+      when is_binary(question) and question != "" ->
+        task = Repo.get(Task, task_id)
+
+        if valid_voice_ask_task?(task, repository_id, updated_at) &&
+             VoiceCommands.parse(socket.assigns.voice_draft) == {:ask, question},
+           do: {:ok, task, question},
+           else: {:error, "Task or question changed. Review the draft again before sending."}
+
+      _ ->
+        {:error, "Review the question and task before sending."}
+    end
+  end
+
+  defp valid_voice_ask_task?(%Task{} = task, repository_id, updated_at) do
+    task.repository_id == repository_id && task.updated_at == updated_at &&
+      task.kind == "issue" && task.state in ~w(queued running ready blocked) &&
+      !task.stopped && !task.archived
+  end
+
+  defp valid_voice_ask_task?(_task, _repository_id, _updated_at), do: false
+
   # The ask is a write: the first submit only classifies the draft, the
   # confirmed "Ask the agent" posts the question to the open task and the
   # answer comes back spoken.
-  defp voice_ask(socket, %{question: question}) do
-    case socket.assigns.conversation do
-      nil ->
+  defp voice_ask(socket, task, question) do
+    case Board.ask(task, question, GitHub.client()) do
+      {:ok, _} ->
+        ask_in_background(task, question)
+
         {:noreply,
-         assign(socket,
-           voice_result: %{kind: :error, text: "Open a task first, then ask.", as_of: nil}
+         socket
+         |> assign(
+           voice_result: voice_action_result(:success, "Question sent: #{question}"),
+           conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
+           comments: Board.comments(task)
+         )
+         |> put_flash(:info, "Question sent")}
+
+      {:error, _} ->
+        {:noreply,
+         assign(
+           socket,
+           :voice_result,
+           voice_action_result(:error, "The question did not reach GitHub.")
          )}
-
-      task ->
-        case Board.ask(task, question, GitHub.client()) do
-          {:ok, _} ->
-            ask_in_background(task, question)
-
-            {:noreply,
-             socket
-             |> assign(
-               voice_result: %{
-                 kind: :ask,
-                 text: "Question sent: #{question}",
-                 question: question,
-                 as_of: nil
-               },
-               conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
-               comments: Board.comments(task)
-             )
-             |> put_flash(:info, "Question sent")}
-
-          {:error, _} ->
-            {:noreply,
-             assign(socket,
-               voice_result: %{
-                 kind: :error,
-                 text: "The question did not reach GitHub.",
-                 as_of: nil
-               }
-             )}
-        end
     end
   end
 

@@ -25,9 +25,9 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommand do
           required
           placeholder="Type a command or press Space twice on the board to record one"
         >{@draft}</textarea>
-        <div class="voice-command-actions">
+        <div :if={is_nil(@action)} class="voice-command-actions">
           <button type="submit" class="voice-command-run" phx-disable-with="Checking…">
-            Run read-only command
+            Check command
           </button>
           <button
             :if={@result && @result.kind == :ask}

@@ -268,6 +268,9 @@ defmodule AgentBoardWeb.VoiceCommands do
         text: "Ask task ##{task.number}: #{question}",
         question: question,
         task_number: task.number,
+        task_id: task.id,
+        task_updated_at: task.updated_at,
+        repository_id: task.repository_id,
         as_of: nil
       },
       path: nil
