@@ -103,6 +103,31 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "ci failed: compile"
   end
 
+  test "a pull with no reviews says so instead of hiding the badge", %{conn: conn} do
+    # arena-rogue has few merged pulls, so one more still fits the 30 window.
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: 407,
+      title: "No review PR",
+      state: "merged",
+      merged_at: DateTime.utc_now(),
+      review_state: "none",
+      checks_state: "none"
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    # the board opens on o_colmex; switch to arena-rogue
+    view |> element("#repo-select") |> render_change(%{"repo" => "sallaumen/arena-rogue"})
+
+    assert render(view) =~ "no review"
+    assert render(view) =~ "no ci"
+  end
+
   test "the header carries the brand and the tagline", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 

@@ -175,6 +175,9 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  # "none" is a real answer: the pull has no reviews. Saying it is more honest
+  # than hiding the badge and letting the reader guess.
+  defp review_badge(%{review_state: "none"}), do: "no review"
   defp review_badge(_), do: nil
 
   defp review_badge_class(%{review_state: "approved"}), do: "text-[#7bc47f]"
@@ -184,6 +187,8 @@ defmodule AgentBoardWeb.BoardLive do
   defp checks_badge(%{checks_state: "failure", checks_failed: name})
        when is_binary(name) and name != "",
        do: "ci failed: #{name}"
+
+  defp checks_badge(%{checks_state: "none"}), do: "no ci"
 
   defp checks_badge(%{checks_state: state}) when state in ["success", "failure", "pending"] do
     case state do
