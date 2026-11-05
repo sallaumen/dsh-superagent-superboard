@@ -16,6 +16,29 @@ defmodule AgentBoardWeb.BoardLiveTest do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
 
+  test "a failed ask shows an error, not Question sent", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 801,
+      title: "Ask fail",
+      state: "queued"
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    view |> element("button", "Open") |> render_click()
+
+    view
+    |> element("#ask-agent")
+    |> render_submit(%{"body" => "hi"})
+
+    assert render(view) =~ "did not reach GitHub"
+  end
+
   test "the conversation label shrinks on small screens", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 

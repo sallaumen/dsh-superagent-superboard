@@ -151,14 +151,18 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, put_flash(socket, :error, "Open a task first")}
 
       task ->
-        _ = Board.ask(task, body, GitHub.client())
+        case Board.ask(task, body, GitHub.client()) do
+          {:ok, _} ->
+            {:noreply,
+             assign(socket,
+               conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
+               comments: Board.comments(task)
+             )
+             |> put_flash(:info, "Question sent")}
 
-        {:noreply,
-         assign(socket,
-           conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
-           comments: Board.comments(task)
-         )
-         |> put_flash(:info, "Question sent")}
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "The question did not reach GitHub")}
+        end
     end
   end
 
