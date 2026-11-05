@@ -26,6 +26,7 @@ The board for the agent's work, in Elixir. Read this before changing code.
 | `mix lint` | format check + credo | no |
 | `mix gate` | unused deps + compile warnings + format check + credo + tests | no |
 | `mix precommit` | the same five, with format and unused deps fixed in place | yes |
+| `scripts/check_assets.sh` | frontend entries, tailwind pipeline, no JS debug | no |
 
 CI and pre-push use `mix gate`; `mix precommit` is the fix-up for developers.
 Every PR must pass `mix gate` locally and in CI. Which script to run when —
