@@ -298,7 +298,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp review_badge_class(%{review_state: "approved"}), do: "text-success"
   defp review_badge_class(%{review_state: "changes_requested"}), do: "text-error"
-  defp review_badge_class(_), do: "text-base-content/60"
+  defp review_badge_class(_), do: "text-base-content/75"
 
   defp checks_badge(%{checks_state: "failure", checks_failed: name})
        when is_binary(name) and name != "",
@@ -318,7 +318,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp checks_badge_class(%{checks_state: "success"}), do: "text-success"
   defp checks_badge_class(%{checks_state: "failure"}), do: "text-error"
-  defp checks_badge_class(_), do: "text-base-content/60"
+  defp checks_badge_class(_), do: "text-base-content/75"
 
   defp last_sync([]), do: "no sync yet"
 
@@ -376,11 +376,11 @@ defmodule AgentBoardWeb.BoardLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
-      <div class="min-h-screen bg-base-100 text-base-content font-mono">
+      <div class="agent-board min-h-screen bg-base-100 text-base-content font-mono">
         <header class="flex flex-wrap items-center gap-3 border-b border-base-content/10 px-5 py-3">
           <div class="flex items-baseline gap-2">
             <h1 class="text-lg tracking-[0.16em] uppercase">Agent board</h1>
-            <span class="text-[10px] text-base-content/40">the agent's work, live</span>
+            <span class="text-[10px] text-base-content/75">the agent's work, live</span>
           </div>
 
           <form id="repo-select" phx-change="select" class="contents">
@@ -413,12 +413,14 @@ defmodule AgentBoardWeb.BoardLive do
             Dictate task
           </button>
 
+          <Layouts.theme_toggle />
+
           <span class="flex-1"></span>
 
-          <span class={["text-[11px]", if(@live, do: "text-success", else: "text-base-content/60")]}>
+          <span class={["text-[11px]", if(@live, do: "text-success", else: "text-base-content/75")]}>
             {if @live, do: "live", else: "static"}
           </span>
-          <span class="text-[11px] text-base-content/60" role="status" aria-live="polite">{last_sync(
+          <span class="text-[11px] text-base-content/75" role="status" aria-live="polite">{last_sync(
             @events
           )}</span>
 
@@ -458,7 +460,7 @@ defmodule AgentBoardWeb.BoardLive do
           class="flex flex-col items-center gap-3 border-b border-base-content/10 px-5 py-20 text-center"
         >
           <p class="text-sm text-base-content">No repository tracked yet.</p>
-          <p class="max-w-md text-[12px] leading-relaxed text-base-content/60">
+          <p class="max-w-md text-[12px] leading-relaxed text-base-content/75">
             Track one below. The board syncs its issues and pull requests, shows
             the agent's work in the four columns, and lets you create and ask.
           </p>
@@ -478,7 +480,7 @@ defmodule AgentBoardWeb.BoardLive do
               {"Queued", :queued}
             ] do %>
             <section class="min-w-[220px] bg-base-100 p-4">
-              <h2 class="mb-3 flex items-baseline justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-base-content/60">
+              <h2 class="mb-3 flex items-baseline justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
                 <span>{title}</span>
                 <span class="rounded-full bg-base-200 px-2 py-0.5 text-[10px] tabular-nums">
                   {length(Map.get(@board, key))}
@@ -518,7 +520,7 @@ defmodule AgentBoardWeb.BoardLive do
                 >
                   {checks_badge(item)}
                 </span>
-                <span :if={item.number} class="ml-2 text-[11px] tabular-nums text-base-content/60">
+                <span :if={item.number} class="ml-2 text-[11px] tabular-nums text-base-content/75">
                   #{item.number}
                 </span>
 
@@ -551,7 +553,7 @@ defmodule AgentBoardWeb.BoardLive do
                 </div>
               </div>
 
-              <p :if={Map.get(@board, key) == []} class="text-xs text-base-content/60">
+              <p :if={Map.get(@board, key) == []} class="text-xs text-base-content/75">
                 {empty_copy(key)}
               </p>
             </section>
@@ -559,7 +561,7 @@ defmodule AgentBoardWeb.BoardLive do
         </main>
 
         <section :if={@events != []} class="border-t border-base-content/10 px-5 py-4">
-          <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-base-content/60">Activity</h2>
+          <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">Activity</h2>
           <ol class="space-y-1">
             <li
               :for={e <- @events}
@@ -569,10 +571,10 @@ defmodule AgentBoardWeb.BoardLive do
                 warning?(e) && "text-warning"
               ]}
             >
-              <span class="w-24 shrink-0 text-base-content/60">{time(e.inserted_at)}</span>
+              <span class="w-24 shrink-0 text-base-content/75">{time(e.inserted_at)}</span>
               <span class="w-14 shrink-0 uppercase">{e.kind}</span>
               <span class="text-base-content">{e.subject}</span>
-              <span :if={e.payload && e.payload != %{}} class="text-base-content/40">
+              <span :if={e.payload && e.payload != %{}} class="text-base-content/75">
                 {payload_summary(e.payload)}
               </span>
             </li>
@@ -580,7 +582,7 @@ defmodule AgentBoardWeb.BoardLive do
         </section>
 
         <section :if={@repo} class="border-t border-base-content/10 px-5 py-4">
-          <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-base-content/60">
+          <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
             Split a request
           </h2>
 
@@ -598,7 +600,7 @@ defmodule AgentBoardWeb.BoardLive do
           </form>
 
           <div :if={@intake} class="mt-4">
-            <p class="text-[10px] uppercase text-base-content/40">Goal</p>
+            <p class="text-[10px] uppercase text-base-content/75">Goal</p>
             <p class="text-sm text-base-content">{@intake.spec["goal"]}</p>
 
             <div :if={@intake.spec["open_questions"] != []} class="mt-2 text-[11px] text-warning">
@@ -613,10 +615,10 @@ defmodule AgentBoardWeb.BoardLive do
               >
                 <p class="text-[13px]">
                   {task.title}
-                  <span class="ml-2 text-[10px] uppercase text-base-content/60">{task.kind}</span>
-                  <span class="ml-2 text-[10px] uppercase text-base-content/60">{task.size}</span>
+                  <span class="ml-2 text-[10px] uppercase text-base-content/75">{task.kind}</span>
+                  <span class="ml-2 text-[10px] uppercase text-base-content/75">{task.size}</span>
                 </p>
-                <p class="mt-1 text-[11px] text-base-content/60">{task.body}</p>
+                <p class="mt-1 text-[11px] text-base-content/75">{task.body}</p>
                 <button
                   phx-click="create_from_intake"
                   phx-value-index={index}
@@ -630,27 +632,27 @@ defmodule AgentBoardWeb.BoardLive do
         </section>
 
         <section :if={@repo} class="border-t border-base-content/10 px-5 py-4">
-          <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/60">
+          <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
             <span>AI</span>
-            <span class={["text-[10px] normal-case", @ai_status != :logged_in && "text-[#e8a33d]"]}>
+            <span class={["text-[10px] normal-case", @ai_status != :logged_in && "text-warning"]}>
               {@ai_status}
             </span>
           </h2>
           <ol class="space-y-1">
             <li :for={c <- @ai_calls} class="flex gap-3 text-[11px]">
               <span class="w-40 shrink-0 uppercase">{c.name}</span>
-              <span class="w-20 shrink-0 text-base-content/60">{c.engine}</span>
+              <span class="w-20 shrink-0 text-base-content/75">{c.engine}</span>
               <span class={["w-16 shrink-0", c.status == "error" && "text-error"]}>
                 {c.status}
               </span>
-              <span class="w-20 shrink-0 text-base-content/40">{c.duration_ms}ms</span>
-              <span class="text-base-content/40">{c.input_tokens + c.output_tokens} tokens</span>
+              <span class="w-20 shrink-0 text-base-content/75">{c.duration_ms}ms</span>
+              <span class="text-base-content/75">{c.input_tokens + c.output_tokens} tokens</span>
             </li>
           </ol>
         </section>
 
         <section :if={@conversation} class="border-t border-base-content/10 px-5 py-4">
-          <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/60">
+          <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
             <span>Conversation · #{@conversation.number} {String.slice(@conversation.title, 0, 40)}</span>
             <button phx-click="speak" class="border border-base-content/10 px-2 py-1 text-[10px]">
               Speak
@@ -672,17 +674,18 @@ defmodule AgentBoardWeb.BoardLive do
               <p class="whitespace-pre-wrap text-[12px] leading-relaxed text-base-content">
                 {c.body}
               </p>
-              <span :if={c.inserted_at} class="text-[10px] text-base-content/40">{time(c.inserted_at)}</span>
+              <span :if={c.inserted_at} class="text-[10px] text-base-content/75">{time(c.inserted_at)}</span>
             </div>
           </div>
 
-          <p :if={@comments == []} class="text-xs text-base-content/60">
+          <p :if={@comments == []} class="text-xs text-base-content/75">
             No messages yet. Ask the agent below.
           </p>
 
           <form id="ask-agent" phx-submit="ask" class="mt-3 flex gap-2">
             <input
               name="body"
+              aria-label="Message to the agent"
               placeholder="Ask the agent…"
               class="flex-1 border border-base-content/10 bg-base-200 px-3 py-2 text-sm"
               required
@@ -699,6 +702,7 @@ defmodule AgentBoardWeb.BoardLive do
             <input
               name="title"
               id="task-title"
+              aria-label="Task title"
               placeholder="New task: what should the agent build?"
               class="flex-1 border border-base-content/10 bg-base-200 px-3 py-2 text-sm"
               required
@@ -709,6 +713,7 @@ defmodule AgentBoardWeb.BoardLive do
             >Create issue</button>
             <textarea
               name="body"
+              aria-label="Task details"
               placeholder="Details (optional). The agent is mentioned automatically."
               class="w-full border border-base-content/10 bg-base-200 px-3 py-2 text-sm"
             ></textarea>
