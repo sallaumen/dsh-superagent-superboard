@@ -34,3 +34,7 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# The stager/cron plugins must not run against the sandbox: without this the
+# Oban stager logs DBConnection errors on every test run.
+config :agent_board, Oban, testing: :manual
