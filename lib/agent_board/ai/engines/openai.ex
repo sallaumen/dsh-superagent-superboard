@@ -36,20 +36,37 @@ defmodule AgentBoard.AI.Engines.OpenAI do
   end
 
   defp post(provider_id, provider, request) do
-    body = %{
-      model: request.model,
-      messages: messages(request),
-      max_tokens: request.max_output_tokens,
-      response_format: %{type: "json_object"}
-    }
-
-    case Req.post(client(provider_id, provider), url: "/chat/completions", json: body) do
+    case Req.post(client(provider_id, provider), url: "/chat/completions", json: body(request)) do
       {:ok, %Req.Response{status: 200, body: body}} -> {:ok, body}
       {:ok, %Req.Response{status: 401}} -> {:error, :auth_expired}
       {:ok, %Req.Response{status: status}} when status in [402, 429] -> {:error, :usage_limit}
       {:ok, %Req.Response{status: status}} -> {:error, {:http, status}}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  # A structured call is a forced function tool with `strict: true`: plain
+  # `json_object` only promises syntactically valid JSON, and the model will
+  # happily invent its own field names. The schema is the contract.
+  defp body(%Request{json_schema: nil} = request) do
+    %{
+      model: request.model,
+      messages: messages(request),
+      max_tokens: request.max_output_tokens,
+      response_format: %{type: "json_object"}
+    }
+  end
+
+  defp body(%Request{json_schema: schema} = request) do
+    %{
+      model: request.model,
+      messages: messages(request),
+      max_tokens: request.max_output_tokens,
+      tools: [
+        %{type: "function", function: %{name: "respond", parameters: schema, strict: true}}
+      ],
+      tool_choice: %{type: "function", function: %{name: "respond"}}
+    }
   end
 
   defp messages(%Request{system: nil, prompt: prompt}), do: [%{role: "user", content: prompt}]
@@ -59,11 +76,28 @@ defmodule AgentBoard.AI.Engines.OpenAI do
   end
 
   defp decode(
+         %{"choices" => [%{"message" => %{"tool_calls" => [call | _]}} | _]} = body,
+         request,
+         elapsed
+       ) do
+    case get_in(call, ["function", "arguments"]) do
+      args when is_binary(args) -> answered(args, body, request, elapsed)
+      _ -> {:error, :malformed_output}
+    end
+  end
+
+  defp decode(
          %{"choices" => [%{"message" => %{"content" => content}} | _]} = body,
          request,
          elapsed
        )
        when is_binary(content) do
+    answered(content, body, request, elapsed)
+  end
+
+  defp decode(_body, _request, _elapsed), do: {:error, :malformed_output}
+
+  defp answered(content, body, request, elapsed) do
     usage = body["usage"] || %{}
     json = decode_json(content)
 
@@ -79,8 +113,6 @@ defmodule AgentBoard.AI.Engines.OpenAI do
        parse_state: if(json, do: :complete, else: :partial)
      }}
   end
-
-  defp decode(_body, _request, _elapsed), do: {:error, :malformed_output}
 
   defp decode_json(content) do
     case Jason.decode(content) do
