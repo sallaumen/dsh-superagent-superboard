@@ -271,6 +271,16 @@ defmodule AgentBoardWeb.BoardLiveTest do
     render_hook(view, "load_more_merged", %{"id" => newest_tail})
     assert has_element?(view, "#merged-column .archive-count", "121 loaded")
     assert length(Regex.scan(~r/id="pull-\d+"/, render(view))) == 121
+
+    resume = %{"repo" => "fixture/scroll-history", "merged" => 121, "tasks" => %{}}
+
+    {:ok, reconnected, _html} =
+      conn
+      |> put_connect_params(%{"board_resume" => resume})
+      |> live(~p"/?repo=fixture/scroll-history")
+
+    assert has_element?(reconnected, "#merged-column .archive-count", "121 loaded")
+    assert length(Regex.scan(~r/id="pull-\d+"/, render(reconnected))) == 121
   end
 
   defp tail_id(html) do
@@ -333,6 +343,33 @@ defmodule AgentBoardWeb.BoardLiveTest do
     final_tail = view |> element("#column-queued .lane-tail") |> render() |> task_tail_id()
     render_hook(view, "load_more_tasks", %{"id" => final_tail})
     assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 121
+
+    resume = %{"repo" => "fixture/task-pages", "merged" => 0, "tasks" => %{"queued" => 121}}
+
+    {:ok, reconnected, _html} =
+      conn
+      |> put_connect_params(%{"board_resume" => resume})
+      |> live(~p"/?repo=fixture/task-pages")
+
+    assert length(Regex.scan(~r/id="task-\d+"/, render(reconnected))) == 121
+
+    wrong_repo = %{resume | "repo" => "fixture/another-repository"}
+
+    {:ok, fresh, _html} =
+      conn
+      |> put_connect_params(%{"board_resume" => wrong_repo})
+      |> live(~p"/?repo=fixture/task-pages")
+
+    assert length(Regex.scan(~r/id="task-\d+"/, render(fresh))) == 50
+
+    malformed = %{resume | "tasks" => "invalid"}
+
+    {:ok, safe, _html} =
+      conn
+      |> put_connect_params(%{"board_resume" => malformed})
+      |> live(~p"/?repo=fixture/task-pages")
+
+    assert length(Regex.scan(~r/id="task-\d+"/, render(safe))) == 50
   end
 
   defp task_tail_id(html) do

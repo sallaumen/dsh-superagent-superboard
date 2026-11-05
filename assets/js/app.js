@@ -31,9 +31,22 @@ import {VoiceRecorder} from "./hooks/voice_recorder"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+const boardResume = () => {
+  const board = document.querySelector("#board-page")
+  const repo = board?.querySelector("#repo-select select")?.value
+  if (!repo) return null
+
+  return {
+    repo,
+    merged: board.querySelectorAll("#merged-list .archive-row").length,
+    tasks: Object.fromEntries([...board.querySelectorAll(".board-column[data-state]")]
+      .map(lane => [lane.dataset.state, lane.querySelectorAll(".task-card").length])),
+  }
+}
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: {_csrf_token: csrfToken},
+  // Read the mounted DOM on every connection so loaded pages survive a socket reconnect.
+  params: () => ({_csrf_token: csrfToken, board_resume: boardResume()}),
   hooks: {...colocatedHooks, DataAge, BoardPanels, SettingsMenu, VoicePlayer, VoiceRecorder},
   dom: {
     onBeforeElUpdated(from, to) {
