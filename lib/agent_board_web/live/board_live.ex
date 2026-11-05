@@ -202,7 +202,10 @@ defmodule AgentBoardWeb.BoardLive do
     <Layouts.app flash={@flash}>
       <div class="min-h-screen bg-[#12120f] text-[#e8e6df] font-mono">
         <header class="flex flex-wrap items-center gap-3 border-b border-[#2a2925] px-5 py-3">
-          <h1 class="text-sm tracking-[0.16em] uppercase">Agent board</h1>
+          <div class="flex items-baseline gap-2">
+            <h1 class="text-base tracking-[0.16em] uppercase">Agent board</h1>
+            <span class="text-[10px] text-[#6b675c]">the agent's work, live</span>
+          </div>
 
           <form id="repo-select" phx-change="select" class="contents">
             <select
