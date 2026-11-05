@@ -175,6 +175,76 @@ defmodule AgentBoardWeb.IntakeUITest do
     assert AgentBoard.Repo.aggregate(AgentBoard.AI.Call, :count, :id) == 1
   end
 
+  test "an empty proposal offers retry without claiming the request is unclear", %{conn: conn} do
+    {:ok, _} = Board.add_repository("fixture", "empty-intake")
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      payload = Jason.decode!(body)
+
+      content =
+        if Enum.any?(payload["messages"], &String.contains?(&1["content"], "Specification")) do
+          ~s({"tasks":[]})
+        else
+          ~s({"goal":"Melhorar o board","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
+        end
+
+      Req.Test.json(conn, answer(content))
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/empty-intake")
+    view |> element("#intake-form") |> render_submit(%{"text" => "melhore o board"})
+
+    assert has_element?(view, "#intake-no-tasks", "try Split again")
+    refute has_element?(view, "#intake-needs-clarification")
+    refute has_element?(view, "[phx-click='create_from_intake']")
+  end
+
+  test "editing or a failed new split invalidates the old proposal", %{conn: conn} do
+    {:ok, _} = Board.add_repository("fixture", "stale-intake")
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      payload = Jason.decode!(body)
+      prompt = Enum.map_join(payload["messages"], " ", & &1["content"])
+
+      cond do
+        String.contains?(prompt, "pedido B") ->
+          Req.Test.json(Plug.Conn.put_status(conn, 500), %{"error" => "unavailable"})
+
+        String.contains?(prompt, "Specification") ->
+          Req.Test.json(
+            conn,
+            answer(
+              ~s({"tasks":[{"title":"Tarefa A","body":"pedido A","kind":"feature","acceptance":["teste"],"depends_on":[],"size":"S"}]})
+            )
+          )
+
+        true ->
+          Req.Test.json(
+            conn,
+            answer(
+              ~s({"goal":"Fazer A","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
+            )
+          )
+      end
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/stale-intake")
+    view |> element("#intake-form") |> render_submit(%{"text" => "pedido A"})
+    assert has_element?(view, "[phx-click='create_from_intake']")
+
+    view |> element("#intake-form") |> render_change(%{"text" => "pedido B"})
+    refute has_element?(view, "[phx-click='create_from_intake']")
+    render_hook(view, "create_from_intake", %{"index" => "0"})
+    assert has_element?(view, "#flash-error", "Could not create the task")
+
+    view |> element("#intake-form") |> render_submit(%{"text" => "pedido B"})
+    refute has_element?(view, "[phx-click='create_from_intake']")
+    render_hook(view, "create_from_intake", %{"index" => "0"})
+    assert AgentBoard.Repo.aggregate(AgentBoard.Board.Task, :count, :id) == 0
+  end
+
   test "a voice request opens an editable draft without splitting or creating anything", %{
     conn: conn
   } do

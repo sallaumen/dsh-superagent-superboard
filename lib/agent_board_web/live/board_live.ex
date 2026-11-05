@@ -559,6 +559,7 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("intake_draft_change", %{"text" => text} = params, socket)
       when is_binary(text) do
+    socket = invalidate_intake_if_changed(socket, text)
     repo = socket.assigns.repo
     source_repo = params["source_repo"]
 
@@ -574,6 +575,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("intake", %{"text" => text} = params, socket) when is_binary(text) do
+    socket = assign(socket, :intake, nil)
     repo = socket.assigns.repo
 
     cond do
@@ -591,13 +593,8 @@ defmodule AgentBoardWeb.BoardLive do
 
       true ->
         case Intake.run(text) do
-          {:ok, %{spec: spec, tasks: tasks, status: status}} ->
-            {:noreply,
-             socket
-             |> assign(
-               intake: %{spec: spec, tasks: tasks, status: status, text: text, repo_id: repo.id}
-             )
-             |> refresh_ai()}
+          {:ok, result} ->
+            {:noreply, show_intake_result(socket, repo, text, params, result)}
 
           {:error, reason} ->
             {:noreply,
@@ -609,7 +606,10 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_event("intake", _params, socket) do
-    {:noreply, put_flash(socket, :error, "Add a request before splitting.")}
+    {:noreply,
+     socket
+     |> assign(:intake, nil)
+     |> put_flash(:error, "Add a request before splitting.")}
   end
 
   @impl true
@@ -618,6 +618,8 @@ defmodule AgentBoardWeb.BoardLive do
          %{repo: repo} when not is_nil(repo) <- socket.assigns,
          %{repo_id: repo_id, status: :ready} = intake <- socket.assigns.intake,
          true <- repo_id == repo.id,
+         %{text: request_text, repo_id: ^repo_id} <- socket.assigns.intake_draft,
+         true <- request_text == intake.text,
          task when not is_nil(task) <- Enum.at(intake.tasks, position),
          {:ok, _created} <-
            Board.create_task(repo, task.title, intake_body(task), GitHub.client()) do
@@ -997,6 +999,24 @@ defmodule AgentBoardWeb.BoardLive do
         )
         |> BoardNavigation.open_panel("intake")
     end
+  end
+
+  defp invalidate_intake_if_changed(socket, text) do
+    case socket.assigns.intake do
+      %{text: ^text} -> socket
+      _ -> assign(socket, :intake, nil)
+    end
+  end
+
+  defp show_intake_result(socket, repo, text, params, %{spec: spec, tasks: tasks, status: status}) do
+    source = if params["source_repo"], do: :voice, else: :typed
+
+    socket
+    |> assign(
+      intake: %{spec: spec, tasks: tasks, status: status, text: text, repo_id: repo.id},
+      intake_draft: %{text: text, repo_id: repo.id, source: source}
+    )
+    |> refresh_ai()
   end
 
   defp intake_index(value) when is_binary(value) do

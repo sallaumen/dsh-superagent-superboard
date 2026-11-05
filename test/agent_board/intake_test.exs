@@ -110,6 +110,6 @@ defmodule AgentBoard.IntakeTest do
       Req.Test.json(conn, answer(content))
     end)
 
-    assert {:ok, %{tasks: [], status: :needs_clarification}} = Intake.run("o board ta lento")
+    assert {:ok, %{tasks: [], status: :no_tasks}} = Intake.run("o board ta lento")
   end
 end

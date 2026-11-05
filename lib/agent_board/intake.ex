@@ -30,7 +30,8 @@ defmodule AgentBoard.Intake do
   not pin the request down, the result is the questions and no tasks.
   """
   @spec run(String.t()) ::
-          {:ok, %{spec: spec(), tasks: [task()], status: :ready | :needs_clarification}}
+          {:ok,
+           %{spec: spec(), tasks: [task()], status: :ready | :needs_clarification | :no_tasks}}
           | {:error, term()}
   def run(text) do
     with {:ok, spec} <- refine(text) do
@@ -40,7 +41,7 @@ defmodule AgentBoard.Intake do
 
   defp maybe_propose(%{"ready" => true} = spec) do
     with {:ok, tasks} <- propose(spec) do
-      status = if tasks == [], do: :needs_clarification, else: :ready
+      status = if tasks == [], do: :no_tasks, else: :ready
       {:ok, %{spec: spec, tasks: tasks, status: status}}
     end
   end

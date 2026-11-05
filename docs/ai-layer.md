@@ -140,7 +140,8 @@ texto livre
   → :refine_request        (JSON validado pelo schema)
   → ready=false?           (mostrar perguntas; parar sem propor tarefas)
   → :propose_tasks         (lista validada; depends_on é índice)
-  → validação local        (toda task tem título, body e acceptance)
+  → validação local        (descarta task sem título, body ou acceptance)
+  → lista vazia?           (informar que nada utilizável foi proposto; permitir novo Split)
   → revisão humana         (a UI só oferece Create para propostas prontas)
   → Board.create_task      (uma issue por ação Create)
 ```
