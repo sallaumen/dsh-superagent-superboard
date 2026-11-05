@@ -40,8 +40,18 @@ defmodule AgentBoardWeb.BoardLive do
     {:ok, load(socket, repo)}
   end
 
-  defp empty,
-    do: %{running: [], ready: [], blocked: [], merged: [], merged_has_more: false, queued: []}
+  defp empty do
+    %{
+      running: [],
+      ready: [],
+      blocked: [],
+      merged: [],
+      merged_has_more: false,
+      queued: [],
+      task_counts: Map.new(Board.task_states(), &{&1, 0}),
+      task_has_more: Map.new(Board.task_states(), &{&1, false})
+    }
+  end
 
   # The board opens on the project the agent is actually working on; the
   # first active repository is the fallback.
@@ -74,12 +84,23 @@ defmodule AgentBoardWeb.BoardLive do
         do: assign(socket, conversation: nil, comments: [], intake: nil),
         else: socket
 
+    same_repo = socket.assigns.repo == repo
+
     merged_limit =
-      if socket.assigns.repo == repo,
+      if same_repo,
         do: max(length(socket.assigns.board.merged), Board.merged_page_size()),
         else: Board.merged_page_size()
 
-    case Board.board("#{repo.owner}/#{repo.name}", merged_limit) do
+    task_limits =
+      if same_repo do
+        Map.new(Board.task_states(), fn state ->
+          {state, max(length(Map.fetch!(socket.assigns.board, state)), Board.task_page_size())}
+        end)
+      else
+        %{}
+      end
+
+    case Board.board("#{repo.owner}/#{repo.name}", merged_limit, task_limits) do
       {:ok, board} ->
         assign(socket,
           repo: repo,
@@ -176,6 +197,37 @@ defmodule AgentBoardWeb.BoardLive do
 
       _ ->
         {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("load_more_tasks", %{"id" => tail_id}, socket) do
+    board = socket.assigns.board
+
+    state =
+      Enum.find(Board.task_states(), fn state ->
+        case {board.task_has_more[state], List.last(Map.fetch!(board, state))} do
+          {true, %Task{id: id}} -> tail_id == "task-tail-#{state}-#{id}"
+          _ -> false
+        end
+      end)
+
+    if state && socket.assigns.repo do
+      items = Map.fetch!(board, state)
+      last = List.last(items)
+      page_size = Board.task_page_size()
+
+      rows =
+        Board.task_page(socket.assigns.repo.id, state, {last.updated_at, last.id}, page_size + 1)
+
+      updated =
+        board
+        |> Map.put(state, Enum.uniq_by(items ++ Enum.take(rows, page_size), & &1.id))
+        |> Map.update!(:task_has_more, &Map.put(&1, state, length(rows) > page_size))
+
+      {:noreply, assign(socket, :board, updated)}
+    else
+      {:noreply, socket}
     end
   end
 
@@ -437,6 +489,8 @@ defmodule AgentBoardWeb.BoardLive do
                 title={title}
                 state={key}
                 items={Map.get(@board, key)}
+                total={Map.fetch!(@board.task_counts, key)}
+                has_more={Map.fetch!(@board.task_has_more, key)}
               />
             <% end %>
           </div>

@@ -265,6 +265,68 @@ defmodule AgentBoardWeb.BoardLiveTest do
     id
   end
 
+  test "a task lane loads fifty at a time and keeps its total through a broadcast", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "task-pages")
+
+    for number <- 1..120 do
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: number,
+        title: "Queued task #{number}",
+        state: "queued"
+      })
+      |> Repo.insert!()
+    end
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/task-pages")
+    assert has_element?(view, "#column-queued .lane-count", "120")
+    assert has_element?(view, "#column-queued .lane-items[phx-viewport-bottom=load_more_tasks]")
+    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 50
+
+    first_tail = view |> element("#column-queued .lane-tail") |> render() |> task_tail_id()
+    render_hook(view, "load_more_tasks", %{"id" => first_tail})
+    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 100
+    assert has_element?(view, "#column-queued .lane-count", "120")
+
+    render_hook(view, "load_more_tasks", %{"id" => first_tail})
+    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 100
+
+    second_tail = view |> element("#column-queued .lane-tail") |> render() |> task_tail_id()
+    render_hook(view, "load_more_tasks", %{"id" => second_tail})
+    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 120
+    refute has_element?(view, "#column-queued .lane-items[phx-viewport-bottom]")
+
+    send(view.pid, :board_updated)
+    assert has_element?(view, "#column-queued .lane-count", "120")
+    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 120
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 121,
+      title: "Arrived after broadcast",
+      state: "queued"
+    })
+    |> Repo.insert!()
+
+    send(view.pid, :board_updated)
+    assert has_element?(view, "#column-queued .lane-count", "121")
+    assert has_element?(view, "#column-queued", "Arrived after broadcast")
+    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 120
+
+    final_tail = view |> element("#column-queued .lane-tail") |> render() |> task_tail_id()
+    render_hook(view, "load_more_tasks", %{"id" => final_tail})
+    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 121
+  end
+
+  defp task_tail_id(html) do
+    [_, id] = Regex.run(~r/id="(task-tail-queued-\d+)"/, html)
+    id
+  end
+
   test "the merge chart counts only dated records within the visible UTC window", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "trend")
     today = DateTime.new!(Date.utc_today(), ~T[12:00:00], "Etc/UTC")

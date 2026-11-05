@@ -107,6 +107,49 @@ defmodule AgentBoard.BoardTest do
     assert List.last(third).merged_at == nil
   end
 
+  test "active task pages keep total counts and stable cursors when a new task arrives" do
+    {:ok, repo} = Board.add_repository("fixture", "many-tasks")
+
+    for number <- 1..120 do
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: number,
+        title: "Queued #{number}",
+        state: "queued"
+      })
+      |> Repo.insert!()
+    end
+
+    {:ok, board} = Board.board("fixture/many-tasks")
+    assert length(board.queued) == 50
+    assert board.task_counts.queued == 120
+    assert board.task_has_more.queued
+    assert board.task_counts.running == 0
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 121,
+      title: "New queued task",
+      state: "queued"
+    })
+    |> Repo.insert!()
+
+    last_first = List.last(board.queued)
+    second_rows = Board.task_page(repo.id, :queued, {last_first.updated_at, last_first.id}, 51)
+    assert length(second_rows) == 51
+    second = Enum.take(second_rows, 50)
+    last_second = List.last(second)
+    third = Board.task_page(repo.id, :queued, {last_second.updated_at, last_second.id}, 51)
+
+    ids = Enum.map(board.queued ++ second ++ third, & &1.id)
+    assert length(ids) == 120
+    assert length(Enum.uniq(ids)) == 120
+  end
+
   test "archiving removes the task from the board" do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
