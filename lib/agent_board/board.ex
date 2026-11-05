@@ -101,6 +101,13 @@ defmodule AgentBoard.Board do
       |> Repo.insert(on_conflict: :nothing)
       |> tap(fn _ -> broadcast(repository.id) end)
     end
+  rescue
+    exception ->
+      log_event(repository.id, "create_error", title, %{
+        "reason" => Exception.message(exception)
+      })
+
+      {:error, exception}
   end
 
   @doc "Stop a task: flag it and close the issue so the agent stops picking it up."
