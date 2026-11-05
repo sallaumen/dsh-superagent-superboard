@@ -78,6 +78,7 @@ defmodule AgentBoard.AITest do
       {:ok, body, _conn} = Plug.Conn.read_body(conn)
       payload = Jason.decode!(body)
 
+      assert payload["thinking"] == %{"type" => "disabled"}
       assert [%{"function" => %{"strict" => true, "name" => "respond"}}] = payload["tools"]
       assert payload["tool_choice"]["function"]["name"] == "respond"
 
