@@ -52,7 +52,25 @@ defmodule AgentBoard.AI.Registry do
     "required" => ["answer"]
   }
 
+  @summary_schema %{
+    "type" => "object",
+    "properties" => %{"summary" => %{"type" => "string"}},
+    "required" => ["summary"]
+  }
+
   @calls %{
+    summarize_board: %{
+      name: :summarize_board,
+      tier: :fast,
+      output_cap: 512,
+      system: """
+      You speak the state of a software board out loud, to its owner.
+      Reply with JSON only, matching the schema.
+      Two short sentences, no lists, no markdown, no numbers you were not given.
+      Say what is running, what waits for review and whether anything is blocked.
+      """,
+      json_schema: @summary_schema
+    },
     answer_question: %{
       name: :answer_question,
       tier: :fast,

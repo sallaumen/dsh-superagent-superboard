@@ -8,6 +8,16 @@ defmodule AgentBoard.Voice do
   """
 
   @doc "A spoken status: what is running, ready, queued and merged."
+  # From the model when it can answer; the template is still the fallback,
+  # because a voice that says nothing is worse than a plain sentence.
+  @spec spoken(map()) :: String.t()
+  def spoken(board) do
+    case AgentBoard.AI.call(:summarize_board, %{state: summary(board)}) do
+      {:ok, %{json: %{"summary" => text}}} when is_binary(text) -> text
+      _ -> summary(board)
+    end
+  end
+
   def summary(board, now \\ DateTime.utc_now()) do
     parts =
       [
