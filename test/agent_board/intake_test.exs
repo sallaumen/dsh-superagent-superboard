@@ -32,7 +32,7 @@ defmodule AgentBoard.IntakeTest do
     }
   end
 
-  @refined ~s({"goal":"o board responde rapido","constraints":["sem quebrar o sync"],"non_goals":[],"risks":[],"open_questions":[],"language":"pt"})
+  @refined ~s({"goal":"o board responde rapido","constraints":["sem quebrar o sync"],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
 
   test "refine returns the specification" do
     Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(@refined)) end)

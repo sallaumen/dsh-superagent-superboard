@@ -34,9 +34,9 @@ defmodule AgentBoard.Intake do
           | {:error, term()}
   def run(text) do
     with {:ok, spec} <- refine(text) do
-      if open_questions?(spec),
-        do: {:ok, %{spec: spec, tasks: [], status: :needs_clarification}},
-        else: split(spec)
+      if clear?(spec),
+        do: split(spec),
+        else: {:ok, %{spec: spec, tasks: [], status: :needs_clarification}}
     end
   end
 
@@ -46,7 +46,9 @@ defmodule AgentBoard.Intake do
     end
   end
 
-  defp open_questions?(spec), do: (spec["open_questions"] || []) != []
+  # The model decides, not a count: it always asks something, so "any question"
+  # would refuse every request -- which is the failure it was meant to prevent.
+  defp clear?(spec), do: spec["ready"] == true
 
   defp call(name, inputs, normalizer) do
     with {:ok, result} <- AI.call(name, inputs) do

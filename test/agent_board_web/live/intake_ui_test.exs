@@ -128,7 +128,7 @@ defmodule AgentBoardWeb.IntakeUITest do
         if Enum.any?(payload["messages"], &String.contains?(&1["content"], "Specification")) do
           ~s({"tasks":[{"title":"medir o tempo","body":"mede","kind":"bug","acceptance":["p95"],"depends_on":[],"size":"S"}]})
         else
-          ~s({"goal":"o board responde rapido","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"language":"pt"})
+          ~s({"goal":"o board responde rapido","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
         end
 
       Req.Test.json(conn, answer(content))
