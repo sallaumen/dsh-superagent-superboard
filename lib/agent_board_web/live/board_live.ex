@@ -5,6 +5,7 @@ defmodule AgentBoardWeb.BoardLive do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{Board, GitHub, Repo, Voice}
+  alias AgentBoard.{Board, Intake}
   alias AgentBoard.Board.Task
 
   @impl true
@@ -19,7 +20,8 @@ defmodule AgentBoardWeb.BoardLive do
         events: [],
         live: false,
         conversation: nil,
-        comments: []
+        comments: [],
+        intake: nil
       )
 
     repo =
@@ -167,6 +169,30 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("intake", %{"text" => text}, socket) do
+    case Intake.run(text) do
+      {:ok, %{spec: spec, tasks: tasks}} ->
+        {:noreply, assign(socket, intake: %{spec: spec, tasks: tasks, text: text})}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "The AI did not answer: #{inspect(reason)}")}
+    end
+  end
+
+  @impl true
+  def handle_event("create_from_intake", %{"index" => index}, socket) do
+    with %{repo: repo} when not is_nil(repo) <- socket.assigns,
+         %{} = intake <- socket.assigns.intake,
+         task when not is_nil(task) <- Enum.at(intake.tasks, String.to_integer(index)),
+         {:ok, _created} <-
+           Board.create_task(repo, task.title, intake_body(task), GitHub.client()) do
+      {:noreply, put_flash(socket, :info, "Task created: #{task.title}")}
+    else
+      _ -> {:noreply, put_flash(socket, :error, "Could not create the task")}
+    end
+  end
+
+  @impl true
   def handle_event("close", _params, socket) do
     {:noreply, assign(socket, conversation: nil, comments: [])}
   end
@@ -179,6 +205,15 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("dictate", _params, socket) do
     {:noreply, push_event(socket, "dictate", %{})}
+  end
+
+  defp intake_body(task) do
+    """
+    #{task.body}
+
+    ## Acceptance
+    #{Enum.map_join(task.acceptance, "\n", &"- #{&1}")}
+    """
   end
 
   defp time(nil), do: ""
@@ -456,6 +491,56 @@ defmodule AgentBoardWeb.BoardLive do
               </span>
             </li>
           </ol>
+        </section>
+
+        <section :if={@repo} class="border-t border-[#2a2925] px-5 py-4">
+          <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-[#a39f93]">
+            Split a request
+          </h2>
+
+          <form id="intake-form" phx-submit="intake" class="flex gap-2">
+            <input
+              name="text"
+              placeholder="Describe what you want..."
+              aria-label="Request"
+              class="flex-1 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm"
+              required
+            />
+            <button class="bg-[#e8a33d] px-4 py-2 text-sm font-bold text-[#12120f] hover:bg-[#f0b356] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8a33d]">
+              Split
+            </button>
+          </form>
+
+          <div :if={@intake} class="mt-4">
+            <p class="text-[10px] uppercase text-[#6b675c]">Goal</p>
+            <p class="text-sm text-[#e8e6df]">{@intake.spec["goal"]}</p>
+
+            <div :if={@intake.spec["open_questions"] != []} class="mt-2 text-[11px] text-[#e8a33d]">
+              <p class="uppercase text-[10px]">Open questions</p>
+              <p :for={q <- @intake.spec["open_questions"]}>{q}</p>
+            </div>
+
+            <ol class="mt-3 space-y-2">
+              <li
+                :for={{task, index} <- Enum.with_index(@intake.tasks)}
+                class="border border-[#2a2925] border-l-2 border-l-[#6fa8dc] bg-[#191813] px-3 py-2"
+              >
+                <p class="text-[13px]">
+                  {task.title}
+                  <span class="ml-2 text-[10px] uppercase text-[#a39f93]">{task.kind}</span>
+                  <span class="ml-2 text-[10px] uppercase text-[#a39f93]">{task.size}</span>
+                </p>
+                <p class="mt-1 text-[11px] text-[#a39f93]">{task.body}</p>
+                <button
+                  phx-click="create_from_intake"
+                  phx-value-index={index}
+                  class="mt-2 border border-[#2a2925] px-2 py-1 text-[10px]"
+                >
+                  Create
+                </button>
+              </li>
+            </ol>
+          </div>
         </section>
 
         <section :if={@conversation} class="border-t border-[#2a2925] px-5 py-4">
