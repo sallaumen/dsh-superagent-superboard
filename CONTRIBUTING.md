@@ -12,22 +12,13 @@ Toda mudança entra via PR na `main` — nunca por push direto.
 
 ## Validação antes do PR
 
-| Mudança | Comando |
-|---|---|
-| Código Elixir (`lib/`, `test/`, `mix.exs`, `config/`) | `make backend` (ou `mix gate`) |
-| Assets (`assets/`, `priv/static/`) | `make frontend` |
-| Biblioteca de capacidades (`capabilities/`) | `make library` |
-| Caminho de deploy/release | `make release` |
-| Antes de entregar qualquer PR | `scripts/ci-local.sh all` |
+Siga a [matriz de scripts em PIPELINES.md](PIPELINES.md#matriz-de-scripts)
+para escolher os checks durante o trabalho e o pré-voo obrigatório de entrega.
+Os comandos e sua distribuição entre os jobs estão documentados ali.
 
-O que cada script faz e quando usar está em [PIPELINES.md](PIPELINES.md). Os testes de contrato em `test/pipeline_contract_test.exs` fixam os aliases e o workflow — se você mudar `mix.exs` ou `.github/workflows/ci.yml`, atualize o teste junto.
-
-## CI
-
-A CI roda os mesmos comandos dos pipelines locais em cinco jobs (gates, backend em 4 partições, frontend, library, release).
-
-Se a CI não consegue rodar (sem token, billing ou runner), **não espere por ela**: o pipeline local é o gate suficiente. A regra completa — como perceber, o que fazer, quando re-verificar — está em [PIPELINES.md](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
+Quando o GitHub Actions não iniciar, aplique a
+[regra de CI indisponível](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
 
 ## Biblioteca de capacidades
 
-Para adicionar ou alterar uma capacidade em `capabilities/`, siga [capabilities/README.md](capabilities/README.md) ("Adicionar uma nova capacidade") e registre a decisão em [capabilities/INCORPORACAO.md](capabilities/INCORPORACAO.md). O validador (e seus testes) são gates obrigatórios para qualquer mudança lá.
+Para adicionar ou alterar uma capacidade em `capabilities/`, siga [capabilities/README.md](capabilities/README.md) ("Adicionar uma nova capacidade") e registre a decisão em [capabilities/INCORPORACAO.md](capabilities/INCORPORACAO.md). Os comandos de validação estão em [capabilities/tools/README.md](capabilities/tools/README.md).

@@ -50,36 +50,12 @@ The dev database is on the local Postgres at `127.0.0.1:5434`.
 - **The 10s poller does not touch GitHub**: it reads the agent's sqlite and
   only broadcasts when the ticket hash changed.
 
-## The gates
+## Validation and contributing
 
-```sh
-mix gate   # check-only: unused deps + compile warnings + format + credo + tests
-mix precommit  # same gates, formatting fixed in place (for developers)
-scripts/ci-local.sh all   # pre-flight: backend + frontend + library pipelines
-```
-
-Which script to run when — backend, frontend, library or the mixed release
-path — is in [PIPELINES.md](PIPELINES.md).
-
-If GitHub Actions can't start (no token/billing, jobs failing in seconds with
-zero steps): don't wait for CI — the local pipeline is the sufficient gate.
-See the rule in [PIPELINES.md](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
-
-## CI
-
-`.github/workflows/ci.yml` has five jobs:
-
-| Job | What it does | Why |
-|---|---|---|
-| `gates` | `deps.unlock --check-unused`, `compile --warnings-as-errors`, `format --check-formatted`, `credo --strict` | once, not once per partition |
-| `backend` | `mix test --partitions 4`, one Postgres per partition | the suite split into four distinct slices |
-| `frontend` | `check_assets.sh`, `assets.setup`, `assets.build`, `assets.deploy` in `dev` | the sources are checked and the assets must build with the dev toolchain |
-| `library` | `python3 capabilities/tools/validar_biblioteca.py` + its test | the capability library is validated on every change |
-| `release` | dev assets → prod compile → `phx.digest` → `mix release` | proves the mixed release path works |
-
-The four backend partitions use `MIX_TEST_PARTITION` and
-`mix test --partitions 4`, so each one runs a different slice of the suite
-against its own `agent_board_testN` database.
+Use [PIPELINES.md](PIPELINES.md) for the command matrix, local checks and CI
+jobs, including the
+[procedure when CI is unavailable](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
+The branch and pull request workflow is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## When something is wrong
 
