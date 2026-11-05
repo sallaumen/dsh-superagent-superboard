@@ -97,6 +97,7 @@ defmodule AgentBoard.MixProject do
         "test"
       ],
       gate: [
+        "deps.unlock --check-unused",
         "compile --warnings-as-errors",
         "format --check-formatted",
         "credo --strict",
