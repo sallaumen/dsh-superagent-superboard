@@ -81,6 +81,36 @@ defmodule AgentBoard.SyncRepoTest do
     assert Enum.any?(Board.events(repo), &(&1.kind == "issue_error"))
   end
 
+  test "an approved review reaches the stored pull", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/pulls" ->
+          Req.Test.json(conn, [
+            %{
+              "number" => 9,
+              "title" => "A PR",
+              "state" => "open",
+              "html_url" => "https://github.com/x/y/pull/9",
+              "user" => %{"login" => "sallaumen"},
+              "created_at" => "2026-11-04T00:00:00Z",
+              "head" => %{"sha" => "abc"}
+            }
+          ])
+
+        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+          Req.Test.json(conn, [%{"id" => 1, "state" => "APPROVED", "user" => %{"login" => "rev"}}])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    stored = Repo.one(from p in AgentBoard.Board.PullRequest, where: p.number == 9)
+    assert stored.review_state == "approved"
+  end
+
   test "a broken review fetch still stores the PR", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
