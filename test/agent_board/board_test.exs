@@ -172,4 +172,8 @@ defmodule AgentBoard.Board.ConversationTest do
     assert length(events) == 20
     assert hd(events).subject == "subject-25"
   end
+
+  test "events with no repository is empty", _ctx do
+    assert Board.events(nil) == []
+  end
 end
