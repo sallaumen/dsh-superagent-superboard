@@ -125,6 +125,29 @@ defmodule AgentBoard.SyncRepoTest do
     assert Enum.any?(Board.events(repo), &(&1.kind == "comment_error"))
   end
 
+  test "a comment without id does not duplicate across two syncs", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Req.Test.json(conn, [issue(7, "open")])
+
+        "/repos/sallaumen/arena-rogue/issues/7/comments" ->
+          Req.Test.json(conn, [
+            %{"id" => nil, "user" => %{"login" => "sallaumen"}, "body" => "same"}
+          ])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    task = Repo.one(from t in Task, where: t.number == 7)
+    assert length(Board.comments(task)) == 1
+  end
+
   test "the sync pulls the comments of the active tasks", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
