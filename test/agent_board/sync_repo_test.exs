@@ -81,6 +81,37 @@ defmodule AgentBoard.SyncRepoTest do
     assert Enum.any?(Board.events(repo), &(&1.kind == "issue_error"))
   end
 
+  test "a broken review fetch still stores the PR", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/pulls" ->
+          Req.Test.json(conn, [
+            %{
+              "number" => 9,
+              "title" => "A PR",
+              "state" => "open",
+              "html_url" => "https://github.com/x/y/pull/9",
+              "user" => %{"login" => "sallaumen"},
+              "created_at" => "2026-11-04T00:00:00Z",
+              "head" => %{"sha" => "abc"}
+            }
+          ])
+
+        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+          Plug.Conn.send_resp(conn, 500, "boom")
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    stored = Repo.one(from p in AgentBoard.Board.PullRequest, where: p.number == 9)
+    assert stored != nil
+    assert Enum.any?(Board.events(repo), &(&1.kind == "review_error"))
+  end
+
   test "an invalid pull logs a pull_error", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
@@ -132,7 +163,7 @@ defmodule AgentBoard.SyncRepoTest do
     end)
 
     assert Sync.sync_repo(client(), repo) == :ok
-    assert Enum.any?(Board.events(repo), &(&1.kind == "pull_error"))
+    assert Enum.any?(Board.events(repo), &(&1.kind == "review_error"))
   end
 
   test "a broken conversation does not kill the sync", %{repo: repo} do

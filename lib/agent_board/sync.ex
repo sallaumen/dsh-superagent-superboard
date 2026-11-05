@@ -207,22 +207,43 @@ defmodule AgentBoard.Sync do
   end
 
   defp rollup_for(client, repository, pull, "open") do
-    reviews = GitHub.reviews(client, repository.owner, repository.name, pull["number"])
+    # A failing review/check fetch must not abort the PR insert: the PR is
+    # stored with the rollups it can get, and the failure is logged.
+    reviews =
+      safe_fetch(repository, "review_error", pull, fn ->
+        GitHub.reviews(client, repository.owner, repository.name, pull["number"])
+      end)
+
     Enum.each(reviews, &upsert_review(repository, pull["number"], &1))
 
     checks =
-      GitHub.check_runs(
-        client,
-        repository.owner,
-        repository.name,
-        get_in(pull, ["head", "sha"]) || ""
-      )
+      safe_fetch(repository, "check_error", pull, fn ->
+        GitHub.check_runs(
+          client,
+          repository.owner,
+          repository.name,
+          get_in(pull, ["head", "sha"]) || ""
+        )
+      end)
 
-    {review_rollup(reviews), checks_rollup(checks), checks_failed(checks)}
+    {checks_state, checks_failed} = checks_rollup(checks)
+
+    {review_rollup(reviews), checks_state, checks_failed}
   end
 
   defp rollup_for(_client, _repository, _pull, _state) do
     {nil, nil, nil}
+  end
+
+  defp safe_fetch(repository, kind, pull, fun) do
+    fun.()
+  rescue
+    exception ->
+      Board.log_event(repository.id, kind, "##{pull["number"]}", %{
+        "reason" => Exception.message(exception)
+      })
+
+      []
   end
 
   defp upsert_review(repository, number, review) do
