@@ -33,6 +33,7 @@ defmodule AgentBoard.AI.Call do
     field :duration_ms, :integer, default: 0
     field :parse_state, :string
     field :json, :map
+    field :input_hash, :string
     field :error, :string
     timestamps(type: :utc_datetime, updated_at: false)
   end
@@ -52,6 +53,7 @@ defmodule AgentBoard.AI.Call do
       :duration_ms,
       :parse_state,
       :json,
+      :input_hash,
       :error
     ])
     |> validate_required([:name, :engine, :status])

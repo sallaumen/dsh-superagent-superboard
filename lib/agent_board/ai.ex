@@ -10,7 +10,7 @@ defmodule AgentBoard.AI do
 
   import Ecto.Query
 
-  alias AgentBoard.AI.{Budget, Call, Providers, Registry, Request, Result}
+  alias AgentBoard.AI.{Budget, Cache, Call, Providers, Registry, Request, Result}
   alias AgentBoard.Repo
 
   @doc """
@@ -25,8 +25,19 @@ defmodule AgentBoard.AI do
   def call(name, inputs, _opts \\ []) do
     with {:ok, spec} <- Registry.fetch(name),
          :ok <- Budget.check(spec.tier) do
-      attempt(name, spec, inputs, providers())
+      providers = providers()
+
+      case cached(name, spec, inputs, providers) do
+        {:ok, json} -> {:ok, %Result{json: json, engine: :cache, parse_state: :complete}}
+        :miss -> attempt(name, spec, inputs, providers)
+      end
     end
+  end
+
+  defp cached(_name, _spec, _inputs, []), do: :miss
+
+  defp cached(name, spec, inputs, [provider | _rest]) do
+    Cache.get(Cache.key(name, provider, Providers.model(provider, spec.tier), inputs))
   end
 
   defp attempt(_name, _spec, _inputs, []), do: {:error, :no_provider}
@@ -37,11 +48,11 @@ defmodule AgentBoard.AI do
 
     case engine().run(request) do
       {:ok, result} ->
-        record(name, spec, request, result, elapsed(started), :ok, nil)
+        record(name, spec, request, inputs, result, elapsed(started), :ok, nil)
         {:ok, result}
 
       {:error, reason} ->
-        record(name, spec, request, %Result{}, elapsed(started), :error, inspect(reason))
+        record(name, spec, request, inputs, %Result{}, elapsed(started), :error, inspect(reason))
         if fallback?(reason), do: attempt(name, spec, inputs, rest), else: {:error, reason}
     end
   end
@@ -82,7 +93,7 @@ defmodule AgentBoard.AI do
 
   defp rehearsal?, do: Application.get_env(:agent_board, :ai_rehearsal, false) == true
 
-  defp record(name, spec, request, result, elapsed, status, error) do
+  defp record(name, spec, request, inputs, result, elapsed, status, error) do
     %Call{}
     |> Call.changeset(%{
       name: to_string(name),
@@ -90,6 +101,7 @@ defmodule AgentBoard.AI do
       model: result.model,
       tier: to_string(spec.tier),
       status: to_string(status),
+      input_hash: Cache.key(name, request.provider, request.model, inputs),
       input_tokens: result.input_tokens,
       output_tokens: result.output_tokens,
       cost_micros: result.cost_micros,
