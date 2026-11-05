@@ -17,6 +17,12 @@ export const VoiceCommand = {
     this.recorder = null
     this.chunks = []
     this.onKeyDown = event => this.handleKeyDown(event)
+    this.onDialogCancel = event => {
+      if (!this.suppressDialogCancel || !event.target.matches(".board-dialog")) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      this.suppressDialogCancel = false
+    }
     // A pointer action takes precedence over a deferred page scroll; moving
     // the page on pointerdown could change the control that receives the click.
     this.onPointerDown = () => this.clearFirstSpace()
@@ -32,7 +38,9 @@ export const VoiceCommand = {
     this.onContext = () => {
       if (this.phase === "idle") return
       const board = document.querySelector("#board-page")
-      if (document.querySelector(".board-dialog[open]") || board?.dataset.baseUrl !== this.repoPath) {
+      const dialog = document.querySelector(".board-dialog[open]")?.id || null
+      if (dialog !== this.originDialog || board?.dataset.baseUrl !== this.repoPath ||
+        location.pathname + location.search !== this.originUrl) {
         this.cancel()
       }
     }
@@ -41,7 +49,8 @@ export const VoiceCommand = {
       if (this.phase === "listening") this.stop()
       else this.cancel()
     }
-    document.addEventListener("keydown", this.onKeyDown)
+    document.addEventListener("keydown", this.onKeyDown, true)
+    document.addEventListener("cancel", this.onDialogCancel, true)
     document.addEventListener("pointerdown", this.onPointerDown)
     document.addEventListener("visibilitychange", this.onVisibility)
     window.addEventListener("pagehide", this.onPageHide)
@@ -52,7 +61,15 @@ export const VoiceCommand = {
   handleKeyDown(event) {
     if (event.key === "Escape") {
       this.clearFirstSpace(true)
-      if (this.phase !== "idle") this.cancel()
+      if (this.phase !== "idle") {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        // Native dialogs can emit cancel after keydown; keep this Escape for
+        // the microphone so the task conversation stays open.
+        this.suppressDialogCancel = true
+        setTimeout(() => { this.suppressDialogCancel = false }, 100)
+        this.cancel()
+      }
       return
     }
     if (event.code !== "Space" || event.key !== " " || event.repeat || event.isComposing ||
@@ -63,11 +80,14 @@ export const VoiceCommand = {
     }
 
     const focus = document.activeElement
-    if (focus !== document.body && focus !== document.documentElement && focus !== this.el) {
+    const dialog = document.querySelector(".board-dialog[open]")
+    const neutralFocus = focus === document.body || focus === document.documentElement || focus === this.el
+    const conversationHeading = dialog?.id === "panel-conversation" && focus?.id === "panel-title-conversation"
+    if (!neutralFocus && !conversationHeading) {
       this.clearFirstSpace(true)
       return
     }
-    if (document.querySelector(".board-dialog[open]") || document.querySelector("#board-settings[open]")) {
+    if ((dialog && dialog.id !== "panel-conversation") || document.querySelector("#board-settings[open]")) {
       this.clearFirstSpace(true)
       return
     }
@@ -109,6 +129,8 @@ export const VoiceCommand = {
     const generation = ++this.generation
     this.phase = "permission"
     this.repoPath = document.querySelector("#board-page")?.dataset.baseUrl
+    this.originDialog = document.querySelector(".board-dialog[open]")?.id || null
+    this.originUrl = location.pathname + location.search
     interruptVoiceOutput()
     voiceState("permission", "Waiting for microphone", "Allow access to record one command.", source)
     try {
@@ -222,6 +244,8 @@ export const VoiceCommand = {
       try { this.recorder.stop() } catch (_) { /* The stream is already released. */ }
     }
     this.phase = "idle"
+    this.originDialog = null
+    this.originUrl = null
     this.stream = null
     this.recorder = null
     this.chunks = []
@@ -230,7 +254,8 @@ export const VoiceCommand = {
   disconnected() { this.cancel() },
   destroyed() {
     this.cancel()
-    document.removeEventListener("keydown", this.onKeyDown)
+    document.removeEventListener("keydown", this.onKeyDown, true)
+    document.removeEventListener("cancel", this.onDialogCancel, true)
     document.removeEventListener("pointerdown", this.onPointerDown)
     document.removeEventListener("visibilitychange", this.onVisibility)
     window.removeEventListener("pagehide", this.onPageHide)
