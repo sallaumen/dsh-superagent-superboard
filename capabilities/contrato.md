@@ -39,6 +39,8 @@ Estabeleça um baseline proporcional. Separe falhas anteriores de regressões. E
 
 Para UI, exercite a aplicação rodando quando houver ambiente disponível. Para integrações, prefira sandbox, fixtures e respostas controladas antes de efeitos externos. Declare o que só foi inspecionado, o que foi emulado e o que foi observado em execução real. Pare de ampliar testes quando a dúvida relevante estiver resolvida e os gates exigidos estiverem satisfeitos.
 
+Quando um gate remoto estiver indisponível por bloqueio fora do repositório (CI sem token, sem runner ou com pendência de cobrança), **não espere por ele nem trave a entrega**: identifique a indisponibilidade (jobs falhando sem executar nenhum passo, checks ausentes), execute o pipeline local equivalente com evidência e siga quando ele estiver verde, registrando a limitação e o comando executado. Re-verifique o gate remoto quando o bloqueio for resolvido; não use a indisponibilidade como desculpa para pular verificações locais.
+
 ## 6. Entregue evidência útil
 
 Apresente resultado, motivo das decisões, mudanças realizadas, verificações e limites. Diferencie proposto, implementado, validado localmente, integrado, mergeado e publicado. Cite arquivos, comandos ou evidências que sustentem conclusões importantes. Registre impedimentos concretos e o próximo passo necessário, sem anunciar a tarefa como concluída quando um critério essencial não foi validado.
