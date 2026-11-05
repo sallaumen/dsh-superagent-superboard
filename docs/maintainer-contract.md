@@ -35,7 +35,7 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 
 ## Real-time
 
-- The sync (the Oban `Sync.Worker`, every minute) and every task action call
+- The sync (the Oban `Sync.Worker`, every five minutes) and every task action call
   `Board.broadcast/1`; the LiveView subscribes with `Board.subscribe/1` and
   reloads on `:board_updated`.
 - `AgentBoard.Live` polls the agent's tickets every 10s and broadcasts only
