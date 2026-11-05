@@ -57,6 +57,10 @@ if config_env() == :prod do
 
   config :agent_board, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  # The panel's own model key. Absent means the AI layer answers
+  # :not_configured instead of reaching the network.
+  config :agent_board, :ai_api_key, System.get_env("DEEPSEEK_API_KEY")
+
   config :agent_board, AgentBoardWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
