@@ -41,6 +41,16 @@ defmodule AgentBoard.ProvidersTest do
       Req.Test.stub(@stub, fn conn ->
         assert conn.request_path == "/chat/completions"
 
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        payload = Jason.decode!(body)
+        assert [%{"function" => %{"name" => "respond"}}] = payload["tools"]
+
+        if unquote(provider) == :deepseek do
+          assert payload["thinking"] == %{"type" => "disabled"}
+        else
+          refute Map.has_key?(payload, "thinking")
+        end
+
         Req.Test.json(conn, %{
           "model" => Providers.model(unquote(provider), :fast),
           "choices" => [
@@ -66,7 +76,7 @@ defmodule AgentBoard.ProvidersTest do
 
   test "every provider declares a price for both tiers" do
     for id <- Providers.ids() do
-      {:ok, provider} = Providers.fetch(id)
+      assert {:ok, _provider} = Providers.fetch(id)
 
       for tier <- [:fast, :deep] do
         assert Providers.cost_micros(id, Providers.model(id, tier), 1_000_000, 0) > 0

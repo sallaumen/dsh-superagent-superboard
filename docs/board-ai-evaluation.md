@@ -36,7 +36,7 @@ export AI_PROVIDER=deepseek
 # Exporte DEEPSEEK_API_KEY pelo mecanismo local de credenciais; não cole o valor no comando.
 MIX_ENV=test mix ecto.create
 MIX_ENV=test mix ecto.migrate
-MIX_ENV=test mix run scripts/eval-board-ai.exs -- --live /tmp/board-ai-eval.jsonl
+MIX_ENV=test mix run scripts/eval-board-ai.exs --live /tmp/board-ai-eval.jsonl
 ```
 
 O roteiro recusa `MIX_ENV` diferente de `test`, partição sem o prefixo `board_ai_eval_`, provedor sem chave, banco com dados ou arquivo de saída preexistente. Ele fixa o provedor para evitar fallback inesperado. São no máximo **oito perguntas**, com a chamada registrada `:answer_board_question` limitada a 512 tokens de saída. Após cada caso, interrompe a rodada antes do próximo se chegar a **20.000 tokens registrados** ou **50.000 micros de dólar registrados** (US$ 0,05 estimado). Como os números vêm da resposta e da tabela de preços do board, um último pedido pode ultrapassar o limite registrado; isto **não é um teto garantido da cobrança do provedor**. Não há retry automático.
