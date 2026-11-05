@@ -35,6 +35,15 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "Queued"
   end
 
+  test "the columns stack on small screens", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ "grid-cols-1"
+    assert html =~ "lg:grid-cols-4"
+  end
+
   test "the board renders the tracked repository", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
