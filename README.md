@@ -49,13 +49,29 @@ The dev database is on the local Postgres at `127.0.0.1:5434`.
 ## The gates
 
 ```sh
-mix gate   # check-only: compile warnings + format + credo + tests (CI runs this)
+mix gate   # check-only: compile warnings + format + credo + tests
 mix precommit  # same gates, formatting fixed in place (for developers)
 scripts/ci-local.sh all   # pre-flight: backend + frontend + library pipelines
 ```
 
 Which script to run when — backend, frontend, library or the mixed release
 path — is in [PIPELINES.md](PIPELINES.md).
+
+## CI
+
+`.github/workflows/ci.yml` has five jobs:
+
+| Job | What it does | Why |
+|---|---|---|
+| `gates` | `deps.unlock --check-unused`, `format --check-formatted`, `credo --strict` | once, not once per partition |
+| `backend` | `mix test --partitions 4`, one Postgres per partition | the suite split into four distinct slices |
+| `frontend` | `assets.setup`, `assets.build`, `assets.deploy` in `dev` | the assets must build with the dev toolchain |
+| `library` | `python3 capabilities/tools/validar_biblioteca.py` + its test | the capability library is validated on every change |
+| `release` | dev assets → prod compile → `phx.digest` → `mix release` | proves the mixed release path works |
+
+The four backend partitions use `MIX_TEST_PARTITION` and
+`mix test --partitions 4`, so each one runs a different slice of the suite
+against its own `agent_board_testN` database.
 
 ## The tests
 
