@@ -166,6 +166,20 @@ defmodule AgentBoardWeb.BoardLive do
     dt |> DateTime.to_time() |> Time.to_string() |> String.slice(0, 5)
   end
 
+  defp last_sync([]), do: "no sync yet"
+
+  defp last_sync(events) do
+    case Enum.find(events, &(&1.kind == "sync")) do
+      nil ->
+        "no sync yet"
+
+      sync ->
+        errors = sync.payload["errors"] || 0
+        suffix = if errors > 0, do: " · #{errors} errors", else: " · clean"
+        "synced #{time(sync.inserted_at)}" <> suffix
+    end
+  end
+
   defp has_errors?(%{payload: payload}) do
     case payload["errors"] do
       n when is_integer(n) -> n > 0
@@ -224,6 +238,7 @@ defmodule AgentBoardWeb.BoardLive do
           <span class={["text-[11px]", if(@live, do: "text-[#7bc47f]", else: "text-[#a39f93]")]}>
             {if @live, do: "live", else: "static"}
           </span>
+          <span class="text-[11px] text-[#a39f93]">{last_sync(@events)}</span>
 
           <form id="track-repo" phx-submit="add" class="contents">
             <input
