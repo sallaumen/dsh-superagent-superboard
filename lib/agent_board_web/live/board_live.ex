@@ -161,7 +161,8 @@ defmodule AgentBoardWeb.BoardLive do
                conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
                comments: Board.comments(task)
              )
-             |> put_flash(:info, "Question sent")}
+             |> put_flash(:info, "Question sent")
+             |> put_flash(:info, answer(task, body))}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "The question did not reach GitHub")}
@@ -206,6 +207,20 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("dictate", _params, socket) do
     {:noreply, push_event(socket, "dictate", %{})}
+  end
+
+  defp answer(task, question) do
+    case AI.call(:answer_question, %{
+           question: question,
+           title: task.title,
+           state: task.state,
+           kind: task.kind
+         }) do
+      {:ok, %{json: %{"answer" => text}}} -> text
+      {:ok, _} -> "The model answered, but not with text."
+      {:error, :not_configured} -> "The AI is not configured."
+      {:error, reason} -> "The AI did not answer: #{inspect(reason)}"
+    end
   end
 
   defp intake_body(task) do

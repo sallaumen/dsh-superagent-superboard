@@ -46,7 +46,26 @@ defmodule AgentBoard.AI.Registry do
     "required" => ["tasks"]
   }
 
+  @answer_schema %{
+    "type" => "object",
+    "properties" => %{"answer" => %{"type" => "string"}},
+    "required" => ["answer"]
+  }
+
   @calls %{
+    answer_question: %{
+      name: :answer_question,
+      tier: :fast,
+      model: "deepseek-flash",
+      output_cap: 1024,
+      system: """
+      You answer a developer's question about one task of their board.
+      Reply with JSON only, matching the schema.
+      Be concrete and short. If the data does not support an answer, say so
+      in the answer instead of guessing.
+      """,
+      json_schema: @answer_schema
+    },
     refine_request: %{
       name: :refine_request,
       tier: :fast,

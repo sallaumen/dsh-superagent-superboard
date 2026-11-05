@@ -18,9 +18,14 @@ defmodule AgentBoardWeb.IntakeUITest do
       Req.new(base_url: "https://api.deepseek.com", plug: {Req.Test, @stub}, retry: false)
     end)
 
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(base_url: "https://api.github.com", plug: {Req.Test, @stub}, retry: false)
+    end)
+
     on_exit(fn ->
       Application.delete_env(:agent_board, :ai_client)
       Application.delete_env(:agent_board, :ai_api_key)
+      Application.delete_env(:agent_board, :github_client)
     end)
 
     :ok
@@ -32,6 +37,35 @@ defmodule AgentBoardWeb.IntakeUITest do
       "choices" => [%{"message" => %{"content" => content}}],
       "usage" => %{"prompt_tokens" => 1, "completion_tokens" => 2}
     }
+  end
+
+  test "the ask shows the model's answer", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %AgentBoard.Board.Task{}
+    |> AgentBoard.Board.Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 901,
+      title: "Board lento",
+      state: "queued"
+    })
+    |> AgentBoard.Repo.insert!()
+
+    Req.Test.stub(@stub, fn conn ->
+      if String.ends_with?(conn.request_path, "/chat/completions") do
+        Req.Test.json(conn, answer(~s({"answer":"O sync roda a cada minuto."})))
+      else
+        Req.Test.json(conn, %{"id" => 1, "user" => %{"login" => "sallaumen"}})
+      end
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    view |> element("button", "Open") |> render_click()
+
+    html = view |> element("#ask-agent") |> render_submit(%{"body" => "por que demora?"})
+
+    assert html =~ "O sync roda a cada minuto."
   end
 
   test "the form shows the goal, the open questions and the tasks", %{conn: conn} do
