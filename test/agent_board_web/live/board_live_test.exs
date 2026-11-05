@@ -224,6 +224,15 @@ defmodule AgentBoardWeb.BoardLiveTest do
            end)
   end
 
+  test "the board shows the blocked column", %{conn: conn} do
+    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    assert html =~ "Blocked"
+    assert html =~ "Nothing is blocked."
+  end
+
   test "the repo query param selects a repository", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "o_colmex")
     {:ok, arena} = Board.add_repository("sallaumen", "arena-rogue")
