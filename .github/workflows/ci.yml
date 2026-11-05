@@ -83,7 +83,7 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
 
       - run: mix deps.get
-      - run: mix test
+      - run: mix test --partitions 4
 
   frontend:
     name: "frontend · assets"
