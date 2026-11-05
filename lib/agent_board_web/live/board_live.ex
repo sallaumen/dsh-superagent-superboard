@@ -369,7 +369,7 @@ defmodule AgentBoardWeb.BoardLive do
           </p>
         </div>
 
-        <main :if={@repo} class="grid grid-cols-1 gap-px bg-[#2a2925] sm:grid-cols-2 lg:grid-cols-4">
+        <main :if={@repo} class="grid grid-cols-1 gap-px bg-[#2a2925] sm:grid-cols-2 lg:grid-cols-5">
           <%= for {title, key} <- [{"Running", :running}, {"Ready", :ready}, {"Merged", :merged}, {"Queued", :queued}] do %>
             <section class="bg-[#12120f] p-4">
               <h2 class="mb-3 flex justify-between text-[11px] uppercase tracking-[0.16em] text-[#a39f93]">
