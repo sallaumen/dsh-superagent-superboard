@@ -75,4 +75,15 @@ defmodule AgentBoard.LiveTest do
 
     assert Repo.get(Task, t.id).state == "queued"
   end
+
+  test "a missing state database does not crash the poller", %{db: _db} do
+    previous = Application.get_env(:agent_board, :state_db)
+    Application.put_env(:agent_board, :state_db, "/does/not/exist.sqlite")
+    on_exit(fn -> Application.put_env(:agent_board, :state_db, previous) end)
+
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    assert is_map(AgentBoard.Live.poll(%{}))
+    assert Repo.get_by(Task, repository_id: repo.id) == nil
+  end
 end
