@@ -22,10 +22,16 @@ defmodule AgentBoardWeb.BoardLive do
         comments: []
       )
 
-    {:ok, load(socket, List.first(repos))}
+    {:ok, load(socket, default_repo(repos))}
   end
 
   defp empty, do: %{running: [], ready: [], merged: [], queued: []}
+
+  # The board opens on the project the agent is actually working on; the
+  # first active repository is the fallback.
+  defp default_repo(repos) do
+    Enum.find(repos, &(&1.name == "o_colmex")) || List.first(repos)
+  end
 
   defp load(socket, nil) do
     assign(socket, repo: nil, board: empty(), events: [], live: false)
