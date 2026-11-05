@@ -87,6 +87,17 @@ The four backend partitions use `MIX_TEST_PARTITION` and
 `mix test --partitions 4`, so each one runs a different slice of the suite
 against its own `agent_board_testN` database.
 
+## When something is wrong
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `no sync yet` in the header | the last sync threw; see the activity column | the red line names the error (`sync_error`, `issues_unavailable`) |
+| a repo with Issues disabled | GitHub answers 404 | handled: issues are optional, pulls still sync |
+| `No task is running.` | the runner has no active ticket | not an error; it is the empty state |
+| every card says `no review` / `no ci` | the repo has no reviews or CI | accurate, not a bug |
+| CI red on every PR | GitHub Billing: payments failed / spending limit | fix Billing & plans; no code change turns it green |
+| `sync_error` with 401/403 | `GITHUB_TOKEN` missing, expired, or rate limited | export a fresh token (`gh auth token`) |
+
 ## The tests
 
 `mix test` covers each layer: the state mapping (the ticket overlay, the review
