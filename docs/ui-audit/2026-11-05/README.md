@@ -1,5 +1,9 @@
 # Auditoria do Agent board — 05/11/2026
 
+> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
+> descrevem as revisões identificadas neste documento, não o produto atual.
+> Consulte o [índice e a sequência da auditoria](05-merge-review.md).
+
 Base original `52113d4`; entrega em quatro PRs encadeados.
 A [revisão para integração](05-merge-review.md) registra os gates atualizados,
 a resolução de conflito e a compatibilidade com as mudanças posteriores do main.

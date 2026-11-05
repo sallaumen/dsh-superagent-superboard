@@ -1,12 +1,16 @@
 # Auditoria: densidade, responsividade e leitura
 
+> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
+> descrevem as revisões identificadas neste documento, não o produto atual.
+> Consulte o [índice e a sequência da auditoria](README.md).
+
 Continuação de 01-theme; base `80e3ee9` (#154). Mesma direção e restrições.
 
 | Severidade | Região | Evidência antes | Correção |
 |---|---|---|---|
 | P2 | Colunas e hierarquia | [1366](layout-before-1366.png), [3440](layout-before-3440.png): 30 merges alongam toda a página, deixando quatro colunas praticamente vazias e escondendo ações. | Colunas com rolagem própria (55vh no desktop), cabeçalhos fixos e foco de teclado. Activity em disclosure nativo, com lista limitada e rolável. |
 | P2 | Títulos | [Antes](layout-before-1366.png): títulos cortados numa única linha, especialmente na largura de notebook. | Quebra de palavras e título completo; mantidas as cinco colunas. |
-| P2 | Mobile / activity / AI | [Antes](baseline-mobile-ai.png), [fixture](baseline-fixture-mobile.png): página de 375px tinha scrollWidth 664px; linhas rígidas se sobrepunham. | Grupos de controles coesos, grid adaptável para eventos, IA com wrap, campos encolhíveis. |
+| P2 | Mobile / activity / AI | [Antes](baseline-mobile-ai.png), [layout a 375px](layout-before-375.png), [fixture](baseline-fixture-mobile.png): página de 375px tinha scrollWidth 664px; linhas rígidas se sobrepunham. | Grupos de controles coesos, grid adaptável para eventos, IA com wrap, campos encolhíveis. |
 | P2 | Open / conversa | [Antes](baseline-fixture.png): conversa abaixo de Activity, Split e AI. | Conversa logo após o board; título recebe foco ao montar, Close restaura o foco de Open. |
 | P3 | Vazio | `board_live.ex`: instrução “Track one below” e “four columns” contrariava a tela. | Orientação para o cabeçalho e cinco colunas. |
 
