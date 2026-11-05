@@ -1,5 +1,9 @@
 # Auditoria: saúde e verdade dos dados
 
+> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
+> descrevem as revisões identificadas neste documento, não o produto atual.
+> Consulte o [índice e a sequência da auditoria](README.md).
+
 Base `7883316` (#158). Dados reais somente lidos; nenhuma escrita em tarefas.
 
 | Severidade | Região | Evidência antes | Correção |

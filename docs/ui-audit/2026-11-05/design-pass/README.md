@@ -1,74 +1,60 @@
-# Design pass — Agent Board
+# Design pass — Agent Board, adapted after #173 → #183
 
-Direção: painel escuro, denso, monoespaçado. Refinamento da interface existente,
-sem bibliotecas novas, gradientes ou efeitos de vidro. Apenas apresentação em
-`lib/agent_board_web/`, tokens/CSS e testes; `lib/agent_board/` não foi alterado.
-Todos os handlers, nomes dos eventos, payloads e formulários foram preservados.
+The original #171 layout has been adapted to the current LiveComponents. The old
+single-file rendering was not restored. `BoardLive` still owns event handlers
+and panel navigation; Header, Column, Card, Archive and AI own their regions.
+The domain under `lib/agent_board/` was not changed.
 
-## Achados e correções
-
-| Severidade | Região | Evidência | Correção |
+| Severity | Region | Evidence | Correction |
 |---|---|---|---|
-| P2 | Merged | [Antes](before-1600.png), [depois](after-1600.png) | Cinco linhas mais recentes; expansão nativa para os outros 25. A contagem diz “latest 30 loaded”, pois o contexto limita a consulta a 30. Não representa o total do GitHub. |
-| P2 | Colunas vazias | [Antes](before-1600.png), [depois](after-1600.png) | Running, Ready, Blocked e Queued em quatro áreas de 100 px quando vazias. O histórico ocupa uma seção independente e não determina sua altura. |
-| P2 | Cabeçalho | [Antes](before-1600.png), [depois](after-1600.png) | Identidade, seletor de repositório e configuração separados. Formulário Track repo dentro de uma expansão nativa; saúde e utilitários na segunda linha. |
-| P2 | Versão | [Antes](before-1600.png), [depois](after-1600.png); `system_panel.ex:26–63` | Indicador com contorno e cor semântica, hashes em segundo plano. Update & restart usa warning/warning-content quando o backend informa `:behind`. Valor ausente continua “unknown”. |
-| P2 | IA | [Depois, página completa](after-full-1600.png); `board_live.ex`, componente `.ai-call-metrics` | Nome da chamada primeiro; provedor/modelo abaixo; resultado, latência e uso separados. Medições ausentes mostram “unknown”; zero armazenado continua zero. |
+| P2 | Merged history | [Before, #183 main](adapted-before-1600.png), [after](adapted-after-real-1600.png); `board_components/archive.ex` | Independent archive, five visible records, disclosure for the other 25 loaded records. “latest 30 loaded” is explicit because 30 is not a GitHub total. |
+| P2 | Header | [Before](adapted-before-1600.png), [after](adapted-after-real-1600.png); `board_components/header.ex` | Identity, repository, health, age, actions and settings form distinct zones. Native settings disclosure remains open through LiveView patches. |
+| P2 | Version | [After](adapted-after-real-1600.png); `components/system_panel.ex` | Semantic status chip, unknown values shown as unknown, update action emphasized only when the backend reports behind. |
+| P2 | AI measurements | [Real AI panel](adapted-after-real-ai.png); `board_components/ai.ex`, `board_components/presentation.ex`; `board_live_test.exs` | Call identity and provider/model lead. Latency and usage are labeled. Missing values say unknown; zero stays zero. AI remains in the existing single-page dialog. |
+| P3 | Dense empty lanes | [After](adapted-after-real-1600.png); `board_components/column.ex` | Four compact active lanes with counts. Merged history no longer extends the work grid. |
 
-Os tokens dark base-100/200/300 foram ajustados para grafite mais escuro. Novos
-estilos usam apenas os tokens existentes, currentColor e misturas desses tokens.
-O tema claro permanece funcional: [screenshot light](after-light-1600.png).
-A captura principal usa dados reais já armazenados. A falha de sync e o estado
-unknown da versão são respostas reais do backend; não foram escondidos ou simulados.
+The before capture is the current #183 main result at 1600×900. The after
+captures use the real saved board at `localhost:4002`, with 30 merged pulls.
+The visible `sync_error` and unknown version state came from the backend. The
+UI says “showing saved data” and reports that the saved data age is unknown.
+The theme uses daisyUI tokens for both modes.
 
-## Verificação visual e teclado
+## Browser checks
 
-WebKit headless, uma aba, interações somente de leitura:
+WebKit headless, one tab, read-only UI interactions. The after capture above is
+1600×900. [1366×768](adapted-after-real-1366.png),
+[3440×1440](adapted-after-real-3440.png),
+[375×812](adapted-after-real-375.png), and
+[light 1600×900](adapted-after-real-light-1600.png) had no horizontal overflow.
+Light/dark changed `data-theme` and the computed background. Enter expanded
+Merged and displayed exactly 25 more records. Enter expanded Repositories;
+Tab moved to Owner with a computed solid 2px focus outline. The AI dialog
+opened and browser Back closed it without leaving the board.
+No form was submitted, no task was created/archived and no message was sent.
 
-- 1600×900: histórico recolhido com cinco linhas; 25 itens acessíveis ao expandir;
-  painel de IA começa em y=703 px. Histórico completo recolhido ocupa 288 px.
-- Enter abre e fecha Merged e Repositories. Tab após abrir Repositories chega
-  ao campo Owner. Contorno de foco computado: solid.
-- Light/dark alternam o atributo data-theme e as cores renderizadas.
-- Sem overflow horizontal em [1366×768](after-1366.png),
-  [3440×1440](after-3440.png) ou [375×812](after-375.png).
-- Navegador fechado ao terminar. Nenhum envio, tarefa criada/arquivada, áudio,
-  Check ou Update & restart acionado pelo navegador.
+An isolated `ui-fixture/read-only` test board was also checked at `localhost:4004`
+for stale sync age, empty archive, queued cards, theme and keyboard behavior.
+The fixture had 10-minute-old sync data while the socket was live, so the
+staleness indicator did not imply fresh data. Its first navigation to
+`127.0.0.1:4004` used a host outside the test socket origin and showed the
+static/reconnecting state; `localhost` connected normally. Browser and task-owned
+servers were closed after the review.
 
-A prévia foi executada neste checkout em 127.0.0.1:4003. O serviço launchd usa
-outro checkout (`/Users/tavano/src/agent_board`, porta 4099); a prévia não é um
-registro de implantação. As imagens foram capturadas antes do commit, por isso
-mostram o hash servido anterior e “uncommitted changes”.
+## Local gate
 
-## Gate local
+Actions billing is blocked. Under `PIPELINES.md`, the local gate is sufficient:
+[`scripts/ci-local.sh all`](adapted-ci-local.log) exited 0 after adaptation.
+The pipeline ran `mix gate` (compile with warnings as errors, format, strict
+Credo and **175 passing tests**), Sobelow, `scripts/check_assets.sh`, asset
+setup/build/deploy, and capability library validation with 20 passing tests.
+`node --test test/assets/data_age_test.mjs` also passed 3 tests. Re-run the
+workflow when billing is restored.
 
-Com a CI bloqueada por billing, foi aplicado o procedimento de PIPELINES.md:
-`scripts/ci-local.sh all`, exit 0. [Log completo](ci-local.log).
-
-- `MIX_ENV=test mix gate`: dependências, compilação com warnings-as-errors,
-  format, Credo e **171 testes, 0 falhas**.
-- Sobelow: scan complete, exit 0.
-- `scripts/check_assets.sh`: OK; `mix assets.setup`, `mix assets.build` e
-  `mix assets.deploy`: exit 0.
-- Biblioteca: validador verde; 20 testes, OK.
-- Novos testes cobrem limite/ordem/expansão dos merges, histórico vazio e
-  métricas ausentes. Os testes existentes cobrem os eventos preservados.
-
-O projeto exige `MIX_ENV=test` ao chamar o alias gate diretamente: a invocação
-sem essa variável terminou na proteção de mix test contra execução em dev.
-A execução correta acima passou e também foi repetida pelo pipeline completo.
-
-Trecho final de mix gate dentro do pipeline:
+Tail of the local gate:
 
 ```text
-344 mods/funs, found no issues.
+Ran 20 tests in 0.767s
 
-Use `mix credo explain` to explain issues, `mix credo --help` for options.
-Running ExUnit with seed: 676315, max_cases: 28
-
-...........................................................................................................................................................................
-Finished in 15.0 seconds (4.1s async, 10.9s sync)
-171 tests, 0 failures
+OK
+OK: pipeline(s) verdes.
 ```
-
-Quando billing for resolvido, redisparar o workflow conforme PIPELINES.md.

@@ -1,19 +1,19 @@
 == backend: mix gate + sobelow ==
-Compiling 1 file (.ex)
+Compiling 7 files (.ex)
 Generated agent_board app
-Checking 63 source files (this might take a while) ...
+Checking 73 source files (this might take a while) ...
 
 Please report incorrect results: https://github.com/rrrene/credo/issues
 
-Analysis took 0.07 seconds (0.00s to load, 0.07s running 69 checks on 63 files)
-344 mods/funs, found no issues.
+Analysis took 0.1 seconds (0.01s to load, 0.09s running 69 checks on 73 files)
+360 mods/funs, found no issues.
 
 Use `mix credo explain` to explain issues, `mix credo --help` for options.
-Running ExUnit with seed: 676315, max_cases: 28
+Running ExUnit with seed: 619639, max_cases: 28
 
-...........................................................................................................................................................................
-Finished in 15.0 seconds (4.1s async, 10.9s sync)
-171 tests, 0 failures
+..........................................................................................................................................................................
+Finished in 13.7 seconds (3.0s async, 10.6s sync)
+170 tests, 0 failures
 ##############################################
 #                                            #
 #          Running Sobelow - v0.18.1         #
@@ -26,22 +26,36 @@ Finished in 15.0 seconds (4.1s async, 10.9s sync)
 
 == frontend: check_assets -> assets.setup -> build -> deploy (MIX_ENV=dev) ==
 check_assets: OK (entradas, pipeline tailwind e JS sem debug).
+    warning: redefining module AgentBoardWeb.BoardComponents.Presentation (current version loaded from _build/dev/lib/agent_board/ebin/Elixir.AgentBoardWeb.BoardComponents.Presentation.beam)
+    │
+  1 │ defmodule AgentBoardWeb.BoardComponents.Presentation do
+    │ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/agent_board_web/live/board_components/presentation.ex:1: AgentBoardWeb.BoardComponents.Presentation (module)
+
 ≈ tailwindcss v4.3.0
 
 /*! 🌼 daisyUI 5.5.20 */
-Done in 68ms
+Done in 82ms
 
-  ../priv/static/assets/js/app.js  340.8kb
+  ../priv/static/assets/js/app.js  342.5kb
 
-⚡ Done in 11ms
+⚡ Done in 16ms
 ≈ tailwindcss v4.3.0
 
 /*! 🌼 daisyUI 5.5.20 */
 Done in 74ms
 
-  ../priv/static/assets/js/app.js  150.4kb
+  ../priv/static/assets/js/app.js  151.5kb
 
-⚡ Done in 10ms
+⚡ Done in 12ms
+    warning: redefining module AgentBoardWeb.BoardComponents.Presentation (current version loaded from _build/dev/lib/agent_board/ebin/Elixir.AgentBoardWeb.BoardComponents.Presentation.beam)
+    │
+  1 │ defmodule AgentBoardWeb.BoardComponents.Presentation do
+    │ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/agent_board_web/live/board_components/presentation.ex:1: AgentBoardWeb.BoardComponents.Presentation (module)
+
 Check your digested files at "priv/static"
 == library: validador + testes da biblioteca de capacidades ==
 OK: 33 skills; 6 contextos; 22245 palavras nas instruções; 221 links locais conferidos.
@@ -67,7 +81,7 @@ test_unknown_related_detected (__main__.ValidatorTests.test_unknown_related_dete
 test_valid_library_passes (__main__.ValidatorTests.test_valid_library_passes) ... ok
 
 ----------------------------------------------------------------------
-Ran 20 tests in 0.625s
+Ran 20 tests in 0.562s
 
 OK
 OK: pipeline(s) verdes.

@@ -17,23 +17,30 @@ the durable sync, **LiveView** for the real-time UI and **Req** for GitHub.
 
 ```sh
 mix setup            # deps, database, assets
-mix phx.server       # http://127.0.0.1:4002
+PORT=4002 mix phx.server  # http://127.0.0.1:4002
 ```
 
-The dev database is on the local Postgres at `127.0.0.1:5434`.
+The explicit `PORT` keeps the example URL deterministic; runtime configuration
+otherwise uses the environment or its own default. The dev database is on the
+local Postgres at `127.0.0.1:5434`.
 
 ## Run as a service
 
-The board is meant to be always on, at `http://127.0.0.1:4099`. `ops/com.agentboard.plist`
-is the launchd agent; `scripts/service.sh` is what it runs.
+The board is meant to be always on. [ops/com.agentboard.plist](ops/com.agentboard.plist)
+is a launchd example with absolute paths for one checkout; before loading it,
+set `ProgramArguments`, `WorkingDirectory`, the log paths and the toolchain `PATH`
+for your machine. It runs [scripts/service.sh](scripts/service.sh); its defaults
+and environment overrides are documented in the [script matrix](PIPELINES.md#matriz-de-scripts).
 
 ```sh
+mkdir -p ~/Library/LaunchAgents
 cp ops/com.agentboard.plist ~/Library/LaunchAgents/com.agentboard.plist
+# Edit the copied plist with the paths described above before loading it.
 launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.agentboard.plist
 ```
 
 `KeepAlive` restarts the board after a crash or an update; `RunAtLoad` starts
-it with the system. Logs: `~/Library/Logs/AgentBoard.log`.
+it with the system. Read logs at the paths selected in the plist.
 
 ```sh
 launchctl bootout "gui/$(id -u)/com.agentboard"   # stop for good
@@ -46,7 +53,7 @@ watches agents, and a restart would interrupt them. Updating is a button.
 ## Local secrets
 
 `.env.local` feeds the environment before any config: `KEY=value` lines, `#`
-comments, and a variable already set in the shell is left alone. It is
+comments, and a variable already set to a non-empty value in the shell is left alone. It is
 gitignored. `.env` is the committed list of variables -- copy what you need.
 
 ```sh
@@ -56,6 +63,8 @@ cp .env .env.local        # then fill DEEPSEEK_API_KEY, GEMINI_API_KEY or OPENAI
 The app picks the first provider with a key; `AI_PROVIDER` pins one. Without
 any key the AI answers `:not_configured`, and `AI_REHEARSAL=1` runs the whole
 panel against free fixtures instead. Tests never read `.env.local`.
+`AGENT_BOARD_ENV_FILE` selects another file, for example when running a worktree.
+The loader lives in [config/runtime.exs](config/runtime.exs).
 
 ## What it does
 
@@ -77,11 +86,12 @@ panel against free fixtures instead. Tests never read `.env.local`.
 
 ## What it costs
 
-- **The sync** reads the 100 most recently updated issues and pull requests per
-  repository (the `recent()` window), plus each pull request's reviews and check
-  runs, plus the comments of up to 10 active tasks. At the 1 min cron that is
-  real API traffic. On `o_colmex` (1,100+ pull requests) the **first** sync is
-  the slow one; later runs only refresh the recent window.
+- **The sync** reads a bounded window of recently updated issues and pull
+  requests per repository, plus each pull's reviews/checks and active task
+  comments. Each scheduled run produces GitHub API traffic. The window lives in
+  [AgentBoard.GitHub](lib/agent_board/github.ex); the comment selection lives in
+  [AgentBoard.Sync](lib/agent_board/sync.ex). Check those limits when estimating
+  traffic for a deployment.
 - **The 10s poller does not touch GitHub**: it reads the agent's sqlite and
   only broadcasts when the ticket hash changed.
 

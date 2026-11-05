@@ -70,6 +70,21 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#sync-status", "UTC")
   end
 
+  test "sync age describes the last outcome without pretending a failure refreshed data", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "freshness")
+    Board.log_event(repo.id, "sync", "fixture/freshness", %{"errors" => 0})
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/freshness")
+    assert has_element?(view, "#sync-age[data-sync=true][datetime]", "Last completed sync")
+
+    Board.log_event(repo.id, "sync_error", "fixture/freshness", %{"reason" => "offline"})
+    send(view.pid, :board_updated)
+    assert has_element?(view, "#sync-age[data-sync=false]", "Last sync attempt")
+    assert has_element?(view, "#data-freshness", "Saved data age: unknown")
+    assert has_element?(view, "#activity-age[datetime]")
+  end
+
   test "a failed sync supersedes the last clean outcome", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "health")
     Board.log_event(repo.id, "sync", "fixture/health", %{"errors" => 0})
@@ -392,6 +407,33 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert render(view) =~ "Arrived by broadcast"
   end
 
+  test "broadcasts keep a single stable card and the open conversation", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "stable")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 9,
+        title: "Stable task",
+        state: "queued"
+      })
+      |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/stable")
+    view |> element("#task-#{task.id} button", "Open") |> render_click()
+
+    task |> Task.changeset(%{state: "running"}) |> Repo.update!()
+    for _ <- 1..3, do: send(view.pid, :board_updated)
+
+    html = render(view)
+    assert length(Regex.scan(~r/id="task-#{task.id}"/, html)) == 1
+    assert has_element?(view, "#column-running #task-#{task.id}")
+    assert has_element?(view, "#conversation-title", "Stable task")
+    assert has_element?(view, "#ask-agent input[name=body]")
+  end
+
   test "switching repos stops listening to the old one", %{conn: conn} do
     {:ok, colmex} = Board.add_repository("sallaumen", "o_colmex")
     {:ok, _arena} = Board.add_repository("sallaumen", "arena-rogue")
@@ -566,6 +608,45 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "pulls: 8"
   end
 
+  test "repository form recovery does not close the current panel", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("fixture", "recovery")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/recovery&panel=intake")
+    view |> element("#repo-select") |> render_change(%{"repo" => "fixture/recovery"})
+    refute_patched(view)
+    assert has_element?(view, "#board-page[data-panel=intake]")
+  end
+
+  test "panels are URL state and malformed conversation links cannot open another repo's task", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "panels")
+    {:ok, other} = Board.add_repository("fixture", "other")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: other.id,
+        kind: "issue",
+        number: 1,
+        title: "Other repo",
+        state: "queued"
+      })
+      |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, "/?repo=fixture/panels&panel=conversation&task=#{task.id}")
+    refute has_element?(view, "#conversation")
+    assert has_element?(view, "#board-page[data-panel='']")
+
+    render_patch(view, "/?repo=fixture/panels&panel=conversation&task=invalid")
+    refute has_element?(view, "#conversation")
+    view |> element("#open-ai") |> render_click()
+    assert_patch(view, "/?panel=ai&repo=fixture%2Fpanels")
+    assert has_element?(view, "#board-page[data-panel=ai]")
+
+    render_patch(view, "/?repo=#{repo.owner}/#{repo.name}")
+    assert has_element?(view, "#board-page[data-panel='']")
+  end
+
   test "closing the conversation hides the panel", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
@@ -584,7 +665,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     view |> element("button", "Open") |> render_click()
     assert render(view) =~ "Conversation"
 
-    view |> element("button", "Close") |> render_click()
+    view |> element("#panel-conversation button", "Close") |> render_click()
     refute render(view) =~ "Conversation"
   end
 

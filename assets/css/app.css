@@ -132,7 +132,40 @@
   display: none;
 }
 
-/* Board: active work first, recent merged work as a compact archive. */
+/* Fresh socket != fresh data. Thresholds reflect missed one-minute sync runs. */
+.data-age[data-age-state="delayed"] { color: var(--color-warning); }
+.data-age[data-age-state="stale"] { color: var(--color-error); }
+
+.board-tools { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 1.25rem; border-top: 1px solid var(--color-base-300); }
+.board-tools button, .panel-close { min-height: 2.75rem; padding: 0.5rem 0.75rem; font-size: 0.75rem; border: 1px solid color-mix(in oklab, var(--color-base-content) 50%, transparent); }
+.board-tools button:hover, .panel-close:hover { background: var(--color-base-300); }
+.board-dialog { width: min(52rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); margin: auto; padding: 0; border: 1px solid color-mix(in oklab, var(--color-base-content) 50%, transparent); background: var(--color-base-100); color: var(--color-base-content); overflow: auto; }
+.board-dialog::backdrop { background: color-mix(in oklab, var(--color-base-100) 80%, transparent); }
+.panel-heading { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1.25rem; background: var(--color-base-200); border-bottom: 1px solid var(--color-base-300); }
+.panel-heading h2 { font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.1em; }
+.board-panel-open { overflow: hidden; }
+.panel-reconnect { display: none; padding: 0.75rem 1.25rem; font-size: 0.75rem; }
+.agent-board[data-socket="reconnecting"] .panel-reconnect { display: block; }
+.board-dialog .toast { position: static; padding: 0.75rem 1.25rem; }
+.board-dialog .alert { width: 100%; max-width: none; }
+@media (max-width: 39.999rem) { .board-dialog { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); } }
+
+/* Motion communicates entry/intent, never gates an action or animates every broadcast. */
+.board-tools button, .panel-close { display: inline-flex; align-items: center; gap: 0.5rem; }
+.agent-board button.phx-click-loading, .agent-board .phx-submit-loading button { cursor: progress; border-style: dashed; }
+@media (prefers-reduced-motion: no-preference) {
+  .agent-board :where(button, a) { transition: background-color 120ms ease-out, border-color 120ms ease-out; }
+  .board-card, .board-dialog[open], .toast .alert { animation: board-appear 120ms ease-out; }
+}
+@keyframes board-appear { from { opacity: 0.85; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .agent-board *, #flash-group * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+/* The active dialog owns flash feedback; avoid duplicate notices behind its backdrop. */
+.board-panel-open #flash-group { visibility: hidden; }
+
+/* Instrument layout from #171, applied to the current LiveComponents. */
+
 .board-topbar, .board-commandbar, .version-panel, .archive-heading {
   display: flex;
   align-items: center;
@@ -193,25 +226,17 @@
 .item-title a:hover { text-decoration: underline; text-underline-offset: 0.2em; }
 .item-signals { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.625rem; text-transform: uppercase; }
 .task-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.5rem; padding: 0.75rem 0; border-top: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); }
-.task-card .item-signals, .task-actions { grid-column: 1 / -1; }
+.task-card .item-signals, .task-card .data-age, .task-actions { grid-column: 1 / -1; }
 .task-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.6875rem; }
 .task-actions button { padding: 0.5rem 0.75rem; border: 1px solid color-mix(in oklab, var(--color-base-content) 50%, transparent); }
 .task-actions button:first-child { background: var(--color-base-300); }
 .task-actions button:hover, .version-check:hover { background: var(--color-base-300); }
 .archive-heading { justify-content: space-between; gap: 0.5rem 1rem; background: var(--color-base-200); }
 .archive-count { padding-left: 0.75rem; font-variant-numeric: tabular-nums; }
-.archive-row { display: grid; grid-template-columns: 4rem minmax(0, 1fr) auto; align-items: baseline; gap: 0.5rem 1rem; padding: 0.625rem 1.25rem; border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent); }
+.archive-row { display: grid; grid-template-columns: 4rem minmax(0, 1fr) auto auto; align-items: baseline; gap: 0.5rem 1rem; padding: 0.625rem 1.25rem; border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 10%, transparent); }
 .board-archive > .lane-empty { padding: 1rem 1.25rem; }
 .archive-history summary { padding-inline: 1.25rem; font-size: 0.6875rem; }
 .archive-history-list { max-height: 24rem; overflow: auto; margin: 0.25rem; }
-.agent-board #activity { padding-block: 0; }
-.agent-board #activity > summary { min-height: 2.75rem; padding-block: 0.875rem; font-size: 0.6875rem; }
-.agent-board #activity[open] { padding-bottom: 1rem; }
-.board-workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-top: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); }
-.workbench-panel { min-width: 0; padding: 1.25rem; }
-.workbench-panel + .workbench-panel { border-left: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); }
-.workbench-panel h2 { flex-wrap: wrap; }
-.ai-call { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; padding: 0.75rem 0; border-top: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); }
 .ai-call-identity { flex: 1; min-width: 8rem; overflow-wrap: anywhere; }
 .ai-call-identity strong { display: block; font-size: 0.75rem; font-weight: 500; }
 .ai-call-identity > span, .ai-call-metrics dt { font-size: 0.625rem; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); }
@@ -219,20 +244,7 @@
 .ai-call-metrics { display: flex; gap: 1.5rem; font-variant-numeric: tabular-nums; }
 .ai-call-metrics dt { text-transform: uppercase; letter-spacing: 0.08em; }
 .ai-call-metrics dd { font-size: 0.8125rem; }
-.direct-create { border-top: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); padding: 1.25rem; }
 
-@media (max-width: 63.999rem) {
-  .board-topbar { gap: 0.75rem 1.5rem; }
-  .board-column { border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); }
-  .board-workbench { grid-template-columns: minmax(0, 1fr); }
-  .workbench-panel + .workbench-panel { border-left: 0; border-top: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); }
-}
-@media (max-width: 39.999rem) {
-  .board-repository { width: 100%; flex-wrap: wrap; gap: 0.5rem; }
-  .repository-select { flex: 1; }
-  .repository-settings { margin-left: 0; width: 100%; }
-  .version-details { flex-basis: 100%; }
-  .archive-row { grid-template-columns: 3rem minmax(0, 1fr); }
-  .archive-row .item-signals { grid-column: 2; }
-  .board-utilities { width: 100%; }
-}
+.ai-call { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; padding: 0.75rem 0; border-top: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); }
+@media (max-width: 63.999rem) { .board-column { border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); } }
+@media (max-width: 39.999rem) { .board-repository { width: 100%; flex-wrap: wrap; gap: 0.5rem; } .repository-select { flex: 1; } .repository-settings { margin-left: 0; width: 100%; } .version-details { flex-basis: 100%; } .archive-row { grid-template-columns: 3rem minmax(0, 1fr); } .archive-row .item-signals, .archive-row .data-age { grid-column: 2; } .board-utilities { width: 100%; } }

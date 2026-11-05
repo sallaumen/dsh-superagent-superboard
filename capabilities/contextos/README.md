@@ -7,7 +7,7 @@ Estes arquivos registram intenções e preferências de projetos específicos, d
 1. Carregue um contexto somente quando o projeto correspondente estiver no escopo e somente as seções pertinentes à área em trabalho.
 2. Confirme no código o que o contexto afirma; ignore exemplos que não existam no projeto.
 3. Um projeto mobile first tradicional (ex.: `forro-mobile`) não herda a estética de jogo do Colmex. Um projeto sem Oban não recebe regras de workers desse framework (`elixir-phoenix-oban`).
-4. Adapte um contexto somente quando houver evidência da necessidade; a regra de separação entre núcleo e contexto vale também para contextos novos.
+4. Adapte um contexto somente quando houver evidência da necessidade. Os contextos vivem em `contextos/`; o corpo de uma skill do núcleo aponta para este índice, sem copiar ou fixar um contexto pelo nome.
 
 ## Dependências
 

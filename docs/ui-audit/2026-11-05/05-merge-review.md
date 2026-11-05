@@ -1,5 +1,9 @@
 # Revisão e integração dos quatro PRs
 
+> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
+> descrevem as revisões identificadas neste documento, não o produto atual.
+> Consulte o [índice e a sequência da auditoria](README.md).
+
 Sequência de dependências: #154 → #158 → #161 → #164. Os PRs seguintes tiveram a
 base alterada para `main` após a integração da dependência. Foram preservados os
 novos provedores, a saída estruturada (#169/#170), a configuração de ambiente e o

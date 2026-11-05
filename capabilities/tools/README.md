@@ -16,7 +16,7 @@ As ferramentas são determinísticas e não alteram os fontes da biblioteca (os 
 **O que confere:**
 
 1. `manifest.json` com `schema_version` 2 e campos obrigatórios (`skills`, `contexts`, `common_contract`, `parameters`).
-2. Cada `skills/<nome>/SKILL.md`: frontmatter completo (`name`, `title`, `category`, `default_mode`, `origem`, `related`, `description`), localização correta, seções `## Quando usar` e `## Instrução`, título igual ao frontmatter.
+2. Cada `skills/<nome>/SKILL.md`: [metadados válidos](../README.md#formato-dos-metadados), localização correta, seção `## Quando usar`, instrução em `## Instrução` ou `### Instrução` e título igual ao frontmatter.
 3. Manifesto × frontmatter: nenhum campo divergente.
 4. `related`: toda referência resolve para uma skill existente, sem autorreferência.
 5. Origem→destino: todo ID em `origin_ids` (ou derivado das skills) tem exatamente uma skill de destino; nenhuma skill usa ID não declarado.
@@ -59,7 +59,7 @@ python3 capabilities/tools/test_validar_biblioteca.py
 A ferramenta é genérica por construção:
 
 1. Copie `tools/validar_biblioteca.py` para `tools/` na raiz da biblioteca de destino (opcionalmente `test_validar_biblioteca.py` com o helper de biblioteca mínima adaptado).
-2. Adote o layout: `manifest.json` schema 2 + `skills/<nome>/SKILL.md` com o frontmatter da seção de formato, `contrato.md` e `parametros.md` (ou aponte os campos para os arquivos equivalentes do projeto).
+2. Adote o layout: `manifest.json` schema 2 + `skills/<nome>/SKILL.md` com os [metadados documentados](../README.md#formato-dos-metadados), `contrato.md` e `parametros.md` (ou aponte os campos para os arquivos equivalentes do projeto).
 3. Declare `origin_ids` com os identificadores da sua origem (qualquer string não vazia) ou omita para derivar das skills.
 4. Rode `python3 tools/validar_biblioteca.py --root .` na raiz da biblioteca de destino e adicione o mesmo comando ao seu pipeline de CI.
 
