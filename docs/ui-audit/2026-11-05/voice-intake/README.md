@@ -41,3 +41,11 @@ LiveView tests cover the cross-panel transfer, no automatic AI call or task
 creation, edit preservation after a board update, and stale repository
 rejection. An actual device coexistence check with Wispr remains part of the
 final release validation.
+
+After the voice action confirmation PR landed, a final WebKit pass on the
+rebased branch again filled the command field and immediately clicked Prepare
+coding request. The intake opened with the exact edited text and
+`sallaumen/o_colmex`; [after-final-1366.png](after-final-1366.png) records the
+result. Browser Back restored the voice draft and focused the voice panel
+heading. The console reported zero errors and warnings. No Split, task action,
+microphone capture, or paid AI call was triggered.
