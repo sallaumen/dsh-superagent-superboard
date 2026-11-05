@@ -27,7 +27,8 @@ Regra de ouro: **o alvo `make` e o job da CI executam os mesmos comandos** — l
 | `mix assets.deploy` | Validar o caminho de produção dos assets | `MIX_ENV=dev` | minifica + `phx.digest` | manifesto de digest gerado |
 | `validar_biblioteca.py` | Ao alterar `capabilities/`; CI library | Python 3.10+ | nenhum (somente leitura) | `OK` com 0 erros |
 | `test_validar_biblioteca.py` | Ao alterar o validador | Python 3.10+ | temporários | 20/20 testes |
-| `make backend/frontend/library/release/check` | Entrada única por pipeline | máquina local | os dos scripts acima | cada pipeline verde |
+| `make backend/frontend/library/release/coverage/check` | Entrada única por pipeline | máquina local | os dos scripts acima | cada pipeline verde |
+| `make coverage` | Auditar lacunas de teste | máquina local | gera `cover/` (HTML) | relatório gerado; exit != 0 se a cobertura total ficar abaixo de 90% (threshold padrão do Elixir) |
 | `scripts/ci-local.sh [pipeline]` | Pré-voo completo antes de abrir PR | máquina local | os dos scripts acima (release é opt-in) | todos os pipelines verdes |
 
 O `scripts/ci-local.sh` é o pré-voo de PR: roda os mesmos comandos dos jobs da CI na ordem deles e falha no primeiro pipeline vermelho. Use `make` para um pipeline isolado durante o trabalho e `scripts/ci-local.sh all` (ou `release`) antes de entregar.
