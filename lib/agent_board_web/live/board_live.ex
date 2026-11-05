@@ -234,7 +234,14 @@ defmodule AgentBoardWeb.BoardLive do
 
       sync ->
         errors = sync.payload["errors"] || 0
-        suffix = if errors > 0, do: " · #{errors} errors", else: " · clean"
+
+        suffix =
+          case errors do
+            0 -> " · clean"
+            1 -> " · 1 error"
+            n -> " · #{n} errors"
+          end
+
         "synced #{time(sync.inserted_at)}" <> suffix
     end
   end
