@@ -166,6 +166,21 @@ defmodule AgentBoardWeb.BoardLive do
     dt |> DateTime.to_time() |> Time.to_string() |> String.slice(0, 5)
   end
 
+  defp review_badge(%{review_state: state})
+       when state in ["approved", "changes_requested", "pending"] do
+    case state do
+      "approved" -> "approved"
+      "changes_requested" -> "changes requested"
+      "pending" -> "review pending"
+    end
+  end
+
+  defp review_badge(_), do: nil
+
+  defp review_badge_class(%{review_state: "approved"}), do: "text-[#7bc47f]"
+  defp review_badge_class(%{review_state: "changes_requested"}), do: "text-[#f0b3b3]"
+  defp review_badge_class(_), do: "text-[#a39f93]"
+
   defp last_sync([]), do: "no sync yet"
 
   defp last_sync(events) do
@@ -310,6 +325,12 @@ defmodule AgentBoardWeb.BoardLive do
                   {item.title}
                 </a>
                 <span :if={is_nil(item.url)} class="text-[13px]">{item.title}</span>
+                <span
+                  :if={review_badge(item)}
+                  class={["ml-2 text-[10px] uppercase", review_badge_class(item)]}
+                >
+                  {review_badge(item)}
+                </span>
                 <span :if={item.number} class="ml-2 text-[11px] text-[#a39f93]">
                   #{item.number}
                 </span>

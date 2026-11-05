@@ -14,7 +14,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   alias AgentBoard.{Board, Repo}
-  alias AgentBoard.Board.Task
+  alias AgentBoard.Board.{PullRequest, Task}
 
   test "the conversation label shrinks on small screens", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
@@ -41,6 +41,26 @@ defmodule AgentBoardWeb.BoardLiveTest do
     view |> element("button", "Open") |> render_click()
 
     assert render(view) =~ "sm:w-14"
+  end
+
+  test "a merged pull shows its review badge", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: 404,
+      title: "Badge PR",
+      state: "merged",
+      merged_at: DateTime.utc_now(),
+      review_state: "changes_requested"
+    })
+    |> Repo.insert!()
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ "Badge PR"
+    assert html =~ "changes requested"
   end
 
   test "the header carries the brand and the tagline", %{conn: conn} do
