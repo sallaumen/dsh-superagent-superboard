@@ -24,8 +24,8 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/agent_board"
 import {BoardPanels} from "./hooks/board_panels"
+import {BoardMenu} from "./hooks/board_menu"
 import {DataAge} from "./hooks/data_age"
-import {SettingsMenu} from "./hooks/settings_menu"
 import {VoiceCommand} from "./hooks/voice_command"
 import {VoicePlayer} from "./hooks/voice_player"
 import {VoicePresence} from "./hooks/voice_presence"
@@ -49,13 +49,13 @@ const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   // Read the mounted DOM on every connection so loaded pages survive a socket reconnect.
   params: () => ({_csrf_token: csrfToken, board_resume: boardResume()}),
-  hooks: {...colocatedHooks, DataAge, BoardPanels, SettingsMenu, VoiceCommand, VoicePlayer, VoicePresence},
+  hooks: {...colocatedHooks, DataAge, BoardMenu, BoardPanels, VoiceCommand, VoicePlayer, VoicePresence},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
       if (from.matches("dialog.board-dialog")) to.toggleAttribute("open", from.open)
-      // Settings should remain open while a broadcast refreshes the board.
-      if (from.matches("#board-settings")) to.toggleAttribute("open", from.open)
+      // Header disclosures remain open while a broadcast refreshes the board.
+      if (from.matches("[data-board-menu]")) to.toggleAttribute("open", from.open)
     },
   },
 })

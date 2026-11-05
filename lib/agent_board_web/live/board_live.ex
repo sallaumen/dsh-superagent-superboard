@@ -1181,31 +1181,10 @@ defmodule AgentBoardWeb.BoardLive do
         >
           <p class="text-sm text-base-content">No repository tracked yet.</p>
           <p class="max-w-md text-[12px] leading-relaxed text-base-content/75">
-            Track one in the header. The board syncs its issues and pull requests, shows
+            Open Settings → Repositories to track one. The board syncs its issues and pull requests, shows
             the agent's active work and recent merges, and lets you create and ask.
           </p>
         </div>
-
-        <nav :if={@repo} id="board-tools" aria-label="Board tools" class="board-tools">
-          <button
-            id="open-create"
-            type="button"
-            phx-click="show_panel"
-            phx-value-panel="create"
-            data-panel-trigger
-            aria-haspopup="dialog"
-            aria-controls="panel-create"
-          ><.icon name="hero-plus" class="size-4 shrink-0" />New task</button>
-          <button
-            id="open-intake"
-            type="button"
-            phx-click="show_panel"
-            phx-value-panel="intake"
-            data-panel-trigger
-            aria-haspopup="dialog"
-            aria-controls="panel-intake"
-          ><.icon name="hero-scissors" class="size-4 shrink-0" />Split a request</button>
-        </nav>
 
         <main :if={@repo} id="board-work" class="board-work">
           <div class="active-lanes grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
