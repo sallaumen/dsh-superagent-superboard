@@ -43,6 +43,18 @@ backend, frontend, library or the mixed release path — is in
 - The server builds the summary (`AgentBoard.Voice`) and pushes it with
   `push_event/3`; the browser speaks it. The server never runs a TTS engine.
 
+## Network paths
+
+- Every GitHub call goes through `AgentBoard.GitHub`. A 4xx/5xx is **not** a
+  body: `body!/1` raises `GitHub HTTP <status>` (or `GitHub rate limited: retry
+  after <n>s` for 403/429), so the caller sees the real cause.
+- Every function that touches the network must survive a raise: `Sync.sync_repo`
+  logs a `sync_error` event and returns `{:error, exception}` so Oban retries;
+  `Board.ask` deletes its optimistic placeholder and returns the error. A raise
+  that reaches the caller is a bug — the test suite has a case for each.
+- Network failures never erase the board's last good state: the overlay is
+  skipped, the previous tasks stay.
+
 ## Boundaries
 
 - The board **reads** the agent's state (the sqlite); it never writes to it.
