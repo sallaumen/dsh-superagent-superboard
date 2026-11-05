@@ -3,8 +3,12 @@ defmodule AgentBoard.GitHub do
 
   @doc "A client bound to the API and the configured token, if any."
   def client do
-    builder = Application.get_env(:agent_board, :github_client, &__MODULE__.build/0)
-    builder.()
+    # get_env/3 only falls back when the key is MISSING; a key set to nil
+    # (a test that deleted it mid-run) would crash on builder.().
+    case Application.get_env(:agent_board, :github_client) do
+      nil -> build()
+      builder -> builder.()
+    end
   end
 
   @doc false
