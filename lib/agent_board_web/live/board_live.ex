@@ -1181,7 +1181,7 @@ defmodule AgentBoardWeb.BoardLive do
         >
           <p class="text-sm text-base-content">No repository tracked yet.</p>
           <p class="max-w-md text-[12px] leading-relaxed text-base-content/75">
-            Track one in the header. The board syncs its issues and pull requests, shows
+            Open Settings → Repositories to track one. The board syncs its issues and pull requests, shows
             the agent's active work and recent merges, and lets you create and ask.
           </p>
         </div>

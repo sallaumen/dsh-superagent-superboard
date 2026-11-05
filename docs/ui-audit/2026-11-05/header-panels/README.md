@@ -20,6 +20,7 @@ All existing `show_panel` event names, `phx-value-panel` payloads, button IDs, a
 | AI calls from Panels, then Escape | `panel-ai` opened with heading focus; menu closed; URL returned to the board; focus returned to Panels. |
 | Split a request, then browser Back | `panel-intake` opened without leaving the page; Back closed it and restored focus to Split a request. |
 | Direct Activity URL, then Close | Returned to the board URL without an extra history entry. |
+| Switch repository with Panels open | Selected `fixture/header-other`, changed the board URL, and closed Panels. |
 | 375px / 1600px / 3440px | No document horizontal overflow; ultrawide board retained its 1880px maximum width. [3440px](header-workspace-after-3440.png) |
 | Light theme | Menu and controls used the theme tokens; `data-theme=light` and computed root background changed. [Light menu](header-workspace-menu-light-1600.png) |
 | Browser console | Zero errors and zero warnings. |
@@ -28,4 +29,4 @@ The test fixture was removed: zero repositories, tasks, pull requests, comments 
 
 ## Gate
 
-To be filled with the final `scripts/ci-local.sh all` result before merge. CI remains blocked by billing; `PIPELINES.md` permits the local pipeline as the merge gate.
+`MIX_TEST_PARTITION=1 scripts/ci-local.sh all` passed on the first integrated base: 322 tests, 0 failures; Credo, Sobelow, asset check/build/deploy and library check green. The final base is revalidated before merge. CI remains blocked by billing; `PIPELINES.md` permits the local pipeline as the merge gate.

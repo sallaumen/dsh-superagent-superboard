@@ -14,8 +14,8 @@ export const BoardPanels = {
       const hasPanel = new URL(location.href).searchParams.has('panel')
       if (this.pendingEntry && hasPanel) {
         history.replaceState({...history.state, boardPanelFrom: this.el.dataset.baseUrl}, '', location.href)
-        this.el.querySelectorAll('[data-board-menu][open]').forEach(menu => { menu.open = false })
       }
+      this.el.querySelectorAll('[data-board-menu][open]').forEach(menu => { menu.open = false })
       if (!hasPanel && this.openerId) this.scheduleFocusRestore()
       this.pendingEntry = false
     }
