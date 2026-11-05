@@ -7,7 +7,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.{AI, Announcer, Board, ElevenLabs, GitHub, Intake, Repo, Settings, Voice}
   alias AgentBoard.Board.Task
   alias AgentBoard.System.{Updater, Version}
-  alias AgentBoardWeb.{BoardComponents, BoardNavigation, VoiceCommands}
+  alias AgentBoardWeb.{BoardComponents, BoardNavigation, VoiceCommands, VoiceMutations}
   alias AgentBoardWeb.BoardComponents.VoicePresence
 
   @voice_key "elevenlabs_voice_id"
@@ -40,6 +40,7 @@ defmodule AgentBoardWeb.BoardLive do
         voice: current_voice(),
         voice_draft: "",
         voice_result: nil,
+        voice_action: nil,
         spoken_text: nil,
         spoken_at: 0
       )
@@ -101,7 +102,8 @@ defmodule AgentBoardWeb.BoardLive do
             comments: [],
             intake: nil,
             voice_draft: "",
-            voice_result: nil
+            voice_result: nil,
+            voice_action: nil
           ),
         else: socket
 
@@ -213,7 +215,12 @@ defmodule AgentBoardWeb.BoardLive do
         slug -> Board.repository_by_slug(slug) || socket.assigns.repo
       end
 
-    {:noreply, socket |> load(repo) |> BoardNavigation.apply_params(params)}
+    socket = socket |> load(repo) |> BoardNavigation.apply_params(params)
+
+    socket =
+      if socket.assigns.panel == "voice", do: socket, else: assign(socket, :voice_action, nil)
+
+    {:noreply, socket}
   end
 
   @impl true
@@ -363,27 +370,40 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("voice_command", %{"text" => text}, socket) when is_binary(text) do
     draft = String.trim(text)
-    %{result: result, path: path} = VoiceCommands.resolve(draft, socket.assigns)
-    socket = assign(socket, voice_draft: draft, voice_result: result)
+    socket = assign(socket, voice_draft: draft, voice_action: nil)
 
-    case path do
-      nil ->
-        {:noreply, socket}
+    case VoiceMutations.prepare(draft, socket.assigns.repo) do
+      {:ok, intent} ->
+        {:noreply, assign(socket, voice_action: intent, voice_result: nil)}
 
-      path ->
-        {:noreply, socket |> put_flash(:info, result.text) |> push_patch(to: path, replace: true)}
+      {:error, reason} ->
+        {:noreply, assign(socket, :voice_result, voice_action_result(:error, reason))}
+
+      :not_mutation ->
+        %{result: result, path: path} = VoiceCommands.resolve(draft, socket.assigns)
+        socket = assign(socket, :voice_result, result)
+
+        case path do
+          nil ->
+            {:noreply, socket}
+
+          path ->
+            {:noreply,
+             socket |> put_flash(:info, result.text) |> push_patch(to: path, replace: true)}
+        end
     end
   end
 
   @impl true
-  def handle_event("voice_ask", %{"question" => question}, socket)
-      when is_binary(question) and byte_size(question) > 0 do
-    voice_ask(socket, %{question: String.trim(question)})
-  end
-
   def handle_event("voice_ask", _params, socket) do
-    {:noreply,
-     assign(socket, voice_result: %{kind: :error, text: "The question is empty.", as_of: nil})}
+    case current_voice_ask(socket) do
+      {:ok, task, question} ->
+        socket = assign(socket, :voice_result, voice_action_result(:loading, "Sending question…"))
+        voice_ask(socket, task, question)
+
+      {:error, reason} ->
+        {:noreply, assign(socket, :voice_result, voice_action_result(:error, reason))}
+    end
   end
 
   @impl true
@@ -394,12 +414,47 @@ defmodule AgentBoardWeb.BoardLive do
       as_of: nil
     }
 
-    {:noreply, assign(socket, voice_result: result)}
+    {:noreply, assign(socket, voice_result: result, voice_action: nil)}
+  end
+
+  @impl true
+  def handle_event("voice_cancel_action", _params, socket) do
+    {:noreply, assign(socket, voice_action: nil, voice_result: nil)}
+  end
+
+  @impl true
+  def handle_event("voice_confirm_action", _params, socket) do
+    case {socket.assigns.panel, socket.assigns.voice_action} do
+      {"voice", %{action: action} = intent} ->
+        socket = assign(socket, :voice_action, nil)
+
+        case VoiceMutations.current_task(intent, socket.assigns.repo) do
+          {:ok, task} ->
+            confirm_voice_action(socket, task, action)
+
+          {:error, :changed} ->
+            {:noreply,
+             assign(
+               socket,
+               :voice_result,
+               voice_action_result(
+                 :error,
+                 "Task or repository changed. Review the board and try again."
+               )
+             )}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   @impl true
   def handle_event("dismiss_panel", _params, socket) do
-    {:noreply, push_patch(socket, to: BoardNavigation.path(socket.assigns.repo), replace: true)}
+    {:noreply,
+     socket
+     |> assign(:voice_action, nil)
+     |> push_patch(to: BoardNavigation.path(socket.assigns.repo), replace: true)}
   end
 
   @impl true
@@ -512,14 +567,19 @@ defmodule AgentBoardWeb.BoardLive do
     else
       {:noreply,
        socket
-       |> assign(voice_draft: text, voice_result: nil)
+       |> assign(voice_draft: text, voice_result: nil, voice_action: nil)
        |> BoardNavigation.open_panel("voice")}
     end
   end
 
   @impl true
   def handle_event("voice_draft_changed", %{"text" => text}, socket) when is_binary(text) do
-    {:noreply, assign(socket, voice_draft: String.slice(text, 0, 2000), voice_result: nil)}
+    {:noreply,
+     assign(socket,
+       voice_draft: String.slice(text, 0, 2000),
+       voice_result: nil,
+       voice_action: nil
+     )}
   end
 
   @impl true
@@ -637,46 +697,62 @@ defmodule AgentBoardWeb.BoardLive do
      assign(socket, voice: %{socket.assigns.voice | speak_events: ElevenLabs.speak_events?()})}
   end
 
+  defp current_voice_ask(socket) do
+    case {socket.assigns.panel, socket.assigns.voice_result, socket.assigns.repo,
+          socket.assigns.conversation} do
+      {"voice",
+       %{
+         kind: :ask,
+         question: question,
+         task_id: task_id,
+         task_updated_at: updated_at,
+         repository_id: repository_id
+       }, %{id: repository_id}, %Task{id: task_id}}
+      when is_binary(question) and question != "" ->
+        task = Repo.get(Task, task_id)
+
+        if valid_voice_ask_task?(task, repository_id, updated_at) &&
+             VoiceCommands.parse(socket.assigns.voice_draft) == {:ask, question},
+           do: {:ok, task, question},
+           else: {:error, "Task or question changed. Review the draft again before sending."}
+
+      _ ->
+        {:error, "Review the question and task before sending."}
+    end
+  end
+
+  defp valid_voice_ask_task?(%Task{} = task, repository_id, updated_at) do
+    task.repository_id == repository_id && task.updated_at == updated_at &&
+      task.kind == "issue" && task.state in ~w(queued running ready blocked) &&
+      !task.stopped && !task.archived
+  end
+
+  defp valid_voice_ask_task?(_task, _repository_id, _updated_at), do: false
+
   # The ask is a write: the first submit only classifies the draft, the
   # confirmed "Ask the agent" posts the question to the open task and the
   # answer comes back spoken.
-  defp voice_ask(socket, %{question: question}) do
-    case socket.assigns.conversation do
-      nil ->
+  defp voice_ask(socket, task, question) do
+    case Board.ask(task, question, GitHub.client()) do
+      {:ok, _} ->
+        ask_in_background(task, question)
+
         {:noreply,
-         assign(socket,
-           voice_result: %{kind: :error, text: "Open a task first, then ask.", as_of: nil}
+         socket
+         |> assign(
+           voice_result: voice_action_result(:success, "Question sent: #{question}"),
+           conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
+           comments: Board.comments(task)
+         )
+         |> put_flash(:info, "Question sent")}
+
+      {:error, _} ->
+        {:noreply,
+         assign(
+           socket,
+           :voice_result,
+           voice_action_result(:error, "The question did not reach GitHub.")
          )}
-
-      task ->
-        case Board.ask(task, question, GitHub.client()) do
-          {:ok, _} ->
-            ask_in_background(task, question)
-
-            {:noreply,
-             socket
-             |> assign(
-               voice_result: %{
-                 kind: :ask,
-                 text: "Question sent: #{question}",
-                 question: question,
-                 as_of: nil
-               },
-               conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
-               comments: Board.comments(task)
-             )
-             |> put_flash(:info, "Question sent")}
-
-          {:error, _} ->
-            {:noreply,
-             assign(socket,
-               voice_result: %{
-                 kind: :error,
-                 text: "The question did not reach GitHub.",
-                 as_of: nil
-               }
-             )}
-        end
     end
   end
 
@@ -722,6 +798,49 @@ defmodule AgentBoardWeb.BoardLive do
 
     Enum.reduce(texts, socket, &speak(&2, &1))
   end
+
+  defp confirm_voice_action(socket, task, action) do
+    result =
+      case action do
+        :stop -> Board.stop_task(task, GitHub.client())
+        :archive -> Board.archive_task(task)
+      end
+
+    label = if action == :stop, do: "Stopped", else: "Archived"
+    outcome = if match?({:ok, _}, result), do: "completed", else: "failed"
+
+    Board.log_event(task.repository_id, "voice_action", "##{task.number}", %{
+      "action" => Atom.to_string(action),
+      "result" => outcome
+    })
+
+    Board.broadcast(task.repository_id)
+
+    socket = load(socket, socket.assigns.repo)
+
+    case result do
+      {:ok, _} ->
+        {:noreply,
+         assign(
+           socket,
+           :voice_result,
+           voice_action_result(:success, "#{label} task ##{task.number}.")
+         )}
+
+      _ ->
+        {:noreply,
+         assign(
+           socket,
+           :voice_result,
+           voice_action_result(
+             :error,
+             "Could not #{Atom.to_string(action)} task ##{task.number}. Check Activity and try again."
+           )
+         )}
+    end
+  end
+
+  defp voice_action_result(kind, text), do: %{kind: kind, text: text, as_of: nil}
 
   # Speaks through the agent's ElevenLabs voice when the key is configured
   # and the automatic speech is on; a repeated utterance within a short
@@ -925,7 +1044,11 @@ defmodule AgentBoardWeb.BoardLive do
           active={@panel == "voice"}
           flash={@flash}
         >
-          <BoardComponents.VoiceCommand.draft draft={@voice_draft} result={@voice_result} />
+          <BoardComponents.VoiceCommand.draft
+            draft={@voice_draft}
+            result={@voice_result}
+            action={@voice_action}
+          />
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell

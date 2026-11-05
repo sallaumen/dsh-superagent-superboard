@@ -3,9 +3,11 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommand do
   use Phoenix.Component
 
   alias AgentBoardWeb.BoardComponents.DataAge
+  alias AgentBoardWeb.BoardComponents.VoiceActionConfirmation
 
   attr :draft, :string, required: true
   attr :result, :map, default: nil
+  attr :action, :map, default: nil
 
   def draft(assigns) do
     ~H"""
@@ -23,9 +25,9 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommand do
           required
           placeholder="Type a command or press Space twice on the board to record one"
         >{@draft}</textarea>
-        <div class="voice-command-actions">
+        <div :if={is_nil(@action)} class="voice-command-actions">
           <button type="submit" class="voice-command-run" phx-disable-with="Checking…">
-            Run read-only command
+            Check command
           </button>
           <button
             :if={@result && @result.kind == :ask}
@@ -39,6 +41,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommand do
           </button>
         </div>
       </form>
+      <VoiceActionConfirmation.review :if={@action} intent={@action} />
       <div :if={@result} class="voice-command-result" data-kind={@result.kind} role="status">
         <p>{@result.text}</p>
         <DataAge.stamp
