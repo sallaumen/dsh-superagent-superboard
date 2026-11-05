@@ -49,6 +49,31 @@ defmodule AgentBoard.SyncRepoTest do
              Repo.one(from t in Task, where: t.number == 7)
   end
 
+  test "a broken review does not kill the sync", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/pulls" ->
+          Req.Test.json(conn, [
+            %{
+              "number" => 9,
+              "title" => "A PR",
+              "state" => "open",
+              "html_url" => "https://github.com/x/y/pull/9",
+              "user" => %{"login" => "sallaumen"},
+              "created_at" => "2026-11-04T00:00:00Z",
+              "head" => %{"sha" => "abc"}
+            }
+          ])
+
+        "/repos/sallaumen/arena-rogue/pulls/9/reviews" -> Plug.Conn.send_resp(conn, 500, "boom")
+        _ -> Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert Enum.any?(Board.events(repo), &(&1.kind == "pull_error"))
+  end
+
   test "a broken conversation does not kill the sync", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
