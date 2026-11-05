@@ -44,7 +44,12 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp load(socket, repo) do
-    if connected?(socket), do: Board.subscribe(repo.id)
+    # load/2 runs on mount and again on handle_params: subscribing twice would
+    # deliver every broadcast twice (and keep listening to the old repo).
+    if connected?(socket) and socket.assigns.repo != repo do
+      if socket.assigns.repo, do: Board.unsubscribe(socket.assigns.repo.id)
+      Board.subscribe(repo.id)
+    end
 
     case Board.board("#{repo.owner}/#{repo.name}") do
       {:ok, board} ->

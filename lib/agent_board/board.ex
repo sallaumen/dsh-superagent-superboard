@@ -12,6 +12,10 @@ defmodule AgentBoard.Board do
   def list_repositories, do: Repo.all(from r in Repository, order_by: r.id)
 
   @doc "Subscribe to a repository's live updates."
+  def unsubscribe(repository_id) do
+    Phoenix.PubSub.unsubscribe(AgentBoard.PubSub, "board:#{repository_id}")
+  end
+
   def subscribe(repository_id) do
     Phoenix.PubSub.subscribe(AgentBoard.PubSub, "board:#{repository_id}")
   end
