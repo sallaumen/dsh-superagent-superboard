@@ -160,3 +160,34 @@ review, integrations and operations) live in
 `biblioteca-prompts-desenvolvimento` package. The catalog is the entry point;
 the source-to-destination map and decisions are in
 [`capabilities/INCORPORACAO.md`](capabilities/INCORPORACAO.md).
+
+
+## Shared agent practices (Elixir Agent Kit)
+
+The board consumes [Elixir Agent Kit v0.1.1](https://github.com/sallaumen/elixir-agent-kit/releases/tag/v0.1.1)
+through a public, pinned Mix Git dependency. No download token is needed. The
+package is available only in development/tests and does not start with the app.
+
+After `mix deps.get`, run `mix agent_kit.check`. The committed
+`.elixir-agent-kit/` snapshot and Codex/Claude entry points make the same edition
+available in fresh checkouts before dependency setup. `mix gate` and CI check
+that the snapshot still matches the package and configuration.
+
+Select workflows through `.elixir-agent-kit/START.md`; the local Portuguese
+`capabilities/` collection and project-specific contracts remain available for
+local context. The public package is an independent English community edition,
+not a live mirror of the local collection. Project rules continue to govern work.
+
+Use `mix agent_kit.sync --dry-run` followed by `mix agent_kit.sync` after an explicit
+package update. Never edit generated files or delete the ownership manifest to
+bypass a conflict. Keep additions in local documentation or outside managed
+instruction sections. Run `mix agent_kit.uninstall` before removing the dependency.
+
+For the separate DeepSeek executor, its worktree must include this snapshot and
+its harness must read `AGENTS.md` or `.elixir-agent-kit/START.md`. Installing files
+in the board does not certify live worker discovery. No worker profile is changed
+by this integration. Follow the package's
+[client evaluation guide](https://github.com/sallaumen/elixir-agent-kit/blob/v0.1.1/docs/compatibility.md).
+
+To adopt this in another project, copy the
+[AI installation prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v0.1.1/docs/INSTALL_WITH_AI.md).

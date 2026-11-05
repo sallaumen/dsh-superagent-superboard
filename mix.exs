@@ -10,6 +10,7 @@ defmodule AgentBoard.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      elixir_agent_kit: [agents: [:codex, :claude, :generic], skills: :all],
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader]
     ]
@@ -40,6 +41,11 @@ defmodule AgentBoard.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:elixir_agent_kit,
+       git: "https://github.com/sallaumen/elixir-agent-kit.git",
+       tag: "v0.1.1",
+       only: [:dev, :test],
+       runtime: false},
       {:phoenix, "~> 1.8.8"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
@@ -99,6 +105,7 @@ defmodule AgentBoard.MixProject do
       ],
       gate: [
         "deps.unlock --check-unused",
+        "agent_kit.check",
         "compile --warnings-as-errors",
         "format --check-formatted",
         "credo --strict",

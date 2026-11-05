@@ -38,9 +38,23 @@ watches GitHub; this board only mirrors it. It is documented in
 
 ## Capabilities library
 
-- Start at [capabilities/CATALOGO.md](capabilities/CATALOGO.md); load only the
+- For reusable workflows, use the versioned Elixir Agent Kit entry point below.
+  Local project contracts remain authoritative. The Portuguese `capabilities/`
+  collection is retained for local context, maintenance and provenance; do not
+  automatically load both editions of a workflow.
+- When working on that local collection, start at
+  [capabilities/CATALOGO.md](capabilities/CATALOGO.md); load only the
   selected skill and its common contract.
 - Follow [capabilities/README.md](capabilities/README.md) when maintaining the
   library and [capabilities/tools/README.md](capabilities/tools/README.md) for
   validation. Context selection is governed by
   [capabilities/contextos/README.md](capabilities/contextos/README.md).
+
+
+<!-- elixir-agent-kit:start -->
+## Elixir Agent Kit
+
+For development tasks, consult [.elixir-agent-kit/START.md](.elixir-agent-kit/START.md).
+Select the relevant workflow and read its shared contract. Preserve this project's rules.
+If the files are missing, report the missing setup; do not claim the practices were applied.
+<!-- elixir-agent-kit:end -->

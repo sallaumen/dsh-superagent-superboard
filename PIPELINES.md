@@ -6,7 +6,7 @@ Este documento é a resposta a "qual script eu rodo agora?". Ele define os pipel
 
 | Pipeline | O que valida | Script canônico | Alvo `make` | Job da CI |
 |---|---|---|---|---|
-| Backend | Dependências órfãs, warnings, formatação, credo, testes e Sobelow | `mix gate` + `mix sobelow --exit` | `make backend` | `gates` + `backend` |
+| Backend | Dependências órfãs, práticas dos agentes, warnings, formatação, credo, testes e Sobelow | `mix gate` + `mix sobelow --exit` | `make backend` | `gates` + `backend` |
 | Frontend | Fontes de assets, setup, build e deploy | `scripts/check_assets.sh` + tarefas de assets | `make frontend` | `frontend · assets` |
 | Biblioteca | Integridade de `capabilities/` e testes do validador | [Ferramentas da biblioteca](capabilities/tools/README.md) | `make library` | `biblioteca de capacidades` |
 | Misto (release) | O caminho combinado de um deploy | sequência de release (abaixo) | `make release` | `release · caminho misto` |
@@ -34,8 +34,9 @@ dos scripts: alterações nesses contratos exigem conferir os consumidores.
 | `mix test` | Testar comportamentos; aceita arquivo e filtros | `:test` automático | cria/migra banco de teste antes da suíte | testes verdes; a CI usa partições |
 | `mix lint` | Iteração rápida, sem banco | qualquer | nenhum (somente leitura) | format e credo verdes |
 | `mix precommit` | Antes de commitar; aplica correções | `:test` automático | remove dependências órfãs do lockfile, formata e roda testes | formatação aplicada + gates verdes |
-| `mix gate` | Checks de backend; a CI distribui seus passos entre jobs | executar com `MIX_ENV=test` | compila e cria/migra o banco de teste; não altera fontes | dependências, warnings, formato, credo e testes verdes |
+| `mix gate` | Checks de backend; a CI distribui seus passos entre jobs | executar com `MIX_ENV=test` | compila e cria/migra o banco de teste; não altera fontes | dependências, snapshot dos agentes, warnings, formato, credo e testes verdes |
 | `mix sobelow --exit` | Scan de segurança; parte de `make backend` e do pré-voo | `MIX_ENV=test` | análise estática, sem corrigir fontes | scan concluído sem achados que reprovem o comando |
+| `mix agent_kit.check` | Confere a instalação versionada das práticas para agentes (parte de `mix gate` e do job gates) | dev ou test | somente leitura; não inicia a aplicação nem chama modelos | snapshot e pontos de entrada consistentes com a dependência e configuração |
 | `mix deps.unlock --check-unused` | Revisar lockfile (parte do `mix gate` e do job gates da CI) | `:test` | nenhum | nenhuma dependência órfã |
 | `mix assets.setup` | Primeira execução / CI frontend | `MIX_ENV=dev` | baixa binários tailwind/esbuild | ferramentas instaladas |
 | `mix assets.build` | Ao alterar CSS/JS | `MIX_ENV=dev` | escreve `priv/static/assets/` | bundle gerado sem erro |
