@@ -143,12 +143,56 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
     assert text =~ "Your draft is still here"
   end
 
-  test "the LiveView command event opens a read-only panel", %{conn: conn} do
+  test "the reviewed command form opens a read-only panel", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "read-only")
     {:ok, view, _html} = live(conn, "/?repo=fixture/read-only")
 
-    render_hook(view, "voice_command", %{"text" => "abrir atividade"})
+    render_hook(view, "voice_transcript", %{"text" => "abrir atividade"})
+    assert render(view) =~ ~s(data-panel="voice")
+
+    view
+    |> form("#voice-command-form", %{"text" => "abrir atividade"})
+    |> render_submit()
 
     assert render(view) =~ ~s(data-panel="activity")
+  end
+
+  test "unknown command remains editable and does not mutate a saved task", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "safe-command")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 12,
+        title: "Keep this task",
+        state: "queued"
+      })
+      |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, "/?repo=fixture/safe-command")
+    render_hook(view, "voice_transcript", %{"text" => "archive task 12"})
+
+    view
+    |> form("#voice-command-form", %{"text" => "archive task 12"})
+    |> render_submit()
+
+    html = render(view)
+    assert html =~ ~s(data-panel="voice")
+    assert html =~ "archive task 12"
+    assert html =~ "Command not recognized"
+    assert Repo.get!(Task, task.id).state == "queued"
+  end
+
+  test "invalid command payload reports an error without crashing the LiveView", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("fixture", "invalid-command")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/invalid-command")
+    render_hook(view, "voice_transcript", %{"text" => "status"})
+
+    render_hook(view, "voice_command", %{"text" => nil})
+
+    assert render(view) =~ "Command text is missing"
+    assert render(view) =~ "status"
   end
 end

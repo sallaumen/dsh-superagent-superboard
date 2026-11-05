@@ -361,7 +361,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("voice_command", %{"text" => text}, socket) do
+  def handle_event("voice_command", %{"text" => text}, socket) when is_binary(text) do
     draft = String.trim(text)
     %{result: result, path: path} = VoiceCommands.resolve(draft, socket.assigns)
     socket = assign(socket, voice_draft: draft, voice_result: result)
@@ -373,6 +373,17 @@ defmodule AgentBoardWeb.BoardLive do
       path ->
         {:noreply, socket |> put_flash(:info, result.text) |> push_patch(to: path, replace: true)}
     end
+  end
+
+  @impl true
+  def handle_event("voice_command", _params, socket) do
+    result = %{
+      kind: :error,
+      text: "Command text is missing. Review the draft and try again.",
+      as_of: nil
+    }
+
+    {:noreply, assign(socket, voice_result: result)}
   end
 
   @impl true
