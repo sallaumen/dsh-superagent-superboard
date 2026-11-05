@@ -67,5 +67,5 @@ defmodule AgentBoard.AI.Engines.Rehearsal do
   end
 
   @impl true
-  def status, do: :logged_in
+  def status, do: :rehearsal
 end

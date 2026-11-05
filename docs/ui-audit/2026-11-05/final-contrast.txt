@@ -1,0 +1,16 @@
+{
+  "light": {
+    "primary": 5.38,
+    "success": 5.99,
+    "error": 6.43,
+    "warning": 7.38,
+    "info": 7.3
+  },
+  "dark": {
+    "primary": 5.36,
+    "success": 7.11,
+    "error": 6.49,
+    "warning": 6.19,
+    "info": 6.69
+  }
+}

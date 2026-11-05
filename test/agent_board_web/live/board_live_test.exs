@@ -553,6 +553,46 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert text =~ "calm"
   end
 
+  test "switching repositories closes the previous conversation", %{conn: conn} do
+    {:ok, first} = Board.add_repository("fixture", "first")
+    {:ok, _} = Board.add_repository("fixture", "second")
+
+    %Task{}
+    |> Task.changeset(%{repository_id: first.id, title: "Old context", number: 88})
+    |> Repo.insert!()
+
+    {:ok, view, _} = live(conn, ~p"/?repo=fixture/first")
+    view |> element("button", "Open") |> render_click()
+    assert has_element?(view, "#conversation")
+
+    view |> element("#repo-select") |> render_change(%{"repo" => "fixture/second"})
+
+    refute has_element?(view, "#conversation")
+    refute has_element?(view, "#ask-agent")
+  end
+
+  test "broadcast refreshes the open conversation", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "conversation")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{repository_id: repo.id, title: "Fresh comments", number: 89})
+      |> Repo.insert!()
+
+    {:ok, view, _} = live(conn, ~p"/?repo=fixture/conversation")
+    view |> element("button", "Open") |> render_click()
+
+    Board.upsert_comment(
+      task,
+      %{"id" => 42, "user" => %{"login" => "agent"}, "body" => "New evidence"},
+      "agent"
+    )
+
+    send(view.pid, :board_updated)
+
+    assert render(view) =~ "New evidence"
+  end
+
   test "opening a task shows the conversation panel", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
