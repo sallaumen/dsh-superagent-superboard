@@ -310,9 +310,6 @@
 .create-task-form :where(input, textarea) { width: 100%; border: 1px solid var(--color-base-300); border-radius: 0.625rem; background: var(--color-base-200); padding: 0.75rem; font-size: 0.875rem; }
 .create-task-title-row { display: flex; align-items: stretch; gap: 0.5rem; }
 .create-task-title-row input { flex: 1; min-width: 0; }
-.create-task-voice { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--color-secondary); border-radius: 0.625rem; color: var(--color-secondary); font-size: 0.75rem; font-weight: 600; }
-.create-task-voice:hover, .create-task-voice[data-recording="true"] { background: color-mix(in oklab, var(--color-secondary) 12%, var(--color-base-100)); }
-.create-task-voice:disabled { opacity: 0.6; cursor: progress; }
 .create-task-form textarea { min-height: 8rem; resize: vertical; }
 .create-task-submit { justify-self: end; margin-top: 0.75rem; min-height: 2.75rem; border-radius: 0.625rem; background: var(--color-primary); padding: 0.5rem 1rem; color: var(--color-primary-content); font-size: 0.75rem; font-weight: 700; }
 @media (max-width: 63.999rem) { .active-lanes { height: auto; } .board-column { height: 16rem; border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); } }
@@ -339,6 +336,20 @@
 .voice-save:hover { background: color-mix(in oklab, var(--color-base-content) 85%, transparent); }
 .voice-reset { border-color: transparent; background: transparent; color: color-mix(in oklab, var(--color-base-content) 50%, transparent); text-decoration: underline; text-underline-offset: 0.25rem; }
 .voice-reset:hover { color: var(--color-base-content); }
+
+/* A spoken command becomes text for review before any board action. */
+.voice-command-draft { display: grid; gap: 1.25rem; padding: 1.5rem; }
+.voice-command-intro { max-width: 46ch; color: color-mix(in oklab, var(--color-base-content) 78%, transparent); font-size: 0.875rem; line-height: 1.55; }
+.voice-command-draft form { display: grid; gap: 0.625rem; }
+.voice-command-draft label { color: var(--color-secondary); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; }
+.voice-command-draft textarea { width: 100%; min-height: 8rem; resize: vertical; border: 1px solid var(--color-base-300); border-radius: 0.75rem; background: var(--color-base-200); padding: 0.875rem 1rem; color: var(--color-base-content); font: 500 0.875rem/1.55 ui-monospace, "SFMono-Regular", Menlo, monospace; }
+.voice-command-draft textarea:focus-visible { outline: 2px solid var(--color-secondary); outline-offset: 3px; }
+.voice-command-result { display: grid; gap: 0.5rem; border-left: 3px solid var(--color-info); border-radius: 0.25rem 0.75rem 0.75rem 0.25rem; background: var(--color-base-200); padding: 0.875rem 1rem; font-size: 0.8125rem; line-height: 1.5; }
+.voice-command-result[data-kind="error"] { border-left-color: var(--color-error); }
+.voice-command-result[data-kind="success"] { border-left-color: var(--color-success); }
+.voice-command-result a { justify-self: start; color: var(--color-info); text-decoration: underline; text-underline-offset: 0.2rem; }
+.voice-command-result a:focus-visible { outline: 2px solid var(--color-info); outline-offset: 3px; }
+.voice-command-hint { color: color-mix(in oklab, var(--color-base-content) 65%, transparent); font-size: 0.75rem; }
 
 
 
@@ -429,7 +440,7 @@
   .voice-presence-flow { height: 5rem; }
   .voice-presence-copy h2 { font-size: 1.125rem; }
   .create-task-title-row { flex-wrap: wrap; }
-  .create-task-voice { width: 100%; }
+  .voice-command-draft { padding: 1rem; }
 }
 
 /* Merged history: loaded counts are samples, while titles carry the scanning task. */

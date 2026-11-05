@@ -8,11 +8,12 @@ export const BoardPanels = {
       this.openerId = trigger.id
       this.pendingEntry = true
     }
+    this.onPanelIntent = () => { this.pendingEntry = true }
     this.onNavigate = () => {
       if (this.pendingEntry && new URL(location.href).searchParams.has('panel')) {
         history.replaceState({...history.state, boardPanelFrom: this.el.dataset.baseUrl}, '', location.href)
-        this.pendingEntry = false
       }
+      this.pendingEntry = false
     }
     this.onCancel = event => {
       if (!event.target.matches('.board-dialog')) return
@@ -20,6 +21,7 @@ export const BoardPanels = {
       this.pushEvent('close', {})
     }
     this.el.addEventListener('click', this.onTrigger, true)
+    window.addEventListener('board:panel-intent', this.onPanelIntent)
     this.el.addEventListener('cancel', this.onCancel, true)
     window.addEventListener('phx:navigate', this.onNavigate)
     this.handleEvent('panel_close', () => {
@@ -56,6 +58,7 @@ export const BoardPanels = {
   destroyed() {
     cancelAnimationFrame(this.restoreFrame)
     this.el.removeEventListener('click', this.onTrigger, true)
+    window.removeEventListener('board:panel-intent', this.onPanelIntent)
     this.el.removeEventListener('cancel', this.onCancel, true)
     window.removeEventListener('phx:navigate', this.onNavigate)
     document.body.classList.remove('board-panel-open')

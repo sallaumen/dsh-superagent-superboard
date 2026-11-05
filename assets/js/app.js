@@ -26,10 +26,10 @@ import {hooks as colocatedHooks} from "phoenix-colocated/agent_board"
 import {BoardPanels} from "./hooks/board_panels"
 import {DataAge} from "./hooks/data_age"
 import {SettingsMenu} from "./hooks/settings_menu"
+import {VoiceCommand} from "./hooks/voice_command"
 import {VoicePlayer} from "./hooks/voice_player"
 import {VoicePresence} from "./hooks/voice_presence"
-import {VoiceRecorder} from "./hooks/voice_recorder"
-import {interruptVoiceOutput, voiceInputActive, voiceState} from "./voice_state"
+import {voiceInputActive, voiceState} from "./voice_state"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -49,7 +49,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   // Read the mounted DOM on every connection so loaded pages survive a socket reconnect.
   params: () => ({_csrf_token: csrfToken, board_resume: boardResume()}),
-  hooks: {...colocatedHooks, DataAge, BoardPanels, SettingsMenu, VoicePlayer, VoicePresence, VoiceRecorder},
+  hooks: {...colocatedHooks, DataAge, BoardPanels, SettingsMenu, VoiceCommand, VoicePlayer, VoicePresence},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
@@ -147,81 +147,10 @@ window.addEventListener("phx:speak", (event) => {
   }
 })
 
-// Voice in: dictate a task title into the form.
-let browserRecognition = null
-window.addEventListener("phx:dictate", () => {
-  interruptVoiceOutput()
-  const previousRecognition = browserRecognition
-  browserRecognition = null
-  previousRecognition?.abort()
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition
-  if (!Rec) {
-    voiceState("error", "Dictation is unavailable", "Type the task title in New task.", "browser-dictation")
-    return
-  }
-  const rec = new Rec()
-  browserRecognition = rec
-  rec.hasResult = false
-  rec.hadError = false
-  rec.lang = navigator.language || "en-US"
-  rec.interimResults = false
-  rec.onstart = () => {
-    if (browserRecognition === rec) voiceState("listening", "Listening for a task title", "Speak now. Dictation will fill an editable field.", "browser-dictation")
-  }
-  rec.onresult = (event) => {
-    if (browserRecognition !== rec) return
-    rec.hasResult = true
-    const input = document.querySelector("#task-title")
-    if (input) {
-      input.value = event.results[0][0].transcript
-      input.dispatchEvent(new Event("input", { bubbles: true }))
-      input.focus()
-      voiceState("complete", "Title transcribed", "Review it before creating the task.", "browser-dictation")
-    } else {
-      voiceState("error", "New task is closed", "Open New task to use the dictated title.", "browser-dictation")
-    }
-  }
-  rec.onerror = () => {
-    if (browserRecognition !== rec) return
-    rec.hadError = true
-    voiceState("error", "Could not hear the title", "Check microphone permission or type it instead.", "browser-dictation")
-  }
-  rec.onend = () => {
-    if (browserRecognition !== rec) return
-    browserRecognition = null
-    if (!rec.hasResult && !rec.hadError) {
-      voiceState("complete", "Dictation ended", "No title was captured. Try again or type it.", "browser-dictation")
-    }
-  }
-  voiceState("permission", "Waiting for microphone", "Allow access to dictate a task title.", "browser-dictation")
-  try { rec.start() } catch (_) {
-    browserRecognition = null
-    voiceState("error", "Could not start dictation", "Type the title in New task.", "browser-dictation")
-  }
-})
-
 window.addEventListener("board:voice-control", ({detail}) => {
   if (browserSpeech && detail.source === "browser-speech") {
     browserSpeech = null
     window.speechSynthesis.cancel()
     voiceState("complete", "Speech stopped", "Playback was stopped.", "browser-speech")
   }
-  if (browserRecognition && detail.source === "browser-dictation") {
-    if (detail.phase === "permission") {
-      browserRecognition.abort()
-      browserRecognition = null
-      voiceState("complete", "Dictation cancelled", "Nothing was sent.", "browser-dictation")
-    } else {
-      voiceState("transcribing", "Finishing dictation", "The title will remain editable.", "browser-dictation")
-      browserRecognition.stop()
-    }
-  }
 })
-
-document.addEventListener("close", event => {
-  if (!event.target.matches?.(".board-dialog") || !browserRecognition) return
-  const rec = browserRecognition
-  browserRecognition = null
-  rec.abort()
-  voiceState("idle", "", "", "browser-dictation")
-}, true)
