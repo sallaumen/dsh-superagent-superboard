@@ -184,6 +184,7 @@ defmodule AgentBoard.Sync do
            :title,
            :state,
            :url,
+           :opened_at,
            :review_state,
            :checks_state,
            :checks_failed,
@@ -192,6 +193,17 @@ defmodule AgentBoard.Sync do
          ]},
       conflict_target: [:repository_id, :number]
     )
+    |> case do
+      {:ok, pull_request} ->
+        {:ok, pull_request}
+
+      {:error, changeset} ->
+        Board.log_event(repository.id, "pull_error", "##{pull["number"]}", %{
+          "reason" => inspect(changeset.errors)
+        })
+
+        {:error, changeset}
+    end
   end
 
   defp rollup_for(client, repository, pull, "open") do
