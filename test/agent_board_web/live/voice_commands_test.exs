@@ -143,6 +143,80 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
     assert text =~ "Your draft is still here"
   end
 
+  test "a question draft becomes an ask intent only without a read-only match" do
+    assert VoiceCommands.parse("As tarefas estão travadas?") ==
+             {:ask, "As tarefas estão travadas?"}
+
+    assert VoiceCommands.parse("perguntar o que esta bloqueado") ==
+             {:ask, "o que esta bloqueado"}
+
+    assert VoiceCommands.parse("ask why the sync failed") == {:ask, "why the sync failed"}
+    assert VoiceCommands.parse("**") == :unknown
+    # A known read-only command keeps precedence over the question shape.
+    assert VoiceCommands.parse("O que está bloqueado?") == :blocked
+  end
+
+  test "asking without an open task explains the requirement" do
+    assert %{result: %{kind: :error, text: text}, path: nil} =
+             VoiceCommands.resolve("perguntar qualquer coisa", %{conversation: nil})
+
+    assert text =~ "Open a task first"
+  end
+
+  test "asking with an open task proposes the confirmed ask" do
+    task = %Task{number: 12, title: "Keep this task"}
+
+    assert %{result: %{kind: :ask, question: "qual o estado?", task_number: 12}, path: nil} =
+             VoiceCommands.resolve("qual o estado?", %{conversation: task})
+  end
+
+  test "a confirmed voice ask posts the question to the open task", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "ask-voice")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 12,
+        title: "Ask this task",
+        state: "queued"
+      })
+      |> Repo.insert!()
+
+    previous = Application.get_env(:agent_board, :github_client)
+    on_exit(fn -> Application.put_env(:agent_board, :github_client, previous) end)
+
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(
+        base_url: "https://api.github.com",
+        plug: {Req.Test, AgentBoardWeb.VoiceCommandsTest},
+        retry: false
+      )
+    end)
+
+    Req.Test.stub(AgentBoardWeb.VoiceCommandsTest, fn conn ->
+      Req.Test.json(conn, %{"id" => 9001, "user" => %{"login" => "sallaumen"}})
+    end)
+
+    {:ok, view, _html} =
+      live(conn, AgentBoardWeb.BoardNavigation.path(repo, "conversation", task.id))
+
+    render_hook(view, "voice_transcript", %{"text" => "qual o estado da tarefa?"})
+
+    view
+    |> form("#voice-command-form", %{"text" => "qual o estado da tarefa?"})
+    |> render_submit()
+
+    assert render(view) =~ "Ask task #12: qual o estado da tarefa?"
+
+    view |> element("button", "Ask the agent") |> render_click()
+
+    html = render(view)
+    assert html =~ "Question sent"
+    assert Repo.get_by(AgentBoard.Board.Comment, task_id: task.id, kind: "user")
+  end
+
   test "the reviewed command form opens a read-only panel", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "read-only")
     {:ok, view, _html} = live(conn, "/?repo=fixture/read-only")

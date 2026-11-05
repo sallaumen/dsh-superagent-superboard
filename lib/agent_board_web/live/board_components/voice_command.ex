@@ -27,6 +27,16 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommand do
           <button type="submit" class="voice-command-run" phx-disable-with="Checking…">
             Run read-only command
           </button>
+          <button
+            :if={@result && @result.kind == :ask}
+            type="button"
+            phx-click="voice_ask"
+            phx-value-question={@result.question}
+            class="voice-command-run"
+            phx-disable-with="Sending…"
+          >
+            Ask the agent
+          </button>
         </div>
       </form>
       <div :if={@result} class="voice-command-result" data-kind={@result.kind} role="status">
