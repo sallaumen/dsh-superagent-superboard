@@ -70,7 +70,10 @@ defmodule AgentBoard.IntakeEvalTest do
       ~s({"tasks":[]})
     )
 
-    assert {:ok, %{spec: spec, tasks: tasks}} = Intake.run("não sei, só quero que funcione")
+    assert {:ok, %{spec: spec, tasks: tasks, status: status}} =
+             Intake.run("não sei, só quero que funcione")
+
+    assert status == :needs_clarification
     assert length(spec["open_questions"]) == 2
     assert tasks == []
   end
