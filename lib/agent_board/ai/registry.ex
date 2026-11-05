@@ -56,7 +56,6 @@ defmodule AgentBoard.AI.Registry do
     answer_question: %{
       name: :answer_question,
       tier: :fast,
-      model: "deepseek-flash",
       output_cap: 1024,
       system: """
       You answer a developer's question about one task of their board.
@@ -69,7 +68,6 @@ defmodule AgentBoard.AI.Registry do
     refine_request: %{
       name: :refine_request,
       tier: :fast,
-      model: "deepseek-flash",
       output_cap: 1024,
       system: """
       You turn a rough software request into a precise specification.
@@ -82,7 +80,6 @@ defmodule AgentBoard.AI.Registry do
     propose_tasks: %{
       name: :propose_tasks,
       tier: :fast,
-      model: "deepseek-flash",
       output_cap: 2048,
       system: """
       You split a refined specification into independent tasks.

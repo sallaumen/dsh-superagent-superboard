@@ -1,42 +1,41 @@
-defmodule AgentBoard.AI.Engines.DeepSeek do
+defmodule AgentBoard.AI.Engines.OpenAI do
   @moduledoc """
-  DeepSeek through its OpenAI-compatible Chat Completions API, one metered
-  request per call.
+  One adapter for every OpenAI-compatible provider.
 
-  No retry: a retried paid request is a second charge. The answer is decoded
-  as JSON when possible; a text that is not JSON is kept as `partial`, never
-  thrown away. `status/0` reads the configuration, never the network.
+  The provider (DeepSeek, Gemini, OpenAI) supplies the base URL, the key and
+  the model per tier; this module supplies the request shape, the JSON decode
+  and the honest failure. No retry: a retried paid request is a second charge.
   """
 
   @behaviour AgentBoard.AI.Engine
 
-  alias AgentBoard.AI.{Request, Result}
-
-  @base_url "https://api.deepseek.com"
+  alias AgentBoard.AI.{Providers, Request, Result}
 
   @impl true
   def run(%Request{} = request) do
     started = System.monotonic_time(:millisecond)
 
-    with :ok <- configured?(),
-         {:ok, body} <- post(request) do
+    with {:ok, provider_id} <- provider_id(request),
+         :ok <- configured?(provider_id),
+         {:ok, provider} <- Providers.fetch(provider_id),
+         {:ok, body} <- post(provider_id, provider, request) do
       decode(body, request, System.monotonic_time(:millisecond) - started)
     end
   end
 
   @impl true
   def status do
-    case configured?() do
-      :ok -> :logged_in
-      {:error, :not_configured} -> :not_configured
-    end
+    if Providers.configured(), do: :logged_in, else: :not_configured
   end
 
-  defp configured? do
-    if api_key() in [nil, ""], do: {:error, :not_configured}, else: :ok
+  defp provider_id(%Request{provider: id}) when not is_nil(id), do: {:ok, id}
+  defp provider_id(_request), do: {:error, :no_provider}
+
+  defp configured?(id) do
+    if Providers.configured?(id), do: :ok, else: {:error, :not_configured}
   end
 
-  defp post(request) do
+  defp post(provider_id, provider, request) do
     body = %{
       model: request.model,
       messages: messages(request),
@@ -44,7 +43,7 @@ defmodule AgentBoard.AI.Engines.DeepSeek do
       response_format: %{type: "json_object"}
     }
 
-    case Req.post(client(), url: "/chat/completions", json: body) do
+    case Req.post(client(provider_id, provider), url: "/chat/completions", json: body) do
       {:ok, %Req.Response{status: 200, body: body}} -> {:ok, body}
       {:ok, %Req.Response{status: 401}} -> {:error, :auth_expired}
       {:ok, %Req.Response{status: status}} when status in [402, 429] -> {:error, :usage_limit}
@@ -76,7 +75,7 @@ defmodule AgentBoard.AI.Engines.DeepSeek do
        output_tokens: usage["completion_tokens"] || 0,
        duration_ms: elapsed,
        model: body["model"] || request.model,
-       engine: :deepseek,
+       engine: request.provider,
        parse_state: if(json, do: :complete, else: :partial)
      }}
   end
@@ -90,24 +89,22 @@ defmodule AgentBoard.AI.Engines.DeepSeek do
     end
   end
 
-  defp client do
-    builder = Application.get_env(:agent_board, :ai_client, &build_client/0)
-    builder.()
+  defp client(provider_id, provider) do
+    case Application.get_env(:agent_board, :ai_client) do
+      nil -> build(provider_id, provider)
+      fun -> fun.()
+    end
   end
 
   @doc false
-  def build_client do
+  def build(provider_id, provider) do
     Req.new(
-      base_url: @base_url,
+      base_url: provider.base_url,
       headers: [
         {"accept", "application/json"},
-        {"authorization", "Bearer #{api_key()}"}
+        {"authorization", "Bearer #{Providers.key(provider_id)}"}
       ],
       retry: false
     )
-  end
-
-  defp api_key do
-    Application.get_env(:agent_board, :ai_api_key, System.get_env("DEEPSEEK_API_KEY", ""))
   end
 end
