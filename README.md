@@ -35,6 +35,8 @@ The dev database is on the local Postgres at `127.0.0.1:5434`.
 - **Stops** (the flag plus closing the issue) and **archives** a task.
 - **Speaks**: "Speak status" reads the board out loud (the Web Speech API);
   "Dictate task" turns a sentence into a task title.
+- **Exposes a JSON API** under `/api` — the board, the repositories and the
+  task actions; documented in [docs/api.md](docs/api.md).
 
 ## What it costs
 
