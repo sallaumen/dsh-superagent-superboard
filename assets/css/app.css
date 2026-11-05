@@ -125,3 +125,9 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Connection feedback follows the browser socket, including between server renders. */
+#connection-status[data-connected="true"] .connection-offline,
+#connection-status[data-connected="false"] .connection-live {
+  display: none;
+}

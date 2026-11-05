@@ -60,6 +60,27 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute html =~ String.duplicate("boom ", 80)
   end
 
+  test "the health line finds sync beyond the 20 recent events", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "health")
+    Board.log_event(repo.id, "sync", "fixture/health", %{"errors" => 0})
+    for n <- 1..21, do: Board.log_event(repo.id, "comment_error", "##{n}", %{})
+
+    {:ok, view, _} = live(conn, ~p"/?repo=fixture/health")
+    assert has_element?(view, "#sync-status", "clean")
+    assert has_element?(view, "#sync-status", "UTC")
+  end
+
+  test "a failed sync supersedes the last clean outcome", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "health")
+    Board.log_event(repo.id, "sync", "fixture/health", %{"errors" => 0})
+    Board.log_event(repo.id, "sync_error", "fixture/health", %{"reason" => "offline"})
+
+    {:ok, view, _} = live(conn, ~p"/?repo=fixture/health")
+    assert has_element?(view, "#sync-status", "sync failed")
+    assert has_element?(view, "#sync-status", "showing saved data")
+    refute has_element?(view, "#sync-status", "clean")
+  end
+
   test "Dictate task pushes the dictate event", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
