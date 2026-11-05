@@ -59,7 +59,7 @@ defmodule AgentBoard.Board do
   end
 
   defp board_for(nil) do
-    %{repos: [], repo: nil, running: [], ready: [], merged: [], queued: []}
+    %{repos: [], repo: nil, running: [], ready: [], blocked: [], merged: [], queued: []}
   end
 
   defp board_for(repository) do
@@ -71,6 +71,8 @@ defmodule AgentBoard.Board do
       running:
         Repo.all(from t in base, where: t.state == "running", order_by: [desc: t.updated_at]),
       ready: Repo.all(from t in base, where: t.state == "ready", order_by: [desc: t.updated_at]),
+      blocked:
+        Repo.all(from t in base, where: t.state == "blocked", order_by: [desc: t.updated_at]),
       queued:
         Repo.all(from t in base, where: t.state == "queued", order_by: [desc: t.updated_at]),
       merged:
