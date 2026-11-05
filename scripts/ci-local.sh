@@ -9,7 +9,6 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-PYTHON="${PYTHON:-python3}"
 
 CURRENT="início"
 on_error() {
@@ -29,20 +28,6 @@ require() {
 
 require_mix() {
   require "mix não está no PATH (Elixir/OTP)" mix --version
-}
-
-require_python() {
-  local version
-  if ! version="$("$PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null)"; then
-    echo "ERRO: Python (>= 3.10) não encontrado no PATH; o pipeline library precisa dele." >&2
-    exit 1
-  fi
-  local major minor
-  IFS=. read -r major minor <<<"$version"
-  if ((major < 3 || (major == 3 && minor < 10))); then
-    echo "ERRO: Python $version encontrado; o pipeline library exige >= 3.10." >&2
-    exit 1
-  fi
 }
 
 run_backend() {
@@ -67,10 +52,9 @@ run_frontend() {
 
 run_library() {
   CURRENT="library"
-  echo "== library: validador + testes da biblioteca de capacidades =="
-  require_python
-  "$PYTHON" capabilities/tools/validar_biblioteca.py
-  "$PYTHON" capabilities/tools/test_validar_biblioteca.py
+  echo "== library: referências ao Elixir Agent Kit =="
+  require_mix
+  mix agent_kit.check
 }
 
 run_release() {

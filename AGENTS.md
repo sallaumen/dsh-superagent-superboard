@@ -36,19 +36,13 @@ watches GitHub; this board only mirrors it. It is documented in
 | `counts.sh` | how much has it done, by table? |
 | `logs.sh` | what is it printing right now? |
 
-## Capabilities library
+## Shared practices
 
-- For reusable workflows, use the versioned Elixir Agent Kit entry point below.
-  Local project contracts remain authoritative. The Portuguese `capabilities/`
-  collection is retained for local context, maintenance and provenance; do not
-  automatically load both editions of a workflow.
-- When working on that local collection, start at
-  [capabilities/CATALOGO.md](capabilities/CATALOGO.md); load only the
-  selected skill and its common contract.
-- Follow [capabilities/README.md](capabilities/README.md) when maintaining the
-  library and [capabilities/tools/README.md](capabilities/tools/README.md) for
-  validation. Context selection is governed by
-  [capabilities/contextos/README.md](capabilities/contextos/README.md).
+- Read the versioned Elixir Agent Kit through the entry point below, after
+  `mix deps.get`. Workflow bodies live in the dependency, not copied project files.
+- Reusable improvements belong upstream in the kit; application-specific rules
+  stay in this repository. Follow [practice ownership](docs/agent/practices.md).
+- Do not recreate `capabilities/skills` or manually edit generated kit files.
 
 
 <!-- elixir-agent-kit:start -->

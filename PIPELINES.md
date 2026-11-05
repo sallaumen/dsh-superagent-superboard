@@ -8,7 +8,7 @@ Este documento é a resposta a "qual script eu rodo agora?". Ele define os pipel
 |---|---|---|---|---|
 | Backend | Dependências órfãs, práticas dos agentes, warnings, formatação, credo, testes e Sobelow | `mix gate` + `mix sobelow --exit` | `make backend` | `gates` + `backend` |
 | Frontend | Fontes de assets, setup, build e deploy | `scripts/check_assets.sh` + tarefas de assets | `make frontend` | `frontend · assets` |
-| Biblioteca | Integridade de `capabilities/` e testes do validador | [Ferramentas da biblioteca](capabilities/tools/README.md) | `make library` | `biblioteca de capacidades` |
+| Biblioteca | Referências ao kit versionado | `mix agent_kit.check` | `make library` | `biblioteca de capacidades` |
 | Misto (release) | O caminho combinado de um deploy | sequência de release (abaixo) | `make release` | `release · caminho misto` |
 | Todos | Backend, frontend e biblioteca, antes de entregar | `scripts/ci-local.sh all` | `make check` | `gates`, `backend`, `frontend`, `library` |
 
@@ -34,19 +34,18 @@ dos scripts: alterações nesses contratos exigem conferir os consumidores.
 | `mix test` | Testar comportamentos; aceita arquivo e filtros | `:test` automático | cria/migra banco de teste antes da suíte | testes verdes; a CI usa partições |
 | `mix lint` | Iteração rápida, sem banco | qualquer | nenhum (somente leitura) | format e credo verdes |
 | `mix precommit` | Antes de commitar; aplica correções | `:test` automático | remove dependências órfãs do lockfile, formata e roda testes | formatação aplicada + gates verdes |
-| `mix gate` | Checks de backend; a CI distribui seus passos entre jobs | executar com `MIX_ENV=test` | compila e cria/migra o banco de teste; não altera fontes | dependências, snapshot dos agentes, warnings, formato, credo e testes verdes |
+| `mix gate` | Checks de backend; a CI distribui seus passos entre jobs | executar com `MIX_ENV=test` | compila e cria/migra o banco de teste; não altera fontes | dependências, referências dos agentes, warnings, formato, credo e testes verdes |
 | `mix sobelow --exit` | Scan de segurança; parte de `make backend` e do pré-voo | `MIX_ENV=test` | análise estática, sem corrigir fontes | scan concluído sem achados que reprovem o comando |
-| `mix agent_kit.check` | Confere a instalação versionada das práticas para agentes (parte de `mix gate` e do job gates) | dev ou test | somente leitura; não inicia a aplicação nem chama modelos | snapshot e pontos de entrada consistentes com a dependência e configuração |
+| `mix agent_kit.check` | Confere a instalação versionada das práticas para agentes (parte de `mix gate` e do job gates) | dev ou test | somente leitura; não inicia a aplicação nem chama modelos | índice e pontos de entrada consistentes com a dependência e configuração |
 | `mix deps.unlock --check-unused` | Revisar lockfile (parte do `mix gate` e do job gates da CI) | `:test` | nenhum | nenhuma dependência órfã |
 | `mix assets.setup` | Primeira execução / CI frontend | `MIX_ENV=dev` | baixa binários tailwind/esbuild | ferramentas instaladas |
 | `mix assets.build` | Ao alterar CSS/JS | `MIX_ENV=dev` | escreve `priv/static/assets/` | bundle gerado sem erro |
 | `mix assets.deploy` | Validar o caminho de produção dos assets | `MIX_ENV=dev` | minifica + `phx.digest` | manifesto de digest gerado |
 | [scripts/check_assets.sh](scripts/check_assets.sh) | Ao mudar CSS/JS (primeiro passo do pipeline frontend) | máquina local | nenhum (somente leitura) | entradas presentes, pipeline tailwind configurado, JS autoral sem debug |
-| [Scripts da biblioteca](capabilities/tools/README.md) | Ao alterar `capabilities/`; veja o contrato de cada ferramenta | Python 3.10+ | leitura e temporários de teste | validador e suíte verdes |
 | `make help` | Descobrir os alvos disponíveis | `make` | nenhum | nomes dos alvos e referência a esta matriz |
 | `make backend` | Checks de backend completos, incluindo Sobelow | fixa `MIX_ENV=test` | os de `mix gate` e Sobelow | equivalente aos checks dos jobs `gates` + `backend` |
 | `make frontend` | Validar fontes e assets de produção | fixa `MIX_ENV=dev` | checks, setup, build e deploy de assets | equivalente ao job `frontend` |
-| `make library` | Validar biblioteca e ferramenta | Python 3.10+ | leitura e temporários | equivalente ao job `library` |
+| `make library` | Validar referências à dependência fixada | dev | somente leitura | equivalente ao job `library` |
 | `make release` | Exercitar o empacotamento de produção | assets em dev; aplicação em prod | gera o release e sobrescreve o artefato anterior | equivalente ao job `release`; opt-in local |
 | `make check` | Executar backend, frontend e biblioteca | ambientes definidos por cada alvo | os dos três pipelines | checks de PR verdes; não inclui release |
 | `make coverage` | Auditar lacunas de teste | máquina local | gera `cover/` (HTML) | relatório gerado; exit != 0 se a cobertura total ficar abaixo de 90% (threshold padrão do Elixir) |
@@ -60,8 +59,8 @@ caminho de deploy mudar, execute também `scripts/ci-local.sh release`.
 
 Pré-requisitos: dependências instaladas com `mix deps.get`, Elixir/OTP e `mix`
 no PATH, Postgres acessível em `127.0.0.1:5434` com usuário/senha `board`,
-`pg_isready` no PATH para o pré-voo de backend e Python 3.10+ para a biblioteca.
-O pré-voo aceita `PYTHON` para selecionar o interpretador. Uso e códigos de saída:
+`pg_isready` no PATH para o pré-voo de backend. A biblioteca usa Mix; seus testes
+de conteúdo e instalador pertencem ao repositório do kit. Uso e códigos de saída:
 alvo omitido equivale a `all`; sucesso retorna 0, alvo desconhecido retorna 2 e
 falha de um comando interrompe a execução com status não zero.
 A instalação do serviço está em [README.md](README.md#run-as-a-service); o pré-voo
@@ -98,7 +97,7 @@ O objetivo da CI continua sendo verificar em ambiente limpo; a regra apenas evit
 ## Adotar este desenho em outro projeto
 
 1. Copie a estrutura do `Makefile`: um alvo por pipeline, mantendo os checks locais equivalentes aos jobs correspondentes da CI.
-2. Para a biblioteca, siga [Adotar os scripts em outro projeto](capabilities/tools/README.md#adotar-os-scripts-em-outro-projeto).
+2. Para a biblioteca, siga o [prompt de instalação do kit](https://github.com/sallaumen/elixir-agent-kit/blob/v0.2.0/docs/INSTALL_WITH_AI.md) e execute `mix agent_kit.check` após baixar as dependências.
 3. Adapte o job de release à sua stack: construa assets no ambiente onde as ferramentas de frontend existem e monte o artefato no ambiente de produção.
 4. Mantenha esta matriz atualizada quando um script novo aparecer — um script sem linha aqui não tem "quando usar" definido.
 

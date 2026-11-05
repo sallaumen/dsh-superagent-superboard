@@ -152,42 +152,31 @@ events, the PubSub broadcast) and the pipeline contract.
   STT (ElevenLabs) live behind `/api/voice` and answer with a reason on
   failure, never a raise.
 
-## The capabilities library
+## Shared agent practices
 
-Reusable development workflows (architecture, product, UI/UX, testing, code
-review, integrations and operations) live in
-[`capabilities/`](capabilities/CATALOGO.md), adapted from the
-`biblioteca-prompts-desenvolvimento` package. The catalog is the entry point;
-the source-to-destination map and decisions are in
-[`capabilities/INCORPORACAO.md`](capabilities/INCORPORACAO.md).
+The board consumes [Elixir Agent Kit v0.2.0](https://github.com/sallaumen/elixir-agent-kit/releases/tag/v0.2.0)
+through a public, pinned Mix dependency available only in development/tests.
+No download token or application startup is required.
 
+After `mix deps.get`, use [.elixir-agent-kit/START.md](.elixir-agent-kit/START.md).
+It points to the dependency's contract and workflows. Only the small index,
+ownership state and references in `AGENTS.md`/`CLAUDE.md` remain in this project;
+there are no copied workflow bodies or per-skill native wrappers.
 
-## Shared agent practices (Elixir Agent Kit)
+`mix agent_kit.check` validates those references against the loaded version and
+configuration. `mix gate`, `make library` and CI run that check. A fresh checkout
+needs dependencies fetched before agents can read practices; a harness must allow
+direct reading of ignored `deps/` files. A DeepSeek executor needs those files and
+instruction loading in its actual worktree. Live client behavior is not certified
+by successful installation.
 
-The board consumes [Elixir Agent Kit v0.1.1](https://github.com/sallaumen/elixir-agent-kit/releases/tag/v0.1.1)
-through a public, pinned Mix Git dependency. No download token is needed. The
-package is available only in development/tests and does not start with the app.
+`mix agent_kit.outdated` explicitly queries stable public release tags. Review a
+release, update the pinned tag, run `mix deps.update elixir_agent_kit`, then
+`mix agent_kit.sync --dry-run`, `mix agent_kit.sync` and the required checks.
+There is no background update. Preserve modified generated files before restoring
+their recorded originals; never delete ownership state to bypass a conflict.
 
-After `mix deps.get`, run `mix agent_kit.check`. The committed
-`.elixir-agent-kit/` snapshot and Codex/Claude entry points make the same edition
-available in fresh checkouts before dependency setup. `mix gate` and CI check
-that the snapshot still matches the package and configuration.
-
-Select workflows through `.elixir-agent-kit/START.md`; the local Portuguese
-`capabilities/` collection and project-specific contracts remain available for
-local context. The public package is an independent English community edition,
-not a live mirror of the local collection. Project rules continue to govern work.
-
-Use `mix agent_kit.sync --dry-run` followed by `mix agent_kit.sync` after an explicit
-package update. Never edit generated files or delete the ownership manifest to
-bypass a conflict. Keep additions in local documentation or outside managed
-instruction sections. Run `mix agent_kit.uninstall` before removing the dependency.
-
-For the separate DeepSeek executor, its worktree must include this snapshot and
-its harness must read `AGENTS.md` or `.elixir-agent-kit/START.md`. Installing files
-in the board does not certify live worker discovery. No worker profile is changed
-by this integration. Follow the package's
-[client evaluation guide](https://github.com/sallaumen/elixir-agent-kit/blob/v0.1.1/docs/compatibility.md).
-
-To adopt this in another project, copy the
-[AI installation prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v0.1.1/docs/INSTALL_WITH_AI.md).
+Reusable improvements go to the kit; local rules remain here. The former
+Portuguese collection is retired as an editable source. See
+[ownership and migration](docs/agent/practices.md) for the full disposition.
+For other projects, use the [AI installation/migration prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v0.2.0/docs/INSTALL_WITH_AI.md).

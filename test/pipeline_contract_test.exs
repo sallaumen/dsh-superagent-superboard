@@ -83,12 +83,25 @@ defmodule AgentBoard.PipelineContractTest do
           "mix assets.setup",
           "mix assets.build",
           "mix assets.deploy",
-          "validar_biblioteca.py",
-          "test_validar_biblioteca.py",
           "mix phx.digest",
           "mix release --overwrite"
         ] do
       assert String.contains?(wf, command), "comando ausente no ci.yml: #{command}"
+    end
+  end
+
+  test "shared practices have one authoring source and no copied consumer payload" do
+    assert File.ls!("capabilities") |> Enum.sort() == ["README.md"]
+    refute File.exists?("capabilities/skills")
+    assert Path.wildcard(".elixir-agent-kit/library/**/*") |> Enum.filter(&File.regular?/1) == []
+    assert Path.wildcard(".agents/skills/eak-*/SKILL.md") == []
+    assert Path.wildcard(".claude/skills/eak-*/SKILL.md") == []
+    assert File.read!(".elixir-agent-kit/START.md") =~ "../deps/elixir_agent_kit/priv/library/"
+
+    for path <- ["Makefile", "scripts/ci-local.sh", ".github/workflows/ci.yml"] do
+      content = File.read!(path)
+      assert content =~ "mix agent_kit.check"
+      refute content =~ "validar_biblioteca.py"
     end
   end
 end

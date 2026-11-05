@@ -1,7 +1,7 @@
 # ADRs
 
 Registros de decisão arquitetural e de processo deste repositório, no formato
-do template [registro-de-decisao](../../capabilities/templates/registro-de-decisao.md).
+do template [decision](../../deps/elixir_agent_kit/priv/library/templates/decision.md) (disponível após `mix deps.get`).
 
 | Nº | Decisão | Estado |
 |---|---|---|
