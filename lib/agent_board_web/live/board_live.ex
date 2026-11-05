@@ -336,7 +336,7 @@ defmodule AgentBoardWeb.BoardLive do
         phx-hook="BoardPanels"
         data-panel={@panel || ""}
         data-base-url={BoardNavigation.path(@repo)}
-        class="agent-board min-h-screen bg-base-100 text-base-content font-mono"
+        class="agent-board min-h-screen bg-base-100 text-base-content"
       >
         <.live_component
           module={BoardComponents.Header}

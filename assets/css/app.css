@@ -29,33 +29,33 @@
   default: false;
   prefersdark: true;
   color-scheme: "dark";
-  --color-base-100: oklch(19% 0.016 252.42);
-  --color-base-200: oklch(22% 0.014 253.1);
-  --color-base-300: oklch(27% 0.012 254.09);
-  --color-base-content: oklch(97.807% 0.029 256.847);
-  --color-primary: oklch(52% 0.233 277.117);
-  --color-primary-content: oklch(96% 0.018 272.314);
-  --color-secondary: oklch(58% 0.233 277.117);
-  --color-secondary-content: oklch(96% 0.018 272.314);
-  --color-accent: oklch(60% 0.25 292.717);
-  --color-accent-content: oklch(96% 0.016 293.756);
-  --color-neutral: oklch(37% 0.044 257.287);
-  --color-neutral-content: oklch(98% 0.003 247.858);
-  --color-info: oklch(78% 0.158 241.966);
-  --color-info-content: oklch(21% 0.006 285.885);
-  --color-success: oklch(78% 0.118 184.704);
-  --color-success-content: oklch(21% 0.006 285.885);
-  --color-warning: oklch(78% 0.179 58.318);
-  --color-warning-content: oklch(21% 0.006 285.885);
-  --color-error: oklch(82% 0.16 17.585);
-  --color-error-content: oklch(21% 0.006 285.885);
-  --radius-selector: 0.25rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.5rem;
+  --color-base-100: oklch(24% 0.022 250);
+  --color-base-200: oklch(28% 0.021 250);
+  --color-base-300: oklch(34% 0.018 250);
+  --color-base-content: oklch(94% 0.014 85);
+  --color-primary: oklch(76% 0.10 230);
+  --color-primary-content: oklch(19% 0.02 250);
+  --color-secondary: oklch(75% 0.07 180);
+  --color-secondary-content: oklch(19% 0.02 250);
+  --color-accent: oklch(77% 0.08 70);
+  --color-accent-content: oklch(19% 0.02 250);
+  --color-neutral: oklch(45% 0.025 250);
+  --color-neutral-content: oklch(96% 0.01 85);
+  --color-info: oklch(77% 0.10 230);
+  --color-info-content: oklch(19% 0.02 250);
+  --color-success: oklch(76% 0.11 158);
+  --color-success-content: oklch(19% 0.02 250);
+  --color-warning: oklch(82% 0.10 75);
+  --color-warning-content: oklch(19% 0.02 250);
+  --color-error: oklch(75% 0.13 25);
+  --color-error-content: oklch(19% 0.02 250);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.625rem;
+  --radius-box: 0.875rem;
   --size-selector: 0.21875rem;
   --size-field: 0.21875rem;
-  --border: 1.5px;
-  --depth: 1;
+  --border: 1px;
+  --depth: 0;
   --noise: 0;
 }
 
@@ -64,33 +64,33 @@
   default: true;
   prefersdark: false;
   color-scheme: "light";
-  --color-base-100: oklch(98% 0 0);
-  --color-base-200: oklch(96% 0.001 286.375);
-  --color-base-300: oklch(92% 0.004 286.32);
-  --color-base-content: oklch(21% 0.006 285.885);
-  --color-primary: oklch(53% 0.213 47.604);
-  --color-primary-content: oklch(98% 0.016 73.684);
-  --color-secondary: oklch(55% 0.027 264.364);
-  --color-secondary-content: oklch(98% 0.002 247.839);
-  --color-accent: oklch(0% 0 0);
-  --color-accent-content: oklch(100% 0 0);
-  --color-neutral: oklch(44% 0.017 285.786);
-  --color-neutral-content: oklch(98% 0 0);
-  --color-info: oklch(45% 0.214 259.815);
-  --color-info-content: oklch(97% 0.014 254.604);
-  --color-success: oklch(45% 0.14 182.503);
-  --color-success-content: oklch(98% 0.014 180.72);
-  --color-warning: oklch(45% 0.179 58.318);
-  --color-warning-content: oklch(98% 0.022 95.277);
-  --color-error: oklch(45% 0.253 17.585);
-  --color-error-content: oklch(96% 0.015 12.422);
-  --radius-selector: 0.25rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.5rem;
+  --color-base-100: oklch(99% 0.006 85);
+  --color-base-200: oklch(96% 0.009 85);
+  --color-base-300: oklch(92% 0.012 85);
+  --color-base-content: oklch(27% 0.025 250);
+  --color-primary: oklch(44% 0.12 245);
+  --color-primary-content: oklch(99% 0.005 85);
+  --color-secondary: oklch(43% 0.08 180);
+  --color-secondary-content: oklch(99% 0.005 85);
+  --color-accent: oklch(50% 0.09 70);
+  --color-accent-content: oklch(99% 0.005 85);
+  --color-neutral: oklch(48% 0.025 250);
+  --color-neutral-content: oklch(99% 0.005 85);
+  --color-info: oklch(44% 0.12 235);
+  --color-info-content: oklch(99% 0.005 85);
+  --color-success: oklch(43% 0.10 155);
+  --color-success-content: oklch(99% 0.005 85);
+  --color-warning: oklch(45% 0.11 70);
+  --color-warning-content: oklch(99% 0.005 85);
+  --color-error: oklch(45% 0.14 25);
+  --color-error-content: oklch(99% 0.005 85);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.625rem;
+  --radius-box: 0.875rem;
   --size-selector: 0.21875rem;
   --size-field: 0.21875rem;
-  --border: 1.5px;
-  --depth: 1;
+  --border: 1px;
+  --depth: 0;
   --noise: 0;
 }
 
@@ -106,6 +106,26 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+/* Human-readable work titles, with mono reserved for operational facts. */
+.agent-board {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: -0.01em;
+}
+.agent-board :where(.board-eyebrow, .version-heading, .version-details, .lane-heading,
+  .item-number, .item-signals, .data-age, .archive-heading, .archive-history summary,
+  #sync-status, #connection-status, .ai-call-metrics, .ai-call-status) {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: 0;
+}
+.board-identity h1 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  text-transform: none;
+}
+.item-title { font-weight: 600; }
 
 /* Shared board controls keep keyboard focus and boundaries visible in both themes. */
 .agent-board :where(button, input, select, textarea) {
@@ -176,7 +196,6 @@
 }
 .board-topbar { gap: 1.5rem 3rem; }
 .board-identity > div { display: block; }
-.board-identity h1 { font-size: 1.125rem; }
 .board-eyebrow, .version-heading, .lane-heading, .archive-heading h2 {
   font-size: 0.6875rem;
   text-transform: uppercase;
