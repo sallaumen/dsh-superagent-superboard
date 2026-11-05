@@ -7,6 +7,7 @@ defmodule AgentBoard.AI.Result do
           input_tokens: non_neg_integer(),
           output_tokens: non_neg_integer(),
           duration_ms: non_neg_integer(),
+          cost_micros: non_neg_integer(),
           model: String.t() | nil,
           engine: atom() | nil,
           parse_state: :complete | :partial | nil
@@ -17,6 +18,7 @@ defmodule AgentBoard.AI.Result do
             input_tokens: 0,
             output_tokens: 0,
             duration_ms: 0,
+            cost_micros: 0,
             model: nil,
             engine: nil,
             parse_state: nil

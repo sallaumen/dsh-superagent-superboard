@@ -14,19 +14,22 @@ defmodule AgentBoard.AI.Providers do
       label: "DeepSeek",
       base_url: "https://api.deepseek.com",
       key_env: "DEEPSEEK_API_KEY",
-      models: %{fast: "deepseek-flash", deep: "deepseek-v4-pro"}
+      models: %{fast: "deepseek-flash", deep: "deepseek-v4-pro"},
+      prices: %{fast: %{input: 0.28, output: 0.42}, deep: %{input: 0.28, output: 0.42}}
     },
     gemini: %{
       label: "Gemini",
       base_url: "https://generativelanguage.googleapis.com/v1beta/openai",
       key_env: "GEMINI_API_KEY",
-      models: %{fast: "gemini-2.5-flash", deep: "gemini-2.5-pro"}
+      models: %{fast: "gemini-2.5-flash", deep: "gemini-2.5-pro"},
+      prices: %{fast: %{input: 0.30, output: 2.50}, deep: %{input: 1.25, output: 10.00}}
     },
     openai: %{
       label: "OpenAI",
       base_url: "https://api.openai.com/v1",
       key_env: "OPENAI_API_KEY",
-      models: %{fast: "gpt-4.1-mini", deep: "gpt-4.1"}
+      models: %{fast: "gpt-4.1-mini", deep: "gpt-4.1"},
+      prices: %{fast: %{input: 0.40, output: 1.60}, deep: %{input: 2.00, output: 8.00}}
     }
   }
 
@@ -59,6 +62,24 @@ defmodule AgentBoard.AI.Providers do
 
       :error ->
         ""
+    end
+  end
+
+  @doc """
+  The cost of a call in microdollars, from the model's published price per
+  million tokens. An unknown model or a provider with no price table answers
+  zero rather than guessing -- a wrong number in the panel is worse than no
+  number.
+  """
+  @spec cost_micros(atom(), String.t() | nil, non_neg_integer(), non_neg_integer()) ::
+          non_neg_integer()
+  def cost_micros(provider, model, input_tokens, output_tokens) do
+    with {:ok, %{models: models, prices: prices}} <- fetch(provider),
+         {tier, ^model} <- Enum.find(models, fn {_tier, id} -> id == model end),
+         %{input: input_price, output: output_price} <- Map.get(prices, tier) do
+      round(input_tokens * input_price + output_tokens * output_price)
+    else
+      _ -> 0
     end
   end
 
