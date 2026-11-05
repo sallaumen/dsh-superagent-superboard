@@ -116,7 +116,7 @@
   max-width: 100%;
   border-color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
 }
-.agent-board :where(button, a, input, select, textarea, summary):focus-visible,
+.agent-board :where(button, a, input, select, textarea, summary, .board-column, [tabindex]):focus-visible,
 #flash-group button:focus-visible {
   outline: 2px solid var(--color-base-content);
   outline-offset: 3px;
