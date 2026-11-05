@@ -1,0 +1,33 @@
+delivery-coordination	coordinate	Use when consolidating a product or dividing an authorized change into reviewable deliveries.
+architecture-review	analyze-and-fix	Use when changes cross many modules, rules repeat, dependencies cycle or domain ownership is unclear.
+abstraction-layers	analyze-and-fix	Use when functions mix business decisions, low-level details and effects at incompatible levels.
+module-design	analyze-and-fix	Use when module names, locations or public APIs obscure responsibilities that are already understood.
+code-consolidation	analyze-and-fix	Use when unfinished features, abandoned paths or competing implementations make a codebase ambiguous.
+version-lineage	analyze-and-fix	Use when revisions, previews, selections or generated artifacts are associated with the wrong version.
+data-contracts	analyze-and-fix	Use when layers disagree about data, rules are duplicated or a write leaves records inconsistent.
+ui-identity	analyze-and-fix	Use when a working interface lacks product-specific hierarchy, identity or visual coherence.
+layout-density	analyze-and-fix	Use when spacing, alignment or information density makes a screen hard to scan or use.
+navigation-ux	analyze-and-fix	Use when users lose context or need unnecessary steps to complete a multi-screen task.
+responsive-mobile	analyze-and-fix	Use when mobile navigation, browser history or layouts fail across phone and wide-screen sizes.
+direct-interactions	analyze-and-fix	Use when a simple selection or adjustment requires excessive forms and disconnected controls.
+accessibility	analyze-and-fix	Use when controls, forms, dialogs or asynchronous changes may exclude keyboard or assistive-technology users.
+design-system	analyze-and-fix	Use when teams repeat interface mistakes or create incompatible component and token variations.
+performance	analyze-and-fix	Use when measured latency, freezes, excessive work or rendering cost affects a real workflow.
+async-state	analyze-and-fix	Use when progress stalls, success appears too early or stale asynchronous results overwrite current state.
+ai-orchestration	analyze-and-fix	Use when agent jobs, queues, workers and model capacity are conflated or incorrectly accounted for.
+notifications	analyze-and-fix	Use when bots or notifications fail, repeat or produce unexplained message volume.
+integration-setup	analyze-and-fix	Use when an integration looks configured but required steps or operational readiness remain unclear.
+commercial-eligibility	analyze-and-fix	Use when an offering is presented without evidence that its exact variant and destination are supported.
+asset-lineage	analyze-and-fix	Use when previews or generated assets lack clear source, version, orientation or ownership.
+metrics-costs	analyze-and-fix	Use when totals, model costs or operational metrics have unclear scope, origin or meaning.
+operational-alerts	analyze-and-fix	Use when alerts repeat, historical incidents look current or acknowledging an alert appears to resolve it.
+simulation-isolation	analyze-and-fix	Use when simulation, training or demo flows share code and data paths with real operations.
+test-consolidation	analyze-and-fix	Use when duplicated tests slow maintenance without protecting distinct failure modes.
+test-strategy	analyze-and-fix	Use when a passing suite misses important bugs or the required regression coverage is unclear.
+code-review	review	Use when reviewing a bounded diff or pull request for actionable defects and regressions.
+debugging	analyze-and-fix	Use when a wrong result, exception or intermittent failure has no demonstrated root cause.
+security-boundaries	analyze-and-fix	Use when untrusted input, credentials, permissions or tenant boundaries may permit unintended access.
+migration-compatibility	analyze-and-fix	Use when stored schemas, identifiers, jobs or public payloads must survive a version change.
+pipeline-design	analyze-and-fix	Use when validation pipelines lack clear ownership, local/CI parity or predictable command effects.
+build-dependencies	analyze-and-fix	Use when dependencies, builds or CI fail or behave differently across environments.
+delivery-validation	analyze	Use when checking whether an integrated change actually satisfies its acceptance criteria.
