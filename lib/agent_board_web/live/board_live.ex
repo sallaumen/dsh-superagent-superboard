@@ -346,6 +346,7 @@ defmodule AgentBoardWeb.BoardLive do
                   :if={item.url}
                   href={item.url}
                   target="_blank"
+                  rel="noopener noreferrer"
                   class="text-[13px] hover:underline"
                 >
                   {item.title}

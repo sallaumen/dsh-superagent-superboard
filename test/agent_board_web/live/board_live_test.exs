@@ -128,6 +128,25 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert render(view) =~ "no ci"
   end
 
+  test "external links open with noopener", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 501,
+      title: "Linked task",
+      state: "queued",
+      url: "https://github.com/sallaumen/arena-rogue/issues/501"
+    })
+    |> Repo.insert!()
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ ~s(rel="noopener noreferrer")
+  end
+
   test "the controls carry accessible names", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
