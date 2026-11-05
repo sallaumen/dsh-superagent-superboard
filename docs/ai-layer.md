@@ -1,4 +1,13 @@
-# A camada de IA do painel
+# A camada de IA do painel — proposta histórica
+
+> **Registro histórico:** proposta de 5 de novembro de 2026, anterior à
+> implementação da camada de IA. O texto abaixo preserva o diagnóstico, as
+> projeções e as fases daquela proposta; não descreve o estado atual nem uma
+> lista de tarefas ainda pendentes. As referências ao `o_colmex` são o
+> levantamento da época, não um inventário verificado por este repositório.
+> Para trabalhar na implementação, consulte as [regras de IA](../AGENTS.md#ai-calls)
+> e os pontos de entrada [AgentBoard.AI](../lib/agent_board/ai.ex) e
+> [AgentBoard.Intake](../lib/agent_board/intake.ex).
 
 O painel hoje **espelha** o trabalho do agente: sincroniza o GitHub, mostra o
 board, fala o resumo. Ele não **chama** modelo nenhum. O `ask` é um comentário

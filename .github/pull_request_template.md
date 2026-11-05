@@ -19,4 +19,4 @@
 ## CI
 
 - [ ] CI verde, **ou**
-- [ ] CI indisponível (sem token/billing, jobs falhando em segundos com zero steps): registre aqui o comando local executado como evidência — conforme a regra em [PIPELINES.md](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner). Não espere pela CI nesse caso.
+- [ ] CI indisponível (sem token/billing, jobs falhando em segundos com zero steps): registre aqui o comando local executado como evidência — conforme a regra em [PIPELINES.md](https://github.com/sallaumen/agent-board/blob/main/PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner). Não espere pela CI nesse caso.

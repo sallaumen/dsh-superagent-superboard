@@ -83,4 +83,4 @@ Veja [contextos/README.md](contextos/README.md). Nunca são carregados por padr�
 
 - Como usar: [README.md](README.md). Sequências por problema: [referencias/roteiros-de-uso.md](referencias/roteiros-de-uso.md).
 - Mapa de origem e destino de cada conteúdo incorporado: [INCORPORACAO.md](INCORPORACAO.md).
-- Validação: `python3 tools/validar_biblioteca.py` e `python3 tools/test_validar_biblioteca.py`; cenários em [validacao/](validacao/casos-de-avaliacao.md).
+- Comandos e contrato das ferramentas: [tools/README.md](tools/README.md). Cenários comportamentais: [validacao/](validacao/casos-de-avaliacao.md).

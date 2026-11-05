@@ -12,7 +12,8 @@ Origem: **biblioteca-prompts-desenvolvimento v1.0.0** (34 prompts-fonte), analis
 4. **Carregue um contexto apenas se o projeto correspondente estiver no escopo** — leia [contextos/README.md](contextos/README.md) antes. Nenhum contexto é carregado por padrão.
 5. **Registre decisões e resultados** com os modelos em [templates/](templates/plano-de-entrega.md) quando a tarefa justificar.
 
-Regras que valem para todas as skills (contrato comum): autonomia para escolhas técnicas reversíveis dentro do escopo; evidência de execução; condição de conclusão verificável; até duas frentes executoras por padrão; merge, deploy, compra, mensagens externas e alterações destrutivas exigem autorização concreta da sessão — uma skill não concede essas permissões por existir. O contrato completo está em [contrato.md](contrato.md), incluindo a regra de gate remoto indisponível.
+As regras de execução, autonomia, autorização e validação têm uma única
+referência normativa: o [contrato comum](contrato.md).
 
 ## Estrutura
 
@@ -49,13 +50,9 @@ capabilities/
 
 ## Validar
 
-```bash
-python3 capabilities/tools/validar_biblioteca.py          # integridade: formato, caminhos, links, origem→destino
-python3 capabilities/tools/validar_biblioteca.py --json   # relatório estruturado
-python3 capabilities/tools/test_validar_biblioteca.py     # testes do validador
-```
-
-O que cada script faz, quando usar cada um e como adotá-los em outro projeto: [tools/README.md](tools/README.md). Requer Python 3.10+ (somente biblioteca padrão) apenas para as ferramentas; as skills são markdown legível por qualquer IA com acesso aos arquivos.
+Os comandos, pré-requisitos, códigos de saída e instruções para adoção em
+outro projeto estão em [tools/README.md](tools/README.md). As ferramentas
+validam a estrutura da biblioteca; não executam as skills.
 
 Cenários comportamentais de roteamento e limites estão em [validacao/casos-de-avaliacao.md](validacao/casos-de-avaliacao.md); a evidência (histórica) da incorporação está em [validacao/relatorio-de-validacao.md](validacao/relatorio-de-validacao.md).
 

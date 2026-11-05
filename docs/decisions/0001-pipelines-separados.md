@@ -1,6 +1,6 @@
 # ADR 0001 — Pipelines separados por tecnologia, com um caminho misto de release
 
-- **Decisão:** substituir o job único de CI por pipelines separados — backend (4 partições), frontend (assets), biblioteca de capacidades — e um job misto de release; cada pipeline tem um alvo `make` e um script de pré-voo que executam os mesmos comandos da CI.
+- **Decisão:** substituir o job único de CI por pipelines separados — backend, frontend e biblioteca de capacidades — e um job misto de release. A distribuição vigente dos checks está em [PIPELINES.md](../../PIPELINES.md).
 - **Estado:** implementada.
 
 ## Problema e contexto
@@ -17,9 +17,10 @@ A CI era um job único (`gates`) que misturava formatação, credo e testes sem 
 
 ## Escolha e consequência
 
-- Backend usa `mix gate` local e partições `MIX_TEST_PARTITION` na CI; frontend usa as tarefas de assets com `MIX_ENV=dev` (esbuild/tailwind são dependências `runtime: :dev`); a biblioteca usa o validador Python.
-- O job de release exercita o caminho combinado (assets dev → compile/digest/release prod), que é o único lugar onde os dois lados precisam se encontrar.
-- O contrato é guardado por teste (`test/pipeline_contract_test.exs`) e documentado em `PIPELINES.md`; o `Makefile` mapeia cada alvo 1:1 para um job.
+Os pipelines permitem atribuir falhas à tecnologia correspondente e executar
+checks específicos durante a iteração. O release exercita a integração entre
+assets e aplicação de produção. A matriz operacional, os ambientes e a relação
+entre comandos locais e jobs são mantidos em [PIPELINES.md](../../PIPELINES.md).
 
 ## Implantação e revisão
 

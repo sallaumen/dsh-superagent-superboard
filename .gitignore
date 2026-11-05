@@ -49,3 +49,5 @@ npm-debug.log
 __pycache__/
 *.pyc
 
+# local secrets (the .env template stays committed)
+.env.local

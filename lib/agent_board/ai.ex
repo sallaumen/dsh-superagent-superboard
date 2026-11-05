@@ -10,7 +10,7 @@ defmodule AgentBoard.AI do
 
   import Ecto.Query
 
-  alias AgentBoard.AI.{Budget, Call, Registry, Request, Result}
+  alias AgentBoard.AI.{Budget, Call, Providers, Registry, Request, Result}
   alias AgentBoard.Repo
 
   @doc "Runs one registered call and records it, success or failure."
@@ -18,7 +18,8 @@ defmodule AgentBoard.AI do
   def call(name, inputs, _opts \\ []) do
     with {:ok, spec} <- Registry.fetch(name),
          :ok <- Budget.check(spec.tier) do
-      request = Request.build(spec, inputs)
+      provider = provider()
+      request = Request.build(spec, inputs, provider, Providers.model(provider, spec.tier))
       started = System.monotonic_time(:millisecond)
 
       case engine().run(request) do
@@ -49,8 +50,14 @@ defmodule AgentBoard.AI do
     if rehearsal?() do
       AgentBoard.AI.Engines.Rehearsal
     else
-      Application.get_env(:agent_board, :ai_engine, AgentBoard.AI.Engines.DeepSeek)
+      Application.get_env(:agent_board, :ai_engine, AgentBoard.AI.Engines.OpenAI)
     end
+  end
+
+  @doc "The provider for this call: the configured one, else the first with a key."
+  @spec provider() :: atom()
+  def provider do
+    Application.get_env(:agent_board, :ai_provider) || Providers.configured() || :deepseek
   end
 
   defp rehearsal?, do: Application.get_env(:agent_board, :ai_rehearsal, false) == true
@@ -59,8 +66,8 @@ defmodule AgentBoard.AI do
     %Call{}
     |> Call.changeset(%{
       name: to_string(name),
-      engine: to_string(result.engine || :deepseek),
-      model: result.model || spec.model,
+      engine: to_string(result.engine || provider()),
+      model: result.model,
       tier: to_string(spec.tier),
       status: to_string(status),
       input_tokens: result.input_tokens,
