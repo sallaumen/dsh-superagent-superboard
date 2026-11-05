@@ -372,6 +372,22 @@
         "Fazer merge ou deploy sem autorização concreta",
         "Tratar a avaliação técnica como aprovação formal"
       ]
+    },
+    {
+      "id": "E28",
+      "request": "Organize os pipelines deste projeto: a CI mistura tudo num job só, o frontend não tem build e ninguém sabe quando rodar cada script.",
+      "expected_primary": "pipelines-e-ci",
+      "allowed_alternatives": [
+        "build-ci-dependencias"
+      ],
+      "success_signals": [
+        "Separar pipelines por tecnologia com entrada local equivalente à CI",
+        "Documentar quando usar cada script e a regra de gate remoto indisponível"
+      ],
+      "failure_signals": [
+        "Manter um job único sem documentação de uso",
+        "Esperar pela CI bloqueada sem executar o pipeline local"
+      ]
     }
   ]
 }
