@@ -49,3 +49,5 @@ npm-debug.log
 __pycache__/
 *.pyc
 
+# local secrets
+.env

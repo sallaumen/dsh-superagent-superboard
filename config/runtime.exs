@@ -1,5 +1,24 @@
 import Config
 
+# A local `.env` is read before any config: `KEY=value` lines, `#` comments,
+# and no override of what the environment already has. The file is gitignored;
+# `mix phx.server` runs from the project root, so the relative path is right.
+if File.exists?(".env") do
+  for line <- File.stream!(".env") do
+    case String.split(String.trim(line), "=", parts: 2) do
+      [key, value] ->
+        key = String.trim(key)
+
+        if key != "" and not String.starts_with?(key, "#") and System.get_env(key) == nil do
+          System.put_env(key, String.trim(value, "\""))
+        end
+
+      _ ->
+        :ok
+    end
+  end
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
