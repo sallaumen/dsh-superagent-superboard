@@ -42,6 +42,9 @@ defmodule AgentBoard.AI.Engines.Rehearsal do
     },
     answer_question: %{
       "answer" => "Modo de ensaio: esta é uma resposta de fixture, sem modelo."
+    },
+    answer_board_question: %{
+      "answer" => "Modo de ensaio: nenhuma resposta foi gerada por um modelo."
     }
   }
 
