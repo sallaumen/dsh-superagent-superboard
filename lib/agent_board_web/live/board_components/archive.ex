@@ -16,6 +16,12 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
         <h2>Merged <span class="archive-count">{length(@items)}</span></h2>
         <span class="board-eyebrow">Recent history · latest {length(@items)} loaded</span>
       </div>
+      <.live_component
+        :if={@items != []}
+        module={AgentBoardWeb.BoardComponents.MergeTrend}
+        id="merge-trend"
+        items={@items}
+      />
       <div id="merged-preview">
         <.live_component
           :for={item <- Enum.take(@items, 5)}
