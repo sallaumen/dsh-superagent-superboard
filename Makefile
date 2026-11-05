@@ -11,13 +11,14 @@
 # pipeline its own target with a documented contract (inputs, effects, when
 # to use). See PIPELINES.md.
 
-.PHONY: help backend frontend library release check
+.PHONY: help backend frontend library release coverage check
 
 help: ## Lista os pipelines e quando usar cada um
 	@echo "backend   — gates do Elixir (gate check-only). Use antes de abrir PR."
 	@echo "frontend  — build e deploy de assets (esbuild + tailwind). Use ao mudar CSS/JS."
 	@echo "library   — validador e testes da biblioteca de capacidades. Use ao mudar capabilities/."
 	@echo "release   — caminho misto de deploy (assets dev + compile/digest/release prod). Lento; use antes de deploy."
+	@echo "coverage  — relatório de cobertura da suíte (HTML em cover/). Sai com erro se < 90% (threshold padrão do Elixir); o HTML é gerado mesmo assim."
 	@echo "check     — os três pipelines separados juntos. Use antes de entregar qualquer PR."
 
 backend: ## Gates do backend: compile sem warnings + format check + credo + testes
@@ -39,4 +40,6 @@ release: ## Pipeline misto: assets em dev; compile, digest e release em prod
 	MIX_ENV=prod mix phx.digest
 	MIX_ENV=prod mix release --overwrite
 
+coverage: ## Relatório de cobertura da suíte (HTML em cover/, ignorado pelo git)
+	MIX_ENV=test mix test --cover
 check: backend frontend library ## Os pipelines separados (o mesmo conjunto da CI)
