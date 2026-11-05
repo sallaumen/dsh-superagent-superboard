@@ -388,6 +388,19 @@
         "Manter um job único sem documentação de uso",
         "Esperar pela CI bloqueada sem executar o pipeline local"
       ]
+    },
+    {
+      "id": "E29",
+      "request": "Renomeie apenas este arquivo de documentação para o nome novo que já definimos.",
+      "expected_primary": "NONE",
+      "allowed_alternatives": [],
+      "success_signals": [
+        "Executar a renomeação local delimitada com verificação proporcional",
+        "Não abrir uma skill de nomenclatura para um arquivo de docs"
+      ],
+      "failure_signals": [
+        "Abrir uma revisão de módulos e APIs do código inteiro para renomear um doc"
+      ]
     }
   ]
 }
