@@ -591,10 +591,12 @@ defmodule AgentBoardWeb.BoardLive do
 
       true ->
         case Intake.run(text) do
-          {:ok, %{spec: spec, tasks: tasks}} ->
+          {:ok, %{spec: spec, tasks: tasks, status: status}} ->
             {:noreply,
              socket
-             |> assign(intake: %{spec: spec, tasks: tasks, text: text, repo_id: repo.id})
+             |> assign(
+               intake: %{spec: spec, tasks: tasks, status: status, text: text, repo_id: repo.id}
+             )
              |> refresh_ai()}
 
           {:error, reason} ->
@@ -614,7 +616,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("create_from_intake", %{"index" => index}, socket) do
     with {:ok, position} <- intake_index(index),
          %{repo: repo} when not is_nil(repo) <- socket.assigns,
-         %{repo_id: repo_id} = intake <- socket.assigns.intake,
+         %{repo_id: repo_id, status: :ready} = intake <- socket.assigns.intake,
          true <- repo_id == repo.id,
          task when not is_nil(task) <- Enum.at(intake.tasks, position),
          {:ok, _created} <-

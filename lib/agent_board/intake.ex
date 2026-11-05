@@ -33,22 +33,19 @@ defmodule AgentBoard.Intake do
           {:ok, %{spec: spec(), tasks: [task()], status: :ready | :needs_clarification}}
           | {:error, term()}
   def run(text) do
-    with {:ok, spec} <- refine(text),
-         {:ok, tasks} <- propose(spec) do
-      {:ok, %{spec: spec, tasks: tasks, status: status(spec, tasks)}}
+    with {:ok, spec} <- refine(text) do
+      maybe_propose(spec)
     end
   end
 
-  # The model is cautious and marks almost everything not ready, so a false
-  # flag cannot be a blocker. It refuses only when the split produced nothing
-  # AND the model still has questions: then there is genuinely nothing to do.
-  defp status(spec, []),
-    do: if((spec["open_questions"] || []) != [], do: :needs_clarification, else: :ready)
+  defp maybe_propose(%{"ready" => true} = spec) do
+    with {:ok, tasks} <- propose(spec) do
+      status = if tasks == [], do: :needs_clarification, else: :ready
+      {:ok, %{spec: spec, tasks: tasks, status: status}}
+    end
+  end
 
-  defp status(_spec, _tasks), do: :ready
-
-  # The model decides, not a count: it always asks something, so "any question"
-  # would refuse every request -- which is the failure it was meant to prevent.
+  defp maybe_propose(spec), do: {:ok, %{spec: spec, tasks: [], status: :needs_clarification}}
 
   defp call(name, inputs, normalizer) do
     with {:ok, result} <- AI.call(name, inputs) do

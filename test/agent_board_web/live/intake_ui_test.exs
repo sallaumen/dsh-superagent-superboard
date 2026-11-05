@@ -154,6 +154,27 @@ defmodule AgentBoardWeb.IntakeUITest do
     refute render(view) =~ "medir o tempo"
   end
 
+  test "an unclear request shows questions without proposing or creating tasks", %{conn: conn} do
+    {:ok, _} = Board.add_repository("fixture", "unclear-intake")
+
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(
+        conn,
+        answer(
+          ~s({"goal":"Melhorar o board","constraints":[],"non_goals":[],"risks":[],"open_questions":["Qual parte?"],"assumptions":[],"ready":false,"language":"pt"})
+        )
+      )
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/unclear-intake")
+    view |> element("#intake-form") |> render_submit(%{"text" => "melhore o board"})
+
+    assert has_element?(view, "#intake-needs-clarification", "needs more detail")
+    assert render(view) =~ "Qual parte?"
+    refute has_element?(view, "[phx-click='create_from_intake']")
+    assert AgentBoard.Repo.aggregate(AgentBoard.AI.Call, :count, :id) == 1
+  end
+
   test "a voice request opens an editable draft without splitting or creating anything", %{
     conn: conn
   } do

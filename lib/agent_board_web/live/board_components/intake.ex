@@ -60,6 +60,19 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
       </form>
 
       <div :if={@intake} class="mt-4">
+        <p
+          :if={@intake.status == :needs_clarification}
+          id="intake-needs-clarification"
+          role="status"
+          class="mb-3 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-xs leading-relaxed text-base-content"
+        >
+          This request needs more detail before tasks can be proposed.
+          <%= if @intake.spec["open_questions"] != [] do %>
+            Review the questions below and edit the request.
+          <% else %>
+            Add detail and try again.
+          <% end %>
+        </p>
         <p class="text-[10px] uppercase text-base-content/75">Goal</p>
         <p class="text-sm text-base-content">{@intake.spec["goal"]}</p>
 
