@@ -246,6 +246,11 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  # Not every non-sync event is a failure: a repository without Issues is a
+  # warning, not an error (the pulls still sync).
+  defp is_warning?(%{kind: "issues_unavailable"}), do: true
+  defp is_warning?(_), do: false
+
   # A sync event carries an errors count; the per-item failures (issue_error,
   # pull_error, ...) carry a reason. Both must read as problems.
   defp has_errors?(%{kind: kind, payload: payload}) do
@@ -429,7 +434,8 @@ defmodule AgentBoardWeb.BoardLive do
               :for={e <- @events}
               class={[
                 "flex gap-3 text-[11px]",
-                has_errors?(e) && "text-[#f0b3b3]"
+                has_errors?(e) && "text-[#f0b3b3]",
+                is_warning?(e) && "text-[#e8a33d]"
               ]}
             >
               <span class="w-24 shrink-0 text-[#a39f93]">{time(e.inserted_at)}</span>
