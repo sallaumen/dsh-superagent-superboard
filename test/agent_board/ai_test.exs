@@ -219,8 +219,27 @@ defmodule AgentBoard.AITest do
     assert Repo.aggregate(Call, :count) == 2
   end
 
+  test "a changed registered prompt or response contract invalidates the cache key" do
+    {:ok, spec} = Registry.fetch(:refine_request)
+    inputs = %{text: "same"}
+    key = Cache.key(:refine_request, :deepseek, "deepseek-flash", inputs, spec)
+
+    refute key ==
+             Cache.key(:refine_request, :deepseek, "deepseek-flash", inputs, %{
+               spec
+               | system: spec.system <> " New rule."
+             })
+
+    refute key ==
+             Cache.key(:refine_request, :deepseek, "deepseek-flash", inputs, %{
+               spec
+               | json_schema: Map.put(spec.json_schema, "additionalProperties", true)
+             })
+  end
+
   test "an old complete row with invalid JSON is not reused" do
     inputs = %{text: "x"}
+    {:ok, spec} = Registry.fetch(:refine_request)
 
     %Call{}
     |> Call.changeset(%{
@@ -228,7 +247,7 @@ defmodule AgentBoard.AITest do
       engine: "deepseek",
       status: "ok",
       parse_state: "complete",
-      input_hash: Cache.key(:refine_request, :deepseek, "deepseek-flash", inputs),
+      input_hash: Cache.key(:refine_request, :deepseek, "deepseek-flash", inputs, spec),
       json: %{"goal" => "x", "constraints" => "not an array"}
     })
     |> Repo.insert!()
