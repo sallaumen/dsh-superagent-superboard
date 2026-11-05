@@ -1,40 +1,30 @@
 import Config
 
-# A local `.env` is read before any config: `KEY=value` lines, `#` comments,
-# and no override of what the environment already has. The file is gitignored;
-# `mix phx.server` runs from the project root, so the relative path is right.
-if File.exists?(".env") do
-  for line <- File.stream!(".env") do
-    case String.split(String.trim(line), "=", parts: 2) do
-      [key, value] ->
-        key = String.trim(key)
+# `.env.local` feeds the environment before any config below. The shell still
+# wins: a variable already set to a non-blank value is left alone. The suite
+# never applies it, so tests do not depend on a developer's local file.
+# AGENT_BOARD_ENV_FILE overrides the path (useful for a worktree).
+if config_env() != :test do
+  env_file = System.get_env("AGENT_BOARD_ENV_FILE") || Path.expand("../.env.local", __DIR__)
 
-        if key != "" and not String.starts_with?(key, "#") and System.get_env(key) == nil do
-          System.put_env(key, String.trim(value, "\""))
-        end
+  if File.exists?(env_file) do
+    for line <- File.stream!(env_file) do
+      case String.split(String.trim(line), "=", parts: 2) do
+        [key, value] ->
+          key = String.trim(key)
 
-      _ ->
-        :ok
+          if key != "" and not String.starts_with?(key, "#") and
+               System.get_env(key) in [nil, ""] do
+            System.put_env(key, String.trim(value, "\""))
+          end
+
+        _ ->
+          :ok
+      end
     end
   end
 end
 
-# config/runtime.exs is executed for all environments, including
-# during releases. It is executed after compilation and before the
-# system starts, so it is typically used to load production configuration
-# and secrets from environment variables or elsewhere. Do not define
-# any compile-time configuration in here, as it won't be applied.
-# The block below contains prod specific runtime configuration.
-
-# ## Using releases
-#
-# If you use `mix release`, you need to explicitly enable the server
-# by passing the PHX_SERVER=true when you start it:
-#
-#     PHX_SERVER=true bin/agent_board start
-#
-# Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
-# script that automatically sets the env var above.
 if System.get_env("PHX_SERVER") do
   config :agent_board, AgentBoardWeb.Endpoint, server: true
 end

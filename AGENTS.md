@@ -24,6 +24,14 @@ and pipeline selection. Its
 [CI-unavailable procedure](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner)
 is binding when GitHub Actions cannot run.
 
+## Local secrets
+
+- `.env.local` is read by `config/runtime.exs` before any config; it is
+  gitignored and never applied in `:test` (`config_env() != :test`).
+- `.env` is the committed list of variables -- the example, no secrets.
+- The shell wins: a variable already set to a non-blank value is left alone.
+- `AGENT_BOARD_ENV_FILE` points the loader at another file (a worktree).
+
 ## The data
 
 - **Ecto migrations** own the schema. Never edit a migrated table by hand; add a

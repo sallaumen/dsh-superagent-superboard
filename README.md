@@ -22,6 +22,20 @@ mix phx.server       # http://127.0.0.1:4002
 
 The dev database is on the local Postgres at `127.0.0.1:5434`.
 
+## Local secrets
+
+`.env.local` feeds the environment before any config: `KEY=value` lines, `#`
+comments, and a variable already set in the shell is left alone. It is
+gitignored. `.env` is the committed list of variables -- copy what you need.
+
+```sh
+cp .env .env.local        # then fill DEEPSEEK_API_KEY, GEMINI_API_KEY or OPENAI_API_KEY
+```
+
+The app picks the first provider with a key; `AI_PROVIDER` pins one. Without
+any key the AI answers `:not_configured`, and `AI_REHEARSAL=1` runs the whole
+panel against free fixtures instead. Tests never read `.env.local`.
+
 ## What it does
 
 - **Syncs** the tracked repositories' issues and pull requests (the Oban
