@@ -72,6 +72,22 @@ defmodule AgentBoard.AITest do
     assert call.tier == "fast"
   end
 
+  test "a paid response is not reported as success if its audit row cannot be stored" do
+    test_pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      send(test_pid, :provider_answered)
+      Req.Test.json(conn, answer(~s({"goal":"x"})))
+    end)
+
+    Repo.query!(
+      "ALTER TABLE ai_calls ADD CONSTRAINT reject_ai_call_test CHECK (name <> 'refine_request')"
+    )
+
+    assert {:error, :audit_unavailable} = AI.call(:refine_request, %{text: "x"})
+    assert_received :provider_answered
+  end
+
   test "the catalog has deepseek, gemini and openai with a model per tier" do
     assert Providers.ids() == [:deepseek, :gemini, :openai]
 

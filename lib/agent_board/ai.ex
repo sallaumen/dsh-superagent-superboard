@@ -9,6 +9,7 @@ defmodule AgentBoard.AI do
   """
 
   import Ecto.Query
+  require Logger
 
   alias AgentBoard.AI.{Budget, Cache, Call, Providers, Registry, Request, Result, Schema}
   alias AgentBoard.Repo
@@ -51,30 +52,36 @@ defmodule AgentBoard.AI do
 
     case engine().run(request) do
       {:ok, %Result{} = result} ->
-        if result.parse_state == :complete and Schema.valid?(spec.json_schema, result.json) do
-          record(name, spec, request, inputs, result, elapsed(started), :ok, nil)
-          {:ok, result}
-        else
-          result = %{result | parse_state: :partial}
-
-          record(
-            name,
-            spec,
-            request,
-            inputs,
-            result,
-            elapsed(started),
-            :error,
-            "malformed_output"
-          )
-
-          {:error, :malformed_output}
-        end
+        record_answer(name, spec, request, inputs, result, elapsed(started))
 
       {:error, reason} ->
-        record(name, spec, request, inputs, %Result{}, elapsed(started), :error, inspect(reason))
-        if fallback?(reason), do: attempt(name, spec, inputs, rest), else: {:error, reason}
+        record_failure(name, spec, request, inputs, reason, rest, elapsed(started))
     end
+  end
+
+  defp record_answer(name, spec, request, inputs, result, duration) do
+    if result.parse_state == :complete and Schema.valid?(spec.json_schema, result.json) do
+      with :ok <- record(name, spec, request, inputs, result, duration, :ok, nil) do
+        {:ok, result}
+      end
+    else
+      result = %{result | parse_state: :partial}
+
+      with :ok <-
+             record(name, spec, request, inputs, result, duration, :error, "malformed_output") do
+        {:error, :malformed_output}
+      end
+    end
+  end
+
+  defp record_failure(name, spec, request, inputs, reason, rest, duration) do
+    with :ok <- record(name, spec, request, inputs, %Result{}, duration, :error, inspect(reason)) do
+      next_attempt(reason, name, spec, inputs, rest)
+    end
+  end
+
+  defp next_attempt(reason, name, spec, inputs, rest) do
+    if fallback?(reason), do: attempt(name, spec, inputs, rest), else: {:error, reason}
   end
 
   defp fallback?(reason),
@@ -131,5 +138,16 @@ defmodule AgentBoard.AI do
       error: error
     })
     |> Repo.insert()
+    |> case do
+      {:ok, _call} -> :ok
+      {:error, _changeset} -> audit_unavailable(name, request.provider)
+    end
+  rescue
+    _error -> audit_unavailable(name, request.provider)
+  end
+
+  defp audit_unavailable(name, provider) do
+    Logger.error("AI call audit unavailable for #{name} via #{provider}")
+    {:error, :audit_unavailable}
   end
 end
