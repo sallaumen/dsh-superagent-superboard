@@ -23,8 +23,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert html =~ "e8a33d"
-    refute html =~ "f0b3b3"
+    assert html =~ "text-warning"
+    refute html =~ "text-error"
   end
 
   test "a per-item error event is shown as an error", %{conn: conn} do
@@ -34,7 +34,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert html =~ "text-[#f0b3b3]"
+    assert html =~ "text-error"
   end
 
   test "the sync line says 1 error, not 1 errors", %{conn: conn} do
@@ -450,7 +450,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "errors: 2"
-    assert html =~ "f0b3b3"
+    assert html =~ "text-error"
   end
 
   test "the header shows the last sync and its errors", %{conn: conn} do
