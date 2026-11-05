@@ -4,6 +4,8 @@ defmodule AgentBoardWeb.BoardComponents.AI do
 
   import AgentBoardWeb.BoardComponents.Presentation
 
+  alias AgentBoardWeb.BoardComponents.DataAge
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -27,6 +29,7 @@ defmodule AgentBoardWeb.BoardComponents.AI do
           </span>
           <span class="w-20 shrink-0 text-base-content/75">{c.duration_ms}ms</span>
           <span class="text-base-content/75">{c.input_tokens + c.output_tokens} tokens</span>
+          <DataAge.stamp id={"call-age-#{c.id}"} at={c.inserted_at} label="Called" />
         </li>
       </ol>
     </section>

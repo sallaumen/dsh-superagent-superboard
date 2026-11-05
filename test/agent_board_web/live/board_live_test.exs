@@ -70,6 +70,21 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#sync-status", "UTC")
   end
 
+  test "sync age describes the last outcome without pretending a failure refreshed data", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "freshness")
+    Board.log_event(repo.id, "sync", "fixture/freshness", %{"errors" => 0})
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/freshness")
+    assert has_element?(view, "#sync-age[data-sync=true][datetime]", "Last completed sync")
+
+    Board.log_event(repo.id, "sync_error", "fixture/freshness", %{"reason" => "offline"})
+    send(view.pid, :board_updated)
+    assert has_element?(view, "#sync-age[data-sync=false]", "Last sync attempt")
+    assert has_element?(view, "#data-freshness", "Saved data age: unknown")
+    assert has_element?(view, "#activity-age[datetime]")
+  end
+
   test "a failed sync supersedes the last clean outcome", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "health")
     Board.log_event(repo.id, "sync", "fixture/health", %{"errors" => 0})

@@ -4,6 +4,8 @@ defmodule AgentBoardWeb.BoardComponents.Card do
 
   import AgentBoardWeb.BoardComponents.Presentation
 
+  alias AgentBoardWeb.BoardComponents.DataAge
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -43,6 +45,14 @@ defmodule AgentBoardWeb.BoardComponents.Card do
       <span :if={@item.number} class="ml-2 text-[11px] tabular-nums text-base-content/75">
         #{@item.number}
       </span>
+
+      <div class="mt-1">
+        <DataAge.stamp
+          id={"#{@id}-age"}
+          at={if @state == :merged, do: @item.merged_at, else: @item.updated_at}
+          label={if @state == :merged, do: "Merged", else: "Record updated"}
+        />
+      </div>
 
       <div
         :if={@state in [:running, :ready, :blocked, :queued]}

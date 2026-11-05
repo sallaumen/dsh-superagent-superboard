@@ -323,6 +323,7 @@ defmodule AgentBoardWeb.BoardLive do
           repo={@repo}
           live={@live}
           sync_event={@sync_event}
+          last_activity={List.first(@events)}
         />
 
         <div

@@ -131,3 +131,7 @@
 #connection-status[data-connected="false"] .connection-live {
   display: none;
 }
+
+/* Fresh socket != fresh data. Thresholds reflect missed one-minute sync runs. */
+.data-age[data-age-state="delayed"] { color: var(--color-warning); }
+.data-age[data-age-state="stale"] { color: var(--color-error); }
