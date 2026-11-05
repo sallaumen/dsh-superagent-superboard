@@ -247,12 +247,12 @@ defmodule AgentBoardWeb.BoardLive do
             <input
               name="owner"
               placeholder="owner"
-              class="w-28 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm"
+              class="w-20 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm sm:w-28"
             />
             <input
               name="name"
               placeholder="repo name"
-              class="w-36 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm"
+              class="w-24 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm sm:w-36"
             />
             <button
               class="border border-[#2a2925] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#e8a33d] hover:bg-[#23221c]"
