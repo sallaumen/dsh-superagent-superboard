@@ -190,8 +190,14 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/history")
 
-    assert has_element?(view, "#merged-column", "latest 7 loaded")
-    assert has_element?(view, "#merge-trend", "7 of 7 loaded")
+    assert has_element?(view, "#merged-column .archive-count", "7 loaded")
+
+    assert has_element?(
+             view,
+             "#merged-column .archive-count[aria-label='7 pull requests loaded']"
+           )
+
+    assert has_element?(view, "#merge-trend", "7 in the last 7 UTC days · loaded history")
     assert has_element?(view, "#merged-list[aria-label='Merged pull request list']")
     assert has_element?(view, "#merged-list article:nth-child(5)", "Merged pull 3")
     assert has_element?(view, "#merged-list article:nth-child(6)", "Merged pull 2")
@@ -220,23 +226,23 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/scroll-history")
     assert has_element?(view, "#merged-list[phx-viewport-bottom=load_more_merged]")
-    assert has_element?(view, "#merged-column", "latest 50 loaded")
+    assert has_element?(view, "#merged-column .archive-count", "50 loaded")
 
     first_tail = view |> element("#merged-list .archive-tail") |> render() |> tail_id()
     render_hook(view, "load_more_merged", %{"id" => first_tail})
-    assert has_element?(view, "#merged-column", "latest 100 loaded")
+    assert has_element?(view, "#merged-column .archive-count", "100 loaded")
 
     render_hook(view, "load_more_merged", %{"id" => first_tail})
-    assert has_element?(view, "#merged-column", "latest 100 loaded")
+    assert has_element?(view, "#merged-column .archive-count", "100 loaded")
 
     second_tail = view |> element("#merged-list .archive-tail") |> render() |> tail_id()
     render_hook(view, "load_more_merged", %{"id" => second_tail})
-    assert has_element?(view, "#merged-column", "latest 120 loaded")
+    assert has_element?(view, "#merged-column .archive-count", "120 loaded")
     refute has_element?(view, "#merged-list[phx-viewport-bottom]")
     refute has_element?(view, "#merged-list .archive-tail[id]")
 
     send(view.pid, :board_updated)
-    assert has_element?(view, "#merged-column", "latest 120 loaded")
+    assert has_element?(view, "#merged-column .archive-count", "120 loaded")
     assert length(Regex.scan(~r/id="pull-\d+"/, render(view))) == 120
 
     %PullRequest{}
@@ -250,13 +256,13 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     send(view.pid, :board_updated)
-    assert has_element?(view, "#merged-column", "latest 120 loaded")
+    assert has_element?(view, "#merged-column .archive-count", "120 loaded")
     assert has_element?(view, "#merged-list", "Newest merge")
     assert length(Regex.scan(~r/id="pull-\d+"/, render(view))) == 120
 
     newest_tail = view |> element("#merged-list .archive-tail") |> render() |> tail_id()
     render_hook(view, "load_more_merged", %{"id" => newest_tail})
-    assert has_element?(view, "#merged-column", "latest 121 loaded")
+    assert has_element?(view, "#merged-column .archive-count", "121 loaded")
     assert length(Regex.scan(~r/id="pull-\d+"/, render(view))) == 121
   end
 
@@ -345,7 +351,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/trend")
 
-    assert has_element?(view, "#merge-trend", "2 of 3 loaded · last 7 UTC days")
+    assert has_element?(view, "#merge-trend", "2 in the last 7 UTC days · loaded history")
 
     assert has_element?(
              view,

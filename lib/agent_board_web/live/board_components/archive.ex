@@ -7,11 +7,16 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
   @impl true
   def render(assigns) do
     ~H"""
-    <section id={@id} aria-label="Merged tasks" class="board-archive">
-      <div class="archive-heading">
-        <h2>Merged <span class="archive-count">{length(@items)}</span></h2>
-        <span class="board-eyebrow">Recent history · latest {length(@items)} loaded</span>
-      </div>
+    <section id={@id} aria-label="Merged pull request history" class="board-archive">
+      <header class="archive-heading">
+        <div class="archive-title">
+          <h2>Merged PRs</h2>
+          <span class="archive-count" aria-label={"#{length(@items)} pull requests loaded"}>
+            {length(@items)} loaded
+          </span>
+        </div>
+        <span class="archive-scope">Newest first</span>
+      </header>
       <.live_component
         :if={@items != []}
         module={AgentBoardWeb.BoardComponents.MergeTrend}
@@ -41,7 +46,7 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
         >
           Scroll for older pull requests
         </p>
-        <p :if={@items != [] && !@has_more} class="archive-tail">End of merged history</p>
+        <p :if={@items != [] && !@has_more} class="archive-tail">End of saved history</p>
       </div>
     </section>
     """
