@@ -67,6 +67,7 @@ defmodule AgentBoardWeb.VoiceAnswer do
     with {:ok, repository} <- repository(snapshot),
          {:ok, question} <- question(question),
          {:ok, board} <- board(snapshot),
+         :ok <- validate_lane_counts(board),
          metadata = sync_metadata(Map.get(snapshot, :sync_event)),
          {:ok, result} <-
            AI.call(:answer_board_question, %{
@@ -99,6 +100,25 @@ defmodule AgentBoardWeb.VoiceAnswer do
 
   defp board(%{board: board}) when is_map(board), do: {:ok, board}
   defp board(_snapshot), do: {:error, :no_board_data}
+
+  defp validate_lane_counts(board) do
+    counts = Map.get(board, :task_counts) || %{}
+
+    case Enum.all?(@task_lanes, &valid_lane_count?(board, counts, &1)) do
+      true -> :ok
+      false -> {:error, :inconsistent_board_data}
+    end
+  end
+
+  defp valid_lane_count?(board, counts, lane) do
+    rows = Map.get(board, lane) || []
+
+    case Map.get(counts, lane) do
+      nil -> is_list(rows)
+      total when is_integer(total) and total >= 0 -> is_list(rows) and total >= length(rows)
+      _other -> false
+    end
+  end
 
   defp facts(repository, board, metadata) do
     %{
