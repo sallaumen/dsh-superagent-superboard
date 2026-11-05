@@ -176,6 +176,26 @@ defmodule AgentBoardWeb.IntakeUITest do
     assert AgentBoard.AI.recent(5) == []
   end
 
+  test "the voice panel prepares the edited command in the selected repository", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "voice-action")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/voice-action")
+
+    render_hook(view, "voice_transcript", %{"text" => "Original spoken request"})
+    assert_patch(view, "/?panel=voice&repo=fixture%2Fvoice-action")
+
+    view
+    |> element("#voice-command-form")
+    |> render_change(%{"text" => "Edited coding request"})
+
+    view |> element("#voice-prepare-intake") |> render_click()
+
+    assert_patch(view, "/?panel=intake&repo=fixture%2Fvoice-action")
+    assert has_element?(view, "#intake-form input[name=source_repo][value='#{repo.id}']")
+    assert render(view) =~ "Edited coding request"
+    assert AgentBoard.AI.recent(5) == []
+    assert AgentBoard.Repo.aggregate(AgentBoard.Board.Task, :count, :id) == 0
+  end
+
   test "a voice draft cannot be split after the selected repository changes", %{conn: conn} do
     {:ok, original} = Board.add_repository("fixture", "original")
     {:ok, _other} = Board.add_repository("fixture", "other")
