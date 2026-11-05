@@ -1,15 +1,11 @@
 defmodule AgentBoardWeb.BoardComponents.Archive do
-  @moduledoc "Compact merged pull request history using only the loaded board records."
+  @moduledoc "Scrollable merged pull request history using only loaded records."
   use AgentBoardWeb, :live_component
 
   import AgentBoardWeb.BoardComponents.Presentation, only: [empty_copy: 1]
 
-  @preview_count 5
-
   @impl true
   def render(assigns) do
-    assigns = assign(assigns, :remaining, Enum.drop(assigns.items, @preview_count))
-
     ~H"""
     <section id={@id} aria-label="Merged tasks" class="board-archive">
       <div class="archive-heading">
@@ -22,33 +18,22 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
         id="merge-trend"
         items={@items}
       />
-      <div id="merged-preview">
+      <div
+        id="merged-list"
+        class="archive-list"
+        role="region"
+        tabindex="0"
+        aria-label="Merged pull request list"
+      >
         <.live_component
-          :for={item <- Enum.take(@items, 5)}
+          :for={item <- @items}
           module={AgentBoardWeb.BoardComponents.Card}
           id={"pull-#{item.id}"}
           item={item}
           state={:merged}
         />
+        <p :if={@items == []} class="lane-empty">{empty_copy(:merged)}</p>
       </div>
-      <p :if={@items == []} class="lane-empty">{empty_copy(:merged)}</p>
-      <details :if={@remaining != []} id="merged-history" class="archive-history">
-        <summary>Show {length(@remaining)} more merged pull requests</summary>
-        <div
-          class="archive-history-list"
-          role="region"
-          tabindex="0"
-          aria-label="More merged pull requests"
-        >
-          <.live_component
-            :for={item <- @remaining}
-            module={AgentBoardWeb.BoardComponents.Card}
-            id={"pull-#{item.id}"}
-            item={item}
-            state={:merged}
-          />
-        </div>
-      </details>
     </section>
     """
   end

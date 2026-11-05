@@ -170,7 +170,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert render(view) =~ "sm:w-14"
   end
 
-  test "merged history previews five newest pulls and preserves the remaining loaded pulls", %{
+  test "merged history exposes every loaded pull in one scroll region", %{
     conn: conn
   } do
     {:ok, repo} = Board.add_repository("fixture", "history")
@@ -192,12 +192,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     assert has_element?(view, "#merged-column", "latest 7 loaded")
     assert has_element?(view, "#merge-trend", "7 of 7 loaded")
-    assert has_element?(view, "#merged-preview article:nth-child(5)", "Merged pull 3")
-    refute has_element?(view, "#merged-preview article:nth-child(6)")
-    assert has_element?(view, "#merged-history summary", "Show 2 more merged pull requests")
-    assert has_element?(view, "#merged-history article", "Merged pull 2")
-    assert has_element?(view, "#merged-history article", "Merged pull 1")
-    refute has_element?(view, "#merged-history[open]")
+    assert has_element?(view, "#merged-list[aria-label='Merged pull request list']")
+    assert has_element?(view, "#merged-list article:nth-child(5)", "Merged pull 3")
+    assert has_element?(view, "#merged-list article:nth-child(6)", "Merged pull 2")
+    assert has_element?(view, "#merged-list article:nth-child(7)", "Merged pull 1")
+    refute has_element?(view, "#merged-column summary")
     refute has_element?(view, "#merged-column button[phx-click=act]")
   end
 
@@ -236,7 +235,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     assert has_element?(view, "#merged-column", "No pull request merged yet.")
     refute has_element?(view, "#merge-trend")
-    refute has_element?(view, "#merged-history")
+    assert has_element?(view, "#merged-list", "No pull request merged yet.")
+    refute has_element?(view, "#merged-column summary")
   end
 
   test "missing AI measurements remain unknown", %{conn: conn} do

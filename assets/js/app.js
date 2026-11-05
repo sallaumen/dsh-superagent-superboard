@@ -37,8 +37,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
       if (from.matches("dialog.board-dialog")) to.toggleAttribute("open", from.open)
-      // Native disclosures should remain open while a broadcast refreshes their records.
-      if (from.matches("#merged-history, #board-settings")) to.toggleAttribute("open", from.open)
+      // Settings should remain open while a broadcast refreshes the board.
+      if (from.matches("#board-settings")) to.toggleAttribute("open", from.open)
     },
   },
 })
