@@ -3,7 +3,7 @@ defmodule AgentBoard.AITest do
   use AgentBoard.DataCase, async: false
 
   alias AgentBoard.AI
-  alias AgentBoard.AI.{Cache, Call, Providers}
+  alias AgentBoard.AI.{Cache, Call, Providers, Registry}
   alias AgentBoard.Repo
 
   @stub AgentBoard.AITest.Stub
@@ -137,6 +137,24 @@ defmodule AgentBoard.AITest do
     assert result.json["goal"] == "x"
     assert result.parse_state == :complete
   end
+
+  test "registered function schemas meet the strict object contract" do
+    for name <- Registry.names() do
+      {:ok, spec} = Registry.fetch(name)
+      assert_strict_objects(spec.json_schema)
+    end
+  end
+
+  defp assert_strict_objects(%{"type" => "object", "properties" => properties} = schema) do
+    assert schema["additionalProperties"] == false
+    assert MapSet.new(schema["required"]) == MapSet.new(Map.keys(properties))
+    Enum.each(properties, fn {_name, child} -> assert_strict_objects(child) end)
+  end
+
+  defp assert_strict_objects(%{"type" => "array", "items" => child}),
+    do: assert_strict_objects(child)
+
+  defp assert_strict_objects(_schema), do: :ok
 
   test "cost is computed from the model's price per million tokens" do
     assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000_000, 0) == 280_000

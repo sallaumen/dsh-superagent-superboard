@@ -10,6 +10,7 @@ defmodule AgentBoard.AI.Registry do
 
   @refine_schema %{
     "type" => "object",
+    "additionalProperties" => false,
     "properties" => %{
       "goal" => %{"type" => "string"},
       "constraints" => %{"type" => "array", "items" => %{"type" => "string"}},
@@ -34,11 +35,13 @@ defmodule AgentBoard.AI.Registry do
 
   @tasks_schema %{
     "type" => "object",
+    "additionalProperties" => false,
     "properties" => %{
       "tasks" => %{
         "type" => "array",
         "items" => %{
           "type" => "object",
+          "additionalProperties" => false,
           "properties" => %{
             "title" => %{"type" => "string"},
             "body" => %{"type" => "string"},
@@ -59,12 +62,14 @@ defmodule AgentBoard.AI.Registry do
 
   @answer_schema %{
     "type" => "object",
+    "additionalProperties" => false,
     "properties" => %{"answer" => %{"type" => "string"}},
     "required" => ["answer"]
   }
 
   @summary_schema %{
     "type" => "object",
+    "additionalProperties" => false,
     "properties" => %{"summary" => %{"type" => "string"}},
     "required" => ["summary"]
   }
