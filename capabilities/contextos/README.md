@@ -13,12 +13,12 @@ Estes arquivos registram intenções e preferências de projetos específicos, d
 
 | Contexto | Conteúdo | Dependência |
 |---|---|---|
-| `colmex/base.md` | Colmex: produto e identidade | Nenhuma |
-| `colmex/casas.md` | Ateliê, Prefeitura, Torre e Laboratório | colmex/base.md |
-| `colmex/comercio.md` | Mercado, Indústria, fornecedores e Amostras | colmex/base.md |
-| `colmex/colmeia.md` | Colmeia e gestão visual de IAs | colmex/base.md |
-| `forro-mobile.md` | Forró: mobile first e Programação integrada | Nenhuma |
-| `elixir-phoenix-oban.md` | Elixir, Phoenix, LiveView e Oban | Nenhuma |
+| [colmex/base.md](colmex/base.md) | Colmex: produto e identidade | Nenhuma |
+| [colmex/casas.md](colmex/casas.md) | Ateliê, Prefeitura, Torre e Laboratório | colmex/base.md |
+| [colmex/comercio.md](colmex/comercio.md) | Mercado, Indústria, fornecedores e Amostras | colmex/base.md |
+| [colmex/colmeia.md](colmex/colmeia.md) | Colmeia e gestão visual de IAs | colmex/base.md |
+| [forro-mobile.md](forro-mobile.md) | Forró: mobile first e Programação integrada | Nenhuma |
+| [elixir-phoenix-oban.md](elixir-phoenix-oban.md) | Elixir, Phoenix, LiveView e Oban | Nenhuma |
 
 ## Adicionar um contexto novo
 

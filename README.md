@@ -37,6 +37,8 @@ The dev database is on the local Postgres at `127.0.0.1:5434`.
   "Dictate task" turns a sentence into a task title.
 - **Exposes a JSON API** under `/api` — the board, the repositories and the
   task actions; documented in [docs/api.md](docs/api.md).
+- **More docs** — the AI-layer plan and the recorded decisions live in
+  [docs/](docs/README.md).
 
 ## What it costs
 
