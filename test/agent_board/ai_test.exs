@@ -13,6 +13,7 @@ defmodule AgentBoard.AITest do
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
 
     Application.put_env(:agent_board, :ai_api_key, "test-key")
+    Application.put_env(:agent_board, :ai_provider, :deepseek)
 
     Application.put_env(:agent_board, :ai_client, fn ->
       Req.new(base_url: "https://api.deepseek.com", plug: {Req.Test, @stub}, retry: false)
@@ -21,6 +22,7 @@ defmodule AgentBoard.AITest do
     on_exit(fn ->
       Application.delete_env(:agent_board, :ai_client)
       Application.delete_env(:agent_board, :ai_api_key)
+      Application.delete_env(:agent_board, :ai_provider)
     end)
 
     :ok
@@ -126,6 +128,31 @@ defmodule AgentBoard.AITest do
     assert call.cost_micros > 0
   end
 
+  test "a spent quota moves to the next provider with a key" do
+    Application.delete_env(:agent_board, :ai_provider)
+    Application.put_env(:agent_board, :ai_api_key, "test-key")
+
+    {:ok, agent} = Agent.start_link(fn -> 0 end)
+
+    Req.Test.stub(@stub, fn conn ->
+      attempt = Agent.get_and_update(agent, fn n -> {n + 1, n + 1} end)
+
+      if attempt == 1 do
+        Plug.Conn.send_resp(conn, 429, "spent")
+      else
+        Req.Test.json(conn, answer(~s({"goal":"x"})))
+      end
+    end)
+
+    assert {:ok, _result} = AI.call(:refine_request, %{text: "x"})
+
+    calls = Repo.all(Call)
+    assert [first, second] = Enum.sort_by(calls, & &1.id)
+    assert first.status == "error"
+    assert second.status == "ok"
+    refute first.engine == second.engine
+  end
+
   test "an unregistered call is refused and records nothing" do
     assert {:error, :unknown_call} = AI.call(:nope, %{text: "x"})
     assert Repo.aggregate(Call, :count) == 0
@@ -159,7 +186,8 @@ defmodule AgentBoard.AITest do
   test "a missing key is not a network call" do
     Application.put_env(:agent_board, :ai_api_key, "")
 
-    assert {:error, :not_configured} = AI.call(:refine_request, %{text: "x"})
-    assert Repo.one(Call).status == "error"
+    assert {:error, :no_provider} = AI.call(:refine_request, %{text: "x"})
+    # the attempt is still a row: it says the key was missing
+    assert Repo.aggregate(Call, :count) == 1
   end
 end
