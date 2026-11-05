@@ -22,6 +22,27 @@ mix phx.server       # http://127.0.0.1:4002
 
 The dev database is on the local Postgres at `127.0.0.1:5434`.
 
+## Run as a service
+
+The board is meant to be always on, at `http://127.0.0.1:4099`. `ops/com.agentboard.plist`
+is the launchd agent; `scripts/service.sh` is what it runs.
+
+```sh
+cp ops/com.agentboard.plist ~/Library/LaunchAgents/com.agentboard.plist
+launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.agentboard.plist
+```
+
+`KeepAlive` restarts the board after a crash or an update; `RunAtLoad` starts
+it with the system. Logs: `~/Library/Logs/AgentBoard.log`.
+
+```sh
+launchctl bootout "gui/$(id -u)/com.agentboard"   # stop for good
+launchctl kickstart -k "gui/$(id -u)/com.agentboard"  # restart now
+```
+
+Unlike the `o_colmex` updater, **nothing here updates on a timer**: the board
+watches agents, and a restart would interrupt them. Updating is a button.
+
 ## Local secrets
 
 `.env.local` feeds the environment before any config: `KEY=value` lines, `#`
