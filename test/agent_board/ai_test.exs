@@ -108,6 +108,24 @@ defmodule AgentBoard.AITest do
     assert result.parse_state == :complete
   end
 
+  test "cost is computed from the model's price per million tokens" do
+    assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000_000, 0) == 280_000
+    assert Providers.cost_micros(:deepseek, "deepseek-flash", 0, 1_000_000) == 420_000
+    assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000, 2_000) == 1_120
+    assert Providers.cost_micros(:deepseek, "not-a-model", 1_000, 1_000) == 0
+    assert Providers.cost_micros(:nope, "x", 1_000, 1_000) == 0
+  end
+
+  test "a call records the cost the answer reports" do
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, answer(~s({"goal":"x"})))
+    end)
+
+    assert {:ok, _} = AI.call(:refine_request, %{text: "x"})
+    call = Repo.one(Call)
+    assert call.cost_micros > 0
+  end
+
   test "an unregistered call is refused and records nothing" do
     assert {:error, :unknown_call} = AI.call(:nope, %{text: "x"})
     assert Repo.aggregate(Call, :count) == 0

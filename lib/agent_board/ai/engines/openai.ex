@@ -111,6 +111,13 @@ defmodule AgentBoard.AI.Engines.OpenAI do
        input_tokens: usage["prompt_tokens"] || 0,
        output_tokens: usage["completion_tokens"] || 0,
        duration_ms: elapsed,
+       cost_micros:
+         Providers.cost_micros(
+           request.provider,
+           body["model"] || request.model,
+           usage["prompt_tokens"] || 0,
+           usage["completion_tokens"] || 0
+         ),
        model: body["model"] || request.model,
        engine: request.provider,
        parse_state: if(json, do: :complete, else: :partial)

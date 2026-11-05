@@ -72,7 +72,7 @@ defmodule AgentBoard.AI do
       status: to_string(status),
       input_tokens: result.input_tokens,
       output_tokens: result.output_tokens,
-      cost_micros: 0,
+      cost_micros: result.cost_micros,
       duration_ms: elapsed,
       parse_state: result.parse_state && to_string(result.parse_state),
       json: result.json,
