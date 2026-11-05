@@ -246,9 +246,19 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  @max_payload 120
+
   defp payload_summary(payload) do
-    Enum.map_join(payload, " · ", fn {k, v} -> "#{k}: #{v}" end)
+    Enum.map_join(payload, " · ", fn {k, v} -> "#{k}: #{truncate(v)}" end)
   end
+
+  # A network error can carry the whole GitHub body (hundreds of chars) and
+  # would wreck the activity column. One line, bounded.
+  defp truncate(value) when is_binary(value) and byte_size(value) > @max_payload,
+    do: String.slice(value, 0, @max_payload) <> "…"
+
+  defp truncate(value) when is_binary(value), do: value
+  defp truncate(value), do: inspect(value)
 
   defp empty_copy(:running), do: "No task is running."
   defp empty_copy(:ready), do: "Nothing is waiting on a review."
