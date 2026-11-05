@@ -25,8 +25,28 @@ defmodule AgentBoard.Sync do
     |> length()
   end
 
-  @doc "Sync one repository."
+  @doc """
+  Sync one repository.
+
+  A GitHub failure (rate limit, 5xx, network) is logged as an event and
+  returned as `{:error, reason}`; the Oban worker retries the job, and the
+  board keeps the last good state instead of losing it.
+  """
   def sync_repo(client, repository) do
+    try do
+      do_sync(client, repository)
+    rescue
+      exception ->
+        Board.log_event(repository.id, "sync_error", "#{repository.owner}/#{repository.name}", %{
+          "reason" => Exception.message(exception)
+        })
+
+        Board.broadcast(repository.id)
+        {:error, exception}
+    end
+  end
+
+  defp do_sync(client, repository) do
     issues = GitHub.issues(client, repository.owner, repository.name)
     pulls = GitHub.pulls(client, repository.owner, repository.name)
 

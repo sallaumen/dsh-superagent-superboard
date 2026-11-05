@@ -17,7 +17,8 @@ defmodule AgentBoard.SyncRepoTest do
     %{repo: repo}
   end
 
-  defp client, do: Req.new(base_url: "https://api.github.com", plug: {Req.Test, @stub})
+  defp client,
+    do: Req.new(base_url: "https://api.github.com", plug: {Req.Test, @stub}, retry: false)
 
   defp issue(number, state) do
     %{
@@ -46,6 +47,17 @@ defmodule AgentBoard.SyncRepoTest do
 
     assert %Task{state: "queued", title: "Issue 7"} =
              Repo.one(from t in Task, where: t.number == 7)
+  end
+
+  test "a GitHub failure is logged and returned, not raised", %{repo: repo} do
+    stub_github(fn conn ->
+      Plug.Conn.send_resp(conn, 500, "boom")
+    end)
+
+    assert {:error, exception} = Sync.sync_repo(client(), repo)
+    assert Exception.message(exception) =~ "500"
+
+    assert Enum.any?(Board.events(repo), &(&1.kind == "sync_error"))
   end
 
   test "all/1 syncs every active repository with the given client", %{repo: _repo} do

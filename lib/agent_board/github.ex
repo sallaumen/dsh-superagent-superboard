@@ -16,11 +16,20 @@ defmodule AgentBoard.GitHub do
     Req.new(base_url: "https://api.github.com", headers: headers, retry: false)
   end
 
+  # A 4xx/5xx response is an error, not a body. Req.get! only raises on
+  # transport errors, so the status is checked here.
+  defp body!(response) do
+    case response.status do
+      status when status in 200..299 -> response.body
+      status -> raise "GitHub HTTP #{status}: #{inspect(response.body)}"
+    end
+  end
+
   @doc "The repository's issues, the pull requests filtered out."
   def issues(client, owner, repo) do
     client
     |> Req.get!(url: "/repos/#{owner}/#{repo}/issues", params: recent())
-    |> Map.fetch!(:body)
+    |> body!()
     |> Enum.reject(&Map.has_key?(&1, "pull_request"))
   end
 
@@ -28,21 +37,21 @@ defmodule AgentBoard.GitHub do
   def pulls(client, owner, repo) do
     client
     |> Req.get!(url: "/repos/#{owner}/#{repo}/pulls", params: recent())
-    |> Map.fetch!(:body)
+    |> body!()
   end
 
   @doc "The reviews of a pull request."
   def reviews(client, owner, repo, number) do
     client
     |> Req.get!(url: "/repos/#{owner}/#{repo}/pulls/#{number}/reviews", params: [per_page: 100])
-    |> Map.fetch!(:body)
+    |> body!()
   end
 
   @doc "The check runs of a commit."
   def check_runs(client, owner, repo, ref) do
     client
     |> Req.get!(url: "/repos/#{owner}/#{repo}/commits/#{ref}/check-runs", params: [per_page: 100])
-    |> Map.fetch!(:body)
+    |> body!()
     |> Map.get("check_runs", [])
   end
 
@@ -50,28 +59,28 @@ defmodule AgentBoard.GitHub do
   def issue_comments(client, owner, repo, number) do
     client
     |> Req.get!(url: "/repos/#{owner}/#{repo}/issues/#{number}/comments", params: [per_page: 100])
-    |> Map.fetch!(:body)
+    |> body!()
   end
 
   @doc "Comment on an issue."
   def create_comment(client, owner, repo, number, body) do
     client
     |> Req.post!(url: "/repos/#{owner}/#{repo}/issues/#{number}/comments", json: %{body: body})
-    |> Map.fetch!(:body)
+    |> body!()
   end
 
   @doc "Open an issue."
   def create_issue(client, owner, repo, title, body) do
     client
     |> Req.post!(url: "/repos/#{owner}/#{repo}/issues", json: %{title: title, body: body})
-    |> Map.fetch!(:body)
+    |> body!()
   end
 
   @doc "Close an issue."
   def close_issue(client, owner, repo, number) do
     client
     |> Req.patch!(url: "/repos/#{owner}/#{repo}/issues/#{number}", json: %{state: "closed"})
-    |> Map.fetch!(:body)
+    |> body!()
   end
 
   defp recent, do: [state: "all", sort: "updated", direction: "desc", per_page: 100]
