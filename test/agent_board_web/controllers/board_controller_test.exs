@@ -43,6 +43,30 @@ defmodule AgentBoardWeb.BoardControllerTest do
     assert %{"error" => _} = json_response(conn, 404)
   end
 
+  test "POST /api/tasks creates a task through the injected client", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    previous = Application.get_env(:agent_board, :github_client)
+    on_exit(fn -> Application.put_env(:agent_board, :github_client, previous) end)
+
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(
+        base_url: "https://api.github.com",
+        plug: {Req.Test, AgentBoardWeb.BoardControllerTest.Stub},
+        retry: false
+      )
+    end)
+
+    Req.Test.stub(AgentBoardWeb.BoardControllerTest.Stub, fn conn ->
+      Req.Test.json(conn, %{"number" => 55, "html_url" => "https://github.com/x/y/issues/55"})
+    end)
+
+    conn =
+      post(conn, "/api/tasks", %{repo: "sallaumen/arena-rogue", title: "From the API", body: "hi"})
+
+    assert %{"number" => 55} = json_response(conn, 201)
+  end
+
   test "PATCH /api/tasks archives a task", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
     t = task(repo, 2, "Archive me", "queued")
