@@ -15,7 +15,7 @@ export const VoicePlayer = {
     }
     try {
       say("Generating voice…")
-      const response = await fetch(url, { headers: { accept: "audio/mpeg" } })
+      const response = await fetch(url)
       if (!response.ok) {
         let message = `Could not generate the voice (HTTP ${response.status}).`
         try {

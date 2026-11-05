@@ -156,6 +156,19 @@ defmodule AgentBoardWeb.VoiceControllerTest do
              json_response(get(conn, "/api/voice/status"), 200)
   end
 
+  test "GET /api/voice/speech answers a client that accepts audio/mpeg", %{conn: conn} do
+    Req.Test.stub(@stub, fn conn ->
+      Plug.Conn.put_resp_content_type(conn, "audio/mpeg") |> Plug.Conn.send_resp(200, "ID3audio")
+    end)
+
+    conn =
+      conn
+      |> put_req_header("accept", "audio/mpeg")
+      |> get("/api/voice/speech?text=hi")
+
+    assert response(conn, 200) == "ID3audio"
+  end
+
   test "GET /api/voice/speech streams the audio as mp3", %{conn: conn} do
     Req.Test.stub(@stub, fn conn ->
       conn
