@@ -280,7 +280,9 @@ defmodule AgentBoardWeb.BoardLive do
           <span class={["text-[11px]", if(@live, do: "text-[#7bc47f]", else: "text-[#a39f93]")]}>
             {if @live, do: "live", else: "static"}
           </span>
-          <span class="text-[11px] text-[#a39f93]">{last_sync(@events)}</span>
+          <span class="text-[11px] text-[#a39f93]" role="status" aria-live="polite">{last_sync(
+            @events
+          )}</span>
 
           <form id="track-repo" phx-submit="add" class="contents">
             <input

@@ -128,6 +128,15 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert render(view) =~ "no ci"
   end
 
+  test "the sync line is announced politely", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ ~s(role="status")
+    assert html =~ ~s(aria-live="polite")
+  end
+
   test "external links open with noopener", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
