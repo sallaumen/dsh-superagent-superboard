@@ -100,6 +100,16 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_info({:answer, task_id, text}, socket) do
+    current = socket.assigns.conversation && socket.assigns.conversation.id
+
+    if current == task_id do
+      {:noreply, socket |> put_flash(:info, text) |> refresh_ai()}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info(:board_updated, socket) do
     {:noreply, socket |> load(socket.assigns.repo) |> refresh_conversation()}
   end
@@ -217,13 +227,14 @@ defmodule AgentBoardWeb.BoardLive do
       task ->
         case Board.ask(task, body, GitHub.client()) do
           {:ok, _} ->
+            ask_in_background(task, body)
+
             {:noreply,
              assign(socket,
                conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
                comments: Board.comments(task)
              )
-             |> put_flash(:info, "Question sent. " <> answer(task, body))
-             |> refresh_ai()}
+             |> put_flash(:info, "Question sent")}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "The question did not reach GitHub")}
@@ -302,6 +313,14 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("dictate", _params, socket) do
     {:noreply, push_event(socket, "dictate", %{})}
+  end
+
+  # The model answers on another process: the question is already on GitHub,
+  # and blocking the LiveView for it freezes the whole board.
+  defp ask_in_background(task, body) do
+    parent = self()
+    id = task.id
+    Elixir.Task.start(fn -> send(parent, {:answer, id, answer(task, body)}) end)
   end
 
   defp answer(task, question) do
