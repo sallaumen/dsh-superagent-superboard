@@ -181,6 +181,20 @@ defmodule AgentBoardWeb.BoardLive do
   defp review_badge_class(%{review_state: "changes_requested"}), do: "text-[#f0b3b3]"
   defp review_badge_class(_), do: "text-[#a39f93]"
 
+  defp checks_badge(%{checks_state: state}) when state in ["success", "failure", "pending"] do
+    case state do
+      "success" -> "ci passed"
+      "failure" -> "ci failed"
+      "pending" -> "ci running"
+    end
+  end
+
+  defp checks_badge(_), do: nil
+
+  defp checks_badge_class(%{checks_state: "success"}), do: "text-[#7bc47f]"
+  defp checks_badge_class(%{checks_state: "failure"}), do: "text-[#f0b3b3]"
+  defp checks_badge_class(_), do: "text-[#a39f93]"
+
   defp last_sync([]), do: "no sync yet"
 
   defp last_sync(events) do
@@ -330,6 +344,12 @@ defmodule AgentBoardWeb.BoardLive do
                   class={["ml-2 text-[10px] uppercase", review_badge_class(item)]}
                 >
                   {review_badge(item)}
+                </span>
+                <span
+                  :if={checks_badge(item)}
+                  class={["ml-2 text-[10px] uppercase", checks_badge_class(item)]}
+                >
+                  {checks_badge(item)}
                 </span>
                 <span :if={item.number} class="ml-2 text-[11px] text-[#a39f93]">
                   #{item.number}
