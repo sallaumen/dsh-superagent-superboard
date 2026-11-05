@@ -14,13 +14,14 @@ defmodule AgentBoardWeb.BoardComponents.Header do
         <div class="board-identity">
           <div class="flex flex-wrap items-baseline gap-2">
             <h1 class="text-lg tracking-[0.16em] uppercase">Agent board</h1>
-            <span class="text-[10px] text-base-content/75">the agent's work, live</span>
+            <span class="text-[10px] text-base-content/75">Agent work on GitHub</span>
           </div>
         </div>
         <div class="board-repository">
-          <span class="board-eyebrow">Repository</span>
+          <label for="repository-picker" class="board-eyebrow">Repository</label>
           <form id="repo-select" phx-change="select" class="repository-select">
             <select
+              id="repository-picker"
               name="repo"
               aria-label="Repository"
               class="border border-base-content/10 bg-base-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
