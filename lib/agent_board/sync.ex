@@ -33,17 +33,15 @@ defmodule AgentBoard.Sync do
   board keeps the last good state instead of losing it.
   """
   def sync_repo(client, repository) do
-    try do
-      do_sync(client, repository)
-    rescue
-      exception ->
-        Board.log_event(repository.id, "sync_error", "#{repository.owner}/#{repository.name}", %{
-          "reason" => Exception.message(exception)
-        })
+    do_sync(client, repository)
+  rescue
+    exception ->
+      Board.log_event(repository.id, "sync_error", "#{repository.owner}/#{repository.name}", %{
+        "reason" => Exception.message(exception)
+      })
 
-        Board.broadcast(repository.id)
-        {:error, exception}
-    end
+      Board.broadcast(repository.id)
+      {:error, exception}
   end
 
   defp do_sync(client, repository) do
