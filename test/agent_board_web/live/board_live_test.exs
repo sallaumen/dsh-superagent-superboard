@@ -83,6 +83,26 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "ci failed"
   end
 
+  test "a failed CI names the check", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: 406,
+      title: "Named CI",
+      state: "merged",
+      merged_at: DateTime.utc_now(),
+      checks_state: "failure",
+      checks_failed: "compile"
+    })
+    |> Repo.insert!()
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ "ci failed: compile"
+  end
+
   test "the header carries the brand and the tagline", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
