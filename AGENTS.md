@@ -53,6 +53,20 @@ the blocker is resolved.
 - The server builds the summary (`AgentBoard.Voice`) and pushes it with
   `push_event/3`; the browser speaks it. The server never runs a TTS engine.
 
+## Types at the boundary
+
+- **A field that is a string must receive a string.** The checks rollup returned
+  a tuple `{state, failed}` and the caller put it straight into the
+  `checks_state` string column. Every pull failed the changeset and nothing was
+  stored -- for three rounds, because the tests that did not fetch checks never
+  saw it.
+- When a function returns a composite, **decompose it at the call site** and let
+  the changeset be the second opinion. The test that finally caught it fed a
+  pull with checks through the whole sync.
+- If a fetch can fail independently (reviews, checks), **guard the fetch**, not
+  the caller: log a `review_error`/`check_error` and continue with an empty
+  list.
+
 ## What the header shows
 
 - **live / static**: whether the LiveView is connected (the real-time channel
