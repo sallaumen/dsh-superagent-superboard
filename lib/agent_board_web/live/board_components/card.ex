@@ -17,7 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.Card do
       <span class="item-number">{if @item.number, do: "##{@item.number}", else: "unknown"}</span>
       <div class="item-title">
         <a :if={@item.url} href={@item.url} target="_blank" rel="noopener noreferrer">{@item.title ||
-          "unknown"}</a>
+          "unknown"}<span class="sr-only"> (opens GitHub in a new tab)</span></a>
         <span :if={is_nil(@item.url)}>{@item.title || "unknown"}</span>
       </div>
       <div :if={review_badge(@item) || checks_badge(@item)} class="item-signals">
@@ -27,9 +27,14 @@ defmodule AgentBoardWeb.BoardComponents.Card do
       <DataAge.stamp
         id={"#{@id}-age"}
         at={if @state == :merged, do: @item.merged_at, else: @item.updated_at}
-        label={if @state == :merged, do: "Merged", else: "Record updated"}
+        label={if @state == :merged, do: "Merged", else: "Updated"}
       />
-      <div :if={@state in [:running, :ready, :blocked, :queued]} class="task-actions">
+      <div
+        :if={@state in [:running, :ready, :blocked, :queued]}
+        class="task-actions"
+        role="group"
+        aria-label={"Actions for " <> (@item.title || "unknown")}
+      >
         <button
           phx-click="open"
           id={"open-task-#{@item.id}"}
