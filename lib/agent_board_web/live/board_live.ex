@@ -464,6 +464,8 @@ defmodule AgentBoardWeb.BoardLive do
           </p>
         </div>
 
+        <SystemPanel.version_panel version={@version} busy={@busy} />
+
         <main
           :if={@repo}
           class="grid grid-cols-1 gap-px overflow-x-auto bg-base-content/10 sm:grid-cols-2 lg:grid-cols-5"
@@ -626,8 +628,6 @@ defmodule AgentBoardWeb.BoardLive do
             </ol>
           </div>
         </section>
-
-        <SystemPanel.version_panel version={@version} busy={@busy} />
 
         <section :if={@repo} class="border-t border-base-content/10 px-5 py-4">
           <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/60">
