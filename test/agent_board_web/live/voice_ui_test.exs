@@ -188,28 +188,24 @@ defmodule AgentBoardWeb.VoiceUITest do
     )
   end
 
-  test "the ElevenLabs dictation appears only with a key and a tracked repository", %{conn: conn} do
+  test "a configured voice still has no click-to-record entrypoint", %{conn: conn} do
     with_key()
-
-    {:ok, view, _html} = live(conn, ~p"/")
-    refute render(view) =~ "voice-dictate"
-
     {:ok, _repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
 
     {:ok, view, _html} = live(conn, ~p"/")
-    assert render(view) =~ "voice-dictate"
-
-    view |> element("#voice-dictate") |> render_click()
-    assert render(view) =~ ~s(data-panel="create")
-    assert has_element?(view, ~s(#record-task-title[data-max-seconds="20"]))
+    assert has_element?(view, "#voice-command-shortcut[phx-hook=VoiceCommand]")
+    refute has_element?(view, "#voice-dictate")
+    refute has_element?(view, "#record-task-title")
+    refute has_element?(view, "#ask-by-voice")
   end
 
-  test "without a key the browser dictation stays", %{conn: conn} do
+  test "without a key the board offers text without browser dictation", %{conn: conn} do
     {:ok, _repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
 
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "Dictate task"
+    assert html =~ "Space twice to record a command"
+    refute html =~ "Dictate task"
     refute html =~ "voice-dictate"
   end
 

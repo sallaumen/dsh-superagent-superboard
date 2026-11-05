@@ -38,8 +38,10 @@ message, creates a task, or changes a task's state.
 2. The shortcut is scoped to the visible, active board tab. It does not fire
    while typing in an input, textarea, select, or editable element, while using
    a button or menu, during composition, with modifiers, or from key repeat.
-   A single Space retains its ordinary keyboard behavior. The double Space
-   should not leave the board at a different scroll position. Check this in
+   A single Space scrolls after the short recognition window or before the
+   next key; a double Space does not move the board. If a pointer action starts
+   during that window, the click takes precedence and the pending scroll is
+   discarded so its target cannot shift under the pointer. Check this in
    WebKit before settling on a key-event strategy.
 3. One session owns at most one media stream. Stop its tracks before sending
    audio for transcription. Cancel and release them on Escape, tab hide,

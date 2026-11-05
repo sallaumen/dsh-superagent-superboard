@@ -3,7 +3,7 @@
 let current = {phase: "idle", source: ""}
 
 export const voiceInputActive = () =>
-  ["recorder", "browser-dictation"].includes(current.source) &&
+  current.source === "command-recorder" &&
   ["permission", "listening", "transcribing"].includes(current.phase)
 
 export const interruptVoiceOutput = () => {

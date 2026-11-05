@@ -55,30 +55,10 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               <button type="button" phx-click="speak">
                 <.icon name="hero-speaker-wave" class="size-4" />Speak status
               </button>
-              <button
-                :if={@voice.configured and @repo}
-                id="voice-dictate"
-                type="button"
-                phx-click="show_panel"
-                phx-value-panel="create"
-                data-panel-trigger
-                aria-haspopup="dialog"
-                aria-controls="panel-create"
-              >
-                <.icon name="hero-microphone" class="size-4" />Dictate task
-              </button>
-              <button
-                :if={not @voice.configured and @repo}
-                type="button"
-                phx-click="show_panel"
-                phx-value-panel="create"
-                data-panel-trigger
-                aria-haspopup="dialog"
-                aria-controls="panel-create"
-              >
-                <.icon name="hero-microphone" class="size-4" />Dictate task
-              </button>
             </div>
+            <p class="text-xs leading-relaxed text-base-content/75">
+              On the board, press Space twice to record a command. Recording never sends it for you.
+            </p>
           </div>
         </details>
 

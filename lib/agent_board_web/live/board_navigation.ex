@@ -6,12 +6,16 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
 
-  @panels ~w(activity intake ai create conversation)
+  @panels ~w(activity intake ai create conversation voice)
 
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
 
-  def path(repo, panel, task_id \\ nil) do
+  def path(repo, panel, task_id \\ nil)
+
+  def path(nil, "voice", _task_id), do: "/?panel=voice"
+
+  def path(repo, panel, task_id) do
     query = %{"repo" => "#{repo.owner}/#{repo.name}", "panel" => panel}
     query = if task_id, do: Map.put(query, "task", task_id), else: query
     "/?" <> URI.encode_query(query)
@@ -29,7 +33,14 @@ defmodule AgentBoardWeb.BoardNavigation do
 
   def apply_params(socket, params) do
     panel = params["panel"]
-    panel = if socket.assigns.repo && panel in (@panels -- ["conversation"]), do: panel
+
+    panel =
+      cond do
+        panel == "voice" -> panel
+        socket.assigns.repo && panel in (@panels -- ["conversation", "voice"]) -> panel
+        true -> nil
+      end
+
     assign(socket, panel: panel, conversation: nil, comments: [])
   end
 
@@ -45,6 +56,8 @@ defmodule AgentBoardWeb.BoardNavigation do
       do: push_patch(socket, to: path(socket.assigns.repo, panel)),
       else: socket
   end
+
+  def open_panel(socket, "voice"), do: push_patch(socket, to: path(socket.assigns.repo, "voice"))
 
   def open_panel(socket, _panel), do: socket
 

@@ -105,17 +105,30 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#sync-status", "clean")
   end
 
-  test "Dictate task opens the form before browser dictation", %{conn: conn} do
+  test "transcription opens an editable command draft without creating a task", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    view |> element("button", "Dictate task") |> render_click()
-    assert render(view) =~ ~s(data-panel="create")
+    render_hook(view, "voice_transcript", %{"text" => "  show blocked tasks  "})
+    assert render(view) =~ ~s(data-panel="voice")
+    assert has_element?(view, "#voice-command-text", "show blocked tasks")
+    refute has_element?(view, "#record-task-title")
+    refute has_element?(view, "#dictate-task-title")
+    refute has_element?(view, "#ask-by-voice")
 
-    view |> element("#dictate-task-title") |> render_click()
+    view |> form("#voice-command-form", %{"text" => "show ready tasks"}) |> render_change()
+    assert has_element?(view, "#voice-command-text", "show ready tasks")
+  end
 
-    assert_push_event(view, "dictate", %{})
+  test "voice transcript review also works before a repository is tracked", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    render_hook(view, "voice_transcript", %{"text" => "  what is running?  "})
+
+    assert render(view) =~ ~s(data-panel="voice")
+    assert has_element?(view, "#voice-command-text", "what is running?")
+    refute has_element?(view, "#create-task")
   end
 
   test "Speak status pushes the board summary", %{conn: conn} do

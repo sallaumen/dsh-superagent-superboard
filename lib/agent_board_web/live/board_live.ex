@@ -38,6 +38,8 @@ defmodule AgentBoardWeb.BoardLive do
         version: Version.status(),
         busy: false,
         voice: current_voice(),
+        voice_draft: "",
+        voice_result: nil,
         spoken_text: nil,
         spoken_at: 0
       )
@@ -93,7 +95,14 @@ defmodule AgentBoardWeb.BoardLive do
 
     socket =
       if socket.assigns.repo != repo,
-        do: assign(socket, conversation: nil, comments: [], intake: nil),
+        do:
+          assign(socket,
+            conversation: nil,
+            comments: [],
+            intake: nil,
+            voice_draft: "",
+            voice_result: nil
+          ),
         else: socket
 
     {merged_limit, task_limits} = pagination_limits(socket, repo)
@@ -458,8 +467,22 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("dictate", _params, socket) do
-    {:noreply, push_event(socket, "dictate", %{})}
+  def handle_event("voice_transcript", %{"text" => text}, socket) when is_binary(text) do
+    text = text |> String.trim() |> String.slice(0, 2000)
+
+    if text == "" do
+      {:noreply, socket}
+    else
+      {:noreply,
+       socket
+       |> assign(voice_draft: text, voice_result: nil)
+       |> BoardNavigation.open_panel("voice")}
+    end
+  end
+
+  @impl true
+  def handle_event("voice_draft_changed", %{"text" => text}, socket) when is_binary(text) do
+    {:noreply, assign(socket, voice_draft: String.slice(text, 0, 2000), voice_result: nil)}
   end
 
   @impl true
@@ -696,6 +719,12 @@ defmodule AgentBoardWeb.BoardLive do
           voice={@voice}
         />
         <VoicePresence.stage id="voice-presence-board" />
+        <div
+          id="voice-command-shortcut"
+          phx-hook="VoiceCommand"
+          data-configured={to_string(@voice.configured)}
+          hidden
+        />
 
         <div
           :if={@repo == nil}
@@ -811,6 +840,15 @@ defmodule AgentBoardWeb.BoardLive do
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
+          name="voice"
+          title="Voice command"
+          active={@panel == "voice"}
+          flash={@flash}
+        >
+          <BoardComponents.VoiceCommand.draft draft={@voice_draft} result={@voice_result} />
+        </BoardComponents.Panel.shell>
+
+        <BoardComponents.Panel.shell
           name="create"
           title="New task"
           active={@panel == "create"}
@@ -820,7 +858,6 @@ defmodule AgentBoardWeb.BoardLive do
             :if={@repo}
             module={BoardComponents.CreateTask}
             id="create"
-            voice_configured={@voice.configured}
           />
         </BoardComponents.Panel.shell>
       </div>
