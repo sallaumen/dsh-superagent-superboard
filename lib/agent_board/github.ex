@@ -3,6 +3,12 @@ defmodule AgentBoard.GitHub do
 
   @doc "A client bound to the API and the configured token, if any."
   def client do
+    builder = Application.get_env(:agent_board, :github_client, &__MODULE__.build/0)
+    builder.()
+  end
+
+  @doc false
+  def build do
     token = Application.get_env(:agent_board, :github_token, System.get_env("GITHUB_TOKEN", ""))
 
     headers = [
