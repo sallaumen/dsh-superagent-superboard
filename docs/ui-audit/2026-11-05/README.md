@@ -1,6 +1,8 @@
 # Auditoria do Agent board — 05/11/2026
 
-Base `52113d4` (main atualizado); quatro PRs encadeados, sem merge/deploy.
+Base original `52113d4`; entrega em quatro PRs encadeados.
+A [revisão para integração](05-merge-review.md) registra os gates atualizados,
+a resolução de conflito e a compatibilidade com as mudanças posteriores do main.
 Interações com dados reais somente leitura. Auditoria via WebKit headless,
 1366×768 e 3440×1440 em light/dark; 375×812 adicional.
 
