@@ -28,19 +28,29 @@ dos scripts: alterações nesses contratos exigem conferir os consumidores.
 
 | Script | Quando usar | Ambiente | Efeitos | Saída esperada |
 |---|---|---|---|---|
+| `mix setup` | Preparar um checkout de desenvolvimento | `MIX_ENV=dev` | instala dependências, prepara banco com seeds e compila assets | app pronto para iniciar; fora da CI porque aplica seeds |
+| `mix ecto.setup` | Criar/migrar e popular o banco de desenvolvimento | `MIX_ENV=dev` | escreve no banco; executa `priv/repo/seeds.exs` | banco e seeds preparados; não é gate |
+| `mix ecto.reset` | Recriar deliberadamente o banco local descartável | `MIX_ENV=dev` | **apaga o banco** e executa `ecto.setup` | banco recriado; fora da CI e do pré-voo |
+| `mix test` | Testar comportamentos; aceita arquivo e filtros | `:test` automático | cria/migra banco de teste antes da suíte | testes verdes; a CI usa partições |
 | `mix lint` | Iteração rápida, sem banco | qualquer | nenhum (somente leitura) | format e credo verdes |
 | `mix precommit` | Antes de commitar; aplica correções | `:test` automático | remove dependências órfãs do lockfile, formata e roda testes | formatação aplicada + gates verdes |
-| `mix gate` | Checks de backend; a CI distribui seus passos entre jobs | `:test` automático | compila e cria/migra o banco de teste; não altera fontes | dependências, warnings, formato, credo e testes verdes |
+| `mix gate` | Checks de backend; a CI distribui seus passos entre jobs | executar com `MIX_ENV=test` | compila e cria/migra o banco de teste; não altera fontes | dependências, warnings, formato, credo e testes verdes |
 | `mix sobelow --exit` | Scan de segurança; parte de `make backend` e do pré-voo | `MIX_ENV=test` | análise estática, sem corrigir fontes | scan concluído sem achados que reprovem o comando |
 | `mix deps.unlock --check-unused` | Revisar lockfile (parte do `mix gate` e do job gates da CI) | `:test` | nenhum | nenhuma dependência órfã |
 | `mix assets.setup` | Primeira execução / CI frontend | `MIX_ENV=dev` | baixa binários tailwind/esbuild | ferramentas instaladas |
 | `mix assets.build` | Ao alterar CSS/JS | `MIX_ENV=dev` | escreve `priv/static/assets/` | bundle gerado sem erro |
 | `mix assets.deploy` | Validar o caminho de produção dos assets | `MIX_ENV=dev` | minifica + `phx.digest` | manifesto de digest gerado |
-| `scripts/check_assets.sh` | Ao mudar CSS/JS (primeiro passo do pipeline frontend) | máquina local | nenhum (somente leitura) | entradas presentes, pipeline tailwind configurado, JS autoral sem debug |
+| [scripts/check_assets.sh](scripts/check_assets.sh) | Ao mudar CSS/JS (primeiro passo do pipeline frontend) | máquina local | nenhum (somente leitura) | entradas presentes, pipeline tailwind configurado, JS autoral sem debug |
 | [Scripts da biblioteca](capabilities/tools/README.md) | Ao alterar `capabilities/`; veja o contrato de cada ferramenta | Python 3.10+ | leitura e temporários de teste | validador e suíte verdes |
-| `make backend/frontend/library/release/coverage/check` | Entrada única por pipeline | máquina local | os dos scripts acima | cada pipeline verde |
+| `make help` | Descobrir os alvos disponíveis | `make` | nenhum | nomes dos alvos e referência a esta matriz |
+| `make backend` | Checks de backend completos, incluindo Sobelow | fixa `MIX_ENV=test` | os de `mix gate` e Sobelow | equivalente aos checks dos jobs `gates` + `backend` |
+| `make frontend` | Validar fontes e assets de produção | fixa `MIX_ENV=dev` | checks, setup, build e deploy de assets | equivalente ao job `frontend` |
+| `make library` | Validar biblioteca e ferramenta | Python 3.10+ | leitura e temporários | equivalente ao job `library` |
+| `make release` | Exercitar o empacotamento de produção | assets em dev; aplicação em prod | gera o release e sobrescreve o artefato anterior | equivalente ao job `release`; opt-in local |
+| `make check` | Executar backend, frontend e biblioteca | ambientes definidos por cada alvo | os dos três pipelines | checks de PR verdes; não inclui release |
 | `make coverage` | Auditar lacunas de teste | máquina local | gera `cover/` (HTML) | relatório gerado; exit != 0 se a cobertura total ficar abaixo de 90% (threshold padrão do Elixir) |
-| `scripts/ci-local.sh [pipeline]` | Pré-voo completo antes de abrir PR | máquina local | os dos scripts acima (release é opt-in) | todos os pipelines verdes |
+| [scripts/ci-local.sh](scripts/ci-local.sh) `[pipeline]` | Pré-voo completo antes de abrir PR | máquina local | os dos scripts acima (release é opt-in) | todos os pipelines verdes |
+| [scripts/service.sh](scripts/service.sh) | Iniciar o servidor via launchd ou diagnóstico manual | `mix` no PATH; `MIX_ENV=dev` e `PORT=4099` por padrão, substituíveis pelo ambiente | inicia processo persistente com `PHX_SERVER=true`; acessa serviços configurados | servidor ativo; não é gate e não roda na CI |
 
 Antes de entregar qualquer PR, rode **`scripts/ci-local.sh all`**. Ele executa
 backend, frontend e biblioteca sequencialmente e falha no primeiro pipeline
@@ -50,6 +60,11 @@ caminho de deploy mudar, execute também `scripts/ci-local.sh release`.
 Pré-requisitos: dependências instaladas com `mix deps.get`, Elixir/OTP e `mix`
 no PATH, Postgres acessível em `127.0.0.1:5434` com usuário/senha `board`,
 `pg_isready` no PATH para o pré-voo de backend e Python 3.10+ para a biblioteca.
+O pré-voo aceita `PYTHON` para selecionar o interpretador. Uso e códigos de saída:
+alvo omitido equivale a `all`; sucesso retorna 0, alvo desconhecido retorna 2 e
+falha de um comando interrompe a execução com status não zero.
+A instalação do serviço está em [README.md](README.md#run-as-a-service); o pré-voo
+não inicia nem reinicia o serviço.
 
 ## Por que separar backend e frontend
 
