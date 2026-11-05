@@ -49,4 +49,42 @@ defmodule AgentBoard.PipelineContractTest do
              "alias #{inspect(alias_name)} ausente"
     end
   end
+
+  defp workflow do
+    File.read!(Path.join(File.cwd!(), ".github/workflows/ci.yml"))
+  end
+
+  test "the workflow has the five pipeline jobs" do
+    for job <- ["gates", "backend", "frontend", "library", "release"] do
+      assert String.contains?(workflow(), "\n  #{job}:"),
+             "job #{job} ausente no ci.yml"
+    end
+  end
+
+  test "the workflow cancels stale runs and supports manual dispatch" do
+    assert String.contains?(workflow(), "workflow_dispatch:")
+    assert String.contains?(workflow(), "concurrency:")
+    assert String.contains?(workflow(), "cancel-in-progress: true")
+  end
+
+  test "the workflow enforces the same commands the local pipelines run" do
+    wf = workflow()
+
+    for command <- [
+          "mix compile --warnings-as-errors",
+          "mix format --check-formatted",
+          "mix credo --strict",
+          "mix deps.unlock --check-unused",
+          "mix test --partitions 4",
+          "mix assets.setup",
+          "mix assets.build",
+          "mix assets.deploy",
+          "validar_biblioteca.py",
+          "test_validar_biblioteca.py",
+          "mix phx.digest",
+          "mix release --overwrite"
+        ] do
+      assert String.contains?(wf, command), "comando ausente no ci.yml: #{command}"
+    end
+  end
 end
