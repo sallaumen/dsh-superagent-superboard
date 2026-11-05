@@ -59,7 +59,10 @@ defmodule AgentBoardWeb.BoardComponents.Card do
         class="mt-2 flex gap-1 text-[11px]"
       >
         <button
-          phx-click={JS.push_focus() |> JS.push("open")}
+          phx-click="open"
+          id={"open-task-#{@item.id}"}
+          data-panel-trigger
+          aria-haspopup="dialog"
           phx-value-id={@item.id}
           aria-label={"Open task: " <> @item.title}
           class="rounded-sm border border-base-content/15 px-2 py-1 hover:bg-base-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"

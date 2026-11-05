@@ -9,10 +9,11 @@ defmodule AgentBoardWeb.BoardComponents.Activity do
   @impl true
   def render(assigns) do
     ~H"""
-    <details id="activity" class="border-t border-base-content/10 px-5 py-4">
-      <summary class="cursor-pointer py-2 text-xs uppercase tracking-[0.16em]">
+    <section id="activity" class="border-t border-base-content/10 px-5 py-4">
+      <h3 class="py-2 text-xs uppercase tracking-[0.16em]">
         Activity · latest {length(@events)} events
-      </summary>
+      </h3>
+      <p :if={@events == []} class="text-xs text-base-content/75">No activity recorded yet.</p>
       <ol
         class="mt-3 max-h-64 space-y-2 overflow-y-auto"
         tabindex="0"
@@ -37,7 +38,7 @@ defmodule AgentBoardWeb.BoardComponents.Activity do
           </span>
         </li>
       </ol>
-    </details>
+    </section>
     """
   end
 end

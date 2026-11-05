@@ -548,6 +548,45 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "pulls: 8"
   end
 
+  test "repository form recovery does not close the current panel", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("fixture", "recovery")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/recovery&panel=intake")
+    view |> element("#repo-select") |> render_change(%{"repo" => "fixture/recovery"})
+    refute_patched(view)
+    assert has_element?(view, "#board-page[data-panel=intake]")
+  end
+
+  test "panels are URL state and malformed conversation links cannot open another repo's task", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "panels")
+    {:ok, other} = Board.add_repository("fixture", "other")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: other.id,
+        kind: "issue",
+        number: 1,
+        title: "Other repo",
+        state: "queued"
+      })
+      |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, "/?repo=fixture/panels&panel=conversation&task=#{task.id}")
+    refute has_element?(view, "#conversation")
+    assert has_element?(view, "#board-page[data-panel='']")
+
+    render_patch(view, "/?repo=fixture/panels&panel=conversation&task=invalid")
+    refute has_element?(view, "#conversation")
+    view |> element("#open-ai") |> render_click()
+    assert_patch(view, "/?panel=ai&repo=fixture%2Fpanels")
+    assert has_element?(view, "#board-page[data-panel=ai]")
+
+    render_patch(view, "/?repo=#{repo.owner}/#{repo.name}")
+    assert has_element?(view, "#board-page[data-panel='']")
+  end
+
   test "closing the conversation hides the panel", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
@@ -566,7 +605,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     view |> element("button", "Open") |> render_click()
     assert render(view) =~ "Conversation"
 
-    view |> element("button", "Close") |> render_click()
+    view |> element("#panel-conversation button", "Close") |> render_click()
     refute render(view) =~ "Conversation"
   end
 

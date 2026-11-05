@@ -1,0 +1,31 @@
+defmodule AgentBoardWeb.BoardComponents.Panel do
+  @moduledoc "Native dialog shell; region content remains mounted for draft preservation."
+  use AgentBoardWeb, :html
+
+  attr :name, :string, required: true
+  attr :title, :string, required: true
+  attr :active, :boolean, required: true
+  attr :flash, :map, required: true
+  slot :inner_block, required: true
+
+  def shell(assigns) do
+    ~H"""
+    <dialog id={"panel-#{@name}"} aria-labelledby={"panel-title-#{@name}"} class="board-dialog">
+      <header class="panel-heading">
+        <h2 id={"panel-title-#{@name}"} tabindex="-1">{@title}</h2>
+        <button type="button" phx-click="close" aria-label={"Close #{@title}"} class="panel-close">Close</button>
+      </header>
+      <p class="panel-reconnect text-warning" role="status">Reconnecting · showing saved data</p>
+      <div :if={@active} class="panel-flashes">
+        <.flash
+          :for={kind <- [:info, :error]}
+          id={"panel-#{@name}-#{kind}"}
+          kind={kind}
+          flash={@flash}
+        />
+      </div>
+      {render_slot(@inner_block)}
+    </dialog>
+    """
+  end
+end
