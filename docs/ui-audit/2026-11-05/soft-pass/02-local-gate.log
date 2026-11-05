@@ -1,18 +1,17 @@
 == backend: mix gate + sobelow ==
-Compiling 3 files (.ex)
-Generated agent_board app
+Compiling 1 file (.ex)
 Checking 78 source files (this might take a while) ...
 
 Please report incorrect results: https://github.com/rrrene/credo/issues
 
-Analysis took 0.3 seconds (0.03s to load, 0.3s running 69 checks on 78 files)
-397 mods/funs, found no issues.
+Analysis took 0.2 seconds (0.02s to load, 0.2s running 69 checks on 78 files)
+399 mods/funs, found no issues.
 
 Use `mix credo explain` to explain issues, `mix credo --help` for options.
-Running ExUnit with seed: 244849, max_cases: 28
+Running ExUnit with seed: 59929, max_cases: 28
 
 .......................................................................................................................................................................................
-Finished in 18.6 seconds (7.1s async, 11.5s sync)
+Finished in 16.1 seconds (5.1s async, 11.0s sync)
 
 Result: 183 passed
 ##############################################
@@ -27,24 +26,23 @@ Result: 183 passed
 
 == frontend: check_assets -> assets.setup -> build -> deploy (MIX_ENV=dev) ==
 check_assets: OK (entradas, pipeline tailwind e JS sem debug).
-Compiling 3 files (.ex)
-Generated agent_board app
+Compiling 1 file (.ex)
 ≈ tailwindcss v4.3.0
 
 /*! 🌼 daisyUI 5.5.20 */
-Done in 151ms
+Done in 138ms
 
   ../priv/static/assets/js/app.js  345.4kb
 
-⚡ Done in 26ms
+⚡ Done in 25ms
 ≈ tailwindcss v4.3.0
 
 /*! 🌼 daisyUI 5.5.20 */
-Done in 93ms
+Done in 135ms
 
   ../priv/static/assets/js/app.js  153.4kb
 
-⚡ Done in 13ms
+⚡ Done in 18ms
 Check your digested files at "priv/static"
 == library: validador + testes da biblioteca de capacidades ==
 OK: 33 skills; 6 contextos; 22245 palavras nas instruções; 225 links locais conferidos.
@@ -70,7 +68,7 @@ test_unknown_related_detected (__main__.ValidatorTests.test_unknown_related_dete
 test_valid_library_passes (__main__.ValidatorTests.test_valid_library_passes) ... ok
 
 ----------------------------------------------------------------------
-Ran 20 tests in 0.780s
+Ran 20 tests in 0.852s
 
 OK
 OK: pipeline(s) verdes.
