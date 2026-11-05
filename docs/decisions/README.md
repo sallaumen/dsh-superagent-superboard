@@ -1,7 +1,7 @@
 # ADRs
 
 Registros de decisão arquitetural e de processo deste repositório, no formato
-do template [registro-de-decisao](../capabilities/templates/registro-de-decisao.md).
+do template [registro-de-decisao](../../capabilities/templates/registro-de-decisao.md).
 
 | Nº | Decisão | Estado |
 |---|---|---|

@@ -3,7 +3,7 @@ defmodule AgentBoard.AITest do
   use AgentBoard.DataCase, async: false
 
   alias AgentBoard.AI
-  alias AgentBoard.AI.Call
+  alias AgentBoard.AI.{Call, Providers}
   alias AgentBoard.Repo
 
   @stub AgentBoard.AITest.Stub
@@ -56,6 +56,56 @@ defmodule AgentBoard.AITest do
     assert call.status == "ok"
     assert call.output_tokens == 20
     assert call.tier == "fast"
+  end
+
+  test "the catalog has deepseek, gemini and openai with a model per tier" do
+    assert Providers.ids() == [:deepseek, :gemini, :openai]
+
+    for id <- Providers.ids() do
+      assert {:ok, provider} = Providers.fetch(id)
+      assert provider.base_url =~ "https://"
+      assert provider.key_env =~ "API_KEY"
+      assert is_binary(Providers.model(id, :fast))
+      assert is_binary(Providers.model(id, :deep))
+      refute Providers.model(id, :fast) == Providers.model(id, :deep)
+    end
+
+    assert Providers.model(:gemini, :fast) == "gemini-2.5-flash"
+  end
+
+  test "a structured call sends a strict tool and decodes its arguments" do
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, body, _conn} = Plug.Conn.read_body(conn)
+      payload = Jason.decode!(body)
+
+      assert payload["thinking"] == %{"type" => "disabled"}
+      assert [%{"function" => %{"strict" => true, "name" => "respond"}}] = payload["tools"]
+      assert payload["tool_choice"]["function"]["name"] == "respond"
+
+      Req.Test.json(conn, %{
+        "model" => "deepseek-flash",
+        "choices" => [
+          %{
+            "message" => %{
+              "tool_calls" => [
+                %{
+                  "function" => %{
+                    "name" => "respond",
+                    "arguments" =>
+                      ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"language":"pt"})
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "usage" => %{"prompt_tokens" => 3, "completion_tokens" => 4}
+      })
+    end)
+
+    assert {:ok, result} = AI.call(:refine_request, %{text: "x"})
+    assert result.json["goal"] == "x"
+    assert result.parse_state == :complete
   end
 
   test "an unregistered call is refused and records nothing" do

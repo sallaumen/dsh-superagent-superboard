@@ -28,3 +28,11 @@ Gate local: `scripts/ci-local.sh all` (inclui `MIX_ENV=test mix gate`,
 `scripts/check_assets.sh`, `mix assets.build`, assets.deploy e biblioteca).
 151 testes Elixir, zero falhas. CI indisponível por billing conforme informado;
 não esperamos nem redisparamos Actions. Reexecutar workflow_dispatch quando liberado.
+
+## Revisão para merge
+
+Integrado com `main` em `0b5d09d`. O novo SystemPanel foi preservado acima das
+colunas e migrado de cores hexadecimais para tokens semânticos, incluindo o botão
+Update & restart. O teste visual usa dados sintéticos e não aciona atualização.
+Capturas: [antes](version-before-review.png), [depois claro](version-after-review.png),
+[depois escuro](version-after-review-dark.png).

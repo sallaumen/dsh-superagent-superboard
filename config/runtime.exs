@@ -1,21 +1,30 @@
 import Config
 
-# config/runtime.exs is executed for all environments, including
-# during releases. It is executed after compilation and before the
-# system starts, so it is typically used to load production configuration
-# and secrets from environment variables or elsewhere. Do not define
-# any compile-time configuration in here, as it won't be applied.
-# The block below contains prod specific runtime configuration.
+# `.env.local` feeds the environment before any config below. The shell still
+# wins: a variable already set to a non-blank value is left alone. The suite
+# never applies it, so tests do not depend on a developer's local file.
+# AGENT_BOARD_ENV_FILE overrides the path (useful for a worktree).
+if config_env() != :test do
+  env_file = System.get_env("AGENT_BOARD_ENV_FILE") || Path.expand("../.env.local", __DIR__)
 
-# ## Using releases
-#
-# If you use `mix release`, you need to explicitly enable the server
-# by passing the PHX_SERVER=true when you start it:
-#
-#     PHX_SERVER=true bin/agent_board start
-#
-# Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
-# script that automatically sets the env var above.
+  if File.exists?(env_file) do
+    for line <- File.stream!(env_file) do
+      case String.split(String.trim(line), "=", parts: 2) do
+        [key, value] ->
+          key = String.trim(key)
+
+          if key != "" and not String.starts_with?(key, "#") and
+               System.get_env(key) in [nil, ""] do
+            System.put_env(key, String.trim(value, "\""))
+          end
+
+        _ ->
+          :ok
+      end
+    end
+  end
+end
+
 if System.get_env("PHX_SERVER") do
   config :agent_board, AgentBoardWeb.Endpoint, server: true
 end
@@ -60,6 +69,9 @@ if config_env() == :prod do
   # The panel's own model key. Absent means the AI layer answers
   # :not_configured instead of reaching the network.
   config :agent_board, :ai_api_key, System.get_env("DEEPSEEK_API_KEY")
+
+  # Which provider answers; nil lets the catalog pick the first with a key.
+  config :agent_board, :ai_provider, System.get_env("AI_PROVIDER")
 
   # The daily ceiling. A Flash refine costs cents; 5M tokens is a working day
   # of intake and questions, not a demo.

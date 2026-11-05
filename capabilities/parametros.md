@@ -17,14 +17,9 @@ Uma pergunta de arquitetura pode usar apenas “Escopo: módulos de pedidos; obj
 
 ## Modos
 
-| Modo | Resultado esperado | O que não está implícito |
-|---|---|---|
-| `analisar` | Diagnóstico, experimentos autorizados, proposta e evidências | Alterar comportamento do produto |
-| `revisar` | Achados sobre uma mudança ou artefato delimitado | Corrigir o código sob revisão |
-| `analisar-e-corrigir` | Diagnóstico e implementação local validada | Publicar, comprar ou alterar produção |
-| `coordenar` | Dividir, acompanhar e integrar entregas autorizadas | Autorização irrestrita para merge ou deploy |
-
-O modo padrão está no frontmatter de cada skill e no catálogo. Uma orientação explícita da sessão, como “somente analise”, prevalece. A ausência de autorização externa não exige uma pergunta antes de trabalho local reversível; a IA deve preparar o resultado concreto e pedir apenas a decisão realmente necessária.
+Escolha o modo conforme [Respeite o modo escolhido](contrato.md#2-respeite-o-modo-escolhido).
+Essa seção define os resultados e limites de cada modo, o padrão e a
+precedência das instruções da sessão.
 
 ## Parâmetros opcionais úteis
 
@@ -37,7 +32,7 @@ O modo padrão está no frontmatter de cada skill e no catálogo. Uma orientaç�
 | Baseline | Há falhas anteriores relevantes | Registrar o estado inicial proporcional ao risco |
 | Identidade visual | Há referência ou design system | Preservar a identidade encontrada e criticá-la com evidência |
 | Entrega autorizada | A sessão já permite PR, merge ou deploy | Herdar a autorização concreta; senão, preparar localmente |
-| Limite de frentes | Há custo ou disputa por arquivos | Até duas executoras simultâneas, se isso ajudar |
+| Limite de frentes | Há custo ou disputa por arquivos | Seguir o [contrato de coordenação](contrato.md#4-trabalhe-em-entregas-delimitadas) |
 | Critério de parada | Existe uma meta de produto clara | Definir uma entrega observável e delimitada |
 
 Não inclua senhas, tokens ou dados pessoais em exemplos de parâmetros. A IA deve usar os mecanismos de acesso existentes, sem copiar segredos para prompts ou relatórios.
