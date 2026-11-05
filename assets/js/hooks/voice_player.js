@@ -13,6 +13,8 @@ export const VoicePlayer = {
       const feedback = document.querySelector("#voice-feedback")
       if (feedback) feedback.textContent = text
     }
+
+    let blob
     try {
       say("Generating voice…")
       const response = await fetch(url)
@@ -27,17 +29,28 @@ export const VoicePlayer = {
         say(message)
         return
       }
-      const blob = await response.blob()
-      this.audio.pause()
-      if (this.objectUrl) URL.revokeObjectURL(this.objectUrl)
-      this.objectUrl = URL.createObjectURL(blob)
-      this.audio.src = this.objectUrl
-      this.audio.onplaying = () => say("Playing voice…")
-      this.audio.onended = () => say("Voice played.")
-      this.audio.onerror = () => say("Could not play the audio.")
-      await this.audio.play()
+      blob = await response.blob()
     } catch (_) {
       say("Could not reach the board. Check the server.")
+      return
+    }
+
+    this.audio.pause()
+    if (this.objectUrl) URL.revokeObjectURL(this.objectUrl)
+    this.objectUrl = URL.createObjectURL(blob)
+    this.audio.src = this.objectUrl
+    this.audio.onplaying = () => say("Playing voice…")
+    this.audio.onended = () => say("Voice played.")
+    this.audio.onerror = () => say("The audio could not play (format or policy).")
+
+    try {
+      await this.audio.play()
+    } catch (error) {
+      say(
+        error?.name === "NotAllowedError"
+          ? "The browser blocked the audio. Click again to allow it."
+          : "The audio could not play. Check the browser sound."
+      )
     }
   },
   destroyed() {

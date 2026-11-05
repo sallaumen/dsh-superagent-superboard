@@ -17,6 +17,13 @@ defmodule AgentBoardWeb.BoardLiveTest do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
 
+  test "the page CSP lets the voice play blob media", %{conn: conn} do
+    conn = get(conn, ~p"/")
+
+    assert get_resp_header(conn, "content-security-policy") |> List.first() =~
+             "media-src 'self' blob:"
+  end
+
   test "issues_unavailable is amber, not red", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
