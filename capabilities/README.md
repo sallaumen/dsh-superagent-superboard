@@ -43,10 +43,9 @@ capabilities/
 
 ## Manter contextos separados do núcleo
 
-- Contextos vivem somente em `contextos/` e registram intenções de projetos específicos, não regras universais nem estado verificado.
-- Nenhuma skill do núcleo cita um contexto pelo nome no corpo; a skill apenas lembra de consultar `contextos/README.md`.
-- Dependências entre contextos são declaradas no `manifest.json` e conferidas pelo validador (ex.: `colmex/casas.md` requer `colmex/base.md`).
-- Antes de usar um contexto, confirme no código o que ele afirma; adapte-o somente com evidência de necessidade.
+As regras de seleção, separação do núcleo e registro de dependências ficam em
+[contextos/README.md](contextos/README.md). Siga esse contrato ao usar ou adicionar
+um contexto.
 
 ## Validar
 

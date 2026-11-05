@@ -39,9 +39,9 @@ Não inclua senhas, tokens ou dados pessoais em exemplos de parâmetros. A IA de
 
 ## Contextos opcionais
 
-Os arquivos de `contextos/` registram requisitos e preferências descritos na conversa que originou esta biblioteca. Eles não são um inventário verificado dos repositórios. Leia [contextos/README.md](contextos/README.md) e carregue apenas o contexto pertinente, confirme a implementação atual e ignore exemplos que não existam no projeto.
-
-Os contextos de casas do Colmex dependem de `colmex-base`. O contexto de Elixir/Phoenix/Oban é independente: só deve ser usado quando essa stack for confirmada. O contexto do forró não importa a estética de jogo do Colmex. Nenhum contexto é carregado automaticamente por uma skill.
+Para selecionar um contexto e resolver suas dependências, siga
+[contextos/README.md](contextos/README.md). Esse é o contrato de seleção tanto
+para o carregamento manual quanto para ferramentas que leem o manifesto.
 
 ## Carregar uma skill manualmente
 
