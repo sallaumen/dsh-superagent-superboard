@@ -42,6 +42,9 @@ jobs:
       - run: mix format --check-formatted
       - run: mix credo --strict
 
+      - name: Security scan
+        run: mix sobelow --exit
+
   backend:
     name: "backend · partição ${{ matrix.partition }}"
     runs-on: ubuntu-latest
