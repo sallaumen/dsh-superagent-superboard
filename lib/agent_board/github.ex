@@ -48,6 +48,9 @@ defmodule AgentBoard.GitHub do
     client
     |> Req.get!(url: "/repos/#{owner}/#{repo}/issues", params: recent())
     |> body!()
+    # GitHub returns pull requests from this endpoint too. The KEY is the
+    # marker and its value may be nil, so Map.has_key?/2 is deliberate --
+    # a test fixture that sets "pull_request" => nil is a pull request here.
     |> Enum.reject(&Map.has_key?(&1, "pull_request"))
   end
 
