@@ -198,9 +198,11 @@ defmodule AgentBoard.Board do
   end
 
   @doc "The recent activity for a repository."
+  def events(repository, limit \\ 20)
+
   def events(nil, _limit), do: []
 
-  def events(repository, limit \\ 20) do
+  def events(repository, limit) do
     Repo.all(
       from e in Event,
         where: e.repository_id == ^repository.id,
