@@ -8,7 +8,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Board.{Repository, Task}
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     repos = Board.list_repositories()
 
     socket =
@@ -22,7 +22,13 @@ defmodule AgentBoardWeb.BoardLive do
         comments: []
       )
 
-    {:ok, load(socket, default_repo(repos))}
+    repo =
+      case params["repo"] do
+        nil -> default_repo(repos)
+        slug -> Board.repository_by_slug(slug) || default_repo(repos)
+      end
+
+    {:ok, load(socket, repo)}
   end
 
   defp empty, do: %{running: [], ready: [], merged: [], queued: []}

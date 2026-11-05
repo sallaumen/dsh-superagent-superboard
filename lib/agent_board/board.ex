@@ -44,7 +44,7 @@ defmodule AgentBoard.Board do
   defp first_repository,
     do: Repo.one(from r in Repository, where: r.active, order_by: r.id, limit: 1)
 
-  defp repository_by_slug(slug) do
+  def repository_by_slug(slug) do
     case String.split(slug, "/", parts: 2) do
       [owner, name] ->
         Repo.one(from r in Repository, where: r.owner == ^owner and r.name == ^name)
