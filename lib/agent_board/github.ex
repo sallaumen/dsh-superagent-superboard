@@ -21,7 +21,19 @@ defmodule AgentBoard.GitHub do
   defp body!(response) do
     case response.status do
       status when status in 200..299 -> response.body
+      403 -> raise "GitHub rate limited: retry after #{retry_after(response)}s"
+      429 -> raise "GitHub rate limited: retry after #{retry_after(response)}s"
       status -> raise "GitHub HTTP #{status}: #{inspect(response.body)}"
+    end
+  end
+
+  # GitHub sends Retry-After on the primary rate limit; the default is a
+  # minute, the window length.
+  defp retry_after(response) do
+    case Map.get(response.headers, "retry-after") do
+      [seconds | _] -> seconds
+      seconds when is_binary(seconds) -> seconds
+      _ -> "60"
     end
   end
 
