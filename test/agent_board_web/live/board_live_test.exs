@@ -16,6 +16,33 @@ defmodule AgentBoardWeb.BoardLiveTest do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
 
+  test "the conversation label shrinks on small screens", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 303,
+      title: "Conv mobile",
+      state: "queued"
+    })
+    |> Repo.insert!()
+
+    task = Repo.get_by(Task, number: 303)
+
+    Board.upsert_comment(
+      task,
+      %{"id" => 1, "user" => %{"login" => "sallaumen"}, "body" => "hi"},
+      "sallaumen-agent"
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    view |> element("button", "Open") |> render_click()
+
+    assert render(view) =~ "sm:w-14"
+  end
+
   test "the header carries the brand and the tagline", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 

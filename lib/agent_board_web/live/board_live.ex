@@ -361,7 +361,7 @@ defmodule AgentBoardWeb.BoardLive do
 
           <div :for={c <- @comments} class="mb-2 flex gap-2">
             <span class={[
-              "w-14 shrink-0 text-[10px] uppercase",
+              "w-10 shrink-0 text-[10px] uppercase sm:w-14",
               c.kind == "agent" && "text-[#7bc47f]",
               c.kind != "agent" && "text-[#6fa8dc]"
             ]}>
