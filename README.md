@@ -46,7 +46,7 @@ watches agents, and a restart would interrupt them. Updating is a button.
 ## Local secrets
 
 `.env.local` feeds the environment before any config: `KEY=value` lines, `#`
-comments, and a variable already set in the shell is left alone. It is
+comments, and a variable already set to a non-empty value in the shell is left alone. It is
 gitignored. `.env` is the committed list of variables -- copy what you need.
 
 ```sh
@@ -56,6 +56,8 @@ cp .env .env.local        # then fill DEEPSEEK_API_KEY, GEMINI_API_KEY or OPENAI
 The app picks the first provider with a key; `AI_PROVIDER` pins one. Without
 any key the AI answers `:not_configured`, and `AI_REHEARSAL=1` runs the whole
 panel against free fixtures instead. Tests never read `.env.local`.
+`AGENT_BOARD_ENV_FILE` selects another file, for example when running a worktree.
+The loader lives in [config/runtime.exs](config/runtime.exs).
 
 ## What it does
 
