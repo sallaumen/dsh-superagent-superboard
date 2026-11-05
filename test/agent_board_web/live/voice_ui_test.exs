@@ -125,30 +125,77 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert html =~ "George · abc"
   end
 
-  test "the speak button reads the board status in the agent's voice", %{conn: conn} do
+  test "the speak button plays the board status in the agent's voice", %{conn: conn} do
     with_key()
+
+    # The status comes from the model when it can answer; a fixed summary
+    # keeps the pushed URL deterministic.
+    Application.put_env(:agent_board, :ai_api_key, "test-key")
+
+    Application.put_env(:agent_board, :ai_client, fn ->
+      Req.new(base_url: "https://api.deepseek.com", plug: {Req.Test, @stub}, retry: false)
+    end)
+
+    on_exit(fn ->
+      Application.delete_env(:agent_board, :ai_client)
+      Application.delete_env(:agent_board, :ai_api_key)
+    end)
+
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, %{
+        "model" => "deepseek-flash",
+        "choices" => [%{"message" => %{"content" => ~s({"summary":"All clear"})}}],
+        "usage" => %{"prompt_tokens" => 1, "completion_tokens" => 2}
+      })
+    end)
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    assert render(view) =~ "Speak status · agent voice"
+    assert render(view) =~ "Speak status"
 
-    view |> element("button", "Speak status · agent voice") |> render_click()
+    view |> element("button", "Speak status") |> render_click()
 
-    assert render(view) =~ "Speak status · agent voice"
+    assert_push_event(
+      view,
+      "voice_play",
+      %{url: "/api/voice/speech?text=All+clear&voice=JBFqnCBsd6RMkjVDRZzb"}
+    )
   end
 
-  test "the ElevenLabs dictation appears only with a tracked repository", %{conn: conn} do
+  test "trying a phrase plays it in the agent's voice", %{conn: conn} do
     with_key()
 
     {:ok, view, _html} = live(conn, ~p"/")
-    refute render(view) =~ "Dictate task · ElevenLabs"
+
+    view |> element("#voice-panel form") |> render_submit(%{"phrase" => "Hello agent"})
+
+    assert_push_event(
+      view,
+      "voice_play",
+      %{url: "/api/voice/speech?text=Hello+agent&voice=JBFqnCBsd6RMkjVDRZzb"}
+    )
+  end
+
+  test "the ElevenLabs dictation appears only with a key and a tracked repository", %{conn: conn} do
+    with_key()
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    refute render(view) =~ "voice-dictate"
 
     {:ok, _repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
 
     {:ok, view, _html} = live(conn, ~p"/")
-    assert render(view) =~ "Dictate task · ElevenLabs"
-
+    assert render(view) =~ "voice-dictate"
     assert render(view) =~ "data-max-seconds=\"20\""
+  end
+
+  test "without a key the browser dictation stays", %{conn: conn} do
+    {:ok, _repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ "Dictate task"
+    refute html =~ "voice-dictate"
   end
 
   test "an environment-fixed voice disables the picker", %{conn: conn} do

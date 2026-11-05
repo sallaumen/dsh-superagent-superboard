@@ -43,13 +43,6 @@ defmodule AgentBoardWeb.BoardComponents.Header do
           version={@version}
           busy={@busy}
           voice={@voice}
-          voice_configured={@voice_configured}
-          voice_voices={@voice_voices}
-          voice_loading={@voice_loading}
-          voice_pick={@voice_pick}
-          voice_model={@voice_model}
-          voice_models={@voice_models}
-          voice_model_source={@voice_model_source}
         />
       </div>
       <div class="board-commandbar">

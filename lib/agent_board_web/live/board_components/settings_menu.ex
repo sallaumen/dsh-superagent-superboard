@@ -56,22 +56,26 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
         <section aria-labelledby="settings-voice">
           <h3 id="settings-voice">Voice</h3>
+          <p>Pick the agent's ElevenLabs voice and model, then try it.</p>
 
-          <VoicePanel.voice_panel
-            voice={@voice}
-            configured={@voice_configured}
-            voices={@voice_voices}
-            loading={@voice_loading}
-            pick={@voice_pick}
-            voice_model={@voice_model}
-            voice_models={@voice_models}
-            model_source={@voice_model_source}
-            repo={@repo != nil}
-          />
+          <VoicePanel.voice_panel voice={@voice} repo={@repo != nil} />
 
           <div class="settings-actions">
-            <button type="button" phx-click="speak">Speak status</button>
-            <button type="button" phx-click="dictate">Dictate task</button>
+            <button type="button" phx-click="speak">
+              <.icon name="hero-speaker-wave" class="size-4" />Speak status
+            </button>
+            <button
+              :if={@voice.configured and @repo}
+              id="voice-dictate"
+              type="button"
+              phx-hook="VoiceRecorder"
+              data-max-seconds="20"
+            >
+              <.icon name="hero-microphone" class="size-4" />Dictate task
+            </button>
+            <button :if={not @voice.configured} type="button" phx-click="dictate">
+              <.icon name="hero-microphone" class="size-4" />Dictate task
+            </button>
           </div>
           <p
             id="voice-feedback"
