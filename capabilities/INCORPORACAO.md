@@ -48,7 +48,7 @@ Origem: **biblioteca-prompts-desenvolvimento v1.0.0** (pacote ZIP de 4 de novemb
 | `base/contrato-de-execucao.md` | `contrato.md` | Adaptado: referência a skills em vez de prompts; regras preservadas. |
 | `base/parametros-e-modos.md` | `parametros.md` | Adaptado: seção do compositor substituída por "Carregar uma skill manualmente". |
 | `base/roteiros-de-uso.md` | `referencias/roteiros-de-uso.md` | IDs substituídos por nomes de skills; seção final reescrita. |
-| `base/mapa-das-frentes.md` | `referencias/mapa-das-frentes.md` | IDs substituídos; linha de incorporação aponta para este documento. |
+| `base/mapa-das-frentes.md` | **Descartado na limpeza** | Duplicava os lembretes "Skills mais úteis" que cada contexto já carrega; sem referências de entrada — documentação que ninguém abriria. |
 | `contextos/colmex-*.md`, `forro-mobile.md`, `elixir-phoenix-oban.md` | `contextos/` | Preservados como opt-in; lembretes de skills renomeados; regra "nunca carregar por padrão" em `contextos/README.md`. |
 | `templates/plano-de-entrega.md`, `registro-de-decisao.md`, `registro-de-diagnostico.md`, `resultado-e-validacao.md` | `templates/` | Preservados sem alteração. |
 | `templates/esboco-de-skill.md` | `templates/nova-capacidade.md` | Adaptado ao formato SKILL.md e aos arquivos de registro desta biblioteca. |
