@@ -21,6 +21,12 @@ defmodule AgentBoardWeb.BoardNavigation do
     "/?" <> URI.encode_query(query)
   end
 
+  # The voice panel is where a spoken question is reviewed: opening it must
+  # not forget the task the owner was reading, or the ask has no target.
+  def apply_params(socket, %{"panel" => "voice"}) do
+    assign(socket, panel: "voice")
+  end
+
   def apply_params(socket, %{"panel" => "conversation", "task" => id}) do
     case task(socket.assigns.repo, id) do
       nil ->

@@ -87,10 +87,14 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   key `elevenlabs_speak_events` (`"0"` disables, absent is on) is the
   toggle; the UI checkbox writes it and `PUT /api/voice/settings`
   accepts `speak_events`.
-- The **voice ask loop**: the conversation's mic button records and
-  transcribes a question into the ask form, and the asynchronous answer is
-  spoken back in the agent's voice (cut at a word boundary). The recorder
-  hook fills whatever `data-target` names (`#task-title` by default).
+- **Voice asks** are a write and always confirmed: a draft that ends in a
+  question mark (or starts with "perguntar"/"ask") and matches no read-only
+  command resolves to an `:ask` proposal showing the target task; the
+  "Ask the agent" button posts it to the task the owner was reading, and the
+  asynchronous answer is spoken back in the agent's voice (cut at a word
+  boundary). Opening the voice panel keeps the conversation's task, or the
+  ask would have no target. Read-only commands keep precedence, so
+  "O que está bloqueado?" still opens the blocked report.
 
 ## AI calls
 

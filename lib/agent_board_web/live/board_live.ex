@@ -376,6 +376,17 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("voice_ask", %{"question" => question}, socket)
+      when is_binary(question) and byte_size(question) > 0 do
+    voice_ask(socket, %{question: String.trim(question)})
+  end
+
+  def handle_event("voice_ask", _params, socket) do
+    {:noreply,
+     assign(socket, voice_result: %{kind: :error, text: "The question is empty.", as_of: nil})}
+  end
+
+  @impl true
   def handle_event("voice_command", _params, socket) do
     result = %{
       kind: :error,
@@ -624,6 +635,49 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply,
      assign(socket, voice: %{socket.assigns.voice | speak_events: ElevenLabs.speak_events?()})}
+  end
+
+  # The ask is a write: the first submit only classifies the draft, the
+  # confirmed "Ask the agent" posts the question to the open task and the
+  # answer comes back spoken.
+  defp voice_ask(socket, %{question: question}) do
+    case socket.assigns.conversation do
+      nil ->
+        {:noreply,
+         assign(socket,
+           voice_result: %{kind: :error, text: "Open a task first, then ask.", as_of: nil}
+         )}
+
+      task ->
+        case Board.ask(task, question, GitHub.client()) do
+          {:ok, _} ->
+            ask_in_background(task, question)
+
+            {:noreply,
+             socket
+             |> assign(
+               voice_result: %{
+                 kind: :ask,
+                 text: "Question sent: #{question}",
+                 question: question,
+                 as_of: nil
+               },
+               conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
+               comments: Board.comments(task)
+             )
+             |> put_flash(:info, "Question sent")}
+
+          {:error, _} ->
+            {:noreply,
+             assign(socket,
+               voice_result: %{
+                 kind: :error,
+                 text: "The question did not reach GitHub.",
+                 as_of: nil
+               }
+             )}
+        end
+    end
   end
 
   # The model answers on another process: the question is already on GitHub,
