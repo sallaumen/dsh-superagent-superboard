@@ -22,6 +22,41 @@ mix phx.server       # http://127.0.0.1:4002
 
 The dev database is on the local Postgres at `127.0.0.1:5434`.
 
+## Run as a service
+
+The board is meant to be always on, at `http://127.0.0.1:4099`. `ops/com.agentboard.plist`
+is the launchd agent; `scripts/service.sh` is what it runs.
+
+```sh
+cp ops/com.agentboard.plist ~/Library/LaunchAgents/com.agentboard.plist
+launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.agentboard.plist
+```
+
+`KeepAlive` restarts the board after a crash or an update; `RunAtLoad` starts
+it with the system. Logs: `~/Library/Logs/AgentBoard.log`.
+
+```sh
+launchctl bootout "gui/$(id -u)/com.agentboard"   # stop for good
+launchctl kickstart -k "gui/$(id -u)/com.agentboard"  # restart now
+```
+
+Unlike the `o_colmex` updater, **nothing here updates on a timer**: the board
+watches agents, and a restart would interrupt them. Updating is a button.
+
+## Local secrets
+
+`.env.local` feeds the environment before any config: `KEY=value` lines, `#`
+comments, and a variable already set in the shell is left alone. It is
+gitignored. `.env` is the committed list of variables -- copy what you need.
+
+```sh
+cp .env .env.local        # then fill DEEPSEEK_API_KEY, GEMINI_API_KEY or OPENAI_API_KEY
+```
+
+The app picks the first provider with a key; `AI_PROVIDER` pins one. Without
+any key the AI answers `:not_configured`, and `AI_REHEARSAL=1` runs the whole
+panel against free fixtures instead. Tests never read `.env.local`.
+
 ## What it does
 
 - **Syncs** the tracked repositories' issues and pull requests (the Oban
@@ -50,36 +85,12 @@ The dev database is on the local Postgres at `127.0.0.1:5434`.
 - **The 10s poller does not touch GitHub**: it reads the agent's sqlite and
   only broadcasts when the ticket hash changed.
 
-## The gates
+## Validation and contributing
 
-```sh
-mix gate   # check-only: unused deps + compile warnings + format + credo + tests
-mix precommit  # same gates, formatting fixed in place (for developers)
-scripts/ci-local.sh all   # pre-flight: backend + frontend + library pipelines
-```
-
-Which script to run when — backend, frontend, library or the mixed release
-path — is in [PIPELINES.md](PIPELINES.md).
-
-If GitHub Actions can't start (no token/billing, jobs failing in seconds with
-zero steps): don't wait for CI — the local pipeline is the sufficient gate.
-See the rule in [PIPELINES.md](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
-
-## CI
-
-`.github/workflows/ci.yml` has five jobs:
-
-| Job | What it does | Why |
-|---|---|---|
-| `gates` | `deps.unlock --check-unused`, `compile --warnings-as-errors`, `format --check-formatted`, `credo --strict` | once, not once per partition |
-| `backend` | `mix test --partitions 4`, one Postgres per partition | the suite split into four distinct slices |
-| `frontend` | `check_assets.sh`, `assets.setup`, `assets.build`, `assets.deploy` in `dev` | the sources are checked and the assets must build with the dev toolchain |
-| `library` | `python3 capabilities/tools/validar_biblioteca.py` + its test | the capability library is validated on every change |
-| `release` | dev assets → prod compile → `phx.digest` → `mix release` | proves the mixed release path works |
-
-The four backend partitions use `MIX_TEST_PARTITION` and
-`mix test --partitions 4`, so each one runs a different slice of the suite
-against its own `agent_board_testN` database.
+Use [PIPELINES.md](PIPELINES.md) for the command matrix, local checks and CI
+jobs, including the
+[procedure when CI is unavailable](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
+The branch and pull request workflow is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## When something is wrong
 

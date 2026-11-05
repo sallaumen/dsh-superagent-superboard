@@ -20,7 +20,7 @@ Quem decide e edita cada contrato? Quais consumidores devem ser atualizados junt
 
 ## Coordenação
 
-Limite padrão: duas frentes executoras. Registre o mecanismo de espera disponível, pedidos de decisão pendentes e integração sequencial. Mensagens a agentes ocupados devem resolver um conflito concreto, não servir de sondagem periódica.
+Registre o limite de frentes adotado, o mecanismo de espera disponível, os pedidos de decisão pendentes e a ordem de integração, conforme o [contrato de coordenação](../contrato.md#4-trabalhe-em-entregas-delimitadas).
 
 ## Parada e entrega
 

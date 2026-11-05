@@ -34,7 +34,7 @@ Esses passos podem ser lotes de uma mesma frente. Não abra seis agentes para ed
 
 ## Aplicativo mobile ou site mobile first
 
-Use **ux-e-navegacao**, **mobile-e-responsividade** e **mobile-e-responsividade** com o contexto pertinente. Valide o retorno com modal aberta, acesso direto por URL, fechamento pelo botão, recarga e navegação normal. Uma tela em 390 pixels de largura não demonstra por si só o comportamento do histórico no aparelho.
+Use **ux-e-navegacao** para a jornada e **mobile-e-responsividade** para histórico de navegação (workflow A) e adaptação entre telas (workflow B), com o contexto pertinente. Valide o retorno com modal aberta, acesso direto por URL, fechamento pelo botão, recarga e navegação normal. Uma tela em 390 pixels de largura não demonstra por si só o comportamento do histórico no aparelho.
 
 No projeto de forró, carregue `forro-mobile` e trate Programação, Eventos, Turmas e Escolas como uma entrega de integração visual e de navegação, preservando a semântica de cada entidade.
 
