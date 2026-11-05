@@ -49,11 +49,31 @@ defmodule AgentBoard.SyncRepoTest do
              Repo.one(from t in Task, where: t.number == 7)
   end
 
+  test "the sync event summarises the error count", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Req.Test.json(conn, [issue(9, "open") |> Map.put("title", nil)])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    sync = Enum.find(Board.events(repo), &(&1.kind == "sync"))
+    assert sync.payload["errors"] == 1
+  end
+
   test "an invalid issue is logged, not swallowed", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(9, "open") |> Map.put("title", nil)])
-        _ -> Req.Test.json(conn, [])
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Req.Test.json(conn, [issue(9, "open") |> Map.put("title", nil)])
+
+        _ ->
+          Req.Test.json(conn, [])
       end
     end)
 

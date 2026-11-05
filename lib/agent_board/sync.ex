@@ -66,10 +66,24 @@ defmodule AgentBoard.Sync do
 
     Board.log_event(repository.id, "sync", "#{repository.owner}/#{repository.name}", %{
       "issues" => length(issues),
-      "pulls" => length(pulls)
+      "pulls" => length(pulls),
+      "errors" => error_count(repository)
     })
 
     Board.broadcast(repository.id)
+  end
+
+  # The events written by one sync run. A single query keeps the summary
+  # honest without threading counters through every branch.
+  defp error_count(repository) do
+    Repo.aggregate(
+      from(e in AgentBoard.Board.Event,
+        where:
+          e.repository_id == ^repository.id and
+            e.kind in ["issue_error", "pull_error", "comment_error"]
+      ),
+      :count
+    )
   end
 
   # -- the conversation -------------------------------------------------------
