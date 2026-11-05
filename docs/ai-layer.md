@@ -103,6 +103,8 @@ tarefa não depende de si mesma. A arquitetura ao redor continua sendo históric
   "non_goals": ["Alterar o código da aplicação"],
   "risks": [],
   "open_questions": [],
+  "assumptions": [],
+  "ready": true,
   "language": "pt"
 }
 ```
@@ -119,7 +121,6 @@ Regra do prompt: não inventar requisito. O que faltar vai em
       "title": "Corrigir links locais da documentação",
       "body": "Verificar os destinos dos links em docs/ e corrigir os caminhos quebrados, preservando o conteúdo técnico.",
       "kind": "docs",
-      "scope": ["docs/"],
       "acceptance": ["Todos os links locais em docs/ resolvem para destinos existentes"],
       "depends_on": [],
       "size": "S"
@@ -129,17 +130,20 @@ Regra do prompt: não inventar requisito. O que faltar vai em
 ```
 
 Regras: cada task fecha sozinha; dependência só quando há ordem real; `size` L
-quase sempre é duas tasks. A soma das tasks precisa cobrir o `goal` — o prompt
-pede isso explicitamente e o validador confere que todo `goal` é citado.
+quase sempre é duas tasks. O prompt pede que a lista cubra o objetivo; a
+validação local descarta tarefas sem título, corpo ou critérios de aceitação.
 
 ### O pipeline
 
 ```
 texto livre
   → :refine_request        (JSON validado pelo schema)
+  → ready=false?           (mostrar perguntas; parar sem propor tarefas)
   → :propose_tasks         (lista validada; depends_on é índice)
-  → validação local        (toda task tem título, body e acceptance)
-  → Board.create_task      (uma issue por task, mencionando o agente)
+  → validação local        (descarta task sem título, body ou acceptance)
+  → lista vazia?           (informar que nada utilizável foi proposto; permitir novo Split)
+  → revisão humana         (a UI só oferece Create para propostas prontas)
+  → Board.create_task      (uma issue por ação Create)
 ```
 
 O mesmo pipeline serve para **avaliar**: a resposta é o par

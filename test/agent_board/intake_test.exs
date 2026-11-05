@@ -81,4 +81,35 @@ defmodule AgentBoard.IntakeTest do
     assert Enum.map(tasks, & &1.title) == ["medir", "corrigir"]
     assert Enum.at(tasks, 1).depends_on == [0]
   end
+
+  test "run stops after refinement when the request is not ready" do
+    refined =
+      ~s({"goal":"Melhorar o board","constraints":[],"non_goals":[],"risks":[],"open_questions":["Qual parte?"],"assumptions":[],"ready":false,"language":"pt"})
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(refined)) end)
+
+    assert {:ok, %{spec: spec, tasks: [], status: :needs_clarification}} =
+             Intake.run("melhore o board")
+
+    assert spec["open_questions"] == ["Qual parte?"]
+    assert AgentBoard.Repo.aggregate(AgentBoard.AI.Call, :count, :id) == 1
+  end
+
+  test "run does not call an empty proposal ready" do
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, body, _conn} = Plug.Conn.read_body(conn)
+      payload = Jason.decode!(body)
+
+      content =
+        if Enum.any?(payload["messages"], &String.contains?(&1["content"], "Specification")) do
+          ~s({"tasks":[]})
+        else
+          @refined
+        end
+
+      Req.Test.json(conn, answer(content))
+    end)
+
+    assert {:ok, %{tasks: [], status: :no_tasks}} = Intake.run("o board ta lento")
+  end
 end

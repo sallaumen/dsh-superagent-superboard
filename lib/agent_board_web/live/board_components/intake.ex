@@ -35,7 +35,6 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
           rows="4"
           placeholder="Describe what you want the agent to build…"
           aria-describedby={if @ai_status == :not_configured, do: "intake-unavailable"}
-          phx-debounce="300"
           class="min-h-28 w-full resize-y rounded-lg border border-base-content/20 bg-base-200 px-3 py-2.5 text-sm leading-relaxed text-base-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           required
         >{@draft && @draft.text}</textarea>
@@ -60,6 +59,27 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
       </form>
 
       <div :if={@intake} class="mt-4">
+        <p
+          :if={@intake.status == :needs_clarification}
+          id="intake-needs-clarification"
+          role="status"
+          class="mb-3 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-xs leading-relaxed text-base-content"
+        >
+          This request needs more detail before tasks can be proposed.
+          <%= if @intake.spec["open_questions"] != [] do %>
+            Review the questions below and edit the request.
+          <% else %>
+            Add detail and try again.
+          <% end %>
+        </p>
+        <p
+          :if={@intake.status == :no_tasks}
+          id="intake-no-tasks"
+          role="status"
+          class="mb-3 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-xs leading-relaxed text-base-content"
+        >
+          No usable tasks were proposed. Review the request and try Split again.
+        </p>
         <p class="text-[10px] uppercase text-base-content/75">Goal</p>
         <p class="text-sm text-base-content">{@intake.spec["goal"]}</p>
 
