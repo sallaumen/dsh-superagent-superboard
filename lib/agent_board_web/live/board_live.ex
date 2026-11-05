@@ -19,7 +19,8 @@ defmodule AgentBoardWeb.BoardLive do
         repo: nil,
         board: empty(),
         events: [],
-        live: false,
+        sync_event: nil,
+        live: connected?(socket),
         conversation: nil,
         comments: [],
         intake: nil,
@@ -38,7 +39,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:ok, load(socket, repo)}
   end
 
-  defp empty, do: %{running: [], ready: [], merged: [], queued: []}
+  defp empty, do: %{running: [], ready: [], blocked: [], merged: [], queued: []}
 
   # The board opens on the project the agent is actually working on; the
   # first active repository is the fallback.
@@ -51,7 +52,8 @@ defmodule AgentBoardWeb.BoardLive do
       repo: nil,
       board: empty(),
       events: [],
-      live: false,
+      sync_event: nil,
+      live: connected?(socket),
       ai_calls: [],
       ai_status: AI.status()
     )
@@ -71,6 +73,7 @@ defmodule AgentBoardWeb.BoardLive do
           repo: repo,
           board: board,
           events: Board.events(repo),
+          sync_event: Board.latest_sync(repo),
           ai_calls: AI.recent(5),
           live: connected?(socket)
         )
@@ -80,7 +83,8 @@ defmodule AgentBoardWeb.BoardLive do
           repo: nil,
           board: empty(),
           events: [],
-          live: false,
+          sync_event: nil,
+          live: connected?(socket),
           ai_calls: [],
           ai_status: AI.status()
         )
@@ -320,26 +324,25 @@ defmodule AgentBoardWeb.BoardLive do
   defp checks_badge_class(%{checks_state: "failure"}), do: "text-error"
   defp checks_badge_class(_), do: "text-base-content/75"
 
-  defp last_sync([]), do: "no sync yet"
+  defp last_sync(nil), do: "no sync yet"
 
-  defp last_sync(events) do
-    case Enum.find(events, &(&1.kind == "sync")) do
-      nil ->
-        "no sync yet"
+  defp last_sync(%{kind: "sync_error"} = event),
+    do: "sync failed #{sync_time(event.inserted_at)} · showing saved data"
 
-      sync ->
-        errors = sync.payload["errors"] || 0
+  defp last_sync(sync) do
+    errors = sync.payload["errors"] || 0
 
-        suffix =
-          case errors do
-            0 -> " · clean"
-            1 -> " · 1 error"
-            n -> " · #{n} errors"
-          end
+    suffix =
+      case errors do
+        0 -> " · clean"
+        1 -> " · 1 error"
+        n -> " · #{n} errors"
+      end
 
-        "synced #{time(sync.inserted_at)}" <> suffix
-    end
+    "synced #{sync_time(sync.inserted_at)}" <> suffix
   end
+
+  defp sync_time(dt), do: Calendar.strftime(dt, "%Y-%m-%d %H:%M UTC")
 
   # Not every non-sync event is a failure: a repository without Issues is a
   # warning, not an error (the pulls still sync).
@@ -417,12 +420,39 @@ defmodule AgentBoardWeb.BoardLive do
 
           <span class="flex-1"></span>
 
-          <span class={["text-[11px]", if(@live, do: "text-success", else: "text-base-content/75")]}>
-            {if @live, do: "live", else: "static"}
+          <span
+            id="connection-status"
+            role="status"
+            aria-live="polite"
+            data-connected={to_string(@live)}
+            phx-connected={JS.set_attribute({"data-connected", "true"})}
+            phx-disconnected={JS.set_attribute({"data-connected", "false"})}
+            class="text-xs"
+          >
+            <span class="connection-live text-success">live</span>
+            <span class="connection-offline text-base-content/75">{if @live,
+              do: "reconnecting",
+              else: "static"}</span>
           </span>
-          <span class="text-[11px] text-base-content/75" role="status" aria-live="polite">{last_sync(
-            @events
-          )}</span>
+          <span role="status" aria-live="polite">
+            <button
+              id="sync-status"
+              type="button"
+              aria-controls="activity"
+              phx-click={
+                JS.set_attribute({"open", ""}, to: "#activity") |> JS.focus(to: "#activity summary")
+              }
+              class={[
+                "text-left text-xs underline underline-offset-4",
+                if(@sync_event && has_errors?(@sync_event),
+                  do: "text-error",
+                  else: "text-base-content/75"
+                )
+              ]}
+            >
+              {last_sync(@sync_event)}
+            </button>
+          </span>
 
           <form id="track-repo" phx-submit="add" class="flex flex-wrap items-center gap-2">
             <input
@@ -487,7 +517,7 @@ defmodule AgentBoardWeb.BoardLive do
               <h2 class="sticky top-0 z-10 mb-3 flex items-baseline justify-between bg-base-100 py-1 gap-2 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
                 <span>{title}</span>
                 <span class="rounded-full bg-base-200 px-2 py-0.5 text-[10px] tabular-nums">
-                  {length(Map.get(@board, key))}
+                  {if key == :merged, do: "latest "}{length(Map.get(@board, key))}
                 </span>
               </h2>
 

@@ -96,7 +96,8 @@ The branch and pull request workflow is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `no sync yet` in the header | the last sync threw; see the activity column | the red line names the error (`sync_error`, `issues_unavailable`) |
+| `no sync yet` in the header | no sync outcome recorded yet | wait for the next sync and inspect Activity |
+| `sync failed … · showing saved data` | the latest repository sync failed | open Activity from the health line; `sync_error` names the cause |
 | a repo with Issues disabled | GitHub answers 404 | handled: issues are optional, pulls still sync |
 | `No task is running.` | the runner has no active ticket | not an error; it is the empty state |
 | every card says `no review` / `no ci` | the repo has no reviews or CI | accurate, not a bug |

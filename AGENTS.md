@@ -91,12 +91,15 @@ is binding when GitHub Actions cannot run.
 
 ## What the header shows
 
-- **live / static**: whether the LiveView is connected (the real-time channel
-  works) or serving the static render.
-- **synced HH:MM · clean / N errors**: the last `sync` event. `clean` means the
-  run completed with `errors == 0`; `N errors` counts `issue_error`,
-  `pull_error` and `comment_error` in that run. If there is no `sync` event,
-  it says `no sync yet`.
+- **live / static / reconnecting**: whether the browser's LiveView connection
+  is active, serving the static render, or reconnecting. Client connection
+  events update this indicator between server renders.
+- **synced YYYY-MM-DD HH:MM UTC · clean / N errors**: the latest completed
+  `sync` event. `clean` means `errors == 0`; `N errors` counts `issue_error`,
+  `pull_error` and `comment_error` in that run.
+- **sync failed … · showing saved data**: a newer `sync_error` supersedes the
+  completed sync. `Board.latest_sync/1` reads the latest outcome independently
+  of the 20-event activity window. With no outcome, it says `no sync yet`.
 
 The header is the health line: if it says errors, open the activity panel,
 where each failing item is one row.

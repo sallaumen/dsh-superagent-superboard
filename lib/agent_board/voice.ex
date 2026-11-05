@@ -13,7 +13,8 @@ defmodule AgentBoard.Voice do
       [
         {count(board, :running), "running"},
         {count(board, :ready), "ready for review"},
-        {count(board, :merged), "merged"},
+        {count(board, :blocked), "blocked"},
+        {count(board, :merged), "recent merges"},
         {count(board, :queued), "queued"}
       ]
       |> Enum.reject(fn {n, _} -> n == 0 end)

@@ -237,6 +237,16 @@ defmodule AgentBoard.Board do
     )
   end
 
+  @doc "The latest sync outcome, independent of the activity window."
+  def latest_sync(repository) do
+    Repo.one(
+      from e in Event,
+        where: e.repository_id == ^repository.id and e.kind in ["sync", "sync_error"],
+        order_by: [desc: e.inserted_at, desc: e.id],
+        limit: 1
+    )
+  end
+
   @doc "Record an activity row."
   def log_event(repository_id, kind, subject, payload \\ %{}) do
     %Event{}

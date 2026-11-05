@@ -30,13 +30,19 @@ defmodule AgentBoard.VoiceTest do
     text = Voice.summary(board(1, 0, 8, 2), at(14))
     assert text =~ "Good afternoon"
     assert text =~ "1 running"
-    assert text =~ "8 merged"
+    assert text =~ "8 recent merges"
     assert text =~ "2 queued"
   end
 
   test "two counts join with and" do
     text = Voice.summary(board(0, 0, 1, 1), at(20))
-    assert text =~ "1 merged and 1 queued"
+    assert text =~ "1 recent merges and 1 queued"
+  end
+
+  test "a blocked-only board is not called calm" do
+    text = Voice.summary(%{blocked: [%{}]}, at(9))
+    assert text =~ "1 blocked"
+    refute text =~ "calm"
   end
 
   test "the greeting changes with the hour" do
