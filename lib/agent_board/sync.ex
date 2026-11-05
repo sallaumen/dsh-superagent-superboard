@@ -49,7 +49,18 @@ defmodule AgentBoard.Sync do
     pulls = GitHub.pulls(client, repository.owner, repository.name)
 
     Enum.each(issues, &upsert_issue(repository, &1))
-    Enum.each(pulls, &upsert_pull(client, repository, &1))
+    # One broken PR (reviews, checks) must not kill the whole sync.
+    Enum.each(pulls, fn pull ->
+      try do
+        upsert_pull(client, repository, pull)
+      rescue
+        exception ->
+          Board.log_event(repository.id, "pull_error", "##{pull["number"]}", %{
+            "reason" => Exception.message(exception)
+          })
+      end
+    end)
+
     apply_tickets(repository, issues)
     sync_comments(repository, client)
 
