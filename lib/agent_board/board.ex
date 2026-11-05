@@ -105,6 +105,9 @@ defmodule AgentBoard.Board do
 
   @doc "Stop a task: flag it and close the issue so the agent stops picking it up."
   def stop_task(task, client) do
+    # Same normalisation as ask/3: a bare Repo.get must work.
+    task = Repo.preload(task, :repository)
+
     AgentBoard.GitHub.close_issue(
       client,
       task.repository.owner,

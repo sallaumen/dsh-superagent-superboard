@@ -43,6 +43,16 @@ defmodule AgentBoard.AskTest do
     assert only.body =~ "hello"
   end
 
+  test "stop_task works on a bare task", %{task: task} do
+    bare = Repo.get(Task, task.id)
+
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, %{"number" => 42, "state" => "closed"})
+    end)
+
+    assert {:ok, _} = Board.stop_task(bare, client())
+  end
+
   test "ask reloads the repository when the task has none preloaded", %{task: task} do
     bare = Repo.get(Task, task.id)
 
