@@ -18,7 +18,7 @@ data freshness. Components own presentation; BoardLive owns existing actions.
 | P2 | Density / history / keyboard | [Panels](03-panels.md) | Activity, conversation/details, Split and AI open in place. Back/Forward/Escape and return focus; no ghost history entries. |
 | P2 | Icons / motion / flash | [Feedback](04-feedback.md) | Text plus semantic Heroicons; 120 ms optional entry, no animation on broadcasts, reduced motion, visible modal flash. |
 
-Delivery order: components (#173) → data age (#177) → panels (#182) → feedback.
+Delivery order: components (#173) → data age (#177) → panels (#182) → feedback (#183).
 Each PR is based on the preceding branch so its diff contains one theme. The older
 #171 design pass is outside this stack and overlaps the refactored view; it must be
 adapted to the components before integrating it after this stack. No PR was merged
