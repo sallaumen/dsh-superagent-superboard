@@ -506,3 +506,27 @@
 .voice-feedback { font-size: 0.6875rem; color: color-mix(in oklab, var(--color-base-content) 50%, transparent); align-self: center; }
 .voice-toggle { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); cursor: pointer; }
 .voice-toggle input { accent-color: var(--color-base-content); }
+
+/* Merged history: loaded counts are samples, while titles carry the scanning task. */
+.archive-heading { align-items: center; padding-block: 0.625rem; }
+.archive-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.625rem; min-width: 0; }
+.archive-heading h2 { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; }
+.archive-count { padding: 0.25rem 0.5rem; border: 1px solid var(--color-base-300); border-radius: 0.375rem; background: var(--color-base-100); color: var(--color-base-content); font-size: 0.625rem; font-weight: 600; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+.archive-scope { margin-left: auto; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); font-size: 0.625rem; }
+.merge-trend { align-items: center; gap: 0.5rem 1rem; padding-block: 0.625rem; }
+.merge-trend figcaption strong { font-size: 0.75rem; }
+.merge-trend figcaption span { line-height: 1.4; }
+.merge-trend ol { gap: 0.5rem; }
+.merge-trend li { gap: 0.25rem; font-size: 0.625rem; }
+.merge-trend-count { font-weight: 600; }
+.merge-trend-track { width: 0.75rem; height: 1.5rem; border-radius: 0.25rem 0.25rem 0 0; overflow: hidden; }
+.archive-row { min-height: 3rem; align-items: center; gap: 0.375rem 0.875rem; padding-block: 0.625rem; }
+.archive-row .item-title { max-width: 75ch; font-weight: 550; }
+.archive-row .item-signals, .archive-row .data-age { white-space: nowrap; }
+.archive-row:focus-within { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+@media (max-width: 39.999rem) {
+  .archive-heading { align-items: baseline; }
+  .archive-row { align-items: baseline; }
+  .archive-row .item-signals, .archive-row .data-age { white-space: normal; }
+  .merge-trend ol { width: 100%; margin-left: 0; }
+}

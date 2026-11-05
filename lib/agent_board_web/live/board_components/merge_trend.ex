@@ -29,7 +29,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeTrend do
     <figure id={@id} class="merge-trend">
       <figcaption>
         <strong>Recent merges</strong>
-        <span>{@recent_count} of {length(@items)} loaded · last 7 UTC days</span>
+        <span>{@recent_count} in the last 7 UTC days · loaded history</span>
       </figcaption>
       <ol aria-label="Loaded merges by UTC day">
         <li :for={day <- @days} aria-label={"#{day.date}: #{day.count} loaded merges"}>
