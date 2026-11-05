@@ -7,7 +7,15 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.{AI, Announcer, Board, ElevenLabs, GitHub, Intake, Repo, Settings, Voice}
   alias AgentBoard.Board.Task
   alias AgentBoard.System.{Updater, Version}
-  alias AgentBoardWeb.{BoardComponents, BoardNavigation, VoiceCommands, VoiceMutations}
+
+  alias AgentBoardWeb.{
+    BoardComponents,
+    BoardNavigation,
+    VoiceAnswer,
+    VoiceCommands,
+    VoiceMutations
+  }
+
   alias AgentBoardWeb.BoardComponents.VoicePresence
 
   @voice_key "elevenlabs_voice_id"
@@ -41,6 +49,7 @@ defmodule AgentBoardWeb.BoardLive do
         voice_draft: "",
         voice_result: nil,
         voice_action: nil,
+        voice_generation: 0,
         spoken_text: nil,
         spoken_at: 0
       )
@@ -74,7 +83,17 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp load(socket, nil) do
-    assign(socket,
+    socket =
+      if socket.assigns.repo do
+        socket
+        |> invalidate_voice_answer()
+        |> assign(voice_draft: "", voice_result: nil, voice_action: nil)
+      else
+        socket
+      end
+
+    socket
+    |> assign(
       repo: nil,
       board: empty(),
       resume: nil,
@@ -103,7 +122,8 @@ defmodule AgentBoardWeb.BoardLive do
             intake: nil,
             voice_draft: "",
             voice_result: nil,
-            voice_action: nil
+            voice_action: nil,
+            voice_generation: socket.assigns.voice_generation + 1
           ),
         else: socket
 
@@ -189,11 +209,20 @@ defmodule AgentBoardWeb.BoardLive do
     old_board = socket.assigns.board
     old_sync = socket.assigns.sync_event
 
-    {:noreply,
-     socket
-     |> load(socket.assigns.repo)
-     |> refresh_conversation()
-     |> announce(old_board, old_sync)}
+    socket =
+      socket
+      |> load(socket.assigns.repo)
+      |> refresh_conversation()
+      |> announce(old_board, old_sync)
+
+    socket =
+      if old_board != socket.assigns.board or old_sync != socket.assigns.sync_event do
+        invalidate_pending_voice_answer(socket)
+      else
+        socket
+      end
+
+    {:noreply, socket}
   end
 
   defp refresh_conversation(%{assigns: %{conversation: nil}} = socket), do: socket
@@ -209,6 +238,13 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
+    socket =
+      if socket.assigns.panel == "voice" and params["panel"] != "voice" do
+        socket |> invalidate_voice_answer() |> assign(voice_result: nil)
+      else
+        socket
+      end
+
     repo =
       case params["repo"] do
         nil -> socket.assigns.repo
@@ -370,7 +406,11 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("voice_command", %{"text" => text}, socket) when is_binary(text) do
     draft = String.trim(text)
-    socket = assign(socket, voice_draft: draft, voice_action: nil)
+
+    socket =
+      socket
+      |> invalidate_voice_answer()
+      |> assign(voice_draft: draft, voice_action: nil)
 
     case VoiceMutations.prepare(draft, socket.assigns.repo) do
       {:ok, intent} ->
@@ -380,17 +420,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, assign(socket, :voice_result, voice_action_result(:error, reason))}
 
       :not_mutation ->
-        %{result: result, path: path} = VoiceCommands.resolve(draft, socket.assigns)
-        socket = assign(socket, :voice_result, result)
-
-        case path do
-          nil ->
-            {:noreply, socket}
-
-          path ->
-            {:noreply,
-             socket |> put_flash(:info, result.text) |> push_patch(to: path, replace: true)}
-        end
+        resolve_voice_read(socket, draft)
     end
   end
 
@@ -414,7 +444,10 @@ defmodule AgentBoardWeb.BoardLive do
       as_of: nil
     }
 
-    {:noreply, assign(socket, voice_result: result, voice_action: nil)}
+    {:noreply,
+     socket
+     |> invalidate_voice_answer()
+     |> assign(voice_result: result, voice_action: nil)}
   end
 
   @impl true
@@ -538,6 +571,13 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("close", _params, socket) do
+    socket =
+      if socket.assigns.panel == "voice" do
+        socket |> invalidate_voice_answer() |> assign(voice_result: nil, voice_action: nil)
+      else
+        socket
+      end
+
     {:noreply,
      socket
      |> assign(panel: nil, conversation: nil, comments: [])
@@ -567,6 +607,7 @@ defmodule AgentBoardWeb.BoardLive do
     else
       {:noreply,
        socket
+       |> invalidate_voice_answer()
        |> assign(voice_draft: text, voice_result: nil, voice_action: nil)
        |> BoardNavigation.open_panel("voice")}
     end
@@ -574,12 +615,16 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("voice_draft_changed", %{"text" => text}, socket) when is_binary(text) do
-    {:noreply,
-     assign(socket,
-       voice_draft: String.slice(text, 0, 2000),
-       voice_result: nil,
-       voice_action: nil
-     )}
+    draft = String.slice(text, 0, 2000)
+
+    if draft == socket.assigns.voice_draft do
+      {:noreply, socket}
+    else
+      {:noreply,
+       socket
+       |> invalidate_voice_answer()
+       |> assign(voice_draft: draft, voice_result: nil, voice_action: nil)}
+    end
   end
 
   @impl true
@@ -755,6 +800,127 @@ defmodule AgentBoardWeb.BoardLive do
          )}
     end
   end
+
+  defp resolve_voice_read(socket, draft) do
+    intent = VoiceCommands.parse(draft)
+    unanswered_question? = match?({:ask, _}, intent) and is_nil(socket.assigns.conversation)
+
+    if VoiceAnswer.read_query?(draft) and (intent == :unknown or unanswered_question?) do
+      start_voice_answer(socket, draft)
+    else
+      resolve_deterministic_voice_command(socket, draft)
+    end
+  end
+
+  defp resolve_deterministic_voice_command(socket, draft) do
+    %{result: result, path: path} = VoiceCommands.resolve(draft, socket.assigns)
+    socket = assign(socket, :voice_result, result)
+
+    case path do
+      nil ->
+        {:noreply, socket}
+
+      path ->
+        {:noreply, socket |> put_flash(:info, result.text) |> push_patch(to: path, replace: true)}
+    end
+  end
+
+  @impl true
+  def handle_async({:voice_answer, generation, repo_id, draft}, outcome, socket) do
+    if current_voice_answer?(socket, generation, repo_id, draft) do
+      result =
+        case outcome do
+          {:ok, {:ok, answer}} ->
+            %{
+              kind: :ai_answer,
+              text: answer.text,
+              as_of: answer.as_of,
+              source: answer.source,
+              sync_status: answer.sync_status
+            }
+
+          {:ok, {:error, reason}} ->
+            voice_answer_error(reason)
+
+          {:exit, _reason} ->
+            voice_answer_error(:unavailable)
+        end
+
+      {:noreply, socket |> assign(voice_result: result) |> refresh_ai()}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  defp start_voice_answer(%{assigns: %{repo: nil}} = socket, _draft) do
+    result = voice_answer_error(:no_repository)
+    {:noreply, assign(socket, voice_result: result)}
+  end
+
+  defp start_voice_answer(socket, draft) do
+    generation = socket.assigns.voice_generation
+    repo_id = socket.assigns.repo.id
+    snapshot = Map.take(socket.assigns, [:repo, :board, :sync_event])
+    name = {:voice_answer, generation, repo_id, draft}
+
+    socket =
+      assign(socket,
+        voice_result: %{
+          kind: :loading,
+          text: "Preparing an AI answer from saved board data…",
+          as_of: nil
+        }
+      )
+
+    {:noreply, start_async(socket, name, fn -> VoiceAnswer.answer(snapshot, draft) end)}
+  end
+
+  defp current_voice_answer?(socket, generation, repo_id, draft) do
+    current_repo_id = socket.assigns.repo && socket.assigns.repo.id
+
+    socket.assigns.panel == "voice" and socket.assigns.voice_generation == generation and
+      current_repo_id == repo_id and socket.assigns.voice_draft == draft
+  end
+
+  defp invalidate_voice_answer(socket),
+    do: assign(socket, voice_generation: socket.assigns.voice_generation + 1)
+
+  defp invalidate_pending_voice_answer(%{assigns: %{voice_result: %{kind: :loading}}} = socket) do
+    socket
+    |> invalidate_voice_answer()
+    |> assign(
+      voice_result:
+        voice_answer_error_result(
+          "Board data changed while the AI was answering. Ask again for an updated answer."
+        )
+    )
+  end
+
+  defp invalidate_pending_voice_answer(socket), do: socket
+
+  defp voice_answer_error(:no_repository),
+    do: voice_answer_error_result("Choose a tracked repository before asking the AI.")
+
+  defp voice_answer_error(:budget_exhausted),
+    do:
+      voice_answer_error_result("The AI budget is exhausted. The saved board is still available.")
+
+  defp voice_answer_error(:question_too_long),
+    do: voice_answer_error_result("Keep the question under 1,000 characters and try again.")
+
+  defp voice_answer_error(:no_provider),
+    do:
+      voice_answer_error_result(
+        "No AI provider is configured. Read-only board commands still work."
+      )
+
+  defp voice_answer_error(:usage_limit),
+    do: voice_answer_error_result("The AI provider is at its usage limit. Try again later.")
+
+  defp voice_answer_error(_reason),
+    do: voice_answer_error_result("The AI could not answer. Your command draft is still here.")
+
+  defp voice_answer_error_result(text), do: %{kind: :error, text: text, as_of: nil}
 
   # The model answers on another process: the question is already on GitHub,
   # and blocking the LiveView for it freezes the whole board.

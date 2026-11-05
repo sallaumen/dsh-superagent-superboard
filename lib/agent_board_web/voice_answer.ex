@@ -1,0 +1,196 @@
+defmodule AgentBoardWeb.VoiceAnswer do
+  @moduledoc """
+  A bounded board snapshot for a registered natural-language answer.
+
+  The LiveView decides when a question is not a deterministic command. This
+  module never navigates, writes a task, or starts speech output.
+  """
+
+  alias AgentBoard.AI
+
+  @sample_size 8
+  @max_question_length 1_000
+  @stale_after_seconds 300
+  @task_lanes [:running, :ready, :blocked, :queued]
+  @read_starters [
+    "o que",
+    "o board",
+    "o painel",
+    "qual",
+    "quais",
+    "quantas",
+    "quantos",
+    "quem",
+    "quando",
+    "onde",
+    "por que",
+    "porque",
+    "como",
+    "me diga",
+    "me conte",
+    "explique",
+    "resuma",
+    "resumo",
+    "status",
+    "what",
+    "which",
+    "who",
+    "when",
+    "where",
+    "why",
+    "how",
+    "tell me",
+    "explain",
+    "summarize"
+  ]
+
+  @doc "Whether the text asks to read or explain the saved board."
+  def read_query?(text) when is_binary(text) do
+    phrase =
+      text
+      |> String.trim()
+      |> String.downcase()
+      |> String.normalize(:nfd)
+      |> String.replace(~r/\p{Mn}/u, "")
+      |> String.trim_trailing("?")
+
+    Enum.any?(@read_starters, fn starter ->
+      phrase == starter or String.starts_with?(phrase, starter <> " ")
+    end)
+  end
+
+  def read_query?(_text), do: false
+
+  @spec answer(map(), String.t()) ::
+          {:ok, map()} | {:error, term()}
+  def answer(snapshot, question) when is_map(snapshot) and is_binary(question) do
+    with {:ok, repository} <- repository(snapshot),
+         {:ok, question} <- question(question),
+         {:ok, board} <- board(snapshot),
+         metadata = sync_metadata(Map.get(snapshot, :sync_event)),
+         {:ok, result} <-
+           AI.call(:answer_board_question, %{
+             question: question,
+             board: facts(repository, board, metadata)
+           }),
+         {:ok, text} <- answer_text(result) do
+      {:ok, Map.put(metadata, :text, text)}
+    end
+  end
+
+  def answer(_snapshot, _question), do: {:error, :invalid_question}
+
+  defp repository(%{repo: %{owner: owner, name: name}})
+       when is_binary(owner) and is_binary(name),
+       do: {:ok, "#{owner}/#{name}"}
+
+  defp repository(_snapshot), do: {:error, :no_repository}
+
+  defp question(text) do
+    trimmed = String.trim(text)
+
+    cond do
+      trimmed == "" -> {:error, :missing_question}
+      String.length(trimmed) > @max_question_length -> {:error, :question_too_long}
+      not read_query?(trimmed) -> {:error, :not_read_query}
+      true -> {:ok, trimmed}
+    end
+  end
+
+  defp board(%{board: board}) when is_map(board), do: {:ok, board}
+  defp board(_snapshot), do: {:error, :no_board_data}
+
+  defp facts(repository, board, metadata) do
+    %{
+      repository: repository,
+      sync: sync_facts(metadata),
+      task_lanes: Map.new(@task_lanes, &{&1, task_lane(board, &1)}),
+      merged_pull_requests: merged_facts(board)
+    }
+  end
+
+  defp task_lane(board, lane) do
+    rows = Map.get(board, lane) || []
+    counts = Map.get(board, :task_counts) || %{}
+
+    %{
+      exact_total: Map.get(counts, lane),
+      loaded_count: length(rows),
+      sample: Enum.map(Enum.take(rows, @sample_size), &task_fact/1)
+    }
+  end
+
+  defp task_fact(task) do
+    %{
+      number: Map.get(task, :number),
+      kind: Map.get(task, :kind),
+      title: Map.get(task, :title),
+      updated_at: timestamp(Map.get(task, :updated_at))
+    }
+  end
+
+  defp merged_facts(board) do
+    rows = Map.get(board, :merged) || []
+
+    %{
+      exact_total: nil,
+      loaded_count: length(rows),
+      has_more: Map.get(board, :merged_has_more),
+      sample:
+        Enum.map(Enum.take(rows, @sample_size), fn pull ->
+          %{
+            number: Map.get(pull, :number),
+            title: Map.get(pull, :title),
+            merged_at: timestamp(Map.get(pull, :merged_at))
+          }
+        end)
+    }
+  end
+
+  defp sync_facts(metadata) do
+    %{
+      status: metadata.sync_status,
+      last_successful_sync_at: timestamp(metadata.as_of),
+      stale: stale?(Map.get(metadata, :sync_age_seconds)),
+      failed_at: timestamp(Map.get(metadata, :sync_failed_at))
+    }
+  end
+
+  defp stale?(nil), do: nil
+  defp stale?(age_seconds), do: age_seconds >= @stale_after_seconds
+
+  defp sync_metadata(%{kind: "sync", inserted_at: %DateTime{} = at}) do
+    %{
+      as_of: at,
+      sync_age_seconds: max(DateTime.diff(DateTime.utc_now(), at), 0),
+      sync_status: :synced,
+      source: "Last completed sync"
+    }
+  end
+
+  defp sync_metadata(%{kind: "sync"}),
+    do: %{as_of: nil, sync_status: :synced, source: "Sync time unknown"}
+
+  defp sync_metadata(%{kind: "sync_error", inserted_at: at}),
+    do: %{
+      as_of: nil,
+      sync_status: :sync_failed,
+      sync_failed_at: at,
+      source: "Sync failed · showing saved data"
+    }
+
+  defp sync_metadata(_event),
+    do: %{as_of: nil, sync_status: :unknown, source: "Sync time unknown"}
+
+  defp timestamp(%DateTime{} = value), do: DateTime.to_iso8601(value)
+  defp timestamp(_value), do: nil
+
+  defp answer_text(%{json: %{"answer" => text}}) when is_binary(text) do
+    case String.trim(text) do
+      "" -> {:error, :empty_answer}
+      answer -> {:ok, answer}
+    end
+  end
+
+  defp answer_text(_result), do: {:error, :invalid_answer}
+end
