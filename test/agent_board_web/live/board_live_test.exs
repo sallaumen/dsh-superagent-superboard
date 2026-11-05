@@ -105,12 +105,15 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#sync-status", "clean")
   end
 
-  test "Dictate task pushes the dictate event", %{conn: conn} do
+  test "Dictate task opens the form before browser dictation", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
     view |> element("button", "Dictate task") |> render_click()
+    assert render(view) =~ ~s(data-panel="create")
+
+    view |> element("#dictate-task-title") |> render_click()
 
     assert_push_event(view, "dictate", %{})
   end
@@ -1048,14 +1051,5 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "phx-disable-with"
     assert html =~ "Creating"
     assert render(view) =~ "Track repo"
-  end
-
-  test "the dictate event pushes the dictation request", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
-    {:ok, view, _html} = live(conn, ~p"/")
-
-    view |> element("button", "Dictate task") |> render_click()
-
-    assert_push_event(view, "dictate", %{})
   end
 end

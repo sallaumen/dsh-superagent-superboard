@@ -67,7 +67,10 @@ defmodule AgentBoardWeb.BoardComponents.Conversation do
           title="Record a question"
           aria-label="Record a question"
           class="border border-base-content/20 px-3 py-2 text-sm hover:bg-base-content/5"
-        ><.icon name="hero-microphone" class="size-4" /></button>
+        >
+          <.icon name="hero-microphone" class="size-4" />
+          <span class="sr-only" data-voice-button-label>Ask by voice</span>
+        </button>
         <button
           class="bg-primary px-4 py-2 text-sm font-bold text-primary-content hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           phx-disable-with="Sending…"

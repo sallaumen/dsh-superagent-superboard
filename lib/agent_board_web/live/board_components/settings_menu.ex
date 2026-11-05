@@ -59,12 +59,23 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                 :if={@voice.configured and @repo}
                 id="voice-dictate"
                 type="button"
-                phx-hook="VoiceRecorder"
-                data-max-seconds="20"
+                phx-click="show_panel"
+                phx-value-panel="create"
+                data-panel-trigger
+                aria-haspopup="dialog"
+                aria-controls="panel-create"
               >
                 <.icon name="hero-microphone" class="size-4" />Dictate task
               </button>
-              <button :if={not @voice.configured} type="button" phx-click="dictate">
+              <button
+                :if={not @voice.configured and @repo}
+                type="button"
+                phx-click="show_panel"
+                phx-value-panel="create"
+                data-panel-trigger
+                aria-haspopup="dialog"
+                aria-controls="panel-create"
+              >
                 <.icon name="hero-microphone" class="size-4" />Dictate task
               </button>
             </div>

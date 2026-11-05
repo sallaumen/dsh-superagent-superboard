@@ -27,7 +27,9 @@ import {BoardPanels} from "./hooks/board_panels"
 import {DataAge} from "./hooks/data_age"
 import {SettingsMenu} from "./hooks/settings_menu"
 import {VoicePlayer} from "./hooks/voice_player"
+import {VoicePresence} from "./hooks/voice_presence"
 import {VoiceRecorder} from "./hooks/voice_recorder"
+import {interruptVoiceOutput, voiceInputActive, voiceState} from "./voice_state"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -47,7 +49,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   // Read the mounted DOM on every connection so loaded pages survive a socket reconnect.
   params: () => ({_csrf_token: csrfToken, board_resume: boardResume()}),
-  hooks: {...colocatedHooks, DataAge, BoardPanels, SettingsMenu, VoicePlayer, VoiceRecorder},
+  hooks: {...colocatedHooks, DataAge, BoardPanels, SettingsMenu, VoicePlayer, VoicePresence, VoiceRecorder},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
@@ -111,48 +113,115 @@ if (process.env.NODE_ENV === "development") {
 }
 
 
-const voiceFeedback = text => {
-  const status = document.querySelector("#voice-feedback")
-  if (status) status.textContent = text
-}
-
 // Voice out: the server pushes the summary, the browser speaks it.
+let browserSpeech = null
 window.addEventListener("phx:speak", (event) => {
-  const text = event.detail.text;
-  if (!text) return;
+  const text = event.detail.text
+  if (!text || voiceInputActive()) return
   if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
-    voiceFeedback("Speech playback is not supported by this browser.");
-    return;
+    voiceState("error", "Speech is unavailable", "This browser cannot play the board status.", "browser-speech")
+    return
   }
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = navigator.language || "en-US";
-  utterance.onend = () => voiceFeedback("Status spoken.");
-  utterance.onerror = () => voiceFeedback("Could not play the status. Try again.");
-  voiceFeedback("Speaking board status…");
-  window.speechSynthesis.speak(utterance);
-});
+  browserSpeech = null
+  window.speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  browserSpeech = utterance
+  utterance.lang = navigator.language || "en-US"
+  utterance.onstart = () => voiceState("speaking", "Speaking board status", "Browser voice is playing.", "browser-speech")
+  utterance.onend = () => {
+    if (browserSpeech !== utterance) return
+    browserSpeech = null
+    voiceState("complete", "Board status spoken", "Playback finished.", "browser-speech")
+  }
+  utterance.onerror = () => {
+    if (browserSpeech !== utterance) return
+    browserSpeech = null
+    voiceState("error", "Speech could not play", "Try again or check the browser sound.", "browser-speech")
+  }
+  voiceState("generating", "Preparing board status", "Using the browser voice.", "browser-speech")
+  try {
+    window.speechSynthesis.speak(utterance)
+  } catch (_) {
+    browserSpeech = null
+    voiceState("error", "Speech could not start", "Try again after interacting with the page.", "browser-speech")
+  }
+})
 
 // Voice in: dictate a task title into the form.
+let browserRecognition = null
 window.addEventListener("phx:dictate", () => {
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  interruptVoiceOutput()
+  const previousRecognition = browserRecognition
+  browserRecognition = null
+  previousRecognition?.abort()
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition
   if (!Rec) {
-    voiceFeedback("Dictation is not supported by this browser. Type the task title below.");
-    return;
+    voiceState("error", "Dictation is unavailable", "Type the task title in New task.", "browser-dictation")
+    return
   }
-  const rec = new Rec();
-  rec.lang = navigator.language || "en-US";
-  rec.interimResults = false;
+  const rec = new Rec()
+  browserRecognition = rec
+  rec.hasResult = false
+  rec.hadError = false
+  rec.lang = navigator.language || "en-US"
+  rec.interimResults = false
+  rec.onstart = () => {
+    if (browserRecognition === rec) voiceState("listening", "Listening for a task title", "Speak now. Dictation will fill an editable field.", "browser-dictation")
+  }
   rec.onresult = (event) => {
-    const input = document.querySelector("#task-title");
+    if (browserRecognition !== rec) return
+    rec.hasResult = true
+    const input = document.querySelector("#task-title")
     if (input) {
-      input.value = event.results[0][0].transcript;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.focus();
-      voiceFeedback("Title transcribed. Review it before creating the issue.");
+      input.value = event.results[0][0].transcript
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+      input.focus()
+      voiceState("complete", "Title transcribed", "Review it before creating the task.", "browser-dictation")
+    } else {
+      voiceState("error", "New task is closed", "Open New task to use the dictated title.", "browser-dictation")
     }
-  };
-  rec.onerror = () => voiceFeedback("Could not hear the title. Check microphone permission or type it below.");
-  voiceFeedback("Listening for a task title…");
-  rec.start();
-});
+  }
+  rec.onerror = () => {
+    if (browserRecognition !== rec) return
+    rec.hadError = true
+    voiceState("error", "Could not hear the title", "Check microphone permission or type it instead.", "browser-dictation")
+  }
+  rec.onend = () => {
+    if (browserRecognition !== rec) return
+    browserRecognition = null
+    if (!rec.hasResult && !rec.hadError) {
+      voiceState("complete", "Dictation ended", "No title was captured. Try again or type it.", "browser-dictation")
+    }
+  }
+  voiceState("permission", "Waiting for microphone", "Allow access to dictate a task title.", "browser-dictation")
+  try { rec.start() } catch (_) {
+    browserRecognition = null
+    voiceState("error", "Could not start dictation", "Type the title in New task.", "browser-dictation")
+  }
+})
+
+window.addEventListener("board:voice-control", ({detail}) => {
+  if (browserSpeech && detail.source === "browser-speech") {
+    browserSpeech = null
+    window.speechSynthesis.cancel()
+    voiceState("complete", "Speech stopped", "Playback was stopped.", "browser-speech")
+  }
+  if (browserRecognition && detail.source === "browser-dictation") {
+    if (detail.phase === "permission") {
+      browserRecognition.abort()
+      browserRecognition = null
+      voiceState("complete", "Dictation cancelled", "Nothing was sent.", "browser-dictation")
+    } else {
+      voiceState("transcribing", "Finishing dictation", "The title will remain editable.", "browser-dictation")
+      browserRecognition.stop()
+    }
+  }
+})
+
+document.addEventListener("close", event => {
+  if (!event.target.matches?.(".board-dialog") || !browserRecognition) return
+  const rec = browserRecognition
+  browserRecognition = null
+  rec.abort()
+  voiceState("idle", "", "", "browser-dictation")
+}, true)

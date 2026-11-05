@@ -1,0 +1,70 @@
+const phaseLabels = {
+  permission: ["Microphone", "Cancel"],
+  listening: ["Listening", "Finish & transcribe"],
+  transcribing: ["Transcribing", "Cancel"],
+  generating: ["Preparing speech", "Cancel"],
+  speaking: ["Speaking", "Stop voice"],
+  complete: ["Voice", "Dismiss"],
+  error: ["Voice", "Dismiss"],
+}
+let latestVoiceState = null
+const activePhases = ["permission", "listening", "transcribing", "generating", "speaking"]
+
+export const VoicePresence = {
+  mounted() {
+    this.phase = "idle"
+    this.phaseLabel = this.el.querySelector(".voice-presence-phase")
+    this.title = this.el.querySelector(".voice-presence-title")
+    this.detail = this.el.querySelector(".voice-presence-detail")
+    this.control = this.el.querySelector(".voice-presence-control")
+    this.onState = event => {
+      latestVoiceState = event.detail
+      this.show(event.detail)
+    }
+    this.onContext = () => {
+      if (latestVoiceState && activePhases.includes(latestVoiceState.phase)) this.show(latestVoiceState)
+      else if (this.host !== document.querySelector(".board-dialog[open]")) this.hide()
+    }
+    this.onControl = () => {
+      if (["complete", "error"].includes(this.phase)) this.hide()
+      else window.dispatchEvent(new CustomEvent("board:voice-control", {detail: {phase: this.phase, source: this.source}}))
+    }
+    window.addEventListener("board:voice-state", this.onState)
+    window.addEventListener("board:voice-context", this.onContext)
+    this.control.addEventListener("click", this.onControl)
+    this.host = this.el.closest("dialog")
+    this.onHostClose = () => this.hide()
+    this.host?.addEventListener("close", this.onHostClose)
+  },
+  show({phase, title, detail, source}) {
+    clearTimeout(this.closeTimer)
+    if (phase === "idle") return this.hide()
+    if (this.host !== document.querySelector(".board-dialog[open]")) return this.hide()
+    this.phase = phase
+    this.source = source
+    this.el.dataset.phase = phase
+    this.el.dataset.source = source
+    this.phaseLabel.textContent = phaseLabels[phase]?.[0] || "Voice"
+    this.control.textContent = source === "browser-dictation" && phase === "listening"
+      ? "Finish dictation"
+      : phaseLabels[phase]?.[1] || "Dismiss"
+    this.title.textContent = title
+    this.detail.textContent = detail
+    this.el.hidden = false
+    if (phase === "complete") this.closeTimer = setTimeout(() => this.hide(), 5000)
+  },
+  hide() {
+    clearTimeout(this.closeTimer)
+    this.phase = "idle"
+    this.el.dataset.phase = "idle"
+    delete this.el.dataset.source
+    this.el.hidden = true
+  },
+  destroyed() {
+    clearTimeout(this.closeTimer)
+    window.removeEventListener("board:voice-state", this.onState)
+    window.removeEventListener("board:voice-context", this.onContext)
+    this.control.removeEventListener("click", this.onControl)
+    this.host?.removeEventListener("close", this.onHostClose)
+  },
+}
