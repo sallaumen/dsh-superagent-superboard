@@ -2,7 +2,7 @@ defmodule AgentBoard.Sync.WorkerTest do
   @moduledoc "The Oban job: perform/1 runs the sync and reports success."
   use AgentBoard.DataCase, async: true
 
-  alias AgentBoard.{Board, Repo, Sync}
+  alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
   alias AgentBoard.Sync.Worker
   import Ecto.Query
