@@ -509,6 +509,17 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#board-settings #version-panel")
     assert has_element?(view, "#board-settings #open-activity")
     assert has_element?(view, "#board-settings #open-ai")
+    assert has_element?(view, "#settings-voice-section > summary", "Speech and feedback")
+
+    assert has_element?(
+             view,
+             "#settings-repositories-section > summary",
+             "Track another repository"
+           )
+
+    assert has_element?(view, "#settings-appearance-section > summary", "Light and dark themes")
+    assert has_element?(view, "#settings-system-section > summary", "Version")
+    refute has_element?(view, "#settings-voice-section[open]")
     assert has_element?(view, "#board-tools #open-intake", "Split a request")
     refute has_element?(view, "#board-tools #open-ai")
   end
@@ -733,7 +744,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "Agent board"
-    assert html =~ "the agent&#39;s work, live"
+    assert html =~ "Agent work on GitHub"
   end
 
   test "the board renders the columns", %{conn: conn} do

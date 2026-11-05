@@ -530,3 +530,27 @@
   .archive-row .item-signals, .archive-row .data-age { white-space: normal; }
   .merge-trend ol { width: 100%; margin-left: 0; }
 }
+
+/* Keep settings scannable while the detailed controls remain available on demand. */
+.board-settings-body > h2 { margin-inline: -1rem; padding-inline: 1rem; border-bottom: 1px solid var(--color-base-300); }
+.board-settings-body > .settings-shortcuts { border-top: 0; }
+.settings-shortcuts .settings-actions button { flex: 1; min-height: 2.75rem; }
+.board-settings .settings-fold { border-top: 1px solid var(--color-base-300); }
+.board-settings .settings-fold > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  min-height: 3.5rem;
+  border: 0;
+  border-radius: 0;
+  padding: 0.75rem 0;
+  background: transparent;
+}
+.board-settings .settings-fold > summary:hover { background: transparent; color: var(--color-primary); }
+.settings-fold-label { display: grid; gap: 0.125rem; font-size: 0.75rem; font-weight: 650; }
+.settings-fold-label small { color: color-mix(in oklab, var(--color-base-content) 75%, transparent); font-size: 0.6875rem; font-weight: 400; }
+.settings-fold-chevron { flex: none; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); }
+.settings-fold[open] .settings-fold-chevron { transform: rotate(180deg); }
+.settings-fold-content { display: grid; gap: 0.875rem; padding-bottom: 1rem; }
+.board-settings-body .settings-fold-content #version-panel { padding: 0; border-top: 0; }
