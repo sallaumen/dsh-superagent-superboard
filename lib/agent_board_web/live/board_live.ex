@@ -273,6 +273,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp empty_copy(:running), do: "No task is running."
   defp empty_copy(:ready), do: "Nothing is waiting on a review."
+  defp empty_copy(:blocked), do: "Nothing is blocked."
   defp empty_copy(:merged), do: "No pull request merged yet."
   defp empty_copy(:queued), do: "No queued task."
 
@@ -412,7 +413,10 @@ defmodule AgentBoardWeb.BoardLive do
                   #{item.number}
                 </span>
 
-                <div :if={key in [:running, :ready, :queued]} class="mt-2 flex gap-1 text-[11px]">
+                <div
+                  :if={key in [:running, :ready, :blocked, :queued]}
+                  class="mt-2 flex gap-1 text-[11px]"
+                >
                   <button phx-click="open" phx-value-id={item.id}>Open</button>
                   <button phx-click="act" phx-value-id={item.id} phx-value-action="stop">Stop</button>
                   <button phx-click="act" phx-value-id={item.id} phx-value-action="archive">

@@ -187,4 +187,22 @@ defmodule AgentBoard.Board.ConversationTest do
   test "an unknown slug is an error, not a crash", _ctx do
     assert Board.board("nobody/nothing") == :error
   end
+
+  test "a blocked task lands in the blocked column", _ctx do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 901,
+      title: "Blocked",
+      state: "blocked"
+    })
+    |> Repo.insert!()
+
+    assert {:ok, board} = Board.board("sallaumen/arena-rogue")
+    assert Enum.any?(board.blocked, &(&1.number == 901))
+    refute Enum.any?(board.queued, &(&1.number == 901))
+  end
 end
