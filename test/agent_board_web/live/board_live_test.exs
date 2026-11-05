@@ -374,7 +374,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "grid-cols-1"
-    assert html =~ "lg:grid-cols-4"
+    assert html =~ "lg:grid-cols-5"
   end
 
   test "the board renders the tracked repository", %{conn: conn} do
