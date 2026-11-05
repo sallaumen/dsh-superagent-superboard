@@ -5,7 +5,7 @@
 > projeções e as fases daquela proposta; não descreve o estado atual nem uma
 > lista de tarefas ainda pendentes. As referências ao `o_colmex` são o
 > levantamento da época, não um inventário verificado por este repositório.
-> Para trabalhar na implementação, consulte as [regras de IA](../AGENTS.md#ai-calls)
+> Para trabalhar na implementação, consulte as [regras de IA](maintainer-contract.md#ai-calls)
 > e os pontos de entrada [AgentBoard.AI](../lib/agent_board/ai.ex) e
 > [AgentBoard.Intake](../lib/agent_board/intake.ex).
 
