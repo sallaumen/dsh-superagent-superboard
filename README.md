@@ -17,10 +17,12 @@ the durable sync, **LiveView** for the real-time UI and **Req** for GitHub.
 
 ```sh
 mix setup            # deps, database, assets
-mix phx.server       # http://127.0.0.1:4002
+PORT=4002 mix phx.server  # http://127.0.0.1:4002
 ```
 
-The dev database is on the local Postgres at `127.0.0.1:5434`.
+The explicit `PORT` keeps the example URL deterministic; runtime configuration
+otherwise uses the environment or its own default. The dev database is on the
+local Postgres at `127.0.0.1:5434`.
 
 ## Run as a service
 
@@ -77,11 +79,12 @@ panel against free fixtures instead. Tests never read `.env.local`.
 
 ## What it costs
 
-- **The sync** reads the 100 most recently updated issues and pull requests per
-  repository (the `recent()` window), plus each pull request's reviews and check
-  runs, plus the comments of up to 10 active tasks. At the 1 min cron that is
-  real API traffic. On `o_colmex` (1,100+ pull requests) the **first** sync is
-  the slow one; later runs only refresh the recent window.
+- **The sync** reads a bounded window of recently updated issues and pull
+  requests per repository, plus each pull's reviews/checks and active task
+  comments. Each scheduled run produces GitHub API traffic. The window lives in
+  [AgentBoard.GitHub](lib/agent_board/github.ex); the comment selection lives in
+  [AgentBoard.Sync](lib/agent_board/sync.ex). Check those limits when estimating
+  traffic for a deployment.
 - **The 10s poller does not touch GitHub**: it reads the agent's sqlite and
   only broadcasts when the ticket hash changed.
 
