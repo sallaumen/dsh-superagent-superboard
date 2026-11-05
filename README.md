@@ -11,7 +11,7 @@ the durable sync, **LiveView** for the real-time UI and **Req** for GitHub.
   LiveView when the sync or an action changes a task — no browser polling.
 - The **data is migrations**, not a SQL file applied on boot: Ecto owns the
   schema, the changesets and the history.
-- **One language** with the game and the rest of the system.
+- **One language** across the board, the sync and the web layer.
 
 ## Run it
 
@@ -49,7 +49,7 @@ The dev database is on the local Postgres at `127.0.0.1:5434`.
 ## The gates
 
 ```sh
-mix gate   # check-only: compile warnings + format + credo + tests
+mix gate   # check-only: unused deps + compile warnings + format + credo + tests
 mix precommit  # same gates, formatting fixed in place (for developers)
 scripts/ci-local.sh all   # pre-flight: backend + frontend + library pipelines
 ```
@@ -67,9 +67,9 @@ See the rule in [PIPELINES.md](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-toke
 
 | Job | What it does | Why |
 |---|---|---|
-| `gates` | `deps.unlock --check-unused`, `format --check-formatted`, `credo --strict` | once, not once per partition |
+| `gates` | `deps.unlock --check-unused`, `compile --warnings-as-errors`, `format --check-formatted`, `credo --strict` | once, not once per partition |
 | `backend` | `mix test --partitions 4`, one Postgres per partition | the suite split into four distinct slices |
-| `frontend` | `assets.setup`, `assets.build`, `assets.deploy` in `dev` | the assets must build with the dev toolchain |
+| `frontend` | `check_assets.sh`, `assets.setup`, `assets.build`, `assets.deploy` in `dev` | the sources are checked and the assets must build with the dev toolchain |
 | `library` | `python3 capabilities/tools/validar_biblioteca.py` + its test | the capability library is validated on every change |
 | `release` | dev assets → prod compile → `phx.digest` → `mix release` | proves the mixed release path works |
 
@@ -79,9 +79,10 @@ against its own `agent_board_testN` database.
 
 ## The tests
 
-59 tests, each layer covered: the state mapping (the ticket overlay, the review
-and check rollups), the voice summary, the context, the LiveView (the
-columns, the empty state, the voice events, the PubSub broadcast).
+`mix test` covers each layer: the state mapping (the ticket overlay, the review
+and check rollups), the voice summary, the sync against a fake GitHub (no
+network), the JSON API controllers, the LiveView (the columns, the empty
+state, the voice events, the PubSub broadcast) and the pipeline contract.
 
 ## The limits
 
