@@ -3,9 +3,8 @@ defmodule AgentBoard.AI.Cache do
   An identical registered call, served from a stored answer instead of paying
   again.
 
-  The key is the call name, the provider, the model and a hash of the inputs:
-  the same request to the same engine cannot answer differently, so the row
-  that already paid for it is the right answer. Only a `complete` answer is
+  The key includes the registered prompt and response contract. A change to
+  either cannot reuse an answer paid for under the old contract. Only a `complete` answer is
   reusable -- a partial one is a truncated answer, and serving it would turn
   one failure into many.
   """
@@ -18,14 +17,21 @@ defmodule AgentBoard.AI.Cache do
   @default_ttl_seconds 3600
 
   @doc "The fingerprint of a call."
-  @spec key(atom(), atom(), String.t() | nil, map()) :: String.t()
-  def key(name, provider, model, inputs) do
-    :crypto.hash(:sha256, [
-      to_string(name),
-      to_string(provider),
-      to_string(model),
-      Jason.encode!(inputs)
-    ])
+  @spec key(atom(), atom(), String.t() | nil, map(), map()) :: String.t()
+  def key(name, provider, model, inputs, spec) do
+    :crypto.hash(
+      :sha256,
+      Jason.encode!(%{
+        name: name,
+        provider: provider,
+        model: model,
+        inputs: inputs,
+        system: spec.system,
+        json_schema: spec.json_schema,
+        tier: spec.tier,
+        output_cap: spec.output_cap
+      })
+    )
     |> Base.encode16(case: :lower)
   end
 

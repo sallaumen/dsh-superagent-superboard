@@ -38,7 +38,7 @@ defmodule AgentBoard.AI do
   defp cached(_name, _spec, _inputs, []), do: :miss
 
   defp cached(name, spec, inputs, [provider | _rest]) do
-    case Cache.get(Cache.key(name, provider, Providers.model(provider, spec.tier), inputs)) do
+    case Cache.get(Cache.key(name, provider, Providers.model(provider, spec.tier), inputs, spec)) do
       {:ok, json} -> if Schema.valid?(spec.json_schema, json), do: {:ok, json}, else: :miss
       :miss -> :miss
     end
@@ -128,7 +128,7 @@ defmodule AgentBoard.AI do
       model: result.model,
       tier: to_string(spec.tier),
       status: to_string(status),
-      input_hash: Cache.key(name, request.provider, request.model, inputs),
+      input_hash: Cache.key(name, request.provider, request.model, inputs, spec),
       input_tokens: result.input_tokens,
       output_tokens: result.output_tokens,
       cost_micros: result.cost_micros,
