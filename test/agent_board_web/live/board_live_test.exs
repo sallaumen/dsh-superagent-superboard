@@ -128,6 +128,16 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert render(view) =~ "no ci"
   end
 
+  test "the controls carry accessible names", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ ~s(aria-label="Repository")
+    assert html =~ ~s(aria-label="Owner")
+    assert html =~ ~s(aria-label="Repository name")
+  end
+
   test "the header carries the brand and the tagline", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 

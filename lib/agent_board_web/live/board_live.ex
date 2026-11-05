@@ -248,6 +248,7 @@ defmodule AgentBoardWeb.BoardLive do
           <form id="repo-select" phx-change="select" class="contents">
             <select
               name="repo"
+              aria-label="Repository"
               class="border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#e8a33d]"
             >
               <option :if={@repo == nil} value="">select a repository</option>
@@ -285,11 +286,13 @@ defmodule AgentBoardWeb.BoardLive do
             <input
               name="owner"
               placeholder="owner"
+              aria-label="Owner"
               class="w-20 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm sm:w-28"
             />
             <input
               name="name"
               placeholder="repo name"
+              aria-label="Repository name"
               class="w-24 border border-[#2a2925] bg-[#191813] px-3 py-2 text-sm sm:w-36"
             />
             <button
