@@ -221,12 +221,45 @@ defmodule AgentBoardWeb.BoardLiveTest do
            )
 
     assert has_element?(view, "#merge-trend", "7 in the last 7 UTC days · loaded history")
+    assert has_element?(view, "#merged-column[tabindex='-1']")
     assert has_element?(view, "#merged-list[aria-label='Merged pull request list']")
     assert has_element?(view, "#merged-list article:nth-child(5)", "Merged pull 3")
     assert has_element?(view, "#merged-list article:nth-child(6)", "Merged pull 2")
     assert has_element?(view, "#merged-list article:nth-child(7)", "Merged pull 1")
     refute has_element?(view, "#merged-column summary")
     refute has_element?(view, "#merged-column button[phx-click=act]")
+  end
+
+  test "empty work links to saved merge history without implying active tasks", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "empty-work")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/empty-work")
+    refute has_element?(view, "#column-running .lane-history-link")
+
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: 7,
+      title: "Merged pull",
+      state: "merged",
+      merged_at: DateTime.utc_now()
+    })
+    |> Repo.insert!()
+
+    send(view.pid, :board_updated)
+    assert has_element?(view, "#column-running a.lane-history-link[href='#merged-column']")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 8,
+      title: "Queued work",
+      state: "queued"
+    })
+    |> Repo.insert!()
+
+    send(view.pid, :board_updated)
+    refute has_element?(view, "#column-running .lane-history-link")
   end
 
   test "scrolling the merged list loads fifty more without duplicates or losing pages", %{

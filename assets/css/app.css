@@ -280,7 +280,7 @@
 .version-update { padding: 0.5rem 0.75rem; border-radius: 0.625rem; font-weight: 700; }
 .board-work { border: 1px solid var(--color-base-300); border-radius: 0.875rem; overflow: hidden; background: var(--color-base-100); }
 .active-lanes { border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); }
-.active-lanes { height: 16rem; }
+.active-lanes { height: 14rem; }
 .board-column { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; padding: 1rem 1.25rem; border-right: 1px solid var(--color-base-300); }
 .board-column:last-child { border-right: 0; }
 .lane-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
@@ -291,6 +291,7 @@
 .board-column[data-attention="true"] .lane-count::after { content: ""; position: absolute; top: -0.1875rem; right: -0.1875rem; width: 0.4375rem; height: 0.4375rem; border-radius: 50%; background: var(--color-error); }
 .is-empty .lane-count, .lane-empty { color: color-mix(in oklab, var(--color-base-content) 75%, transparent); }
 .lane-empty { font-size: 0.75rem; padding-bottom: 0.5rem; }
+.lane-history-link { display: none; }
 .lane-items { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; padding: 0.25rem; margin: -0.25rem; }
 .lane-tail { padding: 0.75rem 0.25rem; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); font-size: 0.6875rem; }
 .item-number { font-size: 0.6875rem; font-variant-numeric: tabular-nums; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); }
@@ -304,7 +305,7 @@
 .task-actions button:first-child { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-primary-content); }
 .task-actions button:not(:first-child):hover { background: var(--color-base-300); }
 .archive-heading { justify-content: space-between; gap: 0.5rem 1rem; background: var(--color-base-200); }
-.board-archive { display: flex; flex-direction: column; height: 18rem; min-height: 0; }
+.board-archive { display: flex; flex-direction: column; height: 29rem; min-height: 0; }
 .archive-heading, .merge-trend { flex: none; }
 .archive-list { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; overscroll-behavior: contain; padding-bottom: 1px; }
 .archive-tail { padding: 0.75rem 1.25rem; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); font-size: 0.6875rem; }
@@ -342,7 +343,7 @@
 .create-task-title-row input { flex: 1; min-width: 0; }
 .create-task-form textarea { min-height: 8rem; resize: vertical; }
 .create-task-submit { justify-self: end; margin-top: 0.75rem; min-height: 2.75rem; border-radius: 0.625rem; background: var(--color-primary); padding: 0.5rem 1rem; color: var(--color-primary-content); font-size: 0.75rem; font-weight: 700; }
-@media (max-width: 63.999rem) { .active-lanes { height: auto; } .board-column { height: 16rem; border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); } }
+@media (max-width: 63.999rem) { .active-lanes { height: auto; } .board-column { height: 16rem; border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); } .lane-history-link { display: inline-flex; align-items: center; align-self: flex-start; min-height: 2.75rem; margin-top: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid var(--color-primary); border-radius: 0.5rem; color: var(--color-primary); font-size: 0.75rem; font-weight: 700; } }
 @media (max-width: 39.999rem) { .board-column { height: 12.5rem; } .board-archive { height: 20rem; } }
 @media (max-width: 39.999rem) { .agent-board > :is(.board-header, .board-work) { width: calc(100% - 1rem); } .board-topbar { grid-template-columns: minmax(0, 1fr) auto; gap: 0.75rem; } .board-identity { grid-column: 1; grid-row: 1; } .board-settings { grid-column: 2; grid-row: 1; } .board-repository { grid-column: 1 / -1; grid-row: 2; width: 100%; flex-wrap: wrap; gap: 0.5rem; } .board-tools { grid-column: 1 / -1; grid-row: 3; justify-self: stretch; justify-content: space-between; } .repository-select { flex: 1; } .version-details { flex-basis: 100%; } .archive-row { grid-template-columns: 3rem minmax(0, 1fr); } .archive-row .item-signals, .archive-row .data-age { grid-column: 2; } }
 

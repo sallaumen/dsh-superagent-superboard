@@ -1224,6 +1224,10 @@ defmodule AgentBoardWeb.BoardLive do
                 items={Map.get(@board, key)}
                 total={Map.fetch!(@board.task_counts, key)}
                 has_more={Map.fetch!(@board.task_has_more, key)}
+                history_shortcut={
+                  key == :running and @board.merged != [] and
+                    Enum.all?(Map.values(@board.task_counts), &(&1 == 0))
+                }
               />
             <% end %>
           </div>

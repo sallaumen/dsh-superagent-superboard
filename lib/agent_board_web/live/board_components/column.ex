@@ -50,6 +50,9 @@ defmodule AgentBoardWeb.BoardComponents.Column do
       <p :if={@items == []} class="lane-empty">
         {empty_copy(@state)}
       </p>
+      <a :if={@history_shortcut} class="lane-history-link" href="#merged-column">
+        View merged PRs
+      </a>
     </section>
     """
   end
