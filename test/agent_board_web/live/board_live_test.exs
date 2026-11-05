@@ -16,6 +16,15 @@ defmodule AgentBoardWeb.BoardLiveTest do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
 
+  test "the header carries the brand and the tagline", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ "Agent board"
+    assert html =~ "the agent&#39;s work, live"
+  end
+
   test "the board renders the columns", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
