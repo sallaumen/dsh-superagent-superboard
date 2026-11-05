@@ -9,7 +9,7 @@ Este documento é a resposta a "qual script eu rodo agora?". Ele define os pipel
 | Backend | Código Elixir: warnings, formatação, credo, testes | `mix gate` | `make backend` | `backend` (4 partições) |
 | Frontend | Assets: build e deploy de esbuild/tailwind | `mix assets.deploy` | `make frontend` | `frontend · assets` |
 | Biblioteca | Integridade de `capabilities/` | `python3 capabilities/tools/validar_biblioteca.py` | `make library` | `biblioteca de capacidades` |
-| Misto (release) | O caminho combinado de um deploy | sequência de release (abaixo) | — | `release · caminho misto` |
+| Misto (release) | O caminho combinado de um deploy | sequência de release (abaixo) | `make release` | `release · caminho misto` |
 | Todos | Os três pipelines juntos, antes de entregar | `make check` | `make check` | os três jobs |
 
 Regra de ouro: **o alvo `make` e o job da CI executam os mesmos comandos** — local e CI não divergem.
@@ -42,6 +42,24 @@ O `scripts/ci-local.sh` é o pré-voo de PR: roda os mesmos comandos dos jobs da
 
 O job `release` existe para o caminho que **precisa** dos dois lados juntos: o deploy. Ele constrói os assets no ambiente dev (onde esbuild/tailwind existem), compila produção com warnings como erro, digere os assets e monta o release (`mix release`). Use-o como smoke antes de um deploy e sempre que a integração backend×frontend for o risco da mudança — não como gate de todo PR (para isso os pipelines separados são mais rápidos e específicos).
 
+## Se a CI não consegue rodar (sem token, billing ou runner)
+
+Regra vinculante (também no AGENTS.md): **ao perceber que o GitHub Actions não inicia, não espere por ele e não fique re-disparando.** O pipeline local passa a ser o gate oficial e **suficiente**.
+
+Como perceber:
+
+- Jobs que falham em poucos segundos com **zero steps** e annotation de conta ("payments have failed / spending limit") = bloqueio de billing/token, não defeito no código.
+- Nenhum check aparece no PR = o runner nunca foi atribuído.
+
+O que fazer:
+
+1. Pare de esperar e de re-triggerar runs (não adianta sem resolver o bloqueio).
+2. Rode `scripts/ci-local.sh all` — ou o alvo `make` do pipeline afetado — e corrija até ficar verde.
+3. Siga com a entrega (commit, PR, merge) usando a execução local como evidência; registre no PR que a CI estava indisponível e qual comando local foi executado.
+4. Quando o bloqueio da conta for resolvido, rode a CI manualmente (`workflow_dispatch`) no último `main` para repor a verificação externa.
+
+O objetivo da CI continua sendo verificar em ambiente limpo; a regra apenas evita travar entregas por um bloqueio de conta que está fora do repositório.
+
 ## Adotar este desenho em outro projeto
 
 1. Copie a estrutura do `Makefile`: um alvo por pipeline, cada um mapeando para um job da CI com os mesmos comandos.
@@ -51,4 +69,4 @@ O job `release` existe para o caminho que **precisa** dos dois lados juntos: o d
 
 ## Histórico
 
-- Job único (`gates`) substituído por pipelines separados (PR #13); smoke de release adicionado (PR #14); `make` como entrada única por pipeline (PR #15); esta matriz criada em seguida.
+- Job único (`gates`) substituído por pipelines separados (PR #13); smoke de release adicionado (PR #14); `make` como entrada única por pipeline (PR #15); esta matriz criada em seguida. Guideline "CI indisponível → pipeline local é o gate" adicionada depois do bloqueio de billing da conta.
