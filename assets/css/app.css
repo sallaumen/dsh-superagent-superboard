@@ -195,7 +195,7 @@
   border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent);
 }
 .agent-board { background: var(--color-base-200); }
-.agent-board > :is(.board-header, .board-tools, .board-work, #create) {
+.agent-board > :is(.board-header, .board-tools, .board-work) {
   width: min(calc(100% - 2rem), 1880px);
   margin-inline: auto;
 }
@@ -302,12 +302,17 @@
 .ai-call-metrics dd { font-size: 0.8125rem; }
 
 .ai-call { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; padding: 0.75rem 0; border-top: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); }
-#create { margin-block: 0.75rem 1.5rem; padding: 1rem; border: 1px solid var(--color-base-300); border-radius: 0.875rem; background: var(--color-base-100); }
-#create :where(input, textarea) { border: 1px solid var(--color-base-300); border-radius: 0.625rem; background: var(--color-base-200); }
-#create button { border-radius: 0.625rem; }
+.create-task-panel { padding: 1.25rem; }
+.create-task-note { margin-bottom: 1.25rem; font-size: 0.75rem; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); }
+.create-task-form { display: grid; gap: 0.5rem; }
+.create-task-form label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em; }
+.create-task-form label span { font-weight: 400; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); }
+.create-task-form :where(input, textarea) { width: 100%; border: 1px solid var(--color-base-300); border-radius: 0.625rem; background: var(--color-base-200); padding: 0.75rem; font-size: 0.875rem; }
+.create-task-form textarea { min-height: 8rem; resize: vertical; }
+.create-task-submit { justify-self: end; margin-top: 0.75rem; min-height: 2.75rem; border-radius: 0.625rem; background: var(--color-primary); padding: 0.5rem 1rem; color: var(--color-primary-content); font-size: 0.75rem; font-weight: 700; }
 @media (max-width: 63.999rem) { .active-lanes { height: auto; } .board-column { height: 16rem; border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); } }
 @media (max-width: 39.999rem) { .board-column { height: 12.5rem; } .board-archive { height: 20rem; } }
-@media (max-width: 39.999rem) { .agent-board > :is(.board-header, .board-tools, .board-work, #create) { width: calc(100% - 1rem); } .board-topbar { grid-template-columns: minmax(0, 1fr) auto; } .board-identity { grid-column: 1; grid-row: 1; } .board-settings { grid-column: 2; grid-row: 1; } .board-repository { grid-column: 1 / -1; grid-row: 2; width: 100%; flex-wrap: wrap; gap: 0.5rem; } .repository-select { flex: 1; } .version-details { flex-basis: 100%; } .archive-row { grid-template-columns: 3rem minmax(0, 1fr); } .archive-row .item-signals, .archive-row .data-age { grid-column: 2; } }
+@media (max-width: 39.999rem) { .agent-board > :is(.board-header, .board-tools, .board-work) { width: calc(100% - 1rem); } .board-topbar { grid-template-columns: minmax(0, 1fr) auto; } .board-identity { grid-column: 1; grid-row: 1; } .board-settings { grid-column: 2; grid-row: 1; } .board-repository { grid-column: 1 / -1; grid-row: 2; width: 100%; flex-wrap: wrap; gap: 0.5rem; } .repository-select { flex: 1; } .version-details { flex-basis: 100%; } .archive-row { grid-template-columns: 3rem minmax(0, 1fr); } .archive-row .item-signals, .archive-row .data-age { grid-column: 2; } }
 
 @media (prefers-reduced-motion: no-preference) {
   .sync-needs-attention::before,

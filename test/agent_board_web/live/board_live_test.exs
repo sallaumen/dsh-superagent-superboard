@@ -507,6 +507,22 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#board-tools #open-ai")
   end
 
+  test "new task opens as an in-page panel and closes to the board", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("fixture", "create-panel")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/create-panel")
+
+    assert has_element?(view, "#board-tools #open-create", "New task")
+    assert has_element?(view, "#panel-create #create-task[phx-submit=create]")
+    assert has_element?(view, "#panel-create label[for=task-title]", "Task title")
+
+    view |> element("#open-create") |> render_click()
+    assert_patch(view, "/?panel=create&repo=fixture%2Fcreate-panel")
+    assert has_element?(view, "#board-page[data-panel=create]")
+
+    view |> element("#panel-create button", "Close") |> render_click()
+    assert has_element?(view, "#board-page[data-panel='']")
+  end
+
   test "the AI panel shows the last calls", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 

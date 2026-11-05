@@ -255,7 +255,12 @@ defmodule AgentBoardWeb.BoardLive do
 
         case Board.create_task(repo, title, text, GitHub.client()) do
           {:ok, _} ->
-            {:noreply, socket |> load(repo) |> put_flash(:info, "Task created")}
+            {:noreply,
+             socket
+             |> load(repo)
+             |> put_flash(:info, "Task created")
+             |> assign(:panel, nil)
+             |> push_event("panel_close", %{})}
 
           {:error, _} ->
             {:noreply,
@@ -465,6 +470,15 @@ defmodule AgentBoardWeb.BoardLive do
 
         <nav :if={@repo} id="board-tools" aria-label="Board tools" class="board-tools">
           <button
+            id="open-create"
+            type="button"
+            phx-click="show_panel"
+            phx-value-panel="create"
+            data-panel-trigger
+            aria-haspopup="dialog"
+            aria-controls="panel-create"
+          ><.icon name="hero-plus" class="size-4 shrink-0" />New task</button>
+          <button
             id="open-intake"
             type="button"
             phx-click="show_panel"
@@ -556,7 +570,14 @@ defmodule AgentBoardWeb.BoardLive do
           />
         </BoardComponents.Panel.shell>
 
-        <.live_component :if={@repo} module={BoardComponents.CreateTask} id="create" />
+        <BoardComponents.Panel.shell
+          name="create"
+          title="New task"
+          active={@panel == "create"}
+          flash={@flash}
+        >
+          <.live_component :if={@repo} module={BoardComponents.CreateTask} id="create" />
+        </BoardComponents.Panel.shell>
       </div>
     </Layouts.app>
     """
