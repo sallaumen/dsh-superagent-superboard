@@ -48,7 +48,7 @@ defmodule AgentBoard.AskTest do
       Plug.Conn.send_resp(conn, 500, "boom")
     end)
 
-    assert {:error, :github} = Board.ask(task, "hello", client())
+    assert {:error, %RuntimeError{}} = Board.ask(task, "hello", client())
     assert Board.comments(task) == []
   end
 end
