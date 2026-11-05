@@ -10,13 +10,14 @@ defmodule AgentBoard.AI do
 
   import Ecto.Query
 
-  alias AgentBoard.AI.{Call, Registry, Request, Result}
+  alias AgentBoard.AI.{Budget, Call, Registry, Request, Result}
   alias AgentBoard.Repo
 
   @doc "Runs one registered call and records it, success or failure."
   @spec call(atom(), map(), keyword()) :: {:ok, Result.t()} | {:error, term()}
   def call(name, inputs, _opts \\ []) do
-    with {:ok, spec} <- Registry.fetch(name) do
+    with {:ok, spec} <- Registry.fetch(name),
+         :ok <- Budget.check(spec.tier) do
       request = Request.build(spec, inputs)
       started = System.monotonic_time(:millisecond)
 
