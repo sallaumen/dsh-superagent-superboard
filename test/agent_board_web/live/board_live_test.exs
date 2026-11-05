@@ -16,6 +16,17 @@ defmodule AgentBoardWeb.BoardLiveTest do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
 
+  test "a long error payload is truncated in the activity", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    Board.log_event(repo.id, "sync_error", "x", %{"reason" => String.duplicate("boom ", 80)})
+
+    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    assert html =~ "…"
+    refute html =~ String.duplicate("boom ", 80)
+  end
+
   test "Dictate task pushes the dictate event", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
