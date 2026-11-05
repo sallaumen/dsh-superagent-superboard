@@ -12,7 +12,7 @@ defmodule AgentBoardWeb.BoardComponents.Card do
     <div
       id={@id}
       class={[
-        "mb-2 border border-base-content/10 border-l-2 bg-base-200 px-3 py-2 transition-colors hover:bg-base-300",
+        "board-card mb-2 border border-base-content/10 border-l-2 bg-base-200 px-3 py-2 transition-colors hover:bg-base-300",
         @state == :running && "border-l-warning",
         @state == :ready && "border-l-info",
         @state == :blocked && "border-l-error",
