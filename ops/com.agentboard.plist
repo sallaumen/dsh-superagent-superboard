@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.agentboard</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>/Users/tavano/src/agent_board/scripts/service.sh</string>
+	</array>
+
+	<key>WorkingDirectory</key>
+	<string>/Users/tavano/src/agent_board</string>
+
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/Users/tavano/.asdf/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<key>MIX_ENV</key>
+		<string>dev</string>
+		<key>PORT</key>
+		<string>4099</string>
+		<key>PHX_SERVER</key>
+		<string>true</string>
+	</dict>
+
+	<key>RunAtLoad</key>
+	<true/>
+
+	<key>KeepAlive</key>
+	<true/>
+
+	<key>StandardOutPath</key>
+	<string>/Users/tavano/Library/Logs/AgentBoard.log</string>
+
+	<key>StandardErrorPath</key>
+	<string>/Users/tavano/Library/Logs/AgentBoard.log</string>
+</dict>
+</plist>
