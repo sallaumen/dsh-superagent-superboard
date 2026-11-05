@@ -6,6 +6,12 @@ defmodule AgentBoard.BoardAIEvalTest do
   alias AgentBoard.BoardAIEval
   alias AgentBoardWeb.VoiceAnswer
 
+  test "campaign has room for thirteen observed calls without raising the cost ceiling" do
+    assert BoardAIEval.limits().max_cases == 13
+    assert BoardAIEval.limits().max_recorded_tokens == 30_000
+    assert BoardAIEval.limits().max_recorded_cost_micros == 50_000
+  end
+
   test "every evaluation case is a read query with a unique id and serializable facts" do
     cases = BoardAIEval.cases(~U[2026-11-05 12:00:00Z], "test")
 

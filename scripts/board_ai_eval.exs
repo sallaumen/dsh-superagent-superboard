@@ -1,7 +1,7 @@
 defmodule AgentBoard.BoardAIEval do
   @moduledoc false
 
-  @limits %{max_cases: 13, max_recorded_cost_micros: 50_000, max_recorded_tokens: 20_000}
+  @limits %{max_cases: 13, max_recorded_cost_micros: 50_000, max_recorded_tokens: 30_000}
 
   def limits, do: @limits
 
