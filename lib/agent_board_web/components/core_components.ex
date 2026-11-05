@@ -451,32 +451,15 @@ defmodule AgentBoardWeb.CoreComponents do
 
   def icon(%{name: "hero-" <> _} = assigns) do
     ~H"""
-    <span class={[@name, @class]} />
+    <span class={[@name, @class]} aria-hidden="true" />
     """
   end
 
   ## JS Commands
 
-  def show(js \\ %JS{}, selector) do
-    JS.show(js,
-      to: selector,
-      time: 300,
-      transition:
-        {"transition-all ease-out duration-300",
-         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
-         "opacity-100 translate-y-0 sm:scale-100"}
-    )
-  end
-
-  def hide(js \\ %JS{}, selector) do
-    JS.hide(js,
-      to: selector,
-      time: 200,
-      transition:
-        {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
-         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
-    )
-  end
+  # Actions finish immediately; optional visual feedback lives in reduced-motion-aware CSS.
+  def show(js \\ %JS{}, selector), do: JS.show(js, to: selector, time: 0)
+  def hide(js \\ %JS{}, selector), do: JS.hide(js, to: selector, time: 0)
 
   @doc """
   Translates an error message using gettext.

@@ -149,3 +149,17 @@
 .board-dialog .toast { position: static; padding: 0.75rem 1.25rem; }
 .board-dialog .alert { width: 100%; max-width: none; }
 @media (max-width: 39.999rem) { .board-dialog { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); } }
+
+/* Motion communicates entry/intent, never gates an action or animates every broadcast. */
+.board-tools button, .panel-close { display: inline-flex; align-items: center; gap: 0.5rem; }
+.agent-board button.phx-click-loading, .agent-board .phx-submit-loading button { cursor: progress; border-style: dashed; }
+@media (prefers-reduced-motion: no-preference) {
+  .agent-board :where(button, a) { transition: background-color 120ms ease-out, border-color 120ms ease-out; }
+  .board-card, .board-dialog[open], .toast .alert { animation: board-appear 120ms ease-out; }
+}
+@keyframes board-appear { from { opacity: 0.85; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .agent-board *, #flash-group * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+/* The active dialog owns flash feedback; avoid duplicate notices behind its backdrop. */
+.board-panel-open #flash-group { visibility: hidden; }

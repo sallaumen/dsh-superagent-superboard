@@ -1,0 +1,34 @@
+== frontend: check_assets -> assets.setup -> build -> deploy (MIX_ENV=dev) ==
+check_assets: OK (entradas, pipeline tailwind e JS sem debug).
+    warning: redefining module AgentBoardWeb.BoardComponents.Presentation (current version loaded from _build/dev/lib/agent_board/ebin/Elixir.AgentBoardWeb.BoardComponents.Presentation.beam)
+    │
+  1 │ defmodule AgentBoardWeb.BoardComponents.Presentation do
+    │ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/agent_board_web/live/board_components/presentation.ex:1: AgentBoardWeb.BoardComponents.Presentation (module)
+
+≈ tailwindcss v4.3.0
+
+/*! 🌼 daisyUI 5.5.20 */
+Done in 118ms
+
+  ../priv/static/assets/js/app.js  345.2kb
+
+⚡ Done in 22ms
+≈ tailwindcss v4.3.0
+
+/*! 🌼 daisyUI 5.5.20 */
+Done in 82ms
+
+  ../priv/static/assets/js/app.js  153.3kb
+
+⚡ Done in 12ms
+    warning: redefining module AgentBoardWeb.BoardComponents.Presentation (current version loaded from _build/dev/lib/agent_board/ebin/Elixir.AgentBoardWeb.BoardComponents.Presentation.beam)
+    │
+  1 │ defmodule AgentBoardWeb.BoardComponents.Presentation do
+    │ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/agent_board_web/live/board_components/presentation.ex:1: AgentBoardWeb.BoardComponents.Presentation (module)
+
+Check your digested files at "priv/static"
+OK: pipeline(s) verdes.

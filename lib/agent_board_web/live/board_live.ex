@@ -364,10 +364,10 @@ defmodule AgentBoardWeb.BoardLive do
         <nav :if={@repo} id="board-tools" aria-label="Board tools" class="board-tools">
           <button
             :for={
-              {label, panel} <- [
-                {"Activity", "activity"},
-                {"Split a request", "intake"},
-                {"AI calls", "ai"}
+              {label, panel, icon} <- [
+                {"Activity", "activity", "hero-clock"},
+                {"Split a request", "intake", "hero-scissors"},
+                {"AI calls", "ai", "hero-cpu-chip"}
               ]
             }
             id={"open-#{panel}"}
@@ -377,7 +377,7 @@ defmodule AgentBoardWeb.BoardLive do
             data-panel-trigger
             aria-haspopup="dialog"
             aria-controls={"panel-#{panel}"}
-          >{label}</button>
+          ><.icon name={icon} class="size-4 shrink-0" />{label}</button>
         </nav>
 
         <main

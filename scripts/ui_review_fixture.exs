@@ -5,6 +5,17 @@ unless Mix.env() == :test and System.get_env("MIX_TEST_PARTITION") == "ui_review
   raise "UI fixtures require MIX_ENV=test and MIX_TEST_PARTITION=ui_review"
 end
 
+defmodule UIReviewFixture.OfflineEngine do
+  @behaviour AgentBoard.AI.Engine
+  @impl true
+  def status, do: :not_configured
+  @impl true
+  def run(_request), do: {:error, :not_configured}
+end
+
+Application.put_env(:agent_board, :ai_engine, UIReviewFixture.OfflineEngine)
+Application.put_env(:agent_board, :ai_rehearsal, false)
+
 defmodule UIReviewFixture do
   import Ecto.Query
   alias AgentBoard.{Board, Repo}
