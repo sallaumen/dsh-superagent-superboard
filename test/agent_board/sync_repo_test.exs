@@ -111,6 +111,37 @@ defmodule AgentBoard.SyncRepoTest do
     assert stored.review_state == "approved"
   end
 
+  test "a review without submitted_at does not duplicate across syncs", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/pulls" ->
+          Req.Test.json(conn, [
+            %{
+              "number" => 9,
+              "title" => "A PR",
+              "state" => "open",
+              "html_url" => "https://github.com/x/y/pull/9",
+              "user" => %{"login" => "sallaumen"},
+              "created_at" => "2026-11-04T00:00:00Z",
+              "head" => %{"sha" => "abc"}
+            }
+          ])
+
+        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+          Req.Test.json(conn, [%{"id" => 1, "state" => "APPROVED", "user" => %{"login" => "rev"}}])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    count = Repo.aggregate(AgentBoard.Board.Review, :count)
+    assert count == 1
+  end
+
   test "changes_requested wins over approved through the sync", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
