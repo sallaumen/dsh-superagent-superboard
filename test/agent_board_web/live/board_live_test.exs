@@ -246,6 +246,16 @@ defmodule AgentBoardWeb.BoardLiveTest do
            end)
   end
 
+  test "the version panel shows the running sha and a check button", %{conn: conn} do
+    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    assert html =~ "Version"
+    assert html =~ "running"
+    assert has_element?(view, "#version-panel button", "Check")
+  end
+
   test "the AI panel shows the last calls", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 

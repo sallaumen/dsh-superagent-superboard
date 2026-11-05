@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
-# Preflight local: roda os mesmos pipelines da CI antes de abrir um PR.
+# Pré-voo local de PR; contratos e relação com a CI em PIPELINES.md.
 #
 # Uso:   scripts/ci-local.sh [backend|frontend|library|release|all]
 # Padrão: all (backend + frontend + library; release é opt-in por ser lento).
 #
-# Pré-requisitos: Elixir/OTP no PATH; Postgres em 127.0.0.1:5434
-# (user/password "board"); Python 3.10+ no PATH (apenas para o pipeline
-# library).
+# Pré-requisitos e efeitos: PIPELINES.md, seção "Matriz de scripts".
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,11 +47,12 @@ require_python() {
 
 run_backend() {
   CURRENT="backend"
-  echo "== backend: mix gate =="
+  echo "== backend: mix gate + sobelow =="
   require_mix
   require "Postgres não responde em 127.0.0.1:5434 (user/password \"board\")" \
     pg_isready -h 127.0.0.1 -p 5434 -q
   MIX_ENV=test mix gate
+  MIX_ENV=test mix sobelow --exit
 }
 
 run_frontend() {

@@ -56,7 +56,7 @@ Origem: **biblioteca-prompts-desenvolvimento v1.0.0** (pacote ZIP de 4 de novemb
 | `manifest.json` | `manifest.json` | Reescrito: schema v2, skills com `origem` (rastreabilidade P01–P34), contextos com dependências. |
 | `scripts/compor_prompt.py` | **Descartado** | A composição manual de prompt+contrato+contexto deixa de ser necessária: a IA lê a skill e segue suas referências; o fluxo manual está descrito em `parametros.md`. |
 | `scripts/validar_pacote.py` + `scripts/_biblioteca.py` | `tools/validar_biblioteca.py` | Substituídos por validador adaptado ao formato de skills (frontmatter, manifesto, origem→destino, contextos, links). |
-| `validacao/testar_ferramentas.py` | `tools/test_validar_biblioteca.py` | Substituído; testes reescritos para o validador novo (15 testes). |
+| `validacao/testar_ferramentas.py` | `tools/test_validar_biblioteca.py` | Substituído; testes reescritos para o validador novo. A execução atual segue [tools/README.md](tools/README.md). |
 | `validacao/casos-de-avaliacao.{md,json}` | `validacao/` | Nomes de skills atualizados; 3 casos novos (E25 UI sem contexto de jogo, E26 sem ferramenta de delegação, E27 ação externa sem autorização). |
 | `validacao/fixture-code-review/*` | `validacao/fixtures/code-review/*` | Reutilizados para revalidar o cenário controlado de code review nesta edição. |
 | `validacao/relatorio-de-revisao.md`, `resultado-roteamento.json`, `resultado-code-review.md`, `verificacoes-automatizadas.json` | **Descartados** | Evidência da edição de origem (v1.0.0), não desta incorporação; substituídos por `validacao/relatorio-de-validacao.md`, que cita os achados da origem. |

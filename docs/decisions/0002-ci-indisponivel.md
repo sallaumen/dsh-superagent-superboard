@@ -1,6 +1,6 @@
 # ADR 0002 — CI indisponível: o pipeline local é o gate suficiente
 
-- **Decisão:** quando o GitHub Actions não consegue iniciar por bloqueio fora do repositório (sem token, sem runner, pendência de cobrança), não se espera pela CI: a validação local executada com evidência é o gate suficiente para seguir (commit, PR, merge), registrando a limitação e o comando executado. A CI é re-verificada via `workflow_dispatch` quando o bloqueio for resolvido.
+- **Decisão:** adotar validação local com evidência como gate suficiente quando a CI estiver indisponível por bloqueio externo. O procedimento vigente está em [PIPELINES.md](../../PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
 - **Estado:** implementada.
 
 ## Problema e contexto
@@ -17,9 +17,11 @@ Os runners da conta ficaram bloqueados por pendência de cobrança (jobs falham 
 
 ## Escolha e consequência
 
-- A regra é vinculante para agentes (AGENTS.md), para humanos (PIPELINES.md, CONTRIBUTING.md, template de PR) e para qualquer projeto que use a biblioteca de capacidades (contrato comum, seção 5).
-- Como perceber a indisponibilidade está documentado: jobs com zero steps em poucos segundos + annotation de billing, ou check ausente.
-- Salvaguardas: a indisponibilidade não dispensa os checks locais; o PR registra qual comando foi executado; a CI é re-verificada depois.
+O gate continua obrigatório, mas sua execução remota pode ser adiada por um
+bloqueio de conta. [PIPELINES.md](../../PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner)
+mantém o diagnóstico e o procedimento; AGENTS.md, CONTRIBUTING.md e o template
+de PR apontam para ele. A biblioteca reutilizável mantém o princípio geral no
+[contrato comum](../../capabilities/contrato.md#5-valide-o-risco-que-mudou).
 
 ## Implantação e revisão
 
