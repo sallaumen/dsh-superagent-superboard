@@ -38,7 +38,8 @@
     "P31",
     "P32",
     "P33",
-    "P34"
+    "P34",
+    "B01"
   ],
   "common_contract": "contrato.md",
   "parameters": "parametros.md",
@@ -545,6 +546,20 @@
         "validar-entrega"
       ],
       "path": "skills/migracoes-e-compatibilidade/SKILL.md"
+    },
+    {
+      "name": "pipelines-e-ci",
+      "title": "Pipelines de projeto: separação por tecnologia e paridade local×CI",
+      "category": "qualidade",
+      "default_mode": "analisar-e-corrigir",
+      "origem": [
+        "B01"
+      ],
+      "related": [
+        "build-ci-dependencias",
+        "validar-entrega"
+      ],
+      "path": "skills/pipelines-e-ci/SKILL.md"
     },
     {
       "name": "build-ci-dependencias",

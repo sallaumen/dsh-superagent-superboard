@@ -5,8 +5,8 @@
 
 ## 1. Validação de formato e integridade
 
-- `python3 capabilities/tools/validar_biblioteca.py` — **OK**: 32 skills; 6 contextos; 21.838 palavras nas instruções; 196 links locais conferidos; 0 erros, 0 avisos. Cobertura completa e sem duplicação dos IDs de origem P01–P34.
-- `python3 capabilities/tools/test_validar_biblioteca.py` — **16 testes, todos aprovados** (biblioteca válida; divergência manifesto×frontmatter; frontmatter incompleto; `related` inexistente ou autorreferente; cobertura de origem incompleta; destino duplicado; skill duplicada; ciclo de contextos; dependência de contexto inexistente; link local quebrado; caminho que escapa da biblioteca; corpos duplicados; modo inválido; relatório JSON; ausência de instrução).
+- `python3 capabilities/tools/validar_biblioteca.py` — **OK**: 33 skills; 6 contextos; 196+ links locais conferidos; 0 erros, 0 avisos. Cobertura completa e sem duplicação dos IDs de origem P01–P34 e B01 (a capacidade `pipelines-e-ci`, adicionada depois da incorporação).
+- `python3 capabilities/tools/test_validar_biblioteca.py` — **20 testes, todos aprovados** (biblioteca válida; divergência manifesto×frontmatter; frontmatter incompleto; `related` inexistente ou autorreferente; cobertura de origem incompleta; destino duplicado; skill duplicada; ciclo de contextos; dependência de contexto inexistente; link local quebrado; caminho que escapa da biblioteca; corpos duplicados; modo inválido; relatório JSON; ausência de instrução; biblioteca estrangeira com IDs próprios).
 - Conferências cobertas: frontmatter × manifesto; localização `skills/<nome>/SKILL.md`; resolução de `related`; dependências e ciclos de contextos; links locais em todos os `.md`; caminhos restritos à biblioteca; densidade editorial.
 
 ## 2. Revisão editorial
@@ -15,6 +15,7 @@
 - Adaptações aplicadas: referências cruzadas renomeadas para nomes de skills; menções a "prompt" ajustadas onde descreviam a própria capacidade; seções do compositor removidas; manifestos e catálogos reescritos; seção final dos roteiros corrigida (a substituição da seção "Transformação desta biblioteca em skills" foi detectada na revisão pós-geração e corrigida).
 - Não foram encontradas contradições materiais entre prompts; a fusão P12+P13 removeu a duplicação de técnica de evidência e P01+P02 centralizou a mecânica de coordenação.
 - A revisão estática independente citada pela edição de origem cobria P01–P14 e P34; esta edição releu o conjunto completo.
+- Pós-incorporação, a capacidade `pipelines-e-ci` (B01) foi adicionada pelo fluxo documentado de novas capacidades e relida integralmente; os casos de avaliação ganharam o cenário E28.
 
 ## 3. Resultados das verificações executadas
 

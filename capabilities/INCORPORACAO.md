@@ -82,3 +82,9 @@ Nenhuma estrutura de skills, prompts ou contextos existia antes em `agent-board`
 - Nenhuma skill foi instalada ou verificada em um agente específico (Claude Code, DSH, etc.); a compatibilidade de formato segue a especificação documentada de Agent Skills, sem teste de instalação em cada plataforma.
 - Os contextos de Colmex, forró e Elixir registram intenções relatadas; não foram confrontados com os repositórios reais correspondentes.
 - Validação comportamental feita em cenários controlados (ver `validacao/relatorio-de-validacao.md`); uso em projeto real é trabalho posterior.
+
+## Evoluções pós-incorporação
+
+| Origem | Destino | Decisão |
+|---|---|---|
+| B01 · capacidade nova (edição pós-incorporação) | `skills/pipelines-e-ci/SKILL.md` | Skill nova criada pelo fluxo documentado em "Adicionar uma nova capacidade" do README: organizar e auditar pipelines de validação (separação backend/frontend/ferramentas auxiliares, paridade local×CI, pipeline misto de release e a regra de gate remoto indisponível). Completou `build-ci-dependencias`, que conserta um pipeline quebrado. |
