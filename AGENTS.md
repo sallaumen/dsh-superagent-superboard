@@ -65,6 +65,21 @@ the blocker is resolved.
 - Network failures never erase the board's last good state: the overlay is
   skipped, the previous tasks stay.
 
+## Sync isolation
+
+The sync is isolated **per item**, not per repository:
+
+| Failure | Event | The sync... |
+|---|---|---|
+| an issue fails validation | `issue_error` | continues |
+| a pull's reviews/checks fail | `pull_error` | continues |
+| a task's comments fail | `comment_error` | continues |
+| the repository itself fails | `sync_error` | returns `{:error, exception}` and Oban retries |
+
+Every branch returns `:ok` or logs; nothing swallows an error silently and
+nothing takes the whole sync down for one bad item. Each branch has a test in
+`sync_repo_test.exs`.
+
 ## Boundaries
 
 - The board **reads** the agent's state (the sqlite); it never writes to it.
