@@ -161,6 +161,15 @@ defmodule AgentBoardWeb.VoiceAnswerTest do
     assert Repo.aggregate(Call, :count) == 0
   end
 
+  test "contradictory lane totals do not produce a paid answer" do
+    conflicting = put_in(snapshot(), [:board, :task_counts, :running], 0)
+
+    assert {:error, :inconsistent_board_data} =
+             VoiceAnswer.answer(conflicting, "How many tasks are running?")
+
+    assert Repo.aggregate(Call, :count) == 0
+  end
+
   test "natural fallback accepts read questions but rejects action requests" do
     assert VoiceAnswer.read_query?("Por que a tarefa está bloqueada?")
     assert VoiceAnswer.read_query?("How many PRs are merged?")
