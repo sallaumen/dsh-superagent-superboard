@@ -115,14 +115,22 @@ defmodule AgentBoard.Board do
     # Same normalisation as ask/3: a bare Repo.get must work.
     task = Repo.preload(task, :repository)
 
-    AgentBoard.GitHub.close_issue(
-      client,
-      task.repository.owner,
-      task.repository.name,
-      task.number
-    )
+    case AgentBoard.GitHub.close_issue(
+           client,
+           task.repository.owner,
+           task.repository.name,
+           task.number
+         ) do
+      _ ->
+        update_state(task, %{stopped: true, state: "stopped"})
+    end
+  rescue
+    exception ->
+      log_event(task.repository_id, "stop_error", "##{task.number}", %{
+        "reason" => Exception.message(exception)
+      })
 
-    update_state(task, %{stopped: true, state: "stopped"})
+      {:error, exception}
   end
 
   @doc "Archive a task: remove it from the flow, keep the history."
