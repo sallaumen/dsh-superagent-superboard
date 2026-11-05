@@ -5,7 +5,7 @@ defmodule AgentBoardWeb.BoardLive do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{Board, GitHub, Repo, Voice}
-  alias AgentBoard.Board.{Repository, Task}
+  alias AgentBoard.Board.Task
 
   @impl true
   def mount(params, _session, socket) do
@@ -66,13 +66,19 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_params(params, _uri, socket) do
+    repo =
+      case params["repo"] do
+        nil -> socket.assigns.repo
+        slug -> Board.repository_by_slug(slug) || socket.assigns.repo
+      end
+
+    {:noreply, load(socket, repo)}
+  end
+
+  @impl true
   def handle_event("select", %{"repo" => slug}, socket) do
-    case Repo.one(
-           from r in Repository, where: fragment("? || '/' || ?", r.owner, r.name) == ^slug
-         ) do
-      nil -> {:noreply, socket}
-      repo -> {:noreply, load(socket, repo)}
-    end
+    {:noreply, push_patch(socket, to: "/?repo=#{URI.encode_www_form(slug)}")}
   end
 
   @impl true

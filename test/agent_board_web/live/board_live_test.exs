@@ -155,6 +155,19 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "Arena only"
   end
 
+  test "selecting a repository updates the url", %{conn: conn} do
+    {:ok, _} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view
+    |> element("#repo-select")
+    |> render_change(%{"repo" => "sallaumen/arena-rogue"})
+
+    assert_patch(view, "/?repo=sallaumen%2Farena-rogue")
+  end
+
   test "an unknown repository slug renders the empty board", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
