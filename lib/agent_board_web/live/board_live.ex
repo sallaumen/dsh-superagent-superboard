@@ -307,7 +307,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("speak", _params, socket) do
-    {:noreply, push_event(socket, "speak", %{text: Voice.summary(socket.assigns.board)})}
+    {:noreply, push_event(socket, "speak", %{text: Voice.spoken(socket.assigns.board)})}
   end
 
   @impl true
