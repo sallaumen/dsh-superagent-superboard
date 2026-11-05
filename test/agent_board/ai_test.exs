@@ -73,6 +73,40 @@ defmodule AgentBoard.AITest do
     assert Providers.model(:gemini, :fast) == "gemini-2.5-flash"
   end
 
+  test "a structured call sends a strict tool and decodes its arguments" do
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, body, _conn} = Plug.Conn.read_body(conn)
+      payload = Jason.decode!(body)
+
+      assert [%{"function" => %{"strict" => true, "name" => "respond"}}] = payload["tools"]
+      assert payload["tool_choice"]["function"]["name"] == "respond"
+
+      Req.Test.json(conn, %{
+        "model" => "deepseek-flash",
+        "choices" => [
+          %{
+            "message" => %{
+              "tool_calls" => [
+                %{
+                  "function" => %{
+                    "name" => "respond",
+                    "arguments" =>
+                      ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"language":"pt"})
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "usage" => %{"prompt_tokens" => 3, "completion_tokens" => 4}
+      })
+    end)
+
+    assert {:ok, result} = AI.call(:refine_request, %{text: "x"})
+    assert result.json["goal"] == "x"
+    assert result.parse_state == :complete
+  end
+
   test "an unregistered call is refused and records nothing" do
     assert {:error, :unknown_call} = AI.call(:nope, %{text: "x"})
     assert Repo.aggregate(Call, :count) == 0
