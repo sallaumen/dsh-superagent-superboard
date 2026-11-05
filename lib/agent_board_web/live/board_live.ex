@@ -6,6 +6,8 @@ defmodule AgentBoardWeb.BoardLive do
 
   alias AgentBoard.{AI, Board, GitHub, Intake, Repo, Voice}
   alias AgentBoard.Board.Task
+  alias AgentBoard.System.{Updater, Version}
+  alias AgentBoardWeb.Components.SystemPanel
 
   @impl true
   def mount(params, _session, socket) do
@@ -22,7 +24,9 @@ defmodule AgentBoardWeb.BoardLive do
         comments: [],
         intake: nil,
         ai_calls: [],
-        ai_status: AI.status()
+        ai_status: AI.status(),
+        version: Version.status(),
+        busy: false
       )
 
     repo =
@@ -182,6 +186,31 @@ defmodule AgentBoardWeb.BoardLive do
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "The question did not reach GitHub")}
         end
+    end
+  end
+
+  @impl true
+  def handle_event("check_version", _params, socket) do
+    case Version.refresh() do
+      {:ok, _sha} ->
+        {:noreply, assign(socket, version: Version.status())}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Could not reach main: #{inspect(reason)}")}
+    end
+  end
+
+  @impl true
+  def handle_event("update", _params, socket) do
+    case Updater.pull() do
+      {:ok, sha} ->
+        {:noreply,
+         socket
+         |> assign(version: Version.status(), busy: true)
+         |> put_flash(:info, "Updated to #{sha}; restarting")}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, "Update failed: #{inspect(reason)}")}
     end
   end
 
@@ -597,6 +626,8 @@ defmodule AgentBoardWeb.BoardLive do
             </ol>
           </div>
         </section>
+
+        <SystemPanel.version_panel version={@version} busy={@busy} />
 
         <section :if={@repo} class="border-t border-base-content/10 px-5 py-4">
           <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/60">
