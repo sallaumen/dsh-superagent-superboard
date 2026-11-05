@@ -6,7 +6,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
 
-  @panels ~w(activity intake ai conversation)
+  @panels ~w(activity intake ai create conversation)
 
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
@@ -40,7 +40,7 @@ defmodule AgentBoardWeb.BoardNavigation do
     end
   end
 
-  def open_panel(socket, panel) when panel in ["activity", "intake", "ai"] do
+  def open_panel(socket, panel) when panel in ["activity", "intake", "ai", "create"] do
     if socket.assigns.repo,
       do: push_patch(socket, to: path(socket.assigns.repo, panel)),
       else: socket
