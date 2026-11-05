@@ -143,8 +143,85 @@ defmodule AgentBoardWeb.IntakeUITest do
     assert html =~ "Latest 2 calls across the board."
     assert html =~ "refine_request"
 
+    for index <- ["invalid", "-1", "99"] do
+      render_hook(view, "create_from_intake", %{"index" => index})
+      assert has_element?(view, "#flash-error", "Could not create the task")
+      assert AgentBoard.Repo.aggregate(AgentBoard.Board.Task, :count, :id) == 0
+    end
+
     {:ok, _} = Board.add_repository("fixture", "other")
     view |> element("#repo-select") |> render_change(%{"repo" => "fixture/other"})
     refute render(view) =~ "medir o tempo"
+  end
+
+  test "a voice request opens an editable draft without splitting or creating anything", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "voice-intake")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/voice-intake")
+
+    render_hook(view, "voice_prepare_intake", %{"text" => "  Build a status view  "})
+
+    assert_patch(view, "/?panel=intake&repo=fixture%2Fvoice-intake")
+    assert has_element?(view, "#intake-voice-draft")
+    assert has_element?(view, "#intake-repository", "fixture/voice-intake")
+    assert has_element?(view, "#intake-form input[name=source_repo][value='#{repo.id}']")
+    assert render(view) =~ "Build a status view"
+    assert AgentBoard.AI.recent(5) == []
+    assert AgentBoard.Repo.aggregate(AgentBoard.Board.Task, :count, :id) == 0
+
+    view
+    |> element("#intake-form")
+    |> render_change(%{
+      "text" => "Build a clearer status view",
+      "source_repo" => to_string(repo.id)
+    })
+
+    send(view.pid, :board_updated)
+    assert render(view) =~ "Build a clearer status view"
+    assert AgentBoard.AI.recent(5) == []
+  end
+
+  test "the voice panel prepares the edited command in the selected repository", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "voice-action")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/voice-action")
+
+    render_hook(view, "voice_transcript", %{"text" => "Original spoken request"})
+    assert_patch(view, "/?panel=voice&repo=fixture%2Fvoice-action")
+
+    view
+    |> element("#voice-command-form")
+    |> render_change(%{"text" => "Edited coding request"})
+
+    assert has_element?(view, "#voice-prepare-intake[name=mode][value=intake]")
+
+    view
+    |> element("#voice-command-form")
+    |> render_submit(%{"text" => "Edited coding request", "mode" => "intake"})
+
+    assert_patch(view, "/?panel=intake&repo=fixture%2Fvoice-action")
+    assert has_element?(view, "#intake-form input[name=source_repo][value='#{repo.id}']")
+    assert render(view) =~ "Edited coding request"
+    assert AgentBoard.AI.recent(5) == []
+    assert AgentBoard.Repo.aggregate(AgentBoard.Board.Task, :count, :id) == 0
+  end
+
+  test "a voice draft cannot be split after the selected repository changes", %{conn: conn} do
+    {:ok, original} = Board.add_repository("fixture", "original")
+    {:ok, _other} = Board.add_repository("fixture", "other")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/original")
+
+    render_hook(view, "voice_prepare_intake", %{"text" => "Build something"})
+    view |> element("#repo-select") |> render_change(%{"repo" => "fixture/other"})
+
+    refute has_element?(view, "#intake-voice-draft")
+
+    html =
+      view
+      |> element("#intake-form")
+      |> render_submit(%{"text" => "Build something", "source_repo" => to_string(original.id)})
+
+    assert html =~ "Repository changed. Review the request again."
+    assert AgentBoard.AI.recent(5) == []
   end
 end

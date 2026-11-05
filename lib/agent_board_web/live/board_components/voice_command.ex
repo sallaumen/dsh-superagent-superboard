@@ -39,6 +39,19 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommand do
           >
             Ask the agent
           </button>
+          <button
+            id="voice-prepare-intake"
+            type="submit"
+            name="mode"
+            value="intake"
+            phx-disable-with="Opening…"
+            data-panel-trigger
+            aria-haspopup="dialog"
+            aria-controls="panel-intake"
+            class="voice-command-prepare"
+          >
+            Prepare coding request
+          </button>
         </div>
       </form>
       <VoiceActionConfirmation.review :if={@action} intent={@action} />

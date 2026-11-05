@@ -41,6 +41,7 @@ defmodule AgentBoardWeb.BoardLive do
         conversation: nil,
         comments: [],
         intake: nil,
+        intake_draft: nil,
         ai_calls: [],
         ai_status: AI.status(),
         version: Version.status(),
@@ -120,6 +121,7 @@ defmodule AgentBoardWeb.BoardLive do
             conversation: nil,
             comments: [],
             intake: nil,
+            intake_draft: nil,
             voice_draft: "",
             voice_result: nil,
             voice_action: nil,
@@ -404,6 +406,12 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("voice_command", %{"mode" => "intake", "text" => text}, socket)
+      when is_binary(text) do
+    {:noreply, prepare_intake(socket, text)}
+  end
+
+  @impl true
   def handle_event("voice_command", %{"text" => text}, socket) when is_binary(text) do
     draft = String.trim(text)
 
@@ -540,27 +548,75 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("intake", _params, %{assigns: %{ai_status: :not_configured}} = socket) do
-    {:noreply, put_flash(socket, :error, "AI is not configured. Split is unavailable.")}
+  def handle_event("voice_prepare_intake", %{"text" => text}, socket) when is_binary(text) do
+    {:noreply, prepare_intake(socket, text)}
   end
 
-  def handle_event("intake", %{"text" => text}, socket) do
-    case Intake.run(text) do
-      {:ok, %{spec: spec, tasks: tasks}} ->
-        {:noreply,
-         socket |> assign(intake: %{spec: spec, tasks: tasks, text: text}) |> refresh_ai()}
+  def handle_event("voice_prepare_intake", _params, socket) do
+    {:noreply, put_flash(socket, :error, "Add a request before opening Split.")}
+  end
 
-      {:error, reason} ->
-        {:noreply,
-         socket |> put_flash(:error, "The AI did not answer: #{inspect(reason)}") |> refresh_ai()}
+  @impl true
+  def handle_event("intake_draft_change", %{"text" => text} = params, socket)
+      when is_binary(text) do
+    repo = socket.assigns.repo
+    source_repo = params["source_repo"]
+
+    if repo && (is_nil(source_repo) || source_repo == to_string(repo.id)) do
+      source = if source_repo, do: :voice, else: :typed
+      {:noreply, assign(socket, :intake_draft, %{text: text, repo_id: repo.id, source: source})}
+    else
+      {:noreply, socket}
     end
+  end
+
+  def handle_event("intake_draft_change", _params, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_event("intake", %{"text" => text} = params, socket) when is_binary(text) do
+    repo = socket.assigns.repo
+
+    cond do
+      is_nil(repo) ->
+        {:noreply, put_flash(socket, :error, "Select a repository before splitting.")}
+
+      params["source_repo"] && params["source_repo"] != to_string(repo.id) ->
+        {:noreply, put_flash(socket, :error, "Repository changed. Review the request again.")}
+
+      socket.assigns.ai_status == :not_configured ->
+        {:noreply, put_flash(socket, :error, "AI is not configured. Split is unavailable.")}
+
+      String.trim(text) == "" ->
+        {:noreply, put_flash(socket, :error, "Add a request before splitting.")}
+
+      true ->
+        case Intake.run(text) do
+          {:ok, %{spec: spec, tasks: tasks}} ->
+            {:noreply,
+             socket
+             |> assign(intake: %{spec: spec, tasks: tasks, text: text, repo_id: repo.id})
+             |> refresh_ai()}
+
+          {:error, reason} ->
+            {:noreply,
+             socket
+             |> put_flash(:error, "The AI did not answer: #{inspect(reason)}")
+             |> refresh_ai()}
+        end
+    end
+  end
+
+  def handle_event("intake", _params, socket) do
+    {:noreply, put_flash(socket, :error, "Add a request before splitting.")}
   end
 
   @impl true
   def handle_event("create_from_intake", %{"index" => index}, socket) do
-    with %{repo: repo} when not is_nil(repo) <- socket.assigns,
-         %{} = intake <- socket.assigns.intake,
-         task when not is_nil(task) <- Enum.at(intake.tasks, String.to_integer(index)),
+    with {:ok, position} <- intake_index(index),
+         %{repo: repo} when not is_nil(repo) <- socket.assigns,
+         %{repo_id: repo_id} = intake <- socket.assigns.intake,
+         true <- repo_id == repo.id,
+         task when not is_nil(task) <- Enum.at(intake.tasks, position),
          {:ok, _created} <-
            Board.create_task(repo, task.title, intake_body(task), GitHub.client()) do
       {:noreply, put_flash(socket, :info, "Task created: #{task.title}")}
@@ -922,6 +978,34 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp voice_answer_error_result(text), do: %{kind: :error, text: text, as_of: nil}
 
+  defp prepare_intake(socket, text) do
+    case {socket.assigns.repo, String.trim(text)} do
+      {nil, _} ->
+        put_flash(socket, :error, "Select a repository before preparing a request.")
+
+      {_, ""} ->
+        put_flash(socket, :error, "Add a request before opening Split.")
+
+      {repo, draft} ->
+        socket
+        |> assign(
+          intake: nil,
+          intake_draft: %{text: draft, repo_id: repo.id, source: :voice},
+          voice_draft: draft
+        )
+        |> BoardNavigation.open_panel("intake")
+    end
+  end
+
+  defp intake_index(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {position, ""} when position >= 0 -> {:ok, position}
+      _ -> :error
+    end
+  end
+
+  defp intake_index(_value), do: :error
+
   # The model answers on another process: the question is already on GitHub,
   # and blocking the LiveView for it freezes the whole board.
   defp ask_in_background(task, body) do
@@ -1190,6 +1274,8 @@ defmodule AgentBoardWeb.BoardLive do
             module={BoardComponents.Intake}
             id="intake"
             intake={@intake}
+            draft={@intake_draft}
+            repo={@repo}
             ai_status={@ai_status}
           />
         </BoardComponents.Panel.shell>
