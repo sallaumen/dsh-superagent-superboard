@@ -475,6 +475,33 @@
 }
 @keyframes attention-breathe { 50% { opacity: 0.3; } }
 
+/* Active cards: title first, record facts second, and consequences last. */
+.task-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem 0.75rem;
+  margin-block: 0.5rem;
+  border-left-width: 3px;
+  background: var(--color-base-100);
+}
+.task-card[data-state="running"] { border-left-color: var(--color-info); }
+.task-card[data-state="ready"] { border-left-color: var(--color-success); }
+.task-card[data-state="blocked"] { border-left-color: var(--color-error); }
+.task-card[data-state="queued"] { border-left-color: var(--color-base-300); }
+.task-card .item-number { grid-column: 1; grid-row: 1; font-weight: 700; }
+.task-card .data-age { grid-column: 2; grid-row: 1; max-width: 9rem; overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.task-card .item-title { grid-column: 1 / -1; grid-row: 2; font-size: 0.875rem; line-height: 1.4; font-weight: 650; }
+.task-card .item-signals { grid-column: 1 / -1; grid-row: 3; }
+.task-card .task-actions { grid-column: 1 / -1; grid-row: 4; margin-top: 0.125rem; padding-top: 0.5rem; border-top: 1px solid var(--color-base-300); }
+.task-card:not(:has(.item-signals)) .task-actions { grid-row: 3; }
+.task-actions button { border-color: transparent; background: transparent; }
+.task-actions button:first-child { border-color: var(--color-base-300); background: var(--color-base-200); color: var(--color-base-content); font-weight: 700; }
+.task-actions button:first-child:hover { background: var(--color-base-300); }
+.task-actions button[phx-value-action="stop"] { margin-left: auto; color: var(--color-error); }
+.task-actions button[phx-value-action="stop"]:hover { background: color-mix(in oklab, var(--color-error) 12%, var(--color-base-100)); }
+.task-actions button[phx-value-action="archive"] { color: color-mix(in oklab, var(--color-base-content) 75%, transparent); }
+.task-actions button[phx-value-action="archive"]:hover { background: var(--color-base-300); color: var(--color-base-content); }
+.board-column.is-empty .lane-empty { display: flex; flex: 1; align-items: center; margin-top: 0.25rem; border-top: 1px solid var(--color-base-300); line-height: 1.5; }
+
 /* Voice feedback and the automatic-speech toggle. */
 .voice-feedback { font-size: 0.6875rem; color: color-mix(in oklab, var(--color-base-content) 50%, transparent); align-self: center; }
 .voice-toggle { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); cursor: pointer; }
