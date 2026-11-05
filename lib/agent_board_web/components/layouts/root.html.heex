@@ -12,9 +12,17 @@
       (() => {
         const systemTheme = () => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
+        const syncThemeControls = () => {
+          const root = document.documentElement;
+          const selected = root.dataset.themeSource === "system" ? "system" : root.dataset.theme;
+          document.querySelectorAll("[data-phx-theme]").forEach(button => {
+            button.setAttribute("aria-pressed", String(button.dataset.phxTheme === selected));
+          });
+        };
+
         const setTheme = (theme) => {
           if (theme === "system") {
-            localStorage.removeItem("phx:theme");
+            localStorage.setItem("phx:theme", "system");
             document.documentElement.setAttribute("data-theme", systemTheme());
             document.documentElement.setAttribute("data-theme-source", "system");
           } else {
@@ -22,10 +30,13 @@
             document.documentElement.setAttribute("data-theme", theme);
             document.documentElement.setAttribute("data-theme-source", "user");
           }
+          syncThemeControls();
         };
         if (!document.documentElement.hasAttribute("data-theme")) {
           setTheme(localStorage.getItem("phx:theme") || "dark");
         }
+        window.addEventListener("DOMContentLoaded", syncThemeControls);
+        window.addEventListener("phx:page-loading-stop", syncThemeControls);
         window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
         
         window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
