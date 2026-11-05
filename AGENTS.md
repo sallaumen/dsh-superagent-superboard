@@ -19,27 +19,10 @@ The board for the agent's work, in Elixir. Read this before changing code.
 
 ## Gates (must pass before a PR)
 
-- `mix format --check-formatted`
-- `mix credo --strict` (`.credo.exs`, the Phoenix-generated files excluded)
-- `mix test`
-
-| Command | What it runs | Modifies files? |
-|---|---|---|
-| `mix lint` | format check + credo | no |
-| `mix gate` | unused deps + compile warnings + format check + credo + tests | no |
-| `mix precommit` | the same five, with format and unused deps fixed in place | yes |
-| `scripts/check_assets.sh` | frontend entries, tailwind pipeline, no JS debug | no |
-
-CI and pre-push use `mix gate`; `mix precommit` is the fix-up for developers.
-Every PR must pass `mix gate` locally and in CI. Which script to run when —
-backend, frontend, library or the mixed release path — is in
-[`PIPELINES.md`](PIPELINES.md).
-
-**When GitHub Actions cannot run (no token, billing, runner): do not wait for
-CI.** Treat the local pipeline as the sufficient gate — run
-`scripts/ci-local.sh all`, proceed when green, note the evidence in the PR —
-and re-run CI via `workflow_dispatch` once the blocker is resolved. The full
-procedure lives in [PIPELINES.md](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
+Follow [PIPELINES.md](PIPELINES.md) for the required checks, command effects
+and pipeline selection. Its
+[CI-unavailable procedure](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner)
+is binding when GitHub Actions cannot run.
 
 ## The data
 
@@ -151,5 +134,5 @@ nothing takes the whole sync down for one bad item. Each branch has a test in
   each skill loads only its own instructions plus the common contract.
 - The optional project contexts (Colmex, forró, Elixir/Phoenix/Oban) are never
   loaded by default — see `capabilities/contextos/README.md`.
-- Validate the library with `python3 capabilities/tools/validar_biblioteca.py`
-  (tests: `python3 capabilities/tools/test_validar_biblioteca.py`).
+- Library validation commands and tool contracts are in
+  [capabilities/tools/README.md](capabilities/tools/README.md).

@@ -6,33 +6,50 @@ Este documento é a resposta a "qual script eu rodo agora?". Ele define os pipel
 
 | Pipeline | O que valida | Script canônico | Alvo `make` | Job da CI |
 |---|---|---|---|---|
-| Backend | Código Elixir: dependências órfãs, warnings, formatação, credo, testes | `mix gate` | `make backend` | `backend` (4 partições) |
-| Frontend | Assets: build e deploy de esbuild/tailwind | `mix assets.deploy` | `make frontend` | `frontend · assets` |
-| Biblioteca | Integridade de `capabilities/` | `python3 capabilities/tools/validar_biblioteca.py` | `make library` | `biblioteca de capacidades` |
+| Backend | Dependências órfãs, warnings, formatação, credo, testes e Sobelow | `mix gate` + `mix sobelow --exit` | `make backend` | `gates` + `backend` |
+| Frontend | Fontes de assets, setup, build e deploy | `scripts/check_assets.sh` + tarefas de assets | `make frontend` | `frontend · assets` |
+| Biblioteca | Integridade de `capabilities/` e testes do validador | [Ferramentas da biblioteca](capabilities/tools/README.md) | `make library` | `biblioteca de capacidades` |
 | Misto (release) | O caminho combinado de um deploy | sequência de release (abaixo) | `make release` | `release · caminho misto` |
-| Todos | Os três pipelines juntos, antes de entregar | `make check` | `make check` | os três jobs |
+| Todos | Backend, frontend e biblioteca, antes de entregar | `scripts/ci-local.sh all` | `make check` | `gates`, `backend`, `frontend`, `library` |
 
-Regra de ouro: **o alvo `make` e o job da CI executam os mesmos comandos** — local e CI não divergem.
+Os comandos executáveis vivem em [Makefile](Makefile),
+[scripts/ci-local.sh](scripts/ci-local.sh) e no
+[workflow](.github/workflows/ci.yml). A CI distribui os checks de backend entre
+`gates` (dependências, compilação, formato, credo e Sobelow) e `backend`
+(testes em partições com `MIX_TEST_PARTITION`, cada uma com seu banco).
+Localmente, `make backend` e o pré-voo executam a suíte inteira e Sobelow.
+O frontend usa `MIX_ENV=dev`; `release` é um job separado na CI e opt-in no pré-voo.
+
+Os testes em `test/pipeline_contract_test.exs` verificam aliases e comandos
+esperados no workflow. Eles não comparam esta documentação nem todos os corpos
+dos scripts: alterações nesses contratos exigem conferir os consumidores.
 
 ## Matriz de scripts
 
 | Script | Quando usar | Ambiente | Efeitos | Saída esperada |
 |---|---|---|---|---|
 | `mix lint` | Iteração rápida, sem banco | qualquer | nenhum (somente leitura) | format e credo verdes |
-| `mix precommit` | Antes de commitar; corrige formatação | `:test` automático | formata arquivos em lugar; roda testes | formatação aplicada + gates verdes |
-| `mix gate` | Antes de abrir PR; na CI (não modifica arquivos) | `MIX_ENV=test` | cria/migra o banco de teste | dependências sem órfãs + os três gates verdes |
+| `mix precommit` | Antes de commitar; aplica correções | `:test` automático | remove dependências órfãs do lockfile, formata e roda testes | formatação aplicada + gates verdes |
+| `mix gate` | Checks de backend; a CI distribui seus passos entre jobs | `:test` automático | compila e cria/migra o banco de teste; não altera fontes | dependências, warnings, formato, credo e testes verdes |
+| `mix sobelow --exit` | Scan de segurança; parte de `make backend` e do pré-voo | `MIX_ENV=test` | análise estática, sem corrigir fontes | scan concluído sem achados que reprovem o comando |
 | `mix deps.unlock --check-unused` | Revisar lockfile (parte do `mix gate` e do job gates da CI) | `:test` | nenhum | nenhuma dependência órfã |
 | `mix assets.setup` | Primeira execução / CI frontend | `MIX_ENV=dev` | baixa binários tailwind/esbuild | ferramentas instaladas |
 | `mix assets.build` | Ao alterar CSS/JS | `MIX_ENV=dev` | escreve `priv/static/assets/` | bundle gerado sem erro |
 | `mix assets.deploy` | Validar o caminho de produção dos assets | `MIX_ENV=dev` | minifica + `phx.digest` | manifesto de digest gerado |
 | `scripts/check_assets.sh` | Ao mudar CSS/JS (primeiro passo do pipeline frontend) | máquina local | nenhum (somente leitura) | entradas presentes, pipeline tailwind configurado, JS autoral sem debug |
-| `validar_biblioteca.py` | Ao alterar `capabilities/`; CI library | Python 3.10+ | nenhum (somente leitura) | `OK` com 0 erros |
-| `test_validar_biblioteca.py` | Ao alterar o validador | Python 3.10+ | temporários | suite verde |
+| [Scripts da biblioteca](capabilities/tools/README.md) | Ao alterar `capabilities/`; veja o contrato de cada ferramenta | Python 3.10+ | leitura e temporários de teste | validador e suíte verdes |
 | `make backend/frontend/library/release/coverage/check` | Entrada única por pipeline | máquina local | os dos scripts acima | cada pipeline verde |
 | `make coverage` | Auditar lacunas de teste | máquina local | gera `cover/` (HTML) | relatório gerado; exit != 0 se a cobertura total ficar abaixo de 90% (threshold padrão do Elixir) |
 | `scripts/ci-local.sh [pipeline]` | Pré-voo completo antes de abrir PR | máquina local | os dos scripts acima (release é opt-in) | todos os pipelines verdes |
 
-O `scripts/ci-local.sh` é o pré-voo de PR: roda os mesmos comandos dos jobs da CI na ordem deles e falha no primeiro pipeline vermelho. Use `make` para um pipeline isolado durante o trabalho e `scripts/ci-local.sh all` (ou `release`) antes de entregar.
+Antes de entregar qualquer PR, rode **`scripts/ci-local.sh all`**. Ele executa
+backend, frontend e biblioteca sequencialmente e falha no primeiro pipeline
+vermelho. Durante o trabalho, use `make` para um pipeline isolado. Quando o
+caminho de deploy mudar, execute também `scripts/ci-local.sh release`.
+
+Pré-requisitos: dependências instaladas com `mix deps.get`, Elixir/OTP e `mix`
+no PATH, Postgres acessível em `127.0.0.1:5434` com usuário/senha `board`,
+`pg_isready` no PATH para o pré-voo de backend e Python 3.10+ para a biblioteca.
 
 ## Por que separar backend e frontend
 
@@ -46,7 +63,7 @@ O job `release` existe para o caminho que **precisa** dos dois lados juntos: o d
 
 ## Se a CI não consegue rodar (sem token, billing ou runner)
 
-Regra vinculante (também no AGENTS.md): **ao perceber que o GitHub Actions não inicia, não espere por ele e não fique re-disparando.** O pipeline local passa a ser o gate oficial e **suficiente**.
+Regra vinculante, referenciada pelo AGENTS.md: **ao perceber que o GitHub Actions não inicia, não espere por ele e não fique re-disparando.** O pipeline local passa a ser o gate oficial e **suficiente**.
 
 Como perceber:
 
@@ -56,16 +73,16 @@ Como perceber:
 O que fazer:
 
 1. Pare de esperar e de re-triggerar runs (não adianta sem resolver o bloqueio).
-2. Rode `scripts/ci-local.sh all` — ou o alvo `make` do pipeline afetado — e corrija até ficar verde.
-3. Siga com a entrega (commit, PR, merge) usando a execução local como evidência; registre no PR que a CI estava indisponível e qual comando local foi executado.
+2. Rode `scripts/ci-local.sh all` e corrija até ficar verde; inclua `scripts/ci-local.sh release` quando o caminho de deploy mudar.
+3. Siga com a entrega autorizada na sessão usando a execução local como evidência; registre no PR que a CI estava indisponível e qual comando local foi executado.
 4. Quando o bloqueio da conta for resolvido, rode a CI manualmente (`workflow_dispatch`) no último `main` para repor a verificação externa.
 
 O objetivo da CI continua sendo verificar em ambiente limpo; a regra apenas evita travar entregas por um bloqueio de conta que está fora do repositório.
 
 ## Adotar este desenho em outro projeto
 
-1. Copie a estrutura do `Makefile`: um alvo por pipeline, cada um mapeando para um job da CI com os mesmos comandos.
-2. Copie `capabilities/tools/validar_biblioteca.py` e valide sua biblioteca de capacidades com `--root` (IDs de origem próprios; veja `capabilities/tools/README.md`).
+1. Copie a estrutura do `Makefile`: um alvo por pipeline, mantendo os checks locais equivalentes aos jobs correspondentes da CI.
+2. Para a biblioteca, siga [Adotar os scripts em outro projeto](capabilities/tools/README.md#adotar-os-scripts-em-outro-projeto).
 3. Adapte o job de release à sua stack: construa assets no ambiente onde as ferramentas de frontend existem e monte o artefato no ambiente de produção.
 4. Mantenha esta matriz atualizada quando um script novo aparecer — um script sem linha aqui não tem "quando usar" definido.
 
