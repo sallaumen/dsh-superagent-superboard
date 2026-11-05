@@ -51,3 +51,5 @@ O JSONL grava primeiro um registro `run`, depois um `case` por pergunta e, ao fi
 ## Cobertura distinta da campanha do agente
 
 Esta avaliação não demonstra que o `dsh-superagent` programa bem. A campanha do agente usa uma issue limitada no `arena-rogue` e acompanha issue → ticket → PR → gate → revisão → merge. Não misture as duas pontuações.
+
+Uma rodada local com 13 casos, respostas completas e revisão humana está em [evaluations/2026-11-05-board-ai-local.md](evaluations/2026-11-05-board-ai-local.md). Ela usa Ollama e não substitui a rodada com o provedor de produção.
