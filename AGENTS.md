@@ -14,6 +14,21 @@ The board for the agent's work, in Elixir. Read this before changing code.
 - Use the [local configuration instructions](README.md#local-secrets) when
   running the app or a worktree; never commit local secrets.
 
+## The agent
+
+The agent is a separate process (DeepSeek Harness + `dsh-superagent`) that
+watches GitHub; this board only mirrors it. It is documented in
+[`docs/agent/how-it-works.md`](docs/agent/how-it-works.md), set up per
+[`docs/agent/setup.md`](docs/agent/setup.md), and driven from
+`scripts/agent/`:
+
+| Script | Answers |
+|---|---|
+| `status.sh` | is it configured, alive and idle? |
+| `tickets.sh [n]` | what did the last tickets report? |
+| `counts.sh` | how much has it done, by table? |
+| `logs.sh` | what is it printing right now? |
+
 ## Capabilities library
 
 - Start at [capabilities/CATALOGO.md](capabilities/CATALOGO.md); load only the
