@@ -276,9 +276,15 @@ defmodule AgentBoardWeb.BoardLive do
                   key == :queued && "border-l-[#8a877d]"
                 ]}
               >
-                <a :if={item.url} href={item.url} target="_blank" class="text-[13px] hover:underline">
+                <a
+                  :if={item.url}
+                  href={item.url}
+                  target="_blank"
+                  class="text-[13px] hover:underline"
+                >
                   {item.title}
                 </a>
+                <span :if={is_nil(item.url)} class="text-[13px]">{item.title}</span>
                 <span :if={item.number} class="ml-2 text-[11px] text-[#a39f93]">
                   #{item.number}
                 </span>
