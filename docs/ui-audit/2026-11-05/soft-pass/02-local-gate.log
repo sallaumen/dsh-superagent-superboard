@@ -1,0 +1,94 @@
+== backend: mix gate + sobelow ==
+Compiling 3 files (.ex)
+Checking 78 source files (this might take a while) ...
+
+Please report incorrect results: https://github.com/rrrene/credo/issues
+
+Analysis took 0.1 seconds (0.02s to load, 0.1s running 69 checks on 78 files)
+400 mods/funs, found no issues.
+
+Use `mix credo explain` to explain issues, `mix credo --help` for options.
+Running ExUnit with seed: 411038, max_cases: 28
+
+.................................................................................................................................................................................10:32:06.388 [error] GenServer AgentBoard.Live terminating
+** (stop) exited in: DBConnection.Holder.checkout(#PID<0.7365.0>, [log: #Function<14.89431826/1 in Ecto.Adapters.SQL.with_log/4>, source: "repositories", cast_params: [], pool: DBConnection.Ownership, repo: AgentBoard.Repo, timeout: 15000, pool_size: 28])
+    ** (EXIT) shutdown: "owner #PID<0.7364.0> exited"
+    (db_connection 2.10.2) lib/db_connection/holder.ex:110: DBConnection.Holder.checkout/3
+    (db_connection 2.10.2) lib/db_connection/holder.ex:91: DBConnection.Holder.checkout/3
+    (db_connection 2.10.2) lib/db_connection.ex:1354: DBConnection.checkout/3
+    (db_connection 2.10.2) lib/db_connection.ex:1603: DBConnection.run_with_retries/5
+    (db_connection 2.10.2) lib/db_connection.ex:867: DBConnection.execute/4
+    (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:143: Ecto.Adapters.Postgres.Connection.execute/4
+    (ecto_sql 3.14.0) lib/ecto/adapters/sql.ex:1063: Ecto.Adapters.SQL.execute!/5
+    (ecto_sql 3.14.0) lib/ecto/adapters/sql.ex:1019: Ecto.Adapters.SQL.execute/6
+    (ecto 3.14.3) lib/ecto/repo/queryable.ex:248: Ecto.Repo.Queryable.execute/4
+    (ecto 3.14.3) lib/ecto/repo/queryable.ex:19: Ecto.Repo.Queryable.all/3
+    (agent_board 0.1.0) lib/agent_board/live.ex:48: AgentBoard.Live.poll_tickets/1
+    (agent_board 0.1.0) lib/agent_board/live.ex:38: AgentBoard.Live.poll/1
+    (agent_board 0.1.0) lib/agent_board/live.ex:31: AgentBoard.Live.handle_info/2
+    (stdlib 8.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 8.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: :poll
+......
+Finished in 20.2 seconds (7.0s async, 13.2s sync)
+
+Result: 183 passed
+##############################################
+#                                            #
+#          Running Sobelow - v0.18.1         #
+#  Created by Griffin Byatt - @griffinbyatt  #
+#     NCC Group - https://nccgroup.trust     #
+#                                            #
+##############################################
+
+... SCAN COMPLETE ...
+
+== frontend: check_assets -> assets.setup -> build -> deploy (MIX_ENV=dev) ==
+check_assets: OK (entradas, pipeline tailwind e JS sem debug).
+Compiling 3 files (.ex)
+≈ tailwindcss v4.3.0
+
+/*! 🌼 daisyUI 5.5.20 */
+Done in 132ms
+
+  ../priv/static/assets/js/app.js  345.4kb
+
+⚡ Done in 26ms
+≈ tailwindcss v4.3.0
+
+/*! 🌼 daisyUI 5.5.20 */
+Done in 103ms
+
+  ../priv/static/assets/js/app.js  153.4kb
+
+⚡ Done in 15ms
+Check your digested files at "priv/static"
+== library: validador + testes da biblioteca de capacidades ==
+OK: 33 skills; 6 contextos; 22245 palavras nas instruções; 225 links locais conferidos.
+test_broken_local_link_detected (__main__.ValidatorTests.test_broken_local_link_detected) ... ok
+test_context_cycle_detected (__main__.ValidatorTests.test_context_cycle_detected) ... ok
+test_duplicate_body_detected (__main__.ValidatorTests.test_duplicate_body_detected) ... ok
+test_duplicate_name_detected (__main__.ValidatorTests.test_duplicate_name_detected) ... ok
+test_duplicate_origin_detected (__main__.ValidatorTests.test_duplicate_origin_detected) ... ok
+test_foreign_library_derives_origins_when_absent (__main__.ValidatorTests.test_foreign_library_derives_origins_when_absent) ... ok
+test_foreign_library_missing_origin_coverage_detected (__main__.ValidatorTests.test_foreign_library_missing_origin_coverage_detected) ... ok
+test_foreign_library_undeclared_origin_detected (__main__.ValidatorTests.test_foreign_library_undeclared_origin_detected) ... ok
+test_foreign_library_with_custom_origins_passes (__main__.ValidatorTests.test_foreign_library_with_custom_origins_passes) ... ok
+test_incomplete_origin_coverage_detected (__main__.ValidatorTests.test_incomplete_origin_coverage_detected) ... ok
+test_instruction_heading_required (__main__.ValidatorTests.test_instruction_heading_required) ... ok
+test_invalid_mode_detected (__main__.ValidatorTests.test_invalid_mode_detected) ... ok
+test_json_report_parses (__main__.ValidatorTests.test_json_report_parses) ... ok
+test_manifest_divergence_detected (__main__.ValidatorTests.test_manifest_divergence_detected) ... ok
+test_missing_frontmatter_key_detected (__main__.ValidatorTests.test_missing_frontmatter_key_detected) ... ok
+test_path_escape_rejected (__main__.ValidatorTests.test_path_escape_rejected) ... ok
+test_self_related_detected (__main__.ValidatorTests.test_self_related_detected) ... ok
+test_unknown_context_dependency_detected (__main__.ValidatorTests.test_unknown_context_dependency_detected) ... ok
+test_unknown_related_detected (__main__.ValidatorTests.test_unknown_related_detected) ... ok
+test_valid_library_passes (__main__.ValidatorTests.test_valid_library_passes) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 0.790s
+
+OK
+OK: pipeline(s) verdes.
