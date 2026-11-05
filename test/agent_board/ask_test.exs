@@ -43,6 +43,16 @@ defmodule AgentBoard.AskTest do
     assert only.body =~ "hello"
   end
 
+  test "ask reloads the repository when the task has none preloaded", %{task: task} do
+    bare = Repo.get(Task, task.id)
+
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, %{"id" => 99, "user" => %{"login" => "sallaumen"}})
+    end)
+
+    assert {:ok, _} = Board.ask(bare, "hi", client())
+  end
+
   test "a failed request removes the placeholder", %{task: task} do
     Req.Test.stub(@stub, fn conn ->
       Plug.Conn.send_resp(conn, 500, "boom")

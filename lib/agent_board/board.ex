@@ -135,6 +135,8 @@ defmodule AgentBoard.Board do
 
   @doc "Ask the agent: post a comment on the task's issue that mentions the agent."
   def ask(task, body, client) do
+    # The caller may hand us a bare task (a Repo.get); preload is idempotent.
+    task = Repo.preload(task, :repository)
     text = String.trim(body) <> "\n\n@sallaumen-agent"
 
     placeholder =
