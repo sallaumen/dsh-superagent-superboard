@@ -354,6 +354,17 @@
 .voice-command-result a { justify-self: start; color: var(--color-info); text-decoration: underline; text-underline-offset: 0.2rem; }
 .voice-command-result a:focus-visible { outline: 2px solid var(--color-info); outline-offset: 3px; }
 .voice-command-hint { color: color-mix(in oklab, var(--color-base-content) 65%, transparent); font-size: 0.75rem; }
+.voice-action-review { display: grid; gap: 0.625rem; border: 1px solid var(--color-warning); border-radius: 0.75rem; background: color-mix(in oklab, var(--color-warning) 9%, var(--color-base-100)); padding: 1rem; }
+.voice-action-eyebrow { color: var(--color-warning); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; }
+.voice-action-review h3 { font-size: 1rem; font-weight: 700; line-height: 1.35; }
+.voice-action-target { font-size: 0.875rem; line-height: 1.45; overflow-wrap: anywhere; }
+.voice-action-repository { color: color-mix(in oklab, var(--color-base-content) 68%, transparent); font-size: 0.75rem; }
+.voice-action-effect { color: color-mix(in oklab, var(--color-base-content) 86%, transparent); font-size: 0.8125rem; line-height: 1.45; }
+.voice-action-buttons { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-top: 0.375rem; }
+.voice-action-buttons button { min-height: 2.75rem; border: 1px solid var(--color-base-300); border-radius: 0.625rem; background: var(--color-base-100); padding: 0.625rem 0.875rem; color: var(--color-base-content); font-size: 0.8125rem; font-weight: 700; cursor: pointer; }
+.voice-action-buttons .voice-action-confirm { border-color: var(--color-warning); background: var(--color-warning); color: var(--color-warning-content); }
+.voice-action-buttons button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.voice-action-buttons button:hover { border-color: var(--color-primary); }
 
 
 

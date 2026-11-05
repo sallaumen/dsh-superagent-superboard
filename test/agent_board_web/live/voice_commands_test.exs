@@ -231,7 +231,7 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
     assert render(view) =~ ~s(data-panel="activity")
   end
 
-  test "unknown command remains editable and does not mutate a saved task", %{conn: conn} do
+  test "task action command remains editable and only prepares a confirmation", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "safe-command")
 
     task =
@@ -255,7 +255,8 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
     html = render(view)
     assert html =~ ~s(data-panel="voice")
     assert html =~ "archive task 12"
-    assert html =~ "Command not recognized"
+    assert html =~ "Confirm archive"
+    assert html =~ "Hides this task from the board and keeps its history"
     assert Repo.get!(Task, task.id).state == "queued"
   end
 

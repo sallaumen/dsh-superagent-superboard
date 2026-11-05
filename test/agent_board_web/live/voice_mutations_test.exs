@@ -1,7 +1,9 @@
 defmodule AgentBoardWeb.VoiceMutationsTest do
   @moduledoc "Voice requests to change task state are parsed, never acted on."
-  use ExUnit.Case, async: true
+  use AgentBoardWeb.ConnCase, async: true
 
+  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.Board.Task
   alias AgentBoardWeb.VoiceMutations
 
   test "accepts an exact, numbered stop or archive request in either language" do
@@ -23,5 +25,43 @@ defmodule AgentBoardWeb.VoiceMutationsTest do
         ] do
       assert VoiceMutations.parse(text) == :not_mutation
     end
+  end
+
+  test "prepares only an active task in the selected repository, then detects changes" do
+    {:ok, repo} = Board.add_repository("fixture", "voice-actions")
+    {:ok, other} = Board.add_repository("fixture", "other")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{repository_id: repo.id, number: 42, title: "Keep history"})
+      |> Repo.insert!()
+
+    assert {:ok, intent} = VoiceMutations.prepare("archive task #42", repo)
+    assert intent.repository == "fixture/voice-actions"
+    assert intent.title == "Keep history"
+    assert {:ok, %Task{id: task_id}} = VoiceMutations.current_task(intent, repo)
+    assert task_id == task.id
+    assert {:error, :changed} = VoiceMutations.current_task(intent, other)
+    assert {:error, _} = VoiceMutations.prepare("stop task #42", other)
+
+    task |> Task.changeset(%{state: "ready"}) |> Repo.update!()
+    assert {:error, :changed} = VoiceMutations.current_task(intent, repo)
+  end
+
+  test "stopped and archived tasks cannot be prepared again" do
+    {:ok, repo} = Board.add_repository("fixture", "inactive-actions")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      number: 3,
+      title: "Already stopped",
+      state: "stopped",
+      stopped: true
+    })
+    |> Repo.insert!()
+
+    assert {:error, _} = VoiceMutations.prepare("stop task 3", repo)
+    assert {:error, _} = VoiceMutations.prepare("archive task 3", repo)
   end
 end
