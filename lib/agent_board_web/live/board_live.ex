@@ -181,6 +181,10 @@ defmodule AgentBoardWeb.BoardLive do
   defp review_badge_class(%{review_state: "changes_requested"}), do: "text-[#f0b3b3]"
   defp review_badge_class(_), do: "text-[#a39f93]"
 
+  defp checks_badge(%{checks_state: "failure", checks_failed: name})
+       when is_binary(name) and name != "",
+       do: "ci failed: #{name}"
+
   defp checks_badge(%{checks_state: state}) when state in ["success", "failure", "pending"] do
     case state do
       "success" -> "ci passed"
