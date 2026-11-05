@@ -332,6 +332,33 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert render(view) =~ "Arrived by broadcast"
   end
 
+  test "broadcasts keep a single stable card and the open conversation", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "stable")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 9,
+        title: "Stable task",
+        state: "queued"
+      })
+      |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/stable")
+    view |> element("#task-#{task.id} button", "Open") |> render_click()
+
+    task |> Task.changeset(%{state: "running"}) |> Repo.update!()
+    for _ <- 1..3, do: send(view.pid, :board_updated)
+
+    html = render(view)
+    assert length(Regex.scan(~r/id="task-#{task.id}"/, html)) == 1
+    assert has_element?(view, "#column-running #task-#{task.id}")
+    assert has_element?(view, "#conversation-title", "Stable task")
+    assert has_element?(view, "#ask-agent input[name=body]")
+  end
+
   test "switching repos stops listening to the old one", %{conn: conn} do
     {:ok, colmex} = Board.add_repository("sallaumen", "o_colmex")
     {:ok, _arena} = Board.add_repository("sallaumen", "arena-rogue")
