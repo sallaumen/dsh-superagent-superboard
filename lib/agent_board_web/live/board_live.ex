@@ -378,7 +378,7 @@ defmodule AgentBoardWeb.BoardLive do
     <Layouts.app flash={@flash}>
       <div class="agent-board min-h-screen bg-base-100 text-base-content font-mono">
         <header class="flex flex-wrap items-center gap-3 border-b border-base-content/10 px-5 py-3">
-          <div class="flex items-baseline gap-2">
+          <div class="flex flex-wrap items-baseline gap-2">
             <h1 class="text-lg tracking-[0.16em] uppercase">Agent board</h1>
             <span class="text-[10px] text-base-content/75">the agent's work, live</span>
           </div>
@@ -424,7 +424,7 @@ defmodule AgentBoardWeb.BoardLive do
             @events
           )}</span>
 
-          <form id="track-repo" phx-submit="add" class="contents">
+          <form id="track-repo" phx-submit="add" class="flex flex-wrap items-center gap-2">
             <input
               name="owner"
               placeholder="owner"
@@ -461,8 +461,8 @@ defmodule AgentBoardWeb.BoardLive do
         >
           <p class="text-sm text-base-content">No repository tracked yet.</p>
           <p class="max-w-md text-[12px] leading-relaxed text-base-content/75">
-            Track one below. The board syncs its issues and pull requests, shows
-            the agent's work in the four columns, and lets you create and ask.
+            Track one in the header. The board syncs its issues and pull requests, shows
+            the agent's work in the five columns, and lets you create and ask.
           </p>
         </div>
 
@@ -470,7 +470,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <main
           :if={@repo}
-          class="grid grid-cols-1 gap-px overflow-x-auto bg-base-content/10 sm:grid-cols-2 lg:grid-cols-5"
+          class="grid grid-cols-1 gap-px bg-base-content/10 sm:grid-cols-2 lg:grid-cols-5"
         >
           <%= for {title, key} <- [
               {"Running", :running},
@@ -479,8 +479,12 @@ defmodule AgentBoardWeb.BoardLive do
               {"Merged", :merged},
               {"Queued", :queued}
             ] do %>
-            <section class="min-w-[220px] bg-base-100 p-4">
-              <h2 class="mb-3 flex items-baseline justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
+            <section
+              aria-label={title <> " tasks"}
+              tabindex="0"
+              class="board-column min-w-0 overflow-y-auto bg-base-100 p-4 lg:max-h-[55vh]"
+            >
+              <h2 class="sticky top-0 z-10 mb-3 flex items-baseline justify-between bg-base-100 py-1 gap-2 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
                 <span>{title}</span>
                 <span class="rounded-full bg-base-200 px-2 py-0.5 text-[10px] tabular-nums">
                   {length(Map.get(@board, key))}
@@ -503,11 +507,11 @@ defmodule AgentBoardWeb.BoardLive do
                   href={item.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="block truncate text-sm font-medium hover:underline"
+                  class="block break-words text-sm font-medium hover:underline"
                 >
                   {item.title}
                 </a>
-                <span :if={is_nil(item.url)} class="block truncate text-sm font-medium">{item.title}</span>
+                <span :if={is_nil(item.url)} class="block break-words text-sm font-medium">{item.title}</span>
                 <span
                   :if={review_badge(item)}
                   class={["ml-2 text-[11px] uppercase", review_badge_class(item)]}
@@ -529,7 +533,7 @@ defmodule AgentBoardWeb.BoardLive do
                   class="mt-2 flex gap-1 text-[11px]"
                 >
                   <button
-                    phx-click="open"
+                    phx-click={JS.push_focus() |> JS.push("open")}
                     phx-value-id={item.id}
                     aria-label={"Open task: " <> item.title}
                     class="rounded-sm border border-base-content/15 px-2 py-1 hover:bg-base-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
@@ -560,26 +564,93 @@ defmodule AgentBoardWeb.BoardLive do
           <% end %>
         </main>
 
-        <section :if={@events != []} class="border-t border-base-content/10 px-5 py-4">
-          <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">Activity</h2>
-          <ol class="space-y-1">
+        <section
+          :if={@conversation}
+          id="conversation"
+          class="border-t border-base-content/10 px-5 py-4"
+        >
+          <h2
+            id="conversation-title"
+            tabindex="-1"
+            phx-mounted={JS.focus(to: "#conversation-title")}
+            class="mb-3 flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75"
+          >
+            <span>Conversation · #{@conversation.number} {String.slice(@conversation.title, 0, 40)}</span>
+            <button phx-click="speak" class="border border-base-content/10 px-2 py-1 text-[10px]">
+              Speak
+            </button>
+            <button
+              phx-click={JS.push("close") |> JS.pop_focus()}
+              class="border border-base-content/10 px-2 py-1 text-[10px]"
+            >
+              Close
+            </button>
+          </h2>
+
+          <div :for={c <- @comments} class="mb-2 flex gap-2">
+            <span class={[
+              "w-10 shrink-0 text-[10px] uppercase sm:w-14",
+              c.kind == "agent" && "text-success",
+              c.kind != "agent" && "text-info"
+            ]}>
+              {c.kind}
+            </span>
+            <div class="min-w-0">
+              <p class="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-base-content">
+                {c.body}
+              </p>
+              <span :if={c.inserted_at} class="text-[10px] text-base-content/75">{time(c.inserted_at)}</span>
+            </div>
+          </div>
+
+          <p :if={@comments == []} class="text-xs text-base-content/75">
+            No messages yet. Ask the agent below.
+          </p>
+
+          <form id="ask-agent" phx-submit="ask" class="mt-3 flex gap-2">
+            <input
+              name="body"
+              aria-label="Message to the agent"
+              placeholder="Ask the agent…"
+              class="flex-1 border border-base-content/10 bg-base-200 px-3 py-2 text-sm"
+              required
+            />
+            <button
+              class="bg-primary px-4 py-2 text-sm font-bold text-primary-content hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              phx-disable-with="Sending…"
+            >Send</button>
+          </form>
+        </section>
+
+        <details :if={@events != []} id="activity" class="border-t border-base-content/10 px-5 py-4">
+          <summary class="cursor-pointer py-2 text-xs uppercase tracking-[0.16em]">
+            Activity · latest {length(@events)} events
+          </summary>
+          <ol
+            class="mt-3 max-h-64 space-y-2 overflow-y-auto"
+            tabindex="0"
+            aria-label="Recent activity"
+          >
             <li
               :for={e <- @events}
               class={[
-                "flex gap-3 text-[11px]",
+                "grid min-w-0 gap-x-3 gap-y-1 text-xs sm:grid-cols-[5rem_10rem_minmax(0,1fr)]",
                 has_errors?(e) && "text-error",
                 warning?(e) && "text-warning"
               ]}
             >
               <span class="w-24 shrink-0 text-base-content/75">{time(e.inserted_at)}</span>
-              <span class="w-14 shrink-0 uppercase">{e.kind}</span>
-              <span class="text-base-content">{e.subject}</span>
-              <span :if={e.payload && e.payload != %{}} class="text-base-content/75">
+              <span class="break-words uppercase">{e.kind}</span>
+              <span class="min-w-0 break-words text-base-content">{e.subject}</span>
+              <span
+                :if={e.payload && e.payload != %{}}
+                class="min-w-0 break-words text-base-content/75 sm:col-span-2 sm:col-start-2"
+              >
                 {payload_summary(e.payload)}
               </span>
             </li>
           </ol>
-        </section>
+        </details>
 
         <section :if={@repo} class="border-t border-base-content/10 px-5 py-4">
           <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
@@ -639,8 +710,8 @@ defmodule AgentBoardWeb.BoardLive do
             </span>
           </h2>
           <ol class="space-y-1">
-            <li :for={c <- @ai_calls} class="flex gap-3 text-[11px]">
-              <span class="w-40 shrink-0 uppercase">{c.name}</span>
+            <li :for={c <- @ai_calls} class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+              <span class="min-w-0 break-words uppercase">{c.name}</span>
               <span class="w-20 shrink-0 text-base-content/75">{c.engine}</span>
               <span class={["w-16 shrink-0", c.status == "error" && "text-error"]}>
                 {c.status}
@@ -649,52 +720,6 @@ defmodule AgentBoardWeb.BoardLive do
               <span class="text-base-content/75">{c.input_tokens + c.output_tokens} tokens</span>
             </li>
           </ol>
-        </section>
-
-        <section :if={@conversation} class="border-t border-base-content/10 px-5 py-4">
-          <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
-            <span>Conversation · #{@conversation.number} {String.slice(@conversation.title, 0, 40)}</span>
-            <button phx-click="speak" class="border border-base-content/10 px-2 py-1 text-[10px]">
-              Speak
-            </button>
-            <button phx-click="close" class="border border-base-content/10 px-2 py-1 text-[10px]">
-              Close
-            </button>
-          </h2>
-
-          <div :for={c <- @comments} class="mb-2 flex gap-2">
-            <span class={[
-              "w-10 shrink-0 text-[10px] uppercase sm:w-14",
-              c.kind == "agent" && "text-success",
-              c.kind != "agent" && "text-info"
-            ]}>
-              {c.kind}
-            </span>
-            <div class="min-w-0">
-              <p class="whitespace-pre-wrap text-[12px] leading-relaxed text-base-content">
-                {c.body}
-              </p>
-              <span :if={c.inserted_at} class="text-[10px] text-base-content/75">{time(c.inserted_at)}</span>
-            </div>
-          </div>
-
-          <p :if={@comments == []} class="text-xs text-base-content/75">
-            No messages yet. Ask the agent below.
-          </p>
-
-          <form id="ask-agent" phx-submit="ask" class="mt-3 flex gap-2">
-            <input
-              name="body"
-              aria-label="Message to the agent"
-              placeholder="Ask the agent…"
-              class="flex-1 border border-base-content/10 bg-base-200 px-3 py-2 text-sm"
-              required
-            />
-            <button
-              class="bg-primary px-4 py-2 text-sm font-bold text-primary-content hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              phx-disable-with="Sending…"
-            >Send</button>
-          </form>
         </section>
 
         <footer class="border-t border-base-content/10 p-5">
