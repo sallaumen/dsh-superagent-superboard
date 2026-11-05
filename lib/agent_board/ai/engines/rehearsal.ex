@@ -18,6 +18,8 @@ defmodule AgentBoard.AI.Engines.Rehearsal do
       "non_goals" => ["refatorar o visual"],
       "risks" => ["o poller e o sync competem pelo mesmo dado"],
       "open_questions" => ["qual o volume de PRs por sync?"],
+      "assumptions" => [],
+      "ready" => true,
       "language" => "pt"
     },
     propose_tasks: %{

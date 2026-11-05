@@ -87,4 +87,13 @@ defmodule AgentBoard.IntakeEvalTest do
     assert {:ok, %{tasks: tasks}} = Intake.run("x")
     assert Enum.map(tasks, & &1.title) == ["boa"]
   end
+
+  test "a structurally invalid task list returns an error without creating a proposal" do
+    stub_responses(
+      ~s({"goal":"Corrigir o board","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"}),
+      ~s({"tasks":[42]})
+    )
+
+    assert {:error, :malformed_output} = Intake.run("Corrija o board")
+  end
 end

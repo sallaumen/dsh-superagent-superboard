@@ -9,7 +9,7 @@ defmodule AgentBoard.AI.Engines.OpenAI do
 
   @behaviour AgentBoard.AI.Engine
 
-  alias AgentBoard.AI.{Providers, Request, Result}
+  alias AgentBoard.AI.{Providers, Request, Result, Schema}
 
   @impl true
   def run(%Request{} = request) do
@@ -120,7 +120,7 @@ defmodule AgentBoard.AI.Engines.OpenAI do
          ),
        model: body["model"] || request.model,
        engine: request.provider,
-       parse_state: if(json, do: :complete, else: :partial)
+       parse_state: if(Schema.valid?(request.json_schema, json), do: :complete, else: :partial)
      }}
   end
 
