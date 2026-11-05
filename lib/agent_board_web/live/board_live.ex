@@ -355,7 +355,7 @@ defmodule AgentBoardWeb.BoardLive do
           <p class="text-sm text-base-content">No repository tracked yet.</p>
           <p class="max-w-md text-[12px] leading-relaxed text-base-content/75">
             Track one in the header. The board syncs its issues and pull requests, shows
-            the agent's work in the five columns, and lets you create and ask.
+            the agent's active work and recent merges, and lets you create and ask.
           </p>
         </div>
 
@@ -380,25 +380,24 @@ defmodule AgentBoardWeb.BoardLive do
           ><.icon name={icon} class="size-4 shrink-0" />{label}</button>
         </nav>
 
-        <main
-          :if={@repo}
-          class="grid grid-cols-1 gap-px bg-base-content/10 sm:grid-cols-2 lg:grid-cols-5"
-        >
-          <%= for {title, key} <- [
+        <main :if={@repo} id="board-work" class="board-work">
+          <div class="active-lanes grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <%= for {title, key} <- [
               {"Running", :running},
               {"Ready", :ready},
               {"Blocked", :blocked},
-              {"Merged", :merged},
               {"Queued", :queued}
             ] do %>
-            <.live_component
-              module={BoardComponents.Column}
-              id={"column-#{key}"}
-              title={title}
-              state={key}
-              items={Map.get(@board, key)}
-            />
-          <% end %>
+              <.live_component
+                module={BoardComponents.Column}
+                id={"column-#{key}"}
+                title={title}
+                state={key}
+                items={Map.get(@board, key)}
+              />
+            <% end %>
+          </div>
+          <.live_component module={BoardComponents.Archive} id="merged-column" items={@board.merged} />
         </main>
 
         <BoardComponents.Panel.shell

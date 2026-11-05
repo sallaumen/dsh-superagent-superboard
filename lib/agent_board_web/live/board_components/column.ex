@@ -11,24 +11,33 @@ defmodule AgentBoardWeb.BoardComponents.Column do
       id={@id}
       aria-label={@title <> " tasks"}
       tabindex="0"
-      class="board-column min-w-0 overflow-y-auto bg-base-100 p-4 lg:max-h-[55vh]"
+      data-state={@state}
+      class={["board-column bg-base-100", @items == [] && "is-empty"]}
     >
-      <h2 class="sticky top-0 z-10 mb-3 flex items-baseline justify-between bg-base-100 py-1 gap-2 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
+      <h2 class="lane-heading">
         <span>{@title}</span>
-        <span class="rounded-full bg-base-200 px-2 py-0.5 text-[10px] tabular-nums">
-          {if @state == :merged, do: "latest "}{length(@items)}
+        <span class="lane-count">
+          {length(@items)}
         </span>
       </h2>
 
-      <.live_component
-        :for={item <- @items}
-        module={AgentBoardWeb.BoardComponents.Card}
-        id={"#{if @state == :merged, do: "pull", else: "task"}-#{item.id}"}
-        item={item}
-        state={@state}
-      />
+      <div
+        :if={@items != []}
+        class="lane-items"
+        role="region"
+        tabindex="0"
+        aria-label={@title <> " task list"}
+      >
+        <.live_component
+          :for={item <- @items}
+          module={AgentBoardWeb.BoardComponents.Card}
+          id={"task-#{item.id}"}
+          item={item}
+          state={@state}
+        />
+      </div>
 
-      <p :if={@items == []} class="text-xs text-base-content/75">
+      <p :if={@items == []} class="lane-empty">
         {empty_copy(@state)}
       </p>
     </section>

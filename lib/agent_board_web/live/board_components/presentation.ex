@@ -100,4 +100,13 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
   def ai_status_label(:not_configured), do: "not configured"
   def ai_status_label(:rehearsal), do: "rehearsal · local fixtures"
   def ai_status_label(status), do: to_string(status)
+
+  def latency(value) when is_integer(value), do: "#{value}ms"
+  def latency(_), do: "unknown"
+
+  def token_usage(%{input_tokens: input, output_tokens: output})
+      when is_integer(input) and is_integer(output),
+      do: "#{input + output} tokens"
+
+  def token_usage(_), do: "unknown"
 end

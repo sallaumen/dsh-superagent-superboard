@@ -20,15 +20,21 @@ defmodule AgentBoardWeb.BoardComponents.AI do
       <p :if={@ai_calls != []} class="mb-2 text-xs text-base-content/75">
         Latest {length(@ai_calls)} calls across the board.
       </p>
-      <ol class="space-y-1">
-        <li :for={c <- @ai_calls} class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-          <span class="min-w-0 break-words uppercase">{c.name}</span>
-          <span class="w-20 shrink-0 text-base-content/75">{c.engine}</span>
-          <span class={["w-16 shrink-0", c.status == "error" && "text-error"]}>
-            {c.status}
-          </span>
-          <span class="w-20 shrink-0 text-base-content/75">{c.duration_ms}ms</span>
-          <span class="text-base-content/75">{c.input_tokens + c.output_tokens} tokens</span>
+      <ol>
+        <li :for={c <- @ai_calls} class="ai-call">
+          <div class="ai-call-identity">
+            <strong>{c.name || "unknown"}</strong>
+            <span>{c.engine || "unknown"} · {c.model || "unknown"}</span>
+          </div>
+          <span class={["ai-call-status", c.status == "error" && "text-error"]}>{c.status || "unknown"}</span>
+          <dl class="ai-call-metrics">
+            <div>
+              <dt>Latency</dt><dd>{latency(c.duration_ms)}</dd>
+            </div>
+            <div>
+              <dt>Usage</dt><dd>{token_usage(c)}</dd>
+            </div>
+          </dl>
           <DataAge.stamp id={"call-age-#{c.id}"} at={c.inserted_at} label="Called" />
         </li>
       </ol>
