@@ -395,15 +395,19 @@ defmodule AgentBoard.Sync do
     }
   end
 
+  def ticket_numbers_for(ticket), do: ticket_numbers(ticket)
+
   defp ticket_numbers(ticket) do
     scope = get_in(ticket, ["mandate", "basis", "scope"]) || %{}
     base = if is_integer(scope["number"]), do: [scope["number"]], else: []
 
+    # The parens matter: |> binds tighter than ||, so without them the
+    # pipeline would apply only to the [] fallback and leave the real channel
+    # entries unmapped (numbers as maps instead of integers).
     base ++
-      (ticket["channels"] ||
-         []
-         |> Enum.map(&to_int(get_in(&1, ["address", "number"])))
-         |> Enum.reject(&is_nil/1))
+      ((ticket["channels"] || [])
+       |> Enum.map(&to_int(get_in(&1, ["address", "number"])))
+       |> Enum.reject(&is_nil/1))
   end
 
   defp state_db do

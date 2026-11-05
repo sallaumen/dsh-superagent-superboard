@@ -124,6 +124,18 @@ defmodule AgentBoard.SyncRepoTest do
     assert repo.name == "arena-rogue"
   end
 
+  test "ticket numbers come from channels as integers", _ctx do
+    ticket = %{
+      "mandate" => %{"basis" => %{"scope" => %{}}},
+      "channels" => [
+        %{"address" => %{"number" => "42"}},
+        %{"address" => %{"number" => 43}}
+      ]
+    }
+
+    assert Sync.ticket_numbers_for(ticket) == [42, 43]
+  end
+
   test "a repository without issues still syncs its pulls", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
