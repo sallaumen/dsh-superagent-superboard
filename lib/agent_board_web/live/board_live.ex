@@ -4,10 +4,13 @@ defmodule AgentBoardWeb.BoardLive do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AI, Board, GitHub, Intake, Repo, Voice}
+  alias AgentBoard.{AI, Board, ElevenLabs, GitHub, Intake, Repo, Settings, Voice}
   alias AgentBoard.Board.Task
   alias AgentBoard.System.{Updater, Version}
   alias AgentBoardWeb.{BoardComponents, BoardNavigation}
+
+  @voice_key "elevenlabs_voice_id"
+  @tts_model_key "elevenlabs_tts_model"
 
   @impl true
   def mount(params, _session, socket) do
@@ -28,7 +31,15 @@ defmodule AgentBoardWeb.BoardLive do
         ai_calls: [],
         ai_status: AI.status(),
         version: Version.status(),
-        busy: false
+        busy: false,
+        voice: current_voice(),
+        voice_configured: ElevenLabs.configured?(),
+        voice_voices: nil,
+        voice_loading: false,
+        voice_pick: nil,
+        voice_model: ElevenLabs.tts_model(),
+        voice_model_source: ElevenLabs.tts_source(),
+        voice_models: ElevenLabs.tts_models()
       )
 
     repo =
@@ -403,12 +414,122 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, push_event(socket, "dictate", %{})}
   end
 
+  @impl true
+  def handle_event("voice_browse", _params, socket) do
+    socket = assign(socket, voice_loading: true)
+
+    case ElevenLabs.voices() do
+      {:ok, voices} ->
+        pick =
+          if Enum.any?(voices, &(&1.id == socket.assigns.voice.id)), do: socket.assigns.voice.id
+
+        {:noreply, assign(socket, voice_voices: voices, voice_loading: false, voice_pick: pick)}
+
+      {:error, reason} ->
+        # A failed refresh keeps the list it already has: the board never
+        # erases its last good state.
+        {:noreply,
+         socket
+         |> assign(voice_loading: false)
+         |> put_flash(:error, "Could not list voices: #{voice_reason(reason)}")}
+    end
+  end
+
+  @impl true
+  def handle_event("voice_pick", %{"voice" => id}, socket) do
+    # A phx-change value is client input: only a voice-shaped id sticks.
+    pick = if ElevenLabs.valid_voice_id?(id), do: String.trim(id)
+    {:noreply, assign(socket, voice_pick: pick)}
+  end
+
+  @impl true
+  def handle_event("voice_preview", _params, socket) do
+    id = socket.assigns.voice_pick || socket.assigns.voice.id
+
+    {:noreply,
+     push_event(socket, "voice_play", %{
+       url: speech_url("Hello! This is how your agent will sound.", id)
+     })}
+  end
+
+  @impl true
+  def handle_event("voice_save", _params, socket) do
+    id = socket.assigns.voice_pick || socket.assigns.voice.id
+    name = voice_name(socket.assigns.voice_voices, id)
+
+    cond do
+      not ElevenLabs.valid_voice_id?(id) ->
+        {:noreply, put_flash(socket, :error, "Pick a voice from the list first")}
+
+      Settings.put(@voice_key, id) == :ok ->
+        {:noreply,
+         socket
+         |> assign(voice: current_voice(), voice_pick: id)
+         |> put_flash(:info, "Voice saved: #{name || id}")
+         |> push_event("voice_play", %{url: speech_url("Voice selected.", id)})}
+
+      true ->
+        {:noreply, put_flash(socket, :error, "Could not save the voice")}
+    end
+  end
+
+  @impl true
+  def handle_event("voice_reset", _params, socket) do
+    :ok = Settings.put(@voice_key, "")
+
+    {:noreply,
+     socket
+     |> assign(voice: current_voice(), voice_pick: ElevenLabs.voice_id())
+     |> put_flash(:info, "Voice back to the default")}
+  end
+
+  @impl true
+  def handle_event("voice_model", %{"model" => model}, socket) do
+    if ElevenLabs.valid_tts_model?(String.trim(model)) do
+      :ok = Settings.put(@tts_model_key, model)
+
+      {:noreply,
+       socket
+       |> assign(voice_model: ElevenLabs.tts_model(), voice_model_source: ElevenLabs.tts_source())
+       |> put_flash(:info, "Model saved: #{String.trim(model)}")}
+    else
+      {:noreply, put_flash(socket, :error, "Unknown TTS model")}
+    end
+  end
+
+  @impl true
+  def handle_event("voice_speak", _params, socket) do
+    # The model writes the status when it can; the template is the fallback.
+    # Either way, the agent's voice speaks it.
+    url = speech_url(Voice.spoken(socket.assigns.board), socket.assigns.voice.id)
+
+    {:noreply, push_event(socket, "voice_play", %{url: url})}
+  end
+
   # The model answers on another process: the question is already on GitHub,
   # and blocking the LiveView for it freezes the whole board.
   defp ask_in_background(task, body) do
     parent = self()
     id = task.id
     Elixir.Task.start(fn -> send(parent, {:answer, id, answer(task, body)}) end)
+  end
+
+  defp current_voice do
+    %{id: ElevenLabs.voice_id(), source: ElevenLabs.voice_source()}
+  end
+
+  defp voice_name(nil, _id), do: nil
+  defp voice_name(voices, id), do: Enum.find_value(voices, fn v -> if v.id == id, do: v.name end)
+
+  defp voice_reason(:not_configured), do: "no API key"
+  defp voice_reason(:auth_expired), do: "the key was rejected"
+  defp voice_reason(:usage_limit), do: "usage limit reached"
+  defp voice_reason({:http, status}), do: "HTTP #{status}"
+  defp voice_reason(reason), do: inspect(reason)
+
+  defp speech_url(text, voice_id) do
+    "/api/voice/speech?text=" <>
+      URI.encode_www_form(text) <> "&voice=" <> URI.encode_www_form(voice_id)
   end
 
   defp answer(task, question) do
@@ -455,6 +576,14 @@ defmodule AgentBoardWeb.BoardLive do
           last_activity={List.first(@events)}
           version={@version}
           busy={@busy}
+          voice={@voice}
+          voice_configured={@voice_configured}
+          voice_voices={@voice_voices}
+          voice_loading={@voice_loading}
+          voice_pick={@voice_pick}
+          voice_model={@voice_model}
+          voice_models={@voice_models}
+          voice_model_source={@voice_model_source}
         />
 
         <div

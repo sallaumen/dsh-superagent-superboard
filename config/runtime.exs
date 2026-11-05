@@ -29,6 +29,19 @@ if System.get_env("PHX_SERVER") do
   config :agent_board, AgentBoardWeb.Endpoint, server: true
 end
 
+# The voice defaults come from the environment when present; the key itself
+# (ELEVENLABS_API_KEY) is read straight from the environment by
+# AgentBoard.ElevenLabs. Only set a key that exists: a nil app key would
+# shadow the module default.
+for {env, app} <- [
+      {"ELEVENLABS_VOICE_ID", :elevenlabs_voice_id},
+      {"ELEVENLABS_TTS_MODEL", :elevenlabs_tts_model},
+      {"ELEVENLABS_STT_MODEL", :elevenlabs_stt_model}
+    ],
+    value when is_binary(value) and value != "" <- [System.get_env(env)] do
+  config :agent_board, [{app, value}]
+end
+
 config :agent_board, AgentBoardWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 

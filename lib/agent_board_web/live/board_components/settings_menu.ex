@@ -2,7 +2,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   @moduledoc "Secondary board controls grouped behind a native disclosure."
   use AgentBoardWeb, :live_component
 
-  alias AgentBoardWeb.Components.SystemPanel
+  alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
   @impl true
   def render(assigns) do
@@ -56,6 +56,19 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
         <section aria-labelledby="settings-voice">
           <h3 id="settings-voice">Voice</h3>
+
+          <VoicePanel.voice_panel
+            voice={@voice}
+            configured={@voice_configured}
+            voices={@voice_voices}
+            loading={@voice_loading}
+            pick={@voice_pick}
+            voice_model={@voice_model}
+            voice_models={@voice_models}
+            model_source={@voice_model_source}
+            repo={@repo != nil}
+          />
+
           <div class="settings-actions">
             <button type="button" phx-click="speak">Speak status</button>
             <button type="button" phx-click="dictate">Dictate task</button>

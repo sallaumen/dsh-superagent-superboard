@@ -15,9 +15,12 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 | `AgentBoard.GitHub` | the HTTP client (`body!/1`, rate limits) |
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
-| `AgentBoard.Voice` | the spoken summary |
+| `AgentBoard.Settings` | board-wide settings, one row per key (the voice picks) |
+| `AgentBoard.Voice` | the spoken summary (the model writes it when it can) |
+| `AgentBoard.ElevenLabs` | the server-side voice client: TTS, STT, voices |
 | `AgentBoardWeb.BoardLive` | the real-time UI |
 | `AgentBoardWeb.BoardController` | the JSON API (`/api/...`) |
+| `AgentBoardWeb.VoiceController` | the voice API (`/api/voice/...`) |
 
 ## The data
 
@@ -38,13 +41,41 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 - `AgentBoard.Live` polls the agent's tickets every 10s and broadcasts only
   when their hash changed — the runner state reaches the board without waiting
   for the sync. It is idempotent: the same tickets never broadcast twice
-  (`live_test.exs`).
+  (`live_test.exs`). The interval is the `:live_poll_interval` knob; the test
+  environment stretches it to an hour so the supervised poller never ticks
+  into the sandboxed database mid-suite.
 - Never poll the database from the browser; push.
 
 ## The voice
 
-- The server builds the summary (`AgentBoard.Voice`) and pushes it with
-  `push_event/3`; the browser speaks it. The server never runs a TTS engine.
+- The server builds the summary (`AgentBoard.Voice` — the model writes it
+  when it can, the template is the fallback) and pushes it with
+  `push_event/3`; the browser speaks it with the Web Speech API. That path
+  runs no TTS engine on the server.
+- `AgentBoard.ElevenLabs` is the server-side voice (TTS, STT and voices),
+  exposed by `AgentBoardWeb.VoiceController` at `/api/voice/...`. It reads
+  `ELEVENLABS_API_KEY` from the environment, never from code, and returns
+  `{:ok, ...}` or a reason (`:not_configured`, `:auth_expired`,
+  `:usage_limit`, `{:http, status}`) — a raise never reaches the caller.
+  No retry: a retried paid request is a second charge. The key never
+  reaches the browser: the endpoints answer with audio or a transcript.
+- The voice the agent speaks with resolves in this order: the environment
+  (`ELEVENLABS_VOICE_ID`) → the pick saved in the UI (`AgentBoard.Settings`,
+  key `elevenlabs_voice_id`) → the default (George). The TTS model resolves
+  the same way (`ELEVENLABS_TTS_MODEL` → `elevenlabs_tts_model` → the
+  default `eleven_flash_v2_5`); a saved model must be one of the offered
+  `AgentBoard.ElevenLabs.tts_models/0`. The Voice section of the settings
+  menu lists the account's voices, previews them through
+  `/api/voice/speech?voice=...`, saves with `PUT /api/voice/settings`,
+  speaks the board status in the agent's voice and dictates a task through
+  `/api/voice/transcribe` (MediaRecorder → Scribe). The controls are
+  `AgentBoardWeb.Components.VoicePanel` (rendered by the settings menu) and
+  its two JS hooks (`VoicePlayer`, `VoiceRecorder`) live in
+  `assets/js/hooks/`; the presentation stays out of `BoardLive`.
+- The endpoints refuse what would cost a wrong request before the network:
+  a text over 5000 characters (400), an audio body over the cap (413,
+  `:voice_audio_max_bytes`), a voice id that is not voice-shaped (400) and
+  a TTS model outside the catalog (400).
 
 ## AI calls
 

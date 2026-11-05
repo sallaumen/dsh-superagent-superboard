@@ -33,6 +33,13 @@ defmodule AgentBoardWeb.Router do
     post "/repos", BoardController, :add_repo
     post "/tasks", BoardController, :create_task
     patch "/tasks/:id", BoardController, :act
+
+    get "/voice/status", VoiceController, :status
+    get "/voice/voices", VoiceController, :voices
+    put "/voice/settings", VoiceController, :update
+    get "/voice/speech", VoiceController, :speech
+    post "/voice/speech", VoiceController, :speech_post
+    post "/voice/transcribe", VoiceController, :transcribe
   end
 
   # Enable LiveDashboard in development
