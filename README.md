@@ -6,7 +6,7 @@ the durable sync, **LiveView** for the real-time UI and **Req** for GitHub.
 ## Why Elixir
 
 - The **sync is a durable job**, not a hand-rolled loop: Oban retries it, the
-  supervisor restarts it, and the dashboard shows it. Cron runs it every minute.
+  supervisor restarts it, and the dashboard shows it. Cron runs it every five minutes.
 - The **board is real-time**: a `Phoenix.PubSub` broadcast updates every connected
   LiveView when the sync or an action changes a task — no browser polling.
 - The **data is migrations**, not a SQL file applied on boot: Ecto owns the
@@ -69,7 +69,7 @@ The loader lives in [config/runtime.exs](config/runtime.exs).
 ## What it does
 
 - **Syncs** the tracked repositories' issues and pull requests (the Oban
-  `Sync.Worker`, one cron run per minute).
+  `Sync.Worker`, one cron run every five minutes).
 - **Syncs reviews and CI** per pull request: `review_state` (approved, changes
   requested, pending) and `checks_state` (success, failure, pending), with the
   failing check named.
@@ -140,7 +140,7 @@ events, the PubSub broadcast) and the pipeline contract.
 ## The limits
 
 - The board is **eventually consistent**: the poller reads the runner every 10s
-  and the GitHub sync runs every minute, so a merged PR can take up to that
+  and the GitHub sync runs every five minutes, so a merged PR can take up to that
   long to show up.
 - The **poller is a one-shot per tick by design now**: `handle_info(:poll)`
   reschedules before polling, so a slow poll delays the next tick instead of
