@@ -63,14 +63,6 @@ If GitHub Actions can't start (no token/billing, jobs failing in seconds with
 zero steps): don't wait for CI — the local pipeline is the sufficient gate.
 See the rule in [PIPELINES.md](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
 
-## Developer scripts
-
-| Script | What it does |
-|---|---|
-| `mix gate` | the check-only gate: compile warnings, format, credo, tests |
-| `scripts/check_assets.sh` | read-only checks on the frontend sources (entrypoints, Tailwind config, debug leftovers) |
-| `scripts/ci-local.sh` | runs the same pipelines the CI runs, locally |
-
 ## CI
 
 `.github/workflows/ci.yml` has five jobs:

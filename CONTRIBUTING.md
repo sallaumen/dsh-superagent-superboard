@@ -26,7 +26,7 @@ O que cada script faz e quando usar está em [PIPELINES.md](PIPELINES.md). Os te
 
 A CI roda os mesmos comandos dos pipelines locais em cinco jobs (gates, backend em 4 partições, frontend, library, release).
 
-**Se a CI não consegue rodar** (sem token, billing ou runner; jobs falham em segundos com zero steps), não espere por ela: o pipeline local é o gate suficiente — rode `scripts/ci-local.sh all`, corrija até ficar verde e siga com commit/PR/merge, registrando no PR o comando executado como evidência. Re-verifique a CI via `workflow_dispatch` quando o bloqueio for resolvido. Regra completa em [PIPELINES.md](PIPELINES.md).
+Se a CI não consegue rodar (sem token, billing ou runner), **não espere por ela**: o pipeline local é o gate suficiente. A regra completa — como perceber, o que fazer, quando re-verificar — está em [PIPELINES.md](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
 
 ## Biblioteca de capacidades
 
