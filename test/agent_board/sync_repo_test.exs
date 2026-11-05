@@ -49,6 +49,18 @@ defmodule AgentBoard.SyncRepoTest do
              Repo.one(from t in Task, where: t.number == 7)
   end
 
+  test "an invalid issue is logged, not swallowed", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(9, "open") |> Map.put("title", nil)])
+        _ -> Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert Enum.any?(Board.events(repo), &(&1.kind == "issue_error"))
+  end
+
   test "a broken review does not kill the sync", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
@@ -65,8 +77,11 @@ defmodule AgentBoard.SyncRepoTest do
             }
           ])
 
-        "/repos/sallaumen/arena-rogue/pulls/9/reviews" -> Plug.Conn.send_resp(conn, 500, "boom")
-        _ -> Req.Test.json(conn, [])
+        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+          Plug.Conn.send_resp(conn, 500, "boom")
+
+        _ ->
+          Req.Test.json(conn, [])
       end
     end)
 

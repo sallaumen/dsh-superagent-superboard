@@ -130,6 +130,15 @@ defmodule AgentBoard.Sync do
       on_conflict: {:replace, [:title, :url, :updated_at]},
       conflict_target: [:repository_id, :kind, :number]
     )
+    |> case do
+      {:ok, _} ->
+        :ok
+
+      {:error, changeset} ->
+        Board.log_event(repository.id, "issue_error", "##{issue["number"]}", %{
+          "reason" => inspect(changeset.errors)
+        })
+    end
   end
 
   # -- the pull requests ------------------------------------------------------
