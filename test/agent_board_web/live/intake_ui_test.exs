@@ -64,8 +64,11 @@ defmodule AgentBoardWeb.IntakeUITest do
     view |> element("button", "Open") |> render_click()
 
     html = view |> element("#ask-agent") |> render_submit(%{"body" => "por que demora?"})
+    assert html =~ "Question sent"
 
-    assert html =~ "O sync roda a cada minuto."
+    # the model answers on another process: let it land, then render
+    Process.sleep(150)
+    assert render(view) =~ "O sync roda a cada minuto."
   end
 
   test "the panel says when the AI is not configured", %{conn: conn} do
