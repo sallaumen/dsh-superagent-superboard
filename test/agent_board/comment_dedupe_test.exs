@@ -41,8 +41,17 @@ defmodule AgentBoard.CommentDedupeTest do
       })
       |> Repo.insert!()
 
-    Board.upsert_comment(task, %{"id" => 5, "user" => %{"login" => "sallaumen"}, "body" => "v1"}, "agent")
-    Board.upsert_comment(task, %{"id" => 5, "user" => %{"login" => "sallaumen"}, "body" => "v2"}, "agent")
+    Board.upsert_comment(
+      task,
+      %{"id" => 5, "user" => %{"login" => "sallaumen"}, "body" => "v1"},
+      "agent"
+    )
+
+    Board.upsert_comment(
+      task,
+      %{"id" => 5, "user" => %{"login" => "sallaumen"}, "body" => "v2"},
+      "agent"
+    )
 
     assert [comment] = Board.comments(task)
     assert comment.body == "v2"

@@ -81,6 +81,32 @@ defmodule AgentBoard.SyncRepoTest do
     assert Enum.any?(Board.events(repo), &(&1.kind == "issue_error"))
   end
 
+  test "an invalid pull logs a pull_error", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/pulls" ->
+          Req.Test.json(conn, [
+            %{
+              "number" => 9,
+              "title" => nil,
+              "state" => "open",
+              "html_url" => "https://github.com/x/y/pull/9",
+              "user" => %{"login" => "sallaumen"},
+              "created_at" => "2026-11-04T00:00:00Z",
+              "head" => %{"sha" => "abc"}
+            }
+          ])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert Enum.any?(Board.events(repo), &(&1.kind == "pull_error"))
+    assert Repo.one(from p in AgentBoard.Board.PullRequest, where: p.number == 9) == nil
+  end
+
   test "a broken review does not kill the sync", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
