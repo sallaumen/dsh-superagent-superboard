@@ -43,6 +43,51 @@ defmodule AgentBoard.BoardTest do
     assert length(board.queued) == 1
   end
 
+  test "saved number lookup stays scoped to its repository and ignores pagination" do
+    {:ok, first} = Board.add_repository("fixture", "first")
+    {:ok, second} = Board.add_repository("fixture", "second")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: first.id,
+        kind: "issue",
+        number: 81,
+        title: "Older task",
+        state: "queued"
+      })
+      |> Repo.insert!()
+
+    for number <- 1..50 do
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: first.id,
+        kind: "issue",
+        number: number,
+        title: "Newer task #{number}",
+        state: "queued"
+      })
+      |> Repo.insert!()
+    end
+
+    pull =
+      %PullRequest{}
+      |> PullRequest.changeset(%{
+        repository_id: first.id,
+        number: 82,
+        title: "Older pull",
+        state: "merged"
+      })
+      |> Repo.insert!()
+
+    assert Board.find_task(first, 81).id == task.id
+    {:ok, board} = Board.board("fixture/first")
+    refute Enum.any?(board.queued, &(&1.id == task.id))
+    assert Board.find_pull_request(first, 82).id == pull.id
+    assert Board.find_task(second, 81) == nil
+    assert Board.find_pull_request(second, 82) == nil
+  end
+
   test "the merged column carries the review and CI rollups" do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 

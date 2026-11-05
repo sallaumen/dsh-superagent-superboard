@@ -119,6 +119,16 @@ defmodule AgentBoard.Board do
     end
   end
 
+  @doc "A saved issue in one repository, regardless of its board page or state."
+  def find_task(%Repository{id: repository_id}, number) when is_integer(number) do
+    Repo.get_by(Task, repository_id: repository_id, kind: "issue", number: number)
+  end
+
+  @doc "A saved pull request in one repository, regardless of its archive page."
+  def find_pull_request(%Repository{id: repository_id}, number) when is_integer(number) do
+    Repo.get_by(PullRequest, repository_id: repository_id, number: number)
+  end
+
   defp board_for(nil, _merged_limit, _task_limits) do
     %{
       repos: [],

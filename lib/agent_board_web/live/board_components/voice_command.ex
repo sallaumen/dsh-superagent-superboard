@@ -13,15 +13,21 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommand do
       <p id="voice-command-heading" class="voice-command-intro">
         Review what the board heard. Recording does not send a message or change a task.
       </p>
-      <form id="voice-command-form" phx-change="voice_draft_changed">
+      <form id="voice-command-form" phx-change="voice_draft_changed" phx-submit="voice_command">
         <label for="voice-command-text">Command</label>
         <textarea
           id="voice-command-text"
           name="text"
           rows="4"
           maxlength="2000"
+          required
           placeholder="Type a command or press Space twice on the board to record one"
         >{@draft}</textarea>
+        <div class="voice-command-actions">
+          <button type="submit" class="voice-command-run" phx-disable-with="Checking…">
+            Run read-only command
+          </button>
+        </div>
       </form>
       <div :if={@result} class="voice-command-result" data-kind={@result.kind} role="status">
         <p>{@result.text}</p>

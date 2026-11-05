@@ -32,3 +32,6 @@ O HTTP 404 do sync local continua como problema de acesso externo; a sinalizaç�
 corrigida. Servidor preexistente de outro checkout em 4002 preservado, auditoria em
 4003 e fixtures em 4004/localhost:4005. Sessões próprias encerradas; zero repositórios
 `fixture` persistidos após rollback no banco de teste.
+
+Revisão posterior: [comandos de voz somente leitura](voice-read-commands/README.md)
+registra capturas pareadas e o fluxo de navegador do PR #223.
