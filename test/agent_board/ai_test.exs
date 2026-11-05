@@ -3,7 +3,7 @@ defmodule AgentBoard.AITest do
   use AgentBoard.DataCase, async: false
 
   alias AgentBoard.AI
-  alias AgentBoard.AI.{Call, Providers}
+  alias AgentBoard.AI.{Cache, Call, Providers}
   alias AgentBoard.Repo
 
   @stub AgentBoard.AITest.Stub
@@ -29,6 +29,18 @@ defmodule AgentBoard.AITest do
   end
 
   defp answer(content) do
+    defaults = %{
+      "constraints" => [],
+      "non_goals" => [],
+      "risks" => [],
+      "open_questions" => [],
+      "assumptions" => [],
+      "ready" => true,
+      "language" => "pt"
+    }
+
+    content = defaults |> Map.merge(Jason.decode!(content)) |> Jason.encode!()
+
     %{
       "model" => "deepseek-flash",
       "choices" => [%{"message" => %{"content" => content}}],
@@ -94,7 +106,7 @@ defmodule AgentBoard.AITest do
                   "function" => %{
                     "name" => "respond",
                     "arguments" =>
-                      ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"language":"pt"})
+                      ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
                   }
                 }
               ]
@@ -173,9 +185,51 @@ defmodule AgentBoard.AITest do
     assert Repo.aggregate(Call, :count) == 2
   end
 
+  test "an old complete row with invalid JSON is not reused" do
+    inputs = %{text: "x"}
+
+    %Call{}
+    |> Call.changeset(%{
+      name: "refine_request",
+      engine: "deepseek",
+      status: "ok",
+      parse_state: "complete",
+      input_hash: Cache.key(:refine_request, :deepseek, "deepseek-flash", inputs),
+      json: %{"goal" => "x", "constraints" => "not an array"}
+    })
+    |> Repo.insert!()
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(~s({"goal":"fresh"}))) end)
+
+    assert {:ok, %{json: %{"goal" => "fresh"}, engine: :deepseek}} =
+             AI.call(:refine_request, inputs)
+
+    assert Repo.aggregate(Call, :count) == 2
+  end
+
   test "an unregistered call is refused and records nothing" do
     assert {:error, :unknown_call} = AI.call(:nope, %{text: "x"})
     assert Repo.aggregate(Call, :count) == 0
+  end
+
+  test "valid JSON with a wrong field type is recorded as partial and never cached" do
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, answer(~s({"goal":"x","constraints":"not an array"})))
+    end)
+
+    assert {:error, :malformed_output} = AI.call(:refine_request, %{text: "x"})
+    assert {:error, :malformed_output} = AI.call(:refine_request, %{text: "x"})
+
+    assert [first, second] = Repo.all(Call) |> Enum.sort_by(& &1.id)
+
+    for call <- [first, second] do
+      assert call.status == "error"
+      assert call.parse_state == "partial"
+      assert call.error == "malformed_output"
+      assert call.input_tokens == 10
+      assert call.output_tokens == 20
+      assert call.cost_micros > 0
+    end
   end
 
   test "a failed call records the error" do

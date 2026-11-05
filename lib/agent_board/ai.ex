@@ -10,7 +10,7 @@ defmodule AgentBoard.AI do
 
   import Ecto.Query
 
-  alias AgentBoard.AI.{Budget, Cache, Call, Providers, Registry, Request, Result}
+  alias AgentBoard.AI.{Budget, Cache, Call, Providers, Registry, Request, Result, Schema}
   alias AgentBoard.Repo
 
   @doc """
@@ -37,7 +37,10 @@ defmodule AgentBoard.AI do
   defp cached(_name, _spec, _inputs, []), do: :miss
 
   defp cached(name, spec, inputs, [provider | _rest]) do
-    Cache.get(Cache.key(name, provider, Providers.model(provider, spec.tier), inputs))
+    case Cache.get(Cache.key(name, provider, Providers.model(provider, spec.tier), inputs)) do
+      {:ok, json} -> if Schema.valid?(spec.json_schema, json), do: {:ok, json}, else: :miss
+      :miss -> :miss
+    end
   end
 
   defp attempt(_name, _spec, _inputs, []), do: {:error, :no_provider}
@@ -47,9 +50,26 @@ defmodule AgentBoard.AI do
     started = System.monotonic_time(:millisecond)
 
     case engine().run(request) do
-      {:ok, result} ->
-        record(name, spec, request, inputs, result, elapsed(started), :ok, nil)
-        {:ok, result}
+      {:ok, %Result{} = result} ->
+        if result.parse_state == :complete and Schema.valid?(spec.json_schema, result.json) do
+          record(name, spec, request, inputs, result, elapsed(started), :ok, nil)
+          {:ok, result}
+        else
+          result = %{result | parse_state: :partial}
+
+          record(
+            name,
+            spec,
+            request,
+            inputs,
+            result,
+            elapsed(started),
+            :error,
+            "malformed_output"
+          )
+
+          {:error, :malformed_output}
+        end
 
       {:error, reason} ->
         record(name, spec, request, inputs, %Result{}, elapsed(started), :error, inspect(reason))

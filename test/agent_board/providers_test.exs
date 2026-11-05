@@ -43,7 +43,14 @@ defmodule AgentBoard.ProvidersTest do
 
         Req.Test.json(conn, %{
           "model" => Providers.model(unquote(provider), :fast),
-          "choices" => [%{"message" => %{"content" => ~s({"goal":"x"})}}],
+          "choices" => [
+            %{
+              "message" => %{
+                "content" =>
+                  ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
+              }
+            }
+          ],
           "usage" => %{"prompt_tokens" => 10, "completion_tokens" => 20}
         })
       end)
