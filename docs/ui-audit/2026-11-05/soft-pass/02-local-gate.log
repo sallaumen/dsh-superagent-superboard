@@ -1,17 +1,37 @@
 == backend: mix gate + sobelow ==
-Compiling 1 file (.ex)
+Compiling 3 files (.ex)
 Checking 78 source files (this might take a while) ...
 
 Please report incorrect results: https://github.com/rrrene/credo/issues
 
-Analysis took 0.2 seconds (0.02s to load, 0.2s running 69 checks on 78 files)
-399 mods/funs, found no issues.
+Analysis took 0.1 seconds (0.02s to load, 0.1s running 69 checks on 78 files)
+400 mods/funs, found no issues.
 
 Use `mix credo explain` to explain issues, `mix credo --help` for options.
-Running ExUnit with seed: 59929, max_cases: 28
+Running ExUnit with seed: 411038, max_cases: 28
 
-.......................................................................................................................................................................................
-Finished in 16.1 seconds (5.1s async, 11.0s sync)
+.................................................................................................................................................................................10:32:06.388 [error] GenServer AgentBoard.Live terminating
+** (stop) exited in: DBConnection.Holder.checkout(#PID<0.7365.0>, [log: #Function<14.89431826/1 in Ecto.Adapters.SQL.with_log/4>, source: "repositories", cast_params: [], pool: DBConnection.Ownership, repo: AgentBoard.Repo, timeout: 15000, pool_size: 28])
+    ** (EXIT) shutdown: "owner #PID<0.7364.0> exited"
+    (db_connection 2.10.2) lib/db_connection/holder.ex:110: DBConnection.Holder.checkout/3
+    (db_connection 2.10.2) lib/db_connection/holder.ex:91: DBConnection.Holder.checkout/3
+    (db_connection 2.10.2) lib/db_connection.ex:1354: DBConnection.checkout/3
+    (db_connection 2.10.2) lib/db_connection.ex:1603: DBConnection.run_with_retries/5
+    (db_connection 2.10.2) lib/db_connection.ex:867: DBConnection.execute/4
+    (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:143: Ecto.Adapters.Postgres.Connection.execute/4
+    (ecto_sql 3.14.0) lib/ecto/adapters/sql.ex:1063: Ecto.Adapters.SQL.execute!/5
+    (ecto_sql 3.14.0) lib/ecto/adapters/sql.ex:1019: Ecto.Adapters.SQL.execute/6
+    (ecto 3.14.3) lib/ecto/repo/queryable.ex:248: Ecto.Repo.Queryable.execute/4
+    (ecto 3.14.3) lib/ecto/repo/queryable.ex:19: Ecto.Repo.Queryable.all/3
+    (agent_board 0.1.0) lib/agent_board/live.ex:48: AgentBoard.Live.poll_tickets/1
+    (agent_board 0.1.0) lib/agent_board/live.ex:38: AgentBoard.Live.poll/1
+    (agent_board 0.1.0) lib/agent_board/live.ex:31: AgentBoard.Live.handle_info/2
+    (stdlib 8.1) gen_server.erl:2434: :gen_server.try_handle_info/3
+    (stdlib 8.1) gen_server.erl:2420: :gen_server.handle_msg/3
+    (stdlib 8.1) proc_lib.erl:333: :proc_lib.init_p_do_apply/3
+Last message: :poll
+......
+Finished in 20.2 seconds (7.0s async, 13.2s sync)
 
 Result: 183 passed
 ##############################################
@@ -26,23 +46,23 @@ Result: 183 passed
 
 == frontend: check_assets -> assets.setup -> build -> deploy (MIX_ENV=dev) ==
 check_assets: OK (entradas, pipeline tailwind e JS sem debug).
-Compiling 1 file (.ex)
+Compiling 3 files (.ex)
 ≈ tailwindcss v4.3.0
 
 /*! 🌼 daisyUI 5.5.20 */
-Done in 138ms
+Done in 132ms
 
   ../priv/static/assets/js/app.js  345.4kb
 
-⚡ Done in 25ms
+⚡ Done in 26ms
 ≈ tailwindcss v4.3.0
 
 /*! 🌼 daisyUI 5.5.20 */
-Done in 135ms
+Done in 103ms
 
   ../priv/static/assets/js/app.js  153.4kb
 
-⚡ Done in 18ms
+⚡ Done in 15ms
 Check your digested files at "priv/static"
 == library: validador + testes da biblioteca de capacidades ==
 OK: 33 skills; 6 contextos; 22245 palavras nas instruções; 225 links locais conferidos.
@@ -68,7 +88,7 @@ test_unknown_related_detected (__main__.ValidatorTests.test_unknown_related_dete
 test_valid_library_passes (__main__.ValidatorTests.test_valid_library_passes) ... ok
 
 ----------------------------------------------------------------------
-Ran 20 tests in 0.852s
+Ran 20 tests in 0.790s
 
 OK
 OK: pipeline(s) verdes.
