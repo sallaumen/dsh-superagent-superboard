@@ -5,7 +5,7 @@
 # Padrão: all (backend + frontend + library; release é opt-in por ser lento).
 #
 # Pré-requisitos e efeitos: PIPELINES.md, seção "Matriz de scripts".
-set -euo pipefail
+set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
