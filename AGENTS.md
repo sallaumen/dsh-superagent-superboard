@@ -11,6 +11,8 @@ The board for the agent's work, in Elixir. Read this before changing code.
 | `AgentBoard.Sync.Worker` | the Oban job that runs the sync |
 | `AgentBoard.Live` | the 10s poller that reads the runner's tickets |
 | `AgentBoard.GitHub` | the HTTP client (`body!/1`, rate limits) |
+| `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
+| `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
 | `AgentBoard.Voice` | the spoken summary |
 | `AgentBoardWeb.BoardLive` | the real-time UI |
 | `AgentBoardWeb.BoardController` | the JSON API (`/api/...`) |
@@ -65,6 +67,22 @@ procedure lives in [PIPELINES.md](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-t
 
 - The server builds the summary (`AgentBoard.Voice`) and pushes it with
   `push_event/3`; the browser speaks it. The server never runs a TTS engine.
+
+## AI calls
+
+- **A call must exist in `AgentBoard.AI.Registry`.** The prompt comes from
+  code; a caller cannot invent one. Adding a call is a PR with a test.
+- **Every call is a row** in `ai_calls` -- engine, model, tier, tokens,
+  latency, parse state. A paid answer without a row is a bug.
+- **No retry.** A retried paid request is a second charge.
+- **The fast tier is the default.** `:deep` only when the result itself says
+  the fast one was not enough.
+- **A failure is a reason**, never a fabricated answer: `:not_configured`,
+  `:auth_expired`, `:usage_limit`, `{:http, status}`.
+- **`Budget.check/1` runs before the network.** Over the cap answers
+  `:budget_exhausted` and records nothing.
+- **A task that cannot close on its own is dropped**, not created
+  half-written (see `AgentBoard.Intake`).
 
 ## Types at the boundary
 
