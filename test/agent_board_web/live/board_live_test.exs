@@ -41,6 +41,15 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert_receive :board_updated
   end
 
+  test "the board opens on o_colmex when it is tracked", %{conn: conn} do
+    {:ok, _arena} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _colmex} = Board.add_repository("sallaumen", "o_colmex")
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ "o_colmex"
+  end
+
   test "the activity panel shows the recorded events", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
     Board.log_event(repo.id, "sync", "sallaumen/arena-rogue", %{"pulls" => 8})
