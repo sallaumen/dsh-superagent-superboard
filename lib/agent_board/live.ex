@@ -32,6 +32,14 @@ defmodule AgentBoard.Live do
 
   @doc "One poll: overlay the tickets on the tasks and broadcast when the hash changed."
   def poll(state \\ %{}) do
+    poll_tickets(state)
+  rescue
+    # The runner's sqlite can be absent or corrupt; the poller must survive it
+    # and the GenServer must keep its schedule.
+    _exception -> state
+  end
+
+  defp poll_tickets(state) do
     tickets = Sync.normalized_tickets()
 
     Repo.all(Repository)
