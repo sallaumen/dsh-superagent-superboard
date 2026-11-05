@@ -26,13 +26,15 @@ import {hooks as colocatedHooks} from "phoenix-colocated/agent_board"
 import {BoardPanels} from "./hooks/board_panels"
 import {DataAge} from "./hooks/data_age"
 import {SettingsMenu} from "./hooks/settings_menu"
+import {VoicePlayer} from "./hooks/voice_player"
+import {VoiceRecorder} from "./hooks/voice_recorder"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, DataAge, BoardPanels, SettingsMenu},
+  hooks: {...colocatedHooks, DataAge, BoardPanels, SettingsMenu, VoicePlayer, VoiceRecorder},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.

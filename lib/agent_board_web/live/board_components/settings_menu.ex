@@ -2,7 +2,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   @moduledoc "Secondary board controls grouped behind a native disclosure."
   use AgentBoardWeb, :live_component
 
-  alias AgentBoardWeb.Components.SystemPanel
+  alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
   @impl true
   def render(assigns) do
@@ -56,18 +56,27 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
         <section aria-labelledby="settings-voice">
           <h3 id="settings-voice">Voice</h3>
+          <p>Pick the agent's ElevenLabs voice and model, then try it.</p>
+
+          <VoicePanel.voice_panel voice={@voice} repo={@repo != nil} />
+
           <div class="settings-actions">
-            <button type="button" phx-click="speak">Speak status</button>
-            <button type="button" phx-click="dictate">Dictate task</button>
+            <button type="button" phx-click="speak">
+              <.icon name="hero-speaker-wave" class="size-4" />Speak status
+            </button>
+            <button
+              :if={@voice.configured and @repo}
+              id="voice-dictate"
+              type="button"
+              phx-hook="VoiceRecorder"
+              data-max-seconds="20"
+            >
+              <.icon name="hero-microphone" class="size-4" />Dictate task
+            </button>
+            <button :if={not @voice.configured} type="button" phx-click="dictate">
+              <.icon name="hero-microphone" class="size-4" />Dictate task
+            </button>
           </div>
-          <p
-            id="voice-feedback"
-            role="status"
-            aria-live="polite"
-            phx-update="ignore"
-            class="empty:hidden"
-          >
-          </p>
         </section>
 
         <section aria-labelledby="settings-appearance">

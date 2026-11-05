@@ -13,8 +13,6 @@ defmodule AgentBoard.Live do
   alias AgentBoard.Board.{Repository, Task}
   alias AgentBoard.Repo
 
-  @interval 10_000
-
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts, name: __MODULE__)
 
   @impl true
@@ -31,7 +29,11 @@ defmodule AgentBoard.Live do
     {:noreply, poll(state)}
   end
 
-  defp schedule, do: Process.send_after(self(), :poll, @interval)
+  # The interval is a knob: the test environment stretches it so the
+  # supervised poller never touches the sandboxed database mid-suite.
+  defp schedule, do: Process.send_after(self(), :poll, interval())
+
+  defp interval, do: Application.get_env(:agent_board, :live_poll_interval, 10_000)
 
   @doc "One poll: overlay the tickets on the tasks and broadcast when the hash changed."
   def poll(state \\ %{}) do

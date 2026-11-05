@@ -79,6 +79,21 @@ The loader lives in [config/runtime.exs](config/runtime.exs).
 - **Stops** (the flag plus closing the issue) and **archives** a task.
 - **Speaks**: "Speak status" reads the board out loud (the Web Speech API);
   "Dictate task" turns a sentence into a task title.
+- **Speaks back, unprompted**: the board announces what changed in the
+  agent's voice — task overlays moving between the lanes, syncs getting
+  worse, answers to spoken questions — and the mic in the task conversation
+  records a question straight into the ask form. The toggle lives in the
+  Voice settings.
+- **Speaks back**: the ElevenLabs client (`AgentBoard.ElevenLabs`) generates
+  server-side speech and transcription at `/api/voice/...` — text to speech,
+  speech to text and the account's voices, with the key read from
+  `ELEVENLABS_API_KEY` in `.env.local`, never from code. The **Voice** section
+  of the settings menu configures the agent's voice: list the account's voices and
+  preview each one, pick the TTS model (flash-fast vs v4-quality), save —
+  the choices persist in the database and `ELEVENLABS_VOICE_ID` /
+  `ELEVENLABS_TTS_MODEL` in the environment override them. From the same
+  section the agent speaks the board status aloud and dictates a task
+  (mic recording → ElevenLabs Scribe → task title).
 - **Exposes a JSON API** under `/api` — the board, the repositories and the
   task actions; documented in [docs/api.md](docs/api.md).
 - **More docs** — the AI-layer plan and the recorded decisions live in
@@ -117,9 +132,10 @@ The branch and pull request workflow is in [CONTRIBUTING.md](CONTRIBUTING.md).
 ## The tests
 
 `mix test` covers each layer: the state mapping (the ticket overlay, the review
-and check rollups), the voice summary, the sync against a fake GitHub (no
-network), the JSON API controllers, the LiveView (the columns, the empty
-state, the voice events, the PubSub broadcast) and the pipeline contract.
+and check rollups), the voice summary, the ElevenLabs client (stubbed, no
+network), the sync against a fake GitHub (no network), the JSON API controllers
+(board and voice), the LiveView (the columns, the empty state, the voice
+events, the PubSub broadcast) and the pipeline contract.
 
 ## The limits
 
@@ -132,7 +148,9 @@ state, the voice events, the PubSub broadcast) and the pipeline contract.
 - **Stop** is the board's flag plus closing the issue. A worker already running
   finishes its current ticket: the Super-Agent API has no cancel endpoint.
 - The board **reads** the agent's state; it never writes to it.
-- The voice uses the browser's speech APIs; no server-side TTS.
+- The spoken summary uses the browser's Web Speech API; server-side TTS and
+  STT (ElevenLabs) live behind `/api/voice` and answer with a reason on
+  failure, never a raise.
 
 ## The capabilities library
 

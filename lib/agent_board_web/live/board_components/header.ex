@@ -42,6 +42,7 @@ defmodule AgentBoardWeb.BoardComponents.Header do
           repo={@repo}
           version={@version}
           busy={@busy}
+          voice={@voice}
         />
       </div>
       <div class="board-commandbar">
@@ -104,6 +105,14 @@ defmodule AgentBoardWeb.BoardComponents.Header do
             />
           </span>
         </div>
+        <p
+          id="voice-feedback"
+          role="status"
+          aria-live="polite"
+          phx-update="ignore"
+          class="voice-feedback empty:hidden"
+        >
+        </p>
       </div>
     </header>
     """

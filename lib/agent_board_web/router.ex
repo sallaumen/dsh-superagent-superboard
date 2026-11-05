@@ -19,6 +19,13 @@ defmodule AgentBoardWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # Audio responses are not JSON: the browser fetches the speech endpoint
+  # with `Accept: audio/mpeg` (which Phoenix maps to the "mp3" format), and
+  # the error bodies are still JSON.
+  pipeline :voice do
+    plug :accepts, ["json", "mp3"]
+  end
+
   scope "/", AgentBoardWeb do
     pipe_through :browser
 
@@ -33,6 +40,18 @@ defmodule AgentBoardWeb.Router do
     post "/repos", BoardController, :add_repo
     post "/tasks", BoardController, :create_task
     patch "/tasks/:id", BoardController, :act
+
+    get "/voice/status", VoiceController, :status
+    get "/voice/voices", VoiceController, :voices
+    put "/voice/settings", VoiceController, :update
+    post "/voice/transcribe", VoiceController, :transcribe
+  end
+
+  scope "/api", AgentBoardWeb do
+    pipe_through :voice
+
+    get "/voice/speech", VoiceController, :speech
+    post "/voice/speech", VoiceController, :speech_post
   end
 
   # Enable LiveDashboard in development
