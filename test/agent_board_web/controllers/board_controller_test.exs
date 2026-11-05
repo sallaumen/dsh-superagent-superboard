@@ -77,6 +77,42 @@ defmodule AgentBoardWeb.BoardControllerTest do
     assert Repo.get(Task, t.id).archived
   end
 
+  test "PATCH /api/tasks resumes an archived task", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    t = task(repo, 3, "Resume me", "queued")
+    {:ok, _} = Board.archive_task(t)
+
+    conn = patch(conn, "/api/tasks/#{t.id}", %{action: "resume"})
+
+    assert %{"ok" => true} = json_response(conn, 200)
+    refute Repo.get(Task, t.id).archived
+  end
+
+  test "PATCH /api/tasks stops a task through the injected client", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    t = task(repo, 4, "Stop me", "queued")
+
+    previous = Application.get_env(:agent_board, :github_client)
+    on_exit(fn -> Application.put_env(:agent_board, :github_client, previous) end)
+
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(
+        base_url: "https://api.github.com",
+        plug: {Req.Test, AgentBoardWeb.BoardControllerTest.Stub2},
+        retry: false
+      )
+    end)
+
+    Req.Test.stub(AgentBoardWeb.BoardControllerTest.Stub2, fn conn ->
+      Req.Test.json(conn, %{"state" => "closed"})
+    end)
+
+    conn = patch(conn, "/api/tasks/#{t.id}", %{action: "stop"})
+
+    assert %{"ok" => true} = json_response(conn, 200)
+    assert Repo.get(Task, t.id).stopped
+  end
+
   test "PATCH /api/tasks is 404 for an unknown task", %{conn: conn} do
     conn = patch(conn, "/api/tasks/999999", %{action: "archive"})
 
