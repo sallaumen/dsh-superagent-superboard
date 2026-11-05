@@ -246,11 +246,11 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
-  defp has_errors?(%{payload: payload}) do
-    case payload["errors"] do
-      n when is_integer(n) -> n > 0
-      _ -> false
-    end
+  # A sync event carries an errors count; the per-item failures (issue_error,
+  # pull_error, ...) carry a reason. Both must read as problems.
+  defp has_errors?(%{kind: kind, payload: payload}) do
+    String.ends_with?(kind || "", "_error") or
+      (is_integer(payload["errors"]) and payload["errors"] > 0)
   end
 
   @max_payload 120

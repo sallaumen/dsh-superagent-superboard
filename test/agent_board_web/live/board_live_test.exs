@@ -16,6 +16,16 @@ defmodule AgentBoardWeb.BoardLiveTest do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
 
+  test "a per-item error event is shown as an error", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    Board.log_event(repo.id, "issue_error", "#7", %{"reason" => "boom"})
+
+    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    assert html =~ "text-[#f0b3b3]"
+  end
+
   test "the sync line says 1 error, not 1 errors", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
