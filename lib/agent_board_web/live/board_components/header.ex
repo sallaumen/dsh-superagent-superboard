@@ -36,30 +36,13 @@ defmodule AgentBoardWeb.BoardComponents.Header do
             </select>
           </form>
         </div>
-        <details id="repository-settings" class="repository-settings">
-          <summary>Repositories <.icon name="hero-chevron-down" class="size-3" /></summary>
-          <div class="repository-settings-body">
-            <p class="board-eyebrow">Track another repository</p>
-            <form id="track-repo" phx-submit="add" class="flex flex-wrap items-center gap-2">
-              <input
-                name="owner"
-                placeholder="owner"
-                aria-label="Owner"
-                class="w-20 border border-base-content/10 bg-base-200 px-3 py-2 text-sm sm:w-28"
-              />
-              <input
-                name="name"
-                placeholder="repo name"
-                aria-label="Repository name"
-                class="w-24 border border-base-content/10 bg-base-200 px-3 py-2 text-sm sm:w-36"
-              />
-              <button
-                class="border border-base-content/10 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary hover:bg-base-300"
-                phx-disable-with="Tracking…"
-              >Track repo</button>
-            </form>
-          </div>
-        </details>
+        <.live_component
+          module={AgentBoardWeb.BoardComponents.SettingsMenu}
+          id="board-settings"
+          repo={@repo}
+          version={@version}
+          busy={@busy}
+        />
       </div>
       <div class="board-commandbar">
         <div class="board-health">
@@ -121,31 +104,7 @@ defmodule AgentBoardWeb.BoardComponents.Header do
             />
           </span>
         </div>
-        <div class="board-utilities">
-          <button
-            phx-click="speak"
-            class="border border-base-content/10 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary hover:bg-base-300"
-          >
-            Speak status
-          </button>
-          <button
-            phx-click="dictate"
-            class="border border-base-content/10 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary hover:bg-base-300"
-          >
-            Dictate task
-          </button>
-
-          <Layouts.theme_toggle />
-        </div>
       </div>
-      <p
-        id="voice-feedback"
-        role="status"
-        aria-live="polite"
-        phx-update="ignore"
-        class="w-full text-xs empty:hidden"
-      >
-      </p>
     </header>
     """
   end

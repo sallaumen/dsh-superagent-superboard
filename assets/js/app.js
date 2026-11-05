@@ -25,19 +25,20 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/agent_board"
 import {BoardPanels} from "./hooks/board_panels"
 import {DataAge} from "./hooks/data_age"
+import {SettingsMenu} from "./hooks/settings_menu"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, DataAge, BoardPanels},
+  hooks: {...colocatedHooks, DataAge, BoardPanels, SettingsMenu},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
       if (from.matches("dialog.board-dialog")) to.toggleAttribute("open", from.open)
       // Native disclosures should remain open while a broadcast refreshes their records.
-      if (from.matches("#merged-history, #repository-settings")) to.toggleAttribute("open", from.open)
+      if (from.matches("#merged-history, #board-settings")) to.toggleAttribute("open", from.open)
     },
   },
 })

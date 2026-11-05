@@ -365,6 +365,21 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#version-panel button", "Check")
   end
 
+  test "secondary controls live in settings while the primary request action stays visible", %{
+    conn: conn
+  } do
+    {:ok, _repo} = Board.add_repository("fixture", "settings")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/settings")
+
+    assert has_element?(view, "#board-settings summary", "Settings")
+    assert has_element?(view, "#board-settings #track-repo")
+    assert has_element?(view, "#board-settings #version-panel")
+    assert has_element?(view, "#board-settings #open-activity")
+    assert has_element?(view, "#board-settings #open-ai")
+    assert has_element?(view, "#board-tools #open-intake", "Split a request")
+    refute has_element?(view, "#board-tools #open-ai")
+  end
+
   test "the AI panel shows the last calls", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
@@ -582,13 +597,14 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "Queued"
   end
 
-  test "the track inputs shrink on small screens", %{conn: conn} do
+  test "the settings menu keeps named repository tracking fields", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
-    {:ok, _view, html} = live(conn, ~p"/")
+    {:ok, view, _html} = live(conn, ~p"/")
 
-    assert html =~ "sm:w-28"
-    assert html =~ "sm:w-36"
+    assert has_element?(view, "#board-settings input[name=owner][aria-label=Owner]")
+    assert has_element?(view, "#board-settings input[name=name][aria-label='Repository name']")
+    assert has_element?(view, "#board-settings #track-repo[phx-submit=add]")
   end
 
   test "the columns stack on small screens", %{conn: conn} do
