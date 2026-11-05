@@ -80,7 +80,7 @@ defmodule AgentBoard.AI.Registry do
     propose_tasks: %{
       name: :propose_tasks,
       tier: :fast,
-      output_cap: 2048,
+      output_cap: 4096,
       system: """
       You split a refined specification into independent tasks.
       Reply with JSON only, matching the schema.
@@ -88,6 +88,7 @@ defmodule AgentBoard.AI.Registry do
       depends_on uses indices of this list, only when there is a real order.
       A size L task is almost always two tasks.
       Keep every constraint and non_goal; a task that violates one is wrong.
+      Keep each body under 400 characters: the whole list must fit one answer.
       """,
       json_schema: @tasks_schema
     }

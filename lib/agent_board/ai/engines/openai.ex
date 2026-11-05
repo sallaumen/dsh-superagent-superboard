@@ -139,6 +139,9 @@ defmodule AgentBoard.AI.Engines.OpenAI do
         {"accept", "application/json"},
         {"authorization", "Bearer #{Providers.key(provider_id)}"}
       ],
+      # A long refine on the real model passes the 15s default and comes back
+      # as a transport error; the answer is worth waiting for.
+      receive_timeout: 90_000,
       retry: false
     )
   end
