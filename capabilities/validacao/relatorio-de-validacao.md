@@ -15,7 +15,7 @@
 - Adaptações aplicadas: referências cruzadas renomeadas para nomes de skills; menções a "prompt" ajustadas onde descreviam a própria capacidade; seções do compositor removidas; manifestos e catálogos reescritos; seção final dos roteiros corrigida (a substituição da seção "Transformação desta biblioteca em skills" foi detectada na revisão pós-geração e corrigida).
 - Não foram encontradas contradições materiais entre prompts; a fusão P12+P13 removeu a duplicação de técnica de evidência e P01+P02 centralizou a mecânica de coordenação.
 - A revisão estática independente citada pela edição de origem cobria P01–P14 e P34; esta edição releu o conjunto completo.
-- Pós-incorporação, a capacidade `pipelines-e-ci` (B01) foi adicionada pelo fluxo documentado de novas capacidades e relida integralmente; os casos de avaliação ganharam o cenário E28.
+- Pós-incorporação, a capacidade `pipelines-e-ci` (B01) foi adicionada pelo fluxo documentado de novas capacidades e relida integralmente; os casos de avaliação ganharam os cenários E28 (roteamento da nova capacidade) e E29 (pedido trivial de documentação → NONE, mesmo precedente do E18).
 
 ## 3. Resultados das verificações executadas
 

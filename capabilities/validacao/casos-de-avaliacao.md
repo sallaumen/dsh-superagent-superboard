@@ -21,7 +21,7 @@ Não use uma nota agregada para esconder um erro grave de permissão ou integrid
 
 ## Cobertura dos casos
 
-Há casos positivos, vizinhos de outras capacidades e pequenos pedidos que não devem disparar uma revisão ampla (E18). Foram incluídas situações de arquitetura, UI, histórico mobile, performance, mensageria, IA, fornecedores, testes, code review, custos, versões, alertas, migrations, segurança, dados e incorporação. Os casos E25–E27 foram acrescentados nesta edição para cobrir contexto indevido de jogo, ambiente sem delegação e ação externa sem autorização.
+Há casos positivos, vizinhos de outras capacidades e pequenos pedidos que não devem disparar uma revisão ampla (E18). Foram incluídas situações de arquitetura, UI, histórico mobile, performance, mensageria, IA, fornecedores, testes, code review, custos, versões, alertas, migrations, segurança, dados e incorporação. Os casos E25–E27 foram acrescentados nesta edição para cobrir contexto indevido de jogo, ambiente sem delegação e ação externa sem autorização. Pós-incorporação, E28 cobre a capacidade `pipelines-e-ci` e E29 formaliza pedidos triviais de documentação como NONE (mesmo precedente do E18).
 
 O cenário de comportamento do `code-review` usa a fixture em [fixtures/code-review/change.diff](fixtures/code-review/change.diff): a mudança retira o filtro da variante ao selecionar fornecedores elegíveis. O esperado é um achado de regressão com precondição, impacto e evidência, **sem** alteração dos arquivos (modo somente leitura).
 
