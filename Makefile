@@ -24,7 +24,8 @@ help: ## Lista os pipelines e quando usar cada um
 backend: ## Gates do backend: compile sem warnings + format check + credo + testes
 	mix gate
 
-frontend: ## Pipeline de assets: instala ferramentas, compila e digere
+frontend: ## Pipeline de assets: checks, instala ferramentas, compila e digere
+	bash scripts/check_assets.sh
 	mix assets.setup
 	mix assets.build
 	mix assets.deploy
