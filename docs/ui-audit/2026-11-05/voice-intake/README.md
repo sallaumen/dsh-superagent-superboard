@@ -16,7 +16,9 @@ WebKit accessibility snapshot: the native dialog retained its name and close
 button; the request became a labeled multiline textbox; the selected
 repository and the consequence of Split are visible. At 375px, typing kept
 focus in the textbox, the page width stayed 375px, Escape closed the dialog
-in-place, and the console reported zero errors. The voice-draft banner and
+in-place, and the console reported zero errors. The dev-only live-reload frame
+logged one TLS/clear-channel warning during the second capture; it did not
+affect the dialog. The voice-draft banner and
 the full double-Space flow await the preceding voice-panel PR for browser
 verification; LiveView tests cover preparation, editing, refresh preservation,
 and a stale repository rejection in this PR.

@@ -6,15 +6,9 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
   def render(assigns) do
     ~H"""
     <section id={@id} class="border-t border-base-content/10 px-5 py-4">
-      <div class="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 class="text-[11px] uppercase tracking-[0.16em] text-base-content/75">
-          Split a request
-        </h2>
-        <p id="intake-repository" class="text-xs text-base-content/75">
-          Repository
-          <strong class="font-semibold text-base-content">{@repo.owner}/{@repo.name}</strong>
-        </p>
-      </div>
+      <p id="intake-repository" class="mb-4 text-xs text-base-content/75 sm:text-right">
+        Repository <strong class="font-semibold text-base-content">{@repo.owner}/{@repo.name}</strong>
+      </p>
 
       <p
         :if={@draft && @draft.source == :voice}
