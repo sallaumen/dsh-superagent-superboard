@@ -9,7 +9,7 @@ Interações com dados reais somente leitura. Auditoria via WebKit headless,
 | #154 | Tema, tokens, contraste e foco | [01-theme](01-theme.md) | 151 testes Elixir + assets + biblioteca |
 | #158 | Densidade, títulos, Activity e responsividade | [02-layout](02-layout.md) | 151 testes Elixir + assets + biblioteca |
 | #161 | Saúde, reconexão e contagens verdadeiras | [03-health](03-health.md) | 154 testes Elixir + assets + biblioteca |
-| Ações e feedback | Sucesso/erro, contexto de conversa, AI e voz | [04-actions](04-actions.md) | 158 testes Elixir + assets + biblioteca |
+| #164 | Sucesso/erro, contexto de conversa, AI e voz | [04-actions](04-actions.md) | 158 testes Elixir + assets + biblioteca |
 
 Todos passaram `scripts/ci-local.sh all`: `mix gate`, `scripts/check_assets.sh`,
 `mix assets.build`, assets.deploy, validador e 20 testes da biblioteca.
