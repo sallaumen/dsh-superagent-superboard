@@ -53,6 +53,18 @@ the blocker is resolved.
 - The server builds the summary (`AgentBoard.Voice`) and pushes it with
   `push_event/3`; the browser speaks it. The server never runs a TTS engine.
 
+## What the header shows
+
+- **live / static**: whether the LiveView is connected (the real-time channel
+  works) or serving the static render.
+- **synced HH:MM · clean / N errors**: the last `sync` event. `clean` means the
+  run completed with `errors == 0`; `N errors` counts `issue_error`,
+  `pull_error` and `comment_error` in that run. If there is no `sync` event,
+  it says `no sync yet`.
+
+The header is the health line: if it says errors, open the activity panel,
+where each failing item is one row.
+
 ## Network paths
 
 - Every GitHub call goes through `AgentBoard.GitHub`. A 4xx/5xx is **not** a
