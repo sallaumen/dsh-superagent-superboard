@@ -77,6 +77,20 @@ defmodule AgentBoardWeb.BoardControllerTest do
     assert Repo.get(Task, t.id).archived
   end
 
+  test "PATCH /api/tasks stop with a failing GitHub is not a 500", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    t = task(repo, 3, "Stop me", "queued")
+
+    Req.Test.stub(AgentBoard.BoardControllerTest.Stub, fn conn ->
+      Plug.Conn.send_resp(conn, 500, "boom")
+    end)
+
+    conn =
+      patch(conn, "/api/tasks/#{t.id}", %{action: "stop"})
+
+    assert json_response(conn, 404)
+  end
+
   test "PATCH /api/tasks resumes an archived task", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
     t = task(repo, 3, "Resume me", "queued")
