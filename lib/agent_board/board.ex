@@ -9,8 +9,12 @@ defmodule AgentBoard.Board do
   alias AgentBoard.Repo
 
   @merged_page_size 50
+  @task_page_size 50
+  @task_states [:running, :ready, :blocked, :queued]
 
   def merged_page_size, do: @merged_page_size
+  def task_page_size, do: @task_page_size
+  def task_states, do: @task_states
 
   @doc "Every tracked repository."
   def list_repositories, do: Repo.all(from r in Repository, order_by: r.id)
@@ -40,15 +44,40 @@ defmodule AgentBoard.Board do
   def delete_repository(id), do: Repo.delete_all(from r in Repository, where: r.id == ^id)
 
   @doc "The board for a repository (the slug) or the first one."
-  def board(slug, merged_limit \\ @merged_page_size)
+  def board(slug, merged_limit \\ @merged_page_size, task_limits \\ %{})
 
-  def board(nil, merged_limit), do: {:ok, board_for(first_repository(), merged_limit)}
+  def board(nil, merged_limit, task_limits),
+    do: {:ok, board_for(first_repository(), merged_limit, task_limits)}
 
-  def board(slug, merged_limit) do
+  def board(slug, merged_limit, task_limits) do
     case repository_by_slug(slug) do
       nil -> :error
-      repository -> {:ok, board_for(repository, merged_limit)}
+      repository -> {:ok, board_for(repository, merged_limit, task_limits)}
     end
+  end
+
+  @doc "A stable page of tasks in one active lane, newest updates first."
+  def task_page(repository_id, state, cursor, limit \\ @task_page_size)
+      when state in @task_states do
+    state_name = Atom.to_string(state)
+
+    base =
+      from t in Task,
+        where: t.repository_id == ^repository_id and t.state == ^state_name,
+        order_by: [desc: t.updated_at, desc: t.id],
+        limit: ^limit
+
+    query =
+      case cursor do
+        nil ->
+          base
+
+        {%DateTime{} = updated_at, id} ->
+          from t in base,
+            where: t.updated_at < ^updated_at or (t.updated_at == ^updated_at and t.id < ^id)
+      end
+
+    Repo.all(query)
   end
 
   @doc "A stable page of merged pull requests, ordered newest first."
@@ -90,7 +119,7 @@ defmodule AgentBoard.Board do
     end
   end
 
-  defp board_for(nil, _merged_limit) do
+  defp board_for(nil, _merged_limit, _task_limits) do
     %{
       repos: [],
       repo: nil,
@@ -99,27 +128,43 @@ defmodule AgentBoard.Board do
       blocked: [],
       merged: [],
       merged_has_more: false,
-      queued: []
+      queued: [],
+      task_counts: Map.new(@task_states, &{&1, 0}),
+      task_has_more: Map.new(@task_states, &{&1, false})
     }
   end
 
-  defp board_for(repository, merged_limit) do
-    base = from t in Task, where: t.repository_id == ^repository.id
+  defp board_for(repository, merged_limit, task_limits) do
     merged_rows = merged_page(repository.id, nil, merged_limit + 1)
+    task_pages = load_task_pages(repository.id, task_limits)
+    state_names = Enum.map(@task_states, &Atom.to_string/1)
+
+    counts_by_name =
+      Repo.all(
+        from t in Task,
+          where: t.repository_id == ^repository.id and t.state in ^state_names,
+          group_by: t.state,
+          select: {t.state, count(t.id)}
+      )
+      |> Map.new()
 
     %{
       repos: list_repositories(),
       repo: "#{repository.owner}/#{repository.name}",
-      running:
-        Repo.all(from t in base, where: t.state == "running", order_by: [desc: t.updated_at]),
-      ready: Repo.all(from t in base, where: t.state == "ready", order_by: [desc: t.updated_at]),
-      blocked:
-        Repo.all(from t in base, where: t.state == "blocked", order_by: [desc: t.updated_at]),
-      queued:
-        Repo.all(from t in base, where: t.state == "queued", order_by: [desc: t.updated_at]),
       merged: Enum.take(merged_rows, merged_limit),
-      merged_has_more: length(merged_rows) > merged_limit
+      merged_has_more: length(merged_rows) > merged_limit,
+      task_counts: Map.new(@task_states, &{&1, Map.get(counts_by_name, Atom.to_string(&1), 0)}),
+      task_has_more: Map.new(@task_states, &{&1, task_pages[&1].has_more})
     }
+    |> Map.merge(Map.new(@task_states, &{&1, task_pages[&1].items}))
+  end
+
+  defp load_task_pages(repository_id, limits) do
+    Map.new(@task_states, fn state ->
+      limit = Map.get(limits, state, @task_page_size)
+      rows = task_page(repository_id, state, nil, limit + 1)
+      {state, %{items: Enum.take(rows, limit), has_more: length(rows) > limit}}
+    end)
   end
 
   @doc "Create a task by opening an issue that mentions the agent."

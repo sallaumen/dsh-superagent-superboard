@@ -9,25 +9,27 @@ defmodule AgentBoardWeb.BoardComponents.Column do
     ~H"""
     <section
       id={@id}
-      aria-label={@title <> " tasks"}
+      aria-label={"#{@title} tasks, #{@total} total"}
       tabindex="0"
       data-state={@state}
-      data-attention={to_string(@state == :blocked and @items != [])}
+      data-attention={to_string(@state == :blocked and @total > 0)}
       class={["board-column bg-base-100", @items == [] && "is-empty"]}
     >
       <h2 class="lane-heading">
         <span>{@title}</span>
         <span class="lane-count">
-          {length(@items)}
+          {@total}
         </span>
       </h2>
 
       <div
         :if={@items != []}
+        id={"#{@id}-list"}
         class="lane-items"
         role="region"
         tabindex="0"
         aria-label={@title <> " task list"}
+        phx-viewport-bottom={if @has_more, do: "load_more_tasks"}
       >
         <.live_component
           :for={item <- @items}
@@ -36,6 +38,13 @@ defmodule AgentBoardWeb.BoardComponents.Column do
           item={item}
           state={@state}
         />
+        <p
+          :if={@has_more}
+          id={"task-tail-#{@state}-#{List.last(@items).id}"}
+          class="lane-tail"
+        >
+          Scroll for more {@title} tasks · {length(@items)} of {@total} loaded
+        </p>
       </div>
 
       <p :if={@items == []} class="lane-empty">
