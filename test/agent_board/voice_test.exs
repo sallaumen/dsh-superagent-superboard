@@ -1,6 +1,6 @@
 defmodule AgentBoard.VoiceTest do
   @moduledoc "The voice: the spoken summary."
-  use ExUnit.Case, async: true
+  use AgentBoard.DataCase, async: false
 
   alias AgentBoard.Voice
 
