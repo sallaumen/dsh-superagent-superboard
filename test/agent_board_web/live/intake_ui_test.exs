@@ -125,7 +125,7 @@ defmodule AgentBoardWeb.IntakeUITest do
         if Enum.any?(payload["messages"], &String.contains?(&1["content"], "Specification")) do
           ~s({"tasks":[{"title":"medir o tempo","body":"mede","kind":"bug","acceptance":["p95"],"depends_on":[],"size":"S"}]})
         else
-          ~s({"goal":"o board responde rapido","constraints":[],"non_goals":[],"risks":[],"open_questions":["qual volume?"],"language":"pt"})
+          ~s({"goal":"o board responde rapido","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"language":"pt"})
         end
 
       Req.Test.json(conn, answer(content))
@@ -136,7 +136,6 @@ defmodule AgentBoardWeb.IntakeUITest do
     html = view |> element("#intake-form") |> render_submit(%{"text" => "o board ta lento"})
 
     assert html =~ "o board responde rapido"
-    assert html =~ "qual volume?"
     assert html =~ "medir o tempo"
     assert html =~ "Latest 2 calls across the board."
     assert html =~ "refine_request"

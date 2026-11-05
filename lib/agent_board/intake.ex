@@ -21,14 +21,32 @@ defmodule AgentBoard.Intake do
   @spec propose(spec()) :: {:ok, [task()]} | {:error, term()}
   def propose(spec), do: call(:propose_tasks, %{spec: spec}, :propose_tasks)
 
-  @doc "The whole intake: refine, then split."
-  @spec run(String.t()) :: {:ok, %{spec: spec(), tasks: [task()]}} | {:error, term()}
+  @doc """
+  The whole intake: refine, then split -- unless the spec still has open
+  questions.
+
+  A pipeline that always answers with tasks is worse than one that asks: it
+  turns an unclear request into confident, wrong work. When the model could
+  not pin the request down, the result is the questions and no tasks.
+  """
+  @spec run(String.t()) ::
+          {:ok, %{spec: spec(), tasks: [task()], status: :ready | :needs_clarification}}
+          | {:error, term()}
   def run(text) do
-    with {:ok, spec} <- refine(text),
-         {:ok, tasks} <- propose(spec) do
-      {:ok, %{spec: spec, tasks: tasks}}
+    with {:ok, spec} <- refine(text) do
+      if open_questions?(spec),
+        do: {:ok, %{spec: spec, tasks: [], status: :needs_clarification}},
+        else: split(spec)
     end
   end
+
+  defp split(spec) do
+    with {:ok, tasks} <- propose(spec) do
+      {:ok, %{spec: spec, tasks: tasks, status: :ready}}
+    end
+  end
+
+  defp open_questions?(spec), do: (spec["open_questions"] || []) != []
 
   defp call(name, inputs, normalizer) do
     with {:ok, result} <- AI.call(name, inputs) do
