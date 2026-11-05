@@ -30,10 +30,17 @@ defmodule AgentBoard.GitHub do
   # transport errors, so the status is checked here.
   defp body!(response) do
     case response.status do
-      status when status in 200..299 -> response.body
-      403 -> raise "GitHub rate limited: retry after #{retry_after(response)}s"
-      429 -> raise "GitHub rate limited: retry after #{retry_after(response)}s"
-      status -> raise "GitHub HTTP #{status}: #{inspect(response.body)}"
+      status when status in 200..299 ->
+        response.body
+
+      403 ->
+        raise AgentBoard.GitHub.RateLimited, retry_after: retry_after(response)
+
+      429 ->
+        raise AgentBoard.GitHub.RateLimited, retry_after: retry_after(response)
+
+      status ->
+        raise "GitHub HTTP #{status}: #{inspect(response.body)}"
     end
   end
 

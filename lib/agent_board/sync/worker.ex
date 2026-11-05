@@ -11,5 +11,10 @@ defmodule AgentBoard.Sync.Worker do
   def perform(_job) do
     AgentBoard.Sync.all()
     :ok
+  rescue
+    # A spent quota is not a broken job: snooze for as long as GitHub asked
+    # instead of burning the retry budget on requests that cannot succeed.
+    error in AgentBoard.GitHub.RateLimited ->
+      {:snooze, max(error.retry_after, 60)}
   end
 end
