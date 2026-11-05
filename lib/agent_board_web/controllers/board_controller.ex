@@ -9,7 +9,12 @@ defmodule AgentBoardWeb.BoardController do
 
   # The client is injectable so the controller can be tested without GitHub.
   defp client do
-    Application.get_env(:agent_board, :github_client, &AgentBoard.GitHub.client/0).()
+    # get_env/3 only falls back when the key is MISSING; a key set to nil
+    # (a test that deleted it) would crash here.
+    case Application.get_env(:agent_board, :github_client) do
+      nil -> AgentBoard.GitHub.client()
+      builder -> builder.()
+    end
   end
 
   def board(conn, params) do
