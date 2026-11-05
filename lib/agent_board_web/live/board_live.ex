@@ -406,6 +406,12 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("voice_command", %{"mode" => "intake", "text" => text}, socket)
+      when is_binary(text) do
+    {:noreply, prepare_intake(socket, text)}
+  end
+
+  @impl true
   def handle_event("voice_command", %{"text" => text}, socket) when is_binary(text) do
     draft = String.trim(text)
 
@@ -543,21 +549,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("voice_prepare_intake", %{"text" => text}, socket) when is_binary(text) do
-    case {socket.assigns.repo, String.trim(text)} do
-      {nil, _} ->
-        {:noreply, put_flash(socket, :error, "Select a repository before preparing a request.")}
-
-      {_, ""} ->
-        {:noreply, put_flash(socket, :error, "Add a request before opening Split.")}
-
-      {repo, draft} ->
-        socket =
-          socket
-          |> assign(intake: nil, intake_draft: %{text: draft, repo_id: repo.id, source: :voice})
-          |> BoardNavigation.open_panel("intake")
-
-        {:noreply, socket}
-    end
+    {:noreply, prepare_intake(socket, text)}
   end
 
   def handle_event("voice_prepare_intake", _params, socket) do
@@ -984,6 +976,25 @@ defmodule AgentBoardWeb.BoardLive do
     do: voice_answer_error_result("The AI could not answer. Your command draft is still here.")
 
   defp voice_answer_error_result(text), do: %{kind: :error, text: text, as_of: nil}
+
+  defp prepare_intake(socket, text) do
+    case {socket.assigns.repo, String.trim(text)} do
+      {nil, _} ->
+        put_flash(socket, :error, "Select a repository before preparing a request.")
+
+      {_, ""} ->
+        put_flash(socket, :error, "Add a request before opening Split.")
+
+      {repo, draft} ->
+        socket
+        |> assign(
+          intake: nil,
+          intake_draft: %{text: draft, repo_id: repo.id, source: :voice},
+          voice_draft: draft
+        )
+        |> BoardNavigation.open_panel("intake")
+    end
+  end
 
   # The model answers on another process: the question is already on GitHub,
   # and blocking the LiveView for it freezes the whole board.

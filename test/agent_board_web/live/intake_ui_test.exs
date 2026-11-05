@@ -187,7 +187,11 @@ defmodule AgentBoardWeb.IntakeUITest do
     |> element("#voice-command-form")
     |> render_change(%{"text" => "Edited coding request"})
 
-    view |> element("#voice-prepare-intake") |> render_click()
+    assert has_element?(view, "#voice-prepare-intake[name=mode][value=intake]")
+
+    view
+    |> element("#voice-command-form")
+    |> render_submit(%{"text" => "Edited coding request", "mode" => "intake"})
 
     assert_patch(view, "/?panel=intake&repo=fixture%2Fvoice-action")
     assert has_element?(view, "#intake-form input[name=source_repo][value='#{repo.id}']")

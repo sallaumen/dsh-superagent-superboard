@@ -30,11 +30,12 @@ intake draft shown in [after-draft-1366.png](after-draft-1366.png) and
 [after-draft-375.png](after-draft-375.png).
 
 This pass typed `Crie um painel de custo por modelo` into the command textarea,
-observed the exact same value in the action's `phx-value-text` attribute, then clicked
-Prepare coding request. The intake displayed that exact text and the selected
+then clicked Prepare coding request. The intake displayed that exact text and the selected
 repository. Browser Back returned to the voice panel with the draft preserved
 and focus on its heading. At 375px, document width equalled viewport width.
-The console had zero errors and warnings. No Split, issue creation, real
+The console had zero errors and warnings. The final implementation submits the
+current form value with `mode=intake`, so a quick click cannot use an older
+LiveView assign. No Split, issue creation, real
 microphone capture, or paid AI request was triggered by these browser actions.
 LiveView tests cover the cross-panel transfer, no automatic AI call or task
 creation, edit preservation after a board update, and stale repository

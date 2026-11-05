@@ -41,9 +41,10 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommand do
           </button>
           <button
             id="voice-prepare-intake"
-            type="button"
-            phx-click="voice_prepare_intake"
-            phx-value-text={@draft}
+            type="submit"
+            name="mode"
+            value="intake"
+            phx-disable-with="Opening…"
             data-panel-trigger
             aria-haspopup="dialog"
             aria-controls="panel-intake"
