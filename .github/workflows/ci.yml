@@ -128,10 +128,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Valida a biblioteca de capacidades
-        run: |
-          python3 capabilities/tools/validar_biblioteca.py
-          python3 capabilities/tools/test_validar_biblioteca.py
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19"
+          otp-version: "27"
+      - run: mix deps.get
+      - name: Confere referências às práticas compartilhadas
+        run: mix agent_kit.check
 
   release:
     name: "release · caminho misto (backend + frontend)"

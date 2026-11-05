@@ -19,6 +19,9 @@ Os comandos e sua distribuição entre os jobs estão documentados ali.
 Quando o GitHub Actions não iniciar, aplique a
 [regra de CI indisponível](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
 
-## Biblioteca de capacidades
+## Práticas compartilhadas
 
-Para adicionar ou alterar uma capacidade em `capabilities/`, siga [capabilities/README.md](capabilities/README.md) ("Adicionar uma nova capacidade") e registre a decisão em [capabilities/INCORPORACAO.md](capabilities/INCORPORACAO.md). Os comandos de validação estão em [capabilities/tools/README.md](capabilities/tools/README.md).
+Siga [a política de propriedade e evolução](docs/agent/practices.md).
+Melhorias reutilizáveis entram por PR no Elixir Agent Kit e chegam aqui por uma
+versão fixada. Contratos específicos do board continuam em `docs/`. Não edite a
+dependência nem recrie uma biblioteca local. `make library` valida a instalação.

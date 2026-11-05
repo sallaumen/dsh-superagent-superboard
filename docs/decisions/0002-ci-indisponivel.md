@@ -21,7 +21,7 @@ O gate continua obrigatório, mas sua execução remota pode ser adiada por um
 bloqueio de conta. [PIPELINES.md](../../PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner)
 mantém o diagnóstico e o procedimento; AGENTS.md, CONTRIBUTING.md e o template
 de PR apontam para ele. A biblioteca reutilizável mantém o princípio geral no
-[contrato comum](../../capabilities/contrato.md#5-valide-o-risco-que-mudou).
+[contrato comum](../../deps/elixir_agent_kit/priv/library/CONTRACT.md#validate-the-changed-risk).
 
 ## Implantação e revisão
 

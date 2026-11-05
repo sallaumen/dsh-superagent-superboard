@@ -18,9 +18,8 @@ frontend: ## Pipeline de assets: checks, instala ferramentas, compila e digere
 	MIX_ENV=dev mix assets.build
 	MIX_ENV=dev mix assets.deploy
 
-library: ## Integridade da biblioteca de capacidades (somente leitura)
-	python3 capabilities/tools/validar_biblioteca.py
-	python3 capabilities/tools/test_validar_biblioteca.py
+library: ## Referências às práticas compartilhadas (somente leitura)
+	mix agent_kit.check
 
 release: ## Pipeline misto: assets em dev; compile, digest e release em prod
 	MIX_ENV=dev mix assets.setup
