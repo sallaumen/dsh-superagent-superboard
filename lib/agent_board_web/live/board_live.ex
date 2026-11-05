@@ -7,7 +7,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.{AI, Announcer, Board, ElevenLabs, GitHub, Intake, Repo, Settings, Voice}
   alias AgentBoard.Board.Task
   alias AgentBoard.System.{Updater, Version}
-  alias AgentBoardWeb.{BoardComponents, BoardNavigation}
+  alias AgentBoardWeb.{BoardComponents, BoardNavigation, VoiceCommands}
   alias AgentBoardWeb.BoardComponents.VoicePresence
 
   @voice_key "elevenlabs_voice_id"
@@ -358,6 +358,21 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("show_panel", %{"panel" => panel}, socket) do
     {:noreply, BoardNavigation.open_panel(socket, panel)}
+  end
+
+  @impl true
+  def handle_event("voice_command", %{"text" => text}, socket) do
+    draft = String.trim(text)
+    %{result: result, path: path} = VoiceCommands.resolve(draft, socket.assigns)
+    socket = assign(socket, voice_draft: draft, voice_result: result)
+
+    case path do
+      nil ->
+        {:noreply, socket}
+
+      path ->
+        {:noreply, socket |> put_flash(:info, result.text) |> push_patch(to: path, replace: true)}
+    end
   end
 
   @impl true
