@@ -143,6 +143,12 @@ defmodule AgentBoardWeb.IntakeUITest do
     assert html =~ "Latest 2 calls across the board."
     assert html =~ "refine_request"
 
+    for index <- ["invalid", "-1", "99"] do
+      render_hook(view, "create_from_intake", %{"index" => index})
+      assert has_element?(view, "#flash-error", "Could not create the task")
+      assert AgentBoard.Repo.aggregate(AgentBoard.Board.Task, :count, :id) == 0
+    end
+
     {:ok, _} = Board.add_repository("fixture", "other")
     view |> element("#repo-select") |> render_change(%{"repo" => "fixture/other"})
     refute render(view) =~ "medir o tempo"

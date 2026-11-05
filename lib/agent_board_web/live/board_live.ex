@@ -612,10 +612,11 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("create_from_intake", %{"index" => index}, socket) do
-    with %{repo: repo} when not is_nil(repo) <- socket.assigns,
+    with {:ok, position} <- intake_index(index),
+         %{repo: repo} when not is_nil(repo) <- socket.assigns,
          %{repo_id: repo_id} = intake <- socket.assigns.intake,
          true <- repo_id == repo.id,
-         task when not is_nil(task) <- Enum.at(intake.tasks, String.to_integer(index)),
+         task when not is_nil(task) <- Enum.at(intake.tasks, position),
          {:ok, _created} <-
            Board.create_task(repo, task.title, intake_body(task), GitHub.client()) do
       {:noreply, put_flash(socket, :info, "Task created: #{task.title}")}
@@ -995,6 +996,15 @@ defmodule AgentBoardWeb.BoardLive do
         |> BoardNavigation.open_panel("intake")
     end
   end
+
+  defp intake_index(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {position, ""} when position >= 0 -> {:ok, position}
+      _ -> :error
+    end
+  end
+
+  defp intake_index(_value), do: :error
 
   # The model answers on another process: the question is already on GitHub,
   # and blocking the LiveView for it freezes the whole board.
