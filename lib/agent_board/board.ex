@@ -81,7 +81,7 @@ defmodule AgentBoard.Board do
 
   @doc "Create a task by opening an issue that mentions the agent."
   def create_task(repository, title, body, client) do
-    with {:ok, issue} <-
+    with issue <-
            AgentBoard.GitHub.create_issue(client, repository.owner, repository.name, title, body) do
       %Task{}
       |> Task.changeset(%{
