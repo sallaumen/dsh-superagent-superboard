@@ -136,6 +136,25 @@ defmodule AgentBoardWeb.BoardLiveTest do
            end)
   end
 
+  test "the repo query param selects a repository", %{conn: conn} do
+    {:ok, _} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, arena} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: arena.id,
+      kind: "issue",
+      number: 601,
+      title: "Arena only",
+      state: "queued"
+    })
+    |> Repo.insert!()
+
+    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    assert html =~ "Arena only"
+  end
+
   test "an unknown repository slug renders the empty board", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
