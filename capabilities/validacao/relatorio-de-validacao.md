@@ -1,5 +1,10 @@
 # Relatório de validação da biblioteca de capacidades
 
+> **Registro histórico.** Este relatório descreve a edição 2.0.0 na data em que foi
+> produzida (4 de novembro de 2026); as contagens abaixo refletem aquele dia e não
+> são mantidas. Para o estado atual, rode o validador e veja o pipeline em
+> `PIPELINES.md`.
+
 **Edição:** 2.0.0 (incorporação da biblioteca-prompts-desenvolvimento v1.0.0 ao repositório agent-board).
 **Data:** 4 de novembro de 2026.
 
@@ -22,8 +27,8 @@
 | Verificação | Comando | Resultado |
 |---|---|---|
 | Validador da biblioteca | `python3 capabilities/tools/validar_biblioteca.py` | OK (0 erros, 0 avisos) |
-| Testes do validador | `python3 capabilities/tools/test_validar_biblioteca.py` | 16/16 aprovados |
-| Gates do repositório Elixir | `mix precommit` (format + credo strict + test) | OK; 41 testes, 0 falhas |
+| Testes do validador | `python3 capabilities/tools/test_validar_biblioteca.py` | 20/20 aprovados (na data da edição) |
+| Gates do repositório Elixir | `mix precommit` (format + credo strict + test) | OK na data da edição |
 
 ## 4. Execução de cenários controlados
 
