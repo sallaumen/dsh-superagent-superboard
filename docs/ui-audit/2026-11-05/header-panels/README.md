@@ -29,4 +29,4 @@ The test fixture was removed: zero repositories, tasks, pull requests, comments 
 
 ## Gate
 
-`MIX_TEST_PARTITION=1 scripts/ci-local.sh all` passed on the first integrated base: 322 tests, 0 failures; Credo, Sobelow, asset check/build/deploy and library check green. The final base is revalidated before merge. CI remains blocked by billing; `PIPELINES.md` permits the local pipeline as the merge gate.
+`MIX_TEST_PARTITION=1 scripts/ci-local.sh all` passed on the final base: 323 tests, 0 failures; Credo, Sobelow, asset check/build/deploy and library check green. The expected audit error log comes from the failure-injection test in #229. CI remains blocked by billing; `PIPELINES.md` permits the local pipeline as the merge gate.
