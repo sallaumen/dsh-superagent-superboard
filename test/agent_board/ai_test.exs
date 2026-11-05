@@ -153,6 +153,26 @@ defmodule AgentBoard.AITest do
     refute first.engine == second.engine
   end
 
+  test "an identical call is served from the cache" do
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(~s({"goal":"same"}))) end)
+
+    assert {:ok, %{json: %{"goal" => "same"}}} = AI.call(:refine_request, %{text: "x"})
+    assert Repo.aggregate(Call, :count) == 1
+
+    assert {:ok, %{engine: :cache, json: %{"goal" => "same"}}} =
+             AI.call(:refine_request, %{text: "x"})
+
+    assert Repo.aggregate(Call, :count) == 1
+  end
+
+  test "a different input is a different cache key" do
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(~s({"goal":"same"}))) end)
+
+    assert {:ok, _} = AI.call(:refine_request, %{text: "x"})
+    assert {:ok, %{engine: :deepseek}} = AI.call(:refine_request, %{text: "y"})
+    assert Repo.aggregate(Call, :count) == 2
+  end
+
   test "an unregistered call is refused and records nothing" do
     assert {:error, :unknown_call} = AI.call(:nope, %{text: "x"})
     assert Repo.aggregate(Call, :count) == 0
