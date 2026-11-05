@@ -109,4 +109,21 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
       do: "#{input + output} tokens"
 
   def token_usage(_), do: "unknown"
+
+  # Zero is also stored for old calls and unpriced models, so it is not a
+  # trustworthy zero-dollar bill. Keep the stored microdollar precision.
+  def estimated_cost(micros) when is_integer(micros) and micros > 0 do
+    dollars = div(micros, 1_000_000)
+
+    fraction =
+      micros
+      |> rem(1_000_000)
+      |> Integer.to_string()
+      |> String.pad_leading(6, "0")
+      |> String.trim_trailing("0")
+
+    if fraction == "", do: "$#{dollars}", else: "$#{dollars}.#{fraction}"
+  end
+
+  def estimated_cost(_), do: "unknown"
 end

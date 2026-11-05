@@ -20,6 +20,9 @@ defmodule AgentBoardWeb.BoardComponents.AI do
       <p :if={@ai_calls != []} class="mb-2 text-xs text-base-content/75">
         Latest {length(@ai_calls)} calls across the board.
       </p>
+      <p :if={@ai_calls != []} class="ai-cost-note text-[11px] text-base-content/75">
+        Costs are estimates from model rates; unknown means no priced estimate was recorded.
+      </p>
       <ol>
         <li :for={c <- @ai_calls} class="ai-call">
           <div class="ai-call-identity">
@@ -33,6 +36,9 @@ defmodule AgentBoardWeb.BoardComponents.AI do
             </div>
             <div>
               <dt>Usage</dt><dd>{token_usage(c)}</dd>
+            </div>
+            <div>
+              <dt>Est. cost</dt><dd>{estimated_cost(c.cost_micros)}</dd>
             </div>
           </dl>
           <DataAge.stamp id={"call-age-#{c.id}"} at={c.inserted_at} label="Called" />

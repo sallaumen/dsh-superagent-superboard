@@ -223,7 +223,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/measurements")
 
     assert has_element?(view, ".ai-call-metrics div:first-child", "Latencyunknown")
-    assert has_element?(view, ".ai-call-metrics div:last-child", "Usageunknown")
+    assert has_element?(view, ".ai-call-metrics div:nth-child(2)", "Usageunknown")
+    assert has_element?(view, ".ai-call-metrics div:last-child", "Est. costunknown")
     refute has_element?(view, ".ai-call-metrics", "0ms")
     refute has_element?(view, ".ai-call-metrics", "0 tokens")
   end
@@ -343,7 +344,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
       status: "ok",
       input_tokens: 10,
       output_tokens: 20,
-      duration_ms: 123
+      duration_ms: 123,
+      cost_micros: 1_120
     })
     |> Repo.insert!()
 
@@ -353,6 +355,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "deepseek"
     assert html =~ "123ms"
     assert html =~ "30 tokens"
+    assert html =~ "Est. cost"
+    assert html =~ "$0.00112"
   end
 
   test "the board shows the blocked column", %{conn: conn} do
