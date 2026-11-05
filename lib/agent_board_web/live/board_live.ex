@@ -370,7 +370,13 @@ defmodule AgentBoardWeb.BoardLive do
         </div>
 
         <main :if={@repo} class="grid grid-cols-1 gap-px bg-[#2a2925] sm:grid-cols-2 lg:grid-cols-5">
-          <%= for {title, key} <- [{"Running", :running}, {"Ready", :ready}, {"Merged", :merged}, {"Queued", :queued}] do %>
+          <%= for {title, key} <- [
+              {"Running", :running},
+              {"Ready", :ready},
+              {"Blocked", :blocked},
+              {"Merged", :merged},
+              {"Queued", :queued}
+            ] do %>
             <section class="bg-[#12120f] p-4">
               <h2 class="mb-3 flex justify-between text-[11px] uppercase tracking-[0.16em] text-[#a39f93]">
                 <span>{title}</span>
@@ -383,6 +389,7 @@ defmodule AgentBoardWeb.BoardLive do
                   "mb-2 border border-[#2a2925] border-l-2 bg-[#191813] px-3 py-2 transition-colors hover:bg-[#1f1e18]",
                   key == :running && "border-l-[#e8a33d]",
                   key == :ready && "border-l-[#6fa8dc]",
+                  key == :blocked && "border-l-[#f0b3b3]",
                   key == :merged && "border-l-[#7bc47f]",
                   key == :queued && "border-l-[#8a877d]"
                 ]}
