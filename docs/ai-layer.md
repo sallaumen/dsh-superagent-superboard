@@ -90,16 +90,20 @@ impede o custo invisível.
 
 Duas chamadas registradas, ambas de tier rápido:
 
+Nota editorial: os exemplos abaixo ilustram uma única tarefa de documentação;
+não são saídas reais. Valores enumerados usam uma opção válida, e a primeira
+tarefa não depende de si mesma. A arquitetura ao redor continua sendo histórica.
+
 **`:refine_request`** — recebe o pedido cru e devolve JSON:
 
 ```json
 {
-  "goal": "uma frase, o resultado",
-  "constraints": ["..."],
-  "non_goals": ["..."],
-  "risks": ["..."],
-  "open_questions": ["..."],
-  "language": "pt|en"
+  "goal": "Corrigir links locais quebrados na documentação",
+  "constraints": ["Preservar o conteúdo técnico existente"],
+  "non_goals": ["Alterar o código da aplicação"],
+  "risks": [],
+  "open_questions": [],
+  "language": "pt"
 }
 ```
 
@@ -112,13 +116,13 @@ Regra do prompt: não inventar requisito. O que faltar vai em
 {
   "tasks": [
     {
-      "title": "verbo + objeto, curto",
-      "body": "contexto, o que fazer, critério de aceite",
-      "kind": "bug|feature|design|docs|refactor",
-      "scope": ["lib/..."],
-      "acceptance": ["..."],
-      "depends_on": [0],
-      "size": "S|M|L"
+      "title": "Corrigir links locais da documentação",
+      "body": "Verificar os destinos dos links em docs/ e corrigir os caminhos quebrados, preservando o conteúdo técnico.",
+      "kind": "docs",
+      "scope": ["docs/"],
+      "acceptance": ["Todos os links locais em docs/ resolvem para destinos existentes"],
+      "depends_on": [],
+      "size": "S"
     }
   ]
 }
