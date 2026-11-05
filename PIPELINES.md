@@ -104,3 +104,16 @@ O objetivo da CI continua sendo verificar em ambiente limpo; a regra apenas evit
 ## Histórico
 
 - Job único (`gates`) substituído por pipelines separados (PR #13); smoke de release adicionado (PR #14); `make` como entrada única por pipeline (PR #15); esta matriz criada em seguida. Guideline "CI indisponível → pipeline local é o gate" adicionada depois do bloqueio de billing da conta.
+
+## The agent and the AI layer
+
+Two systems run beside the board, and neither is on the board's critical path:
+
+| System | What it does | Documented in |
+|---|---|---|
+| `dsh-superagent` | watches GitHub for `@sallaumen-agent`, turns the mention into a ticket, runs the executor, opens the PR | [`docs/agent/how-it-works.md`](docs/agent/how-it-works.md) |
+| `AgentBoard.AI` | refines a request into a spec, splits it into tasks, answers questions, speaks the board | [`docs/ai-layer.md`](docs/ai-layer.md) |
+
+The board **mirrors** both: the sync reads GitHub, the AI panel reads
+`ai_calls`. Stop the board and both keep working.
+
