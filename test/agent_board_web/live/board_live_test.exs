@@ -155,6 +155,30 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "Arena only"
   end
 
+  test "a board_updated message reloads the board", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    assert html =~ "No task is running."
+
+    # a task appears behind the view's back
+    repo = Board.repository_by_slug("sallaumen/arena-rogue")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 701,
+      title: "Arrived by broadcast",
+      state: "running"
+    })
+    |> Repo.insert!()
+
+    send(view.pid, :board_updated)
+
+    assert render(view) =~ "Arrived by broadcast"
+  end
+
   test "switching repos stops listening to the old one", %{conn: conn} do
     {:ok, colmex} = Board.add_repository("sallaumen", "o_colmex")
     {:ok, _arena} = Board.add_repository("sallaumen", "arena-rogue")
