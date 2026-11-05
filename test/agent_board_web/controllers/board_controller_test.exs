@@ -67,6 +67,14 @@ defmodule AgentBoardWeb.BoardControllerTest do
     assert %{"number" => 55} = json_response(conn, 201)
   end
 
+  test "PATCH /api/tasks of an unknown id is 404", %{conn: conn} do
+    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+
+    conn = patch(conn, "/api/tasks/999999", %{action: "archive"})
+
+    assert json_response(conn, 404)
+  end
+
   test "PATCH /api/tasks archives a task", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
     t = task(repo, 2, "Archive me", "queued")
