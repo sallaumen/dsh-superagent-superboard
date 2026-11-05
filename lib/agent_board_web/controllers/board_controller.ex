@@ -4,8 +4,13 @@ defmodule AgentBoardWeb.BoardController do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Board, GitHub, Repo}
+  alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{Repository, Task}
+
+  # The client is injectable so the controller can be tested without GitHub.
+  defp client do
+    Application.get_env(:agent_board, :github_client, &AgentBoard.GitHub.client/0).()
+  end
 
   def board(conn, params) do
     case Board.board(params["repo"]) do
@@ -33,7 +38,7 @@ defmodule AgentBoardWeb.BoardController do
          true <- String.trim(title) != "" do
       text = String.trim(params["body"] || "") <> "\n\n@sallaumen-agent"
 
-      case Board.create_task(repo, title, text, GitHub.client()) do
+      case Board.create_task(repo, title, text, client()) do
         {:ok, task} ->
           conn |> put_status(201) |> json(%{id: task.id, number: task.number, url: task.url})
 
@@ -50,7 +55,7 @@ defmodule AgentBoardWeb.BoardController do
 
     result =
       case {action, task} do
-        {"stop", %Task{}} -> Board.stop_task(task, GitHub.client())
+        {"stop", %Task{}} -> Board.stop_task(task, client())
         {"archive", %Task{}} -> Board.archive_task(task)
         {"resume", %Task{}} -> Board.resume_task(task)
         _ -> {:error, :not_found}
