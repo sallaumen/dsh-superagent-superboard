@@ -49,6 +49,32 @@ defmodule AgentBoard.SyncRepoTest do
              Repo.one(from t in Task, where: t.number == 7)
   end
 
+  test "the sync pulls the comments of the active tasks", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Req.Test.json(conn, [issue(7, "open")])
+
+        "/repos/sallaumen/arena-rogue/issues/7/comments" ->
+          Req.Test.json(conn, [
+            %{"id" => 101, "user" => %{"login" => "sallaumen-agent"}, "body" => "On it."},
+            %{"id" => 102, "user" => %{"login" => "sallaumen"}, "body" => "Any progress?"}
+          ])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    task = Repo.one(from t in Task, where: t.number == 7)
+    comments = Board.comments(task)
+
+    assert Enum.map(comments, & &1.kind) == ["agent", "user"]
+    assert Enum.map(comments, & &1.body) == ["On it.", "Any progress?"]
+  end
+
   test "a GitHub failure is logged and returned, not raised", %{repo: repo} do
     stub_github(fn conn ->
       Plug.Conn.send_resp(conn, 500, "boom")
