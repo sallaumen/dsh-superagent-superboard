@@ -37,7 +37,7 @@ defmodule AgentBoardWeb.BoardComponents.Header do
           </form>
         </div>
         <details id="repository-settings" class="repository-settings">
-          <summary>Repositories <span aria-hidden="true">+</span></summary>
+          <summary>Repositories <.icon name="hero-chevron-down" class="size-3" /></summary>
           <div class="repository-settings-body">
             <p class="board-eyebrow">Track another repository</p>
             <form id="track-repo" phx-submit="add" class="flex flex-wrap items-center gap-2">
@@ -89,6 +89,7 @@ defmodule AgentBoardWeb.BoardComponents.Header do
               aria-haspopup="dialog"
               class={[
                 "text-left text-xs underline underline-offset-4",
+                @sync_event && has_errors?(@sync_event) && "sync-needs-attention",
                 if(@sync_event && has_errors?(@sync_event),
                   do: "text-error",
                   else: "text-base-content/75"
