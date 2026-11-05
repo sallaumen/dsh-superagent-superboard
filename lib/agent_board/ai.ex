@@ -45,7 +45,15 @@ defmodule AgentBoard.AI do
 
   defp elapsed(started), do: System.monotonic_time(:millisecond) - started
 
-  defp engine, do: Application.get_env(:agent_board, :ai_engine, AgentBoard.AI.Engines.DeepSeek)
+  defp engine do
+    if rehearsal?() do
+      AgentBoard.AI.Engines.Rehearsal
+    else
+      Application.get_env(:agent_board, :ai_engine, AgentBoard.AI.Engines.DeepSeek)
+    end
+  end
+
+  defp rehearsal?, do: Application.get_env(:agent_board, :ai_rehearsal, false) == true
 
   defp record(name, spec, result, elapsed, status, error) do
     %Call{}

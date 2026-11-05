@@ -73,6 +73,20 @@ defmodule AgentBoard.AITest do
     assert call.error =~ "500"
   end
 
+  test "rehearsal answers without a key or a network" do
+    Application.put_env(:agent_board, :ai_api_key, "")
+    Application.put_env(:agent_board, :ai_rehearsal, true)
+    on_exit(fn -> Application.delete_env(:agent_board, :ai_rehearsal) end)
+
+    assert {:ok, result} = AI.call(:refine_request, %{text: "x"})
+    assert result.engine == :rehearsal
+    assert result.json["goal"] =~ "board"
+
+    call = Repo.one(Call)
+    assert call.engine == "rehearsal"
+    assert call.status == "ok"
+  end
+
   test "a missing key is not a network call" do
     Application.put_env(:agent_board, :ai_api_key, "")
 

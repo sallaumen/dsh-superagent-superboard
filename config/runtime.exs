@@ -61,6 +61,14 @@ if config_env() == :prod do
   # :not_configured instead of reaching the network.
   config :agent_board, :ai_api_key, System.get_env("DEEPSEEK_API_KEY")
 
+  # The daily ceiling. A Flash refine costs cents; 5M tokens is a working day
+  # of intake and questions, not a demo.
+  config :agent_board, :ai_daily_tokens, System.get_env("AI_DAILY_TOKENS", "5000000")
+
+  # Rehearsal answers every call with a free fixture -- the panel works end to
+  # end without a key, in development only.
+  config :agent_board, :ai_rehearsal, System.get_env("AI_REHEARSAL") == "1"
+
   config :agent_board, AgentBoardWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
