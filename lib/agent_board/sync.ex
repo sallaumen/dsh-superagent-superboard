@@ -227,6 +227,25 @@ defmodule AgentBoard.Sync do
   # Merged and closed pulls also carry reviews and checks: the board shows
   # them in the merged column, so they must be fetched, not left nil.
   defp rollup_for(client, repository, pull, _state) do
+    # An old merged pull never changes: skipping its reviews and checks saves
+    # ~2 API calls per pull per sync (a 100-PR repo was hitting the limit).
+    if stale?(pull) do
+      {nil, nil, nil}
+    else
+      rollups(client, repository, pull)
+    end
+  end
+
+  @stale_days 30
+
+  defp stale?(pull) do
+    case to_dt(pull["merged_at"]) do
+      nil -> false
+      merged_at -> DateTime.diff(DateTime.utc_now(), merged_at, :day) > @stale_days
+    end
+  end
+
+  defp rollups(client, repository, pull) do
     # A failing review/check fetch must not abort the PR insert: the PR is
     # stored with the rollups it can get, and the failure is logged.
     reviews =
