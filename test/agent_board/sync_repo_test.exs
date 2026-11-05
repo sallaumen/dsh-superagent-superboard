@@ -60,6 +60,17 @@ defmodule AgentBoard.SyncRepoTest do
     assert Enum.any?(Board.events(repo), &(&1.kind == "sync_error"))
   end
 
+  test "a rate limit is reported with the retry-after value", %{repo: repo} do
+    stub_github(fn conn ->
+      conn
+      |> Plug.Conn.put_resp_header("retry-after", "17")
+      |> Plug.Conn.send_resp(429, "slow down")
+    end)
+
+    assert {:error, exception} = Sync.sync_repo(client(), repo)
+    assert Exception.message(exception) =~ "retry after 17s"
+  end
+
   test "all/1 syncs every active repository with the given client", %{repo: _repo} do
     stub_github(fn conn ->
       case conn.request_path do
