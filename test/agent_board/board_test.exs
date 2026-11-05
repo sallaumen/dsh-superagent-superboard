@@ -176,4 +176,11 @@ defmodule AgentBoard.Board.ConversationTest do
   test "events with no repository is empty", _ctx do
     assert Board.events(nil) == []
   end
+
+  test "board with no repository is empty, not a crash", _ctx do
+    assert {:ok, board} = Board.board(nil)
+    assert board.repos == []
+    assert board.merged == []
+    assert board.running == []
+  end
 end
