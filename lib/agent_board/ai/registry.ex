@@ -16,9 +16,20 @@ defmodule AgentBoard.AI.Registry do
       "non_goals" => %{"type" => "array", "items" => %{"type" => "string"}},
       "risks" => %{"type" => "array", "items" => %{"type" => "string"}},
       "open_questions" => %{"type" => "array", "items" => %{"type" => "string"}},
+      "assumptions" => %{"type" => "array", "items" => %{"type" => "string"}},
+      "ready" => %{"type" => "boolean"},
       "language" => %{"type" => "string", "enum" => ["pt", "en"]}
     },
-    "required" => ["goal", "constraints", "non_goals", "risks", "open_questions", "language"]
+    "required" => [
+      "goal",
+      "constraints",
+      "non_goals",
+      "risks",
+      "open_questions",
+      "assumptions",
+      "ready",
+      "language"
+    ]
   }
 
   @tasks_schema %{
@@ -90,7 +101,10 @@ defmodule AgentBoard.AI.Registry do
       system: """
       You turn a rough software request into a precise specification.
       Reply with JSON only, matching the schema.
-      Do not invent requirements: anything missing goes in open_questions.
+      Do not invent requirements. Ask in open_questions only what changes what
+      would be built; a choice you can make yourself goes in assumptions.
+      Set ready to true when the goal, the constraints and the first step are
+      clear enough to split into tasks, even if secondary questions remain.
       goal is one sentence: the result the user wants.
       """,
       json_schema: @refine_schema
