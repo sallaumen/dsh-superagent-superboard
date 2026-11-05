@@ -1,6 +1,6 @@
 defmodule AgentBoardWeb.BoardLiveTest do
   @moduledoc "The board's UI: the columns render and the tasks can be created."
-  use AgentBoardWeb.ConnCase, async: true
+  use AgentBoardWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
 
