@@ -12,6 +12,7 @@ defmodule AgentBoardWeb.BoardComponents.Column do
       aria-label={@title <> " tasks"}
       tabindex="0"
       data-state={@state}
+      data-attention={to_string(@state == :blocked and @items != [])}
       class={["board-column bg-base-100", @items == [] && "is-empty"]}
     >
       <h2 class="lane-heading">

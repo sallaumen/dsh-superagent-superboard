@@ -68,6 +68,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, view, _} = live(conn, ~p"/?repo=fixture/health")
     assert has_element?(view, "#sync-status", "clean")
     assert has_element?(view, "#sync-status", "UTC")
+    refute has_element?(view, "#sync-status.sync-needs-attention")
   end
 
   test "sync age describes the last outcome without pretending a failure refreshed data", %{
@@ -93,6 +94,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, view, _} = live(conn, ~p"/?repo=fixture/health")
     assert has_element?(view, "#sync-status", "sync failed")
     assert has_element?(view, "#sync-status", "showing saved data")
+    assert has_element?(view, "#sync-status.sync-needs-attention")
     refute has_element?(view, "#sync-status", "clean")
   end
 
@@ -362,10 +364,29 @@ defmodule AgentBoardWeb.BoardLiveTest do
   test "the board shows the blocked column", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
     assert html =~ "Blocked"
     assert html =~ "Nothing is blocked."
+    assert has_element?(view, "#column-blocked[data-attention=false]")
+  end
+
+  test "a blocked task signals attention only from the loaded board", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "blocked")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 42,
+      title: "Needs a decision",
+      state: "blocked"
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/blocked")
+    assert has_element?(view, "#column-blocked[data-attention=true]", "Needs a decision")
+    refute has_element?(view, "#column-ready[data-attention=true]")
   end
 
   test "the repo query param selects a repository", %{conn: conn} do
