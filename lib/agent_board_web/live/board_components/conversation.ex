@@ -2,7 +2,7 @@ defmodule AgentBoardWeb.BoardComponents.Conversation do
   @moduledoc "The board's conversation region. Events are handled by BoardLive."
   use AgentBoardWeb, :live_component
 
-  import AgentBoardWeb.BoardComponents.Presentation
+  alias AgentBoardWeb.BoardComponents.DataAge
 
   @impl true
   def render(assigns) do
@@ -29,6 +29,10 @@ defmodule AgentBoardWeb.BoardComponents.Conversation do
         </button>
       </h2>
 
+      <div class="mb-3">
+        <DataAge.stamp id="conversation-age" at={@conversation.updated_at} label="Record updated" />
+      </div>
+
       <div :for={c <- @comments} class="mb-2 flex gap-2">
         <span class={[
           "w-10 shrink-0 text-[10px] uppercase sm:w-14",
@@ -41,7 +45,7 @@ defmodule AgentBoardWeb.BoardComponents.Conversation do
           <p class="whitespace-pre-wrap break-words text-[12px] leading-relaxed text-base-content">
             {c.body}
           </p>
-          <span :if={c.inserted_at} class="text-[10px] text-base-content/75">{time(c.inserted_at)}</span>
+          <DataAge.stamp id={"comment-age-#{c.id}"} at={c.inserted_at} label="Posted" />
         </div>
       </div>
 

@@ -4,6 +4,8 @@ defmodule AgentBoardWeb.BoardComponents.Header do
 
   import AgentBoardWeb.BoardComponents.Presentation
 
+  alias AgentBoardWeb.BoardComponents.DataAge
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -52,6 +54,7 @@ defmodule AgentBoardWeb.BoardComponents.Header do
 
       <span
         id="connection-status"
+        title="LiveView connection only; data freshness is shown separately"
         role="status"
         aria-live="polite"
         data-connected={to_string(@live)}
@@ -84,6 +87,24 @@ defmodule AgentBoardWeb.BoardComponents.Header do
         </button>
       </span>
 
+      <span id="data-freshness" class="basis-full flex flex-wrap gap-x-4 gap-y-1">
+        <DataAge.stamp
+          id="sync-age"
+          at={@sync_event && @sync_event.inserted_at}
+          label={
+            if @sync_event && @sync_event.kind == "sync_error",
+              do: "Last sync attempt",
+              else: "Last completed sync"
+          }
+          sync={@sync_event && @sync_event.kind == "sync"}
+        />
+        <span :if={@sync_event && @sync_event.kind == "sync_error"} class="text-[11px] text-warning">Saved data age: unknown</span>
+        <DataAge.stamp
+          id="activity-age"
+          at={@last_activity && @last_activity.inserted_at}
+          label="Last activity"
+        />
+      </span>
       <form id="track-repo" phx-submit="add" class="flex flex-wrap items-center gap-2">
         <input
           name="owner"

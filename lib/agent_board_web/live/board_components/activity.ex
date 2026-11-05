@@ -4,6 +4,8 @@ defmodule AgentBoardWeb.BoardComponents.Activity do
 
   import AgentBoardWeb.BoardComponents.Presentation
 
+  alias AgentBoardWeb.BoardComponents.DataAge
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -19,12 +21,12 @@ defmodule AgentBoardWeb.BoardComponents.Activity do
         <li
           :for={e <- @events}
           class={[
-            "grid min-w-0 gap-x-3 gap-y-1 text-xs sm:grid-cols-[5rem_10rem_minmax(0,1fr)]",
+            "grid min-w-0 gap-x-3 gap-y-1 text-xs sm:grid-cols-[10rem_10rem_minmax(0,1fr)]",
             has_errors?(e) && "text-error",
             warning?(e) && "text-warning"
           ]}
         >
-          <span class="w-24 shrink-0 text-base-content/75">{time(e.inserted_at)}</span>
+          <DataAge.stamp id={"event-age-#{e.id}"} at={e.inserted_at} label="Recorded" />
           <span class="break-words uppercase">{e.kind}</span>
           <span class="min-w-0 break-words text-base-content">{e.subject}</span>
           <span
