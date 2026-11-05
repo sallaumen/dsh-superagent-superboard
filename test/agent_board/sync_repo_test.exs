@@ -124,6 +124,36 @@ defmodule AgentBoard.SyncRepoTest do
     assert repo.name == "arena-rogue"
   end
 
+  test "an old merged pull skips its reviews", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/pulls" ->
+          Req.Test.json(conn, [
+            %{
+              "number" => 9,
+              "title" => "Old",
+              "state" => "closed",
+              "merged_at" => "2025-01-01T00:00:00Z",
+              "html_url" => "https://github.com/x/y/pull/9",
+              "user" => %{"login" => "s"},
+              "created_at" => "2025-01-01T00:00:00Z",
+              "head" => %{"sha" => "abc"}
+            }
+          ])
+
+        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+          send(self(), :reviews_requested)
+          Req.Test.json(conn, [])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    refute_received :reviews_requested
+  end
+
   test "ticket numbers come from channels as integers", _ctx do
     ticket = %{
       "mandate" => %{"basis" => %{"scope" => %{}}},
