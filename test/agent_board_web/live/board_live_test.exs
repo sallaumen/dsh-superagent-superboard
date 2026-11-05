@@ -191,6 +191,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/history")
 
     assert has_element?(view, "#merged-column", "latest 7 loaded")
+    assert has_element?(view, "#merge-trend", "7 of 7 loaded")
     assert has_element?(view, "#merged-preview article:nth-child(5)", "Merged pull 3")
     refute has_element?(view, "#merged-preview article:nth-child(6)")
     assert has_element?(view, "#merged-history summary", "Show 2 more merged pull requests")
@@ -200,11 +201,41 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#merged-column button[phx-click=act]")
   end
 
+  test "the merge chart counts only dated records within the visible UTC window", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "trend")
+    today = DateTime.new!(Date.utc_today(), ~T[12:00:00], "Etc/UTC")
+
+    for {number, days_ago} <- [{1, 0}, {2, 1}, {3, 8}] do
+      %PullRequest{}
+      |> PullRequest.changeset(%{
+        repository_id: repo.id,
+        number: number,
+        title: "Merge #{number}",
+        state: "merged",
+        merged_at: DateTime.add(today, -days_ago, :day)
+      })
+      |> Repo.insert!()
+    end
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/trend")
+
+    assert has_element?(view, "#merge-trend", "2 of 3 loaded · last 7 UTC days")
+
+    assert has_element?(
+             view,
+             "#merge-trend li[aria-label='#{Date.utc_today()}: 1 loaded merges']"
+           )
+
+    old_date = Date.add(Date.utc_today(), -8)
+    refute has_element?(view, "#merge-trend li[aria-label^='#{old_date}']")
+  end
+
   test "empty merged history has no expansion control", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "empty-history")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/empty-history")
 
     assert has_element?(view, "#merged-column", "No pull request merged yet.")
+    refute has_element?(view, "#merge-trend")
     refute has_element?(view, "#merged-history")
   end
 

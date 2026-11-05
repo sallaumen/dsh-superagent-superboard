@@ -270,6 +270,16 @@
 .task-actions button:not(:first-child):hover { background: var(--color-base-300); }
 .archive-heading { justify-content: space-between; gap: 0.5rem 1rem; background: var(--color-base-200); }
 .archive-count { padding-left: 0.75rem; font-variant-numeric: tabular-nums; }
+.merge-trend { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1.5rem; padding: 0.625rem 1.25rem; border-bottom: 1px solid var(--color-base-300); }
+.merge-trend figcaption { display: grid; gap: 0.125rem; min-width: 12rem; font-size: 0.6875rem; }
+.merge-trend figcaption strong { font-weight: 600; }
+.merge-trend figcaption span { color: color-mix(in oklab, var(--color-base-content) 75%, transparent); }
+.merge-trend ol { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem; width: min(100%, 24rem); margin-left: auto; }
+.merge-trend li { display: grid; justify-items: center; gap: 0.125rem; min-width: 0; font-size: 0.5625rem; font-variant-numeric: tabular-nums; }
+.merge-trend-count { color: var(--color-base-content); }
+.merge-trend-track { display: flex; align-items: end; justify-content: center; width: 0.625rem; height: 1.375rem; background: var(--color-base-200); }
+.merge-trend-bar { display: block; width: 100%; background: var(--color-primary); }
+.merge-trend time { white-space: nowrap; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); }
 .archive-row { display: grid; grid-template-columns: 4rem minmax(0, 1fr) auto auto; align-items: baseline; gap: 0.5rem 1rem; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--color-base-300); }
 .archive-row:hover, .archive-history summary:hover { background: var(--color-base-200); }
 .board-archive > .lane-empty { padding: 1rem 1.25rem; }
