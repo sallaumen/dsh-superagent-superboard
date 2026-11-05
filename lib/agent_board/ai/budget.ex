@@ -12,7 +12,7 @@ defmodule AgentBoard.AI.Budget do
   alias AgentBoard.AI.Call
   alias AgentBoard.Repo
 
-  @default_tokens 200_000
+  @default_tokens 5_000_000
 
   @spec check(atom()) :: :ok | {:error, :budget_exhausted}
   def check(_tier) do
