@@ -16,6 +16,16 @@ defmodule AgentBoardWeb.BoardLiveTest do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
 
+  test "Dictate task pushes the dictate event", %{conn: conn} do
+    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    view |> element("button", "Dictate task") |> render_click()
+
+    assert_push_event(view, "dictate", %{})
+  end
+
   test "Speak status pushes the board summary", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
