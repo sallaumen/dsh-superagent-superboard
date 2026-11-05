@@ -63,6 +63,26 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "changes requested"
   end
 
+  test "a merged pull shows its CI badge", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: 405,
+      title: "CI PR",
+      state: "merged",
+      merged_at: DateTime.utc_now(),
+      checks_state: "failure"
+    })
+    |> Repo.insert!()
+
+    {:ok, _view, html} = live(conn, ~p"/")
+
+    assert html =~ "CI PR"
+    assert html =~ "ci failed"
+  end
+
   test "the header carries the brand and the tagline", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
