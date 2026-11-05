@@ -51,13 +51,15 @@ defmodule AgentBoardWeb.VoiceActionUITest do
   test "archive confirmation changes only the reviewed task and is single use", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "voice-archive")
     task = task(repo, 7)
+    other = task(repo, 70)
     {:ok, view, _} = live(conn, "/?repo=fixture/voice-archive")
 
     preview(view, "archive task #7")
     assert Repo.get!(Task, task.id).state == "queued"
-    view |> element("button[phx-click=voice_confirm_action]") |> render_click()
+    render_hook(view, "voice_confirm_action", %{"action" => "stop", "id" => other.id})
 
     assert Repo.get!(Task, task.id).state == "archived"
+    assert Repo.get!(Task, other.id).state == "queued"
     assert has_element?(view, ".voice-command-result[data-kind=success]", "Archived task #7")
 
     assert [%{kind: "voice_action", payload: %{"action" => "archive", "result" => "completed"}}] =
