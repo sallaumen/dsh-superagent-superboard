@@ -76,6 +76,13 @@ defmodule AgentBoard.LiveTest do
     assert Repo.get(Task, t.id).state == "queued"
   end
 
+  test "the poller schedules the next tick", %{db: _db} do
+    state = AgentBoard.Live.handle_info(:poll, %{})
+
+    assert {:noreply, %{}} = state
+    assert_receive :poll, 11_000
+  end
+
   test "a missing state database does not crash the poller", %{db: _db} do
     previous = Application.get_env(:agent_board, :state_db)
     Application.put_env(:agent_board, :state_db, "/does/not/exist.sqlite")

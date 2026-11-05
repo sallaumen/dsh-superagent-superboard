@@ -25,6 +25,9 @@ defmodule AgentBoard.Live do
 
   @impl true
   def handle_info(:poll, state) do
+    # init/1 schedules the first tick; the handler must schedule the next one,
+    # otherwise the poller runs exactly once.
+    schedule()
     {:noreply, poll(state)}
   end
 
