@@ -3,6 +3,7 @@ defmodule AgentBoard.AI.Request do
 
   @type t :: %__MODULE__{
           name: atom() | nil,
+          provider: atom() | nil,
           model: String.t() | nil,
           system: String.t() | nil,
           prompt: String.t(),
@@ -12,6 +13,7 @@ defmodule AgentBoard.AI.Request do
         }
 
   defstruct name: nil,
+            provider: nil,
             model: nil,
             system: nil,
             prompt: "",
@@ -20,11 +22,12 @@ defmodule AgentBoard.AI.Request do
             tier: nil
 
   @doc "A request for a registry spec and the caller's inputs."
-  @spec build(map(), map()) :: t()
-  def build(spec, inputs) do
+  @spec build(map(), map(), atom(), String.t() | nil) :: t()
+  def build(spec, inputs, provider, model) do
     %__MODULE__{
       name: spec.name,
-      model: spec.model,
+      provider: provider,
+      model: model,
       system: spec.system,
       prompt: prompt(inputs),
       max_output_tokens: spec.output_cap,
