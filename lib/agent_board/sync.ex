@@ -45,7 +45,25 @@ defmodule AgentBoard.Sync do
   end
 
   defp do_sync(client, repository) do
-    issues = GitHub.issues(client, repository.owner, repository.name)
+    # A repository can have Issues disabled (404). That is not a sync failure:
+    # the pulls still matter.
+    issues =
+      try do
+        GitHub.issues(client, repository.owner, repository.name)
+      rescue
+        exception ->
+          Board.log_event(
+            repository.id,
+            "issues_unavailable",
+            "#{repository.owner}/#{repository.name}",
+            %{
+              "reason" => Exception.message(exception)
+            }
+          )
+
+          []
+      end
+
     pulls = GitHub.pulls(client, repository.owner, repository.name)
 
     Enum.each(issues, &upsert_issue(repository, &1))

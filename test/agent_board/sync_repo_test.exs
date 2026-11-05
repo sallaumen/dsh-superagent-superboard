@@ -111,6 +111,35 @@ defmodule AgentBoard.SyncRepoTest do
     assert stored.review_state == "approved"
   end
 
+  test "a repository without issues still syncs its pulls", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Plug.Conn.send_resp(conn, 404, ~s({"message": "Not Found"}))
+
+        "/repos/sallaumen/arena-rogue/pulls" ->
+          Req.Test.json(conn, [
+            %{
+              "number" => 9,
+              "title" => "Only PRs",
+              "state" => "open",
+              "html_url" => "https://github.com/x/y/pull/9",
+              "user" => %{"login" => "sallaumen"},
+              "created_at" => "2026-11-04T00:00:00Z",
+              "head" => %{"sha" => "abc"}
+            }
+          ])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert Repo.one(from p in AgentBoard.Board.PullRequest, where: p.number == 9) != nil
+    assert Enum.any?(Board.events(repo), &(&1.kind == "issues_unavailable"))
+  end
+
   test "a merged pull still gets its rollups", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
