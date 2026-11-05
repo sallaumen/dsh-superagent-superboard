@@ -111,6 +111,19 @@ defmodule AgentBoard.SyncRepoTest do
     assert stored.review_state == "approved"
   end
 
+  test "all/1 syncs every active repo with the injected client", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(7, "open")])
+        _ -> Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.all(client()) == 1
+    assert Repo.one(from t in Task, where: t.number == 7) != nil
+    assert repo.name == "arena-rogue"
+  end
+
   test "a repository without issues still syncs its pulls", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
