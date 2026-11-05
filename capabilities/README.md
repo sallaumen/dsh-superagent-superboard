@@ -12,7 +12,7 @@ Origem: **biblioteca-prompts-desenvolvimento v1.0.0** (34 prompts-fonte), analis
 4. **Carregue um contexto apenas se o projeto correspondente estiver no escopo** — leia [contextos/README.md](contextos/README.md) antes. Nenhum contexto é carregado por padrão.
 5. **Registre decisões e resultados** com os modelos em [templates/](templates/plano-de-entrega.md) quando a tarefa justificar.
 
-Regras que valem para todas as skills (contrato comum): autonomia para escolhas técnicas reversíveis dentro do escopo; evidência de execução; condição de conclusão verificável; até duas frentes executoras por padrão, com listener ou execução sequencial quando o ambiente não oferecer delegação; merge, deploy, compra, mensagens externas e alterações destrutivas exigem autorização concreta da sessão — uma skill não concede essas permissões por existir.
+Regras que valem para todas as skills (contrato comum): autonomia para escolhas técnicas reversíveis dentro do escopo; evidência de execução; condição de conclusão verificável; até duas frentes executoras por padrão, com listener ou execução sequencial quando o ambiente não oferecer delegação; merge, deploy, compra, mensagens externas e alterações destrutivas exigem autorização concreta da sessão — uma skill não concede essas permissões por existir; gate remoto indisponível (CI sem token/runner/billing) não trava a entrega — a validação local executada com evidência é o gate suficiente, registrando a limitação.
 
 ## Estrutura
 
