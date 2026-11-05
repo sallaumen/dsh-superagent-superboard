@@ -36,7 +36,7 @@ capabilities/
 ## Adicionar uma nova capacidade sem duplicar instruções
 
 1. Confirme que a necessidade é real e a fronteira é diferente das existentes: compare com o catálogo e com as dúvidas comuns de escolha. Prefira um workflow novo dentro de uma skill existente a criar outra quando a diferença for só uma variação.
-2. Crie `skills/<nome>/SKILL.md` com o frontmatter (`name`, `title`, `category`, `default_mode`, `origem`, `related`, `description` com os sinais de uso) e um corpo com `## Quando usar`, `## Entradas úteis` e `## Instrução`. Mantenha o corpo no essencial; coloque detalhes extensos em `referencias/` e carregue-os sob condição.
+2. Crie `skills/<nome>/SKILL.md` com os [metadados no formato aceito](#formato-dos-metadados) e um corpo com `## Quando usar`, `## Entradas úteis` e `## Instrução`. Mantenha o corpo no essencial; coloque detalhes extensos em `referencias/` e carregue-os sob condição.
 3. Não repita o contrato comum nem os contextos dentro da skill: referencie `contrato.md` e aponte os contextos pertinentes sem copiá-los.
 4. Registre a skill no `manifest.json`, o destino da origem no [INCORPORACAO.md](INCORPORACAO.md), a linha no [CATALOGO.md](CATALOGO.md) e um caso de avaliação em [validacao/casos-de-avaliacao.json](validacao/casos-de-avaliacao.json) (positivo, vizinho de outra skill e pedido pequeno que não ativa nada).
 5. Use [templates/nova-capacidade.md](templates/nova-capacidade.md) como roteiro de planejamento.
@@ -58,3 +58,32 @@ Cenários comportamentais de roteamento e limites estão em [validacao/casos-de-
 ## Ambientes suportados
 
 As skills usam o formato de pasta `SKILL.md` com frontmatter `name`/`description`, documentado na [especificação de Agent Skills](https://agentskills.io/specification). Esta biblioteca **não** foi instalada em nenhum agente específico nem verificada em múltiplas plataformas; a validação desta edição cobre formato, integridade de referências e cenários controlados com um executor que lê arquivos. A instalação em um agente (ex.: catálogo de skills de uma sessão) é trabalho separado e deve ser verificada no ambiente correspondente.
+
+## Formato dos metadados
+
+O frontmatter é delimitado por `---`. Cada campo ocupa uma linha e seu valor
+precisa ser **JSON válido**, pois o validador usa `json.loads`: strings entre
+aspas duplas, listas entre colchetes, sem valores multilinha (`>` ou `|`).
+Use exatamente os campos abaixo, sem campos extras. O nome deve corresponder
+à pasta em `skills/`, e o título deve ser igual ao primeiro título Markdown.
+
+Este exemplo é fictício e demonstra somente os metadados; não representa uma
+capacidade instalada nem substitui o corpo com instruções:
+
+```text
+---
+name: "revisar-links"
+title: "Revisar links de documentação"
+category: "qualidade"
+default_mode: "analisar"
+origem: ["EXEMPLO01"]
+related: []
+description: "Use para encontrar links locais quebrados em documentação Markdown."
+---
+```
+
+Use um modo definido no [contrato comum](contrato.md#2-respeite-o-modo-escolhido).
+`origem` deve conter identificadores reais registrados no manifesto; `EXEMPLO01`
+é apenas ilustrativo. `related` contém nomes de outras skills existentes e pode
+ser vazio. Depois dos metadados, escreva o título e as seções indicadas no
+[fluxo de adição](#adicionar-uma-nova-capacidade-sem-duplicar-instruções).

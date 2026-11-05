@@ -1,6 +1,6 @@
 # Adicionar uma nova capacidade
 
-Use este roteiro ao propor uma capacidade nova nesta biblioteca. O formato final é `skills/<nome>/SKILL.md` com o frontmatter descrito em [README.md](../README.md); registre a origem no manifesto e a decisão em [INCORPORACAO.md](../INCORPORACAO.md).
+Use este roteiro ao propor uma capacidade nova nesta biblioteca. O formato final é `skills/<nome>/SKILL.md` com o frontmatter descrito em [Formato dos metadados](../README.md#formato-dos-metadados); registre a origem no manifesto e a decisão em [INCORPORACAO.md](../INCORPORACAO.md).
 
 ## Metadados de ativação
 
