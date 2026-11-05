@@ -13,6 +13,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     view
   end
 
+  alias AgentBoard.AI.Call
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
 
@@ -227,8 +228,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
   test "the AI panel shows the last calls", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
-    %AgentBoard.AI.Call{}
-    |> AgentBoard.AI.Call.changeset(%{
+    %Call{}
+    |> Call.changeset(%{
       name: "refine_request",
       engine: "deepseek",
       model: "deepseek-flash",
