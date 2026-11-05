@@ -1,5 +1,9 @@
 # Auditoria: ações e feedback
 
+> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
+> descrevem as revisões identificadas neste documento, não o produto atual.
+> Consulte o [índice e a sequência da auditoria](README.md).
+
 Base `67029d2` (#161). Fechamento da auditoria em 05/11/2026.
 
 | Severidade | Região | Evidência antes | Correção |

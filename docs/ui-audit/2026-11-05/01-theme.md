@@ -1,5 +1,9 @@
 # Auditoria: tema e acessibilidade
 
+> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
+> descrevem as revisões identificadas neste documento, não o produto atual.
+> Consulte o [índice e a sequência da auditoria](README.md).
+
 Base: `52113d4` (main, incluindo #152). WebKit headless, 05/11/2026.
 `mix setup` passou. A porta 4002 pertence ao checkout `/Users/tavano/src/agent_board`;
 foi preservada. Este checkout foi servido com `PORT=4003 mix phx.server`.
