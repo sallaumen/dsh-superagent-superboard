@@ -183,4 +183,8 @@ defmodule AgentBoard.Board.ConversationTest do
     assert board.merged == []
     assert board.running == []
   end
+
+  test "an unknown slug is an error, not a crash", _ctx do
+    assert Board.board("nobody/nothing") == :error
+  end
 end
