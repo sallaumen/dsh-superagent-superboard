@@ -107,6 +107,12 @@ state, the voice events, the PubSub broadcast) and the pipeline contract.
 
 ## The limits
 
+- The board is **eventually consistent**: the poller reads the runner every 10s
+  and the GitHub sync runs every minute, so a merged PR can take up to that
+  long to show up.
+- The **poller is a one-shot per tick by design now**: `handle_info(:poll)`
+  reschedules before polling, so a slow poll delays the next tick instead of
+  stacking them (the interval is a floor, not a guarantee).
 - **Stop** is the board's flag plus closing the issue. A worker already running
   finishes its current ticket: the Super-Agent API has no cancel endpoint.
 - The board **reads** the agent's state; it never writes to it.
