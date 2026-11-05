@@ -77,14 +77,6 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               <.icon name="hero-microphone" class="size-4" />Dictate task
             </button>
           </div>
-          <p
-            id="voice-feedback"
-            role="status"
-            aria-live="polite"
-            phx-update="ignore"
-            class="empty:hidden"
-          >
-          </p>
         </section>
 
         <section aria-labelledby="settings-appearance">

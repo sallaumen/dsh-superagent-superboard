@@ -224,25 +224,71 @@ defmodule AgentBoard.ElevenLabs do
 
   @doc "The voices available to the account: `{:ok, [%{id: id, name: name}]}`."
   def voices do
-    if configured?() do
-      case Req.get(client(), url: "/v1/voices", params: [page_size: 100]) do
-        {:ok, %Req.Response{status: 200, body: %{"voices" => list}}} ->
-          {:ok, Enum.map(list, &%{id: &1["voice_id"], name: &1["name"]})}
+    if configured?(), do: voice_list(), else: {:error, :not_configured}
+  end
 
-        {:ok, %Req.Response{status: 401}} ->
-          {:error, :auth_expired}
+  @doc "Whether board events are spoken automatically (the settings default is on)."
+  def speak_events?, do: AgentBoard.Settings.get("elevenlabs_speak_events") != "0"
 
-        {:ok, %Req.Response{status: 429}} ->
-          {:error, :usage_limit}
+  defp voice_list do
+    case cached_voices() do
+      {:ok, voices} -> {:ok, voices}
+      :miss -> fetched_voices()
+    end
+  end
 
-        {:ok, %Req.Response{status: status}} ->
-          {:error, {:http, status}}
+  defp fetched_voices do
+    case fetch_voices() do
+      {:ok, voices} ->
+        # Only a positive ttl writes: with the cache disabled the persistent
+        # term stays clean instead of leaking stale lists.
+        if voices_ttl() > 0, do: cache_voices(voices)
+        {:ok, voices}
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    else
-      {:error, :not_configured}
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # The account's voices change rarely; a browse should not pay a request
+  # every time. The TTL is the `:voice_voices_ttl` knob (0 disables the
+  # cache, which the tests use).
+  defp voices_ttl, do: Application.get_env(:agent_board, :voice_voices_ttl, 300_000)
+
+  defp cached_voices do
+    if voices_ttl() <= 0, do: :miss, else: fresh?(read_cached_voices())
+  end
+
+  defp read_cached_voices, do: :persistent_term.get({__MODULE__, :voices}, nil)
+
+  defp fresh?({fetched_at, voices}) when is_list(voices) do
+    if System.monotonic_time(:millisecond) - fetched_at < voices_ttl(),
+      do: {:ok, voices},
+      else: :miss
+  end
+
+  defp fresh?(_cached), do: :miss
+
+  defp cache_voices(voices) do
+    :persistent_term.put({__MODULE__, :voices}, {System.monotonic_time(:millisecond), voices})
+  end
+
+  defp fetch_voices do
+    case Req.get(client(), url: "/v1/voices", params: [page_size: 100]) do
+      {:ok, %Req.Response{status: 200, body: %{"voices" => list}}} ->
+        {:ok, Enum.map(list, &%{id: &1["voice_id"], name: &1["name"]})}
+
+      {:ok, %Req.Response{status: 401}} ->
+        {:error, :auth_expired}
+
+      {:ok, %Req.Response{status: 429}} ->
+        {:error, :usage_limit}
+
+      {:ok, %Req.Response{status: status}} ->
+        {:error, {:http, status}}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

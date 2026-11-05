@@ -76,6 +76,21 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   a text over 5000 characters (400), an audio body over the cap (413,
   `:voice_audio_max_bytes`), a voice id that is not voice-shaped (400) and
   a TTS model outside the catalog (400).
+- The account's voices are cached for the `:voice_voices_ttl` window
+  (default 5 minutes, 0 disables — the test env disables it); a browse
+  does not pay a request every time.
+- **Automatic speech** is `AgentBoard.Announcer`: a pure diff between the
+  previous and the current board. The agent speaks task overlays moving
+  between the live lanes and sync outcomes getting worse, capped at two
+  utterances per update and deduped for a short window; user actions speak
+  their own confirmations, so they are not announced twice. The settings
+  key `elevenlabs_speak_events` (`"0"` disables, absent is on) is the
+  toggle; the UI checkbox writes it and `PUT /api/voice/settings`
+  accepts `speak_events`.
+- The **voice ask loop**: the conversation's mic button records and
+  transcribes a question into the ask form, and the asynchronous answer is
+  spoken back in the agent's voice (cut at a word boundary). The recorder
+  hook fills whatever `data-target` names (`#task-title` by default).
 
 ## AI calls
 

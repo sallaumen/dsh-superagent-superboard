@@ -27,6 +27,18 @@ defmodule AgentBoardWeb.VoiceUITest do
     on_exit(fn -> Application.put_env(:agent_board, :elevenlabs_api_key, previous) end)
   end
 
+  defp voice_task(repo, title, state) do
+    %AgentBoard.Board.Task{}
+    |> AgentBoard.Board.Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 42,
+      title: title,
+      state: state
+    })
+    |> AgentBoard.Repo.insert!()
+  end
+
   test "without a key the section says so and hides the picker", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/")
 
@@ -209,5 +221,76 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert html =~ "fixed in .env.local"
     refute html =~ ">Save<"
     refute html =~ "List voices"
+  end
+
+  test "an agent state change is spoken", %{conn: conn} do
+    with_key()
+
+    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    task = voice_task(repo, "Live task", "queued")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "running"}))
+
+    send(view.pid, :board_updated)
+
+    assert_push_event(
+      view,
+      "voice_play",
+      %{
+        url:
+          "/api/voice/speech?text=Task+%27Live+task%27+is+now+running.&voice=JBFqnCBsd6RMkjVDRZzb"
+      }
+    )
+  end
+
+  test "no announcement when the toggle is off", %{conn: conn} do
+    with_key()
+    :ok = Settings.put("elevenlabs_speak_events", "0")
+
+    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    task = voice_task(repo, "Live task", "queued")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "running"}))
+
+    send(view.pid, :board_updated)
+    refute_receive {_, _, "voice_play", _}, 100
+  end
+
+  test "the automatic feedback toggle persists", %{conn: conn} do
+    with_key()
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view |> element("#voice-announce") |> render_change(%{"speak_events" => "false"})
+    assert Settings.get("elevenlabs_speak_events") == "0"
+
+    view |> element("#voice-announce") |> render_change(%{"speak_events" => "true"})
+    assert Settings.get("elevenlabs_speak_events") == nil
+  end
+
+  test "the agent's answer is spoken back", %{conn: conn} do
+    with_key()
+
+    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    task = voice_task(repo, "Live task", "queued")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    view |> element("#task-#{task.id} button", "Open") |> render_click()
+
+    send(view.pid, {:answer, task.id, "All good. The sync is clean and nothing is blocked."})
+
+    assert_push_event(
+      view,
+      "voice_play",
+      %{
+        url:
+          "/api/voice/speech?text=All+good.+The+sync+is+clean+and+nothing+is+blocked.&voice=JBFqnCBsd6RMkjVDRZzb"
+      }
+    )
   end
 end

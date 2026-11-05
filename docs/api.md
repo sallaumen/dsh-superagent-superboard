@@ -66,7 +66,7 @@ Corpo: `{"action": "stop"}`. O valor de `action` também pode ser `"archive"` ou
 
 ### GET /api/voice/status
 
-- `200` — `{"configured": true|false, "status": "logged_in"|"not_configured", "voice_id": "...", "voice_source": "environment"|"saved"|"default", "tts_model": "...", "tts_source": "environment"|"saved"|"default", "stt_model": "..."}`. Nunca expõe a chave. Os campos `*_source` dizem de onde vem cada escolha: a variável de ambiente, a escolha salva na UI ou o padrão.
+- `200` — `{"configured": true|false, "status": "logged_in"|"not_configured", "voice_id": "...", "voice_source": "environment"|"saved"|"default", "tts_model": "...", "tts_source": "environment"|"saved"|"default", "stt_model": "...", "speak_events": true|false}`. Nunca expõe a chave. Os campos `*_source` dizem de onde vem cada escolha: a variável de ambiente, a escolha salva na UI ou o padrão; `speak_events` é a fala automática do board (ligada por padrão).
 
 ### GET /api/voice/voices
 
@@ -75,7 +75,7 @@ Corpo: `{"action": "stop"}`. O valor de `action` também pode ser `"archive"` ou
 
 ### PUT /api/voice/settings
 
-Corpo: `{"voice_id": "..."}` e/ou `{"tts_model": "..."}`. `voice_id` vazio ou em branco limpa a escolha (volta ao padrão); `tts_model` precisa ser um dos modelos oferecidos (`eleven_flash_v2_5`, `eleven_v4`, `eleven_multilingual_v2`).
+Corpo: `{"voice_id": "..."}`, `{"tts_model": "..."}` e/ou `{"speak_events": true|false}`. `voice_id` vazio ou em branco limpa a escolha (volta ao padrão); `tts_model` precisa ser um dos modelos oferecidos (`eleven_flash_v2_5`, `eleven_v4`, `eleven_multilingual_v2`); `speak_events` liga/desliga a fala automática do board.
 
 - `200` — `{"voice_id": "...", "voice_source": "saved"|"default", "tts_model": "...", "tts_source": "saved"|"default"}`. As escolhas persistem na tabela `settings` e valem na hora; `ELEVENLABS_VOICE_ID` / `ELEVENLABS_TTS_MODEL` no ambiente continuam com prioridade.
 - `400` — `{"error": "a valid voice id is required"}` para id maior que 64 caracteres; `{"error": "an offered TTS model is required"}` para modelo fora do catálogo.

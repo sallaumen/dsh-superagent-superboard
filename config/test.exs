@@ -45,3 +45,7 @@ config :agent_board, Oban, testing: :manual
 # keeps it alive but silent; live_test overrides the knob for the schedule
 # test.
 config :agent_board, live_poll_interval: 3_600_000
+
+# The voices cache would leak between tests through the persistent term;
+# the client goes to the stub every time.
+config :agent_board, voice_voices_ttl: 0

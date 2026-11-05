@@ -4,13 +4,14 @@ defmodule AgentBoardWeb.BoardLive do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AI, Board, ElevenLabs, GitHub, Intake, Repo, Settings, Voice}
+  alias AgentBoard.{AI, Announcer, Board, ElevenLabs, GitHub, Intake, Repo, Settings, Voice}
   alias AgentBoard.Board.Task
   alias AgentBoard.System.{Updater, Version}
   alias AgentBoardWeb.{BoardComponents, BoardNavigation}
 
   @voice_key "elevenlabs_voice_id"
   @tts_model_key "elevenlabs_tts_model"
+  @speak_events_key "elevenlabs_speak_events"
 
   @impl true
   def mount(params, _session, socket) do
@@ -32,7 +33,9 @@ defmodule AgentBoardWeb.BoardLive do
         ai_status: AI.status(),
         version: Version.status(),
         busy: false,
-        voice: current_voice()
+        voice: current_voice(),
+        spoken_text: nil,
+        spoken_at: 0
       )
 
     repo =
@@ -134,14 +137,25 @@ defmodule AgentBoardWeb.BoardLive do
     current = socket.assigns.conversation && socket.assigns.conversation.id
 
     if current == task_id do
-      {:noreply, socket |> put_flash(:info, text) |> refresh_ai()}
+      {:noreply,
+       socket
+       |> put_flash(:info, text)
+       |> refresh_ai()
+       |> speak(Announcer.speakable_answer(text))}
     else
       {:noreply, socket}
     end
   end
 
   def handle_info(:board_updated, socket) do
-    {:noreply, socket |> load(socket.assigns.repo) |> refresh_conversation()}
+    old_board = socket.assigns.board
+    old_sync = socket.assigns.sync_event
+
+    {:noreply,
+     socket
+     |> load(socket.assigns.repo)
+     |> refresh_conversation()
+     |> announce(old_board, old_sync)}
   end
 
   defp refresh_conversation(%{assigns: %{conversation: nil}} = socket), do: socket
@@ -264,7 +278,8 @@ defmodule AgentBoardWeb.BoardLive do
              |> load(repo)
              |> put_flash(:info, "Task created")
              |> assign(:panel, nil)
-             |> push_event("panel_close", %{})}
+             |> push_event("panel_close", %{})
+             |> speak(Voice.task_summary(title, "created"))}
 
           {:error, _} ->
             {:noreply,
@@ -288,7 +303,11 @@ defmodule AgentBoardWeb.BoardLive do
 
     case result do
       {:ok, _} ->
-        {:noreply, socket |> load(socket.assigns.repo) |> put_flash(:info, "Task updated")}
+        {:noreply,
+         socket
+         |> load(socket.assigns.repo)
+         |> put_flash(:info, "Task updated")
+         |> speak(Voice.task_summary(task.title, action))}
 
       _ ->
         {:noreply, put_flash(socket, :error, "Could not update the task")}
@@ -523,6 +542,14 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  @impl true
+  def handle_event("voice_announce", %{"speak_events" => value}, socket) do
+    :ok = Settings.put(@speak_events_key, if(value == "true", do: "", else: "0"))
+
+    {:noreply,
+     assign(socket, voice: %{socket.assigns.voice | speak_events: ElevenLabs.speak_events?()})}
+  end
+
   # The model answers on another process: the question is already on GitHub,
   # and blocking the LiveView for it freezes the whole board.
   defp ask_in_background(task, body) do
@@ -543,12 +570,46 @@ defmodule AgentBoardWeb.BoardLive do
       pick: nil,
       model: ElevenLabs.tts_model(),
       model_source: ElevenLabs.tts_source(),
-      models: ElevenLabs.tts_models()
+      models: ElevenLabs.tts_models(),
+      speak_events: ElevenLabs.speak_events?()
     }
   end
 
   defp voice_name(nil, _id), do: nil
   defp voice_name(voices, id), do: Enum.find_value(voices, fn v -> if v.id == id, do: v.name end)
+
+  # The agent speaks what changed, once per change: the poller already
+  # broadcasts only on new hashes, and the same utterance is not repeated
+  # within a short window.
+  defp announce(socket, old_board, old_sync) do
+    texts =
+      Announcer.board_changes(
+        old_board,
+        socket.assigns.board,
+        old_sync,
+        socket.assigns.sync_event
+      )
+
+    Enum.reduce(texts, socket, &speak(&2, &1))
+  end
+
+  # Speaks through the agent's ElevenLabs voice when the key is configured
+  # and the automatic speech is on; a repeated utterance within a short
+  # window is skipped, so a burst never doubles the audio.
+  defp speak(%{assigns: %{voice: %{configured: true, speak_events: true}}} = socket, text)
+       when is_binary(text) do
+    now = System.monotonic_time(:millisecond)
+
+    if socket.assigns.spoken_text == text and now - socket.assigns.spoken_at < 30_000 do
+      socket
+    else
+      socket
+      |> assign(spoken_text: text, spoken_at: now)
+      |> push_event("voice_play", %{url: speech_url(text, socket.assigns.voice.id)})
+    end
+  end
+
+  defp speak(socket, _text), do: socket
 
   defp voice_reason(:not_configured), do: "no API key"
   defp voice_reason(:auth_expired), do: "the key was rejected"

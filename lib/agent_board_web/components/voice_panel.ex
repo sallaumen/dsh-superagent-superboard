@@ -126,6 +126,19 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           </div>
         </div>
 
+        <div class="voice-field">
+          <label for="voice-announce" class="voice-field-label">Automatic feedback</label>
+          <label class="voice-toggle">
+            <input
+              id="voice-announce"
+              type="checkbox"
+              name="speak_events"
+              phx-change="voice_announce"
+              checked={@voice.speak_events}
+            /> Speak board events as they happen
+          </label>
+        </div>
+
         <form phx-submit="voice_try" class="voice-field">
           <label for="voice-phrase" class="voice-field-label">Try a phrase</label>
           <div class="settings-actions">

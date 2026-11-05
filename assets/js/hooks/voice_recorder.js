@@ -4,7 +4,10 @@
 // the recording also stops by itself after data-max-seconds.
 export const VoiceRecorder = {
   mounted() {
-    this.idleLabel = this.el.textContent.trim()
+    // The input the transcript lands in: the task title by default, the
+    // ask input when data-target names it.
+    this.target = this.el.dataset.target || "#task-title"
+    this.idleLabel = this.el.dataset.label || this.el.textContent.trim()
     this.maxSeconds = Number(this.el.dataset.maxSeconds) || 20
     this.recorder = null
     this.stream = null
@@ -67,9 +70,9 @@ export const VoiceRecorder = {
         say(data.error || `Transcription failed (HTTP ${response.status}).`)
         return
       }
-      const input = document.querySelector("#task-title")
+      const input = document.querySelector(this.target)
       if (!input) {
-        say("Track a repository first; the task form is not open.")
+        say("The form for this is not open. Open the panel first.")
         return
       }
       input.value = data.text

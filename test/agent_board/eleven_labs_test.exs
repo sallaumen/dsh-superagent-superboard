@@ -273,4 +273,37 @@ defmodule AgentBoard.ElevenLabsTest do
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 401, "unauthorized") end)
     assert {:error, :auth_expired} = ElevenLabs.voices()
   end
+
+  test "automatic speech defaults on and the settings can turn it off" do
+    assert ElevenLabs.speak_events?()
+
+    :ok = Settings.put("elevenlabs_speak_events", "0")
+    refute ElevenLabs.speak_events?()
+
+    :ok = Settings.put("elevenlabs_speak_events", "")
+    assert ElevenLabs.speak_events?()
+  end
+
+  test "the voices list is cached within its ttl" do
+    previous_ttl = Application.get_env(:agent_board, :voice_voices_ttl)
+    Application.put_env(:agent_board, :voice_voices_ttl, 60_000)
+
+    on_exit(fn ->
+      Application.put_env(:agent_board, :voice_voices_ttl, previous_ttl)
+      :persistent_term.erase({AgentBoard.ElevenLabs, :voices})
+    end)
+
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+    Req.Test.stub(@stub, fn conn ->
+      Agent.update(counter, &(&1 + 1))
+
+      Req.Test.json(conn, %{"voices" => [%{"voice_id" => "abc", "name" => "George"}]})
+    end)
+
+    assert {:ok, voices} = ElevenLabs.voices()
+    assert {:ok, ^voices} = ElevenLabs.voices()
+
+    assert Agent.get(counter, & &1) == 1
+  end
 end

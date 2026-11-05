@@ -79,6 +79,11 @@ The loader lives in [config/runtime.exs](config/runtime.exs).
 - **Stops** (the flag plus closing the issue) and **archives** a task.
 - **Speaks**: "Speak status" reads the board out loud (the Web Speech API);
   "Dictate task" turns a sentence into a task title.
+- **Speaks back, unprompted**: the board announces what changed in the
+  agent's voice — task overlays moving between the lanes, syncs getting
+  worse, answers to spoken questions — and the mic in the task conversation
+  records a question straight into the ask form. The toggle lives in the
+  Voice settings.
 - **Speaks back**: the ElevenLabs client (`AgentBoard.ElevenLabs`) generates
   server-side speech and transcription at `/api/voice/...` — text to speech,
   speech to text and the account's voices, with the key read from

@@ -15,6 +15,7 @@ defmodule AgentBoardWeb.VoiceController do
 
   @voice_key "elevenlabs_voice_id"
   @tts_model_key "elevenlabs_tts_model"
+  @speak_events_key "elevenlabs_speak_events"
   # A dictated task title is seconds of audio, not a podcast: the cap keeps a
   # stray upload from reaching ElevenLabs. Overridable for tests.
   @max_audio_bytes 10_000_000
@@ -28,7 +29,8 @@ defmodule AgentBoardWeb.VoiceController do
       voice_source: ElevenLabs.voice_source(),
       tts_model: ElevenLabs.tts_model(),
       tts_source: ElevenLabs.tts_source(),
-      stt_model: ElevenLabs.stt_model()
+      stt_model: ElevenLabs.stt_model(),
+      speak_events: ElevenLabs.speak_events?()
     })
   end
 
@@ -48,12 +50,14 @@ defmodule AgentBoardWeb.VoiceController do
   """
   def update(conn, params) do
     with :ok <- put_voice(params),
-         :ok <- put_model(params) do
+         :ok <- put_model(params),
+         :ok <- put_speak_events(params) do
       json(conn, %{
         voice_id: ElevenLabs.voice_id(),
         voice_source: ElevenLabs.voice_source(),
         tts_model: ElevenLabs.tts_model(),
-        tts_source: ElevenLabs.tts_source()
+        tts_source: ElevenLabs.tts_source(),
+        speak_events: ElevenLabs.speak_events?()
       })
     else
       {:error, reason} -> voice_error(conn, reason)
@@ -79,6 +83,16 @@ defmodule AgentBoardWeb.VoiceController do
   end
 
   defp put_model(_params), do: :ok
+
+  # "0" in the settings disables the automatic speech; anything else (or
+  # nothing stored) leaves the default on.
+  defp put_speak_events(%{"speak_events" => value}) do
+    if value in [true, "true", "1"],
+      do: Settings.put(@speak_events_key, ""),
+      else: Settings.put(@speak_events_key, "0")
+  end
+
+  defp put_speak_events(_params), do: :ok
 
   @doc "GET /api/voice/speech?text=... -- the spoken audio (mp3)."
   def speech(conn, params), do: speak(conn, params)

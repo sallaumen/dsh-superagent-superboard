@@ -474,3 +474,8 @@
   .board-column[data-attention="true"] .lane-count::after { animation: attention-breathe 2.8s ease-in-out infinite; }
 }
 @keyframes attention-breathe { 50% { opacity: 0.3; } }
+
+/* Voice feedback and the automatic-speech toggle. */
+.voice-feedback { font-size: 0.6875rem; color: color-mix(in oklab, var(--color-base-content) 50%, transparent); align-self: center; }
+.voice-toggle { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); cursor: pointer; }
+.voice-toggle input { accent-color: var(--color-base-content); }
