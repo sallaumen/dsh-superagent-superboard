@@ -24,16 +24,21 @@ The dev database is on the local Postgres at `127.0.0.1:5434`.
 
 ## Run as a service
 
-The board is meant to be always on, at `http://127.0.0.1:4099`. `ops/com.agentboard.plist`
-is the launchd agent; `scripts/service.sh` is what it runs.
+The board is meant to be always on. [ops/com.agentboard.plist](ops/com.agentboard.plist)
+is a launchd example with absolute paths for one checkout; before loading it,
+set `ProgramArguments`, `WorkingDirectory`, the log paths and the toolchain `PATH`
+for your machine. It runs [scripts/service.sh](scripts/service.sh); its defaults
+and environment overrides are documented in the [script matrix](PIPELINES.md#matriz-de-scripts).
 
 ```sh
+mkdir -p ~/Library/LaunchAgents
 cp ops/com.agentboard.plist ~/Library/LaunchAgents/com.agentboard.plist
+# Edit the copied plist with the paths described above before loading it.
 launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.agentboard.plist
 ```
 
 `KeepAlive` restarts the board after a crash or an update; `RunAtLoad` starts
-it with the system. Logs: `~/Library/Logs/AgentBoard.log`.
+it with the system. Read logs at the paths selected in the plist.
 
 ```sh
 launchctl bootout "gui/$(id -u)/com.agentboard"   # stop for good
