@@ -12,16 +12,19 @@ defmodule AgentBoardWeb.BoardLive do
   @voice_key "elevenlabs_voice_id"
   @tts_model_key "elevenlabs_tts_model"
   @speak_events_key "elevenlabs_speak_events"
+  @max_resume_items 1000
 
   @impl true
   def mount(params, _session, socket) do
     repos = Board.list_repositories()
+    resume = if connected?(socket), do: get_connect_params(socket)["board_resume"]
 
     socket =
       assign(socket,
         repos: repos,
         repo: nil,
         board: empty(),
+        resume: resume,
         events: [],
         sync_event: nil,
         live: connected?(socket),
@@ -70,6 +73,7 @@ defmodule AgentBoardWeb.BoardLive do
     assign(socket,
       repo: nil,
       board: empty(),
+      resume: nil,
       events: [],
       sync_event: nil,
       live: connected?(socket),
@@ -91,27 +95,14 @@ defmodule AgentBoardWeb.BoardLive do
         do: assign(socket, conversation: nil, comments: [], intake: nil),
         else: socket
 
-    same_repo = socket.assigns.repo == repo
-
-    merged_limit =
-      if same_repo,
-        do: max(length(socket.assigns.board.merged), Board.merged_page_size()),
-        else: Board.merged_page_size()
-
-    task_limits =
-      if same_repo do
-        Map.new(Board.task_states(), fn state ->
-          {state, max(length(Map.fetch!(socket.assigns.board, state)), Board.task_page_size())}
-        end)
-      else
-        %{}
-      end
+    {merged_limit, task_limits} = pagination_limits(socket, repo)
 
     case Board.board("#{repo.owner}/#{repo.name}", merged_limit, task_limits) do
       {:ok, board} ->
         assign(socket,
           repo: repo,
           board: board,
+          resume: nil,
           events: Board.events(repo),
           sync_event: Board.latest_sync(repo),
           ai_calls: AI.recent(5),
@@ -123,6 +114,7 @@ defmodule AgentBoardWeb.BoardLive do
         assign(socket,
           repo: nil,
           board: empty(),
+          resume: nil,
           events: [],
           sync_event: nil,
           live: connected?(socket),
@@ -131,6 +123,40 @@ defmodule AgentBoardWeb.BoardLive do
         )
     end
   end
+
+  defp pagination_limits(socket, repo) do
+    if socket.assigns.repo == repo do
+      merged = max(length(socket.assigns.board.merged), Board.merged_page_size())
+
+      tasks =
+        Map.new(Board.task_states(), fn state ->
+          {state, max(length(Map.fetch!(socket.assigns.board, state)), Board.task_page_size())}
+        end)
+
+      {merged, tasks}
+    else
+      resume = resume_for(socket.assigns.resume, repo)
+      resume_tasks = if is_map(resume["tasks"]), do: resume["tasks"], else: %{}
+
+      tasks =
+        Map.new(Board.task_states(), fn state ->
+          {state, resume_limit(resume_tasks[Atom.to_string(state)], Board.task_page_size())}
+        end)
+
+      {resume_limit(resume["merged"], Board.merged_page_size()), tasks}
+    end
+  end
+
+  defp resume_for(%{"repo" => slug} = resume, repo) do
+    if slug == "#{repo.owner}/#{repo.name}", do: resume, else: %{}
+  end
+
+  defp resume_for(_, _), do: %{}
+
+  defp resume_limit(count, minimum) when is_integer(count) and count > minimum,
+    do: min(count, @max_resume_items)
+
+  defp resume_limit(_, minimum), do: minimum
 
   @impl true
   def handle_info({:answer, task_id, text}, socket) do
