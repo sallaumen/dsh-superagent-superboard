@@ -4,8 +4,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Board, GitHub, Repo, Voice}
-  alias AgentBoard.{AI, Board, Intake}
+  alias AgentBoard.{AI, Board, GitHub, Intake, Repo, Voice}
   alias AgentBoard.Board.Task
 
   @impl true
