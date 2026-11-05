@@ -1,8 +1,17 @@
 defmodule AgentBoardWeb.BoardLiveTest do
   @moduledoc "The board's UI: the columns render and the tasks can be created."
-  use AgentBoardWeb.ConnCase, async: false
+  use AgentBoardWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
+
+  alias Ecto.Adapters.SQL.Sandbox
+
+  # The LiveView runs in its own process: allow it to use the test's
+  # transaction, which is the supported way to keep async: true.
+  defp allow_view(view) do
+    Sandbox.allow(AgentBoard.Repo, self(), view.pid)
+    view
+  end
 
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
@@ -81,6 +90,31 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     view |> element("button", "Close") |> render_click()
     refute render(view) =~ "Conversation"
+  end
+
+  test "two clients receive the same broadcast", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, first, _html} = live(conn, ~p"/")
+    {:ok, second, _html} = live(build_conn(), ~p"/")
+
+    allow_view(first)
+    allow_view(second)
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 101,
+      title: "Both clients see this",
+      state: "queued"
+    })
+    |> Repo.insert!()
+
+    Board.broadcast(repo.id)
+
+    assert render(first) =~ "Both clients see this"
+    assert render(second) =~ "Both clients see this"
   end
 
   test "the speak event pushes the summary", %{conn: conn} do
