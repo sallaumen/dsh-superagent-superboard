@@ -69,17 +69,25 @@ defmodule AgentBoard.Sync do
     repository.id
     |> active_tasks()
     |> Enum.each(fn task ->
-      case AgentBoard.GitHub.issue_comments(
-             client,
-             repository.owner,
-             repository.name,
-             task.number
-           ) do
-        comments when is_list(comments) ->
-          Enum.each(comments, &Board.upsert_comment(task, &1, agent_login))
+      # One broken conversation must not kill the whole sync.
+      try do
+        case AgentBoard.GitHub.issue_comments(
+               client,
+               repository.owner,
+               repository.name,
+               task.number
+             ) do
+          comments when is_list(comments) ->
+            Enum.each(comments, &Board.upsert_comment(task, &1, agent_login))
 
-        _ ->
-          :ok
+          _ ->
+            :ok
+        end
+      rescue
+        exception ->
+          Board.log_event(repository.id, "comment_error", "##{task.number}", %{
+            "reason" => Exception.message(exception)
+          })
       end
     end)
   end
