@@ -87,7 +87,7 @@ export const VoiceCommand = {
       this.clearFirstSpace(true)
       return
     }
-    if ((dialog && dialog.id !== "panel-conversation") || document.querySelector("#board-settings[open]")) {
+    if ((dialog && dialog.id !== "panel-conversation") || document.querySelector("[data-board-menu][open]")) {
       this.clearFirstSpace(true)
       return
     }

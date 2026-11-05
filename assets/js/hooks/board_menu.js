@@ -1,4 +1,4 @@
-export const SettingsMenu = {
+export const BoardMenu = {
   mounted() {
     this.closeOnOutside = (event) => {
       if (document.querySelector(".board-dialog[open]")) return

@@ -558,7 +558,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#version-panel button", "Check")
   end
 
-  test "secondary controls live in settings while the primary request action stays visible", %{
+  test "work panels live in the header while settings holds preferences", %{
     conn: conn
   } do
     {:ok, _repo} = Board.add_repository("fixture", "settings")
@@ -567,8 +567,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#board-settings summary", "Settings")
     assert has_element?(view, "#board-settings #track-repo")
     assert has_element?(view, "#board-settings #version-panel")
-    assert has_element?(view, "#board-settings #open-activity")
-    assert has_element?(view, "#board-settings #open-ai")
+    refute has_element?(view, "#board-settings #open-activity")
+    refute has_element?(view, "#board-settings #open-ai")
     assert has_element?(view, "#settings-voice-section > summary", "Speech and feedback")
 
     assert has_element?(
@@ -580,8 +580,15 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#settings-appearance-section > summary", "Light and dark themes")
     assert has_element?(view, "#settings-system-section > summary", "Version")
     refute has_element?(view, "#settings-voice-section[open]")
-    assert has_element?(view, "#board-tools #open-intake", "Split a request")
-    refute has_element?(view, "#board-tools #open-ai")
+    assert has_element?(view, ".board-topbar #board-tools #open-intake", "Split a request")
+    assert has_element?(view, "#board-actions > summary", "Panels")
+    assert has_element?(view, "#board-actions #open-create", "New task")
+    assert has_element?(view, "#board-actions #open-activity", "Activity")
+    assert has_element?(view, "#board-actions #open-ai", "AI calls")
+
+    view |> element("#open-activity") |> render_click()
+    assert_patch(view, "/?panel=activity&repo=fixture%2Fsettings")
+    assert has_element?(view, "#board-page[data-panel=activity]")
   end
 
   test "new task opens as an in-page panel and closes to the board", %{conn: conn} do

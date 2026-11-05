@@ -6,13 +6,17 @@ export const BoardPanels = {
       if (!trigger) return
       this.opener = trigger
       this.openerId = trigger.id
+      this.openerMenuId = trigger.closest('[data-board-menu]')?.id
       this.pendingEntry = true
     }
     this.onPanelIntent = () => { this.pendingEntry = true }
     this.onNavigate = () => {
-      if (this.pendingEntry && new URL(location.href).searchParams.has('panel')) {
+      const hasPanel = new URL(location.href).searchParams.has('panel')
+      if (this.pendingEntry && hasPanel) {
         history.replaceState({...history.state, boardPanelFrom: this.el.dataset.baseUrl}, '', location.href)
+        this.el.querySelectorAll('[data-board-menu][open]').forEach(menu => { menu.open = false })
       }
+      if (!hasPanel && this.openerId) this.scheduleFocusRestore()
       this.pendingEntry = false
     }
     this.onCancel = event => {
@@ -44,14 +48,25 @@ export const BoardPanels = {
       }
     })
     if (this.activePanel && !selected) {
-      this.restoreFrame = requestAnimationFrame(() => {
-        const opener = this.opener?.isConnected ? this.opener : document.getElementById(this.openerId)
-        if (!this.el.dataset.panel) (opener || this.el.querySelector('#board-tools button'))?.focus({preventScroll: true})
-      })
+      this.scheduleFocusRestore()
     }
     this.activePanel = selected
     document.body.classList.toggle('board-panel-open', Boolean(selected))
     window.dispatchEvent(new Event('board:voice-context'))
+  },
+  scheduleFocusRestore() {
+    cancelAnimationFrame(this.restoreFrame)
+    this.restoreFrame = requestAnimationFrame(() => {
+      const opener = this.opener?.isConnected ? this.opener : document.getElementById(this.openerId)
+      const menuSummary = this.openerMenuId && document.getElementById(this.openerMenuId)?.querySelector('summary')
+      const focusTarget = menuSummary || opener || this.el.querySelector('#board-tools button')
+      if (!this.el.dataset.panel) {
+        focusTarget?.focus({preventScroll: true})
+        this.opener = null
+        this.openerId = null
+        this.openerMenuId = null
+      }
+    })
   },
   disconnected() { this.el.dataset.socket = 'reconnecting' },
   reconnected() { this.el.dataset.socket = 'live'; this.sync() },

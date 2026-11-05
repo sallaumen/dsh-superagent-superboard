@@ -38,6 +38,11 @@ defmodule AgentBoardWeb.BoardComponents.Header do
           </form>
         </div>
         <.live_component
+          module={AgentBoardWeb.BoardComponents.HeaderActions}
+          id="header-actions"
+          repo={@repo}
+        />
+        <.live_component
           module={AgentBoardWeb.BoardComponents.SettingsMenu}
           id="board-settings"
           repo={@repo}

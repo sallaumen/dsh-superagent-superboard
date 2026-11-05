@@ -9,7 +9,8 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
     ~H"""
     <details
       id={@id}
-      phx-hook="SettingsMenu"
+      phx-hook="BoardMenu"
+      data-board-menu
       class="board-settings"
       data-update-ready={to_string(@version.state == :behind)}
     >
@@ -19,30 +20,6 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
       </summary>
       <div class="board-settings-body">
         <h2>Settings</h2>
-
-        <section :if={@repo} class="settings-shortcuts" aria-labelledby="settings-diagnostics">
-          <h3 id="settings-diagnostics">Inspect</h3>
-          <div class="settings-actions">
-            <button
-              id="open-activity"
-              type="button"
-              phx-click="show_panel"
-              phx-value-panel="activity"
-              data-panel-trigger
-              aria-haspopup="dialog"
-              aria-controls="panel-activity"
-            ><.icon name="hero-clock" class="size-4" />Activity</button>
-            <button
-              id="open-ai"
-              type="button"
-              phx-click="show_panel"
-              phx-value-panel="ai"
-              data-panel-trigger
-              aria-haspopup="dialog"
-              aria-controls="panel-ai"
-            ><.icon name="hero-cpu-chip" class="size-4" />AI calls</button>
-          </div>
-        </section>
 
         <details id="settings-voice-section" class="settings-fold">
           <summary>
