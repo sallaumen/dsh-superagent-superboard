@@ -128,6 +128,14 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert render(view) =~ "no ci"
   end
 
+  test "the board sends a content security policy", %{conn: conn} do
+    conn = get(conn, ~p"/")
+
+    assert Enum.any?(conn.resp_headers, fn {k, v} ->
+             k == "content-security-policy" and v =~ "default-src"
+           end)
+  end
+
   test "the sync line is announced politely", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
