@@ -2,6 +2,19 @@
 
 The board for the agent's work, in Elixir. Read this before changing code.
 
+## The layout
+
+| Module | Role |
+|---|---|
+| `AgentBoard.Board` | the context: repositories, tasks, comments, events, broadcast |
+| `AgentBoard.Sync` | the GitHub sync: issues, pulls, reviews, checks, comments |
+| `AgentBoard.Sync.Worker` | the Oban job that runs the sync |
+| `AgentBoard.Live` | the 10s poller that reads the runner's tickets |
+| `AgentBoard.GitHub` | the HTTP client (`body!/1`, rate limits) |
+| `AgentBoard.Voice` | the spoken summary |
+| `AgentBoardWeb.BoardLive` | the real-time UI |
+| `AgentBoardWeb.BoardController` | the JSON API (`/api/...`) |
+
 ## Gates (must pass before a PR)
 
 - `mix format --check-formatted`
