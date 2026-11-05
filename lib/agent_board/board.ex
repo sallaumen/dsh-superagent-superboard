@@ -166,6 +166,12 @@ defmodule AgentBoard.Board do
         broadcast(task.repository_id)
         {:error, :github}
     end
+  rescue
+    exception ->
+      # The placeholder must never outlive a failed request.
+      Repo.delete_all(from c in Comment, where: c.task_id == ^task.id and c.github_id < 0)
+      broadcast(task.repository_id)
+      {:error, exception}
   end
 
   @doc "Upsert a comment pulled from GitHub."
