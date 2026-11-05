@@ -111,6 +111,45 @@ defmodule AgentBoard.SyncRepoTest do
     assert stored.review_state == "approved"
   end
 
+  test "a merged pull still gets its rollups", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/pulls" ->
+          Req.Test.json(conn, [
+            %{
+              "number" => 9,
+              "title" => "Merged PR",
+              "state" => "closed",
+              "merged_at" => "2026-11-04T00:00:00Z",
+              "html_url" => "https://github.com/x/y/pull/9",
+              "user" => %{"login" => "sallaumen"},
+              "created_at" => "2026-11-04T00:00:00Z",
+              "head" => %{"sha" => "abc"}
+            }
+          ])
+
+        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+          Req.Test.json(conn, [%{"id" => 1, "state" => "APPROVED", "user" => %{"login" => "rev"}}])
+
+        "/repos/sallaumen/arena-rogue/commits/abc/check-runs" ->
+          Req.Test.json(conn, %{
+            "check_runs" => [
+              %{"conclusion" => "success", "name" => "ci", "status" => "completed"}
+            ]
+          })
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    stored = Repo.one(from p in AgentBoard.Board.PullRequest, where: p.number == 9)
+    assert stored.review_state == "approved"
+    assert stored.checks_state == "success"
+  end
+
   test "a review without submitted_at does not duplicate across syncs", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do

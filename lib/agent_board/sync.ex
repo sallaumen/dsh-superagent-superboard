@@ -206,7 +206,9 @@ defmodule AgentBoard.Sync do
     end
   end
 
-  defp rollup_for(client, repository, pull, "open") do
+  # Merged and closed pulls also carry reviews and checks: the board shows
+  # them in the merged column, so they must be fetched, not left nil.
+  defp rollup_for(client, repository, pull, _state) do
     # A failing review/check fetch must not abort the PR insert: the PR is
     # stored with the rollups it can get, and the failure is logged.
     reviews =
@@ -229,10 +231,6 @@ defmodule AgentBoard.Sync do
     {checks_state, checks_failed} = checks_rollup(checks)
 
     {review_rollup(reviews), checks_state, checks_failed}
-  end
-
-  defp rollup_for(_client, _repository, _pull, _state) do
-    {nil, nil, nil}
   end
 
   defp safe_fetch(repository, kind, pull, fun) do
