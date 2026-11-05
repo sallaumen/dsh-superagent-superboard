@@ -111,6 +111,8 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
 
       - run: mix deps.get
+      - name: Checks determinísticos dos fontes
+        run: bash scripts/check_assets.sh
       - run: mix assets.setup
       - run: mix assets.build
       - run: mix assets.deploy

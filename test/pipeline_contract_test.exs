@@ -77,6 +77,7 @@ defmodule AgentBoard.PipelineContractTest do
           "mix credo --strict",
           "mix deps.unlock --check-unused",
           "mix test --partitions 4",
+          "check_assets.sh",
           "mix assets.setup",
           "mix assets.build",
           "mix assets.deploy",

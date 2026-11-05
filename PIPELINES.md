@@ -25,6 +25,7 @@ Regra de ouro: **o alvo `make` e o job da CI executam os mesmos comandos** — l
 | `mix assets.setup` | Primeira execução / CI frontend | `MIX_ENV=dev` | baixa binários tailwind/esbuild | ferramentas instaladas |
 | `mix assets.build` | Ao alterar CSS/JS | `MIX_ENV=dev` | escreve `priv/static/assets/` | bundle gerado sem erro |
 | `mix assets.deploy` | Validar o caminho de produção dos assets | `MIX_ENV=dev` | minifica + `phx.digest` | manifesto de digest gerado |
+| `scripts/check_assets.sh` | Ao mudar CSS/JS (primeiro passo do pipeline frontend) | máquina local | nenhum (somente leitura) | entradas presentes, pipeline tailwind configurado, JS autoral sem debug |
 | `validar_biblioteca.py` | Ao alterar `capabilities/`; CI library | Python 3.10+ | nenhum (somente leitura) | `OK` com 0 erros |
 | `test_validar_biblioteca.py` | Ao alterar o validador | Python 3.10+ | temporários | 20/20 testes |
 | `make backend/frontend/library/release/coverage/check` | Entrada única por pipeline | máquina local | os dos scripts acima | cada pipeline verde |

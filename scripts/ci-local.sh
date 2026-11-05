@@ -58,8 +58,9 @@ run_backend() {
 
 run_frontend() {
   CURRENT="frontend"
-  echo "== frontend: assets.setup -> build -> deploy (MIX_ENV=dev) =="
+  echo "== frontend: check_assets -> assets.setup -> build -> deploy (MIX_ENV=dev) =="
   require_mix
+  bash scripts/check_assets.sh
   MIX_ENV=dev mix assets.setup
   MIX_ENV=dev mix assets.build
   MIX_ENV=dev mix assets.deploy
