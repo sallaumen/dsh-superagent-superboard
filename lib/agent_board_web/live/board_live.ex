@@ -166,6 +166,13 @@ defmodule AgentBoardWeb.BoardLive do
     dt |> DateTime.to_time() |> Time.to_string() |> String.slice(0, 5)
   end
 
+  defp has_errors?(%{payload: payload}) do
+    case payload["errors"] do
+      n when is_integer(n) -> n > 0
+      _ -> false
+    end
+  end
+
   defp payload_summary(payload) do
     Enum.map_join(payload, " · ", fn {k, v} -> "#{k}: #{v}" end)
   end
@@ -306,7 +313,13 @@ defmodule AgentBoardWeb.BoardLive do
         <section :if={@events != []} class="border-t border-[#2a2925] px-5 py-4">
           <h2 class="mb-3 text-[11px] uppercase tracking-[0.16em] text-[#a39f93]">Activity</h2>
           <ol class="space-y-1">
-            <li :for={e <- @events} class="flex gap-3 text-[11px]">
+            <li
+              :for={e <- @events}
+              class={[
+                "flex gap-3 text-[11px]",
+                has_errors?(e) && "text-[#f0b3b3]"
+              ]}
+            >
               <span class="w-24 shrink-0 text-[#a39f93]">{time(e.inserted_at)}</span>
               <span class="w-14 shrink-0 uppercase">{e.kind}</span>
               <span class="text-[#e8e6df]">{e.subject}</span>
