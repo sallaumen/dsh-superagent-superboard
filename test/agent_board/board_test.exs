@@ -159,4 +159,17 @@ defmodule AgentBoard.Board.ConversationTest do
     assert [comment] = Board.comments(t)
     assert comment.kind == "user"
   end
+
+  test "events are limited and newest first", _ctx do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    for n <- 1..25 do
+      Board.log_event(repo.id, "sync", "subject-#{n}", %{"n" => n})
+    end
+
+    events = Board.events(repo)
+
+    assert length(events) == 20
+    assert hd(events).subject == "subject-25"
+  end
 end

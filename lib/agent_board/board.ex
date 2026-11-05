@@ -195,7 +195,7 @@ defmodule AgentBoard.Board do
     Repo.all(
       from e in Event,
         where: e.repository_id == ^repository.id,
-        order_by: [desc: e.inserted_at],
+        order_by: [desc: e.inserted_at, desc: e.id],
         limit: ^limit
     )
   end
