@@ -191,7 +191,10 @@ defmodule AgentBoard.Board do
       body: comment["body"] || "",
       kind: kind
     })
-    |> Repo.insert(on_conflict: :nothing, conflict_target: [:task_id, :github_id])
+    |> Repo.insert(
+      on_conflict: {:replace, [:body, :author, :updated_at]},
+      conflict_target: [:task_id, :github_id]
+    )
   end
 
   @doc "The recent activity for a repository."

@@ -26,4 +26,25 @@ defmodule AgentBoard.CommentDedupeTest do
 
     assert length(Board.comments(task)) == 1
   end
+
+  test "an edited comment updates the stored body" do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 8,
+        title: "T",
+        state: "queued"
+      })
+      |> Repo.insert!()
+
+    Board.upsert_comment(task, %{"id" => 5, "user" => %{"login" => "sallaumen"}, "body" => "v1"}, "agent")
+    Board.upsert_comment(task, %{"id" => 5, "user" => %{"login" => "sallaumen"}, "body" => "v2"}, "agent")
+
+    assert [comment] = Board.comments(task)
+    assert comment.body == "v2"
+  end
 end
