@@ -57,6 +57,10 @@ scripts/ci-local.sh all   # pre-flight: backend + frontend + library pipelines
 Which script to run when — backend, frontend, library or the mixed release
 path — is in [PIPELINES.md](PIPELINES.md).
 
+If GitHub Actions can't start (no token/billing, jobs failing in seconds with
+zero steps): don't wait for CI — the local pipeline is the sufficient gate.
+See the rule in [PIPELINES.md](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
+
 ## CI
 
 `.github/workflows/ci.yml` has five jobs:

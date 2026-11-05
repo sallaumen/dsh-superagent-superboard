@@ -16,6 +16,15 @@ Every PR must pass `mix gate` locally and in CI. Which script to run when —
 backend, frontend, library or the mixed release path — is in
 [`PIPELINES.md`](PIPELINES.md).
 
+**When GitHub Actions cannot run (no token, billing block, runner never
+starts): do not wait for CI.** Once you notice the jobs fail in seconds with
+zero steps, or no check appears, stop re-triggering and treat the local
+pipeline as the sufficient gate: run `scripts/ci-local.sh all` (or the `make`
+target for the affected pipeline), fix failures, and proceed — commit, PR and
+merge — when it is green. Note in the PR that CI was unavailable and that the
+local run is the evidence. Re-run CI manually (`workflow_dispatch`) only after
+the blocker is resolved.
+
 ## The data
 
 - **Ecto migrations** own the schema. Never edit a migrated table by hand; add a
