@@ -49,6 +49,22 @@ defmodule AgentBoard.SyncRepoTest do
              Repo.one(from t in Task, where: t.number == 7)
   end
 
+  test "a broken conversation does not kill the sync", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(7, "open")])
+        "/repos/sallaumen/arena-rogue/issues/7/comments" -> Plug.Conn.send_resp(conn, 500, "boom")
+        _ -> Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    task = Repo.one(from t in Task, where: t.number == 7)
+    assert task.state == "queued"
+    assert Enum.any?(Board.events(repo), &(&1.kind == "comment_error"))
+  end
+
   test "the sync pulls the comments of the active tasks", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
