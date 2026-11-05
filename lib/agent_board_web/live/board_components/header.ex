@@ -72,9 +72,10 @@ defmodule AgentBoardWeb.BoardComponents.Header do
           id="sync-status"
           type="button"
           aria-controls="activity"
-          phx-click={
-            JS.set_attribute({"open", ""}, to: "#activity") |> JS.focus(to: "#activity summary")
-          }
+          phx-click="show_panel"
+          phx-value-panel="activity"
+          data-panel-trigger
+          aria-haspopup="dialog"
           class={[
             "text-left text-xs underline underline-offset-4",
             if(@sync_event && has_errors?(@sync_event),

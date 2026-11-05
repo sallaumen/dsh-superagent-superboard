@@ -14,21 +14,17 @@ defmodule AgentBoardWeb.BoardComponents.Conversation do
       <h2
         id="conversation-title"
         tabindex="-1"
-        phx-mounted={JS.focus(to: "#conversation-title")}
         class="mb-3 flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75"
       >
-        <span>Conversation · #{@conversation.number} {String.slice(@conversation.title, 0, 40)}</span>
+        <span>Conversation · #{@conversation.number} {@conversation.title}</span>
         <button phx-click="speak" class="border border-base-content/10 px-2 py-1 text-[10px]">
           Speak board status
         </button>
-        <button
-          phx-click={JS.push("close") |> JS.pop_focus()}
-          class="border border-base-content/10 px-2 py-1 text-[10px]"
-        >
-          Close
-        </button>
       </h2>
 
+      <p class="mb-3 whitespace-pre-wrap break-words text-sm">
+        {@conversation.body || "No task details recorded."}
+      </p>
       <div class="mb-3">
         <DataAge.stamp id="conversation-age" at={@conversation.updated_at} label="Record updated" />
       </div>

@@ -7,7 +7,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.{AI, Board, GitHub, Intake, Repo, Voice}
   alias AgentBoard.Board.Task
   alias AgentBoard.System.{Updater, Version}
-  alias AgentBoardWeb.BoardComponents
+  alias AgentBoardWeb.{BoardComponents, BoardNavigation}
   alias AgentBoardWeb.Components.SystemPanel
 
   @impl true
@@ -22,6 +22,7 @@ defmodule AgentBoardWeb.BoardLive do
         events: [],
         sync_event: nil,
         live: connected?(socket),
+        panel: nil,
         conversation: nil,
         comments: [],
         intake: nil,
@@ -122,12 +123,19 @@ defmodule AgentBoardWeb.BoardLive do
         slug -> Board.repository_by_slug(slug) || socket.assigns.repo
       end
 
-    {:noreply, load(socket, repo)}
+    {:noreply, socket |> load(repo) |> BoardNavigation.apply_params(params)}
   end
 
   @impl true
   def handle_event("select", %{"repo" => slug}, socket) do
-    {:noreply, push_patch(socket, to: "/?repo=#{URI.encode_www_form(slug)}")}
+    current = socket.assigns.repo
+
+    if current && slug == "#{current.owner}/#{current.name}" do
+      # LiveView recovers phx-change forms after reconnect. Same selection must not close a panel.
+      {:noreply, socket}
+    else
+      {:noreply, push_patch(socket, to: "/?repo=#{URI.encode_www_form(slug)}")}
+    end
   end
 
   @impl true
@@ -187,12 +195,17 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("open", %{"id" => id}, socket) do
-    {task_id, _} = Integer.parse(id)
+    {:noreply, BoardNavigation.open_task(socket, id)}
+  end
 
-    case Repo.get(Task, task_id) |> Repo.preload(:repository) do
-      nil -> {:noreply, socket}
-      task -> {:noreply, assign(socket, conversation: task, comments: Board.comments(task))}
-    end
+  @impl true
+  def handle_event("show_panel", %{"panel" => panel}, socket) do
+    {:noreply, BoardNavigation.open_panel(socket, panel)}
+  end
+
+  @impl true
+  def handle_event("dismiss_panel", _params, socket) do
+    {:noreply, push_patch(socket, to: BoardNavigation.path(socket.assigns.repo), replace: true)}
   end
 
   @impl true
@@ -275,7 +288,10 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("close", _params, socket) do
-    {:noreply, assign(socket, conversation: nil, comments: [])}
+    {:noreply,
+     socket
+     |> assign(panel: nil, conversation: nil, comments: [])
+     |> push_event("panel_close", %{})}
   end
 
   @impl true
@@ -315,7 +331,13 @@ defmodule AgentBoardWeb.BoardLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
-      <div class="agent-board min-h-screen bg-base-100 text-base-content font-mono">
+      <div
+        id="board-page"
+        phx-hook="BoardPanels"
+        data-panel={@panel || ""}
+        data-base-url={BoardNavigation.path(@repo)}
+        class="agent-board min-h-screen bg-base-100 text-base-content font-mono"
+      >
         <.live_component
           module={BoardComponents.Header}
           id="board-header"
@@ -339,6 +361,25 @@ defmodule AgentBoardWeb.BoardLive do
 
         <SystemPanel.version_panel version={@version} busy={@busy} />
 
+        <nav :if={@repo} id="board-tools" aria-label="Board tools" class="board-tools">
+          <button
+            :for={
+              {label, panel} <- [
+                {"Activity", "activity"},
+                {"Split a request", "intake"},
+                {"AI calls", "ai"}
+              ]
+            }
+            id={"open-#{panel}"}
+            type="button"
+            phx-click="show_panel"
+            phx-value-panel={panel}
+            data-panel-trigger
+            aria-haspopup="dialog"
+            aria-controls={"panel-#{panel}"}
+          >{label}</button>
+        </nav>
+
         <main
           :if={@repo}
           class="grid grid-cols-1 gap-px bg-base-content/10 sm:grid-cols-2 lg:grid-cols-5"
@@ -360,36 +401,59 @@ defmodule AgentBoardWeb.BoardLive do
           <% end %>
         </main>
 
-        <.live_component
-          :if={@conversation}
-          module={BoardComponents.Conversation}
-          id="conversation"
-          conversation={@conversation}
-          comments={@comments}
-        />
+        <BoardComponents.Panel.shell
+          name="conversation"
+          title="Task conversation"
+          active={@panel == "conversation"}
+          flash={@flash}
+        >
+          <.live_component
+            :if={@conversation}
+            module={BoardComponents.Conversation}
+            id="conversation"
+            conversation={@conversation}
+            comments={@comments}
+          />
+        </BoardComponents.Panel.shell>
 
-        <.live_component
-          :if={@events != []}
-          module={BoardComponents.Activity}
-          id="activity"
-          events={@events}
-        />
+        <BoardComponents.Panel.shell
+          name="activity"
+          title="Activity"
+          active={@panel == "activity"}
+          flash={@flash}
+        >
+          <.live_component
+            :if={@repo}
+            module={BoardComponents.Activity}
+            id="activity"
+            events={@events}
+          />
+        </BoardComponents.Panel.shell>
 
-        <.live_component
-          :if={@repo}
-          module={BoardComponents.Intake}
-          id="intake"
-          intake={@intake}
-          ai_status={@ai_status}
-        />
+        <BoardComponents.Panel.shell
+          name="intake"
+          title="Split a request"
+          active={@panel == "intake"}
+          flash={@flash}
+        >
+          <.live_component
+            :if={@repo}
+            module={BoardComponents.Intake}
+            id="intake"
+            intake={@intake}
+            ai_status={@ai_status}
+          />
+        </BoardComponents.Panel.shell>
 
-        <.live_component
-          :if={@repo}
-          module={BoardComponents.AI}
-          id="ai"
-          ai_calls={@ai_calls}
-          ai_status={@ai_status}
-        />
+        <BoardComponents.Panel.shell name="ai" title="AI calls" active={@panel == "ai"} flash={@flash}>
+          <.live_component
+            :if={@repo}
+            module={BoardComponents.AI}
+            id="ai"
+            ai_calls={@ai_calls}
+            ai_status={@ai_status}
+          />
+        </BoardComponents.Panel.shell>
 
         <.live_component :if={@repo} module={BoardComponents.CreateTask} id="create" />
       </div>
