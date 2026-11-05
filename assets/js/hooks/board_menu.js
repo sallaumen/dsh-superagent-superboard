@@ -1,5 +1,11 @@
 export const BoardMenu = {
   mounted() {
+    this.closePeers = () => {
+      if (!this.el.open) return
+      document.querySelectorAll('[data-board-menu][open]').forEach(menu => {
+        if (menu !== this.el) menu.open = false
+      })
+    }
     this.closeOnOutside = (event) => {
       if (document.querySelector(".board-dialog[open]")) return
       if (!this.el.contains(event.target)) this.el.open = false
@@ -12,9 +18,11 @@ export const BoardMenu = {
     }
     document.addEventListener("pointerdown", this.closeOnOutside)
     document.addEventListener("keydown", this.closeOnEscape)
+    this.el.addEventListener("toggle", this.closePeers)
   },
   destroyed() {
     document.removeEventListener("pointerdown", this.closeOnOutside)
     document.removeEventListener("keydown", this.closeOnEscape)
+    this.el.removeEventListener("toggle", this.closePeers)
   },
 }
