@@ -134,6 +134,21 @@ nothing takes the whole sync down for one bad item. Each branch has a test in
 - The web layer never talks to GitHub directly: it goes through `AgentBoard.Board`
   and `AgentBoard.GitHub`.
 
+## The agent
+
+The agent is a separate process (DeepSeek Harness + `dsh-superagent`) that
+watches GitHub; this board only mirrors it. It is documented in
+[`docs/agent/how-it-works.md`](docs/agent/how-it-works.md), set up per
+[`docs/agent/setup.md`](docs/agent/setup.md), and driven from
+`scripts/agent/`:
+
+| Script | Answers |
+|---|---|
+| `status.sh` | is it configured, alive and idle? |
+| `tickets.sh [n]` | what did the last tickets report? |
+| `counts.sh` | how much has it done, by table? |
+| `logs.sh` | what is it printing right now? |
+
 ## Capabilities library
 
 - Reusable development workflows (architecture, product, UI/UX, testing, code
