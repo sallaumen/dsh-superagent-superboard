@@ -16,6 +16,7 @@ as cinco colunas e a ênfase em tarefas/bloqueios. Refinar legibilidade, sem red
 | P2 | IA e carregamento | `board_live.ex` usava `text-[#e8a33d]`; `app.js` tinha `#29d` e sombra RGBA. [IA](baseline-mobile-ai.png). | `text-warning` e cor do progresso derivada de `--color-primary`. Cores literais ficam nas definições dos tokens; arte Phoenix não roteada e vendors ficam fora desse escopo. |
 | P2 | Teclado/formulários | [Fixture](baseline-fixture.png): campos dependiam de placeholders, foco inconsistente e ações de 25px. | Nomes explícitos para título/detalhes/mensagem, foco compartilhado e controles com altura mínima 44px. |
 
+Capturas claro/escuro recapturadas no commit `80e3ee9`, com transições concluídas.
 Depois: [claro](theme-after-light.png), [escuro](theme-after-dark.png),
 [fixture](theme-after-fixture.png), [foco de teclado](theme-keyboard-focus.png).
 

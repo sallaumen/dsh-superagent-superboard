@@ -129,6 +129,7 @@ defmodule AgentBoard.AITest do
     on_exit(fn -> Application.delete_env(:agent_board, :ai_rehearsal) end)
 
     assert {:ok, result} = AI.call(:refine_request, %{text: "x"})
+    assert AI.status() == :rehearsal
     assert result.engine == :rehearsal
     assert result.json["goal"] =~ "board"
 

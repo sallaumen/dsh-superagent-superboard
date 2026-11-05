@@ -17,7 +17,7 @@ defmodule AgentBoard.AI.Engine do
           | {:http, integer()}
           | term()
 
-  @type status :: :logged_in | :not_configured | :unavailable
+  @type status :: :logged_in | :not_configured | :unavailable | :rehearsal
 
   @callback run(Request.t()) :: {:ok, Result.t()} | {:error, reason()}
   @callback status() :: status()

@@ -85,20 +85,35 @@ if (process.env.NODE_ENV === "development") {
 }
 
 
+const voiceFeedback = text => {
+  const status = document.querySelector("#voice-feedback")
+  if (status) status.textContent = text
+}
+
 // Voice out: the server pushes the summary, the browser speaks it.
 window.addEventListener("phx:speak", (event) => {
   const text = event.detail.text;
-  if (!text || !window.speechSynthesis) return;
+  if (!text) return;
+  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+    voiceFeedback("Speech playback is not supported by this browser.");
+    return;
+  }
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = navigator.language || "en-US";
+  utterance.onend = () => voiceFeedback("Status spoken.");
+  utterance.onerror = () => voiceFeedback("Could not play the status. Try again.");
+  voiceFeedback("Speaking board status…");
   window.speechSynthesis.speak(utterance);
 });
 
 // Voice in: dictate a task title into the form.
 window.addEventListener("phx:dictate", () => {
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!Rec) return;
+  if (!Rec) {
+    voiceFeedback("Dictation is not supported by this browser. Type the task title below.");
+    return;
+  }
   const rec = new Rec();
   rec.lang = navigator.language || "en-US";
   rec.interimResults = false;
@@ -107,7 +122,11 @@ window.addEventListener("phx:dictate", () => {
     if (input) {
       input.value = event.results[0][0].transcript;
       input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.focus();
+      voiceFeedback("Title transcribed. Review it before creating the issue.");
     }
   };
+  rec.onerror = () => voiceFeedback("Could not hear the title. Check microphone permission or type it below.");
+  voiceFeedback("Listening for a task title…");
   rec.start();
 });

@@ -67,6 +67,11 @@ defmodule AgentBoardWeb.BoardLive do
       Board.subscribe(repo.id)
     end
 
+    socket =
+      if socket.assigns.repo != repo,
+        do: assign(socket, conversation: nil, comments: [], intake: nil),
+        else: socket
+
     case Board.board("#{repo.owner}/#{repo.name}") do
       {:ok, board} ->
         assign(socket,
@@ -75,6 +80,7 @@ defmodule AgentBoardWeb.BoardLive do
           events: Board.events(repo),
           sync_event: Board.latest_sync(repo),
           ai_calls: AI.recent(5),
+          ai_status: AI.status(),
           live: connected?(socket)
         )
 
@@ -93,8 +99,19 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_info(:board_updated, socket) do
-    {:noreply, load(socket, socket.assigns.repo)}
+    {:noreply, socket |> load(socket.assigns.repo) |> refresh_conversation()}
   end
+
+  defp refresh_conversation(%{assigns: %{conversation: nil}} = socket), do: socket
+
+  defp refresh_conversation(socket) do
+    case Repo.get(Task, socket.assigns.conversation.id) do
+      nil -> assign(socket, conversation: nil, comments: [])
+      task -> assign(socket, conversation: task, comments: Board.comments(task))
+    end
+  end
+
+  defp refresh_ai(socket), do: assign(socket, ai_calls: AI.recent(5), ai_status: AI.status())
 
   @impl true
   def handle_params(params, _uri, socket) do
@@ -133,8 +150,15 @@ defmodule AgentBoardWeb.BoardLive do
 
       repo ->
         text = String.trim(body) <> "\n\n@sallaumen-agent"
-        _ = Board.create_task(repo, title, text, GitHub.client())
-        {:noreply, socket |> load(repo) |> put_flash(:info, "Task created")}
+
+        case Board.create_task(repo, title, text, GitHub.client()) do
+          {:ok, _} ->
+            {:noreply, socket |> load(repo) |> put_flash(:info, "Task created")}
+
+          {:error, _} ->
+            {:noreply,
+             put_flash(socket, :error, "Could not create the task. Check Activity and try again.")}
+        end
     end
   end
 
@@ -184,8 +208,8 @@ defmodule AgentBoardWeb.BoardLive do
                conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
                comments: Board.comments(task)
              )
-             |> put_flash(:info, "Question sent")
-             |> put_flash(:info, answer(task, body))}
+             |> put_flash(:info, "Question sent. " <> answer(task, body))
+             |> refresh_ai()}
 
           {:error, _} ->
             {:noreply, put_flash(socket, :error, "The question did not reach GitHub")}
@@ -219,13 +243,19 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("intake", _params, %{assigns: %{ai_status: :not_configured}} = socket) do
+    {:noreply, put_flash(socket, :error, "AI is not configured. Split is unavailable.")}
+  end
+
   def handle_event("intake", %{"text" => text}, socket) do
     case Intake.run(text) do
       {:ok, %{spec: spec, tasks: tasks}} ->
-        {:noreply, assign(socket, intake: %{spec: spec, tasks: tasks, text: text})}
+        {:noreply,
+         socket |> assign(intake: %{spec: spec, tasks: tasks, text: text}) |> refresh_ai()}
 
       {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "The AI did not answer: #{inspect(reason)}")}
+        {:noreply,
+         socket |> put_flash(:error, "The AI did not answer: #{inspect(reason)}") |> refresh_ai()}
     end
   end
 
@@ -270,6 +300,11 @@ defmodule AgentBoardWeb.BoardLive do
       {:error, reason} -> "The AI did not answer: #{inspect(reason)}"
     end
   end
+
+  defp ai_status_label(:logged_in), do: "configured · connection not verified"
+  defp ai_status_label(:not_configured), do: "not configured"
+  defp ai_status_label(:rehearsal), do: "rehearsal · local fixtures"
+  defp ai_status_label(status), do: to_string(status)
 
   defp intake_body(task) do
     """
@@ -472,18 +507,15 @@ defmodule AgentBoardWeb.BoardLive do
               phx-disable-with="Tracking…"
             >Track repo</button>
           </form>
+          <p
+            id="voice-feedback"
+            role="status"
+            aria-live="polite"
+            phx-update="ignore"
+            class="w-full text-xs empty:hidden"
+          >
+          </p>
         </header>
-
-        <div
-          :if={Phoenix.Flash.get(@flash, :error)}
-          role="alert"
-          class="flex items-center justify-between border-b border-error/40 bg-error/15 px-5 py-2 text-[12px] text-error"
-        >
-          <span>{Phoenix.Flash.get(@flash, :error)}</span>
-          <button phx-click="lv:clear-flash" phx-value-key="error" class="text-[11px] underline">
-            dismiss
-          </button>
-        </div>
 
         <div
           :if={@repo == nil}
@@ -572,6 +604,8 @@ defmodule AgentBoardWeb.BoardLive do
                     phx-click="act"
                     phx-value-id={item.id}
                     phx-value-action="stop"
+                    phx-disable-with="Stopping…"
+                    title="Closes the GitHub issue and stops this task"
                     aria-label={"Stop task: " <> item.title}
                     class="rounded-sm border border-base-content/15 px-2 py-1 hover:bg-base-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                   >Stop</button>
@@ -579,6 +613,8 @@ defmodule AgentBoardWeb.BoardLive do
                     phx-click="act"
                     phx-value-id={item.id}
                     phx-value-action="archive"
+                    phx-disable-with="Archiving…"
+                    title="Hides this task from the board; keeps its history"
                     aria-label={"Archive task: " <> item.title}
                     class="rounded-sm border border-base-content/15 px-2 py-1 hover:bg-base-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                   >
@@ -607,7 +643,7 @@ defmodule AgentBoardWeb.BoardLive do
           >
             <span>Conversation · #{@conversation.number} {String.slice(@conversation.title, 0, 40)}</span>
             <button phx-click="speak" class="border border-base-content/10 px-2 py-1 text-[10px]">
-              Speak
+              Speak board status
             </button>
             <button
               phx-click={JS.push("close") |> JS.pop_focus()}
@@ -687,15 +723,28 @@ defmodule AgentBoardWeb.BoardLive do
             Split a request
           </h2>
 
+          <p
+            :if={@ai_status == :not_configured}
+            id="intake-unavailable"
+            class="mb-3 text-xs text-base-content/75"
+          >
+            AI is not configured. Split is unavailable until a model is configured.
+          </p>
           <form id="intake-form" phx-submit="intake" class="flex gap-2">
             <input
               name="text"
               placeholder="Describe what you want..."
               aria-label="Request"
+              disabled={@ai_status == :not_configured}
+              aria-describedby={if @ai_status == :not_configured, do: "intake-unavailable"}
               class="flex-1 border border-base-content/10 bg-base-200 px-3 py-2 text-sm"
               required
             />
-            <button class="bg-primary px-4 py-2 text-sm font-bold text-primary-content hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+            <button
+              disabled={@ai_status == :not_configured}
+              phx-disable-with="Splitting…"
+              class="bg-primary px-4 py-2 text-sm font-bold text-primary-content hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
               Split
             </button>
           </form>
@@ -722,6 +771,7 @@ defmodule AgentBoardWeb.BoardLive do
                 <p class="mt-1 text-[11px] text-base-content/75">{task.body}</p>
                 <button
                   phx-click="create_from_intake"
+                  phx-disable-with="Creating…"
                   phx-value-index={index}
                   class="mt-2 border border-base-content/10 px-2 py-1 text-[10px]"
                 >
@@ -734,11 +784,15 @@ defmodule AgentBoardWeb.BoardLive do
 
         <section :if={@repo} class="border-t border-base-content/10 px-5 py-4">
           <h2 class="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-base-content/75">
-            <span>AI</span>
+            <span>AI · all repositories</span>
             <span class={["text-[10px] normal-case", @ai_status != :logged_in && "text-warning"]}>
-              {@ai_status}
+              {ai_status_label(@ai_status)}
             </span>
           </h2>
+          <p :if={@ai_calls == []} class="text-xs text-base-content/75">No AI calls recorded yet.</p>
+          <p :if={@ai_calls != []} class="mb-2 text-xs text-base-content/75">
+            Latest {length(@ai_calls)} calls across the board.
+          </p>
           <ol class="space-y-1">
             <li :for={c <- @ai_calls} class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
               <span class="min-w-0 break-words uppercase">{c.name}</span>
@@ -752,7 +806,7 @@ defmodule AgentBoardWeb.BoardLive do
           </ol>
         </section>
 
-        <footer class="border-t border-base-content/10 p-5">
+        <footer :if={@repo} class="border-t border-base-content/10 p-5">
           <form id="create-task" phx-submit="create" class="flex flex-wrap gap-2">
             <input
               name="title"

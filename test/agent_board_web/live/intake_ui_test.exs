@@ -72,9 +72,46 @@ defmodule AgentBoardWeb.IntakeUITest do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
     Application.put_env(:agent_board, :ai_api_key, "")
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert html =~ "not_configured"
+    assert has_element?(view, "#intake-form button[disabled]")
+    assert html =~ "not configured"
+    assert html =~ "No AI calls recorded yet."
+    assert html =~ "Split is unavailable"
+  end
+
+  test "failed creation reports one error and never a success", %{conn: conn} do
+    {:ok, _} = Board.add_repository("fixture", "actions")
+
+    Req.Test.stub(
+      @stub,
+      &Req.Test.json(Plug.Conn.put_status(&1, 422), %{"message" => "rejected"})
+    )
+
+    {:ok, view, _} = live(conn, ~p"/?repo=fixture/actions")
+
+    view |> element("#create-task") |> render_submit(%{"title" => "Fixture", "body" => ""})
+
+    assert has_element?(view, "#flash-error", "Could not create the task")
+    refute has_element?(view, "#flash-info")
+    assert length(Regex.scan(~r/Could not create the task/, render(view))) == 1
+    refute render(view) =~ "Task created"
+  end
+
+  test "successful creation reports success", %{conn: conn} do
+    {:ok, _} = Board.add_repository("fixture", "actions")
+
+    Req.Test.stub(
+      @stub,
+      &Req.Test.json(&1, %{"number" => 123, "html_url" => "https://example.test/issues/123"})
+    )
+
+    {:ok, view, _} = live(conn, ~p"/?repo=fixture/actions")
+
+    view |> element("#create-task") |> render_submit(%{"title" => "Fixture", "body" => ""})
+
+    assert has_element?(view, "#flash-info", "Task created")
+    refute has_element?(view, "#flash-error")
   end
 
   test "the form shows the goal, the open questions and the tasks", %{conn: conn} do
@@ -101,5 +138,11 @@ defmodule AgentBoardWeb.IntakeUITest do
     assert html =~ "o board responde rapido"
     assert html =~ "qual volume?"
     assert html =~ "medir o tempo"
+    assert html =~ "Latest 2 calls across the board."
+    assert html =~ "refine_request"
+
+    {:ok, _} = Board.add_repository("fixture", "other")
+    view |> element("#repo-select") |> render_change(%{"repo" => "fixture/other"})
+    refute render(view) =~ "medir o tempo"
   end
 end
