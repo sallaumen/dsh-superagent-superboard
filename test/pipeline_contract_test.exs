@@ -9,8 +9,9 @@ defmodule AgentBoard.PipelineContractTest do
 
   defp aliases, do: Mix.Project.config()[:aliases]
 
-  test "gate is check-only and runs the three gates" do
+  test "gate is check-only and mirrors the CI gates job" do
     assert aliases()[:gate] == [
+             "deps.unlock --check-unused",
              "compile --warnings-as-errors",
              "format --check-formatted",
              "credo --strict",

@@ -6,7 +6,7 @@ Este documento é a resposta a "qual script eu rodo agora?". Ele define os pipel
 
 | Pipeline | O que valida | Script canônico | Alvo `make` | Job da CI |
 |---|---|---|---|---|
-| Backend | Código Elixir: warnings, formatação, credo, testes | `mix gate` | `make backend` | `backend` (4 partições) |
+| Backend | Código Elixir: dependências órfãs, warnings, formatação, credo, testes | `mix gate` | `make backend` | `backend` (4 partições) |
 | Frontend | Assets: build e deploy de esbuild/tailwind | `mix assets.deploy` | `make frontend` | `frontend · assets` |
 | Biblioteca | Integridade de `capabilities/` | `python3 capabilities/tools/validar_biblioteca.py` | `make library` | `biblioteca de capacidades` |
 | Misto (release) | O caminho combinado de um deploy | sequência de release (abaixo) | `make release` | `release · caminho misto` |
@@ -20,8 +20,8 @@ Regra de ouro: **o alvo `make` e o job da CI executam os mesmos comandos** — l
 |---|---|---|---|---|
 | `mix lint` | Iteração rápida, sem banco | qualquer | nenhum (somente leitura) | format e credo verdes |
 | `mix precommit` | Antes de commitar; corrige formatação | `:test` automático | formata arquivos em lugar; roda testes | formatação aplicada + gates verdes |
-| `mix gate` | Antes de abrir PR; na CI (não modifica arquivos) | `MIX_ENV=test` | cria/migra o banco de teste | os três gates verdes |
-| `mix deps.unlock --check-unused` | Revisar lockfile (CI backend) | `:test` | nenhum | nenhuma dependência órfã |
+| `mix gate` | Antes de abrir PR; na CI (não modifica arquivos) | `MIX_ENV=test` | cria/migra o banco de teste | dependências sem órfãs + os três gates verdes |
+| `mix deps.unlock --check-unused` | Revisar lockfile (parte do `mix gate` e do job gates da CI) | `:test` | nenhum | nenhuma dependência órfã |
 | `mix assets.setup` | Primeira execução / CI frontend | `MIX_ENV=dev` | baixa binários tailwind/esbuild | ferramentas instaladas |
 | `mix assets.build` | Ao alterar CSS/JS | `MIX_ENV=dev` | escreve `priv/static/assets/` | bundle gerado sem erro |
 | `mix assets.deploy` | Validar o caminho de produção dos assets | `MIX_ENV=dev` | minifica + `phx.digest` | manifesto de digest gerado |

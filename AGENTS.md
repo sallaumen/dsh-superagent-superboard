@@ -10,8 +10,9 @@ The board for the agent's work, in Elixir. Read this before changing code.
 
 `mix lint` runs the first two; `mix precommit` runs the three (formatting in
 place) plus compile warnings and the unused-dependency check. `mix gate` runs
-the three as checks only — it never modifies files, so CI and local pre-push
-use `mix gate` while `mix precommit` stays the fix-up command for developers.
+the same set as checks only — unused deps, compile warnings, format, credo and
+tests — it never modifies files, so CI and local pre-push use `mix gate` while
+`mix precommit` stays the fix-up command for developers.
 Every PR must pass `mix gate` locally and in CI. Which script to run when —
 backend, frontend, library or the mixed release path — is in
 [`PIPELINES.md`](PIPELINES.md).
