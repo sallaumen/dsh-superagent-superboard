@@ -2,6 +2,8 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
   @moduledoc "Native dialog shell; region content remains mounted for draft preservation."
   use AgentBoardWeb, :html
 
+  alias AgentBoardWeb.BoardComponents.VoicePresence
+
   attr :name, :string, required: true
   attr :title, :string, required: true
   attr :active, :boolean, required: true
@@ -28,6 +30,7 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
         />
       </div>
       {render_slot(@inner_block)}
+      <VoicePresence.stage :if={@active} id={"voice-presence-#{@name}"} />
     </dialog>
     """
   end

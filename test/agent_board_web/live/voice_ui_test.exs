@@ -198,7 +198,10 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
     assert render(view) =~ "voice-dictate"
-    assert render(view) =~ "data-max-seconds=\"20\""
+
+    view |> element("#voice-dictate") |> render_click()
+    assert render(view) =~ ~s(data-panel="create")
+    assert has_element?(view, ~s(#record-task-title[data-max-seconds="20"]))
   end
 
   test "without a key the browser dictation stays", %{conn: conn} do

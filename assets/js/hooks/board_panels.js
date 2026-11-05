@@ -49,6 +49,7 @@ export const BoardPanels = {
     }
     this.activePanel = selected
     document.body.classList.toggle('board-panel-open', Boolean(selected))
+    window.dispatchEvent(new Event('board:voice-context'))
   },
   disconnected() { this.el.dataset.socket = 'reconnecting' },
   reconnected() { this.el.dataset.socket = 'live'; this.sync() },

@@ -8,6 +8,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Board.Task
   alias AgentBoard.System.{Updater, Version}
   alias AgentBoardWeb.{BoardComponents, BoardNavigation}
+  alias AgentBoardWeb.BoardComponents.VoicePresence
 
   @voice_key "elevenlabs_voice_id"
   @tts_model_key "elevenlabs_tts_model"
@@ -694,6 +695,7 @@ defmodule AgentBoardWeb.BoardLive do
           busy={@busy}
           voice={@voice}
         />
+        <VoicePresence.stage id="voice-presence-board" />
 
         <div
           :if={@repo == nil}
@@ -814,7 +816,12 @@ defmodule AgentBoardWeb.BoardLive do
           active={@panel == "create"}
           flash={@flash}
         >
-          <.live_component :if={@repo} module={BoardComponents.CreateTask} id="create" />
+          <.live_component
+            :if={@repo}
+            module={BoardComponents.CreateTask}
+            id="create"
+            voice_configured={@voice.configured}
+          />
         </BoardComponents.Panel.shell>
       </div>
     </Layouts.app>
