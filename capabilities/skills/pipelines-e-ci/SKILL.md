@@ -40,7 +40,7 @@ Documente a matriz de scripts (quando usar, ambiente, efeitos, saída) em um ún
 
 ### Defina o comportamento sem gate remoto
 
-Registre a regra: se a CI não consegue rodar por bloqueio fora do repositório (sem token, sem runner, pendência de cobrança), não espere por ela nem trave entregas — execute o pipeline local com evidência, siga quando estiver verde e registre a limitação e o comando executado; re-verifique o gate remoto quando o bloqueio for resolvido. A indisponibilidade nunca dispensa os checks locais, e re-disparar runs sem resolver o bloqueio só consome cota.
+Aplique a [regra de gate remoto indisponível do contrato comum](../../contrato.md#5-valide-o-risco-que-mudou). No projeto, mantenha um único procedimento operacional com os comandos locais e a forma de registrar a evidência; faça AGENTS.md, guias de contribuição e templates apontarem para ele.
 
 ### Valide e conclua
 
