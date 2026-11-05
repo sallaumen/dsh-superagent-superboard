@@ -136,6 +136,14 @@ defmodule AgentBoardWeb.BoardLiveTest do
            end)
   end
 
+  test "an unknown repository slug renders the empty board", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, _view, html} = live(conn, ~p"/?repo=nobody/nothing")
+
+    assert html =~ "No task is running."
+  end
+
   test "the sync line is announced politely", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
