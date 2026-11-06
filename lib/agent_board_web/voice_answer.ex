@@ -12,6 +12,30 @@ defmodule AgentBoardWeb.VoiceAnswer do
   @max_question_length 1_000
   @stale_after_seconds 300
   @task_lanes [:running, :ready, :blocked, :queued]
+  @lane_terms [
+    running: ~r/\b(?:running|rodando|execu[cç][aã]o|em andamento)\b/iu,
+    ready: ~r/\b(?:ready|pront[oa]s?)\b/iu,
+    blocked: ~r/\b(?:blocked|bloquead[oa]s?)\b/iu,
+    queued: ~r/\b(?:queued|fila|enfileirad[oa]s?)\b/iu,
+    merged: ~r/\b(?:merged|mesclad[oa]s?)\b/iu
+  ]
+  @task_lane_phrases [
+    running:
+      ~r/\b(?:running (?:tasks?|cards?|issues?)|tarefas? (?:rodando|em andamento|em execu[cç][aã]o))\b/iu,
+    ready: ~r/\b(?:ready (?:tasks?|cards?|issues?)|tarefas? pront[ao]s?)\b/iu,
+    blocked: ~r/\b(?:blocked (?:tasks?|cards?|issues?)|tarefas? bloquead[ao]s?)\b/iu,
+    queued: ~r/\b(?:queued (?:tasks?|cards?|issues?)|tarefas? (?:na )?fila)\b/iu
+  ]
+  @coordinated_lanes [
+    running:
+      ~r/\b(?:(?:and|e) running (?:ones?|tasks?|cards?|issues?)|e (?:rodando|em andamento|em execu[cç][aã]o))\b/iu,
+    ready: ~r/\b(?:(?:and|e) ready (?:ones?|tasks?|cards?|issues?)|e pront[ao]s?)\b/iu,
+    blocked: ~r/\b(?:(?:and|e) blocked (?:ones?|tasks?|cards?|issues?)|e bloquead[ao]s?)\b/iu,
+    queued: ~r/\b(?:(?:and|e) queued (?:ones?|tasks?|cards?|issues?)|e (?:na )?fila)\b/iu
+  ]
+  @merged_pull_phrase ~r/\b(?:merged (?:prs?|pull requests?)|(?:prs?|pull requests?) (?:are )?merged)\b/iu
+  @task_terms ~r/\b(?:tasks?|tarefas?|cards?|issues?)\b/iu
+  @pull_terms ~r/\b(?:prs?|pull requests?)\b/iu
   @title_question ~r/\b(?:titles?|t[ií]tulos?|names?|nomes?|(?:o que est[aá]|what is) (?:rodando|running|pronto|ready|bloqueado|blocked|na fila|queued)|(?:quais?|which) (?:tarefas?|tasks?|cards?|prs?|pull requests?))\b/iu
   @aggregate_question ~r/\b(?:how many|quantos?|quantas?|counts?|total|n[uú]mero de)\b/iu
   @archive_action ~r/\b(?:did (?:i|you|we|the agent|the board) archiv\w*|(?:i|you|we|was|were) archived|(?:voc[eê]|eu|o agente|o board|foi|foram) arquiv\w*)\b/iu
@@ -141,6 +165,57 @@ defmodule AgentBoardWeb.VoiceAnswer do
     Regex.match?(@title_question, question) and not Regex.match?(@aggregate_question, question)
   end
 
+  defp title_targets(question) do
+    if title_question?(question), do: mentioned_title_targets(question), else: []
+  end
+
+  defp mentioned_title_targets(question) do
+    scope =
+      question
+      |> String.replace(
+        ~r/(?:["“][^"”]*["”]|(?<![\p{L}\p{N}])'[^'\n]{1,120}'(?![\p{L}\p{N}]))/u,
+        ""
+      )
+      |> String.replace(~r/\bto (?:be )?merged\b/iu, "")
+
+    explicit = for {lane, pattern} <- @task_lane_phrases, Regex.match?(pattern, scope), do: lane
+
+    explicit =
+      if Regex.match?(@merged_pull_phrase, scope), do: explicit ++ [:merged], else: explicit
+
+    coordinated =
+      for {lane, pattern} <- @coordinated_lanes, Regex.match?(pattern, scope), do: lane
+
+    explicit = Enum.uniq(explicit ++ coordinated ++ leading_task_lanes(scope))
+
+    mentioned =
+      if explicit == [],
+        do: for({lane, pattern} <- @lane_terms, Regex.match?(pattern, scope), do: lane),
+        else: explicit
+
+    case mentioned do
+      [] -> reference_title_targets(question)
+      mentioned -> mentioned
+    end
+  end
+
+  defp reference_title_targets(question) do
+    targets = if Regex.match?(@task_terms, question), do: @task_lanes, else: []
+    if Regex.match?(@pull_terms, question), do: targets ++ [:merged], else: targets
+  end
+
+  defp leading_task_lanes(scope) do
+    case Regex.split(@task_terms, scope, parts: 2) do
+      [prefix, _rest] ->
+        for {lane, pattern} <- @lane_terms,
+            lane in @task_lanes and Regex.match?(pattern, prefix),
+            do: lane
+
+      _other ->
+        []
+    end
+  end
+
   defp answer_from_snapshot(repository, board, metadata, question) do
     if archive_history_query?(question) do
       text =
@@ -162,7 +237,7 @@ defmodule AgentBoardWeb.VoiceAnswer do
       with {:ok, result} <-
              AI.call(:answer_board_question, %{
                question: question,
-               board: facts(repository, board, metadata, title_question?(question))
+               board: facts(repository, board, metadata, title_targets(question))
              }),
            {:ok, text} <- answer_text(result) do
         {:ok, metadata |> Map.put(:text, text) |> Map.put(:engine, result.engine)}
@@ -170,12 +245,12 @@ defmodule AgentBoardWeb.VoiceAnswer do
     end
   end
 
-  defp facts(repository, board, metadata, include_titles?) do
+  defp facts(repository, board, metadata, title_targets) do
     %{
       repository: repository,
       sync: sync_facts(metadata),
-      task_lanes: Map.new(@task_lanes, &{&1, task_lane(board, &1, include_titles?)}),
-      merged_pull_requests: merged_facts(board, include_titles?)
+      task_lanes: Map.new(@task_lanes, &{&1, task_lane(board, &1, &1 in title_targets)}),
+      merged_pull_requests: merged_facts(board, :merged in title_targets)
     }
   end
 
