@@ -11,6 +11,8 @@ export const BoardConnection = {
       sessionStorage.removeItem("ab:disconnected-at")
       setTimeout(() => this.pushEvent("board_reconnected", {since}), 600)
     }
+
+    this.reloadIfRestarted()
   },
   disconnected() {
     const page = document.querySelector("#board-page")
@@ -22,30 +24,18 @@ export const BoardConnection = {
     this.mark("live")
     sessionStorage.removeItem("ab:disconnected-at")
     this.pushEvent("board_reconnected", {since: this.frozenAt || null})
+    this.reloadIfRestarted()
   },
   handleEvent(event) {
-    if (event === "restart") this.reloadWhenBack()
+    if (event === "restart") sessionStorage.setItem("ab:reload-after-restart", "1")
   },
-  // The server exits to boot the updated code; poll the same URL until it
-  // answers again, then reload so the new assets and client are loaded.
-  reloadWhenBack() {
-    setTimeout(() => {
-      const timer = setInterval(async () => {
-        try {
-          const response = await fetch(window.location.href, {
-            method: "HEAD",
-            cache: "no-store",
-          })
-          if (response.ok) {
-            clearInterval(timer)
-            window.location.reload()
-          }
-        } catch (_error) {
-          // The old server is gone; the new one is still booting.
-        }
-      }, 1500)
-      setTimeout(() => clearInterval(timer), 90000)
-    }, 2500)
+  // A reload is safe only after the new server has answered the LiveView
+  // mount/reconnect; polling the URL can catch a half-closed socket and leave
+  // the browser on chrome-error. The flag survives the restart in the tab.
+  reloadIfRestarted() {
+    if (sessionStorage.getItem("ab:reload-after-restart") !== "1") return
+    sessionStorage.removeItem("ab:reload-after-restart")
+    setTimeout(() => window.location.reload(), 800)
   },
   mark(state) {
     const page = document.querySelector("#board-page")
