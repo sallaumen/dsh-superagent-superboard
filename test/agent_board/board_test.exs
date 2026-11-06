@@ -382,6 +382,11 @@ defmodule AgentBoard.BoardOverviewTest do
     assert Enum.map(board.ready, & &1.number) == [3]
     assert board.task_counts.ready == 1
     assert Board.repo_overview()[repo.id].you == 1
+
+    assert Board.reconcile_resolved_tasks(repo) == 1
+    assert Repo.get(Task, linked.id).state == "done"
+    assert Repo.get(Task, _open.id).state == "ready"
+    assert Board.repo_overview()[repo.id].you == 1
   end
 
   test "a clean sync makes the repository known" do

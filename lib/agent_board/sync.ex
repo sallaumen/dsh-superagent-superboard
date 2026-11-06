@@ -79,6 +79,7 @@ defmodule AgentBoard.Sync do
 
     apply_tickets(repository, issues)
     sync_comments(repository, client)
+    Board.reconcile_resolved_tasks(repository)
 
     Board.log_event(repository.id, "sync", "#{repository.owner}/#{repository.name}", %{
       "issues" => length(issues),
