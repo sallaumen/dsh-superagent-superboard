@@ -20,6 +20,7 @@ defmodule AgentBoardWeb.Components.SystemPanel do
       id="version-panel"
       class="version-panel"
       aria-label="Versão"
+      phx-hook="BoardRestart"
     >
       <h2 class="version-heading">
         <span>Versão</span>

@@ -18,6 +18,15 @@ export const BoardConnection = {
     const page = document.querySelector("#board-page")
     this.frozenAt = page?.dataset.syncAt || new Date().toISOString()
     sessionStorage.setItem("ab:disconnected-at", this.frozenAt)
+
+    // A click on Update/Restart is the reliable signal that the server is
+    // going away; the pushed event can be lost during the VM stop.
+    const requested = Number(sessionStorage.getItem("ab:restart-requested-at") || 0)
+    if (requested && Date.now() - requested < 30000) {
+      sessionStorage.setItem("ab:reload-after-restart", "1")
+    }
+    sessionStorage.removeItem("ab:restart-requested-at")
+
     this.mark("down")
   },
   reconnected() {
