@@ -85,6 +85,41 @@ defmodule AgentBoard.Board do
     |> MapSet.new(& &1.id)
   end
 
+  @doc """
+  Marks tasks whose linked PR is already merged or closed as done.
+
+  The read-time filter keeps them out of the lanes immediately, but the stored
+  state should also stop lying: a task whose PR was merged is done, not
+  waiting. Stopped and archived tasks keep their explicit state.
+  """
+  @spec reconcile_resolved_tasks(Repository.t()) :: non_neg_integer()
+  def reconcile_resolved_tasks(repository) do
+    tasks =
+      Repo.all(
+        from t in Task,
+          where:
+            t.repository_id == ^repository.id and
+              t.state not in ["done", "stopped", "archived"]
+      )
+
+    ids = resolved_task_ids(tasks) |> MapSet.to_list()
+
+    if ids == [] do
+      0
+    else
+      now = DateTime.utc_now()
+
+      {count, _} =
+        Repo.update_all(
+          from(t in Task, where: t.id in ^ids),
+          set: [state: "done", state_changed_at: now, updated_at: now]
+        )
+
+      broadcast(repository.id)
+      count
+    end
+  end
+
   @doc "A stable page of tasks in one active lane, newest updates first."
   def task_page(repository_id, state, cursor, limit \\ @task_page_size)
       when state in @task_states do
