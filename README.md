@@ -40,7 +40,10 @@ launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.agentboard.plist
 ```
 
 `KeepAlive` restarts the board after a crash or an update; `RunAtLoad` starts
-it with the system. Read logs at the paths selected in the plist.
+it with the system. Read logs at the paths selected in the plist. The
+**Atualizar e reiniciar** button is in **Configurações → Versão** and appears
+after **Verificar** when the checkout is behind; the service log records the
+deps/migrate/boot sequence.
 
 ```sh
 launchctl bootout "gui/$(id -u)/com.agentboard"   # stop for good
