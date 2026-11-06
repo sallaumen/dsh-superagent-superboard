@@ -163,6 +163,7 @@ defmodule AgentBoard.BoardAIEval.Runner do
     ])
   end
 
+  defp ledger_check({:ok, %{engine: :cache}}, []), do: "cached_answer"
   defp ledger_check({:ok, _response}, [_row]), do: "one_row_for_answer"
   defp ledger_check({:ok, _response}, _rows), do: "review_missing_or_multiple_rows"
   defp ledger_check({:error, _reason}, rows), do: "error_with_#{length(rows)}_rows"

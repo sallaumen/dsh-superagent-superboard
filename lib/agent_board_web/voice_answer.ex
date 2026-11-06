@@ -12,6 +12,7 @@ defmodule AgentBoardWeb.VoiceAnswer do
   @max_question_length 1_000
   @stale_after_seconds 300
   @task_lanes [:running, :ready, :blocked, :queued]
+  @title_question ~r/\b(?:titles?|t[ií]tulos?)\b/iu
   @read_starters [
     "o que",
     "o board",
@@ -72,10 +73,10 @@ defmodule AgentBoardWeb.VoiceAnswer do
          {:ok, result} <-
            AI.call(:answer_board_question, %{
              question: question,
-             board: facts(repository, board, metadata)
+             board: facts(repository, board, metadata, title_question?(question))
            }),
          {:ok, text} <- answer_text(result) do
-      {:ok, Map.put(metadata, :text, text)}
+      {:ok, metadata |> Map.put(:text, text) |> Map.put(:engine, result.engine)}
     end
   end
 
@@ -120,36 +121,39 @@ defmodule AgentBoardWeb.VoiceAnswer do
     end
   end
 
-  defp facts(repository, board, metadata) do
+  defp title_question?(question), do: Regex.match?(@title_question, question)
+
+  defp facts(repository, board, metadata, include_titles?) do
     %{
       repository: repository,
       sync: sync_facts(metadata),
-      task_lanes: Map.new(@task_lanes, &{&1, task_lane(board, &1)}),
-      merged_pull_requests: merged_facts(board)
+      task_lanes: Map.new(@task_lanes, &{&1, task_lane(board, &1, include_titles?)}),
+      merged_pull_requests: merged_facts(board, include_titles?)
     }
   end
 
-  defp task_lane(board, lane) do
+  defp task_lane(board, lane, include_titles?) do
     rows = Map.get(board, lane) || []
     counts = Map.get(board, :task_counts) || %{}
 
     %{
       exact_total: Map.get(counts, lane),
       loaded_count: length(rows),
-      sample: Enum.map(Enum.take(rows, @sample_size), &task_fact/1)
+      sample: Enum.map(Enum.take(rows, @sample_size), &task_fact(&1, include_titles?))
     }
   end
 
-  defp task_fact(task) do
-    %{
+  defp task_fact(task, include_titles?) do
+    fact = %{
       number: Map.get(task, :number),
       kind: Map.get(task, :kind),
-      title: Map.get(task, :title),
       updated_at: timestamp(Map.get(task, :updated_at))
     }
+
+    if include_titles?, do: Map.put(fact, :title, Map.get(task, :title)), else: fact
   end
 
-  defp merged_facts(board) do
+  defp merged_facts(board, include_titles?) do
     rows = Map.get(board, :merged) || []
 
     %{
@@ -158,11 +162,12 @@ defmodule AgentBoardWeb.VoiceAnswer do
       has_more: Map.get(board, :merged_has_more),
       sample:
         Enum.map(Enum.take(rows, @sample_size), fn pull ->
-          %{
+          fact = %{
             number: Map.get(pull, :number),
-            title: Map.get(pull, :title),
             merged_at: timestamp(Map.get(pull, :merged_at))
           }
+
+          if include_titles?, do: Map.put(fact, :title, Map.get(pull, :title)), else: fact
         end)
     }
   end

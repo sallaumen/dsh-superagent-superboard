@@ -31,6 +31,8 @@ mix run --no-compile --no-start scripts/eval-board-ai.exs > /tmp/board-ai-plan.j
 
 O JSON contém os treze casos, snapshots, fatos esperados, perguntas de revisão e limites. Essa é a única execução usada automaticamente no PR; ela não chama um provedor.
 
+Perguntas sobre totais e estado recebem amostras sem títulos de issues e PRs, que são texto externo não confiável. Uma pergunta que pede explicitamente um **título** recebe os títulos da amostra. Dois casos com os mesmos fatos e pergunta podem compartilhar uma resposta do cache; o relatório distingue esse resultado de uma nova chamada paga.
+
 ## Rodada opcional com modelo real
 
 Uma rodada paga exige `--live`, um provedor fixado, a chave **já exportada no ambiente** e um banco de teste dedicado e vazio. `config/runtime.exs` deliberadamente não carrega `.env.local` em `MIX_ENV=test`; não copie a chave para fonte, argumento de linha de comando ou relatório. Execute em série, sem outros processos no mesmo `MIX_TEST_PARTITION`:
@@ -46,10 +48,11 @@ MIX_ENV=test mix run scripts/eval-board-ai.exs --live /tmp/board-ai-eval.jsonl
 
 O roteiro recusa `MIX_ENV` diferente de `test`, partição sem o prefixo `board_ai_eval_`, provedor sem chave, banco com dados ou arquivo de saída preexistente. Ele fixa o provedor para evitar fallback inesperado. São no máximo **treze perguntas**, com a chamada registrada `:answer_board_question` limitada a 512 tokens de saída. Após cada caso, interrompe a rodada antes do próximo se chegar a **30.000 tokens registrados** ou **50.000 micros de dólar registrados** (US$ 0,05 estimado). Ambos os limites são conferidos após cada resposta: o último pedido pode ultrapassar tanto o limite de tokens quanto o de custo registrado. Esses registros vêm da resposta e da tabela de preços do board; **não são um teto garantido da cobrança do provedor**. Não há retry automático.
 
-O JSONL grava primeiro um registro `run`, depois um `case` por pergunta e, ao final, `summary`. Cada caso inclui snapshot, resposta, filtros automáticos e as linhas de `ai_calls` criadas naquela pergunta. `ledger_check=one_row_for_answer` é o contrato esperado para uma resposta paga. Se o processo for interrompido, o arquivo parcial e as linhas do banco preservam a evidência; não execute novamente na mesma partição. O banco isolado pode ser removido depois de guardar e revisar o relatório.
+O JSONL grava primeiro um registro `run`, depois um `case` por pergunta e, ao final, `summary`. Cada caso inclui snapshot, resposta, filtros automáticos e as linhas de `ai_calls` criadas naquela pergunta. `ledger_check=one_row_for_answer` é o contrato esperado para uma resposta paga; `cached_answer` indica reutilização de uma resposta anterior para fatos e pergunta idênticos, sem nova cobrança. Se o processo for interrompido, o arquivo parcial e as linhas do banco preservam a evidência; não execute novamente na mesma partição. O banco isolado pode ser removido depois de guardar e revisar o relatório.
 
 ## Cobertura distinta da campanha do agente
 
 Esta avaliação não demonstra que o `dsh-superagent` programa bem. A campanha do agente usa uma issue limitada no `arena-rogue` e acompanha issue → ticket → PR → gate → revisão → merge. Não misture as duas pontuações.
 
 Uma rodada local com 13 casos, respostas completas e revisão humana está em [evaluations/2026-11-05-board-ai-local.md](evaluations/2026-11-05-board-ai-local.md). Ela usa Ollama e não substitui a rodada com o provedor de produção.
+O acompanhamento da projeção sem títulos para perguntas agregadas está em [evaluations/2026-11-06-board-ai-aggregate.md](evaluations/2026-11-06-board-ai-aggregate.md).
