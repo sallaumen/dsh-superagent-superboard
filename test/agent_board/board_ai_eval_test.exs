@@ -117,5 +117,10 @@ defmodule AgentBoard.BoardAIEvalTest do
              action,
              {:ok, %{text: "The snapshot contains no archive-action history."}}
            ).status == "needs_human_review"
+
+    assert {:ok, %{engine: :board} = result} =
+             VoiceAnswer.answer(action.snapshot, action.question)
+
+    assert BoardAIEval.assess(action, {:ok, result}).status == "needs_human_review"
   end
 end

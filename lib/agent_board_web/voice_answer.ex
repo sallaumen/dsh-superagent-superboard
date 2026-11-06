@@ -14,6 +14,9 @@ defmodule AgentBoardWeb.VoiceAnswer do
   @task_lanes [:running, :ready, :blocked, :queued]
   @title_question ~r/\b(?:titles?|t[ií]tulos?|names?|nomes?|(?:o que est[aá]|what is) (?:rodando|running|pronto|ready|bloqueado|blocked|na fila|queued)|(?:quais?|which) (?:tarefas?|tasks?|cards?|prs?|pull requests?))\b/iu
   @aggregate_question ~r/\b(?:how many|quantos?|quantas?|counts?|total|n[uú]mero de)\b/iu
+  @archive_action ~r/\b(?:did (?:i|you|we|the agent|the board) archiv\w*|(?:i|you|we|was|were) archived|(?:voc[eê]|eu|o agente|o board|foi|foram) arquiv\w*)\b/iu
+  @archive_inventory ~r/\b(?:archived tasks?|tasks? archived|tarefas? arquivad[ao]s?|arquivad[ao]s? tarefas?)\b/iu
+  @archive_history_term ~r/\b(?:archive history|archiving history|archive actions?|hist[oó]rico (?:de |do |da )?arquiv\w*)\b/iu
   @read_starters [
     "o que",
     "o board",
@@ -63,21 +66,26 @@ defmodule AgentBoardWeb.VoiceAnswer do
 
   def read_query?(_text), do: false
 
+  @doc "Whether a read question asks for archive history absent from the snapshot."
+  def archive_history_query?(text) when is_binary(text) do
+    (read_query?(text) or String.ends_with?(String.trim(text), "?")) and
+      Enum.any?(
+        [@archive_action, @archive_inventory, @archive_history_term],
+        &Regex.match?(&1, text)
+      )
+  end
+
+  def archive_history_query?(_text), do: false
+
   @spec answer(map(), String.t()) ::
           {:ok, map()} | {:error, term()}
   def answer(snapshot, question) when is_map(snapshot) and is_binary(question) do
     with {:ok, repository} <- repository(snapshot),
          {:ok, question} <- question(question),
          {:ok, board} <- board(snapshot),
-         :ok <- validate_lane_counts(board),
-         metadata = sync_metadata(Map.get(snapshot, :sync_event)),
-         {:ok, result} <-
-           AI.call(:answer_board_question, %{
-             question: question,
-             board: facts(repository, board, metadata, title_question?(question))
-           }),
-         {:ok, text} <- answer_text(result) do
-      {:ok, metadata |> Map.put(:text, text) |> Map.put(:engine, result.engine)}
+         :ok <- validate_lane_counts(board) do
+      metadata = sync_metadata(Map.get(snapshot, :sync_event))
+      answer_from_snapshot(repository, board, metadata, question)
     end
   end
 
@@ -93,10 +101,17 @@ defmodule AgentBoardWeb.VoiceAnswer do
     trimmed = String.trim(text)
 
     cond do
-      trimmed == "" -> {:error, :missing_question}
-      String.length(trimmed) > @max_question_length -> {:error, :question_too_long}
-      not read_query?(trimmed) -> {:error, :not_read_query}
-      true -> {:ok, trimmed}
+      trimmed == "" ->
+        {:error, :missing_question}
+
+      String.length(trimmed) > @max_question_length ->
+        {:error, :question_too_long}
+
+      not read_query?(trimmed) and not archive_history_query?(trimmed) ->
+        {:error, :not_read_query}
+
+      true ->
+        {:ok, trimmed}
     end
   end
 
@@ -124,6 +139,35 @@ defmodule AgentBoardWeb.VoiceAnswer do
 
   defp title_question?(question) do
     Regex.match?(@title_question, question) and not Regex.match?(@aggregate_question, question)
+  end
+
+  defp answer_from_snapshot(repository, board, metadata, question) do
+    if archive_history_query?(question) do
+      text =
+        if String.contains?(String.downcase(question), "arquiv") do
+          "Os dados salvos do board não incluem histórico de arquivamento. Não consigo dizer o que foi arquivado ou quando."
+        else
+          "The saved board data does not include archive history. I cannot tell what was archived or when."
+        end
+
+      {:ok,
+       %{
+         as_of: nil,
+         engine: :board,
+         source: "Archive history unavailable",
+         sync_status: :unknown,
+         text: text
+       }}
+    else
+      with {:ok, result} <-
+             AI.call(:answer_board_question, %{
+               question: question,
+               board: facts(repository, board, metadata, title_question?(question))
+             }),
+           {:ok, text} <- answer_text(result) do
+        {:ok, metadata |> Map.put(:text, text) |> Map.put(:engine, result.engine)}
+      end
+    end
   end
 
   defp facts(repository, board, metadata, include_titles?) do

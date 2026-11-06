@@ -33,6 +33,8 @@ O JSON contém os treze casos, snapshots, fatos esperados, perguntas de revisão
 
 Perguntas sobre totais e estado recebem amostras sem títulos de issues e PRs, que são texto externo não confiável. A contagem tem precedência mesmo quando o texto menciona “titles”. Perguntas por **título**, **nome** ou identidade da tarefa recebem os títulos da amostra limitada. Dois casos com os mesmos fatos e pergunta podem compartilhar uma resposta do cache; o relatório distingue esse resultado de uma nova chamada paga.
 
+O snapshot não contém histórico de arquivamento. Perguntas que pedem ações passadas, inventário de tarefas arquivadas ou esse histórico recebem diretamente o limite do board, sem chamada a modelo e sem alegar que uma ação ocorreu ou deixou de ocorrer. A palavra “Archive” num nome de tarefa ou repositório não basta para acionar essa resposta. O relatório identifica esse caminho como `board_limit_no_model`.
+
 ## Rodada opcional com modelo real
 
 Uma rodada paga exige `--live`, um provedor fixado, a chave **já exportada no ambiente** e um banco de teste dedicado e vazio. `config/runtime.exs` deliberadamente não carrega `.env.local` em `MIX_ENV=test`; não copie a chave para fonte, argumento de linha de comando ou relatório. Execute em série, sem outros processos no mesmo `MIX_TEST_PARTITION`:
@@ -48,7 +50,7 @@ MIX_ENV=test mix run scripts/eval-board-ai.exs --live /tmp/board-ai-eval.jsonl
 
 O roteiro recusa `MIX_ENV` diferente de `test`, partição sem o prefixo `board_ai_eval_`, provedor sem chave, banco com dados ou arquivo de saída preexistente. Ele fixa o provedor para evitar fallback inesperado. São no máximo **treze perguntas**, com a chamada registrada `:answer_board_question` limitada a 512 tokens de saída. Após cada caso, interrompe a rodada antes do próximo se chegar a **30.000 tokens registrados** ou **50.000 micros de dólar registrados** (US$ 0,05 estimado). Ambos os limites são conferidos após cada resposta: o último pedido pode ultrapassar tanto o limite de tokens quanto o de custo registrado. Esses registros vêm da resposta e da tabela de preços do board; **não são um teto garantido da cobrança do provedor**. Não há retry automático.
 
-O JSONL grava primeiro um registro `run`, depois um `case` por pergunta e, ao final, `summary`. Cada caso inclui snapshot, resposta, filtros automáticos e as linhas de `ai_calls` criadas naquela pergunta. `ledger_check=one_row_for_answer` é o contrato esperado para uma resposta paga; `cached_answer` indica reutilização de uma resposta anterior para fatos e pergunta idênticos, sem nova cobrança. Se o processo for interrompido, o arquivo parcial e as linhas do banco preservam a evidência; não execute novamente na mesma partição. O banco isolado pode ser removido depois de guardar e revisar o relatório.
+O JSONL grava primeiro um registro `run`, depois um `case` por pergunta e, ao final, `summary`. Cada caso inclui snapshot, resposta, filtros automáticos e as linhas de `ai_calls` criadas naquela pergunta. `ledger_check=one_row_for_answer` é o contrato esperado para uma resposta paga; `cached_answer` indica reutilização de uma resposta anterior para fatos e pergunta idênticos, sem nova cobrança; `board_limit_no_model` registra a resposta determinística sobre histórico indisponível. Se o processo for interrompido, o arquivo parcial e as linhas do banco preservam a evidência; não execute novamente na mesma partição. O banco isolado pode ser removido depois de guardar e revisar o relatório.
 
 ## Cobertura distinta da campanha do agente
 
