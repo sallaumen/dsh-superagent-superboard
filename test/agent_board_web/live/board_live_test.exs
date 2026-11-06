@@ -484,8 +484,25 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, ".ai-call-metrics div:first-child", "Latencyunknown")
     assert has_element?(view, ".ai-call-metrics div:nth-child(2)", "Usageunknown")
     assert has_element?(view, ".ai-call-metrics div:last-child", "Est. costunknown")
+    assert has_element?(view, ".ai-call-reason", "Reason not recorded")
     refute has_element?(view, ".ai-call-metrics", "0ms")
     refute has_element?(view, ".ai-call-metrics", "0 tokens")
+  end
+
+  test "the AI panel shows a recorded failure reason", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("fixture", "ai-failure")
+
+    %Call{}
+    |> Call.changeset(%{
+      name: "split_request",
+      engine: "deepseek",
+      status: "error",
+      error: "malformed_output"
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/ai-failure&panel=ai")
+    assert has_element?(view, "#panel-ai .ai-call-reason", "malformed_output")
   end
 
   test "a merged pull shows its review badge", %{conn: conn} do
