@@ -1,16 +1,19 @@
-# Elixir Agent Kit 0.5.2
+# Elixir Agent Kit 0.5.3
 
-Before changing behavior or reviewing code:
+Before opening any source file for a change or a review:
 
-1. Name the task's primary risk in one line: a screen, stored data or a provider
-   call, code quality or process state, an operational domain, or delivery.
+1. Name the task's primary risk in one line, from the request alone: a screen,
+   stored data or a provider call, code quality or process state, an operational
+   domain, or delivery.
 2. Pick one workflow from the tables below. When two neighbors fit, the
    [routing guide](../deps/elixir_agent_kit/priv/library/ROUTING.md) separates them. A bounded, fully specified
    edit picks NONE.
 3. Read that workflow's SKILL.md from the dependency together with the
    [shared contract](../deps/elixir_agent_kit/priv/library/CONTRACT.md); copy neither into this project.
-4. Before the first edit, state the workflow ID or NONE in your plan or report,
-   with the reason in one line.
+4. State the workflow ID or NONE in your plan or report, with the reason in one
+   line, then open the code and investigate the way the workflow says. The local
+   contracts say what this project must do; the workflow says how to inspect,
+   decide and prove it.
 
 Project rules and the user's authorized scope govern the work. Use the
 [Elixir context](../deps/elixir_agent_kit/priv/library/ELIXIR.md) only for technologies present here; send

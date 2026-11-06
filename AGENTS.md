@@ -4,14 +4,15 @@ The board for the agent's work, in Elixir. Read this before changing code.
 
 ## Required contracts
 
-- Before changing application behavior, read and follow the relevant sections
-  of the [maintainer contract](docs/maintainer-contract.md): data ownership,
-  real-time updates, AI calls, network failures and sync isolation are binding.
-- Before changing behavior or reviewing code, also select one Elixir Agent Kit
-  workflow through [.elixir-agent-kit/START.md](.elixir-agent-kit/START.md)
-  (after `mix deps.get`) and read it with the kit's shared contract. The
-  maintainer contract says what this board must do; the workflow says how to
-  inspect, decide and prove it. A bounded, fully specified edit needs none.
+- Before opening any source file for a change or a review, select one Elixir
+  Agent Kit workflow through [.elixir-agent-kit/START.md](.elixir-agent-kit/START.md)
+  (after `mix deps.get`) and name it, or NONE for a bounded, fully specified
+  edit. Investigate the way the workflow says.
+- Then read and follow the relevant sections of the
+  [maintainer contract](docs/maintainer-contract.md): data ownership, real-time
+  updates, AI calls, network failures and sync isolation are binding. The
+  contract says what this board must do; the workflow says how to inspect,
+  decide and prove it.
 - Follow [CONTRIBUTING.md](CONTRIBUTING.md) for branches, commits and PRs.
 - Follow [PIPELINES.md](PIPELINES.md) for required checks and command effects.
   Its [CI-unavailable procedure](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner)
@@ -56,9 +57,10 @@ watches GitHub; this board only mirrors it. It is documented in
 <!-- elixir-agent-kit:start -->
 ## Elixir Agent Kit
 
-Before changing behavior or reviewing code, select one workflow from
-[.elixir-agent-kit/START.md](.elixir-agent-kit/START.md) and read it with its shared contract,
-even when a local contract already covers the area; a bounded, fully specified edit needs none.
-This project's rules keep precedence. If the files are missing, run `mix deps.get`; if you
-cannot read them, report that instead of claiming the practices were applied.
+Before opening any source file for a change or a review, select one workflow from
+[.elixir-agent-kit/START.md](.elixir-agent-kit/START.md) and name it, or NONE for a bounded,
+fully specified edit; then read the workflow with its shared contract alongside this project's
+own contracts, and investigate the way the workflow says. This project's rules keep precedence.
+If the files are missing, run `mix deps.get`; if you cannot read them, report that instead of
+claiming the practices were applied.
 <!-- elixir-agent-kit:end -->
