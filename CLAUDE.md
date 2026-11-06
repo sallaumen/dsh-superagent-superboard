@@ -10,7 +10,8 @@ pipelines live there; nothing else is authored here.
 <!-- elixir-agent-kit:start -->
 ## Elixir Agent Kit
 
-For development tasks, consult [.elixir-agent-kit/START.md](.elixir-agent-kit/START.md).
-Select the relevant workflow and read its shared contract. Preserve this project's rules.
-If the files are missing, report the missing setup; do not claim the practices were applied.
+Claude Code reads AGENTS.md only when no CLAUDE.md applies, so this block imports it.
+This project's instructions in AGENTS.md govern the work.
+
+@AGENTS.md
 <!-- elixir-agent-kit:end -->

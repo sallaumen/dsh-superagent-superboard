@@ -169,14 +169,31 @@
 .board-dialog .alert { width: 100%; max-width: none; }
 @media (max-width: 39.999rem) { .board-dialog { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); } }
 
-/* Motion communicates entry/intent, never gates an action or animates every broadcast. */
+/* Motion answers a state change: an entry for a new surface or notice, feedback for
+   an input, and nothing for a data broadcast. Durations and curves live here only. */
+:root {
+  --motion-feedback: 110ms;
+  --motion-inplace: 160ms;
+  --motion-enter: 200ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0.38, 0.9);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+}
 .panel-close { display: inline-flex; align-items: center; gap: 0.5rem; }
 .agent-board button.phx-click-loading, .agent-board .phx-submit-loading button { cursor: progress; border-style: dashed; }
 @media (prefers-reduced-motion: no-preference) {
-  .agent-board :where(button, a) { transition: background-color 120ms ease-out, border-color 120ms ease-out; }
-  .board-card, .board-dialog[open], .toast .alert { animation: board-appear 120ms ease-out; }
+  .agent-board :where(button, a) {
+    transition:
+      background-color var(--motion-feedback) var(--ease-standard),
+      border-color var(--motion-feedback) var(--ease-standard);
+  }
+  .board-dialog[open] { animation: surface-enter var(--motion-enter) var(--ease-enter); }
+  .toast .alert { animation: notice-enter var(--motion-enter) var(--ease-enter); }
+  .board-settings[open] .board-settings-body { animation: menu-enter var(--motion-inplace) var(--ease-enter); }
+  .settings-chevron, .settings-fold-chevron { transition: transform var(--motion-inplace) var(--ease-standard); }
 }
-@keyframes board-appear { from { opacity: 0.85; } to { opacity: 1; } }
+@keyframes surface-enter { from { opacity: 0; transform: translateY(6px) scale(0.995); } }
+@keyframes notice-enter { from { opacity: 0; transform: translateY(4px); } }
+@keyframes menu-enter { from { opacity: 0; transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) {
   .agent-board *, #flash-group * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
