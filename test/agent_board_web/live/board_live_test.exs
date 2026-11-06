@@ -577,9 +577,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert html =~ "Version"
-    assert html =~ "running"
-    assert has_element?(view, "#version-panel button", "Check")
+    assert html =~ "Versão"
+    assert html =~ "rodando"
+    assert has_element?(view, "#version-panel button", "Verificar")
   end
 
   test "work actions live in the top bar while settings holds preferences", %{

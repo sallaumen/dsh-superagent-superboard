@@ -460,6 +460,12 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  def handle_info(:restart_server, socket) do
+    updater().restart()
+    System.stop()
+    {:noreply, socket}
+  end
+
   def handle_info(:board_updated, socket) do
     old_board = socket.assigns.board
     old_sync = socket.assigns.sync_event
@@ -837,22 +843,31 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, assign(socket, version: Version.status())}
 
       {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Could not reach main: #{inspect(reason)}")}
+        {:noreply, put_flash(socket, :error, "Não consegui falar com a main: #{inspect(reason)}")}
     end
   end
 
   @impl true
   def handle_event("update", _params, socket) do
-    case Updater.pull() do
-      {:ok, sha} ->
+    case updater().pull_changed() do
+      {:ok, sha, false} ->
         {:noreply,
          socket
-         |> assign(version: Version.status(), busy: true)
-         |> put_flash(:info, "Updated to #{sha}; restarting")}
+         |> assign(version: Version.status(), busy: false)
+         |> put_flash(:info, "Já está em dia (#{sha}).")}
+
+      {:ok, sha, true} ->
+        {:noreply,
+         restart_after_update(socket, "Atualizado para #{sha}; reiniciando o servidor…")}
 
       {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Update failed: #{inspect(reason)}")}
+        {:noreply, put_flash(socket, :error, "A atualização falhou: #{inspect(reason)}")}
     end
+  end
+
+  @impl true
+  def handle_event("restart", _params, socket) do
+    {:noreply, restart_after_update(socket, "Reiniciando o servidor…")}
   end
 
   @impl true
@@ -1879,6 +1894,18 @@ defmodule AgentBoardWeb.BoardLive do
       _ -> socket.assigns.composer_selected
     end
   end
+
+  defp restart_after_update(socket, message) do
+    delay = Application.get_env(:agent_board, :update_restart_delay_ms, 1200)
+    Process.send_after(self(), :restart_server, delay)
+
+    socket
+    |> assign(:busy, true)
+    |> push_event("restart", %{})
+    |> put_flash(:info, message)
+  end
+
+  defp updater, do: Application.get_env(:agent_board, :updater, Updater)
 
   defp split_for_composer(socket, text) do
     repo = socket.assigns.repo

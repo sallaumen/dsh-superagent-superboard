@@ -38,7 +38,7 @@ defmodule AgentBoard.AgentWorktree do
       {:ok, output} ->
         output
         |> String.split("\n", trim: true)
-        |> Enum.map(&String.slice(&1, 3..-1//-1))
+        |> Enum.map(&String.slice(&1, 3..-1//1))
         |> Enum.reject(&(&1 in [nil, ""]))
         |> Enum.uniq()
         |> Enum.sort_by(&mtime(dir, &1), :desc)
