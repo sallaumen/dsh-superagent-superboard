@@ -317,20 +317,25 @@ defmodule AgentBoard.Work do
   end
 
   defp local_title(local, pull) do
-    remote =
-      case pull && pull.checks_state do
-        "failure" -> "GitHub Actions falhou"
-        "success" -> "GitHub Actions passou"
-        "pending" -> "GitHub Actions ainda roda"
-        _ -> "GitHub Actions sem checks"
+    prefix =
+      if local.remote_blocked do
+        "#{remote_label(pull)} (billing/sem crédito no GitHub)."
+      else
+        "#{remote_label(pull)}."
       end
 
-    if local.remote_blocked do
-      "#{remote} (billing/sem crédito no GitHub). CI local passou: #{local.detail}"
-    else
-      "#{remote}. CI local passou: #{local.detail}"
-    end
+    "#{prefix} CI local passou#{local_scope(local)}: #{local.detail}"
   end
+
+  defp remote_label(%{checks_state: "failure"}), do: "GitHub Actions falhou"
+  defp remote_label(%{checks_state: "success"}), do: "GitHub Actions passou"
+  defp remote_label(%{checks_state: "pending"}), do: "GitHub Actions ainda roda"
+  defp remote_label(_pull), do: "GitHub Actions sem checks"
+
+  defp local_scope(%{scope: :ticket, evidence_pr: number}),
+    do: " no ticket (relatório cita ##{number}; este PR é do mesmo trabalho)"
+
+  defp local_scope(_local), do: ""
 
   defp remote_failure_title(pull) do
     case checks_label(pull) do

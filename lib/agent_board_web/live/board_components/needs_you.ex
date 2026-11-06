@@ -55,6 +55,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
             role={if need[:id], do: "button"}
             phx-click={if need[:id], do: "open"}
             phx-value-id={need[:id]}
+            phx-value-tab={if need.kind == :review, do: "pr"}
             data-panel-trigger={need[:id] && "conversation"}
           >
             <.glyph kind={need.kind} />
@@ -88,6 +89,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                   class={["ab-btn ab-btn--sm", action_class(need.kind)]}
                   phx-click="open"
                   phx-value-id={action.task_id}
+                  phx-value-tab={if need.kind == :review, do: "pr"}
                 >{action.label}</button>
               <% end %>
             </div>

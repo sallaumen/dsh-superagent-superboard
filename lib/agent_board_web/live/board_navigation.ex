@@ -11,13 +11,14 @@ defmodule AgentBoardWeb.BoardNavigation do
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
 
-  def path(repo, panel, task_id \\ nil)
+  def path(repo, panel, task_id \\ nil, tab \\ nil)
 
-  def path(nil, "voice", _task_id), do: "/?panel=voice"
+  def path(nil, "voice", _task_id, _tab), do: "/?panel=voice"
 
-  def path(repo, panel, task_id) do
+  def path(repo, panel, task_id, tab) do
     query = %{"repo" => "#{repo.owner}/#{repo.name}", "panel" => panel}
     query = if task_id, do: Map.put(query, "task", task_id), else: query
+    query = if tab, do: Map.put(query, "tab", tab), else: query
     "/?" <> URI.encode_query(query)
   end
 
@@ -37,7 +38,7 @@ defmodule AgentBoardWeb.BoardNavigation do
           panel: "conversation",
           conversation: task,
           comments: Board.comments(task),
-          inspector_tab: params["tab"] || default_tab(task)
+          inspector_tab: tab_param(params["tab"]) || default_tab(task)
         )
     end
   end
@@ -58,10 +59,13 @@ defmodule AgentBoardWeb.BoardNavigation do
   defp default_tab(%Task{state: "running"}), do: "atividade"
   defp default_tab(_task), do: "conversa"
 
-  def open_task(socket, id) do
+  defp tab_param(tab) when tab in ~w(conversa atividade chamadas pr), do: tab
+  defp tab_param(_tab), do: nil
+
+  def open_task(socket, id, tab \\ nil) do
     case task(socket.assigns.repo, id) do
       nil -> socket
-      task -> push_patch(socket, to: path(socket.assigns.repo, "conversation", task.id))
+      task -> push_patch(socket, to: path(socket.assigns.repo, "conversation", task.id, tab))
     end
   end
 

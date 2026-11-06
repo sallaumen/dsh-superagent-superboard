@@ -48,9 +48,14 @@ defmodule AgentBoard.LocalCITest do
 
     status = LocalCI.by_pr(@repo, [ticket([pass, later])])
 
-    # The pass names #21; the later summary names #24 but has no local check.
+    # The pass names #21; #24 is the same ticket's later PR, so it inherits
+    # the ticket gate with the evidence PR named in the tooltip.
     assert status[21].state == :pass
-    refute Map.has_key?(status, 24)
+    assert status[21].scope == :pr
+    assert status[24].state == :pass
+    assert status[24].scope == :ticket
+    assert status[24].evidence_pr == 21
+    assert status[24].detail == status[21].detail
   end
 
   test "another repository and a report without precommit stay unknown" do

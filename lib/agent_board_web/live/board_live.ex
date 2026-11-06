@@ -712,8 +712,8 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("open", %{"id" => id}, socket) do
-    {:noreply, BoardNavigation.open_task(socket, id)}
+  def handle_event("open", %{"id" => id} = params, socket) do
+    {:noreply, BoardNavigation.open_task(socket, id, params["tab"])}
   end
 
   @impl true

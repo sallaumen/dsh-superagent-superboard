@@ -351,11 +351,12 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp pr_ci(%{checks_state: "none"}, _ci), do: "sem CI"
   defp pr_ci(_pr, _ci), do: "CI desconhecido"
 
-  defp pr_ci_title(_pr, %{state: :pass, detail: detail, remote_blocked: true}),
-    do: "GitHub Actions não rodou (billing/sem crédito). CI local passou: #{detail}"
+  defp pr_ci_title(_pr, %{state: :pass, detail: detail, remote_blocked: true} = ci) do
+    "GitHub Actions não rodou (billing/sem crédito). " <> local_scope(ci) <> detail
+  end
 
-  defp pr_ci_title(_pr, %{state: :pass, detail: detail}),
-    do: "CI local passou: #{detail}"
+  defp pr_ci_title(_pr, %{state: :pass, detail: detail} = ci),
+    do: local_scope(ci) <> detail
 
   defp pr_ci_title(_pr, %{state: :fail, detail: detail}),
     do: "CI local falhou: #{detail}"
@@ -365,6 +366,11 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
   defp pr_ci_title(%{checks_state: "success"}, _ci), do: "GitHub Actions passou."
   defp pr_ci_title(_pr, _ci), do: "Nenhum check remoto configurado."
+
+  defp local_scope(%{scope: :ticket, evidence_pr: number}),
+    do: "CI local passou no ticket (relatório cita ##{number}); este PR é do mesmo trabalho: "
+
+  defp local_scope(_ci), do: "CI local passou: "
 
   defp local_ci_pass?(%{state: :pass}), do: true
   defp local_ci_pass?(_ci), do: false
