@@ -7,6 +7,11 @@ The board for the agent's work, in Elixir. Read this before changing code.
 - Before changing application behavior, read and follow the relevant sections
   of the [maintainer contract](docs/maintainer-contract.md): data ownership,
   real-time updates, AI calls, network failures and sync isolation are binding.
+- Before changing behavior or reviewing code, also select one Elixir Agent Kit
+  workflow through [.elixir-agent-kit/START.md](.elixir-agent-kit/START.md)
+  (after `mix deps.get`) and read it with the kit's shared contract. The
+  maintainer contract says what this board must do; the workflow says how to
+  inspect, decide and prove it. A bounded, fully specified edit needs none.
 - Follow [CONTRIBUTING.md](CONTRIBUTING.md) for branches, commits and PRs.
 - Follow [PIPELINES.md](PIPELINES.md) for required checks and command effects.
   Its [CI-unavailable procedure](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner)
