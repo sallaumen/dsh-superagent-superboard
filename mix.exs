@@ -43,7 +43,7 @@ defmodule AgentBoard.MixProject do
     [
       {:elixir_agent_kit,
        git: "https://github.com/sallaumen/elixir-agent-kit.git",
-       tag: "v0.2.0",
+       tag: "v0.3.0",
        only: [:dev, :test],
        runtime: false},
       {:phoenix, "~> 1.8.8"},
