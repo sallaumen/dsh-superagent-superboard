@@ -150,8 +150,32 @@ defmodule AgentBoard.AgentState do
       "stopped" => ticket["stopped"] || false,
       "archived" => ticket["archived"] || false,
       "execution" => ticket["execution"] || %{},
-      "title" => ticket["title"]
+      "title" => ticket["title"],
+      "channel_urls" =>
+        (ticket["channels"] || [])
+        |> Enum.map(&get_in(&1, ["address", "url"]))
+        |> Enum.filter(&is_binary/1),
+      "reports" => reports(ticket)
     }
+  end
+
+  defp reports(ticket) do
+    (ticket["assignments"] || [])
+    |> Enum.flat_map(fn assignment ->
+      case assignment["report"] do
+        %{} = report ->
+          [
+            %{
+              "state" => report["state"],
+              "summary" => report["summary"],
+              "at" => parse(report["at"])
+            }
+          ]
+
+        _ ->
+          []
+      end
+    end)
   end
 
   defp decode(value) do

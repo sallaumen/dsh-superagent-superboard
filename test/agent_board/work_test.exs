@@ -15,19 +15,18 @@ defmodule AgentBoard.WorkTest do
     old_review = task(repo, 1, "Old review", "ready", DateTime.add(now, -7200, :second))
     new_blocked = task(repo, 2, "New blocked", "blocked", DateTime.add(now, -60, :second))
     new_review = task(repo, 3, "New review", "ready", DateTime.add(now, -60, :second))
-    failure = merged(repo, 4, "Main red", "failure", DateTime.add(now, -60, :second))
+    _failure = merged(repo, 4, "Main red", "failure", DateTime.add(now, -60, :second))
 
     board = %{ready: [old_review, new_review], blocked: [new_blocked], question: [], running: []}
 
     needs = Work.needs(repo, board, now: now, last_visit: last_visit)
 
-    assert Enum.map(needs, & &1.title) == ["Main red", "New blocked", "New review", "Old review"]
-    assert Enum.map(needs, & &1.kind) == [:cifail, :blocked, :review, :review]
+    # Merjed work is done; a red remote check is not a decision for the person.
+    assert Enum.map(needs, & &1.title) == ["New blocked", "New review", "Old review"]
+    assert Enum.map(needs, & &1.kind) == [:blocked, :review, :review]
     assert Enum.at(needs, 0).is_new
-    refute Enum.at(needs, 3).is_new
-    assert Enum.at(needs, 0).why =~ "CI falhou"
-    assert Enum.at(needs, 0).why =~ "gates"
-    assert Enum.at(needs, 0).actions |> hd() |> Map.fetch!(:url) == failure.url
+    refute Enum.at(needs, 2).is_new
+    refute Enum.any?(needs, &(&1.kind == :cifail))
   end
 
   test "queue keeps arrival order and warns about a merged duplicate" do
@@ -56,13 +55,42 @@ defmodule AgentBoard.WorkTest do
     merged(repo, 2, "Yesterday", "failure", DateTime.add(today, -86_400, :second))
     merged(repo, 3, "Old", "success", DateTime.add(today, -8 * 86_400, :second))
 
-    log = Work.merge_log(repo, now: today, tz_offset: 0)
+    local = %{
+      2 => %{
+        state: :pass,
+        detail: "mix precommit passed (testes, formato, Credo)",
+        remote_blocked: true
+      }
+    }
+
+    log = Work.merge_log(repo, now: today, tz_offset: 0, local_ci: local)
 
     assert log.total == 2
     assert List.last(log.days).n == 1
     assert Enum.find(log.days, &(&1.date == Date.add(Date.utc_today(), -1))).n == 1
     assert Enum.map(log.groups, & &1.label) == ["Hoje", "Ontem, 5 nov"]
     assert hd(log.groups).items |> hd() |> Map.fetch!(:ci) == "pass"
+
+    yesterday = Enum.find(log.groups, &(&1.label == "Ontem, 5 nov"))
+    item = hd(yesterday.items)
+    assert item.ci == "pass"
+    assert item.ciNote == "CI local ok"
+    assert item.ciTitle =~ "CI local passou"
+    assert item.ciTitle =~ "billing"
+  end
+
+  test "a red remote check without local evidence is quiet, not a red day" do
+    {:ok, repo} = Board.add_repository("fixture", "remote-only")
+    now = ~U[2026-11-06 15:00:00Z]
+    merged(repo, 9, "Remote only", "failure", now)
+
+    log = Work.merge_log(repo, now: now, tz_offset: 0)
+    item = hd(hd(log.groups).items)
+
+    assert item.ci == "unknown"
+    assert item.ciNote == "CI remoto falhou"
+    assert item.ciTitle =~ "sem evidência de CI local"
+    assert hd(log.days).fail == 0
   end
 
   test "the digest counts what changed since the visit, not the whole board" do
@@ -78,7 +106,8 @@ defmodule AgentBoard.WorkTest do
     digest = Work.digest(repo, board, now: now, last_visit: last_visit, tz_offset: 0)
 
     text = Enum.map_join(digest.segments, "", & &1.text)
-    assert text =~ "mesclou 1 PR com CI falhando"
+    assert text =~ "mesclou 1 PR"
+    refute text =~ "CI falhando"
     assert text =~ "1 nova na fila"
     refute text =~ "2 novas"
   end

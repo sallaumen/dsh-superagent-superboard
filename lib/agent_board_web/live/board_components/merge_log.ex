@@ -32,7 +32,11 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
         <div
           :for={day <- @log.days}
           class={["ab-day", day.today && "is-today"]}
-          title={"#{day.n} merges" <> if(day.fail > 0, do: ", #{day.fail} com CI falhando", else: "")}
+          title={
+            "#{day.n} merges" <>
+              if(day.fail > 0, do: ", #{day.fail} com CI local falhando", else: "") <>
+              if(day.ok > 0, do: ", #{day.ok} com CI local ok", else: "")
+          }
         >
           <div class="ab-day__dots">
             <span :if={day.n == 0} class="ab-day__zero" aria-hidden="true"></span>
@@ -73,7 +77,14 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
               <span class="ab-need__id">#{pr.number}</span> {pr.title}
             </span>
             <span class="ab-pr__meta">
-              <span class={["ab-tag", pr.ci == "fail" && "ab-tag--halt"]}>
+              <span
+                class={[
+                  "ab-tag",
+                  pr.ci == "fail" && "ab-tag--halt",
+                  pr.ci == "pass" && pr.ciNote == "CI local ok" && "ab-tag--agent"
+                ]}
+                title={pr.ciTitle}
+              >
                 <.glyph :if={pr.ci == "fail"} kind={:cifail} />
                 {pr.ciNote}
               </span>

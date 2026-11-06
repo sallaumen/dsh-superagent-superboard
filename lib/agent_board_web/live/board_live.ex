@@ -13,6 +13,7 @@ defmodule AgentBoardWeb.BoardLive do
     ElevenLabs,
     GitHub,
     Intake,
+    LocalCI,
     Repo,
     Settings,
     Time,
@@ -88,6 +89,7 @@ defmodule AgentBoardWeb.BoardLive do
         inspector_activity: [],
         inspector_calls: [],
         inspector_pr: nil,
+        inspector_ci: nil,
         intake: nil,
         intake_draft: nil,
         composer_text: "",
@@ -159,7 +161,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp parse_offset(_value), do: 0
 
-  defp work_for(repo, board, agent, freshness, socket) do
+  defp work_for(repo, board, agent, freshness, socket, local_ci) do
     now = DateTime.utc_now()
     tz_offset = socket.assigns.tz_offset
     last_visit = socket.assigns.last_visit
@@ -182,7 +184,7 @@ defmodule AgentBoardWeb.BoardLive do
           filter: socket.assigns.queue_filter,
           limit: socket.assigns.queue_limit
         ),
-      log: Work.merge_log(repo, now: now, tz_offset: tz_offset),
+      log: Work.merge_log(repo, now: now, tz_offset: tz_offset, local_ci: local_ci),
       digest:
         if freshness.state == :unknown do
           nil
@@ -258,16 +260,20 @@ defmodule AgentBoardWeb.BoardLive do
         assign(socket,
           inspector_activity: [],
           inspector_calls: [],
-          inspector_pr: nil
+          inspector_pr: nil,
+          inspector_ci: nil
         )
 
       task ->
         pr = Board.task_pull_request(task, socket.assigns.comments)
 
+        ci = pr && Map.get(socket.assigns.local_ci, pr.number)
+
         assign(socket,
           inspector_activity: Board.task_activity(task, pr),
           inspector_calls: AI.recent_for_task(task.id),
           inspector_pr: pr,
+          inspector_ci: ci,
           inspector_tab: socket.assigns.inspector_tab || "conversa"
         )
     end
@@ -372,10 +378,12 @@ defmodule AgentBoardWeb.BoardLive do
             agent: agent
           )
 
-        work = work_for(repo, board, agent, freshness, socket)
+        local_ci = LocalCI.by_pr(repo, agent.tickets)
+        work = work_for(repo, board, agent, freshness, socket, local_ci)
 
         assign(socket,
           repo: repo,
+          local_ci: local_ci,
           board: board,
           resume: nil,
           events: Board.events(repo),
@@ -394,6 +402,7 @@ defmodule AgentBoardWeb.BoardLive do
       _ ->
         assign(socket,
           repo: nil,
+          local_ci: %{},
           board: empty(),
           resume: nil,
           events: [],
@@ -1737,6 +1746,7 @@ defmodule AgentBoardWeb.BoardLive do
             activity={@inspector_activity}
             calls={@inspector_calls}
             pr={@inspector_pr}
+            ci={@inspector_ci}
             tz_offset={@tz_offset}
             live={@freshness.live?}
           />

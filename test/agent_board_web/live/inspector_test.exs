@@ -7,6 +7,7 @@ defmodule AgentBoardWeb.InspectorTest do
   alias AgentBoard.{AI, Board, Repo}
   alias AgentBoard.AI.Call
   alias AgentBoard.Board.{Comment, PullRequest, Task}
+  alias AgentBoardWeb.BoardComponents.Inspector
   alias AgentBoardWeb.BoardNavigation
 
   test "the tabs switch in place and the calls are the task's own", %{conn: conn} do
@@ -67,7 +68,45 @@ defmodule AgentBoardWeb.InspectorTest do
     assert has_element?(view, "#conversation", "#42")
     assert has_element?(view, "#conversation", "Store replays")
     assert has_element?(view, "#conversation", "Abrir no GitHub")
-    assert has_element?(view, "#conversation", "CI falhou")
+    assert has_element?(view, "#conversation", "CI remoto falhou")
+  end
+
+  test "the PR tab shows the local gate and explains the remote failure on hover" do
+    pr = %PullRequest{
+      number: 42,
+      title: "Store replays",
+      state: "open",
+      checks_state: "failure",
+      checks_failed: "gates"
+    }
+
+    task = %Task{
+      number: 25,
+      title: "Salvar replays",
+      state: "ready",
+      updated_at: DateTime.utc_now()
+    }
+
+    html =
+      render_component(&Inspector.inspector/1, %{
+        task: task,
+        comments: [],
+        tab: "pr",
+        activity: [],
+        calls: [],
+        pr: pr,
+        ci: %{
+          state: :pass,
+          detail: "mix precommit passed (116 tests, Credo 0 issues)",
+          remote_blocked: true
+        },
+        tz_offset: 0,
+        live: false
+      })
+
+    assert html =~ "CI local ok"
+    assert html =~ "GitHub Actions não rodou"
+    assert html =~ "mix precommit passed"
   end
 
   test "hidden executor markers never reach the conversation", %{conn: conn} do

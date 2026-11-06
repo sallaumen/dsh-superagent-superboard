@@ -1147,7 +1147,7 @@ defmodule AgentBoardWeb.BoardShellTest do
     current = "button.ab-repo[aria-current=true]"
 
     assert has_element?(view, current <> " .ab-repo__n--you", "1")
-    assert has_element?(view, current <> " .ab-repo__n--halt", "2")
+    assert has_element?(view, current <> " .ab-repo__n--halt", "1")
     assert has_element?(view, current <> " .ab-g--run")
   end
 
