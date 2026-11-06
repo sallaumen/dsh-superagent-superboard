@@ -707,3 +707,37 @@ body { margin: 0; background: var(--paper); }
 }
 
 .ab-ci-local { color: var(--agent); font-weight: 500; }
+/* ultrawide: center the reading area and use the width for a third lane */
+@container board (min-width: 1600px) {
+  .ab-main { width: 100%; max-width: 1600px; margin-inline: auto; }
+  .ab-cols { max-width: 100%; }
+}
+@container board (min-width: 2000px) {
+  .ab-main { max-width: 1980px; }
+  .ab-cols {
+    max-width: 100%;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) 400px;
+    grid-template-areas:
+      "now queue log"
+      "needs queue log";
+    gap: 40px 48px;
+    align-items: start;
+  }
+  .ab-cols > .ab-col { display: contents; }
+  #sec-now { grid-area: now; }
+  #sec-needs { grid-area: needs; }
+  #sec-queue { grid-area: queue; }
+  #sec-log { grid-area: log; }
+}
+@container board (min-width: 2000px) and (max-width: 2600px) {
+  .ab-board[data-inspector="open"] .ab-main { max-width: 100%; }
+  .ab-board[data-inspector="open"] .ab-cols {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-areas:
+      "now log"
+      "needs log"
+      "queue log";
+    gap: 40px;
+  }
+}
+
