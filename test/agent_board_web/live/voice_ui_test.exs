@@ -163,9 +163,9 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    assert render(view) =~ "Speak status"
+    assert render(view) =~ "Falar status"
 
-    view |> element("button", "Speak status") |> render_click()
+    view |> element("button", "Falar status") |> render_click()
 
     assert_push_event(
       view,
@@ -204,7 +204,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "Space twice to record a command"
+    assert html =~ "Espaço duas vezes"
     refute html =~ "Dictate task"
     refute html =~ "voice-dictate"
   end

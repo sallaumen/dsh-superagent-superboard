@@ -24,9 +24,17 @@ export const BoardPanels = {
       event.preventDefault()
       this.pushEvent('close', {})
     }
+    this.onKey = event => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      if (this.el.dataset.panel !== 'conversation') return
+      if (this.el.querySelector('.board-dialog[open]')) return
+      event.preventDefault()
+      this.pushEvent('close', {})
+    }
     this.el.addEventListener('click', this.onTrigger, true)
     window.addEventListener('board:panel-intent', this.onPanelIntent)
     this.el.addEventListener('cancel', this.onCancel, true)
+    document.addEventListener('keydown', this.onKey)
     window.addEventListener('phx:navigate', this.onNavigate)
     this.handleEvent('panel_close', () => {
       if (history.state?.boardPanelFrom === this.el.dataset.baseUrl) history.back()
@@ -37,11 +45,13 @@ export const BoardPanels = {
   updated() { this.sync() },
   sync() {
     const selected = this.el.dataset.panel
+    const openingInspector = selected === 'conversation' && this.activePanel !== 'conversation'
     this.el.querySelectorAll('.board-dialog').forEach(dialog => {
       const wanted = dialog.id === `panel-${selected}`
       if (wanted && !dialog.open) {
         dialog.showModal()
-        dialog.querySelector('h2').focus({preventScroll: true})
+        const initial = dialog.id === "panel-composer" ? dialog.querySelector("textarea") : dialog.querySelector("h2")
+        initial?.focus({preventScroll: true})
       } else if (!wanted && dialog.open) {
         dialog.close()
 
@@ -50,8 +60,12 @@ export const BoardPanels = {
     if (this.activePanel && !selected) {
       this.scheduleFocusRestore()
     }
+    const hasDialog = [...this.el.querySelectorAll('.board-dialog')].some(dialog => dialog.open)
     this.activePanel = selected
-    document.body.classList.toggle('board-panel-open', Boolean(selected))
+    document.body.classList.toggle('board-panel-open', hasDialog)
+    if (openingInspector) {
+      this.el.querySelector('#conversation .ab-insp__bar button')?.focus({preventScroll: true})
+    }
     window.dispatchEvent(new Event('board:voice-context'))
   },
   scheduleFocusRestore() {
@@ -75,6 +89,7 @@ export const BoardPanels = {
     this.el.removeEventListener('click', this.onTrigger, true)
     window.removeEventListener('board:panel-intent', this.onPanelIntent)
     this.el.removeEventListener('cancel', this.onCancel, true)
+    document.removeEventListener('keydown', this.onKey)
     window.removeEventListener('phx:navigate', this.onNavigate)
     document.body.classList.remove('board-panel-open')
   },

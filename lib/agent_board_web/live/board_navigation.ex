@@ -6,7 +6,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
 
-  @panels ~w(activity intake ai create conversation voice history)
+  @panels ~w(activity intake ai conversation voice history composer shortcuts)
 
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
@@ -27,13 +27,18 @@ defmodule AgentBoardWeb.BoardNavigation do
     assign(socket, panel: "voice")
   end
 
-  def apply_params(socket, %{"panel" => "conversation", "task" => id}) do
+  def apply_params(socket, %{"panel" => "conversation", "task" => id} = params) do
     case task(socket.assigns.repo, id) do
       nil ->
-        assign(socket, panel: nil, conversation: nil, comments: [])
+        assign(socket, panel: nil, conversation: nil, comments: [], inspector_tab: "conversa")
 
       task ->
-        assign(socket, panel: "conversation", conversation: task, comments: Board.comments(task))
+        assign(socket,
+          panel: "conversation",
+          conversation: task,
+          comments: Board.comments(task),
+          inspector_tab: params["tab"] || default_tab(task)
+        )
     end
   end
 
@@ -47,8 +52,11 @@ defmodule AgentBoardWeb.BoardNavigation do
         true -> nil
       end
 
-    assign(socket, panel: panel, conversation: nil, comments: [])
+    assign(socket, panel: panel, conversation: nil, comments: [], inspector_tab: "conversa")
   end
+
+  defp default_tab(%Task{state: "running"}), do: "atividade"
+  defp default_tab(_task), do: "conversa"
 
   def open_task(socket, id) do
     case task(socket.assigns.repo, id) do
@@ -57,7 +65,8 @@ defmodule AgentBoardWeb.BoardNavigation do
     end
   end
 
-  def open_panel(socket, panel) when panel in ["activity", "intake", "ai", "create", "history"] do
+  def open_panel(socket, panel)
+      when panel in ["activity", "intake", "ai", "history", "composer", "shortcuts"] do
     if socket.assigns.repo,
       do: push_patch(socket, to: path(socket.assigns.repo, panel)),
       else: socket

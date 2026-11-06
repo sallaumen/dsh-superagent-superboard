@@ -620,3 +620,57 @@ body { margin: 0; background: var(--paper); }
   .ab-need__side { grid-column: 2; grid-row: auto; }
   .ab-need__actions { grid-column: 2; grid-row: auto; justify-self: start; margin: 0 0 0 -8px; }
 }
+
+/* ---------- inspector: the task stays on the board ---------- */
+
+.ab-insp__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
+.ab-insp__foot .ab-compose { border-radius: var(--radius-md); box-shadow: none; }
+.ab-compose--inline textarea { min-height: 56px; }
+.ab-conversation { display: flex; flex-direction: column; gap: var(--space-4); }
+.ab-conversation .ab-msg { max-width: 100%; }
+.ab-msg p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ab-msg__who { flex-wrap: wrap; }
+.ab-pr-facts { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.ab-pr-facts .ab-need__title { font-size: var(--space-5); }
+.ab-insp .ab-tabs { margin-top: var(--space-2); }
+.ab-insp .ab-insp__body { min-height: 0; }
+.ab-insp .ab-insp__foot { flex: none; }
+.ab-tl__txt a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
+
+/* ---------- composer layer ---------- */
+
+.ab-composer-dialog.board-dialog {
+  width: min(640px, calc(100vw - var(--space-6)));
+  max-height: calc(100dvh - var(--space-6));
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  overflow: visible;
+  box-shadow: none;
+}
+.ab-composer-dialog.board-dialog::backdrop { background: color-mix(in oklab, var(--ink) 18%, transparent); }
+.ab-composer-dialog .ab-compose { width: 100%; max-height: calc(100dvh - var(--space-6)); }
+.ab-compose__error {
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  color: var(--halt);
+  background: var(--halt-wash);
+  font-size: 13px;
+}
+.ab-compose__split-head { padding: var(--space-2) var(--space-5) 0; margin: 0; }
+.ab-split-note { padding: 0 var(--space-5) var(--space-3); color: var(--ink-muted); font-size: 13px; }
+.ab-split-note ul { margin: var(--space-1) 0 var(--space-2) var(--space-5); padding: 0; }
+.ab-split__item { cursor: pointer; }
+.ab-split__item:focus-within .ab-check { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ab-voice[hidden] { display: none; }
+.ab-voice[data-phase="transcribing"] .ab-level { display: none; }
+.ab-toggle[disabled] { opacity: .5; cursor: not-allowed; }
+.ab-compose textarea { max-height: 40dvh; overflow: auto; }
+
+/* ---------- keyboard reference ---------- */
+.panel-shortcuts { padding: var(--space-5); }
+.panel-shortcuts .ab-keys { gap: 10px 20px; }
+.panel-shortcuts .ab-keys dt { justify-content: flex-start; }
+.ab-rail__foot .ab-btn { justify-content: flex-start; }

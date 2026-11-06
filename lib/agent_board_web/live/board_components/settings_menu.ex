@@ -15,11 +15,11 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
       data-update-ready={to_string(@version.state == :behind)}
     >
       <summary>
-        <.icon name="hero-cog-6-tooth" class="size-4" /> Settings
+        <.icon name="hero-cog-6-tooth" class="size-4" /> Configurações
         <.icon name="hero-chevron-down" class="settings-chevron size-3" />
       </summary>
       <div class="board-settings-body">
-        <h2>Settings</h2>
+        <h2>Configurações</h2>
 
         <section :if={@repo} class="settings-shortcuts" aria-labelledby="settings-inspect">
           <h3 id="settings-inspect">Inspecionar</h3>
@@ -32,7 +32,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               data-panel-trigger
               aria-haspopup="dialog"
               aria-controls="panel-activity"
-            ><.icon name="hero-clock" class="size-4" />Activity</button>
+            ><.icon name="hero-clock" class="size-4" />Atividade</button>
             <button
               id="open-ai"
               type="button"
@@ -41,45 +41,45 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               data-panel-trigger
               aria-haspopup="dialog"
               aria-controls="panel-ai"
-            ><.icon name="hero-cpu-chip" class="size-4" />AI calls</button>
+            ><.icon name="hero-cpu-chip" class="size-4" />Chamadas de IA</button>
           </div>
         </section>
 
         <details id="settings-voice-section" class="settings-fold">
           <summary>
-            <span class="settings-fold-label">Voice <small>Speech and feedback</small></span>
+            <span class="settings-fold-label">Voz <small>Fala e retorno</small></span>
             <.icon name="hero-chevron-down" class="settings-fold-chevron size-4" />
           </summary>
           <div class="settings-fold-content">
             <VoicePanel.voice_panel voice={@voice} repo={@repo != nil} />
             <div class="settings-actions">
               <button type="button" phx-click="speak">
-                <.icon name="hero-speaker-wave" class="size-4" />Speak status
+                <.icon name="hero-speaker-wave" class="size-4" />Falar status
               </button>
             </div>
             <p class="text-xs leading-relaxed text-base-content/75">
-              On the board, press Space twice to record a command. Recording never sends it for you.
+              No board, pressione Espaço duas vezes para gravar um comando. A gravação nunca envia por você.
             </p>
           </div>
         </details>
 
         <details id="settings-repositories-section" class="settings-fold">
           <summary>
-            <span class="settings-fold-label">Repositories <small>Track another repository</small></span>
+            <span class="settings-fold-label">Repositórios <small>Acompanhar outro repositório</small></span>
             <.icon name="hero-chevron-down" class="settings-fold-chevron size-4" />
           </summary>
           <div class="settings-fold-content">
             <form id="track-repo" phx-submit="add" class="settings-track-form">
-              <input name="owner" placeholder="owner" aria-label="Owner" />
-              <input name="name" placeholder="repo name" aria-label="Repository name" />
-              <button type="submit" phx-disable-with="Tracking…">Track repo</button>
+              <input name="owner" placeholder="dono" aria-label="Dono" />
+              <input name="name" placeholder="nome do repo" aria-label="Nome do repositório" />
+              <button type="submit" phx-disable-with="Tracking…">Acompanhar</button>
             </form>
           </div>
         </details>
 
         <details id="settings-appearance-section" class="settings-fold">
           <summary>
-            <span class="settings-fold-label">Appearance <small>Light and dark themes</small></span>
+            <span class="settings-fold-label">Aparência <small>Temas claro e escuro</small></span>
             <.icon name="hero-chevron-down" class="settings-fold-chevron size-4" />
           </summary>
           <div class="settings-fold-content"><Layouts.theme_toggle /></div>
@@ -87,7 +87,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
         <details id="settings-system-section" class="settings-fold">
           <summary>
-            <span class="settings-fold-label">Version <small>{version_summary(@version)}</small></span>
+            <span class="settings-fold-label">Versão <small>{version_summary(@version)}</small></span>
             <.icon name="hero-chevron-down" class="settings-fold-chevron size-4" />
           </summary>
           <div class="settings-fold-content">
@@ -99,8 +99,8 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
     """
   end
 
-  defp version_summary(%{state: :behind}), do: "Update available"
-  defp version_summary(%{state: :up_to_date}), do: "Up to date"
-  defp version_summary(%{state: :ahead}), do: "Ahead of main"
-  defp version_summary(_), do: "Status unknown"
+  defp version_summary(%{state: :behind}), do: "Atualização disponível"
+  defp version_summary(%{state: :up_to_date}), do: "Em dia"
+  defp version_summary(%{state: :ahead}), do: "À frente da main"
+  defp version_summary(_), do: "Status desconhecido"
 end

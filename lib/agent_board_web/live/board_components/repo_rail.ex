@@ -4,7 +4,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
 
   alias AgentBoardWeb.BoardComponents.Controls
 
-  import Controls, only: [ico: 1]
+  import Controls, only: [ico: 1, kbd: 1]
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
   @impl true
@@ -73,6 +73,18 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
       </form>
 
       <div class="ab-rail__foot">
+        <button
+          id="open-shortcuts"
+          type="button"
+          class="ab-btn ab-btn--quiet ab-btn--sm"
+          phx-click="show_panel"
+          phx-value-panel="shortcuts"
+          data-panel-trigger
+          aria-haspopup="dialog"
+          aria-controls="panel-shortcuts"
+        >
+          <.ico name="keys" /><span>Atalhos</span><.kbd key="?" />
+        </button>
         <button
           type="button"
           class="ab-btn ab-btn--quiet ab-btn--sm"

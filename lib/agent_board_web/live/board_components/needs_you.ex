@@ -50,6 +50,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
             role={if need[:id], do: "button"}
             phx-click={if need[:id], do: "open"}
             phx-value-id={need[:id]}
+            data-panel-trigger={need[:id] && "conversation"}
           >
             <.glyph kind={need.kind} />
 

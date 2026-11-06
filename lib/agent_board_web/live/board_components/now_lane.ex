@@ -36,6 +36,8 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
           data-task={task.id}
           phx-click="open"
           phx-value-id={task.id}
+          data-panel-trigger
+          data-panel-trigger
           aria-label={"Abrir tarefa ##{task.number}: #{task.title}"}
         >
           <.glyph kind={:run} live={not @frozen} />

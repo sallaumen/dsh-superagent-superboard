@@ -22,6 +22,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
           phx-value-panel="history"
+          data-panel-trigger
         >
           Histórico <.ico name="ext" />
         </button>
@@ -35,12 +36,13 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
         >
           <div class="ab-day__dots">
             <span :if={day.n == 0} class="ab-day__zero" aria-hidden="true"></span>
-            <i
-              :for={index <- 1..min(day.n, 8)}
-              :if={day.n > 0}
-              class={index <= day.fail && "is-fail"}
-              aria-hidden="true"
-            ></i>
+            <%= if day.n > 0 do %>
+              <i
+                :for={index <- 1..min(day.n, 8)}
+                class={index <= day.fail && "is-fail"}
+                aria-hidden="true"
+              ></i>
+            <% end %>
             <em :if={day.n > 0}>{day.n}</em>
           </div>
           <span class="ab-day__label">{day.label}</span>

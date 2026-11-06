@@ -86,3 +86,7 @@ config :phoenix_live_view,
   debug_attributes: true,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
+
+# A free fixture pipeline for development: the composer and the AI panel can
+# be driven end to end without a provider key or a bill.
+config :agent_board, :ai_rehearsal, System.get_env("AI_REHEARSAL") == "1"
