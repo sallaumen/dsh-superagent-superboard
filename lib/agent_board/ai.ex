@@ -88,9 +88,15 @@ defmodule AgentBoard.AI do
     do: reason in [:auth_expired, :usage_limit, :not_configured, :no_provider]
 
   defp providers do
-    case Application.get_env(:agent_board, :ai_provider) do
-      nil -> Enum.filter(Providers.ids(), &Providers.configured?/1)
-      id -> [id]
+    # Rehearsal is a provider in its own right: it answers from fixtures and
+    # must not depend on an API key being configured.
+    if rehearsal?() do
+      [:rehearsal]
+    else
+      case Application.get_env(:agent_board, :ai_provider) do
+        nil -> Enum.filter(Providers.ids(), &Providers.configured?/1)
+        id -> [id]
+      end
     end
   end
 
