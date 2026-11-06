@@ -12,7 +12,8 @@ defmodule AgentBoardWeb.VoiceAnswer do
   @max_question_length 1_000
   @stale_after_seconds 300
   @task_lanes [:running, :ready, :blocked, :queued]
-  @title_question ~r/\b(?:titles?|t[ií]tulos?)\b/iu
+  @title_question ~r/\b(?:titles?|t[ií]tulos?|names?|nomes?|(?:o que est[aá]|what is) (?:rodando|running|pronto|ready|bloqueado|blocked|na fila|queued)|(?:quais?|which) (?:tarefas?|tasks?|cards?|prs?|pull requests?))\b/iu
+  @aggregate_question ~r/\b(?:how many|quantos?|quantas?|counts?|total|n[uú]mero de)\b/iu
   @read_starters [
     "o que",
     "o board",
@@ -121,7 +122,9 @@ defmodule AgentBoardWeb.VoiceAnswer do
     end
   end
 
-  defp title_question?(question), do: Regex.match?(@title_question, question)
+  defp title_question?(question) do
+    Regex.match?(@title_question, question) and not Regex.match?(@aggregate_question, question)
+  end
 
   defp facts(repository, board, metadata, include_titles?) do
     %{

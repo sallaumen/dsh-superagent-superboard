@@ -31,7 +31,7 @@ mix run --no-compile --no-start scripts/eval-board-ai.exs > /tmp/board-ai-plan.j
 
 O JSON contém os treze casos, snapshots, fatos esperados, perguntas de revisão e limites. Essa é a única execução usada automaticamente no PR; ela não chama um provedor.
 
-Perguntas sobre totais e estado recebem amostras sem títulos de issues e PRs, que são texto externo não confiável. Uma pergunta que pede explicitamente um **título** recebe os títulos da amostra. Dois casos com os mesmos fatos e pergunta podem compartilhar uma resposta do cache; o relatório distingue esse resultado de uma nova chamada paga.
+Perguntas sobre totais e estado recebem amostras sem títulos de issues e PRs, que são texto externo não confiável. A contagem tem precedência mesmo quando o texto menciona “titles”. Perguntas por **título**, **nome** ou identidade da tarefa recebem os títulos da amostra limitada. Dois casos com os mesmos fatos e pergunta podem compartilhar uma resposta do cache; o relatório distingue esse resultado de uma nova chamada paga.
 
 ## Rodada opcional com modelo real
 

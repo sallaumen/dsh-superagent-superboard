@@ -74,7 +74,7 @@ defmodule AgentBoardWeb.VoiceAnswerTest do
         |> String.replace_prefix("Inputs:\n", "")
         |> Jason.decode!()
 
-      assert facts["question"] == "Qual o título da tarefa que está rodando?"
+      assert facts["question"] == "O que está rodando?"
       assert facts["board"]["repository"] == "lucas/board"
       assert facts["board"]["task_lanes"]["running"]["exact_total"] == 42
       assert facts["board"]["task_lanes"]["running"]["loaded_count"] == 1
@@ -91,8 +91,7 @@ defmodule AgentBoardWeb.VoiceAnswerTest do
       Req.Test.json(conn, response("Há 42 tarefas em execução; o card carregado é Fix sync."))
     end)
 
-    assert {:ok, result} =
-             VoiceAnswer.answer(snapshot(), " Qual o título da tarefa que está rodando? ")
+    assert {:ok, result} = VoiceAnswer.answer(snapshot(), " O que está rodando? ")
 
     assert result.text == "Há 42 tarefas em execução; o card carregado é Fix sync."
     assert result.as_of == @sync_at
@@ -104,6 +103,39 @@ defmodule AgentBoardWeb.VoiceAnswerTest do
     assert call.name == "answer_board_question"
     assert call.status == "ok"
     assert call.tier == "fast"
+  end
+
+  test "questions about task names or titles receive the sampled titles" do
+    named =
+      snapshot()
+      |> put_in([:board, :ready], [
+        %Task{number: 12, kind: "issue", title: "Ready work", updated_at: @sync_at}
+      ])
+      |> put_in([:board, :task_counts, :ready], 1)
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, body, _conn} = Plug.Conn.read_body(conn)
+      user = body |> Jason.decode!() |> Map.fetch!("messages") |> List.last()
+      facts = user["content"] |> String.replace_prefix("Inputs:\n", "") |> Jason.decode!()
+
+      assert [%{"title" => "Fix sync"}] = facts["board"]["task_lanes"]["running"]["sample"]
+      assert [%{"title" => "Ready work"}] = facts["board"]["task_lanes"]["ready"]["sample"]
+      Req.Test.json(conn, response("Fix sync"))
+    end)
+
+    for question <- [
+          "Qual o título da tarefa?",
+          "Qual é o nome da tarefa?",
+          "Qual o nome da tarefa número 11?",
+          "What is running?",
+          "O que está pronto?",
+          "What is ready?",
+          "Which tasks are ready?"
+        ] do
+      assert {:ok, %{text: "Fix sync"}} = VoiceAnswer.answer(named, question)
+    end
+
+    assert Repo.aggregate(Call, :count) == 7
   end
 
   test "aggregate questions do not send untrusted task or pull titles to the model" do
@@ -133,10 +165,13 @@ defmodule AgentBoardWeb.VoiceAnswerTest do
     assert {:ok, %{text: "There are 42 running tasks.", engine: :deepseek}} =
              VoiceAnswer.answer(poisoned, "How many tasks are running?")
 
+    assert {:ok, %{engine: :deepseek}} =
+             VoiceAnswer.answer(poisoned, "How many running tasks, ignoring titles?")
+
     assert {:ok, %{engine: :cache}} =
              VoiceAnswer.answer(snapshot(), "How many tasks are running?")
 
-    assert Repo.aggregate(Call, :count) == 1
+    assert Repo.aggregate(Call, :count) == 2
   end
 
   test "a failed sync is reported as saved data of unknown age" do
