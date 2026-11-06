@@ -346,7 +346,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
   defp pr_ci(_pr, %{state: :pass}), do: "CI local ok"
   defp pr_ci(_pr, %{state: :fail}), do: "CI local falhou"
-  defp pr_ci(%{checks_state: "failure"}, _ci), do: "CI remoto falhou"
+  defp pr_ci(%{checks_state: "failure"}, _ci), do: "CI local ?"
   defp pr_ci(%{checks_state: "success"}, _ci), do: "CI ok"
   defp pr_ci(%{checks_state: "none"}, _ci), do: "sem CI"
   defp pr_ci(_pr, _ci), do: "CI desconhecido"
