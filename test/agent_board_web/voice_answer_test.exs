@@ -82,8 +82,8 @@ defmodule AgentBoardWeb.VoiceAnswerTest do
       assert facts["board"]["merged_pull_requests"]["exact_total"] == nil
       assert facts["board"]["merged_pull_requests"]["has_more"]
 
-      assert [%{"title" => "Improve labels"}] =
-               facts["board"]["merged_pull_requests"]["sample"]
+      assert [%{"number" => 9}] = facts["board"]["merged_pull_requests"]["sample"]
+      refute user["content"] =~ "Improve labels"
 
       assert facts["board"]["sync"]["last_successful_sync_at"] == "2026-11-01T12:00:00Z"
       assert facts["board"]["sync"]["stale"]
@@ -112,30 +112,71 @@ defmodule AgentBoardWeb.VoiceAnswerTest do
         %Task{number: 12, kind: "issue", title: "Ready work", updated_at: @sync_at}
       ])
       |> put_in([:board, :task_counts, :ready], 1)
+      |> put_in([:board, :queued], [
+        %Task{number: 13, kind: "issue", title: "Queued work", updated_at: @sync_at}
+      ])
+      |> put_in([:board, :task_counts, :queued], 1)
+      |> put_in([:board, :blocked], [
+        %Task{number: 14, kind: "issue", title: "Blocked work", updated_at: @sync_at}
+      ])
+      |> put_in([:board, :task_counts, :blocked], 1)
+
+    expected = %{
+      "Qual o título da tarefa?" => ["running", "ready", "blocked", "queued"],
+      "Qual é o nome da tarefa?" => ["running", "ready", "blocked", "queued"],
+      "Qual o nome da tarefa número 11?" => ["running", "ready", "blocked", "queued"],
+      "What is running?" => ["running"],
+      "O que está pronto?" => ["ready"],
+      "What is ready?" => ["ready"],
+      "Which tasks are ready?" => ["ready"],
+      "What are the titles of queued tasks to merge?" => ["queued"],
+      "What is the title of the queued task named “Ready for merge”?" => ["queued"],
+      "What is the title of the queued task named 'Ready for merge'?" => ["queued"],
+      "What is the title of queued task named Ready for merge?" => ["queued"],
+      "What is the title of the queued card named Ready for merge?" => ["queued"],
+      "What is the title of the queued issue named Ready for merge?" => ["queued"],
+      "What are the titles of queued task and ready task?" => ["ready", "queued"],
+      "What are the titles of queued tasks and ready cards?" => ["ready", "queued"],
+      "What are the titles of queued tasks and blocked ones?" => ["blocked", "queued"],
+      "What are the titles of queued and blocked tasks?" => ["blocked", "queued"],
+      "What are the titles of queued, ready, and blocked tasks?" => ["ready", "blocked", "queued"],
+      "Quais são os títulos das tarefas na fila e bloqueadas?" => ["blocked", "queued"],
+      "Quais são os títulos das tarefas em andamento e na fila?" => ["running", "queued"],
+      "Quais são os títulos das tarefas em execução e na fila?" => ["running", "queued"],
+      "What are the titles of queued tasks and merged PRs?" => ["queued", "merged"],
+      "What is ready and what's queued?" => ["ready", "queued"],
+      "What are merged PR titles?" => ["merged"],
+      "What is the repository name?" => []
+    }
 
     Req.Test.stub(@stub, fn conn ->
       {:ok, body, _conn} = Plug.Conn.read_body(conn)
       user = body |> Jason.decode!() |> Map.fetch!("messages") |> List.last()
       facts = user["content"] |> String.replace_prefix("Inputs:\n", "") |> Jason.decode!()
 
-      assert [%{"title" => "Fix sync"}] = facts["board"]["task_lanes"]["running"]["sample"]
-      assert [%{"title" => "Ready work"}] = facts["board"]["task_lanes"]["ready"]["sample"]
+      projected =
+        for lane <- ["running", "ready", "blocked", "queued"],
+            Enum.any?(
+              facts["board"]["task_lanes"][lane]["sample"],
+              &Map.has_key?(&1, "title")
+            ),
+            do: lane
+
+      projected =
+        if match?([%{"title" => _}], facts["board"]["merged_pull_requests"]["sample"]),
+          do: projected ++ ["merged"],
+          else: projected
+
+      expected_lanes = Map.fetch!(expected, facts["question"])
+      assert Enum.sort(projected) == Enum.sort(expected_lanes)
       Req.Test.json(conn, response("Fix sync"))
     end)
 
-    for question <- [
-          "Qual o título da tarefa?",
-          "Qual é o nome da tarefa?",
-          "Qual o nome da tarefa número 11?",
-          "What is running?",
-          "O que está pronto?",
-          "What is ready?",
-          "Which tasks are ready?"
-        ] do
+    for question <- Map.keys(expected) do
       assert {:ok, %{text: "Fix sync"}} = VoiceAnswer.answer(named, question)
     end
 
-    assert Repo.aggregate(Call, :count) == 7
+    assert Repo.aggregate(Call, :count) == 25
   end
 
   test "aggregate questions do not send untrusted task or pull titles to the model" do
@@ -266,8 +307,8 @@ defmodule AgentBoardWeb.VoiceAnswerTest do
     end)
 
     for question <- [
-          "What is the title of Archive logs?",
-          "What is the title of Archive logs today?"
+          "What is the title of the task Archive logs?",
+          "What is the title of the task Archive logs today?"
         ] do
       refute VoiceAnswer.archive_history_query?(question)
 

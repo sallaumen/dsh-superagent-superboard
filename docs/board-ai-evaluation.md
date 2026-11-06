@@ -31,7 +31,7 @@ mix run --no-compile --no-start scripts/eval-board-ai.exs > /tmp/board-ai-plan.j
 
 O JSON contém os treze casos, snapshots, fatos esperados, perguntas de revisão e limites. Essa é a única execução usada automaticamente no PR; ela não chama um provedor.
 
-Perguntas sobre totais e estado recebem amostras sem títulos de issues e PRs, que são texto externo não confiável. A contagem tem precedência mesmo quando o texto menciona “titles”. Perguntas por **título**, **nome** ou identidade da tarefa recebem os títulos da amostra limitada. Dois casos com os mesmos fatos e pergunta podem compartilhar uma resposta do cache; o relatório distingue esse resultado de uma nova chamada paga.
+Perguntas sobre totais e estado recebem amostras sem títulos de issues e PRs, que são texto externo não confiável. A contagem tem precedência mesmo quando o texto menciona “titles”. Perguntas por **título**, **nome** ou identidade recebem títulos apenas das colunas mencionadas; sem coluna, uma referência explícita a tarefa ou PR limita o tipo de amostra. “Nome do repositório” não envia títulos de cards. Dois casos com os mesmos fatos e pergunta podem compartilhar uma resposta do cache; o relatório distingue esse resultado de uma nova chamada paga.
 
 O snapshot não contém histórico de arquivamento. Perguntas que pedem ações passadas, inventário de tarefas arquivadas ou esse histórico recebem diretamente o limite do board, sem chamada a modelo e sem alegar que uma ação ocorreu ou deixou de ocorrer. A palavra “Archive” num nome de tarefa ou repositório não basta para acionar essa resposta. O relatório identifica esse caminho como `board_limit_no_model`.
 
