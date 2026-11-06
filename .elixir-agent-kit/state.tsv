@@ -1,9 +1,9 @@
 schema	1
-version	0.5.0
+version	0.5.1
 agents	claude,codex,generic
 skills	all
-file	.agents/skills/elixir-agent-kit/SKILL.md	e3b110698065c7c609e84db2637bedd2fc63e2113d08799f50e4dd9d5c86abf6	created
-file	.claude/skills/elixir-agent-kit/SKILL.md	e3b110698065c7c609e84db2637bedd2fc63e2113d08799f50e4dd9d5c86abf6	created
-file	.elixir-agent-kit/START.md	5528280676711041ae2c587ee59c3f373b318babb5d8d732b4a2b457ed662c8c	created
-block	AGENTS.md	417761d7189548082b78f79ec262807669eac694b7e94ac84f426d16e1623eb7	existing
+file	.agents/skills/elixir-agent-kit/SKILL.md	5a7fececbe7e4411e0928de162d8db10da114c0e7923f737ce55a5c866131407	created
+file	.claude/skills/elixir-agent-kit/SKILL.md	5a7fececbe7e4411e0928de162d8db10da114c0e7923f737ce55a5c866131407	created
+file	.elixir-agent-kit/START.md	e9250cbe988943f0f5cd2ab15be8f3104b37a8972ac1382cdfbe31e26230945f	created
+block	AGENTS.md	ed7a7e2021e1dfa187da4bb3ee2cae743a6ee5cb78e3e686054bfab0aa604c01	existing
 block	CLAUDE.md	0261dbcb7012f6d088dc1d8b77b2c4b59b2df2ce29802d3c8706552ffc8918cb	created

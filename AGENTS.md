@@ -56,7 +56,9 @@ watches GitHub; this board only mirrors it. It is documented in
 <!-- elixir-agent-kit:start -->
 ## Elixir Agent Kit
 
-For development tasks, consult [.elixir-agent-kit/START.md](.elixir-agent-kit/START.md).
-Select the relevant workflow and read its shared contract. Preserve this project's rules.
-If the files are missing, report the missing setup; do not claim the practices were applied.
+Before changing behavior or reviewing code, select one workflow from
+[.elixir-agent-kit/START.md](.elixir-agent-kit/START.md) and read it with its shared contract,
+even when a local contract already covers the area; a bounded, fully specified edit needs none.
+This project's rules keep precedence. If the files are missing, run `mix deps.get`; if you
+cannot read them, report that instead of claiming the practices were applied.
 <!-- elixir-agent-kit:end -->

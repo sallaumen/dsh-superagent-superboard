@@ -167,7 +167,7 @@ events, the PubSub broadcast) and the pipeline contract.
 
 ## Shared agent practices
 
-The board consumes [Elixir Agent Kit v0.5.0](https://github.com/sallaumen/elixir-agent-kit/releases/tag/v0.5.0)
+The board consumes [Elixir Agent Kit v0.5.1](https://github.com/sallaumen/elixir-agent-kit/releases/tag/v0.5.1)
 through a public, pinned Mix dependency available only in development/tests.
 No download token or application startup is required.
 
@@ -196,4 +196,4 @@ their recorded originals; never delete ownership state to bypass a conflict.
 Reusable improvements go to the kit; local rules remain here. The former
 Portuguese collection is retired as an editable source. See
 [ownership and migration](docs/agent/practices.md) for the full disposition.
-For other projects, use the [AI installation/migration prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v0.5.0/docs/INSTALL_WITH_AI.md).
+For other projects, use the [AI installation/migration prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v0.5.1/docs/INSTALL_WITH_AI.md).

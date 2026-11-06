@@ -1,9 +1,9 @@
 ---
 name: elixir-agent-kit
-description: "Use when a task in this Elixir project matches a shared workflow: screens and accessibility, data and migrations, integrations, asynchronous state, performance, tests, code review, debugging, build or delivery. Routes to the versioned Elixir Agent Kit read from the Mix dependency."
+description: "Use before changing behavior or reviewing code in this Elixir project, when the task matches a shared workflow: screens and accessibility, data and migrations, provider calls, asynchronous or process state, performance, tests, code review, debugging, build or delivery. Routes to the versioned Elixir Agent Kit read from the Mix dependency."
 ---
 
-# Elixir Agent Kit 0.5.0
+# Elixir Agent Kit 0.5.1
 
 Read the [shared contract](../../../deps/elixir_agent_kit/priv/library/CONTRACT.md), then the [routing guide](../../../deps/elixir_agent_kit/priv/library/ROUTING.md).
 Choose one workflow below and read its SKILL.md from the dependency; do not copy it into this project.
