@@ -59,6 +59,8 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
           data-task={task.id}
           phx-click="open"
           phx-value-id={task.id}
+          data-panel-trigger
+          data-panel-trigger
         >
           <span class="ab-row__pos">{index + 1}</span>
           <.glyph kind={:queue} />

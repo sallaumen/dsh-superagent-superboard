@@ -35,6 +35,7 @@ defmodule AgentBoard.AI.Call do
     field :json, :map
     field :input_hash, :string
     field :error, :string
+    field :task_id, :integer
     timestamps(type: :utc_datetime, updated_at: false)
   end
 
@@ -54,7 +55,8 @@ defmodule AgentBoard.AI.Call do
       :parse_state,
       :json,
       :input_hash,
-      :error
+      :error,
+      :task_id
     ])
     |> validate_required([:name, :engine, :status])
   end

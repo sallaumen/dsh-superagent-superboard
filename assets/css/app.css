@@ -117,7 +117,7 @@
 }
 .agent-board :where(.board-eyebrow, .version-heading, .version-details, .lane-heading,
   .item-number, .item-signals, .data-age, .archive-heading,
-  #sync-status, #connection-status, .ai-call-metrics, .ai-call-status) {
+  .ai-call-metrics, .ai-call-status) {
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   letter-spacing: 0;
 }
@@ -131,9 +131,6 @@
 .item-title { font-weight: 600; }
 
 /* Shared board controls keep keyboard focus and boundaries visible in both themes. */
-.agent-board :where(button, input, select, textarea) {
-  min-height: 2.75rem;
-}
 .agent-board :where(input, select, textarea) {
   min-width: 0;
   max-width: 100%;

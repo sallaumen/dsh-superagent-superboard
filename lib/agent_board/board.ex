@@ -318,6 +318,139 @@ defmodule AgentBoard.Board do
     )
   end
 
+  @doc """
+  The pull request a task names, from its body or the newest comment with a
+  GitHub PR URL. The board never guesses by title.
+  """
+  def task_pull_request(%Task{} = task, comments) do
+    repository = Repo.get(Repository, task.repository_id)
+
+    number =
+      Enum.find_value(Enum.reverse(comments), &pull_number(&1.body)) || pull_number(task.body)
+
+    if repository && number, do: find_pull_request(repository, number)
+  end
+
+  defp pull_number(nil), do: nil
+
+  defp pull_number(text) do
+    case Regex.run(~r{https://github\.com/[^/\s]+/[^/\s]+/pull/(\d+)}, text) do
+      [_, number] -> String.to_integer(number)
+      _ -> nil
+    end
+  end
+
+  @doc """
+  The observable timeline of a task: arrival, start, current state, linked PR,
+  CI and the repository events that name this task. Internal executor steps
+  are not stored here, so they are not invented.
+  """
+  def task_activity(%Task{} = task, pull_request \\ nil) do
+    repository = Repo.get(Repository, task.repository_id)
+
+    events =
+      [
+        task.inserted_at && %{at: task.inserted_at, text: "Entrou na fila", tone: :queue},
+        task.started_at && %{at: task.started_at, text: "O agente começou", tone: :agent},
+        task.state_changed_at &&
+          %{
+            at: task.state_changed_at,
+            text: "Estado atual: #{state_label(task.state)}",
+            tone: state_tone(task.state)
+          },
+        pull_request && pull_request.opened_at &&
+          %{
+            at: pull_request.opened_at,
+            text: "PR ##{pull_request.number} aberto",
+            tone: :agent,
+            url: pull_request.url
+          },
+        pull_request && pull_request.merged_at &&
+          %{
+            at: pull_request.merged_at,
+            text: "PR ##{pull_request.number} mesclado",
+            tone: :done,
+            url: pull_request.url
+          },
+        pull_request && checks_activity(pull_request)
+      ]
+      |> Enum.reject(&is_nil/1)
+      |> Kernel.++(task_repo_events(repository, task.number))
+      |> Enum.sort_by(& &1.at, DateTime)
+
+    events
+  end
+
+  defp task_repo_events(nil, _number), do: []
+
+  defp task_repo_events(repository, number) do
+    repository
+    |> events(50)
+    |> Enum.filter(
+      &(&1.subject == "##{number}" or String.contains?(&1.subject || "", "##{number}"))
+    )
+    |> Enum.map(fn event ->
+      %{
+        at: event.inserted_at,
+        text: event_text(event),
+        tone: if(event_error?(event), do: :halt, else: :plain)
+      }
+    end)
+    |> Enum.take(10)
+  end
+
+  defp event_text(event) do
+    case event.payload do
+      %{"reason" => reason} -> "#{event.kind}: #{truncate_reason(reason)}"
+      _ -> event.kind
+    end
+  end
+
+  defp event_error?(event) do
+    payload = event.payload || %{}
+
+    String.ends_with?(event.kind || "", "_error") or
+      (is_integer(payload["errors"]) and payload["errors"] > 0)
+  end
+
+  defp truncate_reason(reason) when is_binary(reason), do: String.slice(reason, 0, 120)
+  defp truncate_reason(reason), do: inspect(reason)
+
+  defp checks_activity(%PullRequest{checks_changed_at: nil}), do: nil
+
+  defp checks_activity(%PullRequest{checks_state: "failure"} = pull) do
+    %{
+      at: pull.checks_changed_at,
+      text:
+        "CI falhou" <>
+          if(pull.checks_failed in [nil, ""], do: "", else: " · #{pull.checks_failed}"),
+      tone: :halt
+    }
+  end
+
+  defp checks_activity(%PullRequest{checks_state: "success"} = pull) do
+    %{at: pull.checks_changed_at, text: "CI passou", tone: :agent}
+  end
+
+  defp checks_activity(_pull), do: nil
+
+  defp state_label("running"), do: "rodando"
+  defp state_label("question"), do: "pergunta"
+  defp state_label("ready"), do: "para revisar"
+  defp state_label("blocked"), do: "bloqueado"
+  defp state_label("queued"), do: "na fila"
+  defp state_label("done"), do: "mesclado"
+  defp state_label("stopped"), do: "parado"
+  defp state_label("archived"), do: "arquivado"
+  defp state_label(state), do: state || "desconhecido"
+
+  defp state_tone("blocked"), do: :halt
+  defp state_tone("question"), do: :you
+  defp state_tone("ready"), do: :you
+  defp state_tone("running"), do: :agent
+  defp state_tone("done"), do: :done
+  defp state_tone(_state), do: :plain
+
   @doc "The recent activity for a repository."
   def events(repository, limit \\ 20)
 

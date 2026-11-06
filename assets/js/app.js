@@ -26,6 +26,8 @@ import {hooks as colocatedHooks} from "phoenix-colocated/agent_board"
 import {BoardPanels} from "./hooks/board_panels"
 import {BoardMenu} from "./hooks/board_menu"
 import {BoardClock} from "./hooks/board_clock"
+import {BoardKeyboard} from "./hooks/board_keyboard"
+import {Composer} from "./hooks/composer"
 import {BoardConnection} from "./hooks/board_connection"
 import {DataAge} from "./hooks/data_age"
 import {VoiceCommand} from "./hooks/voice_command"
@@ -57,7 +59,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     board_last_visit: localStorage.getItem("ab:last-visit"),
     board_tz_offset: new Date().getTimezoneOffset(),
   }),
-  hooks: {...colocatedHooks, DataAge, BoardMenu, BoardPanels, BoardClock, BoardConnection, VoiceCommand, VoicePlayer, VoicePresence},
+  hooks: {...colocatedHooks, DataAge, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardKeyboard, Composer, VoiceCommand, VoicePlayer, VoicePresence},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
@@ -126,6 +128,21 @@ if (process.env.NODE_ENV === "development") {
   })
 }
 
+
+// The composer's voice pill follows the actual browser media phase.
+window.addEventListener("board:voice-state", ({detail}) => {
+  const pill = document.querySelector("#composer-voice")
+  if (!pill) return
+  const active = ["permission", "listening", "transcribing"].includes(detail.phase)
+  pill.hidden = !active
+  pill.dataset.phase = detail.phase
+  const label = pill.querySelector("[data-voice-label]")
+  if (label) {
+    label.textContent = detail.phase === "transcribing"
+      ? "Transcrevendo…"
+      : detail.phase === "permission" ? "Aguardando microfone…" : "Ouvindo…"
+  }
+})
 
 // Voice out: the server pushes the summary, the browser speaks it.
 let browserSpeech = null

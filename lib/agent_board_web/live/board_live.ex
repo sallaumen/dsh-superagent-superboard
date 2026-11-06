@@ -24,13 +24,16 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Sync.{Freshness, Worker}
   alias AgentBoard.System.{Updater, Version}
 
+  import AgentBoardWeb.BoardComponents.Composer, only: [composer: 1]
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
   import AgentBoardWeb.BoardComponents.FreshnessBeacon, only: [beacon: 1]
   import AgentBoardWeb.BoardComponents.FrozenBanner, only: [frozen_banner: 1]
+  import AgentBoardWeb.BoardComponents.Inspector, only: [inspector: 1]
   import AgentBoardWeb.BoardComponents.MergeLog, only: [merge_log: 1]
   import AgentBoardWeb.BoardComponents.NeedsYou, only: [needs_you: 1]
   import AgentBoardWeb.BoardComponents.NowLane, only: [now_lane: 1]
   import AgentBoardWeb.BoardComponents.QueueList, only: [queue_list: 1]
+  import AgentBoardWeb.BoardComponents.Shortcuts, only: [shortcuts: 1]
   import AgentBoardWeb.BoardComponents.Summary, only: [summary: 1]
 
   alias AgentBoardWeb.{
@@ -81,8 +84,16 @@ defmodule AgentBoardWeb.BoardLive do
         panel: nil,
         conversation: nil,
         comments: [],
+        inspector_tab: "conversa",
+        inspector_activity: [],
+        inspector_calls: [],
+        inspector_pr: nil,
         intake: nil,
         intake_draft: nil,
+        composer_text: "",
+        composer_split: false,
+        composer_selected: MapSet.new(),
+        composer_error: nil,
         ai_calls: [],
         ai_status: AI.status(),
         version: Version.status(),
@@ -236,6 +247,41 @@ defmodule AgentBoardWeb.BoardLive do
     )
   end
 
+  defp load_inspector(socket) do
+    case socket.assigns.conversation do
+      nil ->
+        assign(socket,
+          inspector_activity: [],
+          inspector_calls: [],
+          inspector_pr: nil
+        )
+
+      task ->
+        pr = Board.task_pull_request(task, socket.assigns.comments)
+
+        assign(socket,
+          inspector_activity: Board.task_activity(task, pr),
+          inspector_calls: AI.recent_for_task(task.id),
+          inspector_pr: pr,
+          inspector_tab: socket.assigns.inspector_tab || "conversa"
+        )
+    end
+  end
+
+  defp refresh_inspector_after_act(socket, task_id) do
+    case socket.assigns.conversation do
+      %Task{id: ^task_id} ->
+        task = Repo.get(Task, task_id) |> Repo.preload(:repository)
+
+        socket
+        |> assign(conversation: task, comments: Board.comments(task))
+        |> load_inspector()
+
+      _ ->
+        socket
+    end
+  end
+
   defp load(socket, nil) do
     socket =
       if socket.assigns.repo do
@@ -253,6 +299,10 @@ defmodule AgentBoardWeb.BoardLive do
       resume: nil,
       events: [],
       sync_event: nil,
+      inspector_tab: "conversa",
+      inspector_activity: [],
+      inspector_calls: [],
+      inspector_pr: nil,
       sync_snapshot: %{last_attempt: nil, last_success: nil},
       freshness: unknown_freshness(),
       repo_overview: Board.repo_overview(),
@@ -281,10 +331,18 @@ defmodule AgentBoardWeb.BoardLive do
             comments: [],
             intake: nil,
             intake_draft: nil,
+            composer_text: "",
+            composer_split: false,
+            composer_selected: MapSet.new(),
+            composer_error: nil,
             voice_draft: "",
             voice_result: nil,
             voice_action: nil,
             voice_generation: socket.assigns.voice_generation + 1,
+            inspector_tab: "conversa",
+            inspector_activity: [],
+            inspector_calls: [],
+            inspector_pr: nil,
             toast: nil,
             highlight_changes: false,
             needs_expanded: false,
@@ -405,6 +463,7 @@ defmodule AgentBoardWeb.BoardLive do
       socket
       |> load(socket.assigns.repo)
       |> refresh_conversation()
+      |> load_inspector()
       |> announce(old_board, old_sync)
 
     socket =
@@ -443,7 +502,7 @@ defmodule AgentBoardWeb.BoardLive do
         slug -> Board.repository_by_slug(slug) || socket.assigns.repo
       end
 
-    socket = socket |> load(repo) |> BoardNavigation.apply_params(params)
+    socket = socket |> load(repo) |> BoardNavigation.apply_params(params) |> load_inspector()
 
     socket =
       if socket.assigns.panel == "voice", do: socket, else: assign(socket, :voice_action, nil)
@@ -600,32 +659,6 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("create", %{"title" => title, "body" => body}, socket) do
-    case socket.assigns.repo do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Track a repository first")}
-
-      repo ->
-        text = String.trim(body) <> "\n\n@sallaumen-agent"
-
-        case Board.create_task(repo, title, text, GitHub.client()) do
-          {:ok, _} ->
-            {:noreply,
-             socket
-             |> load(repo)
-             |> put_flash(:info, "Task created")
-             |> assign(:panel, nil)
-             |> push_event("panel_close", %{})
-             |> speak(Voice.task_summary(title, "created"))}
-
-          {:error, _} ->
-            {:noreply,
-             put_flash(socket, :error, "Could not create the task. Check Activity and try again.")}
-        end
-    end
-  end
-
-  @impl true
   def handle_event("act", %{"id" => id, "action" => action}, socket) do
     {task_id, _} = Integer.parse(id)
     task = Repo.get(Task, task_id) |> Repo.preload(:repository)
@@ -643,6 +676,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply,
          socket
          |> load(socket.assigns.repo)
+         |> refresh_inspector_after_act(task_id)
          |> put_flash(:info, "Task updated")
          |> speak(Voice.task_summary(task.title, action))}
 
@@ -654,6 +688,12 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("open", %{"id" => id}, socket) do
     {:noreply, BoardNavigation.open_task(socket, id)}
+  end
+
+  @impl true
+  def handle_event("inspector_tab", %{"tab" => tab}, socket) do
+    tab = if tab in ~w(conversa atividade chamadas pr), do: tab, else: "conversa"
+    {:noreply, assign(socket, :inspector_tab, tab)}
   end
 
   @impl true
@@ -770,6 +810,7 @@ defmodule AgentBoardWeb.BoardLive do
                conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
                comments: Board.comments(task)
              )
+             |> load_inspector()
              |> put_flash(:info, "Question sent")}
 
           {:error, _} ->
@@ -828,6 +869,78 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_event("intake_draft_change", _params, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_event("open_composer", params, socket) do
+    split = params["split"] == "true"
+    socket = assign(socket, composer_split: split, composer_error: nil)
+    {:noreply, BoardNavigation.open_panel(socket, "composer")}
+  end
+
+  @impl true
+  def handle_event("composer_change", params, socket) do
+    text = params["text"] || socket.assigns.composer_text
+
+    selected =
+      case params do
+        %{"tasks" => tasks} -> MapSet.new(tasks, &String.to_integer/1)
+        _ -> socket.assigns.composer_selected
+      end
+
+    socket =
+      if socket.assigns.intake && socket.assigns.intake.text != text do
+        assign(socket, intake: nil, composer_selected: MapSet.new())
+      else
+        socket
+      end
+
+    {:noreply,
+     assign(socket,
+       composer_text: text,
+       composer_selected: selected,
+       composer_error: nil
+     )}
+  end
+
+  @impl true
+  def handle_event("composer_split", _params, socket) do
+    split = not socket.assigns.composer_split
+    text = String.trim(socket.assigns.composer_text)
+
+    socket =
+      assign(socket,
+        composer_split: split,
+        composer_error: nil,
+        intake: if(split, do: socket.assigns.intake, else: nil),
+        composer_selected: if(split, do: socket.assigns.composer_selected, else: MapSet.new())
+      )
+
+    if split and text != "" do
+      split_for_composer(socket, text)
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("composer_submit", params, socket) do
+    text = String.trim(params["text"] || socket.assigns.composer_text)
+    repo = socket.assigns.repo
+
+    cond do
+      is_nil(repo) ->
+        {:noreply, assign(socket, :composer_error, "Escolha um repositório antes de enviar.")}
+
+      text == "" ->
+        {:noreply, assign(socket, :composer_error, "Escreva o pedido antes de enviar.")}
+
+      socket.assigns.composer_split ->
+        submit_split(socket, text, params)
+
+      true ->
+        create_single(socket, text)
+    end
+  end
 
   @impl true
   def handle_event("intake", %{"text" => text} = params, socket) when is_binary(text) do
@@ -896,7 +1009,14 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply,
      socket
-     |> assign(panel: nil, conversation: nil, comments: [])
+     |> assign(
+       panel: nil,
+       conversation: nil,
+       comments: [],
+       inspector_activity: [],
+       inspector_calls: [],
+       inspector_pr: nil
+     )
      |> push_event("panel_close", %{})}
   end
 
@@ -918,14 +1038,21 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("voice_transcript", %{"text" => text}, socket) when is_binary(text) do
     text = text |> String.trim() |> String.slice(0, 2000)
 
-    if text == "" do
-      {:noreply, socket}
-    else
-      {:noreply,
-       socket
-       |> invalidate_voice_answer()
-       |> assign(voice_draft: text, voice_result: nil, voice_action: nil)
-       |> BoardNavigation.open_panel("voice")}
+    cond do
+      text == "" ->
+        {:noreply, socket}
+
+      socket.assigns.panel == "composer" ->
+        {:noreply,
+         assign(socket, composer_text: text, composer_error: nil)
+         |> invalidate_intake_if_changed(text)}
+
+      true ->
+        {:noreply,
+         socket
+         |> invalidate_voice_answer()
+         |> assign(voice_draft: text, voice_result: nil, voice_action: nil)
+         |> BoardNavigation.open_panel("voice")}
     end
   end
 
@@ -1401,12 +1528,16 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp answer(task, question) do
-    case AI.call(:answer_question, %{
-           question: question,
-           title: task.title,
-           state: task.state,
-           kind: task.kind
-         }) do
+    case AI.call(
+           :answer_question,
+           %{
+             question: question,
+             title: task.title,
+             state: task.state,
+             kind: task.kind
+           },
+           task_id: task.id
+         ) do
       {:ok, %{json: %{"answer" => text}}} -> text
       {:ok, _} -> "The model answered, but not with text."
       {:error, :not_configured} -> "The AI is not configured."
@@ -1440,8 +1571,9 @@ defmodule AgentBoardWeb.BoardLive do
       >
         <div id="board-connection" phx-hook="BoardConnection" hidden></div>
         <div id="board-clock" phx-hook="BoardClock" hidden></div>
+        <div id="board-keyboard" phx-hook="BoardKeyboard" hidden></div>
 
-        <div class="ab-board" data-inspector="closed">
+        <div class="ab-board" data-inspector={if @conversation, do: "open", else: "closed"}>
           <.live_component
             module={BoardComponents.RepoRail}
             id="repo-rail"
@@ -1491,11 +1623,11 @@ defmodule AgentBoardWeb.BoardLive do
                   id="open-intake"
                   type="button"
                   class="ab-btn"
-                  phx-click="show_panel"
-                  phx-value-panel="intake"
+                  phx-click="open_composer"
+                  phx-value-split="true"
                   data-panel-trigger
                   aria-haspopup="dialog"
-                  aria-controls="panel-intake"
+                  aria-controls="panel-composer"
                 >
                   <.ico name="split" />Dividir pedido
                 </button>
@@ -1503,11 +1635,11 @@ defmodule AgentBoardWeb.BoardLive do
                   id="open-create"
                   type="button"
                   class="ab-btn ab-btn--primary"
-                  phx-click="show_panel"
-                  phx-value-panel="create"
+                  phx-click="open_composer"
+                  phx-value-split="false"
                   data-panel-trigger
                   aria-haspopup="dialog"
-                  aria-controls="panel-create"
+                  aria-controls="panel-composer"
                 >
                   <.ico name="plus" />Novo pedido<.kbd key="N" />
                 </button>
@@ -1534,11 +1666,11 @@ defmodule AgentBoardWeb.BoardLive do
               <button
                 type="button"
                 class="ab-btn ab-btn--primary"
-                phx-click="show_panel"
-                phx-value-panel="create"
+                phx-click="open_composer"
+                phx-value-split="false"
                 data-panel-trigger
                 aria-haspopup="dialog"
-                aria-controls="panel-create"
+                aria-controls="panel-composer"
               >
                 <.ico name="plus" />Novo pedido
               </button>
@@ -1572,6 +1704,18 @@ defmodule AgentBoardWeb.BoardLive do
               </div>
             </div>
           </main>
+
+          <.inspector
+            :if={@conversation}
+            task={@conversation}
+            comments={@comments}
+            tab={@inspector_tab}
+            activity={@inspector_activity}
+            calls={@inspector_calls}
+            pr={@inspector_pr}
+            tz_offset={@tz_offset}
+            live={@freshness.live?}
+          />
         </div>
 
         <VoicePresence.stage id="voice-presence-board" />
@@ -1602,6 +1746,33 @@ defmodule AgentBoardWeb.BoardLive do
           </button>
         </div>
 
+        <dialog
+          id="panel-composer"
+          class="board-dialog ab-composer-dialog"
+          aria-labelledby="composer-title"
+        >
+          <.composer
+            :if={@repo}
+            repo={"#{@repo.owner}/#{@repo.name}"}
+            text={@composer_text}
+            split={@composer_split}
+            intake={@intake}
+            selected={@composer_selected}
+            ai_status={@ai_status}
+            voice_configured={@voice.configured}
+            error={@composer_error}
+          />
+        </dialog>
+
+        <BoardComponents.Panel.shell
+          name="shortcuts"
+          title="Atalhos"
+          active={@panel == "shortcuts"}
+          flash={@flash}
+        >
+          <.shortcuts />
+        </BoardComponents.Panel.shell>
+
         <BoardComponents.Panel.shell
           name="history"
           title="Histórico de merges"
@@ -1618,23 +1789,8 @@ defmodule AgentBoardWeb.BoardLive do
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
-          name="conversation"
-          title="Task conversation"
-          active={@panel == "conversation"}
-          flash={@flash}
-        >
-          <.live_component
-            :if={@conversation}
-            module={BoardComponents.Conversation}
-            id="conversation"
-            conversation={@conversation}
-            comments={@comments}
-          />
-        </BoardComponents.Panel.shell>
-
-        <BoardComponents.Panel.shell
           name="activity"
-          title="Activity"
+          title="Atividade"
           active={@panel == "activity"}
           flash={@flash}
         >
@@ -1648,7 +1804,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="intake"
-          title="Split a request"
+          title="Dividir pedido"
           active={@panel == "intake"}
           flash={@flash}
         >
@@ -1663,7 +1819,12 @@ defmodule AgentBoardWeb.BoardLive do
           />
         </BoardComponents.Panel.shell>
 
-        <BoardComponents.Panel.shell name="ai" title="AI calls" active={@panel == "ai"} flash={@flash}>
+        <BoardComponents.Panel.shell
+          name="ai"
+          title="Chamadas de IA"
+          active={@panel == "ai"}
+          flash={@flash}
+        >
           <.live_component
             :if={@repo}
             module={BoardComponents.AI}
@@ -1675,7 +1836,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="voice"
-          title="Voice command"
+          title="Comando de voz"
           active={@panel == "voice"}
           flash={@flash}
         >
@@ -1685,21 +1846,138 @@ defmodule AgentBoardWeb.BoardLive do
             action={@voice_action}
           />
         </BoardComponents.Panel.shell>
-
-        <BoardComponents.Panel.shell
-          name="create"
-          title="New task"
-          active={@panel == "create"}
-          flash={@flash}
-        >
-          <.live_component
-            :if={@repo}
-            module={BoardComponents.CreateTask}
-            id="create"
-          />
-        </BoardComponents.Panel.shell>
       </div>
     </Layouts.app>
     """
+  end
+
+  defp submit_split(socket, text, params) do
+    case socket.assigns.intake do
+      %{status: :ready, text: ^text, tasks: tasks} when tasks != [] ->
+        enqueue_selected(socket, tasks, selected_from(params, socket))
+
+      _ ->
+        split_for_composer(socket, text)
+    end
+  end
+
+  defp selected_from(params, socket) do
+    case params do
+      %{"tasks" => values} -> MapSet.new(values, &String.to_integer/1)
+      _ -> socket.assigns.composer_selected
+    end
+  end
+
+  defp split_for_composer(socket, text) do
+    repo = socket.assigns.repo
+
+    cond do
+      is_nil(repo) ->
+        {:noreply, assign(socket, :composer_error, "Escolha um repositório antes de dividir.")}
+
+      socket.assigns.ai_status == :not_configured ->
+        {:noreply,
+         assign(socket, :composer_error, "A IA não está configurada. Dividir fica indisponível.")}
+
+      String.trim(text) == "" ->
+        {:noreply, assign(socket, :composer_error, "Escreva o pedido antes de dividir.")}
+
+      true ->
+        case Intake.run(text) do
+          {:ok, result} ->
+            socket =
+              socket
+              |> show_intake_result(repo, text, %{}, result)
+              |> assign(composer_selected: all_indices(result.tasks), composer_error: nil)
+
+            {:noreply, socket}
+
+          {:error, reason} ->
+            {:noreply,
+             socket
+             |> assign(:composer_error, "A IA não respondeu: #{inspect(reason)}")
+             |> refresh_ai()}
+        end
+    end
+  end
+
+  defp all_indices([]), do: MapSet.new()
+  defp all_indices(tasks), do: MapSet.new(0..(length(tasks) - 1))
+
+  defp enqueue_selected(socket, tasks, selected) do
+    repo = socket.assigns.repo
+    indices = Enum.filter(0..(length(tasks) - 1), &MapSet.member?(selected, &1))
+
+    if indices == [] do
+      {:noreply, assign(socket, :composer_error, "Escolha ao menos uma tarefa.")}
+    else
+      results =
+        Enum.map(indices, fn index ->
+          task = Enum.at(tasks, index)
+
+          Board.create_task(
+            repo,
+            task.title,
+            intake_body(task) <> "\n\n@sallaumen-agent",
+            GitHub.client()
+          )
+        end)
+
+      created = Enum.count(results, &match?({:ok, _}, &1))
+
+      if created == length(indices) do
+        {:noreply,
+         socket
+         |> load(repo)
+         |> close_composer()
+         |> put_flash(
+           :info,
+           "#{created} #{if created == 1, do: "tarefa", else: "tarefas"} na fila"
+         )}
+      else
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           "Criei #{created} de #{length(indices)}. Veja a atividade e tente as restantes."
+         )}
+      end
+    end
+  end
+
+  defp create_single(socket, text) do
+    repo = socket.assigns.repo
+    title = text |> String.split("\n", parts: 2) |> hd() |> String.trim() |> String.slice(0, 80)
+
+    if title == "" do
+      {:noreply, assign(socket, :composer_error, "A primeira linha vira o título; escreva algo.")}
+    else
+      case Board.create_task(repo, title, text <> "\n\n@sallaumen-agent", GitHub.client()) do
+        {:ok, _task} ->
+          {:noreply,
+           socket |> load(repo) |> close_composer() |> put_flash(:info, "Pedido na fila")}
+
+        {:error, _reason} ->
+          {:noreply,
+           assign(
+             socket,
+             :composer_error,
+             "Não foi possível criar a tarefa. Veja a atividade e tente de novo."
+           )}
+      end
+    end
+  end
+
+  defp close_composer(socket) do
+    socket
+    |> assign(
+      panel: nil,
+      composer_text: "",
+      composer_split: false,
+      composer_selected: MapSet.new(),
+      composer_error: nil,
+      intake: nil
+    )
+    |> push_event("panel_close", %{})
   end
 end

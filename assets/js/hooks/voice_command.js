@@ -49,6 +49,13 @@ export const VoiceCommand = {
       if (this.phase === "listening") this.stop()
       else this.cancel()
     }
+    this.onStartRequest = () => {
+      if (this.phase === "idle") this.start()
+    }
+    this.onStopRequest = () => {
+      if (this.phase === "listening") this.stop()
+      else if (this.phase !== "idle") this.cancel()
+    }
     document.addEventListener("keydown", this.onKeyDown, true)
     document.addEventListener("cancel", this.onDialogCancel, true)
     document.addEventListener("pointerdown", this.onPointerDown)
@@ -57,6 +64,8 @@ export const VoiceCommand = {
     window.addEventListener("blur", this.onBlur)
     window.addEventListener("board:voice-context", this.onContext)
     window.addEventListener("board:voice-control", this.onControl)
+    window.addEventListener("board:voice-start", this.onStartRequest)
+    window.addEventListener("board:voice-stop", this.onStopRequest)
   },
   handleKeyDown(event) {
     if (event.key === "Escape") {
@@ -262,5 +271,7 @@ export const VoiceCommand = {
     window.removeEventListener("blur", this.onBlur)
     window.removeEventListener("board:voice-context", this.onContext)
     window.removeEventListener("board:voice-control", this.onControl)
+    window.removeEventListener("board:voice-start", this.onStartRequest)
+    window.removeEventListener("board:voice-stop", this.onStopRequest)
   },
 }

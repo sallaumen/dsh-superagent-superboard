@@ -96,11 +96,11 @@ defmodule AgentBoardWeb.Layouts do
   """
   def theme_toggle(assigns) do
     ~H"""
-    <div role="group" aria-label="Color theme" class="flex gap-1">
+    <div role="group" aria-label="Tema" class="flex gap-1">
       <button
-        :for={{label, theme} <- [{"System", "system"}, {"Light", "light"}, {"Dark", "dark"}]}
+        :for={{label, theme} <- [{"Sistema", "system"}, {"Claro", "light"}, {"Escuro", "dark"}]}
         type="button"
-        aria-label={label <> " theme"}
+        aria-label={"Tema " <> label}
         aria-pressed="false"
         class="border border-base-content/50 px-2 py-2 text-xs aria-pressed:bg-base-content aria-pressed:text-base-100"
         phx-click={JS.dispatch("phx:set-theme")}

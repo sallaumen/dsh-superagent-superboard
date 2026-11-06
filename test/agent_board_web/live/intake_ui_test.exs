@@ -92,13 +92,19 @@ defmodule AgentBoardWeb.IntakeUITest do
     )
 
     {:ok, view, _} = live(conn, ~p"/?repo=fixture/actions")
+    view |> element("#open-create") |> render_click()
 
-    view |> element("#create-task") |> render_submit(%{"title" => "Fixture", "body" => ""})
+    view
+    |> element("#composer-form")
+    |> render_submit(%{"text" => "Fixture"})
 
-    assert has_element?(view, "#flash-error", "Could not create the task")
-    refute has_element?(view, "#flash-info")
-    assert length(Regex.scan(~r/Could not create the task/, render(view))) == 1
-    refute render(view) =~ "Task created"
+    assert has_element?(
+             view,
+             "#panel-composer .ab-compose__error",
+             "Não foi possível criar a tarefa"
+           )
+
+    refute has_element?(view, "#flash-info", "Pedido na fila")
   end
 
   test "successful creation reports success", %{conn: conn} do
@@ -110,11 +116,14 @@ defmodule AgentBoardWeb.IntakeUITest do
     )
 
     {:ok, view, _} = live(conn, ~p"/?repo=fixture/actions")
+    view |> element("#open-create") |> render_click()
 
-    view |> element("#create-task") |> render_submit(%{"title" => "Fixture", "body" => ""})
+    view
+    |> element("#composer-form")
+    |> render_submit(%{"text" => "Fixture"})
 
-    assert has_element?(view, "#flash-info", "Task created")
-    refute has_element?(view, "#flash-error")
+    assert has_element?(view, "#flash-info", "Pedido na fila")
+    refute has_element?(view, "#panel-composer .ab-compose__error")
   end
 
   test "the form shows the goal, the open questions and the tasks", %{conn: conn} do
