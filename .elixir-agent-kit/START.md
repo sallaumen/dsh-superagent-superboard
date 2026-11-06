@@ -1,4 +1,4 @@
-# Elixir Agent Kit 0.4.0
+# Elixir Agent Kit 0.5.0
 
 Read the [shared contract](../deps/elixir_agent_kit/priv/library/CONTRACT.md), then use the
 [area routing guide](../deps/elixir_agent_kit/priv/library/ROUTING.md) and

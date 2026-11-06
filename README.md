@@ -154,7 +154,7 @@ events, the PubSub broadcast) and the pipeline contract.
 
 ## Shared agent practices
 
-The board consumes [Elixir Agent Kit v0.4.0](https://github.com/sallaumen/elixir-agent-kit/releases/tag/v0.4.0)
+The board consumes [Elixir Agent Kit v0.5.0](https://github.com/sallaumen/elixir-agent-kit/releases/tag/v0.5.0)
 through a public, pinned Mix dependency available only in development/tests.
 No download token or application startup is required.
 
@@ -162,8 +162,10 @@ After `mix deps.get`, use [.elixir-agent-kit/START.md](.elixir-agent-kit/START.m
 It points to the dependency's contract and workflows. Only the small index,
 ownership state and references in `AGENTS.md`/`CLAUDE.md` remain in this project;
 there are no copied workflow bodies or per-skill native wrappers.
-The dependency's routing guide separates frontend, backend, cross-cutting and
-delivery practices; each workflow includes concrete quality and validation criteria.
+The dependency's routing guide groups practices into frontend, backend and data,
+code structure and quality, operational domains, and delivery; each workflow
+includes concrete quality and validation criteria. The installer also generates
+one pointer skill per client under `.claude/skills/` and `.agents/skills/`.
 
 `mix agent_kit.check` validates those references against the loaded version and
 configuration. `mix gate`, `make library` and CI run that check. A fresh checkout
@@ -181,4 +183,4 @@ their recorded originals; never delete ownership state to bypass a conflict.
 Reusable improvements go to the kit; local rules remain here. The former
 Portuguese collection is retired as an editable source. See
 [ownership and migration](docs/agent/practices.md) for the full disposition.
-For other projects, use the [AI installation/migration prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v0.4.0/docs/INSTALL_WITH_AI.md).
+For other projects, use the [AI installation/migration prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v0.5.0/docs/INSTALL_WITH_AI.md).

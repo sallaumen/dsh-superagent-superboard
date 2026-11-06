@@ -97,7 +97,7 @@ O objetivo da CI continua sendo verificar em ambiente limpo; a regra apenas evit
 ## Adotar este desenho em outro projeto
 
 1. Copie a estrutura do `Makefile`: um alvo por pipeline, mantendo os checks locais equivalentes aos jobs correspondentes da CI.
-2. Para a biblioteca, siga o [prompt de instalação do kit](https://github.com/sallaumen/elixir-agent-kit/blob/v0.3.1/docs/INSTALL_WITH_AI.md) e execute `mix agent_kit.check` após baixar as dependências.
+2. Para a biblioteca, siga o [prompt de instalação do kit](https://github.com/sallaumen/elixir-agent-kit/blob/v0.5.0/docs/INSTALL_WITH_AI.md) e execute `mix agent_kit.check` após baixar as dependências.
 3. Adapte o job de release à sua stack: construa assets no ambiente onde as ferramentas de frontend existem e monte o artefato no ambiente de produção.
 4. Mantenha esta matriz atualizada quando um script novo aparecer — um script sem linha aqui não tem "quando usar" definido.
 
