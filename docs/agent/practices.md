@@ -6,6 +6,8 @@ and reads the library directly from the Mix dependency through the
 There is no editable mirror and no per-skill native registration in this project.
 The v0.3 routing guide groups workflows by frontend, backend, cross-cutting
 engineering and delivery; each workflow states quality and validation criteria.
+Since v0.3.1 it also routes HUD, menu and overlay work in a game or canvas
+scene to one pinned external skill, `game-ui-ux`; the board has no such scene.
 
 ## Where a rule belongs
 
