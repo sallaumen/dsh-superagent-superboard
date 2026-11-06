@@ -225,6 +225,76 @@ defmodule AgentBoardWeb.VoiceAnswerTest do
     assert Repo.aggregate(Call, :count) == 1
   end
 
+  test "archive-history questions state the snapshot limit without asking a model" do
+    assert {:ok, english} = VoiceAnswer.answer(snapshot(), "What did you archive today?")
+    assert english.engine == :board
+    assert english.text =~ "does not include archive history"
+    assert english.as_of == nil
+    assert english.source == "Archive history unavailable"
+
+    assert {:ok, portuguese} = VoiceAnswer.answer(snapshot(), "O que você arquivou hoje?")
+    assert portuguese.engine == :board
+    assert portuguese.text =~ "não incluem histórico de arquivamento"
+
+    for question <- [
+          "Did you archive anything today?",
+          "Você arquivou alguma tarefa hoje?",
+          "Which tasks did you archive today?",
+          "What did you archive today, and what is running?",
+          "What is the name of a task I archived today?",
+          "What is the archive history?"
+        ] do
+      assert VoiceAnswer.archive_history_query?(question)
+      assert {:ok, %{engine: :board}} = VoiceAnswer.answer(snapshot(), question)
+    end
+
+    assert Repo.aggregate(Call, :count) == 0
+  end
+
+  test "an archive word inside a requested task title does not suppress the title" do
+    named =
+      update_in(snapshot(), [:board, :running], fn [task] ->
+        [%{task | title: "Archive logs"}]
+      end)
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, body, _conn} = Plug.Conn.read_body(conn)
+      user = body |> Jason.decode!() |> Map.fetch!("messages") |> List.last()
+      facts = user["content"] |> String.replace_prefix("Inputs:\n", "") |> Jason.decode!()
+      assert [%{"title" => "Archive logs"}] = facts["board"]["task_lanes"]["running"]["sample"]
+      Req.Test.json(conn, response("Archive logs"))
+    end)
+
+    for question <- [
+          "What is the title of Archive logs?",
+          "What is the title of Archive logs today?"
+        ] do
+      refute VoiceAnswer.archive_history_query?(question)
+
+      assert {:ok, %{text: "Archive logs", engine: :deepseek}} =
+               VoiceAnswer.answer(named, question)
+    end
+
+    assert Repo.aggregate(Call, :count) == 2
+  end
+
+  test "an Archive repository name does not imply an archive-history question" do
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, response("There are 42 running tasks in the saved board."))
+    end)
+
+    for question <- [
+          "How many running tasks are in the Archive repository?",
+          "How many running tasks are in the Archive repository today?"
+        ] do
+      refute VoiceAnswer.archive_history_query?(question)
+      assert {:ok, %{engine: :deepseek, text: text}} = VoiceAnswer.answer(snapshot(), question)
+      assert text =~ "42 running tasks"
+    end
+
+    assert Repo.aggregate(Call, :count) == 2
+  end
+
   test "missing context and invalid questions never call a model" do
     assert {:error, :no_repository} = VoiceAnswer.answer(%{snapshot() | repo: nil}, "status")
     assert {:error, :missing_question} = VoiceAnswer.answer(snapshot(), "  ")

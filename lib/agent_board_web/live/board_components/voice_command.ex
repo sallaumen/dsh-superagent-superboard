@@ -64,16 +64,21 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommand do
         <p :if={@result.kind == :ai_answer} class="voice-command-result-label">
           AI answer <span>from saved board data</span>
         </p>
+        <p :if={@result.kind == :board_answer} class="voice-command-result-label">
+          Board data <span>limit</span>
+        </p>
         <p>{@result.text}</p>
         <DataAge.stamp
           :if={@result.as_of}
           id="voice-result-age"
           at={@result.as_of}
           label={Map.get(@result, :source, "Record updated")}
-          sync={@result.kind == :ai_answer and Map.get(@result, :sync_status) == :synced}
+          sync={
+            @result.kind in [:ai_answer, :board_answer] and Map.get(@result, :sync_status) == :synced
+          }
         />
         <p
-          :if={@result.kind == :ai_answer and !@result.as_of}
+          :if={@result.kind in [:ai_answer, :board_answer] and !@result.as_of}
           class="voice-command-result-source"
         >
           {@result.source}

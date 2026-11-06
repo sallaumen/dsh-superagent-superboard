@@ -7,6 +7,7 @@ defmodule AgentBoardWeb.VoiceAnswerLiveTest do
 
   alias AgentBoard.AI.Call
   alias AgentBoard.{Board, Repo}
+  alias AgentBoard.Board.Task
 
   @stub AgentBoardWeb.VoiceAnswerLiveTest.Stub
 
@@ -96,7 +97,7 @@ defmodule AgentBoardWeb.VoiceAnswerLiveTest do
 
     view = voice_view(conn, "fixture", "edit-answer", "What is running?")
     view |> form("#voice-command-form", %{"text" => "What is running?"}) |> render_submit()
-    assert render(view) =~ "Preparing an AI answer"
+    assert render(view) =~ "Checking saved board data"
     assert_receive {:ai_started, request_pid}, 1_000
 
     view |> form("#voice-command-form", %{"text" => "What is blocked?"}) |> render_change()
@@ -172,6 +173,53 @@ defmodule AgentBoardWeb.VoiceAnswerLiveTest do
     assert render_async(view, 1_000) =~ "The AI could not answer"
     assert has_element?(view, ".voice-command-result[data-kind=error]")
     assert has_element?(view, "#voice-command-text", "What is running?")
+  end
+
+  test "archive history is a board limit without a misleading sync date", %{conn: conn} do
+    view = voice_view(conn, "fixture", "archive-limit", "What did you archive today?")
+
+    view
+    |> form("#voice-command-form", %{"text" => "What did you archive today?"})
+    |> render_submit()
+
+    assert render_async(view, 1_000) =~ "does not include archive history"
+    assert has_element?(view, ".voice-command-result[data-kind=board_answer]", "Board data")
+    assert has_element?(view, ".voice-command-result-source", "Archive history unavailable")
+    refute has_element?(view, "#voice-result-age")
+    refute has_element?(view, ".voice-command-result[data-kind=ai_answer]")
+    assert Repo.aggregate(answer_call_query(), :count) == 0
+    refute_push_event(view, "voice_play", %{url: _})
+  end
+
+  test "archive history stays read-only with a conversation open", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "archive-conversation")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{repository_id: repo.id, number: 17, title: "Keep this task"})
+      |> Repo.insert!()
+
+    {:ok, view, _html} =
+      live(conn, AgentBoardWeb.BoardNavigation.path(repo, "conversation", task.id))
+
+    for question <- [
+          "What did you archive today?",
+          "Did you archive anything today?",
+          "Você arquivou alguma tarefa hoje?",
+          "Which tasks did you archive today?",
+          "What did you archive today, and what is running?"
+        ] do
+      render_hook(view, "voice_transcript", %{"text" => question})
+      view |> form("#voice-command-form", %{"text" => question}) |> render_submit()
+
+      html = render_async(view, 1_000)
+      assert html =~ "archive history" or html =~ "histórico de arquivamento"
+      assert has_element?(view, ".voice-command-result[data-kind=board_answer]")
+      refute has_element?(view, "button", "Ask the agent")
+    end
+
+    assert Repo.aggregate(answer_call_query(), :count) == 0
+    assert Repo.aggregate(AgentBoard.Board.Comment, :count) == 0
   end
 
   test "a mutation request stays a draft and never calls the model", %{conn: conn} do

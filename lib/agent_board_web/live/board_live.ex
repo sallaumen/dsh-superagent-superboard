@@ -865,7 +865,8 @@ defmodule AgentBoardWeb.BoardLive do
     intent = VoiceCommands.parse(draft)
     unanswered_question? = match?({:ask, _}, intent) and is_nil(socket.assigns.conversation)
 
-    if VoiceAnswer.read_query?(draft) and (intent == :unknown or unanswered_question?) do
+    if VoiceAnswer.archive_history_query?(draft) or
+         (VoiceAnswer.read_query?(draft) and (intent == :unknown or unanswered_question?)) do
       start_voice_answer(socket, draft)
     else
       resolve_deterministic_voice_command(socket, draft)
@@ -892,7 +893,7 @@ defmodule AgentBoardWeb.BoardLive do
         case outcome do
           {:ok, {:ok, answer}} ->
             %{
-              kind: :ai_answer,
+              kind: if(answer.engine == :board, do: :board_answer, else: :ai_answer),
               text: answer.text,
               as_of: answer.as_of,
               source: answer.source,
@@ -927,7 +928,7 @@ defmodule AgentBoardWeb.BoardLive do
       assign(socket,
         voice_result: %{
           kind: :loading,
-          text: "Preparing an AI answer from saved board data…",
+          text: "Checking saved board data…",
           as_of: nil
         }
       )
