@@ -25,6 +25,8 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/agent_board"
 import {BoardPanels} from "./hooks/board_panels"
 import {BoardMenu} from "./hooks/board_menu"
+import {BoardClock} from "./hooks/board_clock"
+import {BoardConnection} from "./hooks/board_connection"
 import {DataAge} from "./hooks/data_age"
 import {VoiceCommand} from "./hooks/voice_command"
 import {VoicePlayer} from "./hooks/voice_player"
@@ -49,7 +51,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   // Read the mounted DOM on every connection so loaded pages survive a socket reconnect.
   params: () => ({_csrf_token: csrfToken, board_resume: boardResume()}),
-  hooks: {...colocatedHooks, DataAge, BoardMenu, BoardPanels, VoiceCommand, VoicePlayer, VoicePresence},
+  hooks: {...colocatedHooks, DataAge, BoardMenu, BoardPanels, BoardClock, BoardConnection, VoiceCommand, VoicePlayer, VoicePresence},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.

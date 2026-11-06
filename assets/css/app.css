@@ -5,6 +5,7 @@
 @import "phoenix-colocated/agent_board/colocated.css";
 /* The redesign's single source of color, space, radius, type and shadow. */
 @import "./tokens.css";
+@import "./board.css";
 @source "../css";
 @source "../js";
 @source "../../lib/agent_board_web";
