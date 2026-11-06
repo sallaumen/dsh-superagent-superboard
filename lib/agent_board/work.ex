@@ -53,7 +53,7 @@ defmodule AgentBoard.Work do
 
     (failures ++ blocked ++ review ++ question)
     |> Enum.sort_by(fn need ->
-      {not need.is_new, rank(need.kind), -(need.age_seconds || 0)}
+      {rank(need.kind), not need.is_new, -(need.age_seconds || 0)}
     end)
   end
 

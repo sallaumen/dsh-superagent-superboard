@@ -13,9 +13,14 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   attr :frozen, :boolean, default: false
 
   def needs_you(assigns) do
+    # The line only makes sense when every new item comes before every old
+    # one. A mixed list would put new items after the line and lie about them.
+    new_count = Enum.count(assigns.needs, & &1.is_new)
+    first_old = Enum.find_index(assigns.needs, &(not &1.is_new))
+
     since_at =
-      if assigns.last_visit && Enum.any?(assigns.needs, & &1.is_new) do
-        Enum.find_index(assigns.needs, &(not &1.is_new))
+      if assigns.last_visit && new_count > 0 && first_old == new_count do
+        first_old
       end
 
     assigns =
