@@ -7,6 +7,7 @@ defmodule AgentBoard.Board do
 
   alias AgentBoard.Board.{Comment, Event, PullRequest, Repository, Review, Task}
   alias AgentBoard.Repo
+  alias AgentBoard.Sync.Freshness
 
   @merged_page_size 50
   @task_page_size 50
@@ -337,6 +338,108 @@ defmodule AgentBoard.Board do
         order_by: [desc: e.inserted_at, desc: e.id],
         limit: 1
     )
+  end
+
+  @doc "The newest attempt and the newest success, for the freshness snapshot."
+  def sync_snapshot(repository) do
+    events =
+      Repo.all(
+        from e in Event,
+          where: e.repository_id == ^repository.id and e.kind in ["sync", "sync_error"],
+          order_by: [desc: e.inserted_at, desc: e.id],
+          limit: 50
+      )
+
+    %{
+      last_attempt: List.first(events),
+      last_success: Enum.find(events, &(&1.kind == "sync"))
+    }
+  end
+
+  @doc """
+  One row per repository for the rail: the counts that need a decision and
+  whether the saved data is old enough to be untrusted.
+  """
+  def repo_overview do
+    states = Enum.map(@task_states, &Atom.to_string/1)
+
+    counts =
+      Repo.all(
+        from t in Task,
+          where: t.state in ^states,
+          group_by: [t.repository_id, t.state],
+          select: {t.repository_id, t.state, count(t.id)}
+      )
+      |> Enum.reduce(%{}, fn {repository_id, state, count}, acc ->
+        Map.update(acc, repository_id, %{state => count}, &Map.put(&1, state, count))
+      end)
+
+    ci_failures =
+      Repo.all(
+        from p in PullRequest,
+          where: p.state == "merged" and p.checks_state == "failure",
+          group_by: p.repository_id,
+          select: {p.repository_id, count(p.id)}
+      )
+      |> Map.new()
+
+    syncs =
+      Repo.all(
+        from e in Event,
+          where: e.kind in ["sync", "sync_error"],
+          order_by: [desc: e.inserted_at, desc: e.id],
+          limit: 200
+      )
+      |> Enum.uniq_by(& &1.repository_id)
+      |> Map.new(&{&1.repository_id, &1})
+
+    now = DateTime.utc_now()
+
+    list_repositories()
+    |> Map.new(fn repository ->
+      by_state = Map.get(counts, repository.id, %{})
+      sync = syncs[repository.id]
+
+      unknown =
+        is_nil(sync) or sync.kind == "sync_error" or
+          DateTime.diff(now, sync.inserted_at, :second) > Freshness.stale_ttl()
+
+      {repository.id,
+       %{
+         id: repository.id,
+         name: "#{repository.owner}/#{repository.name}",
+         owner: repository.owner,
+         running: Map.get(by_state, "running", 0),
+         you: Map.get(by_state, "ready", 0) + Map.get(by_state, "question", 0),
+         halt: Map.get(by_state, "blocked", 0) + Map.get(ci_failures, repository.id, 0),
+         unknown: unknown,
+         last_sync: sync
+       }}
+    end)
+  end
+
+  @doc "How many visible things changed between two loaded boards."
+  def change_count(nil, _new), do: 0
+
+  def change_count(old, new) do
+    old_tasks = board_tasks(old)
+    new_tasks = board_tasks(new)
+
+    changed_tasks = Enum.count(new_tasks, fn {id, state} -> Map.get(old_tasks, id) != state end)
+
+    old_merged = MapSet.new(Map.get(old, :merged, []), & &1.id)
+
+    changed_merged =
+      Enum.count(Map.get(new, :merged, []), &(not MapSet.member?(old_merged, &1.id)))
+
+    changed_tasks + changed_merged
+  end
+
+  defp board_tasks(board) do
+    for state <- @task_states,
+        task <- Map.get(board, state, []),
+        into: %{},
+        do: {task.id, Atom.to_string(state)}
   end
 
   @doc "Record an activity row."

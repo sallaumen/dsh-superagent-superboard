@@ -337,3 +337,82 @@ defmodule AgentBoard.Board.ConversationTest do
     refute Enum.any?(board.queued, &(&1.number == 901))
   end
 end
+
+defmodule AgentBoard.BoardOverviewTest do
+  @moduledoc "The rail's counts and the reconnect change count, from real rows."
+  use AgentBoard.DataCase, async: true
+
+  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.Board.{PullRequest, Task}
+
+  test "the rail counts running, waiting and failing work per repository" do
+    {:ok, repo} = Board.add_repository("sallaumen", "attention")
+
+    for {number, state} <- [{1, "running"}, {2, "ready"}, {3, "blocked"}] do
+      insert_task(repo, number, state)
+    end
+
+    insert_merged(repo, 10, "failure")
+
+    overview = Board.repo_overview()[repo.id]
+    assert overview.running == 1
+    assert overview.you == 1
+    assert overview.halt == 2
+    assert overview.unknown
+  end
+
+  test "a clean sync makes the repository known" do
+    {:ok, repo} = Board.add_repository("sallaumen", "known")
+    Board.log_event(repo.id, "sync", "sallaumen/known", %{"errors" => 0})
+
+    refute Board.repo_overview()[repo.id].unknown
+  end
+
+  test "the sync snapshot keeps the last success apart from the failed attempt" do
+    {:ok, repo} = Board.add_repository("sallaumen", "snapshot")
+    Board.log_event(repo.id, "sync", "sallaumen/snapshot", %{"errors" => 0})
+    Board.log_event(repo.id, "sync_error", "sallaumen/snapshot", %{"reason" => "offline"})
+
+    snapshot = Board.sync_snapshot(repo)
+    assert snapshot.last_attempt.kind == "sync_error"
+    assert snapshot.last_success.kind == "sync"
+  end
+
+  test "the change count sees state changes, new tasks and new merges" do
+    {:ok, repo} = Board.add_repository("sallaumen", "changes")
+    task = insert_task(repo, 1, "ready")
+    moved = %{task | state: "running"}
+    fresh = insert_task(repo, 2, "queued")
+    merged = insert_merged(repo, 3, "success")
+
+    old = %{running: [], ready: [task], blocked: [], queued: [], merged: []}
+    new = %{running: [moved], ready: [], blocked: [], queued: [fresh], merged: [merged]}
+
+    assert Board.change_count(old, new) == 3
+  end
+
+  defp insert_task(repo, number, state) do
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: number,
+      title: "Task #{number}",
+      state: state
+    })
+    |> Repo.insert!()
+  end
+
+  defp insert_merged(repo, number, checks) do
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: number,
+      title: "PR #{number}",
+      state: "merged",
+      merged_at: DateTime.utc_now(),
+      checks_state: checks
+    })
+    |> Repo.insert!()
+  end
+end
