@@ -13,10 +13,8 @@ defmodule AgentBoard.Sync do
   """
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Board, GitHub, Repo}
+  alias AgentBoard.{AgentState, Board, GitHub, Repo}
   alias AgentBoard.Board.{PullRequest, Repository, Review, Task}
-
-  @state_db "/state/superagent/orchestrator.sqlite"
 
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()) do
@@ -388,82 +386,9 @@ defmodule AgentBoard.Sync do
   # -- the agent's tickets (sqlite, read-only) --------------------------------
 
   @doc "The agent's tickets, normalized: the numbers, the assignment and the outcome."
-  def normalized_tickets do
-    state_db()
-    |> Enum.flat_map(fn value ->
-      case Jason.decode(value) do
-        {:ok, ticket} -> [normalize(ticket)]
-        _ -> []
-      end
-    end)
-  end
+  def normalized_tickets, do: AgentState.tickets()
 
-  defp normalize(ticket) do
-    numbers = ticket_numbers(ticket)
-    last = List.last(ticket["assignments"] || []) || %{}
-    report = last["report"] || %{}
-    ended = ticket["ended"] || %{}
-
-    %{
-      "numbers" => Enum.uniq(numbers),
-      "assignment" => last["state"],
-      "report" => report["state"],
-      "ended_outcome" => ended["outcome"],
-      "stopped" => ticket["stopped"] || false,
-      "archived" => ticket["archived"] || false
-    }
-  end
-
-  def ticket_numbers_for(ticket), do: ticket_numbers(ticket)
-
-  defp ticket_numbers(ticket) do
-    scope = get_in(ticket, ["mandate", "basis", "scope"]) || %{}
-    base = if is_integer(scope["number"]), do: [scope["number"]], else: []
-
-    # The parens matter: |> binds tighter than ||, so without them the
-    # pipeline would apply only to the [] fallback and leave the real channel
-    # entries unmapped (numbers as maps instead of integers).
-    base ++
-      ((ticket["channels"] || [])
-       |> Enum.map(&to_int(get_in(&1, ["address", "number"])))
-       |> Enum.reject(&is_nil/1))
-  end
-
-  defp state_db do
-    path = Application.get_env(:agent_board, :state_db, @state_db)
-
-    case Exqlite.Sqlite3.open(path) do
-      {:ok, conn} ->
-        result =
-          case Exqlite.Sqlite3.prepare(conn, "SELECT value FROM ticket") do
-            {:ok, stmt} ->
-              rows = read_rows(conn, stmt, [])
-              Exqlite.Sqlite3.release(conn, stmt)
-              rows
-
-            {:error, _} ->
-              []
-          end
-
-        Exqlite.Sqlite3.close(conn)
-        result
-
-      {:error, _} ->
-        []
-    end
-  end
-
-  defp read_rows(conn, stmt, acc) do
-    case Exqlite.Sqlite3.step(conn, stmt) do
-      {:row, [value]} -> read_rows(conn, stmt, [value | acc])
-      _ -> Enum.reverse(acc)
-    end
-  end
-
-  defp to_int(nil), do: nil
-  defp to_int(n) when is_integer(n), do: n
-  defp to_int(s) when is_binary(s), do: String.to_integer(s)
-  defp to_int(_), do: nil
+  def ticket_numbers_for(ticket), do: AgentState.ticket_numbers(ticket)
 
   defp to_dt(nil), do: nil
 
