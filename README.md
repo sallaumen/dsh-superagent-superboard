@@ -51,8 +51,9 @@ Unlike the `o_colmex` updater, **nothing here updates on a timer**: the board
 watches agents, and a restart would interrupt them. Updating is a button.
 
 On a checkout already running the new code, **Atualizar e reiniciar** fast-forwards
-to `origin/main`. If HEAD changed, the server restarts; a changed `mix.lock` or
-config file is never hot-reloaded. Under `scripts/service.sh` the updater sets
+to `origin/main` and then restarts; a successful update always gets a clean boot,
+and a changed `mix.lock` or config file is never hot-reloaded. Under
+`scripts/service.sh` the updater sets
 `AGENT_BOARD_RESTART_MODE=supervised`, stops, and lets launchd boot the new code
 (the script refreshes deps and migrations first). A bare `mix phx.server` instead
 starts a detached shell and logs to `agent-board-update-restart.log` in the system

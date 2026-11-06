@@ -22,25 +22,13 @@ defmodule AgentBoard.System.Updater do
   alias AgentBoard.System.Git
 
   @type result :: {:ok, String.t() | nil} | {:error, term()}
-  @type changed_result :: {:ok, String.t() | nil, boolean()} | {:error, term()}
 
   @doc "Fetches origin/main and fast-forwards HEAD to it."
   @spec pull() :: result()
   def pull do
-    with {:ok, sha, _changed?} <- pull_changed(), do: {:ok, sha}
-  end
-
-  @doc """
-  Same as `pull/0`, also saying whether HEAD moved. A changed lockfile or
-  configuration means the node has to boot again before it can compile.
-  """
-  @spec pull_changed() :: changed_result()
-  def pull_changed do
-    with {:ok, before} <- Git.head(),
-         :ok <- Git.fetch(),
-         {:ok, _output} <- fast_forward(),
-         {:ok, after_sha} <- Git.head() do
-      {:ok, after_sha, before != after_sha}
+    with :ok <- Git.fetch(),
+         {:ok, _output} <- fast_forward() do
+      Git.head()
     end
   end
 

@@ -7,7 +7,7 @@ defmodule AgentBoardWeb.UpdateFlowTest do
   alias AgentBoard.Board
 
   defmodule UpdaterStub do
-    def pull_changed, do: Application.get_env(:agent_board, :updater_result)
+    def pull, do: Application.get_env(:agent_board, :updater_result)
     def restart, do: send(Application.get_env(:agent_board, :updater_test_pid), :restart_called)
   end
 
@@ -30,8 +30,8 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     :ok
   end
 
-  test "a changed HEAD says it is restarting and schedules the restart", %{conn: conn} do
-    Application.put_env(:agent_board, :updater_result, {:ok, "abc123", true})
+  test "a successful update says it is restarting and schedules the restart", %{conn: conn} do
+    Application.put_env(:agent_board, :updater_result, {:ok, "abc123"})
     {:ok, _} = Board.add_repository("fixture", "update")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update")
 
@@ -42,14 +42,14 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     refute html =~ "Já está em dia"
   end
 
-  test "an unchanged HEAD does not pretend to restart", %{conn: conn} do
-    Application.put_env(:agent_board, :updater_result, {:ok, "abc123", false})
-    {:ok, _} = Board.add_repository("fixture", "update-current")
-    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-current")
+  test "a failed update does not pretend to restart", %{conn: conn} do
+    Application.put_env(:agent_board, :updater_result, {:error, :no_network})
+    {:ok, _} = Board.add_repository("fixture", "update-failed")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-failed")
 
     html = render_hook(view, "update", %{})
 
-    assert html =~ "Já está em dia (abc123)"
+    assert html =~ "A atualização falhou"
     refute html =~ "reiniciando o servidor"
   end
 
