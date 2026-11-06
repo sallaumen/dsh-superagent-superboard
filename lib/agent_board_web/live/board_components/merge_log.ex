@@ -1,0 +1,91 @@
+defmodule AgentBoardWeb.BoardComponents.MergeLog do
+  @moduledoc "Mesclados: seven days in dots, then the record by day."
+  use AgentBoardWeb, :html
+
+  import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
+  import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1]
+
+  attr :log, :map, required: true
+  attr :frozen, :boolean, default: false
+  attr :has_history, :boolean, default: false
+
+  def merge_log(assigns) do
+    ~H"""
+    <section id="sec-log" aria-labelledby="sec-log-title">
+      <div class="ab-sec__head">
+        <h2 id="sec-log-title">Mesclados</h2>
+        <span class="ab-sec__count">{count(@log.total, @frozen)} em 7 dias</span>
+        <span class="ab-top__spacer"></span>
+        <button
+          :if={@has_history}
+          type="button"
+          class="ab-btn ab-btn--quiet ab-btn--sm"
+          phx-click="show_panel"
+          phx-value-panel="history"
+        >
+          Histórico <.ico name="ext" />
+        </button>
+      </div>
+
+      <div class="ab-week" aria-label="Merges por dia, últimos 7 dias">
+        <div
+          :for={day <- @log.days}
+          class={["ab-day", day.today && "is-today"]}
+          title={"#{day.n} merges" <> if(day.fail > 0, do: ", #{day.fail} com CI falhando", else: "")}
+        >
+          <div class="ab-day__dots">
+            <span :if={day.n == 0} class="ab-day__zero" aria-hidden="true"></span>
+            <i
+              :for={index <- 1..min(day.n, 8)}
+              :if={day.n > 0}
+              class={index <= day.fail && "is-fail"}
+              aria-hidden="true"
+            ></i>
+            <em :if={day.n > 0}>{day.n}</em>
+          </div>
+          <span class="ab-day__label">{day.label}</span>
+        </div>
+      </div>
+
+      <div :if={@log.total == 0} class="ab-sec__empty">Nenhum PR mesclado nesta semana.</div>
+
+      <div :if={@log.total > 0} class="ab-log">
+        <div :for={group <- @log.groups} class="ab-log__group">
+          <div class="ab-log__day">
+            <span class="ab-label">{group.label}</span>
+            <span class="ab-data-sm ab-faint">
+              {length(group.items)}{if group.more > 0, do: " de #{group.n}", else: ""}
+            </span>
+          </div>
+
+          <a
+            :for={pr <- group.items}
+            class="ab-pr"
+            href={pr.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={"PR ##{pr.number}: #{pr.title} (abre o GitHub em nova aba)"}
+          >
+            <.glyph kind={:done} />
+            <span class="ab-pr__title">
+              <span class="ab-need__id">#{pr.number}</span> {pr.title}
+            </span>
+            <span class="ab-pr__meta">
+              <span class={["ab-tag", pr.ci == "fail" && "ab-tag--halt"]}>
+                <.glyph :if={pr.ci == "fail"} kind={:cifail} />
+                {pr.ciNote}
+              </span>
+              <span class="ab-meta">{pr.review}</span>
+              <span class="ab-data-sm ab-faint">{pr.at}</span>
+            </span>
+          </a>
+        </div>
+      </div>
+    </section>
+    """
+  end
+
+  defp count(0, _frozen), do: "0"
+  defp count(n, true), do: "≥#{n}"
+  defp count(n, false), do: "#{n}"
+end

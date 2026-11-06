@@ -279,7 +279,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    view |> element("#task-#{task.id} button", "Open") |> render_click()
+    view |> element("#task-#{task.id}") |> render_click()
 
     send(view.pid, {:answer, task.id, "All good. The sync is clean and nothing is blocked."})
 

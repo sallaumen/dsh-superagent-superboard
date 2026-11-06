@@ -6,7 +6,7 @@ defmodule AgentBoard.Board.Task do
   @derive {Jason.Encoder,
            only: [:id, :kind, :number, :title, :state, :url, :author, :stopped, :archived]}
 
-  @states ~w(queued running ready blocked done closed stopped archived)
+  @states ~w(queued running question ready blocked done closed stopped archived)
 
   schema "tasks" do
     field :kind, :string, default: "issue"
@@ -18,8 +18,11 @@ defmodule AgentBoard.Board.Task do
     field :author, :string
     field :stopped, :boolean, default: false
     field :archived, :boolean, default: false
+    field :started_at, :utc_datetime
+    field :state_changed_at, :utc_datetime
 
     belongs_to :repository, AgentBoard.Board.Repository
+    belongs_to :origin_task, AgentBoard.Board.Task
     has_many :comments, AgentBoard.Board.Comment
 
     timestamps(type: :utc_datetime)
@@ -38,7 +41,10 @@ defmodule AgentBoard.Board.Task do
       :author,
       :stopped,
       :archived,
-      :repository_id
+      :repository_id,
+      :started_at,
+      :state_changed_at,
+      :origin_task_id
     ])
     |> validate_required([:title, :repository_id])
     |> validate_inclusion(:state, @states)

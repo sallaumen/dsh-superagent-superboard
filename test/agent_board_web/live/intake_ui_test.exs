@@ -61,7 +61,7 @@ defmodule AgentBoardWeb.IntakeUITest do
     end)
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
-    view |> element("button", "Open") |> render_click()
+    view |> element("[data-task]") |> render_click()
 
     html = view |> element("#ask-agent") |> render_submit(%{"body" => "por que demora?"})
     assert html =~ "Question sent"

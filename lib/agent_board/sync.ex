@@ -153,6 +153,7 @@ defmodule AgentBoard.Sync do
       title: issue["title"],
       body: String.slice(issue["body"] || "", 0, 4000),
       state: if(closed, do: "done", else: "queued"),
+      state_changed_at: DateTime.utc_now(),
       url: issue["html_url"],
       author: get_in(issue, ["user", "login"])
     })
@@ -180,6 +181,9 @@ defmodule AgentBoard.Sync do
       if merged, do: "merged", else: if(pull["state"] == "closed", do: "closed", else: "open")
 
     {review_state, checks_state, checks_failed} = rollup_for(client, repository, pull, state)
+    existing = Repo.get_by(PullRequest, repository_id: repository.id, number: pull["number"])
+    now = DateTime.utc_now()
+    checks_changed_at = checks_changed_at(existing, checks_state, now)
 
     %PullRequest{repository_id: repository.id, number: pull["number"]}
     |> PullRequest.changeset(%{
@@ -191,7 +195,8 @@ defmodule AgentBoard.Sync do
       merged_at: to_dt(pull["merged_at"]),
       review_state: review_state,
       checks_state: checks_state,
-      checks_failed: checks_failed
+      checks_failed: checks_failed,
+      checks_changed_at: checks_changed_at
     })
     |> Repo.insert(
       on_conflict:
@@ -204,6 +209,7 @@ defmodule AgentBoard.Sync do
            :review_state,
            :checks_state,
            :checks_failed,
+           :checks_changed_at,
            :merged_at,
            :updated_at
          ]},
@@ -319,34 +325,68 @@ defmodule AgentBoard.Sync do
         :ok
 
       overlay ->
-        Enum.each(ticket["numbers"], &apply_overlay(repository, by_number[&1], &1, overlay))
+        Enum.each(
+          ticket["numbers"],
+          &apply_overlay(repository, by_number[&1], &1, overlay, ticket["started_at"])
+        )
     end
   end
 
-  defp apply_overlay(repository, issue, number, overlay) do
+  defp apply_overlay(repository, issue, number, overlay, started_at) do
     if issue && not (issue["state"] == "closed" and overlay != "done") do
-      Repo.update_all(
+      base =
         from(t in Task,
           where:
             t.repository_id == ^repository.id and t.number == ^number and
               not t.stopped and not t.archived
-        ),
-        set: [state: overlay, updated_at: DateTime.utc_now()]
+        )
+
+      now = DateTime.utc_now()
+
+      Repo.update_all(from(t in base, where: t.state != ^overlay),
+        set: [state: overlay, state_changed_at: now, updated_at: now]
       )
+
+      if started_at do
+        Repo.update_all(
+          from(t in base,
+            where: is_nil(t.started_at) or t.started_at < ^started_at
+          ),
+          set: [started_at: started_at]
+        )
+      end
     end
   end
+
+  defp checks_changed_at(_existing, nil, _now), do: nil
+
+  defp checks_changed_at(nil, _checks_state, now), do: now
+
+  defp checks_changed_at(%PullRequest{checks_state: checks_state} = existing, checks_state, _now),
+    do: existing.checks_changed_at
+
+  defp checks_changed_at(_existing, _checks_state, now), do: now
 
   @doc "The state a ticket imposes on the task, or nil to keep the issue baseline."
   def ticket_state(ticket) do
     cond do
-      ticket["stopped"] || ticket["archived"] -> nil
-      ticket["assignment"] == "running" -> "running"
+      stopped?(ticket) -> nil
+      ticket["report"] == "waiting" -> "question"
+      blocked_ticket?(ticket) -> "blocked"
       ticket["report"] == "ready" -> "ready"
-      ticket["report"] == "blocked" or ticket["assignment"] == "blocked" -> "blocked"
+      running_ticket?(ticket) -> "running"
       ticket["ended_outcome"] == "merged" -> "done"
       true -> nil
     end
   end
+
+  defp stopped?(ticket), do: ticket["stopped"] || ticket["archived"]
+
+  defp blocked_ticket?(ticket),
+    do: ticket["report"] in ["blocked", "failed"] or ticket["assignment"] == "blocked"
+
+  defp running_ticket?(ticket),
+    do: ticket["assignment"] == "running" and is_nil(ticket["idle_at"])
 
   @doc "The strongest review state."
   def review_rollup(reviews) do

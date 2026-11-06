@@ -569,3 +569,54 @@ body { margin: 0; background: var(--paper); }
 @media (prefers-reduced-motion: reduce) {
   .ab-sync-pop, .ab-toast { animation: none; }
 }
+
+/* ---------- the reading lanes: links, reasons and record rows ---------- */
+
+.ab-digest__link {
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.ab-digest__link:hover { border-bottom-color: currentColor; }
+.ab-digest__link.is-you, .ab-digest .is-you { color: var(--you); }
+.ab-digest__link.is-agent, .ab-digest .is-agent { color: var(--agent); }
+.ab-digest__link.is-halt, .ab-digest .is-halt { color: var(--halt); }
+.ab-digest .is-plain { color: inherit; }
+.ab-digest__link.is-plain { color: var(--ink); }
+
+.ab-need__why code,
+.ab-row__note code,
+.ab-pr__meta code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--surface);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.ab-need { text-decoration: none; color: inherit; }
+.ab-need__title { padding: 0; }
+.ab-need__side { align-items: baseline; }
+
+.ab-pr { text-decoration: none; color: inherit; }
+.ab-pr:focus-visible { border-radius: var(--radius-sm); }
+.ab-log__group { display: block; }
+
+.ab-now > .ab-run:last-child { margin-bottom: 0; }
+.ab-need:last-child { margin-bottom: 0; }
+
+/* The section counts are data, so they use the same mono voice. */
+.ab-sec__head .ab-sec__count { white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .ab-need { grid-template-columns: 14px minmax(0, 1fr); }
+  .ab-need__why { grid-column: 2; }
+  .ab-need__side { grid-column: 2; grid-row: auto; }
+  .ab-need__actions { grid-column: 2; grid-row: auto; justify-self: start; margin: 0 0 0 -8px; }
+}

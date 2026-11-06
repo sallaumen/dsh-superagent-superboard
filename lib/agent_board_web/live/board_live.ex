@@ -6,6 +6,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   alias AgentBoard.{
     AgentState,
+    AgentWorktree,
     AI,
     Announcer,
     Board,
@@ -14,7 +15,9 @@ defmodule AgentBoardWeb.BoardLive do
     Intake,
     Repo,
     Settings,
-    Voice
+    Time,
+    Voice,
+    Work
   }
 
   alias AgentBoard.Board.Task
@@ -24,6 +27,11 @@ defmodule AgentBoardWeb.BoardLive do
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
   import AgentBoardWeb.BoardComponents.FreshnessBeacon, only: [beacon: 1]
   import AgentBoardWeb.BoardComponents.FrozenBanner, only: [frozen_banner: 1]
+  import AgentBoardWeb.BoardComponents.MergeLog, only: [merge_log: 1]
+  import AgentBoardWeb.BoardComponents.NeedsYou, only: [needs_you: 1]
+  import AgentBoardWeb.BoardComponents.NowLane, only: [now_lane: 1]
+  import AgentBoardWeb.BoardComponents.QueueList, only: [queue_list: 1]
+  import AgentBoardWeb.BoardComponents.Summary, only: [summary: 1]
 
   alias AgentBoardWeb.{
     BoardComponents,
@@ -43,11 +51,21 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def mount(params, _session, socket) do
     repos = Board.list_repositories()
-    resume = if connected?(socket), do: get_connect_params(socket)["board_resume"]
+    connect = if connected?(socket), do: get_connect_params(socket), else: %{}
+    resume = connect["board_resume"]
+    last_visit = parse_last_visit(connect["board_last_visit"])
+    tz_offset = parse_offset(connect["board_tz_offset"])
 
     socket =
       assign(socket,
         repos: repos,
+        last_visit: last_visit,
+        tz_offset: tz_offset,
+        work: empty_work(),
+        digest: nil,
+        needs_expanded: false,
+        queue_limit: 8,
+        queue_filter: :all,
         repo: nil,
         board: empty(),
         resume: resume,
@@ -90,6 +108,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp empty do
     %{
       running: [],
+      question: [],
       ready: [],
       blocked: [],
       merged: [],
@@ -108,6 +127,104 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp repo_slug(nil), do: ""
   defp repo_slug(repo), do: "#{repo.owner}/#{repo.name}"
+
+  defp parse_last_visit(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, at, _offset} -> at
+      _ -> nil
+    end
+  end
+
+  defp parse_last_visit(_value), do: nil
+
+  defp parse_offset(value) when is_integer(value), do: value
+
+  defp parse_offset(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {offset, ""} -> offset
+      _ -> 0
+    end
+  end
+
+  defp parse_offset(_value), do: 0
+
+  defp work_for(repo, board, agent, freshness, socket) do
+    now = DateTime.utc_now()
+    tz_offset = socket.assigns.tz_offset
+    last_visit = socket.assigns.last_visit
+    frozen_at = if freshness.frozen?, do: freshness.at, else: nil
+    tickets = tickets_by_number(agent.tickets)
+
+    %{
+      running: Enum.map(board.running, &running_card(&1, tickets, now, frozen_at)),
+      needs:
+        Work.needs(repo, board,
+          now: now,
+          last_visit: last_visit,
+          tz_offset: tz_offset,
+          tickets_by_number: tickets
+        ),
+      queue:
+        Work.queue(repo, board,
+          now: now,
+          last_visit: last_visit,
+          filter: socket.assigns.queue_filter,
+          limit: socket.assigns.queue_limit
+        ),
+      log: Work.merge_log(repo, now: now, tz_offset: tz_offset),
+      digest:
+        Work.digest(repo, board,
+          now: now,
+          last_visit: last_visit,
+          tz_offset: tz_offset,
+          frozen_at: frozen_at
+        )
+    }
+  end
+
+  defp running_card(task, tickets, now, frozen_at) do
+    ticket = Map.get(tickets, task.number)
+    started_at = task.started_at
+
+    %{
+      id: task.id,
+      number: task.number,
+      title: task.title,
+      step: AgentWorktree.step(ticket),
+      elapsed: started_at && Time.age_seconds(started_at, frozen_at || now),
+      agent: nil,
+      phases: []
+    }
+  end
+
+  defp tickets_by_number(tickets) do
+    for ticket <- tickets,
+        number <- ticket["numbers"] || [],
+        into: %{},
+        do: {number, ticket}
+  end
+
+  defp empty?(board) do
+    total = board.task_counts |> Map.values() |> Enum.sum()
+    total == 0 and board.merged == []
+  end
+
+  defp empty_work do
+    %{
+      running: [],
+      needs: [],
+      queue: %{
+        items: [],
+        total: 0,
+        hidden: 0,
+        limit: 8,
+        counts: %{all: 0, new: 0, split: 0, dupes: 0},
+        filters: [],
+        filter: :all
+      },
+      log: %{days: [], groups: [], total: 0}
+    }
+  end
 
   defp unknown_freshness do
     Freshness.snapshot(
@@ -140,6 +257,8 @@ defmodule AgentBoardWeb.BoardLive do
       freshness: unknown_freshness(),
       repo_overview: Board.repo_overview(),
       agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
+      work: empty_work(),
+      digest: nil,
       live: connected?(socket),
       ai_calls: [],
       ai_status: AI.status()
@@ -167,7 +286,10 @@ defmodule AgentBoardWeb.BoardLive do
             voice_action: nil,
             voice_generation: socket.assigns.voice_generation + 1,
             toast: nil,
-            highlight_changes: false
+            highlight_changes: false,
+            needs_expanded: false,
+            queue_limit: 8,
+            queue_filter: :all
           ),
         else: socket
 
@@ -187,6 +309,8 @@ defmodule AgentBoardWeb.BoardLive do
             agent: agent
           )
 
+        work = work_for(repo, board, agent, freshness, socket)
+
         assign(socket,
           repo: repo,
           board: board,
@@ -197,6 +321,8 @@ defmodule AgentBoardWeb.BoardLive do
           freshness: freshness,
           repo_overview: Board.repo_overview(),
           agent_snapshot: agent,
+          work: work,
+          digest: work.digest,
           ai_calls: AI.recent(5),
           ai_status: AI.status(),
           live: connected?(socket)
@@ -213,6 +339,8 @@ defmodule AgentBoardWeb.BoardLive do
           freshness: unknown_freshness(),
           repo_overview: Board.repo_overview(),
           agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
+          work: empty_work(),
+          digest: nil,
           live: connected?(socket),
           ai_calls: [],
           ai_status: AI.status()
@@ -354,6 +482,31 @@ defmodule AgentBoardWeb.BoardLive do
      assign(socket,
        toast: %{text: text, action: nil, changes: changes}
      )}
+  end
+
+  @impl true
+  def handle_event("needs_more", _params, socket) do
+    {:noreply, assign(socket, :needs_expanded, true)}
+  end
+
+  @impl true
+  def handle_event("queue_more", _params, socket) do
+    next_limit = if socket.assigns.queue_limit < 50, do: 50, else: socket.assigns.queue_limit + 50
+
+    {:noreply, socket |> assign(:queue_limit, next_limit) |> load(socket.assigns.repo)}
+  end
+
+  @impl true
+  def handle_event("filter_queue", %{"filter" => filter}, socket) do
+    filter =
+      case filter do
+        "new" -> :new
+        "split" -> :split
+        "dupes" -> :dupes
+        _ -> :all
+      end
+
+    {:noreply, socket |> assign(:queue_filter, filter) |> load(socket.assigns.repo)}
   end
 
   @impl true
@@ -1361,37 +1514,60 @@ defmodule AgentBoardWeb.BoardLive do
               </div>
             </header>
 
+            <.summary :if={@repo} digest={@digest} />
+
             <.frozen_banner :if={@repo} freshness={@freshness} />
 
-            <div :if={@repo} class="ab-legacy">
-              <div class="board-work">
-                <div class="active-lanes grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                  <%= for {title, key} <- [
-                    {"Running", :running},
-                    {"Ready", :ready},
-                    {"Blocked", :blocked},
-                    {"Queued", :queued}
-                  ] do %>
-                    <.live_component
-                      module={BoardComponents.Column}
-                      id={"column-#{key}"}
-                      title={title}
-                      state={key}
-                      items={Map.get(@board, key)}
-                      total={Map.fetch!(@board.task_counts, key)}
-                      has_more={Map.fetch!(@board.task_has_more, key)}
-                      history_shortcut={
-                        key == :running and @board.merged != [] and
-                          Enum.all?(Map.values(@board.task_counts), &(&1 == 0))
-                      }
-                    />
-                  <% end %>
-                </div>
-                <.live_component
-                  module={BoardComponents.Archive}
-                  id="merged-column"
-                  items={@board.merged}
-                  has_more={@board.merged_has_more}
+            <div :if={@repo && empty?(@board)} class="ab-empty">
+              <h2>
+                {if @sync_snapshot.last_success,
+                  do: "Nada aconteceu aqui ainda.",
+                  else: "Sem dados ainda."}
+              </h2>
+              <p>
+                {if @sync_snapshot.last_success,
+                  do:
+                    "O agente observa este repositório, mas ainda não recebeu nenhuma tarefa. Escreva ou dite o primeiro pedido; ele entra na fila e aparece em Agora quando o agente pegar.",
+                  else:
+                    "Aguardando a primeira sincronia. Quando o GitHub responder, o board mostra as tarefas, os merges e o que espera por você."}
+              </p>
+              <button
+                type="button"
+                class="ab-btn ab-btn--primary"
+                phx-click="show_panel"
+                phx-value-panel="create"
+                data-panel-trigger
+                aria-haspopup="dialog"
+                aria-controls="panel-create"
+              >
+                <.ico name="plus" />Novo pedido
+              </button>
+            </div>
+
+            <div :if={@repo && not empty?(@board)} class="ab-cols">
+              <div class="ab-col">
+                <.now_lane
+                  running={@work.running}
+                  frozen={@freshness.frozen?}
+                  frozen_at={@freshness.at}
+                  sync_at={@freshness.at}
+                  tz_offset={@tz_offset}
+                  next_queued={@work.queue.items |> List.first() |> then(&(&1 && &1.number))}
+                />
+                <.needs_you
+                  needs={@work.needs}
+                  max={if @needs_expanded, do: 999, else: 5}
+                  selected={@conversation && @conversation.id}
+                  last_visit={@last_visit}
+                  frozen={@freshness.frozen?}
+                />
+                <.queue_list queue={@work.queue} frozen={@freshness.frozen?} />
+              </div>
+              <div class="ab-col">
+                <.merge_log
+                  log={@work.log}
+                  frozen={@freshness.frozen?}
+                  has_history={@board.merged != []}
                 />
               </div>
             </div>
@@ -1425,6 +1601,21 @@ defmodule AgentBoardWeb.BoardLive do
             <.ico name="close" />
           </button>
         </div>
+
+        <BoardComponents.Panel.shell
+          name="history"
+          title="Histórico de merges"
+          active={@panel == "history"}
+          flash={@flash}
+        >
+          <.live_component
+            :if={@repo}
+            module={BoardComponents.Archive}
+            id="merged-column-history"
+            items={@board.merged}
+            has_more={@board.merged_has_more}
+          />
+        </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
           name="conversation"
