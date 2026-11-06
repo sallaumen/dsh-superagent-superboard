@@ -96,6 +96,10 @@ defmodule AgentBoard.Sync.Freshness do
   defp note(:reconnecting, _at),
     do: "A conexão com o board caiu. O que está na tela é o último estado conhecido."
 
+  defp note(:offline, nil),
+    do:
+      "Não houve uma sincronia bem-sucedida; os dados salvos são os últimos que chegaram. Nada abaixo mudou desde então — pode ter mudado lá fora."
+
   defp note(:offline, at),
     do:
       "O último dado completo é de #{time(at)}. Nada abaixo mudou desde então — pode ter mudado lá fora."

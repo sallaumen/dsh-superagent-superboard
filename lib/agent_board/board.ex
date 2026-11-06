@@ -553,6 +553,42 @@ defmodule AgentBoard.Board do
     end)
   end
 
+  @doc """
+  How many observed changes happened after a point in time. Used by the
+  reconnect notice even when the LiveView process did not survive the drop.
+  """
+  def changes_since(repository, %DateTime{} = since) do
+    task_changes =
+      Repo.aggregate(
+        from(t in Task,
+          where:
+            t.repository_id == ^repository.id and
+              (t.inserted_at > ^since or t.state_changed_at > ^since)
+        ),
+        :count
+      )
+
+    merged =
+      Repo.aggregate(
+        from(p in PullRequest,
+          where: p.repository_id == ^repository.id and p.merged_at > ^since
+        ),
+        :count
+      )
+
+    comments =
+      Repo.aggregate(
+        from(c in Comment,
+          join: t in Task,
+          on: c.task_id == t.id,
+          where: t.repository_id == ^repository.id and c.inserted_at > ^since
+        ),
+        :count
+      )
+
+    task_changes + merged + comments
+  end
+
   @doc "How many visible things changed between two loaded boards."
   def change_count(nil, _new), do: 0
 

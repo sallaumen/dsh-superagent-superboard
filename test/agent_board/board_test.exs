@@ -416,3 +416,30 @@ defmodule AgentBoard.BoardOverviewTest do
     |> Repo.insert!()
   end
 end
+
+defmodule AgentBoard.BoardChangesTest do
+  @moduledoc "The reconnect count uses stored timestamps, not a live process."
+  use AgentBoard.DataCase, async: true
+
+  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.Board.Task
+
+  test "changes since a point count tasks, merges and comments" do
+    {:ok, repo} = Board.add_repository("fixture", "changes-since")
+    since = DateTime.add(DateTime.utc_now(), -60, :second)
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 1,
+      title: "New after the freeze",
+      state: "queued",
+      state_changed_at: DateTime.utc_now()
+    })
+    |> Repo.insert!()
+
+    assert Board.changes_since(repo, since) == 1
+    assert Board.changes_since(repo, DateTime.add(since, 60, :second)) == 0
+  end
+end

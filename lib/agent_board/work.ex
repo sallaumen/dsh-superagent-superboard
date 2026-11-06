@@ -53,7 +53,7 @@ defmodule AgentBoard.Work do
 
     (failures ++ blocked ++ review ++ question)
     |> Enum.sort_by(fn need ->
-      {rank(need.kind), not need.is_new, -(need.age_seconds || 0)}
+      {not need.is_new, rank(need.kind), -(need.age_seconds || 0)}
     end)
   end
 
@@ -352,25 +352,25 @@ defmodule AgentBoard.Work do
     last_visit = Keyword.get(opts, :last_visit)
     offset = Keyword.get(opts, :tz_offset, 0)
     frozen_at = Keyword.get(opts, :frozen_at)
+    frozen? = Keyword.get(opts, :frozen, not is_nil(frozen_at))
 
     if is_nil(last_visit) do
-      first_digest(repository, board, now, offset, frozen_at)
+      first_digest(repository, board, now, offset, frozen_at, frozen?)
     else
-      since_digest(repository, board, last_visit, now, offset, frozen_at)
+      since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?)
     end
   end
 
-  defp first_digest(repository, board, now, offset, frozen_at) do
+  defp first_digest(repository, board, now, offset, frozen_at, frozen?) do
     case first_phrases(repository, board) do
       [] ->
         nil
 
       phrases ->
         %{
-          prefix:
-            (frozen_at && "Até #{Time.local_time(frozen_at, offset)}: ") || "Primeira visita: ",
+          prefix: first_prefix(frozen?, frozen_at, offset),
           segments: join_phrases(phrases),
-          suffix: (frozen_at && " Depois disso, não sabemos.") || ".",
+          suffix: (frozen? && " Depois disso, não sabemos.") || ".",
           now: now
         }
     end
@@ -386,7 +386,7 @@ defmodule AgentBoard.Work do
     [
       failures > 0 &&
         [%{text: "#{failures} #{plural(failures, "PR")} com CI falhando na main", role: :halt}],
-      running > 0 && [%{text: "#{running} #{plural(running, "rodando")}", role: :agent}],
+      running > 0 && [%{text: "#{running} rodando", role: :agent}],
       waiting > 0 && [%{text: "#{waiting} esperando você", role: :you}],
       blocked > 0 && [%{text: "#{blocked} #{plural(blocked, "bloqueado")}", role: :halt}],
       queued > 0 && [%{text: "#{queued} na fila", role: :agent}]
@@ -405,21 +405,30 @@ defmodule AgentBoard.Work do
     )
   end
 
-  defp since_digest(repository, board, last_visit, now, offset, frozen_at) do
+  defp since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?) do
     counts = since_counts(repository, last_visit)
     phrases = since_phrases(repository, board, last_visit, counts, offset)
 
     segments =
       if phrases == [] do
-        [%{text: "nada mudou", role: :plain}]
+        [
+          %{
+            text:
+              if(frozen? and is_nil(frozen_at), do: "não sabemos o que mudou", else: "nada mudou"),
+            role: :plain
+          }
+        ]
       else
         join_phrases(phrases)
       end
 
+    suffix =
+      if frozen? and is_nil(frozen_at), do: ".", else: since_suffix(phrases, frozen?)
+
     %{
-      prefix: since_prefix(last_visit, offset, frozen_at, now),
+      prefix: since_prefix(last_visit, offset, frozen_at, frozen?, now),
       segments: segments,
-      suffix: since_suffix(phrases, frozen_at),
+      suffix: suffix,
       now: now
     }
   end
@@ -507,15 +516,23 @@ defmodule AgentBoard.Work do
     |> Enum.map(&List.wrap/1)
   end
 
-  defp since_prefix(_last_visit, offset, %DateTime{} = frozen_at, _now),
+  defp first_prefix(true, %DateTime{} = frozen_at, offset),
+    do: "Até #{Time.local_time(frozen_at, offset)}: "
+
+  defp first_prefix(true, nil, _offset), do: "Sem uma sincronia concluída: "
+  defp first_prefix(false, _frozen_at, _offset), do: "Primeira visita: "
+
+  defp since_prefix(_last_visit, offset, %DateTime{} = frozen_at, true, _now),
     do: "Até #{Time.local_time(frozen_at, offset)}, "
 
-  defp since_prefix(last_visit, offset, nil, now),
+  defp since_prefix(_last_visit, _offset, nil, true, _now),
+    do: "Sem uma sincronia concluída, "
+
+  defp since_prefix(last_visit, offset, nil, false, now),
     do: "Desde #{Time.since_label(last_visit, offset, now)} "
 
-  defp since_suffix(_phrases, %DateTime{}), do: ". Depois disso, não sabemos."
-  defp since_suffix([], nil), do: "nada mudou."
-  defp since_suffix(_phrases, nil), do: "."
+  defp since_suffix(_phrases, true), do: ". Depois disso, não sabemos."
+  defp since_suffix(_phrases, false), do: "."
 
   defp queue_phrase(1), do: %{text: "1 nova na fila", role: :agent}
   defp queue_phrase(n), do: %{text: "#{n} novas na fila", role: :agent}

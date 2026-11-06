@@ -1211,3 +1211,36 @@ defmodule AgentBoardWeb.BoardShellTest do
     |> Repo.insert!()
   end
 end
+
+defmodule AgentBoardWeb.ReconnectSinceTest do
+  @moduledoc "A reconnect after the LiveView process is gone still counts stored changes."
+  use AgentBoardWeb.ConnCase, async: true
+
+  import Phoenix.LiveViewTest
+
+  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.Board.Task
+
+  test "the notice counts changes after the frozen time sent by the client", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "reconnect-since")
+    Board.log_event(repo.id, "sync", "fixture/reconnect-since", %{"errors" => 0})
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/reconnect-since")
+    since = DateTime.utc_now() |> DateTime.add(-2, :second)
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 1,
+      title: "Arrived while away",
+      state: "queued",
+      state_changed_at: DateTime.utc_now()
+    })
+    |> Repo.insert!()
+
+    render_hook(view, "board_reconnected", %{"since" => DateTime.to_iso8601(since)})
+
+    assert has_element?(view, ".ab-toast", "1 mudança")
+  end
+end

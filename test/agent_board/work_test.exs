@@ -129,3 +129,29 @@ defmodule AgentBoard.WorkTest do
     |> Repo.insert!()
   end
 end
+
+defmodule AgentBoard.WorkFrozenTest do
+  @moduledoc "The frozen digest never claims a change it cannot see."
+  use AgentBoard.DataCase, async: true
+
+  alias AgentBoard.{Board, Work}
+
+  test "without a successful sync the digest says it does not know" do
+    {:ok, repo} = Board.add_repository("fixture", "frozen-digest")
+    now = ~U[2026-11-06 15:00:00Z]
+    board = %{running: [], question: [], ready: [], blocked: [], task_counts: %{queued: 0}}
+
+    digest =
+      Work.digest(repo, board,
+        now: now,
+        last_visit: DateTime.add(now, -3600, :second),
+        tz_offset: 0,
+        frozen: true,
+        frozen_at: nil
+      )
+
+    assert digest.prefix == "Sem uma sincronia concluída, "
+    assert Enum.map_join(digest.segments, "", & &1.text) == "não sabemos o que mudou"
+    assert digest.suffix == "."
+  end
+end

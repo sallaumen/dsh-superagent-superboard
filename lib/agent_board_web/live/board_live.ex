@@ -184,12 +184,17 @@ defmodule AgentBoardWeb.BoardLive do
         ),
       log: Work.merge_log(repo, now: now, tz_offset: tz_offset),
       digest:
-        Work.digest(repo, board,
-          now: now,
-          last_visit: last_visit,
-          tz_offset: tz_offset,
-          frozen_at: frozen_at
-        )
+        if freshness.state == :unknown do
+          nil
+        else
+          Work.digest(repo, board,
+            now: now,
+            last_visit: last_visit,
+            tz_offset: tz_offset,
+            frozen_at: frozen_at,
+            frozen: freshness.frozen?
+          )
+        end
     }
   end
 
@@ -522,13 +527,22 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("board_reconnected", _params, socket) do
+  def handle_event("board_reconnected", params, socket) do
     old_board = socket.assigns.board
     old_snapshot = socket.assigns.sync_snapshot
     socket = load(socket, socket.assigns.repo)
-    changes = Board.change_count(old_board, socket.assigns.board)
-    at = old_snapshot.last_success && old_snapshot.last_success.inserted_at
-    since = if at, do: Calendar.strftime(at, "%H:%M"), else: "antes da queda"
+
+    {changes, at} =
+      case parse_last_visit(params["since"]) do
+        %DateTime{} = since ->
+          {Board.changes_since(socket.assigns.repo, since), since}
+
+        nil ->
+          {Board.change_count(old_board, socket.assigns.board),
+           old_snapshot.last_success && old_snapshot.last_success.inserted_at}
+      end
+
+    since = if at, do: Time.local_time(at, socket.assigns.tz_offset), else: "antes da queda"
 
     text =
       case changes do
@@ -537,10 +551,7 @@ defmodule AgentBoardWeb.BoardLive do
         n -> "Reconectado. #{n} mudanças desde #{since}."
       end
 
-    {:noreply,
-     assign(socket,
-       toast: %{text: text, action: nil, changes: changes}
-     )}
+    {:noreply, assign(socket, toast: %{text: text, action: nil, changes: changes})}
   end
 
   @impl true
@@ -1565,6 +1576,7 @@ defmodule AgentBoardWeb.BoardLive do
         data-base-url={BoardNavigation.path(@repo)}
         data-repo={repo_slug(@repo)}
         data-sync={@freshness.state}
+        data-sync-at={@freshness.at && DateTime.to_iso8601(@freshness.at)}
         data-frozen={to_string(@freshness.frozen?)}
         data-connection="live"
         class="agent-board ab ab-shell"
