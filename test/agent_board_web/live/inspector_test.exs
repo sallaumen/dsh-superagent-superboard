@@ -70,6 +70,26 @@ defmodule AgentBoardWeb.InspectorTest do
     assert has_element?(view, "#conversation", "CI falhou")
   end
 
+  test "hidden executor markers never reach the conversation", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-marker")
+    task = task(repo, 32, "Visible message", "ready")
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: task.id,
+      github_id: 2,
+      author: "sallaumen-agent",
+      kind: "agent",
+      body: "Entendido. <!-- dsh-superagent:abc123 -->"
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", task.id))
+
+    assert has_element?(view, "#conversation", "Entendido.")
+    refute render(view) =~ "dsh-superagent"
+  end
+
   test "archiving from the inspector keeps the task reachable", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "inspector-act")
     task = task(repo, 30, "Archive me", "queued")
