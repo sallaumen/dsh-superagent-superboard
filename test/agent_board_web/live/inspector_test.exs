@@ -68,7 +68,7 @@ defmodule AgentBoardWeb.InspectorTest do
     assert has_element?(view, "#conversation", "#42")
     assert has_element?(view, "#conversation", "Store replays")
     assert has_element?(view, "#conversation", "Abrir no GitHub")
-    assert has_element?(view, "#conversation", "CI remoto falhou")
+    assert has_element?(view, "#conversation", "CI local ?")
   end
 
   test "the PR tab shows the local gate and explains the remote failure on hover" do

@@ -88,7 +88,7 @@ defmodule AgentBoard.WorkTest do
     item = hd(hd(log.groups).items)
 
     assert item.ci == "unknown"
-    assert item.ciNote == "CI remoto falhou"
+    assert item.ciNote == "CI local ?"
     assert item.ciTitle =~ "sem evidência de CI local"
     assert hd(log.days).fail == 0
   end

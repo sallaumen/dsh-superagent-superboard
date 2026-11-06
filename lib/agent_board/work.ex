@@ -298,7 +298,7 @@ defmodule AgentBoard.Work do
   end
 
   defp ci_status(%PullRequest{checks_state: "failure"} = pull, nil) do
-    {"unknown", "CI remoto falhou", remote_failure_title(pull)}
+    {"unknown", "CI local ?", remote_failure_title(pull)}
   end
 
   defp ci_status(%PullRequest{checks_state: "success"}, nil),
