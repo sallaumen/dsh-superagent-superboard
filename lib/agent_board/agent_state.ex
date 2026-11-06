@@ -155,9 +155,30 @@ defmodule AgentBoard.AgentState do
         (ticket["channels"] || [])
         |> Enum.map(&get_in(&1, ["address", "url"]))
         |> Enum.filter(&is_binary/1),
+      "own_threads" => own_threads(ticket, numbers),
       "reports" => reports(ticket)
     }
   end
+
+  # The GitHub threads the ticket opened itself (`follows` with `own`): the PR
+  # it is waiting a review on. The issue it works for is a channel, not a
+  # thread it owns, so it is left out even when the runner lists it.
+  defp own_threads(ticket, numbers) do
+    (ticket["follows"] || [])
+    |> Enum.filter(&(is_map(&1) and &1["own"] == true))
+    |> Enum.map(&thread_number(&1["thread"]))
+    |> Enum.reject(&(is_nil(&1) or &1 in numbers))
+    |> Enum.uniq()
+  end
+
+  defp thread_number("github:" <> rest) do
+    case Integer.parse(rest) do
+      {number, ""} -> number
+      _ -> nil
+    end
+  end
+
+  defp thread_number(_other), do: nil
 
   defp reports(ticket) do
     (ticket["assignments"] || [])

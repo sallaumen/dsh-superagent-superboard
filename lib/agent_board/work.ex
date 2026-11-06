@@ -9,8 +9,8 @@ defmodule AgentBoard.Work do
 
   import Ecto.Query, warn: false
 
+  alias AgentBoard.{Board, Repo, Sync, Time, Titles}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
-  alias AgentBoard.{Repo, Time, Titles}
 
   @queue_limit 8
   @day_limit 3
@@ -25,19 +25,22 @@ defmodule AgentBoard.Work do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     last_visit = Keyword.get(opts, :last_visit)
     tickets = Keyword.get(opts, :tickets_by_number, %{})
+    local_ci = Keyword.get(opts, :local_ci, %{})
 
-    blocked =
-      board
-      |> Map.get(:blocked, [])
-      |> Enum.map(&task_need(&1, :blocked, now, last_visit, tickets))
+    ready = Map.get(board, :ready, [])
+    pulls = Board.linked_pull_requests(ready, tickets)
 
-    review =
-      board |> Map.get(:ready, []) |> Enum.map(&task_need(&1, :review, now, last_visit, tickets))
+    context = %{
+      now: now,
+      last_visit: last_visit,
+      tickets: tickets,
+      pulls: pulls,
+      local_ci: local_ci
+    }
 
-    question =
-      board
-      |> Map.get(:question, [])
-      |> Enum.map(&task_need(&1, :question, now, last_visit, tickets))
+    blocked = board |> Map.get(:blocked, []) |> Enum.map(&task_need(&1, :blocked, context))
+    review = Enum.map(ready, &task_need(&1, :review, context))
+    question = board |> Map.get(:question, []) |> Enum.map(&task_need(&1, :question, context))
 
     (blocked ++ review ++ question)
     |> Enum.sort_by(fn need ->
@@ -45,9 +48,14 @@ defmodule AgentBoard.Work do
     end)
   end
 
-  defp task_need(task, kind, now, last_visit, tickets) do
+  # Every item says what to do, where and why: the kind is the what, the
+  # actions are the where, and `why` is the evidence the board has. A fact
+  # the board cannot see is said to be missing, never filled in.
+  defp task_need(task, kind, context) do
     at = task.state_changed_at || task.updated_at || task.inserted_at
-    ticket = Map.get(tickets, task.number)
+    ticket = Map.get(context.tickets, task.number)
+    pull = Map.get(context.pulls, task.id)
+    ci = pull && need_ci(pull, Map.get(context.local_ci, pull.number))
 
     %{
       key: "task-#{task.id}",
@@ -55,33 +63,69 @@ defmodule AgentBoard.Work do
       number: task.number,
       kind: kind,
       title: task.title,
-      why: task_why(task, kind, ticket),
-      age_seconds: Time.age_seconds(at, now),
-      is_new: new?(at, last_visit),
-      actions: [%{label: action_label(kind), task_id: task.id}]
+      why: task_why(task, kind, ticket, pull),
+      ci: ci,
+      age_seconds: Time.age_seconds(at, context.now),
+      is_new: new?(at, context.last_visit),
+      actions: need_actions(task, kind, pull)
     }
   end
 
-  defp task_why(_task, :review, _ticket), do: "**PR pronto para revisão**"
+  defp task_why(_task, :review, _ticket, %PullRequest{number: number}),
+    do: "**PR ##{number} pronto para revisão**"
 
-  defp task_why(task, :question, ticket) do
-    case last_agent_comment(task) do
-      nil ->
-        case ticket && ticket["report_summary"] do
-          summary when is_binary(summary) -> "**O agente perguntou:** " <> excerpt(summary)
-          _ -> "**O agente está esperando sua resposta**"
-        end
+  defp task_why(_task, :review, ticket, nil) do
+    case ticket && ticket["report_summary"] do
+      summary when is_binary(summary) and summary != "" ->
+        "**Pronto para revisão**, PR não identificado. O agente disse: " <> excerpt(summary)
 
-      comment ->
-        "**O agente perguntou:** " <> excerpt(comment.body)
+      _ ->
+        "**Pronto para revisão**, PR não identificado pelo board. Abra a conversa."
     end
   end
 
-  defp task_why(_task, :blocked, ticket) do
-    case ticket && ticket["report_summary"] do
-      summary when is_binary(summary) -> "**Bloqueado:** " <> excerpt(summary)
-      _ -> "**Bloqueado**"
+  defp task_why(task, :question, ticket, _pull) do
+    question =
+      case last_agent_comment(task) do
+        %Comment{body: body} -> if Sync.question?(body), do: body
+        nil -> nil
+      end
+
+    summary = ticket && ticket["report_summary"]
+
+    cond do
+      question ->
+        "**O agente perguntou:** " <> excerpt(question)
+
+      is_binary(summary) and AgentBoard.Sync.question?(summary) ->
+        "**O agente perguntou:** " <> excerpt(summary)
+
+      true ->
+        "**O agente espera uma resposta sua.** Abra a conversa e responda."
     end
+  end
+
+  defp task_why(_task, :blocked, ticket, _pull) do
+    case ticket && ticket["report_summary"] do
+      summary when is_binary(summary) and summary != "" -> "**Bloqueado:** " <> excerpt(summary)
+      _ -> "**Bloqueado**, sem motivo no relatório do agente. Abra o detalhe."
+    end
+  end
+
+  defp need_actions(task, :review, %PullRequest{url: url, number: number}) when is_binary(url) do
+    [
+      %{label: action_label(:review), task_id: task.id},
+      %{label: "Abrir PR ##{number}", url: url}
+    ]
+  end
+
+  defp need_actions(task, kind, _pull), do: [%{label: action_label(kind), task_id: task.id}]
+
+  # The same reading as Mesclados: the local gate is the evidence, the red
+  # remote check is quiet, and no local report is a `?`, not a pass.
+  defp need_ci(pull, local) do
+    {state, note, title} = ci_status(pull, local)
+    %{state: state, note: note, title: title}
   end
 
   defp checks_label(%PullRequest{checks_failed: failed}) when is_binary(failed) do

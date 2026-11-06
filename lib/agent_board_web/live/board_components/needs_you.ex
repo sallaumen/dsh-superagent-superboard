@@ -67,6 +67,18 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
 
             <div class={["ab-need__why", tone(need.kind)]}>
               <.markup text={need.why} />
+              <span
+                :if={need[:ci]}
+                class={[
+                  "ab-tag",
+                  need.ci.state == "fail" && "ab-tag--halt",
+                  need.ci.state == "pass" && need.ci.note == "CI local ok" && "ab-tag--agent"
+                ]}
+                title={need.ci.title}
+              >
+                <.glyph :if={need.ci.state == "fail"} kind={:cifail} />
+                {need.ci.note}
+              </span>
             </div>
 
             <div class="ab-need__side ab-meta">

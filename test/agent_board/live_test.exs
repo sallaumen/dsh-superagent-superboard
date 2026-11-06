@@ -3,7 +3,7 @@ defmodule AgentBoard.LiveTest do
   use AgentBoard.DataCase, async: false
 
   alias AgentBoard.{Board, Repo}
-  alias AgentBoard.Board.{Repository, Task}
+  alias AgentBoard.Board.{Comment, Repository, Task}
 
   @sqlite "create table ticket (value text);"
 
@@ -110,6 +110,58 @@ defmodule AgentBoard.LiveTest do
     AgentBoard.Live.poll(%{})
 
     assert Repo.get(Task, t.id).state == "done"
+  end
+
+  @waiting_pr ~s({"mandate":{"basis":{"scope":{"number":42}}},"assignments":[{"state":"running","idleAt":"2026-11-06T19:44:05.231Z","report":{"state":"waiting","summary":"No code change made; the PR remains open."}}],"follows":[{"thread":"github:28","own":true}]})
+  @waiting_quiet ~s({"mandate":{"basis":{"scope":{"number":42}}},"assignments":[{"state":"running","idleAt":"2026-11-06T19:44:05.231Z","report":{"state":"waiting","summary":"Cannot reach the registry."}}]})
+
+  test "a waiting ticket that opened a PR is a review, not a question", %{db: db} do
+    repo = isolated_repo()
+    t = task(repo)
+
+    :ok =
+      Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @waiting_pr <> "')")
+
+    AgentBoard.Live.poll(%{})
+
+    assert Repo.get(Task, t.id).state == "ready"
+  end
+
+  test "a waiting ticket without a question or a PR is blocked", %{db: db} do
+    repo = isolated_repo()
+    t = task(repo)
+
+    :ok =
+      Exqlite.Sqlite3.execute(
+        db,
+        "insert into ticket (value) values ('" <> @waiting_quiet <> "')"
+      )
+
+    AgentBoard.Live.poll(%{})
+
+    assert Repo.get(Task, t.id).state == "blocked"
+  end
+
+  test "a waiting ticket whose newest agent comment asks is a question", %{db: db} do
+    repo = isolated_repo()
+    t = task(repo)
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: t.id,
+      github_id: 1,
+      author: "sallaumen-agent",
+      body: "Devo manter o chefe na onda 5?\n\n<!-- dsh-superagent:abc -->",
+      kind: "agent"
+    })
+    |> Repo.insert!()
+
+    :ok =
+      Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @waiting_pr <> "')")
+
+    AgentBoard.Live.poll(%{})
+
+    assert Repo.get(Task, t.id).state == "question"
   end
 
   test "the poller schedules the next tick", %{db: _db} do

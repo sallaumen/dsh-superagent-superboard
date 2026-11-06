@@ -134,10 +134,15 @@ defmodule AgentBoard.Sync do
     end)
   end
 
+  # A task waiting on the person (a question, a block) is the one whose
+  # conversation matters most: the agent's last comment is what the person
+  # must answer, and the PR it names is what the board links.
+  @conversation_states ["running", "ready", "queued", "question", "blocked"]
+
   defp active_tasks(repository_id) do
     Repo.all(
       from(t in Task,
-        where: t.repository_id == ^repository_id and t.state in ["running", "ready", "queued"],
+        where: t.repository_id == ^repository_id and t.state in @conversation_states,
         order_by: [desc: t.updated_at],
         limit: 10
       )
@@ -321,16 +326,15 @@ defmodule AgentBoard.Sync do
   end
 
   defp apply_ticket(repository, by_number, ticket) do
-    case ticket_state(ticket) do
-      nil ->
-        :ok
+    Enum.each(ticket["numbers"], fn number ->
+      case ticket_state(ticket, asked?: fn -> Board.agent_asked?(repository.id, number) end) do
+        nil ->
+          :ok
 
-      overlay ->
-        Enum.each(
-          ticket["numbers"],
-          &apply_overlay(repository, by_number[&1], &1, overlay, ticket["started_at"])
-        )
-    end
+        overlay ->
+          apply_overlay(repository, by_number[number], number, overlay, ticket["started_at"])
+      end
+    end)
   end
 
   defp apply_overlay(repository, issue, number, overlay, started_at) do
@@ -368,16 +372,50 @@ defmodule AgentBoard.Sync do
 
   defp checks_changed_at(_existing, _checks_state, now), do: now
 
-  @doc "The state a ticket imposes on the task, or nil to keep the issue baseline."
-  def ticket_state(ticket) do
+  @doc """
+  The state a ticket imposes on the task, or nil to keep the issue baseline.
+
+  A `waiting` report means the executor needs input, not that it asked a
+  question. It is a question only when the report or the newest agent
+  comment (`asked?`, a boolean or a function the caller can leave lazy)
+  actually asks one; a waiting ticket that opened a PR is a review; anything
+  else is a block whose reason is the report itself.
+  """
+  def ticket_state(ticket, opts \\ []) do
     cond do
       stopped?(ticket) -> nil
-      ticket["report"] == "waiting" -> "question"
+      ticket["report"] == "waiting" -> waiting_state(ticket, opts)
       blocked_ticket?(ticket) -> "blocked"
       ticket["report"] == "ready" -> "ready"
       running_ticket?(ticket) -> "running"
       ticket["ended_outcome"] == "merged" -> "done"
       true -> nil
+    end
+  end
+
+  @pr_mention ~r/(?:\bPR\b|pull request|\/pull\/)\s*#?\s*\d+/i
+  @review_word ~r/\b(review|revis(ão|ao|ar|ado|ada))\b/iu
+
+  defp waiting_state(ticket, opts) do
+    summary = ticket["report_summary"] || ""
+
+    cond do
+      question?(summary) or asked?(opts) -> "question"
+      (ticket["own_threads"] || []) != [] or pr_for_review?(summary) -> "ready"
+      true -> "blocked"
+    end
+  end
+
+  @doc "Whether a text asks something: a real question mark, not a mood."
+  def question?(text) when is_binary(text), do: String.contains?(text, "?")
+  def question?(_text), do: false
+
+  defp pr_for_review?(summary), do: summary =~ @pr_mention and summary =~ @review_word
+
+  defp asked?(opts) do
+    case Keyword.get(opts, :asked?, false) do
+      fun when is_function(fun, 0) -> fun.() == true
+      value -> value == true
     end
   end
 
