@@ -100,6 +100,18 @@ defmodule AgentBoard.LiveTest do
     assert Repo.get(Task, t.id).state == "queued"
   end
 
+  test "a done task is not revived by a stale ticket", %{db: db} do
+    repo = isolated_repo()
+    t = task(repo)
+    t |> Task.changeset(%{state: "done"}) |> Repo.update!()
+
+    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @running <> "')")
+
+    AgentBoard.Live.poll(%{})
+
+    assert Repo.get(Task, t.id).state == "done"
+  end
+
   test "the poller schedules the next tick", %{db: _db} do
     previous = Application.get_env(:agent_board, :live_poll_interval)
     Application.put_env(:agent_board, :live_poll_interval, 10)
