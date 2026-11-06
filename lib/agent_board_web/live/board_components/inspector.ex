@@ -168,6 +168,17 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     """
   end
 
+  # The executor writes hidden routing markers into issue comments; they are
+  # not part of the message a person reads.
+  defp clean_body(nil), do: ""
+
+  defp clean_body(body) do
+    body
+    |> String.replace(~r/<!--.*?-->/s, "")
+    |> String.replace(~r/\s*@sallaumen-agent\s*$/i, "")
+    |> String.trim()
+  end
+
   defp conversation_tab(assigns) do
     ~H"""
     <div class="ab-conversation">
@@ -175,7 +186,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         <div class="ab-msg__who">
           Tarefa <span class="ab-data-sm">{Time.local_time(@task.inserted_at, @offset)}</span>
         </div>
-        <p>{@task.body}</p>
+        <p>{clean_body(@task.body)}</p>
       </div>
 
       <div
@@ -190,7 +201,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           {if comment.kind == "agent", do: comment.author || "Agente", else: "Você"}
           <span class="ab-data-sm">{Time.local_time(comment.inserted_at, @offset)}</span>
         </div>
-        <p><.markup text={comment.body} /></p>
+        <p><.markup text={clean_body(comment.body)} /></p>
       </div>
 
       <div :if={@comments == [] and @task.body in [nil, ""]} class="ab-sec__empty">
