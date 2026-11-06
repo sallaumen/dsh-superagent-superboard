@@ -4,9 +4,26 @@ defmodule AgentBoardWeb.BoardLive do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AI, Announcer, Board, ElevenLabs, GitHub, Intake, Repo, Settings, Voice}
+  alias AgentBoard.{
+    AgentState,
+    AI,
+    Announcer,
+    Board,
+    ElevenLabs,
+    GitHub,
+    Intake,
+    Repo,
+    Settings,
+    Voice
+  }
+
   alias AgentBoard.Board.Task
+  alias AgentBoard.Sync.{Freshness, Worker}
   alias AgentBoard.System.{Updater, Version}
+
+  import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
+  import AgentBoardWeb.BoardComponents.FreshnessBeacon, only: [beacon: 1]
+  import AgentBoardWeb.BoardComponents.FrozenBanner, only: [frozen_banner: 1]
 
   alias AgentBoardWeb.{
     BoardComponents,
@@ -36,7 +53,13 @@ defmodule AgentBoardWeb.BoardLive do
         resume: resume,
         events: [],
         sync_event: nil,
+        sync_snapshot: %{last_attempt: nil, last_success: nil},
+        freshness: unknown_freshness(),
+        repo_overview: %{},
+        agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
         live: connected?(socket),
+        toast: nil,
+        highlight_changes: false,
         panel: nil,
         conversation: nil,
         comments: [],
@@ -83,6 +106,19 @@ defmodule AgentBoardWeb.BoardLive do
     Enum.find(repos, &(&1.name == "o_colmex")) || List.first(repos)
   end
 
+  defp repo_slug(nil), do: ""
+  defp repo_slug(repo), do: "#{repo.owner}/#{repo.name}"
+
+  defp unknown_freshness do
+    Freshness.snapshot(
+      now: DateTime.utc_now(),
+      connected: true,
+      last_attempt: nil,
+      last_success: nil,
+      agent: %{ok: false, at: nil, tickets: [], error: :unknown}
+    )
+  end
+
   defp load(socket, nil) do
     socket =
       if socket.assigns.repo do
@@ -100,6 +136,10 @@ defmodule AgentBoardWeb.BoardLive do
       resume: nil,
       events: [],
       sync_event: nil,
+      sync_snapshot: %{last_attempt: nil, last_success: nil},
+      freshness: unknown_freshness(),
+      repo_overview: Board.repo_overview(),
+      agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
       live: connected?(socket),
       ai_calls: [],
       ai_status: AI.status()
@@ -125,7 +165,9 @@ defmodule AgentBoardWeb.BoardLive do
             voice_draft: "",
             voice_result: nil,
             voice_action: nil,
-            voice_generation: socket.assigns.voice_generation + 1
+            voice_generation: socket.assigns.voice_generation + 1,
+            toast: nil,
+            highlight_changes: false
           ),
         else: socket
 
@@ -133,12 +175,28 @@ defmodule AgentBoardWeb.BoardLive do
 
     case Board.board("#{repo.owner}/#{repo.name}", merged_limit, task_limits) do
       {:ok, board} ->
+        snapshot = Board.sync_snapshot(repo)
+        agent = AgentState.snapshot()
+
+        freshness =
+          Freshness.snapshot(
+            now: DateTime.utc_now(),
+            connected: connected?(socket),
+            last_attempt: snapshot.last_attempt,
+            last_success: snapshot.last_success,
+            agent: agent
+          )
+
         assign(socket,
           repo: repo,
           board: board,
           resume: nil,
           events: Board.events(repo),
-          sync_event: Board.latest_sync(repo),
+          sync_event: snapshot.last_attempt,
+          sync_snapshot: snapshot,
+          freshness: freshness,
+          repo_overview: Board.repo_overview(),
+          agent_snapshot: agent,
           ai_calls: AI.recent(5),
           ai_status: AI.status(),
           live: connected?(socket)
@@ -151,6 +209,10 @@ defmodule AgentBoardWeb.BoardLive do
           resume: nil,
           events: [],
           sync_event: nil,
+          sync_snapshot: %{last_attempt: nil, last_success: nil},
+          freshness: unknown_freshness(),
+          repo_overview: Board.repo_overview(),
+          agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
           live: connected?(socket),
           ai_calls: [],
           ai_status: AI.status()
@@ -259,6 +321,47 @@ defmodule AgentBoardWeb.BoardLive do
       if socket.assigns.panel == "voice", do: socket, else: assign(socket, :voice_action, nil)
 
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("sync_now", _params, socket) do
+    case Oban.insert(Worker.new(%{})) do
+      {:ok, _job} ->
+        {:noreply, put_flash(socket, :info, "Sincronização pedida.")}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Não foi possível pedir a sincronização.")}
+    end
+  end
+
+  @impl true
+  def handle_event("board_reconnected", _params, socket) do
+    old_board = socket.assigns.board
+    old_snapshot = socket.assigns.sync_snapshot
+    socket = load(socket, socket.assigns.repo)
+    changes = Board.change_count(old_board, socket.assigns.board)
+    at = old_snapshot.last_success && old_snapshot.last_success.inserted_at
+    since = if at, do: Calendar.strftime(at, "%H:%M"), else: "antes da queda"
+
+    text =
+      case changes do
+        0 -> "Reconectado. Nada mudou desde #{since}."
+        1 -> "Reconectado. 1 mudança desde #{since}."
+        n -> "Reconectado. #{n} mudanças desde #{since}."
+      end
+
+    {:noreply,
+     assign(socket,
+       toast: %{text: text, action: nil, changes: changes}
+     )}
+  end
+
+  @impl true
+  def handle_event("dismiss_toast", _params, socket), do: {:noreply, assign(socket, :toast, nil)}
+
+  @impl true
+  def handle_event("show_changes", _params, socket) do
+    {:noreply, assign(socket, toast: nil, highlight_changes: true)}
   end
 
   @impl true
@@ -1176,20 +1279,125 @@ defmodule AgentBoardWeb.BoardLive do
         phx-hook="BoardPanels"
         data-panel={@panel || ""}
         data-base-url={BoardNavigation.path(@repo)}
-        class="agent-board min-h-screen bg-base-100 text-base-content"
+        data-repo={repo_slug(@repo)}
+        data-sync={@freshness.state}
+        data-frozen={to_string(@freshness.frozen?)}
+        data-connection="live"
+        class="agent-board ab ab-shell"
       >
-        <.live_component
-          module={BoardComponents.Header}
-          id="board-header"
-          repos={@repos}
-          repo={@repo}
-          live={@live}
-          sync_event={@sync_event}
-          last_activity={List.first(@events)}
-          version={@version}
-          busy={@busy}
-          voice={@voice}
-        />
+        <div id="board-connection" phx-hook="BoardConnection" hidden></div>
+        <div id="board-clock" phx-hook="BoardClock" hidden></div>
+
+        <div class="ab-board" data-inspector="closed">
+          <.live_component
+            module={BoardComponents.RepoRail}
+            id="repo-rail"
+            repos={@repos}
+            repo={@repo}
+            overview={@repo_overview}
+            live={@freshness.live?}
+            version={@version}
+            busy={@busy}
+            voice={@voice}
+          />
+
+          <main id="board-work" class="ab-main">
+            <details :if={@repo} class="ab-mobilebar">
+              <summary><.ico name="menu" />Repositórios</summary>
+              <div class="ab-mobilebar__list">
+                <button
+                  :for={r <- @repos}
+                  type="button"
+                  class="ab-repo"
+                  aria-current={to_string(@repo && @repo.id == r.id)}
+                  phx-click="select"
+                  phx-value-repo={"#{r.owner}/#{r.name}"}
+                >
+                  <span class="ab-repo__name">{r.owner}/{r.name}</span>
+                </button>
+              </div>
+            </details>
+
+            <div :if={@repo == nil} class="ab-empty">
+              <h2>Nenhum repositório acompanhado.</h2>
+              <p>
+                Abra Configurações → Repositórios para acompanhar um repositório. O board mostra o
+                trabalho do agente, o que espera por você e o que mudou.
+              </p>
+            </div>
+
+            <header :if={@repo} class="ab-top">
+              <div class="ab-top__repo">
+                <span class="ab-top__owner">{@repo.owner}/</span>
+                <h1>{@repo.name}</h1>
+              </div>
+              <.beacon freshness={@freshness} />
+              <span class="ab-top__spacer"></span>
+              <div id="board-tools" class="ab-top__actions" aria-label="Ações do board">
+                <button
+                  id="open-intake"
+                  type="button"
+                  class="ab-btn"
+                  phx-click="show_panel"
+                  phx-value-panel="intake"
+                  data-panel-trigger
+                  aria-haspopup="dialog"
+                  aria-controls="panel-intake"
+                >
+                  <.ico name="split" />Dividir pedido
+                </button>
+                <button
+                  id="open-create"
+                  type="button"
+                  class="ab-btn ab-btn--primary"
+                  phx-click="show_panel"
+                  phx-value-panel="create"
+                  data-panel-trigger
+                  aria-haspopup="dialog"
+                  aria-controls="panel-create"
+                >
+                  <.ico name="plus" />Novo pedido<.kbd key="N" />
+                </button>
+              </div>
+            </header>
+
+            <.frozen_banner :if={@repo} freshness={@freshness} />
+
+            <div :if={@repo} class="ab-legacy">
+              <div class="board-work">
+                <div class="active-lanes grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                  <%= for {title, key} <- [
+                    {"Running", :running},
+                    {"Ready", :ready},
+                    {"Blocked", :blocked},
+                    {"Queued", :queued}
+                  ] do %>
+                    <.live_component
+                      module={BoardComponents.Column}
+                      id={"column-#{key}"}
+                      title={title}
+                      state={key}
+                      items={Map.get(@board, key)}
+                      total={Map.fetch!(@board.task_counts, key)}
+                      has_more={Map.fetch!(@board.task_has_more, key)}
+                      history_shortcut={
+                        key == :running and @board.merged != [] and
+                          Enum.all?(Map.values(@board.task_counts), &(&1 == 0))
+                      }
+                    />
+                  <% end %>
+                </div>
+                <.live_component
+                  module={BoardComponents.Archive}
+                  id="merged-column"
+                  items={@board.merged}
+                  has_more={@board.merged_has_more}
+                />
+              </div>
+            </div>
+          </main>
+        </div>
+
         <VoicePresence.stage id="voice-presence-board" />
         <div
           id="voice-command-shortcut"
@@ -1198,47 +1406,25 @@ defmodule AgentBoardWeb.BoardLive do
           hidden
         />
 
-        <div
-          :if={@repo == nil}
-          class="flex flex-col items-center gap-3 border-b border-base-content/10 px-5 py-20 text-center"
-        >
-          <p class="text-sm text-base-content">No repository tracked yet.</p>
-          <p class="max-w-md text-[12px] leading-relaxed text-base-content/75">
-            Open Settings → Repositories to track one. The board syncs its issues and pull requests, shows
-            the agent's active work and recent merges, and lets you create and ask.
-          </p>
+        <div :if={@toast} class="ab-toast" role="status">
+          <span>{@toast.text}</span>
+          <button
+            :if={@toast.action}
+            type="button"
+            class="ab-btn ab-btn--quiet ab-btn--sm"
+            phx-click="show_changes"
+          >
+            {@toast.action}
+          </button>
+          <button
+            type="button"
+            class="ab-btn ab-btn--icon ab-btn--sm"
+            phx-click="dismiss_toast"
+            aria-label="Fechar aviso"
+          >
+            <.ico name="close" />
+          </button>
         </div>
-
-        <main :if={@repo} id="board-work" class="board-work">
-          <div class="active-lanes grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            <%= for {title, key} <- [
-              {"Running", :running},
-              {"Ready", :ready},
-              {"Blocked", :blocked},
-              {"Queued", :queued}
-            ] do %>
-              <.live_component
-                module={BoardComponents.Column}
-                id={"column-#{key}"}
-                title={title}
-                state={key}
-                items={Map.get(@board, key)}
-                total={Map.fetch!(@board.task_counts, key)}
-                has_more={Map.fetch!(@board.task_has_more, key)}
-                history_shortcut={
-                  key == :running and @board.merged != [] and
-                    Enum.all?(Map.values(@board.task_counts), &(&1 == 0))
-                }
-              />
-            <% end %>
-          </div>
-          <.live_component
-            module={BoardComponents.Archive}
-            id="merged-column"
-            items={@board.merged}
-            has_more={@board.merged_has_more}
-          />
-        </main>
 
         <BoardComponents.Panel.shell
           name="conversation"

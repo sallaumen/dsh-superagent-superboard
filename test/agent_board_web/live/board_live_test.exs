@@ -45,15 +45,16 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "text-error"
   end
 
-  test "the sync line says 1 error, not 1 errors", %{conn: conn} do
+  test "the sync detail says 1 erro, not 1 erros", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
     Board.log_event(repo.id, "sync", "sallaumen/arena-rogue", %{"errors" => 1, "issues" => 0})
 
     {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert html =~ "1 error"
-    refute html =~ "1 errors"
+    assert html =~ "1 erro"
+    refute html =~ "1 erros"
+    assert html =~ "Com erros"
   end
 
   test "a long error payload is truncated in the activity", %{conn: conn} do
@@ -67,30 +68,30 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute html =~ String.duplicate("boom ", 80)
   end
 
-  test "the health line finds sync beyond the 20 recent events", %{conn: conn} do
+  test "the beacon finds the sync beyond the 20 recent events", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "health")
     Board.log_event(repo.id, "sync", "fixture/health", %{"errors" => 0})
     for n <- 1..21, do: Board.log_event(repo.id, "comment_error", "##{n}", %{})
 
     {:ok, view, _} = live(conn, ~p"/?repo=fixture/health")
-    assert has_element?(view, "#sync-status", "clean")
-    assert has_element?(view, "#sync-status", "UTC")
-    refute has_element?(view, "#sync-status.sync-needs-attention")
+    assert has_element?(view, ".ab-beacon[data-state=live]", "Ao vivo")
+    assert has_element?(view, ".ab-sync-pop", "GitHub (PRs, CI)")
+    refute has_element?(view, ".ab-beacon[data-state=offline]")
   end
 
-  test "sync age describes the last outcome without pretending a failure refreshed data", %{
+  test "the beacon describes the last outcome without pretending a failure refreshed data", %{
     conn: conn
   } do
     {:ok, repo} = Board.add_repository("fixture", "freshness")
     Board.log_event(repo.id, "sync", "fixture/freshness", %{"errors" => 0})
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/freshness")
-    assert has_element?(view, "#sync-age[data-sync=true][datetime]", "Last completed sync")
+    assert has_element?(view, ".ab-beacon[data-state=live]", "Ao vivo")
 
     Board.log_event(repo.id, "sync_error", "fixture/freshness", %{"reason" => "offline"})
     send(view.pid, :board_updated)
-    assert has_element?(view, "#sync-age[data-sync=false]", "Last sync attempt")
-    assert has_element?(view, "#data-freshness", "Saved data age: unknown")
-    assert has_element?(view, "#activity-age[datetime]")
+    assert has_element?(view, ".ab-beacon[data-state=offline]", "Sem conexão")
+    assert has_element?(view, ".ab-frozen", "Mostrando o que sabíamos")
+    assert has_element?(view, ".ab-sync-pop", "Falhou")
   end
 
   test "a failed sync supersedes the last clean outcome", %{conn: conn} do
@@ -99,10 +100,10 @@ defmodule AgentBoardWeb.BoardLiveTest do
     Board.log_event(repo.id, "sync_error", "fixture/health", %{"reason" => "offline"})
 
     {:ok, view, _} = live(conn, ~p"/?repo=fixture/health")
-    assert has_element?(view, "#sync-status", "sync failed")
-    assert has_element?(view, "#sync-status", "showing saved data")
-    assert has_element?(view, "#sync-status.sync-needs-attention")
-    refute has_element?(view, "#sync-status", "clean")
+    assert has_element?(view, ".ab-beacon[data-state=offline]", "Sem conexão")
+    assert has_element?(view, ".ab-sync-pop", "Falhou")
+    assert has_element?(view, ".ab-frozen", "Mostrando o que sabíamos")
+    refute has_element?(view, ".ab-beacon[data-state=live]")
   end
 
   test "transcription opens an editable command draft without creating a task", %{conn: conn} do
@@ -608,7 +609,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#version-panel button", "Check")
   end
 
-  test "work panels live in the header while settings holds preferences", %{
+  test "work actions live in the top bar while settings holds preferences", %{
     conn: conn
   } do
     {:ok, _repo} = Board.add_repository("fixture", "settings")
@@ -617,8 +618,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#board-settings summary", "Settings")
     assert has_element?(view, "#board-settings #track-repo")
     assert has_element?(view, "#board-settings #version-panel")
-    refute has_element?(view, "#board-settings #open-activity")
-    refute has_element?(view, "#board-settings #open-ai")
+    assert has_element?(view, "#board-settings #open-activity")
+    assert has_element?(view, "#board-settings #open-ai")
     assert has_element?(view, "#settings-voice-section > summary", "Speech and feedback")
 
     assert has_element?(
@@ -630,11 +631,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#settings-appearance-section > summary", "Light and dark themes")
     assert has_element?(view, "#settings-system-section > summary", "Version")
     refute has_element?(view, "#settings-voice-section[open]")
-    assert has_element?(view, ".board-topbar #board-tools #open-intake", "Split a request")
-    assert has_element?(view, "#board-actions > summary", "Panels")
-    assert has_element?(view, "#board-actions #open-create", "New task")
-    assert has_element?(view, "#board-actions #open-activity", "Activity")
-    assert has_element?(view, "#board-actions #open-ai", "AI calls")
+    assert has_element?(view, "#board-tools #open-intake", "Dividir pedido")
+    assert has_element?(view, "#board-tools #open-create", "Novo pedido")
+    refute has_element?(view, "#board-tools #open-activity")
+    assert has_element?(view, "#board-settings #open-activity", "Activity")
+    assert has_element?(view, "#board-settings #open-ai", "AI calls")
 
     view |> element("#open-activity") |> render_click()
     assert_patch(view, "/?panel=activity&repo=fixture%2Fsettings")
@@ -645,7 +646,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _repo} = Board.add_repository("fixture", "create-panel")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/create-panel")
 
-    assert has_element?(view, "#board-tools #open-create", "New task")
+    assert has_element?(view, "#board-tools #open-create", "Novo pedido")
     assert has_element?(view, "#panel-create #create-task[phx-submit=create]")
     assert has_element?(view, "#panel-create label[for=task-title]", "Task title")
 
@@ -850,18 +851,18 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ ~s(aria-label="Repository")
+    assert html =~ ~s(aria-label="Repositório")
     assert html =~ ~s(aria-label="Owner")
     assert html =~ ~s(aria-label="Repository name")
   end
 
-  test "the header carries the brand and the tagline", %{conn: conn} do
+  test "the rail carries the brand and the current repository", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
-    {:ok, _view, html} = live(conn, ~p"/")
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert html =~ "Agent board"
-    assert html =~ "Agent work on GitHub"
+    assert has_element?(view, ".ab-rail .ab-brand", "Agent Board")
+    assert has_element?(view, ".ab-top__repo h1", "arena-rogue")
   end
 
   test "the board renders the columns", %{conn: conn} do
@@ -904,7 +905,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   test "the board renders without a repository", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "No repository tracked yet."
+    assert html =~ "Nenhum repositório acompanhado."
   end
 
   test "a broadcast reaches the board subscribers", %{conn: conn} do
@@ -936,14 +937,14 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "text-error"
   end
 
-  test "the header shows the last sync and its errors", %{conn: conn} do
+  test "the beacon shows the last sync and its errors", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
     Board.log_event(repo.id, "sync", "sallaumen/arena-rogue", %{"pulls" => 1, "errors" => 2})
 
-    {:ok, _view, html} = live(conn, ~p"/")
+    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert html =~ "synced"
-    assert html =~ "2 errors"
+    assert html =~ "Com erros"
+    assert html =~ "2 erros"
   end
 
   test "the activity panel shows the recorded events", %{conn: conn} do
@@ -1121,5 +1122,91 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "phx-disable-with"
     assert html =~ "Creating"
     assert render(view) =~ "Track repo"
+  end
+end
+
+defmodule AgentBoardWeb.BoardShellTest do
+  @moduledoc "The redesign shell: rail marks, freshness and the reconnect notice."
+  use AgentBoardWeb.ConnCase, async: true
+
+  import Phoenix.LiveViewTest
+
+  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.Board.{PullRequest, Task}
+
+  test "the rail shows the attention marks of the current repository", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "rail")
+    Board.log_event(repo.id, "sync", "sallaumen/rail", %{"errors" => 0})
+    insert_task(repo, 1, "running")
+    insert_task(repo, 2, "ready")
+    insert_task(repo, 3, "blocked")
+    insert_merged(repo, 4, "failure")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/rail")
+    current = "button.ab-repo[aria-current=true]"
+
+    assert has_element?(view, current <> " .ab-repo__n--you", "1")
+    assert has_element?(view, current <> " .ab-repo__n--halt", "2")
+    assert has_element?(view, current <> " .ab-g--run")
+  end
+
+  test "a reconnect notice counts what changed since the last render", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "reconnect")
+    Board.log_event(repo.id, "sync", "sallaumen/reconnect", %{"errors" => 0})
+    insert_task(repo, 1, "ready")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/reconnect")
+
+    insert_task(repo, 2, "running")
+    render_hook(view, "board_reconnected", %{})
+
+    assert has_element?(view, ".ab-toast[role=status]", "Reconectado. 1 mudança")
+  end
+
+  test "a frozen board shows the saved-data banner and stops calling itself live", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "frozen")
+    Board.log_event(repo.id, "sync_error", "sallaumen/frozen", %{"reason" => "offline"})
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/frozen")
+
+    assert has_element?(view, ".ab-beacon[data-state=offline]", "Sem conexão")
+    assert has_element?(view, "#board-page[data-frozen=true]")
+    assert has_element?(view, ".ab-frozen", "Tentar agora")
+  end
+
+  test "the beacon only says live when GitHub and the runner answered", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "fresh")
+    Board.log_event(repo.id, "sync", "sallaumen/fresh", %{"errors" => 0})
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/fresh")
+
+    assert has_element?(view, ".ab-beacon[data-state=live]", "Ao vivo")
+    assert has_element?(view, ".ab-sync-pop", "Processo do agente")
+    assert has_element?(view, ".ab-sync-pop", "Fila local")
+  end
+
+  defp insert_task(repo, number, state) do
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: number,
+      title: "Task #{number}",
+      state: state
+    })
+    |> Repo.insert!()
+  end
+
+  defp insert_merged(repo, number, checks) do
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: number,
+      title: "PR #{number}",
+      state: "merged",
+      merged_at: DateTime.utc_now(),
+      checks_state: checks
+    })
+    |> Repo.insert!()
   end
 end
