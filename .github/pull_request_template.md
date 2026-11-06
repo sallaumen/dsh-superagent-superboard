@@ -1,7 +1,8 @@
 ## O quê e por quê
 
 - [ ] Descreve o problema que este PR resolve e a mudança em uma frase por commit relevante.
-- [ ] Aponta para a origem quando houver (ex.: IDs de origem na biblioteca de capacidades; PR/issue anterior).
+- [ ] Aponta para a origem quando houver (PR/issue anterior; ID de origem no Elixir Agent Kit).
+- [ ] Workflow do Elixir Agent Kit aplicado: `<id do catálogo>` ou `NONE` (mudança delimitada só pelo contrato e pelos gates). Cite o arquivo lido.
 
 ## Pipelines afetados
 

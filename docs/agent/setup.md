@@ -102,7 +102,24 @@ scripts/agent/tickets.sh     # the ticket appears within seconds
 
 The ticket goes `progress` -> `ready` and the PR appears in the issue thread.
 
-## 7. What not to do
+## 7. Shared practices in the executor's worktree
+
+The executor reads `AGENTS.md` in its own worktree under
+`~/.dsh/state/superagent/work/`. That worktree is a fresh checkout: the
+practice index `.elixir-agent-kit/START.md` links into `deps/`, which exists
+only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
+
+- Run `mix deps.get` in the worktree before the executor follows the index,
+  through the harness's per-worktree bootstrap when it has one, otherwise as
+  the first step of the assignment. Until then the index is a dead link and
+  the instruction block tells the agent to report the missing setup.
+- Treat a `ready` report as evidence only for what it names. A report that
+  names no practice file read means the kit was not loaded; a model name
+  establishes nothing. The kit's
+  [compatibility note](https://github.com/sallaumen/elixir-agent-kit/blob/v0.3.1/docs/compatibility.md)
+  describes the fresh-session check.
+
+## 8. What not to do
 
 - **Do not run two orchestrators** on the same state directory.
 - **Do not point the bot at a repository it has no write access to**; the
