@@ -1151,6 +1151,18 @@ defmodule AgentBoardWeb.BoardShellTest do
     assert has_element?(view, current <> " .ab-g--run")
   end
 
+  test "a review need opens directly on the PR tab", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "review-tab")
+    Board.log_event(repo.id, "sync", "sallaumen/review-tab", %{"errors" => 0})
+    task = insert_task(repo, 1, "ready")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/review-tab")
+
+    view |> element("#task-#{task.id}") |> render_click()
+
+    assert has_element?(view, "#conversation .ab-tab[aria-selected=true]", "PR")
+  end
+
   test "a reconnect notice counts what changed since the last render", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "reconnect")
     Board.log_event(repo.id, "sync", "sallaumen/reconnect", %{"errors" => 0})

@@ -44,26 +44,58 @@ defmodule AgentBoard.LocalCI do
   end
 
   defp own_statuses(ticket) do
-    ticket
-    |> Map.get("reports", [])
-    |> Enum.sort_by(&(&1["at"] || ~U[1970-01-01 00:00:00Z]))
-    |> Enum.flat_map(fn report ->
-      case local_state(report["summary"] || "") do
-        nil ->
-          []
+    reports =
+      ticket
+      |> Map.get("reports", [])
+      |> Enum.sort_by(&(&1["at"] || ~U[1970-01-01 00:00:00Z]))
 
-        state ->
-          status = %{
-            state: state,
-            detail: detail(report["summary"] || ""),
-            remote_blocked: remote_blocked?(report["summary"] || ""),
-            at: report["at"]
-          }
+    local =
+      reports
+      |> Enum.flat_map(fn report ->
+        case local_state(report["summary"] || "") do
+          nil -> []
+          state -> [{report, state}]
+        end
+      end)
 
-          report |> pr_numbers() |> Enum.map(&{&1, status})
-      end
-    end)
-    |> Map.new()
+    direct =
+      local
+      |> Enum.flat_map(fn {report, state} ->
+        report
+        |> pr_numbers()
+        |> Enum.map(&{&1, status(report, state, :pr, nil)})
+      end)
+      |> Map.new()
+
+    case List.last(local) do
+      nil ->
+        direct
+
+      {report, state} ->
+        # A ticket is one unit of work: a later PR it names is covered by the
+        # ticket's local gate even when that PR has no line of its own. The
+        # tooltip names the evidence PR so the scope is explicit.
+        evidence = report |> pr_numbers() |> List.first()
+
+        ticket_status = status(report, state, :ticket, evidence)
+
+        reports
+        |> Enum.flat_map(&pr_numbers/1)
+        |> Enum.uniq()
+        |> Enum.reject(&Map.has_key?(direct, &1))
+        |> Enum.reduce(direct, fn number, acc -> Map.put(acc, number, ticket_status) end)
+    end
+  end
+
+  defp status(report, state, scope, evidence) do
+    %{
+      state: state,
+      detail: detail(report["summary"] || ""),
+      remote_blocked: remote_blocked?(report["summary"] || ""),
+      at: report["at"],
+      scope: scope,
+      evidence_pr: evidence
+    }
   end
 
   defp same_repo?(ticket, slug) do
