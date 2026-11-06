@@ -1,7 +1,7 @@
 schema	1
-version	0.3.0
+version	0.3.1
 agents	claude,codex,generic
 skills	all
-file	.elixir-agent-kit/START.md	508c711e838c00aa1e1b97ad967940836967fe607d0bbee060c8fc1b2cd2ccca	created
+file	.elixir-agent-kit/START.md	eca4656735bdd6edf7fdc6296b8c62064b86b41a99c2d8831727ae1de47a455f	created
 block	AGENTS.md	417761d7189548082b78f79ec262807669eac694b7e94ac84f426d16e1623eb7	existing
 block	CLAUDE.md	417761d7189548082b78f79ec262807669eac694b7e94ac84f426d16e1623eb7	created
