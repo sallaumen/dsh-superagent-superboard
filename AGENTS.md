@@ -13,6 +13,9 @@ The board for the agent's work, in Elixir. Read this before changing code.
   is binding when GitHub Actions cannot run.
 - Use the [local configuration instructions](README.md#local-secrets) when
   running the app or a worktree; never commit local secrets.
+- Interface motion follows [docs/ui-motion.md](docs/ui-motion.md) and the kit's
+  `motion-design` workflow: motion explains a state change, never gates an
+  action and never replays on a broadcast.
 
 ## Working alongside another agent
 
