@@ -310,6 +310,18 @@ defmodule AgentBoard.AITest do
     assert call.status == "ok"
   end
 
+  test "rehearsal needs no provider configured" do
+    Application.delete_env(:agent_board, :ai_provider)
+    Application.put_env(:agent_board, :ai_api_key, "")
+    Application.put_env(:agent_board, :ai_rehearsal, true)
+    on_exit(fn -> Application.delete_env(:agent_board, :ai_rehearsal) end)
+
+    assert {:ok, result} = AI.call(:answer_question, %{question: "sem provider?"})
+    assert AI.status() == :rehearsal
+    assert result.engine == :rehearsal
+    assert result.json["answer"] =~ "fixture"
+  end
+
   test "a missing key is not a network call" do
     Application.put_env(:agent_board, :ai_api_key, "")
 
