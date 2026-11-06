@@ -250,7 +250,7 @@ defmodule AgentBoard.Board do
   end
 
   @doc "Create a task by opening an issue that mentions the agent."
-  def create_task(repository, title, body, client) do
+  def create_task(repository, title, body, client, opts \\ []) do
     with issue <-
            AgentBoard.GitHub.create_issue(client, repository.owner, repository.name, title, body) do
       %Task{}
@@ -263,7 +263,9 @@ defmodule AgentBoard.Board do
         state: "queued",
         state_changed_at: DateTime.utc_now(),
         url: issue["html_url"],
-        author: "board"
+        author: "board",
+        request_key: Keyword.get(opts, :request_key),
+        origin_task_id: Keyword.get(opts, :origin_task_id)
       })
       |> Repo.insert(on_conflict: :nothing)
       |> tap(fn _ -> broadcast(repository.id) end)
@@ -275,6 +277,77 @@ defmodule AgentBoard.Board do
       })
 
       {:error, exception}
+  end
+
+  @doc """
+  The key of a request the board is about to create: the repository, the
+  kind of submit and the exact words, hashed. The same words asked twice
+  (a double click, a reload, a retry after a partial split) share the key.
+  """
+  @spec request_key(Repository.t(), String.t(), [String.t()]) :: String.t()
+  def request_key(%Repository{id: id}, kind, parts) when is_list(parts) do
+    [to_string(id), kind | Enum.map(parts, &normalize_request_text/1)]
+    |> Enum.join("\n--\n")
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+    |> binary_part(0, 40)
+  end
+
+  defp normalize_request_text(text) do
+    text |> to_string() |> String.trim() |> String.replace(~r/\s+/u, " ")
+  end
+
+  @doc """
+  Creates the task for a board request once.
+
+  A task that already carries this `key`, or a queued task with the same
+  title and body (one the sync stored from an issue the board opened before
+  it could record the key), is the receipt of an earlier submit: it answers
+  `{:ok, task, :existing}` and no second issue is opened. Otherwise the issue
+  is created and the task answers `{:ok, task, :created}`.
+  """
+  @spec create_request(Repository.t(), map(), term()) ::
+          {:ok, Task.t(), :created | :existing} | {:error, term()}
+  def create_request(repository, %{title: title, body: body, key: key} = request, client) do
+    case existing_request(repository, key, title, body) do
+      %Task{} = task -> {:ok, task, :existing}
+      nil -> create_new_request(repository, request, client)
+    end
+  end
+
+  defp create_new_request(repository, %{title: title, body: body, key: key} = request, client) do
+    created =
+      create_task(repository, title, body, client,
+        request_key: key,
+        origin_task_id: Map.get(request, :origin_task_id)
+      )
+
+    case created do
+      # The unique key (or the issue number) raced with another write: the
+      # first one won, and it is the receipt if it carries these words.
+      {:ok, %Task{id: nil}} -> raced_request(repository, key, title, body)
+      {:ok, task} -> {:ok, task, :created}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp raced_request(repository, key, title, body) do
+    case existing_request(repository, key, title, body) do
+      %Task{} = task -> {:ok, task, :existing}
+      nil -> {:error, :conflict}
+    end
+  end
+
+  defp existing_request(repository, key, title, body) do
+    Repo.one(
+      from t in Task,
+        where:
+          t.repository_id == ^repository.id and
+            (t.request_key == ^key or
+               (t.state == "queued" and t.title == ^title and t.body == ^body)),
+        order_by: [asc: t.id],
+        limit: 1
+    )
   end
 
   @doc "Stop a task: flag it and close the issue so the agent stops picking it up."

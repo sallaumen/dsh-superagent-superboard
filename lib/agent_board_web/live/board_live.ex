@@ -17,6 +17,7 @@ defmodule AgentBoardWeb.BoardLive do
     Repo,
     Settings,
     Time,
+    Titles,
     Voice,
     Work
   }
@@ -93,9 +94,14 @@ defmodule AgentBoardWeb.BoardLive do
         intake: nil,
         intake_draft: nil,
         composer_text: "",
+        composer_title: nil,
         composer_split: false,
         composer_selected: MapSet.new(),
         composer_error: nil,
+        composer_retry: nil,
+        composer_job: nil,
+        composer_receipt: nil,
+        composer_answers: "",
         ai_calls: [],
         ai_status: AI.status(),
         version: Version.status(),
@@ -344,9 +350,14 @@ defmodule AgentBoardWeb.BoardLive do
             intake: nil,
             intake_draft: nil,
             composer_text: "",
+            composer_title: nil,
             composer_split: false,
             composer_selected: MapSet.new(),
             composer_error: nil,
+            composer_retry: nil,
+            composer_job: nil,
+            composer_receipt: nil,
+            composer_answers: "",
             voice_draft: "",
             voice_result: nil,
             voice_action: nil,
@@ -467,6 +478,24 @@ defmodule AgentBoardWeb.BoardLive do
        |> speak(Announcer.speakable_answer(text))}
     else
       {:noreply, socket}
+    end
+  end
+
+  def handle_info({:composer_timeout, ref}, socket) do
+    case socket.assigns.composer_job do
+      %{ref: ^ref, kind: kind, payload: payload} ->
+        seconds = div(composer_timeout(), 1000)
+
+        {:noreply,
+         socket
+         |> cancel_composer_job()
+         |> composer_error(
+           "#{job_name(kind)} não terminou em #{seconds} s. Nada foi confirmado; tente de novo.",
+           {kind, payload}
+         )}
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -905,14 +934,17 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("open_composer", params, socket) do
-    split = params["split"] == "true"
-    socket = assign(socket, composer_split: split, composer_error: nil)
+    # "Dividir pedido" asks for the split; "Novo pedido" keeps the draft as it
+    # is, so a proposal or a receipt is not lost by reopening the panel.
+    split = params["split"] == "true" or socket.assigns.composer_split
+    socket = assign(socket, composer_split: split)
     {:noreply, BoardNavigation.open_panel(socket, "composer")}
   end
 
   @impl true
   def handle_event("composer_change", params, socket) do
     text = params["text"] || socket.assigns.composer_text
+    changed? = text != socket.assigns.composer_text
 
     selected =
       case params do
@@ -920,59 +952,105 @@ defmodule AgentBoardWeb.BoardLive do
         _ -> socket.assigns.composer_selected
       end
 
+    # New words invalidate the proposal (it was for other words) and the
+    # last failure; a checkbox or a title edit must not hide either.
     socket =
-      if socket.assigns.intake && socket.assigns.intake.text != text do
-        assign(socket, intake: nil, composer_selected: MapSet.new())
-      else
-        socket
-      end
+      if changed?,
+        do:
+          assign(socket,
+            intake: nil,
+            composer_selected: MapSet.new(),
+            composer_error: nil,
+            composer_retry: nil
+          ),
+        else: assign(socket, composer_selected: selected)
 
     {:noreply,
      assign(socket,
        composer_text: text,
-       composer_selected: selected,
-       composer_error: nil
+       composer_title: title_from_params(params, text, socket.assigns.composer_title),
+       composer_answers: params["answers"] || socket.assigns.composer_answers
      )}
   end
 
   @impl true
   def handle_event("composer_split", _params, socket) do
-    split = not socket.assigns.composer_split
-    text = String.trim(socket.assigns.composer_text)
-
-    socket =
-      assign(socket,
-        composer_split: split,
-        composer_error: nil,
-        intake: if(split, do: socket.assigns.intake, else: nil),
-        composer_selected: if(split, do: socket.assigns.composer_selected, else: MapSet.new())
-      )
-
-    if split and text != "" do
-      split_for_composer(socket, text)
-    else
+    if socket.assigns.composer_job do
       {:noreply, socket}
+    else
+      split = not socket.assigns.composer_split
+      text = String.trim(socket.assigns.composer_text)
+
+      socket =
+        assign(socket,
+          composer_split: split,
+          composer_error: nil,
+          composer_retry: nil,
+          intake: if(split, do: socket.assigns.intake, else: nil),
+          composer_selected: if(split, do: socket.assigns.composer_selected, else: MapSet.new())
+        )
+
+      if split and text != "" and is_nil(socket.assigns.intake),
+        do: start_split(socket, text),
+        else: {:noreply, socket}
     end
   end
 
   @impl true
   def handle_event("composer_submit", params, socket) do
     text = String.trim(params["text"] || socket.assigns.composer_text)
-    repo = socket.assigns.repo
+
+    socket =
+      assign(socket, composer_answers: params["answers"] || socket.assigns.composer_answers)
 
     cond do
-      is_nil(repo) ->
-        {:noreply, assign(socket, :composer_error, "Escolha um repositório antes de enviar.")}
+      # A second submit while the first is in flight: the job is the receipt.
+      socket.assigns.composer_job ->
+        {:noreply, socket}
+
+      is_nil(socket.assigns.repo) ->
+        {:noreply, composer_error(socket, "Escolha um repositório antes de enviar.")}
 
       text == "" ->
-        {:noreply, assign(socket, :composer_error, "Escreva o pedido antes de enviar.")}
+        {:noreply, composer_error(socket, "Escreva o pedido antes de enviar.")}
 
       socket.assigns.composer_split ->
         submit_split(socket, text, params)
 
       true ->
-        create_single(socket, text)
+        start_single(socket, text, title_from_params(params, text, socket.assigns.composer_title))
     end
+  end
+
+  @impl true
+  def handle_event("composer_retry", _params, socket) do
+    socket = assign(socket, composer_error: nil, composer_receipt: nil)
+
+    case {socket.assigns.composer_job, socket.assigns.composer_retry} do
+      {nil, {:split, text}} -> start_split(socket, text)
+      {nil, {:enqueue, requests}} -> start_enqueue(socket, requests)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("composer_cancel", _params, socket) do
+    {:noreply, cancel_composer_job(socket)}
+  end
+
+  @impl true
+  def handle_event("composer_single", _params, socket) do
+    text = String.trim(socket.assigns.composer_text)
+    socket = assign(socket, composer_split: false, intake: nil, composer_selected: MapSet.new())
+
+    if text == "",
+      do: {:noreply, socket},
+      else: start_single(socket, text, socket.assigns.composer_title)
+  end
+
+  @impl true
+  def handle_event("composer_reset", _params, socket) do
+    {:noreply, reset_composer(socket)}
   end
 
   @impl true
@@ -1042,6 +1120,7 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply,
      socket
+     |> settle_composer()
      |> assign(
        panel: nil,
        conversation: nil,
@@ -1299,6 +1378,14 @@ defmodule AgentBoardWeb.BoardLive do
 
       path ->
         {:noreply, socket |> put_flash(:info, result.text) |> push_patch(to: path, replace: true)}
+    end
+  end
+
+  @impl true
+  def handle_async({:composer, ref}, outcome, socket) do
+    case socket.assigns.composer_job do
+      %{ref: ^ref} = job -> {:noreply, finish_composer_job(socket, job, outcome)}
+      _ -> {:noreply, socket}
     end
   end
 
@@ -1790,12 +1877,17 @@ defmodule AgentBoardWeb.BoardLive do
             :if={@repo}
             repo={"#{@repo.owner}/#{@repo.name}"}
             text={@composer_text}
+            title={@composer_title}
             split={@composer_split}
             intake={@intake}
             selected={@composer_selected}
+            job={@composer_job}
+            receipt={@composer_receipt}
+            answers={@composer_answers}
             ai_status={@ai_status}
             voice_configured={@voice.configured}
             error={@composer_error}
+            retry={@composer_retry}
           />
         </dialog>
 
@@ -1886,23 +1978,6 @@ defmodule AgentBoardWeb.BoardLive do
     """
   end
 
-  defp submit_split(socket, text, params) do
-    case socket.assigns.intake do
-      %{status: :ready, text: ^text, tasks: tasks} when tasks != [] ->
-        enqueue_selected(socket, tasks, selected_from(params, socket))
-
-      _ ->
-        split_for_composer(socket, text)
-    end
-  end
-
-  defp selected_from(params, socket) do
-    case params do
-      %{"tasks" => values} -> MapSet.new(values, &String.to_integer/1)
-      _ -> socket.assigns.composer_selected
-    end
-  end
-
   defp restart_after_update(socket, message) do
     delay = Application.get_env(:agent_board, :update_restart_delay_ms, 1200)
     Process.send_after(self(), :restart_server, delay)
@@ -1915,116 +1990,280 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp updater, do: Application.get_env(:agent_board, :updater, Updater)
 
-  defp split_for_composer(socket, text) do
+  # -- the composer lifecycle ---------------------------------------------------
+  #
+  # One job at a time, keyed by a ref: a late or cancelled result finds no job
+  # with its ref and changes nothing. The durable records are the ai_calls
+  # rows (the split) and the tasks with their request_key (the enqueue); the
+  # receipt is read from those tasks, so a reload shows the same thing.
+
+  defp composer_error(socket, text, retry \\ nil),
+    do: assign(socket, composer_error: text, composer_retry: retry)
+
+  defp title_from_params(%{"title" => title}, text, _current) do
+    title = String.trim(title)
+    if title == "" or title == Titles.from_request(text), do: nil, else: title
+  end
+
+  defp title_from_params(_params, _text, current), do: current
+
+  defp submit_split(socket, text, params) do
+    case socket.assigns.intake do
+      %{status: :ready, text: ^text, tasks: tasks} when tasks != [] ->
+        start_enqueue(socket, split_requests(socket, text, tasks, selected_from(params, socket)))
+
+      %{status: :needs_clarification, text: ^text} ->
+        answer_and_split(socket, text)
+
+      _ ->
+        start_split(socket, text)
+    end
+  end
+
+  # The answers become part of the request (the issue carries them too) and
+  # the model splits the answered text.
+  defp answer_and_split(socket, text) do
+    case String.trim(socket.assigns.composer_answers || "") do
+      "" ->
+        {:noreply,
+         composer_error(
+           socket,
+           "Responda as perguntas ou edite o pedido antes de dividir de novo."
+         )}
+
+      answers ->
+        answered = text <> "\n\nRespostas:\n" <> answers
+
+        socket
+        |> assign(composer_text: answered, composer_answers: "", intake: nil)
+        |> start_split(answered)
+    end
+  end
+
+  defp selected_from(params, socket) do
+    case params do
+      %{"tasks" => values} -> MapSet.new(values, &String.to_integer/1)
+      _ -> socket.assigns.composer_selected
+    end
+  end
+
+  defp split_requests(socket, text, tasks, selected) do
     repo = socket.assigns.repo
 
+    tasks
+    |> Enum.with_index()
+    |> Enum.filter(fn {_task, index} -> MapSet.member?(selected, index) end)
+    |> Enum.map(fn {task, _index} ->
+      %{
+        title: task.title,
+        body: intake_body(task) <> "\n\n@sallaumen-agent",
+        key: Board.request_key(repo, "split", [text, task.title])
+      }
+    end)
+  end
+
+  defp start_single(socket, text, title) do
+    repo = socket.assigns.repo
+    title = title || Titles.from_request(text)
+
+    if title == "" do
+      {:noreply, composer_error(socket, "A primeira linha vira o título; escreva algo.")}
+    else
+      body = text <> "\n\n@sallaumen-agent"
+
+      start_enqueue(socket, [
+        %{title: title, body: body, key: Board.request_key(repo, "single", [title, body])}
+      ])
+    end
+  end
+
+  defp start_split(socket, text) do
     cond do
-      is_nil(repo) ->
-        {:noreply, assign(socket, :composer_error, "Escolha um repositório antes de dividir.")}
+      is_nil(socket.assigns.repo) ->
+        {:noreply, composer_error(socket, "Escolha um repositório antes de dividir.")}
 
       socket.assigns.ai_status == :not_configured ->
         {:noreply,
-         assign(socket, :composer_error, "A IA não está configurada. Dividir fica indisponível.")}
-
-      String.trim(text) == "" ->
-        {:noreply, assign(socket, :composer_error, "Escreva o pedido antes de dividir.")}
+         composer_error(
+           socket,
+           "A IA não está configurada. Dividir fica indisponível; envie como pedido único."
+         )}
 
       true ->
-        case Intake.run(text) do
-          {:ok, result} ->
-            socket =
-              socket
-              |> show_intake_result(repo, text, %{}, result)
-              |> assign(composer_selected: all_indices(result.tasks), composer_error: nil)
+        job = composer_job(:split, text, 1)
 
-            {:noreply, socket}
-
-          {:error, reason} ->
-            {:noreply,
-             socket
-             |> assign(:composer_error, "A IA não respondeu: #{inspect(reason)}")
-             |> refresh_ai()}
-        end
+        {:noreply,
+         socket
+         |> assign(composer_job: job, composer_error: nil, composer_retry: nil, intake: nil)
+         |> start_async({:composer, job.ref}, fn -> {:split, text, Intake.run(text)} end)}
     end
   end
+
+  defp start_enqueue(socket, []),
+    do: {:noreply, composer_error(socket, "Escolha ao menos uma tarefa.")}
+
+  defp start_enqueue(socket, requests) do
+    repo = socket.assigns.repo
+    client = GitHub.client()
+    job = composer_job(:enqueue, requests, length(requests))
+
+    {:noreply,
+     socket
+     |> assign(
+       composer_job: job,
+       composer_error: nil,
+       composer_retry: nil,
+       composer_receipt: nil
+     )
+     |> start_async({:composer, job.ref}, fn ->
+       {:enqueue, requests, Enum.map(requests, &{&1, Board.create_request(repo, &1, client)})}
+     end)}
+  end
+
+  defp composer_job(kind, payload, total) do
+    ref = System.unique_integer([:positive])
+    Process.send_after(self(), {:composer_timeout, ref}, composer_timeout())
+    %{ref: ref, kind: kind, payload: payload, total: total}
+  end
+
+  defp composer_timeout, do: Application.get_env(:agent_board, :composer_timeout_ms, 60_000)
+
+  defp finish_composer_job(socket, _job, {:ok, {:split, text, {:ok, result}}}) do
+    socket
+    |> assign(composer_job: nil)
+    |> show_intake_result(socket.assigns.repo, text, %{}, result)
+    |> assign(composer_selected: all_indices(result.tasks))
+  end
+
+  defp finish_composer_job(socket, _job, {:ok, {:split, text, {:error, reason}}}) do
+    socket
+    |> assign(composer_job: nil)
+    |> composer_error(split_failure(reason), {:split, text})
+    |> refresh_ai()
+  end
+
+  defp finish_composer_job(socket, _job, {:ok, {:enqueue, requests, results}}) do
+    items = Enum.map(results, fn {request, result} -> receipt_item(request, result) end)
+    failed = Enum.count(items, &match?({:error, _}, &1.outcome))
+
+    socket
+    |> assign(
+      composer_job: nil,
+      composer_receipt: %{items: items},
+      composer_retry: if(failed > 0, do: {:enqueue, requests})
+    )
+    |> load(socket.assigns.repo)
+    |> flash_receipt(items, failed)
+  end
+
+  defp finish_composer_job(socket, %{kind: kind, payload: payload}, {:exit, reason}) do
+    socket
+    |> assign(composer_job: nil)
+    |> composer_error(
+      "#{job_name(kind)} parou de forma inesperada (#{inspect(reason)}). Nada mais foi feito.",
+      {kind, payload}
+    )
+  end
+
+  defp cancel_composer_job(%{assigns: %{composer_job: nil}} = socket), do: socket
+
+  defp cancel_composer_job(%{assigns: %{composer_job: %{ref: ref}}} = socket) do
+    socket
+    |> cancel_async({:composer, ref})
+    |> assign(composer_job: nil, composer_error: nil, composer_retry: nil)
+  end
+
+  defp receipt_item(request, {:ok, task, outcome}),
+    do: %{title: request.title, outcome: outcome, task: task}
+
+  defp receipt_item(request, {:error, reason}),
+    do: %{title: request.title, outcome: {:error, reason}, task: nil}
+
+  defp flash_receipt(socket, items, 0) do
+    case items do
+      [%{outcome: :created, task: %{number: number}}] when is_integer(number) ->
+        put_flash(socket, :info, "Pedido ##{number} na fila")
+
+      [%{outcome: :existing, task: %{number: number}}] when is_integer(number) ->
+        put_flash(socket, :info, "Esse pedido já estava na fila: ##{number}")
+
+      _ ->
+        created = Enum.count(items, &(&1.outcome == :created))
+
+        put_flash(
+          socket,
+          :info,
+          "#{created} #{if created == 1, do: "tarefa", else: "tarefas"} na fila"
+        )
+    end
+  end
+
+  defp flash_receipt(socket, items, failed) when failed == length(items),
+    do: put_flash(socket, :error, "Nada entrou na fila. Veja o recibo e tente de novo.")
+
+  defp flash_receipt(socket, items, failed) do
+    done = length(items) - failed
+
+    put_flash(
+      socket,
+      :error,
+      "Criei #{done} de #{length(items)}. Veja o recibo e tente as restantes."
+    )
+  end
+
+  defp job_name(:split), do: "A divisão"
+  defp job_name(:enqueue), do: "A criação das issues"
+
+  defp split_failure(:malformed_output),
+    do: "A IA respondeu fora do formato esperado. Nada foi criado."
+
+  defp split_failure(:not_configured),
+    do: "A IA não está configurada. Envie como pedido único."
+
+  defp split_failure(:auth_expired), do: "A chave da IA expirou ou foi recusada."
+  defp split_failure(:usage_limit), do: "A IA está sem cota agora."
+  defp split_failure(:budget_exhausted), do: "O orçamento de IA do board acabou."
+  defp split_failure(:no_provider), do: "Nenhum provedor de IA configurado."
+
+  defp split_failure(:audit_unavailable),
+    do: "A chamada não pôde ser registrada; nada foi criado."
+
+  defp split_failure({:http, status}), do: "A IA respondeu HTTP #{status}."
+
+  defp split_failure(%{__exception__: true} = exception),
+    do: "A IA não respondeu: " <> Exception.message(exception)
+
+  defp split_failure(reason), do: "A IA não respondeu (#{inspect(reason)})."
 
   defp all_indices([]), do: MapSet.new()
   defp all_indices(tasks), do: MapSet.new(0..(length(tasks) - 1))
 
-  defp enqueue_selected(socket, tasks, selected) do
-    repo = socket.assigns.repo
-    indices = Enum.filter(0..(length(tasks) - 1), &MapSet.member?(selected, &1))
-
-    if indices == [] do
-      {:noreply, assign(socket, :composer_error, "Escolha ao menos uma tarefa.")}
-    else
-      results =
-        Enum.map(indices, fn index ->
-          task = Enum.at(tasks, index)
-
-          Board.create_task(
-            repo,
-            task.title,
-            intake_body(task) <> "\n\n@sallaumen-agent",
-            GitHub.client()
-          )
-        end)
-
-      created = Enum.count(results, &match?({:ok, _}, &1))
-
-      if created == length(indices) do
-        {:noreply,
-         socket
-         |> load(repo)
-         |> close_composer()
-         |> put_flash(
-           :info,
-           "#{created} #{if created == 1, do: "tarefa", else: "tarefas"} na fila"
-         )}
-      else
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           "Criei #{created} de #{length(indices)}. Veja a atividade e tente as restantes."
-         )}
-      end
-    end
+  # Closing a receipt whose items all landed starts the next request fresh; a
+  # receipt with a failure stays, so the retry is still there when the panel
+  # reopens.
+  defp settle_composer(
+         %{assigns: %{panel: "composer", composer_receipt: %{items: items}}} = socket
+       ) do
+    if Enum.any?(items, &match?({:error, _}, &1.outcome)),
+      do: socket,
+      else: reset_composer(socket)
   end
 
-  defp create_single(socket, text) do
-    repo = socket.assigns.repo
-    title = text |> String.split("\n", parts: 2) |> hd() |> String.trim() |> String.slice(0, 80)
+  defp settle_composer(socket), do: socket
 
-    if title == "" do
-      {:noreply, assign(socket, :composer_error, "A primeira linha vira o título; escreva algo.")}
-    else
-      case Board.create_task(repo, title, text <> "\n\n@sallaumen-agent", GitHub.client()) do
-        {:ok, _task} ->
-          {:noreply,
-           socket |> load(repo) |> close_composer() |> put_flash(:info, "Pedido na fila")}
-
-        {:error, _reason} ->
-          {:noreply,
-           assign(
-             socket,
-             :composer_error,
-             "Não foi possível criar a tarefa. Veja a atividade e tente de novo."
-           )}
-      end
-    end
-  end
-
-  defp close_composer(socket) do
+  defp reset_composer(socket) do
     socket
+    |> cancel_composer_job()
     |> assign(
-      panel: nil,
       composer_text: "",
+      composer_title: nil,
       composer_split: false,
       composer_selected: MapSet.new(),
       composer_error: nil,
+      composer_retry: nil,
+      composer_receipt: nil,
+      composer_answers: "",
       intake: nil
     )
-    |> push_event("panel_close", %{})
   end
 end

@@ -20,6 +20,7 @@ defmodule AgentBoard.Board.Task do
     field :archived, :boolean, default: false
     field :started_at, :utc_datetime
     field :state_changed_at, :utc_datetime
+    field :request_key, :string
 
     belongs_to :repository, AgentBoard.Board.Repository
     belongs_to :origin_task, AgentBoard.Board.Task
@@ -44,10 +45,12 @@ defmodule AgentBoard.Board.Task do
       :repository_id,
       :started_at,
       :state_changed_at,
-      :origin_task_id
+      :origin_task_id,
+      :request_key
     ])
     |> validate_required([:title, :repository_id])
     |> validate_inclusion(:state, @states)
     |> unique_constraint([:repository_id, :kind, :number])
+    |> unique_constraint([:repository_id, :request_key])
   end
 end

@@ -668,6 +668,35 @@ body { margin: 0; background: var(--paper); }
 .ab-voice[data-phase="transcribing"] .ab-level { display: none; }
 .ab-toggle[disabled] { opacity: .5; cursor: not-allowed; }
 .ab-compose textarea { max-height: 40dvh; overflow: auto; }
+.ab-compose__error .ab-btn { margin-left: var(--space-2); vertical-align: middle; }
+.ab-compose__title { display: grid; gap: var(--space-1); padding: 0 var(--space-5) var(--space-3); }
+.ab-compose__title input {
+  width: 100%; height: 32px; padding: 0 var(--space-3); font-size: 14px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--ink);
+}
+.ab-compose__progress {
+  display: flex; align-items: center; gap: var(--space-2); margin: 0;
+  padding: var(--space-2) var(--space-5); font-size: 13px; color: var(--ink-muted);
+}
+.ab-split-note textarea {
+  min-height: 64px; margin-top: var(--space-1); padding: var(--space-2) var(--space-3); font-size: 14px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink);
+}
+.ab-split-note .ab-label { display: block; margin-top: var(--space-2); }
+.ab-receipt { padding: var(--space-3) var(--space-5) var(--space-4); display: grid; gap: var(--space-3); }
+.ab-receipt__head { margin: 0; font-size: 14.5px; font-weight: 500; }
+.ab-receipt__head.is-halt { color: var(--halt); }
+.ab-receipt__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.ab-receipt__item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-2) var(--space-3);
+  align-items: center; padding: var(--space-2) 0; border-top: 1px solid var(--line);
+}
+.ab-receipt__item:first-child { border-top: 0; }
+.ab-receipt__title { min-width: 0; overflow-wrap: anywhere; }
+.ab-receipt__links { grid-column: 2 / -1; display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.ab-receipt__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.ab-dot--agent { width: 8px; height: 8px; border-radius: 50%; background: var(--agent); display: inline-block; }
 
 /* ---------- keyboard reference ---------- */
 .panel-shortcuts { padding: var(--space-5); }

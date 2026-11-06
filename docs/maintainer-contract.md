@@ -112,6 +112,37 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 - **A task that cannot close on its own is dropped**, not created
   half-written (see `AgentBoard.Intake`).
 
+## The request (composer)
+
+The composer is a view of one lifecycle that `BoardLive` owns; the durable
+records are the `ai_calls` rows (the split) and the tasks with their
+`request_key` (the enqueue).
+
+| Transition | Owner | Durable record |
+|---|---|---|
+| draft | the socket (`composer_text`, kept across close/reopen) | none |
+| splitting → ready / needs_clarification / no_tasks / failed | `start_async` keyed by a `ref`; a late or cancelled result changes nothing | `ai_calls` |
+| enqueuing → receipt | `start_async`, one `Board.create_request/3` per chosen task | `tasks.request_key` |
+| timeout | `{:composer_timeout, ref}` after `:composer_timeout_ms`; cancels the job and names the failure | — |
+
+- **One job at a time.** A second submit while a job runs does nothing; the
+  job is the receipt. The submit button is disabled server-side, not only by
+  `phx-disable-with`.
+- **A request is created once.** `Board.request_key/3` hashes the repository,
+  the kind of submit and the words; `Board.create_request/3` answers
+  `{:ok, task, :existing}` for a task with that key or a queued task with the
+  same title and body, and opens no second issue. A retry after a partial
+  split creates only what is missing.
+- **The receipt names what happened**: number and link for each task that
+  entered, "já estava na fila" for a repeat, the reason for each failure, and
+  a retry for the failures only. Closing a receipt with a failure keeps it.
+- **Failures are words**, never `inspect/1`: the model's reason
+  (`:malformed_output`, `:usage_limit`, `{:http, status}`, a timeout) maps to
+  a sentence and a way out (retry, answer the questions, send as a single
+  request).
+- **The title is the first sentence**, cut at a clause boundary
+  (`Titles.from_request/1`), shown and editable before the submit.
+
 ## Types at the boundary
 
 - **A field that is a string must receive a string.** The checks rollup returned

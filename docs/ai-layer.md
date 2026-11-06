@@ -137,14 +137,28 @@ validação local descarta tarefas sem título, corpo ou critérios de aceitaç�
 
 ```
 texto livre
-  → :refine_request        (JSON validado pelo schema)
-  → ready=false?           (mostrar perguntas; parar sem propor tarefas)
+  → :refine_request        (JSON validado pelo schema; roda fora do processo da LiveView)
+  → ready=false?           (mostrar perguntas e uma caixa de resposta; a resposta entra no
+                            pedido como "Respostas:" e o texto respondido é dividido de novo)
   → :propose_tasks         (lista validada; depends_on é índice)
   → validação local        (descarta task sem título, body ou acceptance)
-  → lista vazia?           (informar que nada utilizável foi proposto; permitir novo Split)
-  → revisão humana         (a UI só oferece Create para propostas prontas)
-  → Board.create_task      (uma issue por ação Create)
+  → lista vazia?           (dizer que nada utilizável foi proposto; oferecer tentar de novo
+                            ou enviar como pedido único)
+  → revisão humana         (a pessoa marca quais tarefas entram)
+  → Board.create_request   (uma issue por tarefa marcada; a chave do pedido evita a segunda
+                            issue num clique duplo, reload ou retry; o recibo lista o que
+                            entrou, o que já estava e o que falhou, com retry só do que falhou)
 ```
+
+O composer (`AgentBoardWeb.BoardComponents.Composer`) é uma vista desse ciclo,
+com um trabalho por vez: `dividindo`, `criando`, proposta (`ready`,
+`needs_clarification`, `no_tasks`), falha com motivo e botão de tentar de novo,
+e recibo. Um resultado atrasado ou cancelado não encontra o trabalho pelo seu
+`ref` e não muda nada; um timeout (`:composer_timeout_ms`, 60 s) vira falha
+nomeada. A falha da IA aparece em palavras (`fora do formato esperado`, `sem
+cota`, `HTTP 500`), nunca como `inspect/1`. Os testes usam o engine
+`AgentBoard.AI.Engines.Scripted` (`test/support`) para respostas
+determinísticas: malformada, lenta, com perguntas ou vazia.
 
 O mesmo pipeline serve para **avaliar**: a resposta é o par
 `(spec, tasks)` que o humano revisa antes de criar.
