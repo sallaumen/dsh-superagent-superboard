@@ -57,6 +57,34 @@ defmodule AgentBoard.Board do
     end
   end
 
+  @doc """
+  Task ids whose linked pull request is already merged or closed.
+
+  A ready task can be stale after a human merges its PR: the issue/ticket
+  report still says "ready for review". Merged work is done, so it does not
+  belong in "Precisa de você" or in the "you" rail count. A task without a
+  linked PR is not resolved by guessing.
+  """
+  @spec resolved_task_ids([Task.t()]) :: MapSet.t()
+  def resolved_task_ids([]), do: MapSet.new()
+
+  def resolved_task_ids(tasks) do
+    ids = Enum.map(tasks, & &1.id)
+
+    comments_by_task =
+      Repo.all(from c in Comment, where: c.task_id in ^ids)
+      |> Enum.group_by(& &1.task_id)
+
+    tasks
+    |> Enum.filter(fn task ->
+      case task_pull_request(task, Map.get(comments_by_task, task.id, [])) do
+        %PullRequest{state: state} when state in ["merged", "closed"] -> true
+        _ -> false
+      end
+    end)
+    |> MapSet.new(& &1.id)
+  end
+
   @doc "A stable page of tasks in one active lane, newest updates first."
   def task_page(repository_id, state, cursor, limit \\ @task_page_size)
       when state in @task_states do
@@ -148,6 +176,10 @@ defmodule AgentBoard.Board do
   defp board_for(repository, merged_limit, task_limits) do
     merged_rows = merged_page(repository.id, nil, merged_limit + 1)
     task_pages = load_task_pages(repository.id, task_limits)
+    resolved = resolved_task_ids(task_pages.ready.items)
+    ready_items = Enum.reject(task_pages.ready.items, &MapSet.member?(resolved, &1.id))
+    resolved_ready = length(task_pages.ready.items) - length(ready_items)
+    task_pages = put_in(task_pages, [:ready, :items], ready_items)
     state_names = Enum.map(@task_states, &Atom.to_string/1)
 
     counts_by_name =
@@ -164,7 +196,11 @@ defmodule AgentBoard.Board do
       repo: "#{repository.owner}/#{repository.name}",
       merged: Enum.take(merged_rows, merged_limit),
       merged_has_more: length(merged_rows) > merged_limit,
-      task_counts: Map.new(@task_states, &{&1, Map.get(counts_by_name, Atom.to_string(&1), 0)}),
+      task_counts:
+        Map.new(@task_states, fn state ->
+          count = Map.get(counts_by_name, Atom.to_string(state), 0)
+          {state, if(state == :ready, do: max(count - resolved_ready, 0), else: count)}
+        end),
       task_has_more: Map.new(@task_states, &{&1, task_pages[&1].has_more})
     }
     |> Map.merge(Map.new(@task_states, &{&1, task_pages[&1].items}))
@@ -509,15 +545,6 @@ defmodule AgentBoard.Board do
         Map.update(acc, repository_id, %{state => count}, &Map.put(&1, state, count))
       end)
 
-    ci_failures =
-      Repo.all(
-        from p in PullRequest,
-          where: p.state == "merged" and p.checks_state == "failure",
-          group_by: p.repository_id,
-          select: {p.repository_id, count(p.id)}
-      )
-      |> Map.new()
-
     syncs =
       Repo.all(
         from e in Event,
@@ -527,6 +554,16 @@ defmodule AgentBoard.Board do
       )
       |> Enum.uniq_by(& &1.repository_id)
       |> Map.new(&{&1.repository_id, &1})
+
+    ready_by_repository =
+      Repo.all(from t in Task, where: t.state == "ready")
+      |> then(fn ready ->
+        resolved = resolved_task_ids(ready)
+
+        ready
+        |> Enum.reject(&MapSet.member?(resolved, &1.id))
+        |> Enum.frequencies_by(& &1.repository_id)
+      end)
 
     now = DateTime.utc_now()
 
@@ -545,8 +582,8 @@ defmodule AgentBoard.Board do
          name: "#{repository.owner}/#{repository.name}",
          owner: repository.owner,
          running: Map.get(by_state, "running", 0),
-         you: Map.get(by_state, "ready", 0) + Map.get(by_state, "question", 0),
-         halt: Map.get(by_state, "blocked", 0) + Map.get(ci_failures, repository.id, 0),
+         you: Map.get(ready_by_repository, repository.id, 0) + Map.get(by_state, "question", 0),
+         halt: Map.get(by_state, "blocked", 0),
          unknown: unknown,
          last_sync: sync
        }}

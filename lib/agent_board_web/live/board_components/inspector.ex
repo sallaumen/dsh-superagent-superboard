@@ -14,6 +14,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :activity, :list, required: true
   attr :calls, :list, required: true
   attr :pr, :any, default: nil
+  attr :ci, :map, default: nil
   attr :tz_offset, :integer, default: 0
   attr :live, :boolean, default: false
 
@@ -129,7 +130,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <% "chamadas" -> %>
             <.calls_tab calls={@calls} totals={@totals} offset={@tz_offset} />
           <% "pr" -> %>
-            <.pr_tab pr={@pr} offset={@tz_offset} />
+            <.pr_tab pr={@pr} ci={@ci} offset={@tz_offset} />
           <% _ -> %>
             <.conversation_tab task={@task} comments={@comments} offset={@tz_offset} />
         <% end %>
@@ -297,11 +298,16 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <span>{@pr.title}</span>
         </div>
         <div class="ab-insp__facts">
-          <.status_mark kind={pr_kind(@pr)} word={pr_word(@pr)} />
+          <.status_mark kind={pr_kind(@pr, @ci)} word={pr_word(@pr, @ci)} />
           <span :if={@pr.merged_at} class="ab-meta">
             mesclado às {Time.local_time(@pr.merged_at, @offset)}
           </span>
-          <span class="ab-meta">{pr_ci(@pr)}</span>
+          <span
+            class={["ab-meta", local_ci_pass?(@ci) && "ab-ci-local"]}
+            title={pr_ci_title(@pr, @ci)}
+          >
+            {pr_ci(@pr, @ci)}
+          </span>
           <span class="ab-meta">{pr_review(@pr.review_state)}</span>
         </div>
         <a
@@ -330,20 +336,38 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp status_word("archived"), do: "Arquivado"
   defp status_word(_state), do: nil
 
-  defp pr_kind(%{checks_state: "failure"}), do: :cifail
-  defp pr_kind(%{state: "merged"}), do: :done
-  defp pr_kind(_pr), do: :review
+  defp pr_kind(_pr, %{state: :fail}), do: :cifail
+  defp pr_kind(%{state: "merged"}, _ci), do: :done
+  defp pr_kind(_pr, _ci), do: :review
 
-  defp pr_word(%{checks_state: "failure"}), do: "CI falhou"
-  defp pr_word(%{state: "merged"}), do: "Mesclado"
-  defp pr_word(_pr), do: "Aberto"
+  defp pr_word(_pr, %{state: :fail}), do: "CI local falhou"
+  defp pr_word(%{state: "merged"}, _ci), do: "Mesclado"
+  defp pr_word(_pr, _ci), do: "Aberto"
 
-  defp pr_ci(%{checks_state: "failure"} = pr),
-    do: "CI falhou" <> if(pr.checks_failed in [nil, ""], do: "", else: " · #{pr.checks_failed}")
+  defp pr_ci(_pr, %{state: :pass}), do: "CI local ok"
+  defp pr_ci(_pr, %{state: :fail}), do: "CI local falhou"
+  defp pr_ci(%{checks_state: "failure"}, _ci), do: "CI remoto falhou"
+  defp pr_ci(%{checks_state: "success"}, _ci), do: "CI ok"
+  defp pr_ci(%{checks_state: "none"}, _ci), do: "sem CI"
+  defp pr_ci(_pr, _ci), do: "CI desconhecido"
 
-  defp pr_ci(%{checks_state: "success"}), do: "CI ok"
-  defp pr_ci(%{checks_state: "none"}), do: "sem CI"
-  defp pr_ci(_pr), do: "CI desconhecido"
+  defp pr_ci_title(_pr, %{state: :pass, detail: detail, remote_blocked: true}),
+    do: "GitHub Actions não rodou (billing/sem crédito). CI local passou: #{detail}"
+
+  defp pr_ci_title(_pr, %{state: :pass, detail: detail}),
+    do: "CI local passou: #{detail}"
+
+  defp pr_ci_title(_pr, %{state: :fail, detail: detail}),
+    do: "CI local falhou: #{detail}"
+
+  defp pr_ci_title(%{checks_state: "failure"}, _ci),
+    do: "GitHub Actions falhou (billing/sem crédito); sem evidência de CI local."
+
+  defp pr_ci_title(%{checks_state: "success"}, _ci), do: "GitHub Actions passou."
+  defp pr_ci_title(_pr, _ci), do: "Nenhum check remoto configurado."
+
+  defp local_ci_pass?(%{state: :pass}), do: true
+  defp local_ci_pass?(_ci), do: false
 
   defp pr_review("approved"), do: "revisado"
   defp pr_review("changes_requested"), do: "mudanças pedidas"

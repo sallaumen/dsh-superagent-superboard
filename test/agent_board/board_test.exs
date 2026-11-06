@@ -3,7 +3,7 @@ defmodule AgentBoard.BoardTest do
   use AgentBoard.DataCase, async: true
 
   alias AgentBoard.{Board, Repo}
-  alias AgentBoard.Board.{PullRequest, Task}
+  alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   test "a repository can be added" do
     assert {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
@@ -343,7 +343,7 @@ defmodule AgentBoard.BoardOverviewTest do
   use AgentBoard.DataCase, async: true
 
   alias AgentBoard.{Board, Repo}
-  alias AgentBoard.Board.{PullRequest, Task}
+  alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   test "the rail counts running, waiting and failing work per repository" do
     {:ok, repo} = Board.add_repository("sallaumen", "attention")
@@ -357,8 +357,31 @@ defmodule AgentBoard.BoardOverviewTest do
     overview = Board.repo_overview()[repo.id]
     assert overview.running == 1
     assert overview.you == 1
-    assert overview.halt == 2
+    assert overview.halt == 1
     assert overview.unknown
+  end
+
+  test "a ready task linked to a merged PR no longer waits for a person" do
+    {:ok, repo} = Board.add_repository("fixture", "resolved")
+    linked = insert_task(repo, 2, "ready")
+    _open = insert_task(repo, 3, "ready")
+    pull = insert_merged(repo, 42, "success")
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: linked.id,
+      github_id: 100,
+      author: "sallaumen-agent",
+      kind: "agent",
+      body: "Ready for review: https://github.com/fixture/resolved/pull/#{pull.number}"
+    })
+    |> Repo.insert!()
+
+    {:ok, board} = Board.board("fixture/resolved")
+
+    assert Enum.map(board.ready, & &1.number) == [3]
+    assert board.task_counts.ready == 1
+    assert Board.repo_overview()[repo.id].you == 1
   end
 
   test "a clean sync makes the repository known" do

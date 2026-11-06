@@ -12,31 +12,19 @@ defmodule AgentBoard.Work do
   alias AgentBoard.Board.{Comment, PullRequest, Task}
   alias AgentBoard.{Repo, Time, Titles}
 
-  @needs_limit 8
   @queue_limit 8
   @day_limit 3
   @log_days 7
 
   @doc """
-  The attention list: merged CI failures, blocked work, PRs for review and
-  questions, in that order. New items come before old items inside a group.
+  The attention list: blocked work, PRs for review and questions, in that
+  order. Merged work is done and its CI lives in Mesclados, where a failed
+  GitHub check is quiet and the local gate is the evidence that counts.
   """
-  def needs(repository, board, opts \\ []) do
+  def needs(_repository, board, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     last_visit = Keyword.get(opts, :last_visit)
-    offset = Keyword.get(opts, :tz_offset, 0)
     tickets = Keyword.get(opts, :tickets_by_number, %{})
-
-    failures =
-      Repo.all(
-        from p in PullRequest,
-          where:
-            p.repository_id == ^repository.id and p.state == "merged" and
-              p.checks_state == "failure",
-          order_by: [desc: p.merged_at, desc: p.id],
-          limit: @needs_limit
-      )
-      |> Enum.map(&failure_need(&1, now, last_visit, offset))
 
     blocked =
       board
@@ -51,25 +39,10 @@ defmodule AgentBoard.Work do
       |> Map.get(:question, [])
       |> Enum.map(&task_need(&1, :question, now, last_visit, tickets))
 
-    (failures ++ blocked ++ review ++ question)
+    (blocked ++ review ++ question)
     |> Enum.sort_by(fn need ->
       {rank(need.kind), not need.is_new, -(need.age_seconds || 0)}
     end)
-  end
-
-  defp failure_need(pull, now, last_visit, offset) do
-    at = pull.checks_changed_at || pull.merged_at
-
-    %{
-      key: "pull-#{pull.id}",
-      kind: :cifail,
-      number: pull.number,
-      title: pull.title,
-      why: failure_why(pull, offset),
-      age_seconds: Time.age_seconds(at, now),
-      is_new: new?(at, last_visit),
-      actions: [%{label: "Ver falha", url: pull.url}]
-    }
   end
 
   defp task_need(task, kind, now, last_visit, tickets) do
@@ -109,19 +82,6 @@ defmodule AgentBoard.Work do
       summary when is_binary(summary) -> "**Bloqueado:** " <> excerpt(summary)
       _ -> "**Bloqueado**"
     end
-  end
-
-  defp failure_why(pull, offset) do
-    checks = checks_label(pull)
-
-    # Nested strong+code is not part of the tiny markup parser; the bold lead
-    # and the check name stay separate segments.
-    lead =
-      if checks == "",
-        do: "**CI falhou** depois do merge.",
-        else: "**CI falhou** em `#{checks}` depois do merge."
-
-    "#{lead} A main está vermelha desde #{Time.local_time(pull.merged_at, offset)}."
   end
 
   defp checks_label(%PullRequest{checks_failed: failed}) when is_binary(failed) do
@@ -261,6 +221,7 @@ defmodule AgentBoard.Work do
   def merge_log(repository, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     offset = Keyword.get(opts, :tz_offset, 0)
+    local_ci = Keyword.get(opts, :local_ci, %{})
     today = Time.local_date(now, offset)
     start = Date.add(today, -(@log_days - 1))
     start_utc = DateTime.new!(start, ~T[00:00:00Z]) |> DateTime.add(offset * 60, :second)
@@ -283,7 +244,8 @@ defmodule AgentBoard.Work do
           date: date,
           label: Time.short_day_label(date, today),
           n: length(day_pulls),
-          fail: Enum.count(day_pulls, &(&1.checks_state == "failure")),
+          fail: Enum.count(day_pulls, &(local_state(&1, local_ci) == :fail)),
+          ok: Enum.count(day_pulls, &(local_state(&1, local_ci) == :pass)),
           today: date == today
         }
       end)
@@ -304,15 +266,15 @@ defmodule AgentBoard.Work do
           label: Time.day_label(day.date, today),
           n: length(day_pulls),
           more: max(length(day_pulls) - @day_limit, 0),
-          items: Enum.map(shown, &merged_pr(&1, offset))
+          items: Enum.map(shown, &merged_pr(&1, offset, local_ci))
         }
       end)
 
     %{days: days, groups: groups, total: Enum.sum(Enum.map(days, & &1.n))}
   end
 
-  defp merged_pr(pull, offset) do
-    {ci, ci_note} = ci_label(pull)
+  defp merged_pr(pull, offset, local_ci) do
+    {ci, ci_note, ci_title} = ci_status(pull, Map.get(local_ci, pull.number))
 
     %{
       id: pull.id,
@@ -321,22 +283,64 @@ defmodule AgentBoard.Work do
       url: pull.url,
       ci: ci,
       ciNote: ci_note,
+      ciTitle: ci_title,
       review: review_label(pull.review_state),
       at: Time.local_time(pull.merged_at, offset)
     }
   end
 
-  defp ci_label(%PullRequest{checks_state: "failure"} = pull) do
-    case checks_label(pull) do
-      "" -> {"fail", "CI falhou"}
-      checks -> {"fail", "CI falhou · #{checks}"}
+  defp ci_status(pull, %{state: :pass} = local) do
+    {"pass", "CI local ok", local_title(local, pull)}
+  end
+
+  defp ci_status(_pull, %{state: :fail} = local) do
+    {"fail", "CI local falhou", local_title(local, nil)}
+  end
+
+  defp ci_status(%PullRequest{checks_state: "failure"} = pull, nil) do
+    {"unknown", "CI remoto falhou", remote_failure_title(pull)}
+  end
+
+  defp ci_status(%PullRequest{checks_state: "success"}, nil),
+    do: {"pass", "CI ok", "GitHub Actions passou."}
+
+  defp ci_status(%PullRequest{checks_state: "pending"}, nil),
+    do: {"unknown", "CI rodando", "GitHub Actions ainda está rodando."}
+
+  defp ci_status(_pull, nil), do: {"unknown", "sem CI", "Nenhum check remoto configurado."}
+
+  defp local_state(pull, local_ci) when is_map(local_ci) do
+    case Map.get(local_ci, pull.number, %{}) do
+      %{state: state} -> state
+      _ -> nil
     end
   end
 
-  defp ci_label(%PullRequest{checks_state: "success"}), do: {"pass", "CI ok"}
-  defp ci_label(%PullRequest{checks_state: "none"}), do: {"unknown", "sem CI"}
-  defp ci_label(%PullRequest{checks_state: "pending"}), do: {"unknown", "CI rodando"}
-  defp ci_label(_pull), do: {"unknown", "CI desconhecido"}
+  defp local_title(local, pull) do
+    remote =
+      case pull && pull.checks_state do
+        "failure" -> "GitHub Actions falhou"
+        "success" -> "GitHub Actions passou"
+        "pending" -> "GitHub Actions ainda roda"
+        _ -> "GitHub Actions sem checks"
+      end
+
+    if local.remote_blocked do
+      "#{remote} (billing/sem crédito no GitHub). CI local passou: #{local.detail}"
+    else
+      "#{remote}. CI local passou: #{local.detail}"
+    end
+  end
+
+  defp remote_failure_title(pull) do
+    case checks_label(pull) do
+      "" ->
+        "GitHub Actions falhou (billing/sem crédito); sem evidência de CI local."
+
+      checks ->
+        "GitHub Actions falhou em #{checks} (billing/sem crédito); sem evidência de CI local."
+    end
+  end
 
   defp review_label("approved"), do: "revisado"
   defp review_label("changes_requested"), do: "mudanças pedidas"
@@ -376,33 +380,19 @@ defmodule AgentBoard.Work do
     end
   end
 
-  defp first_phrases(repository, board) do
+  defp first_phrases(_repository, board) do
     running = length(Map.get(board, :running, []))
     waiting = length(Map.get(board, :ready, [])) + length(Map.get(board, :question, []))
     blocked = length(Map.get(board, :blocked, []))
     queued = Map.get(board, :task_counts, %{}) |> Map.get(:queued, 0)
-    failures = merged_failures(repository)
 
     [
-      failures > 0 &&
-        [%{text: "#{failures} #{plural(failures, "PR")} com CI falhando na main", role: :halt}],
       running > 0 && [%{text: "#{running} rodando", role: :agent}],
       waiting > 0 && [%{text: "#{waiting} esperando você", role: :you}],
       blocked > 0 && [%{text: "#{blocked} #{plural(blocked, "bloqueado")}", role: :halt}],
       queued > 0 && [%{text: "#{queued} na fila", role: :agent}]
     ]
     |> Enum.reject(&(&1 == false))
-  end
-
-  defp merged_failures(repository) do
-    Repo.aggregate(
-      from(p in PullRequest,
-        where:
-          p.repository_id == ^repository.id and p.state == "merged" and
-            p.checks_state == "failure"
-      ),
-      :count
-    )
   end
 
   defp since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?) do
@@ -436,7 +426,6 @@ defmodule AgentBoard.Work do
   defp since_counts(repository, last_visit) do
     %{
       merged: merged_count(repository, last_visit),
-      merged_fail: merged_fail_count(repository, last_visit),
       reviews: review_count(repository, last_visit),
       questions: question_count(repository, last_visit),
       queue_new: queue_new_count(repository, last_visit)
@@ -449,17 +438,6 @@ defmodule AgentBoard.Work do
         where:
           p.repository_id == ^repository.id and p.state == "merged" and
             p.merged_at >= ^last_visit
-      ),
-      :count
-    )
-  end
-
-  defp merged_fail_count(repository, last_visit) do
-    Repo.aggregate(
-      from(p in PullRequest,
-        where:
-          p.repository_id == ^repository.id and p.state == "merged" and
-            p.merged_at >= ^last_visit and p.checks_state == "failure"
       ),
       :count
     )
@@ -504,7 +482,7 @@ defmodule AgentBoard.Work do
     first_review = first_review(repository, last_visit)
 
     [
-      counts.merged > 0 && merged_phrase(counts.merged, counts.merged_fail),
+      counts.merged > 0 && merged_phrase(counts.merged),
       counts.reviews > 0 && [review_phrase(counts.reviews, first_review)],
       counts.questions > 0 &&
         [%{text: "fez #{counts.questions} #{plural(counts.questions, "pergunta")}", role: :you}],
@@ -537,29 +515,8 @@ defmodule AgentBoard.Work do
   defp queue_phrase(1), do: %{text: "1 nova na fila", role: :agent}
   defp queue_phrase(n), do: %{text: "#{n} novas na fila", role: :agent}
 
-  defp merged_phrase(merged, 0),
+  defp merged_phrase(merged),
     do: [%{text: "o agente mesclou #{merged} #{plural(merged, "PR")}", role: :agent}]
-
-  defp merged_phrase(1, 1) do
-    [
-      %{text: "o agente mesclou 1 PR", role: :agent},
-      %{text: " com CI falhando", role: :halt}
-    ]
-  end
-
-  defp merged_phrase(merged, fail) when fail == merged do
-    [
-      %{text: "o agente mesclou #{merged} #{plural(merged, "PR")}", role: :agent},
-      %{text: ", os #{merged} com CI falhando", role: :halt}
-    ]
-  end
-
-  defp merged_phrase(merged, fail) do
-    [
-      %{text: "o agente mesclou #{merged} #{plural(merged, "PR")}", role: :agent},
-      %{text: ", #{fail} com CI falhando", role: :halt}
-    ]
-  end
 
   defp review_phrase(1, pr) do
     %{text: "abriu 1 PR para revisão", role: :you, url: pr && pr.url}
