@@ -19,10 +19,10 @@ defmodule AgentBoardWeb.Components.SystemPanel do
     <section
       id="version-panel"
       class="version-panel"
-      aria-label="Version"
+      aria-label="Versão"
     >
       <h2 class="version-heading">
-        <span>Version</span>
+        <span>Versão</span>
         <span class={["version-status", tone(@version.state)]}><span
           class="status-mark"
           aria-hidden="true"
@@ -31,14 +31,14 @@ defmodule AgentBoardWeb.Components.SystemPanel do
 
       <div class="version-details">
         <span class="text-base-content/75">
-          running <code class="text-base-content">{@version.served || "unknown"}</code>
+          rodando <code class="text-base-content">{@version.served || "unknown"}</code>
         </span>
 
         <span class="text-base-content/75">
           main <code class="text-base-content">{@version.available || "unknown"}</code>
         </span>
 
-        <span :if={@version.dirty} class="text-warning">uncommitted changes</span>
+        <span :if={@version.dirty} class="text-warning">alterações não commitadas</span>
 
         <button
           type="button"
@@ -46,7 +46,7 @@ defmodule AgentBoardWeb.Components.SystemPanel do
           disabled={@busy}
           class="version-check"
         >
-          Check
+          Verificar
         </button>
 
         <button
@@ -56,18 +56,27 @@ defmodule AgentBoardWeb.Components.SystemPanel do
           disabled={@busy}
           class="version-update bg-warning text-warning-content hover:brightness-110"
         >
-          Update & restart
+          Atualizar e reiniciar
+        </button>
+
+        <button
+          type="button"
+          phx-click="restart"
+          disabled={@busy}
+          class="version-check"
+        >
+          Reiniciar
         </button>
       </div>
     </section>
     """
   end
 
-  defp label(%{state: :up_to_date}), do: "up to date"
-  defp label(%{state: :behind, behind: n}) when is_integer(n), do: "#{n} commit(s) behind"
-  defp label(%{state: :behind}), do: "behind"
-  defp label(%{state: :ahead}), do: "ahead of main"
-  defp label(_version), do: "unknown"
+  defp label(%{state: :up_to_date}), do: "em dia"
+  defp label(%{state: :behind, behind: n}) when is_integer(n), do: "#{n} commit(s) atrás"
+  defp label(%{state: :behind}), do: "atrás"
+  defp label(%{state: :ahead}), do: "à frente da main"
+  defp label(_version), do: "desconhecido"
 
   defp tone(:up_to_date), do: "text-success"
   defp tone(:behind), do: "text-warning"
