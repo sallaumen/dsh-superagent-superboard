@@ -9,10 +9,14 @@ defmodule AgentBoard.System.Updater do
   person resolves, not something the panel hides.
 
   A dependency or configuration change cannot be hot-reloaded: the running VM
-  keeps the old modules. After a changed HEAD we start a detached shell that
-  waits for this OS process to exit, refreshes dependencies and the schema,
-  and boots `mix phx.server` again with the same environment and port. The
-  log is `agent-board-update-restart.log` in the system temp directory.
+  keeps the old modules. The node has two restart modes:
+
+    * `AGENT_BOARD_RESTART_MODE=supervised` (the launchd/service.sh setup):
+      stop and let the service manager boot the new code.
+    * anything else (a bare `mix phx.server`): start a detached shell that
+      waits for this OS process to exit, refreshes dependencies and the
+      schema, and boots `mix phx.server` on the same port. Its log is
+      `agent-board-update-restart.log` in the system temp directory.
   """
 
   alias AgentBoard.System.Git
@@ -41,11 +45,18 @@ defmodule AgentBoard.System.Updater do
   end
 
   @doc """
-  Spawns a detached restart that waits for this VM to exit, then fetches
-  dependencies, migrates and boots the node again on the same port.
+  Schedules the boot of the updated code, or returns `:ok` when a service
+  manager owns the process and will do it after this VM exits.
   """
   @spec restart() :: :ok
   def restart do
+    case System.get_env("AGENT_BOARD_RESTART_MODE") do
+      "supervised" -> :ok
+      _ -> self_restart()
+    end
+  end
+
+  defp self_restart do
     root = Git.root()
     log = Path.join(System.tmp_dir!(), "agent-board-update-restart.log")
     script = restart_script(root, System.pid())
