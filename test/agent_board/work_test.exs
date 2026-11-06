@@ -5,7 +5,7 @@ defmodule AgentBoard.WorkTest do
   import Ecto.Query
 
   alias AgentBoard.{Board, Repo, Work}
-  alias AgentBoard.Board.{PullRequest, Task}
+  alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   test "needs puts new items before old ones and follows the urgency order" do
     {:ok, repo} = Board.add_repository("fixture", "needs")
@@ -27,6 +27,109 @@ defmodule AgentBoard.WorkTest do
     assert Enum.at(needs, 0).is_new
     refute Enum.at(needs, 2).is_new
     refute Enum.any?(needs, &(&1.kind == :cifail))
+  end
+
+  test "a review names its PR, links it and shows the CI it can see" do
+    {:ok, repo} = Board.add_repository("fixture", "review-need")
+    now = ~U[2026-11-06 15:00:00Z]
+    review = task(repo, 27, "Pixel art", "ready", DateTime.add(now, -60, :second))
+    pull = open_pull(repo, 28, "Replace geometric art", "failure")
+
+    ticket = %{
+      "numbers" => [27],
+      "own_threads" => [28],
+      "report" => "waiting",
+      "report_summary" => "PR #28 remains ready for human review."
+    }
+
+    [need] =
+      Work.needs(repo, %{ready: [review], blocked: [], question: []},
+        now: now,
+        tickets_by_number: %{27 => ticket},
+        local_ci: %{}
+      )
+
+    assert need.kind == :review
+    assert need.why =~ "PR #28 pronto para revisão"
+    assert need.ci.note == "CI local ?"
+    assert need.ci.title =~ "GitHub Actions falhou"
+    assert need.ci.title =~ "sem evidência de CI local"
+    assert Enum.any?(need.actions, &(&1[:url] == pull.url and &1.label == "Abrir PR #28"))
+    assert Enum.any?(need.actions, &(&1[:task_id] == review.id))
+  end
+
+  test "a review with a local gate says the local gate passed" do
+    {:ok, repo} = Board.add_repository("fixture", "review-local")
+    now = ~U[2026-11-06 15:00:00Z]
+    review = task(repo, 27, "Pixel art", "ready", DateTime.add(now, -60, :second))
+    _pull = open_pull(repo, 28, "Replace geometric art", "failure")
+
+    local = %{
+      28 => %{
+        state: :pass,
+        detail: "mix precommit passed: 126 tests, 0 failures",
+        remote_blocked: true,
+        at: nil,
+        scope: :pr,
+        evidence_pr: nil
+      }
+    }
+
+    [need] =
+      Work.needs(repo, %{ready: [review], blocked: [], question: []},
+        now: now,
+        tickets_by_number: %{27 => %{"numbers" => [27], "own_threads" => [28]}},
+        local_ci: local
+      )
+
+    assert need.ci.note == "CI local ok"
+    assert need.ci.title =~ "billing"
+    assert need.ci.title =~ "126 tests"
+  end
+
+  test "a review whose PR the board cannot find says so instead of guessing" do
+    {:ok, repo} = Board.add_repository("fixture", "review-nopr")
+    now = ~U[2026-11-06 15:00:00Z]
+    review = task(repo, 27, "Pixel art", "ready", DateTime.add(now, -60, :second))
+
+    [need] = Work.needs(repo, %{ready: [review], blocked: [], question: []}, now: now)
+
+    assert need.why =~ "Pronto para revisão"
+    assert need.why =~ "PR não identificado"
+    assert need.ci == nil
+    refute Enum.any?(need.actions, & &1[:url])
+  end
+
+  test "a question quotes the agent's question and a block states its reason" do
+    {:ok, repo} = Board.add_repository("fixture", "needs-why")
+    now = ~U[2026-11-06 15:00:00Z]
+    asked = task(repo, 30, "Which API", "question", DateTime.add(now, -60, :second))
+    silent = task(repo, 31, "Silent", "question", DateTime.add(now, -60, :second))
+    blocked = task(repo, 32, "Stuck", "blocked", DateTime.add(now, -60, :second))
+    quiet_block = task(repo, 33, "Quiet", "blocked", DateTime.add(now, -60, :second))
+
+    comment(asked, "agent", "Devo usar a API v2 ou manter a v1?")
+    comment(silent, "agent", "Entendido: começo pelo mapa.")
+
+    tickets = %{
+      32 => %{"numbers" => [32], "report_summary" => "Cannot reach the registry."},
+      33 => %{"numbers" => [33]}
+    }
+
+    needs =
+      Work.needs(repo, %{ready: [], blocked: [blocked, quiet_block], question: [asked, silent]},
+        now: now,
+        tickets_by_number: tickets
+      )
+
+    whys = Map.new(needs, &{&1.number, &1.why})
+
+    assert whys[30] =~ "O agente perguntou:** Devo usar a API v2 ou manter a v1?"
+    assert whys[31] =~ "O agente espera uma resposta sua"
+    refute whys[31] =~ "perguntou"
+    assert whys[32] =~ "Bloqueado:** Cannot reach the registry."
+    assert whys[33] =~ "Bloqueado"
+    assert whys[33] =~ "sem motivo no relatório"
   end
 
   test "queue keeps arrival order and warns about a merged duplicate" do
@@ -141,6 +244,33 @@ defmodule AgentBoard.WorkTest do
     # tested by setting the stored time explicitly.
     Repo.update_all(from(t in Task, where: t.id == ^task.id), set: [inserted_at: at])
     %{task | inserted_at: at}
+  end
+
+  defp open_pull(repo, number, title, checks) do
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: number,
+      title: title,
+      state: "open",
+      opened_at: ~U[2026-11-06 14:00:00Z],
+      checks_state: checks,
+      checks_failed: if(checks == "failure", do: "gates", else: nil),
+      url: "https://github.com/fixture/repo/pull/#{number}"
+    })
+    |> Repo.insert!()
+  end
+
+  defp comment(task, kind, body) do
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: task.id,
+      github_id: System.unique_integer([:positive]),
+      author: if(kind == "agent", do: "sallaumen-agent", else: "sallaumen"),
+      body: body,
+      kind: kind
+    })
+    |> Repo.insert!()
   end
 
   defp merged(repo, number, title, checks, at) do

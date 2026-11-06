@@ -688,6 +688,57 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#sec-now #task-#{task.id}")
   end
 
+  test "a review names its PR, links it and keeps the CI honest", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "review")
+    Board.log_event(repo.id, "sync", "fixture/review", %{"errors" => 0})
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 27,
+        title: "Pixel art",
+        state: "ready"
+      })
+      |> Repo.insert!()
+
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: 28,
+      title: "Replace geometric arena art",
+      state: "open",
+      checks_state: "failure",
+      checks_failed: "gates",
+      url: "https://github.com/fixture/review/pull/28"
+    })
+    |> Repo.insert!()
+
+    Board.upsert_comment(
+      task,
+      %{
+        "id" => 1,
+        "user" => %{"login" => "sallaumen-agent"},
+        "body" => "Feito: o [PR #28](https://github.com/fixture/review/pull/28) está pronto."
+      },
+      "sallaumen-agent"
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/review")
+
+    assert has_element?(view, "#sec-needs #task-#{task.id}", "PR #28 pronto para revisão")
+    assert has_element?(view, "#sec-needs #task-#{task.id} .ab-tag", "CI local ?")
+
+    assert has_element?(
+             view,
+             ~s(#sec-needs #task-#{task.id} a[href="https://github.com/fixture/review/pull/28"]),
+             "Abrir PR #28"
+           )
+
+    refute render(view) =~ "GitHub Actions passou"
+  end
+
   test "the repo query param selects a repository", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "o_colmex")
     {:ok, arena} = Board.add_repository("sallaumen", "arena-rogue")

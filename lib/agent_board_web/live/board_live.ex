@@ -175,7 +175,8 @@ defmodule AgentBoardWeb.BoardLive do
           now: now,
           last_visit: last_visit,
           tz_offset: tz_offset,
-          tickets_by_number: tickets
+          tickets_by_number: tickets,
+          local_ci: local_ci
         ),
       queue:
         Work.queue(repo, board,

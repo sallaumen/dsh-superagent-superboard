@@ -448,6 +448,48 @@ defmodule AgentBoard.SyncRepoTest do
     assert Enum.map(comments, & &1.body) == ["On it.", "Any progress?"]
   end
 
+  test "the sync pulls the comments of a task waiting on the person", %{repo: repo} do
+    for {number, state} <- [{8, "question"}, {9, "blocked"}] do
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: number,
+        title: "Issue #{number}",
+        state: state
+      })
+      |> Repo.insert!()
+    end
+
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Req.Test.json(conn, [issue(8, "open"), issue(9, "open")])
+
+        "/repos/sallaumen/arena-rogue/issues/" <> rest ->
+          [number, "comments"] = String.split(rest, "/")
+
+          Req.Test.json(conn, [
+            %{
+              "id" => String.to_integer(number) * 10,
+              "user" => %{"login" => "sallaumen-agent"},
+              "body" => "Feito: o PR #28 está pronto para revisão."
+            }
+          ])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    for number <- [8, 9] do
+      task = Repo.one(from t in Task, where: t.number == ^number)
+      assert [%{kind: "agent"}] = Board.comments(task)
+    end
+  end
+
   test "a GitHub failure is logged and returned, not raised", %{repo: repo} do
     stub_github(fn conn ->
       Plug.Conn.send_resp(conn, 500, "boom")

@@ -61,6 +61,25 @@ defmodule AgentBoard.AgentStateTest do
     assert ticket["execution"]["directory"] == "/tmp/work"
   end
 
+  test "the threads a ticket opened itself are its own PRs", %{db: db} do
+    follows = [
+      %{"thread" => "github:28", "own" => true},
+      %{"thread" => "github:30", "own" => false},
+      %{"thread" => "slack:abc", "own" => true}
+    ]
+
+    insert(db, Map.put(@sample, "follows", follows))
+
+    assert [ticket] = AgentState.tickets()
+    assert ticket["own_threads"] == [28]
+  end
+
+  test "a ticket without follows has no own threads", %{db: db} do
+    insert(db, @sample)
+    assert [ticket] = AgentState.tickets()
+    assert ticket["own_threads"] == []
+  end
+
   test "the heartbeat comes from the sqlite file", %{db: db} do
     insert(db, @sample)
 

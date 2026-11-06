@@ -79,4 +79,52 @@ defmodule AgentBoard.SyncTest do
   test "no checks is none" do
     assert Sync.checks_rollup([]) == {"none", ""}
   end
+
+  # `waiting` means the executor needs input. Mapping it blindly to a
+  # question put #27 in "Precisa de você" with nothing to answer: the
+  # ticket had opened PR #28 and was waiting for a review.
+  test "a waiting report with a question in it is a question" do
+    assert Sync.ticket_state(waiting("Which API should the board use?")) == "question"
+  end
+
+  test "a waiting report whose newest agent comment asks is a question" do
+    assert Sync.ticket_state(waiting("Asked the owner about the API."), asked?: true) ==
+             "question"
+
+    assert Sync.ticket_state(waiting("Asked the owner about the API."),
+             asked?: fn -> true end
+           ) == "question"
+  end
+
+  test "a waiting ticket that opened its own PR is ready for review" do
+    ticket = waiting("CI confirmed as the billing failure. No code change made.")
+    assert Sync.ticket_state(Map.put(ticket, "own_threads", [28])) == "ready"
+  end
+
+  test "a waiting report that names a PR for review is ready without the thread" do
+    assert Sync.ticket_state(waiting("PR #28 remains ready for human review.")) == "ready"
+  end
+
+  test "a waiting report without a question or a PR is blocked" do
+    assert Sync.ticket_state(waiting("Cannot reach the package registry.")) == "blocked"
+  end
+
+  test "a waiting report with no summary is blocked, not a question" do
+    assert Sync.ticket_state(waiting(nil)) == "blocked"
+  end
+
+  test "a question beats the open PR when the agent asks" do
+    ticket = waiting("PR #28 is open. Should it also cover the boss?")
+    assert Sync.ticket_state(Map.put(ticket, "own_threads", [28])) == "question"
+  end
+
+  defp waiting(summary) do
+    %{
+      "assignment" => "running",
+      "report" => "waiting",
+      "report_summary" => summary,
+      "ended_outcome" => nil,
+      "own_threads" => []
+    }
+  end
 end

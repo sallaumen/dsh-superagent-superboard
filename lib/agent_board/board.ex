@@ -6,7 +6,7 @@ defmodule AgentBoard.Board do
   import Ecto.Query, warn: false
 
   alias AgentBoard.Board.{Comment, Event, PullRequest, Repository, Review, Task}
-  alias AgentBoard.Repo
+  alias AgentBoard.{Repo, Sync}
   alias AgentBoard.Sync.Freshness
 
   @merged_page_size 50
@@ -387,6 +387,84 @@ defmodule AgentBoard.Board do
       on_conflict: {:replace, [:body, :author, :updated_at]},
       conflict_target: [:task_id, :github_id]
     )
+  end
+
+  @doc """
+  Whether the newest agent comment on a task asks the person something.
+
+  The runner's hidden marker (`<!-- dsh-superagent:... -->`) is not part of
+  the message. No comment, or a comment that only reports, is `false`.
+  """
+  @spec agent_asked?(integer(), integer()) :: boolean()
+  def agent_asked?(repository_id, number) do
+    Repo.one(
+      from c in Comment,
+        join: t in Task,
+        on: t.id == c.task_id,
+        where: t.repository_id == ^repository_id and t.number == ^number and c.kind == "agent",
+        order_by: [desc: c.inserted_at, desc: c.id],
+        limit: 1,
+        select: c.body
+    )
+    |> comment_asks?()
+  end
+
+  defp comment_asks?(nil), do: false
+
+  defp comment_asks?(body) do
+    body
+    |> String.replace(~r/<!--.*?-->/s, "")
+    |> Sync.question?()
+  end
+
+  @doc """
+  The pull request each task is linked to, by task id.
+
+  The link is the PR URL the task's conversation or body names, or, failing
+  that, the PR thread the task's ticket opened itself (`own_threads`). A task
+  with neither is absent from the map: the board does not guess by title.
+  """
+  @spec linked_pull_requests([Task.t()], %{optional(integer()) => map()}) ::
+          %{optional(integer()) => PullRequest.t()}
+  def linked_pull_requests(tasks, tickets_by_number \\ %{})
+
+  def linked_pull_requests([], _tickets), do: %{}
+
+  def linked_pull_requests(tasks, tickets) do
+    ids = Enum.map(tasks, & &1.id)
+
+    comments_by_task =
+      Repo.all(
+        from c in Comment,
+          where: c.task_id in ^ids,
+          order_by: [asc: c.inserted_at, asc: c.id]
+      )
+      |> Enum.group_by(& &1.task_id)
+
+    Enum.reduce(tasks, %{}, fn task, acc ->
+      pull =
+        task_pull_request(task, Map.get(comments_by_task, task.id, [])) ||
+          ticket_pull_request(task, Map.get(tickets, task.number))
+
+      if pull, do: Map.put(acc, task.id, pull), else: acc
+    end)
+  end
+
+  defp ticket_pull_request(_task, nil), do: nil
+
+  defp ticket_pull_request(task, ticket) do
+    case ticket["own_threads"] || [] do
+      [] ->
+        nil
+
+      numbers ->
+        Repo.one(
+          from p in PullRequest,
+            where: p.repository_id == ^task.repository_id and p.number in ^numbers,
+            order_by: [desc: p.number],
+            limit: 1
+        )
+    end
   end
 
   @doc """

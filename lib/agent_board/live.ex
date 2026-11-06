@@ -62,23 +62,23 @@ defmodule AgentBoard.Live do
   end
 
   defp overlay_tasks(repo, tickets) do
-    Enum.each(tickets, fn ticket ->
-      case Sync.ticket_state(ticket) do
-        nil ->
-          :ok
+    for ticket <- tickets, raw <- ticket["numbers"] || [] do
+      overlay_ticket(repo, ticket, if(is_binary(raw), do: String.to_integer(raw), else: raw))
+    end
 
-        overlay ->
-          Enum.each(
-            ticket["numbers"],
-            &overlay_number(repo, &1, overlay, ticket["started_at"])
-          )
-      end
-    end)
+    :ok
   end
 
-  defp overlay_number(repo, raw, overlay, started_at) do
-    number = if is_binary(raw), do: String.to_integer(raw), else: raw
+  # The question check reads the conversation only for a waiting ticket:
+  # Sync.ticket_state calls it lazily.
+  defp overlay_ticket(repo, ticket, number) do
+    case Sync.ticket_state(ticket, asked?: fn -> Board.agent_asked?(repo.id, number) end) do
+      nil -> :ok
+      overlay -> overlay_number(repo, number, overlay, ticket["started_at"])
+    end
+  end
 
+  defp overlay_number(repo, number, overlay, started_at) do
     base =
       from(t in Task,
         where:
