@@ -42,9 +42,22 @@ defmodule AgentBoardWeb.BoardComponents.AI do
             </div>
           </dl>
           <DataAge.stamp id={"call-age-#{c.id}"} at={c.inserted_at} label="Called" />
+          <p :if={c.status == "error"} class="ai-call-reason">
+            <strong>Reason</strong>
+            <span>{failure_reason(c.error)}</span>
+          </p>
         </li>
       </ol>
     </section>
     """
   end
+
+  defp failure_reason(reason) when is_binary(reason) do
+    case String.trim(reason) do
+      "" -> "Reason not recorded"
+      value -> value
+    end
+  end
+
+  defp failure_reason(_reason), do: "Reason not recorded"
 end
