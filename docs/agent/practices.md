@@ -4,6 +4,8 @@ Elixir Agent Kit owns reusable practices. Agent-board consumes an immutable tag
 and reads the library directly from the Mix dependency through the
 [installed index](../../.elixir-agent-kit/START.md). Run `mix deps.get` first.
 There is no editable mirror and no per-skill native registration in this project.
+The v0.3 routing guide groups workflows by frontend, backend, cross-cutting
+engineering and delivery; each workflow states quality and validation criteria.
 
 ## Where a rule belongs
 
@@ -36,11 +38,11 @@ mistake for current rules.
 
 | Former paths | Disposition |
 |---|---|
-| `capabilities/skills/`, catalog, manifest | 33 concise English workflows in kit `priv/library/skills/`; original-to-public mapping in its `docs/provenance.md`. This is adaptation, not literal equivalence. |
+| `capabilities/skills/`, catalog, manifest | 33 reviewed English workflows in kit `priv/library/skills/`; original-to-public mapping and source-review matrix in its `docs/`. This is adaptation, not literal equivalence. |
 | `contrato.md`, `parametros.md` | Kit shared contract and per-workflow inputs/modes; board-specific authority remains local. |
 | `templates/` | Kit decision, delivery-plan, diagnosis, validation and practice-proposal templates. |
 | `INCORPORACAO.md`, usage/source references | Original provenance remains in Git; current mapping and evolution policy live in the kit. |
-| `validacao/casos-de-avaliacao.*` | 29 routing cases adapted to public IDs in kit `evals/`, outside runtime guidance. Private context names removed; E27 corrected to respect explicit merge/deploy authority. |
+| `validacao/casos-de-avaliacao.*` | 29 routing cases adapted to public IDs and 11 new coverage cases in kit `evals/`, outside runtime guidance. Private context names removed; E27 corrected to respect explicit merge/deploy authority. |
 | `validacao/fixtures/`, historical validation report | Historical evidence retained in Git; not represented as new evaluation results. |
 | `tools/` | Retired local validator; shared-content/installer checks run in kit CI. This project checks its actual installation through Mix. |
 | `contextos/elixir-phoenix-oban.md` | General guidance adapted in kit `ELIXIR.md`; installed technology and local contracts govern use. |

@@ -1,7 +1,8 @@
-# Elixir Agent Kit 0.2.0
+# Elixir Agent Kit 0.3.0
 
-Read the [shared contract](../deps/elixir_agent_kit/priv/library/CONTRACT.md), then select from the
-[workflow catalog](../deps/elixir_agent_kit/priv/library/CATALOG.md). Choose the smallest relevant workflow from the catalog.
+Read the [shared contract](../deps/elixir_agent_kit/priv/library/CONTRACT.md), then use the
+[area routing guide](../deps/elixir_agent_kit/priv/library/ROUTING.md) and
+[workflow catalog](../deps/elixir_agent_kit/priv/library/CATALOG.md). Choose the smallest relevant workflow from the routing guide and catalog.
 Read workflow bodies from the dependency; do not copy them into this project.
 Use the [Elixir context](../deps/elixir_agent_kit/priv/library/ELIXIR.md) only for technologies present here.
 Follow [practice evolution](../deps/elixir_agent_kit/priv/library/EVOLUTION.md) for reusable improvements.
