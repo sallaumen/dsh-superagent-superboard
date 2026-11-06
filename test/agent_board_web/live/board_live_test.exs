@@ -158,7 +158,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
-    view |> element("button", "Open") |> render_click()
+    view |> element("[data-task]") |> render_click()
 
     view
     |> element("#ask-agent")
@@ -189,7 +189,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     )
 
     {:ok, view, _html} = live(conn, ~p"/")
-    view |> element("button", "Open") |> render_click()
+    view |> element("[data-task]") |> render_click()
 
     assert render(view) =~ "sm:w-14"
   end
@@ -214,27 +214,27 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/history")
 
-    assert has_element?(view, "#merged-column .archive-count", "7 loaded")
+    assert has_element?(view, "#merged-column-history .archive-count", "7 loaded")
 
     assert has_element?(
              view,
-             "#merged-column .archive-count[aria-label='7 pull requests loaded']"
+             "#merged-column-history .archive-count[aria-label='7 pull requests loaded']"
            )
 
     assert has_element?(view, "#merge-trend", "7 in the last 7 UTC days · loaded history")
-    assert has_element?(view, "#merged-column[tabindex='-1']")
+    assert has_element?(view, "#merged-column-history[tabindex='-1']")
     assert has_element?(view, "#merged-list[aria-label='Merged pull request list']")
     assert has_element?(view, "#merged-list article:nth-child(5)", "Merged pull 3")
     assert has_element?(view, "#merged-list article:nth-child(6)", "Merged pull 2")
     assert has_element?(view, "#merged-list article:nth-child(7)", "Merged pull 1")
-    refute has_element?(view, "#merged-column summary")
-    refute has_element?(view, "#merged-column button[phx-click=act]")
+    refute has_element?(view, "#merged-column-history summary")
+    refute has_element?(view, "#merged-column-history button[phx-click=act]")
   end
 
-  test "empty work links to saved merge history without implying active tasks", %{conn: conn} do
+  test "the merge log links to the full history only when there is one", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "empty-work")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/empty-work")
-    refute has_element?(view, "#column-running .lane-history-link")
+    refute has_element?(view, "#sec-log button", "Histórico")
 
     %PullRequest{}
     |> PullRequest.changeset(%{
@@ -247,7 +247,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     send(view.pid, :board_updated)
-    assert has_element?(view, "#column-running a.lane-history-link[href='#merged-column']")
+    assert has_element?(view, "#sec-log button", "Histórico")
 
     %Task{}
     |> Task.changeset(%{
@@ -260,7 +260,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     send(view.pid, :board_updated)
-    refute has_element?(view, "#column-running .lane-history-link")
+    assert has_element?(view, "#sec-log button", "Histórico")
   end
 
   test "scrolling the merged list loads fifty more without duplicates or losing pages", %{
@@ -283,23 +283,23 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/scroll-history")
     assert has_element?(view, "#merged-list[phx-viewport-bottom=load_more_merged]")
-    assert has_element?(view, "#merged-column .archive-count", "50 loaded")
+    assert has_element?(view, "#merged-column-history .archive-count", "50 loaded")
 
     first_tail = view |> element("#merged-list .archive-tail") |> render() |> tail_id()
     render_hook(view, "load_more_merged", %{"id" => first_tail})
-    assert has_element?(view, "#merged-column .archive-count", "100 loaded")
+    assert has_element?(view, "#merged-column-history .archive-count", "100 loaded")
 
     render_hook(view, "load_more_merged", %{"id" => first_tail})
-    assert has_element?(view, "#merged-column .archive-count", "100 loaded")
+    assert has_element?(view, "#merged-column-history .archive-count", "100 loaded")
 
     second_tail = view |> element("#merged-list .archive-tail") |> render() |> tail_id()
     render_hook(view, "load_more_merged", %{"id" => second_tail})
-    assert has_element?(view, "#merged-column .archive-count", "120 loaded")
+    assert has_element?(view, "#merged-column-history .archive-count", "120 loaded")
     refute has_element?(view, "#merged-list[phx-viewport-bottom]")
     refute has_element?(view, "#merged-list .archive-tail[id]")
 
     send(view.pid, :board_updated)
-    assert has_element?(view, "#merged-column .archive-count", "120 loaded")
+    assert has_element?(view, "#merged-column-history .archive-count", "120 loaded")
     assert length(Regex.scan(~r/id="pull-\d+"/, render(view))) == 120
 
     %PullRequest{}
@@ -313,13 +313,13 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     send(view.pid, :board_updated)
-    assert has_element?(view, "#merged-column .archive-count", "120 loaded")
+    assert has_element?(view, "#merged-column-history .archive-count", "120 loaded")
     assert has_element?(view, "#merged-list", "Newest merge")
     assert length(Regex.scan(~r/id="pull-\d+"/, render(view))) == 120
 
     newest_tail = view |> element("#merged-list .archive-tail") |> render() |> tail_id()
     render_hook(view, "load_more_merged", %{"id" => newest_tail})
-    assert has_element?(view, "#merged-column .archive-count", "121 loaded")
+    assert has_element?(view, "#merged-column-history .archive-count", "121 loaded")
     assert length(Regex.scan(~r/id="pull-\d+"/, render(view))) == 121
 
     resume = %{"repo" => "fixture/scroll-history", "merged" => 121, "tasks" => %{}}
@@ -329,7 +329,12 @@ defmodule AgentBoardWeb.BoardLiveTest do
       |> put_connect_params(%{"board_resume" => resume})
       |> live(~p"/?repo=fixture/scroll-history")
 
-    assert has_element?(reconnected, "#merged-column .archive-count", "121 loaded")
+    assert has_element?(
+             reconnected,
+             "#merged-column-history .archive-count",
+             "121 loaded"
+           )
+
     assert length(Regex.scan(~r/id="pull-\d+"/, render(reconnected))) == 121
   end
 
@@ -338,7 +343,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
     id
   end
 
-  test "a task lane loads fifty at a time and keeps its total through a broadcast", %{conn: conn} do
+  test "the queue shows 8, expands in pages and keeps its total through a broadcast", %{
+    conn: conn
+  } do
     {:ok, repo} = Board.add_repository("fixture", "task-pages")
 
     for number <- 1..120 do
@@ -354,26 +361,24 @@ defmodule AgentBoardWeb.BoardLiveTest do
     end
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/task-pages")
-    assert has_element?(view, "#column-queued .lane-count", "120")
-    assert has_element?(view, "#column-queued .lane-items[phx-viewport-bottom=load_more_tasks]")
-    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 50
+    assert has_element?(view, "#sec-queue .ab-sec__count", "120")
+    assert queue_rows(view) == 8
+    assert has_element?(view, "button", "Mais 112 na fila")
 
-    first_tail = view |> element("#column-queued .lane-tail") |> render() |> task_tail_id()
-    render_hook(view, "load_more_tasks", %{"id" => first_tail})
-    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 100
-    assert has_element?(view, "#column-queued .lane-count", "120")
+    view |> element("button", "Mais 112 na fila") |> render_click()
+    assert queue_rows(view) == 50
+    assert has_element?(view, "#sec-queue .ab-sec__count", "120")
+    assert has_element?(view, "button", "Mais 70 na fila")
 
-    render_hook(view, "load_more_tasks", %{"id" => first_tail})
-    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 100
-
-    second_tail = view |> element("#column-queued .lane-tail") |> render() |> task_tail_id()
-    render_hook(view, "load_more_tasks", %{"id" => second_tail})
-    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 120
-    refute has_element?(view, "#column-queued .lane-items[phx-viewport-bottom]")
+    view |> element("button", "Mais 70 na fila") |> render_click()
+    assert queue_rows(view) == 100
+    view |> element("button", "Mais 20 na fila") |> render_click()
+    assert queue_rows(view) == 120
+    refute has_element?(view, "button", "Mais")
 
     send(view.pid, :board_updated)
-    assert has_element?(view, "#column-queued .lane-count", "120")
-    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 120
+    assert has_element?(view, "#sec-queue .ab-sec__count", "120")
+    assert queue_rows(view) == 120
 
     %Task{}
     |> Task.changeset(%{
@@ -386,46 +391,13 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     send(view.pid, :board_updated)
-    assert has_element?(view, "#column-queued .lane-count", "121")
-    assert has_element?(view, "#column-queued", "Arrived after broadcast")
-    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 120
-
-    final_tail = view |> element("#column-queued .lane-tail") |> render() |> task_tail_id()
-    render_hook(view, "load_more_tasks", %{"id" => final_tail})
-    assert length(Regex.scan(~r/id="task-\d+"/, render(view))) == 121
-
-    resume = %{"repo" => "fixture/task-pages", "merged" => 0, "tasks" => %{"queued" => 121}}
-
-    {:ok, reconnected, _html} =
-      conn
-      |> put_connect_params(%{"board_resume" => resume})
-      |> live(~p"/?repo=fixture/task-pages")
-
-    assert length(Regex.scan(~r/id="task-\d+"/, render(reconnected))) == 121
-
-    wrong_repo = %{resume | "repo" => "fixture/another-repository"}
-
-    {:ok, fresh, _html} =
-      conn
-      |> put_connect_params(%{"board_resume" => wrong_repo})
-      |> live(~p"/?repo=fixture/task-pages")
-
-    assert length(Regex.scan(~r/id="task-\d+"/, render(fresh))) == 50
-
-    malformed = %{resume | "tasks" => "invalid"}
-
-    {:ok, safe, _html} =
-      conn
-      |> put_connect_params(%{"board_resume" => malformed})
-      |> live(~p"/?repo=fixture/task-pages")
-
-    assert length(Regex.scan(~r/id="task-\d+"/, render(safe))) == 50
+    assert has_element?(view, "#sec-queue .ab-sec__count", "121")
+    assert has_element?(view, "#sec-queue", "Arrived after broadcast")
+    assert queue_rows(view) == 121
+    refute has_element?(view, "button", "Mais 1 na fila")
   end
 
-  defp task_tail_id(html) do
-    [_, id] = Regex.run(~r/id="(task-tail-queued-\d+)"/, html)
-    id
-  end
+  defp queue_rows(view), do: render(view) |> then(&length(Regex.scan(~r/class="ab-row"/, &1)))
 
   test "the merge chart counts only dated records within the visible UTC window", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "trend")
@@ -460,10 +432,10 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _repo} = Board.add_repository("fixture", "empty-history")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/empty-history")
 
-    assert has_element?(view, "#merged-column", "No pull request merged yet.")
+    assert has_element?(view, "#merged-column-history", "No pull request merged yet.")
     refute has_element?(view, "#merge-trend")
     assert has_element?(view, "#merged-list", "No pull request merged yet.")
-    refute has_element?(view, "#merged-column summary")
+    refute has_element?(view, "#merged-column-history summary")
   end
 
   test "missing AI measurements remain unknown", %{conn: conn} do
@@ -685,32 +657,34 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "$0.00112"
   end
 
-  test "the board shows the blocked column", %{conn: conn} do
+  test "the empty repository says there is nothing yet", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
-    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert html =~ "Blocked"
-    assert html =~ "Nothing is blocked."
-    assert has_element?(view, "#column-blocked[data-attention=false]")
+    assert has_element?(view, ".ab-empty", "Sem dados ainda.")
   end
 
-  test "a blocked task signals attention only from the loaded board", %{conn: conn} do
+  test "a blocked task lands in Precisa de você and marks the rail", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "blocked")
+    Board.log_event(repo.id, "sync", "fixture/blocked", %{"errors" => 0})
 
-    %Task{}
-    |> Task.changeset(%{
-      repository_id: repo.id,
-      kind: "issue",
-      number: 42,
-      title: "Needs a decision",
-      state: "blocked"
-    })
-    |> Repo.insert!()
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 42,
+        title: "Needs a decision",
+        state: "blocked"
+      })
+      |> Repo.insert!()
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/blocked")
-    assert has_element?(view, "#column-blocked[data-attention=true]", "Needs a decision")
-    refute has_element?(view, "#column-ready[data-attention=true]")
+
+    assert has_element?(view, "#sec-needs #task-#{task.id}", "Needs a decision")
+    assert has_element?(view, "button.ab-repo[aria-current=true] .ab-repo__n--halt", "1")
+    refute has_element?(view, "#sec-now #task-#{task.id}")
   end
 
   test "the repo query param selects a repository", %{conn: conn} do
@@ -736,7 +710,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
     {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
-    assert html =~ "No task is running."
+    assert html =~ "Sem dados ainda."
 
     # a task appears behind the view's back
     repo = Board.repository_by_slug("sallaumen/arena-rogue")
@@ -771,14 +745,14 @@ defmodule AgentBoardWeb.BoardLiveTest do
       |> Repo.insert!()
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/stable")
-    view |> element("#task-#{task.id} button", "Open") |> render_click()
+    view |> element("#task-#{task.id}") |> render_click()
 
     task |> Task.changeset(%{state: "running"}) |> Repo.update!()
     for _ <- 1..3, do: send(view.pid, :board_updated)
 
     html = render(view)
     assert length(Regex.scan(~r/id="task-#{task.id}"/, html)) == 1
-    assert has_element?(view, "#column-running #task-#{task.id}")
+    assert has_element?(view, "#sec-now #task-#{task.id}")
     assert has_element?(view, "#conversation-title", "Stable task")
     assert has_element?(view, "#ask-agent input[name=body]")
   end
@@ -815,7 +789,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/?repo=nobody/nothing")
 
-    assert html =~ "No task is running."
+    assert html =~ "Sem dados ainda."
   end
 
   test "the sync line is announced politely", %{conn: conn} do
@@ -830,18 +804,18 @@ defmodule AgentBoardWeb.BoardLiveTest do
   test "external links open with noopener", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
-    %Task{}
-    |> Task.changeset(%{
+    %PullRequest{}
+    |> PullRequest.changeset(%{
       repository_id: repo.id,
-      kind: "issue",
       number: 501,
-      title: "Linked task",
-      state: "queued",
-      url: "https://github.com/sallaumen/arena-rogue/issues/501"
+      title: "Linked pull",
+      state: "merged",
+      merged_at: DateTime.utc_now(),
+      url: "https://github.com/sallaumen/arena-rogue/pull/501"
     })
     |> Repo.insert!()
 
-    {:ok, _view, html} = live(conn, ~p"/")
+    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
     assert html =~ ~s(rel="noopener noreferrer")
   end
@@ -865,14 +839,25 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, ".ab-top__repo h1", "arena-rogue")
   end
 
-  test "the board renders the columns", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+  test "the board renders the work sections", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
-    {:ok, _view, html} = live(conn, ~p"/")
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 1,
+      title: "Keep the sections visible",
+      state: "queued"
+    })
+    |> Repo.insert!()
 
-    assert html =~ "Running"
-    assert html =~ "Merged"
-    assert html =~ "Queued"
+    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    assert html =~ "Agora"
+    assert html =~ "Precisa de você"
+    assert html =~ "Fila"
+    assert html =~ "Mesclados"
   end
 
   test "the settings menu keeps named repository tracking fields", %{conn: conn} do
@@ -885,13 +870,23 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#board-settings #track-repo[phx-submit=add]")
   end
 
-  test "the columns stack on small screens", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+  test "the reading columns switch to one column through a container query", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
-    {:ok, _view, html} = live(conn, ~p"/")
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 2,
+      title: "Keep the columns visible",
+      state: "queued"
+    })
+    |> Repo.insert!()
 
-    assert html =~ "grid-cols-1"
-    assert html =~ "lg:grid-cols-4"
+    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    assert html =~ "ab-cols"
+    assert html =~ "ab-col"
   end
 
   test "the board renders the tracked repository", %{conn: conn} do
@@ -1012,7 +1007,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element("button", "Open") |> render_click()
+    view |> element("[data-task]") |> render_click()
     assert render(view) =~ "Conversation"
 
     view |> element("#panel-conversation button", "Close") |> render_click()
@@ -1063,7 +1058,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     {:ok, view, _} = live(conn, ~p"/?repo=fixture/first")
-    view |> element("button", "Open") |> render_click()
+    view |> element("[data-task]") |> render_click()
     assert has_element?(view, "#conversation")
 
     view |> element("#repo-select") |> render_change(%{"repo" => "fixture/second"})
@@ -1081,7 +1076,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
       |> Repo.insert!()
 
     {:ok, view, _} = live(conn, ~p"/?repo=fixture/conversation")
-    view |> element("button", "Open") |> render_click()
+    view |> element("[data-task]") |> render_click()
 
     Board.upsert_comment(
       task,
@@ -1109,7 +1104,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element("button", "Open") |> render_click()
+    view |> element("[data-task]") |> render_click()
 
     assert render(view) =~ "Conversation"
     assert render(view) =~ "No messages yet"

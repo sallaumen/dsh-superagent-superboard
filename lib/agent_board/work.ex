@@ -1,0 +1,612 @@
+defmodule AgentBoard.Work do
+  @moduledoc """
+  The board's reading lanes, built only from rows the board observed.
+
+  A missing field becomes an omitted sentence, never a fabricated one: the
+  activity step, the PR stats and the executor's internal log are not stored
+  here, so they do not appear.
+  """
+
+  import Ecto.Query, warn: false
+
+  alias AgentBoard.Board.{Comment, PullRequest, Task}
+  alias AgentBoard.{Repo, Time, Titles}
+
+  @needs_limit 8
+  @queue_limit 8
+  @day_limit 3
+  @log_days 7
+
+  @doc """
+  The attention list: merged CI failures, blocked work, PRs for review and
+  questions, in that order. New items come before old items inside a group.
+  """
+  def needs(repository, board, opts \\ []) do
+    now = Keyword.get(opts, :now, DateTime.utc_now())
+    last_visit = Keyword.get(opts, :last_visit)
+    offset = Keyword.get(opts, :tz_offset, 0)
+    tickets = Keyword.get(opts, :tickets_by_number, %{})
+
+    failures =
+      Repo.all(
+        from p in PullRequest,
+          where:
+            p.repository_id == ^repository.id and p.state == "merged" and
+              p.checks_state == "failure",
+          order_by: [desc: p.merged_at, desc: p.id],
+          limit: @needs_limit
+      )
+      |> Enum.map(&failure_need(&1, now, last_visit, offset))
+
+    blocked =
+      board
+      |> Map.get(:blocked, [])
+      |> Enum.map(&task_need(&1, :blocked, now, last_visit, tickets))
+
+    review =
+      board |> Map.get(:ready, []) |> Enum.map(&task_need(&1, :review, now, last_visit, tickets))
+
+    question =
+      board
+      |> Map.get(:question, [])
+      |> Enum.map(&task_need(&1, :question, now, last_visit, tickets))
+
+    (failures ++ blocked ++ review ++ question)
+    |> Enum.sort_by(fn need ->
+      {rank(need.kind), not need.is_new, -(need.age_seconds || 0)}
+    end)
+  end
+
+  defp failure_need(pull, now, last_visit, offset) do
+    at = pull.checks_changed_at || pull.merged_at
+
+    %{
+      key: "pull-#{pull.id}",
+      kind: :cifail,
+      number: pull.number,
+      title: pull.title,
+      why: failure_why(pull, offset),
+      age_seconds: Time.age_seconds(at, now),
+      is_new: new?(at, last_visit),
+      actions: [%{label: "Ver falha", url: pull.url}]
+    }
+  end
+
+  defp task_need(task, kind, now, last_visit, tickets) do
+    at = task.state_changed_at || task.updated_at || task.inserted_at
+    ticket = Map.get(tickets, task.number)
+
+    %{
+      key: "task-#{task.id}",
+      id: task.id,
+      number: task.number,
+      kind: kind,
+      title: task.title,
+      why: task_why(task, kind, ticket),
+      age_seconds: Time.age_seconds(at, now),
+      is_new: new?(at, last_visit),
+      actions: [%{label: action_label(kind), task_id: task.id}]
+    }
+  end
+
+  defp task_why(_task, :review, _ticket), do: "**PR pronto para revisão**"
+
+  defp task_why(task, :question, ticket) do
+    case last_agent_comment(task) do
+      nil ->
+        case ticket && ticket["report_summary"] do
+          summary when is_binary(summary) -> "**O agente perguntou:** " <> excerpt(summary)
+          _ -> "**O agente está esperando sua resposta**"
+        end
+
+      comment ->
+        "**O agente perguntou:** " <> excerpt(comment.body)
+    end
+  end
+
+  defp task_why(_task, :blocked, ticket) do
+    case ticket && ticket["report_summary"] do
+      summary when is_binary(summary) -> "**Bloqueado:** " <> excerpt(summary)
+      _ -> "**Bloqueado**"
+    end
+  end
+
+  defp failure_why(pull, offset) do
+    checks = checks_label(pull)
+
+    # Nested strong+code is not part of the tiny markup parser; the bold lead
+    # and the check name stay separate segments.
+    lead =
+      if checks == "",
+        do: "**CI falhou** depois do merge.",
+        else: "**CI falhou** em `#{checks}` depois do merge."
+
+    "#{lead} A main está vermelha desde #{Time.local_time(pull.merged_at, offset)}."
+  end
+
+  defp checks_label(%PullRequest{checks_failed: failed}) when is_binary(failed) do
+    failed
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.uniq()
+    |> Enum.join(" e ")
+    |> String.slice(0, 80)
+  end
+
+  defp checks_label(_pull), do: ""
+
+  defp last_agent_comment(task) do
+    Repo.one(
+      from c in Comment,
+        where: c.task_id == ^task.id and c.kind == "agent",
+        order_by: [desc: c.inserted_at, desc: c.id],
+        limit: 1
+    )
+  end
+
+  defp action_label(:review), do: "Revisar"
+  defp action_label(:question), do: "Responder"
+  defp action_label(:blocked), do: "Ver detalhe"
+  defp action_label(:cifail), do: "Ver falha"
+
+  defp rank(:cifail), do: 0
+  defp rank(:blocked), do: 1
+  defp rank(:review), do: 2
+  defp rank(:question), do: 3
+
+  @doc """
+  The queue, numbered in arrival order. A title that repeats a merged PR gets
+  the warning; an unknown origin is omitted instead of invented.
+  """
+  def queue(repository, _board, opts \\ []) do
+    now = Keyword.get(opts, :now, DateTime.utc_now())
+    last_visit = Keyword.get(opts, :last_visit)
+    filter = Keyword.get(opts, :filter, :all)
+    limit = Keyword.get(opts, :limit, @queue_limit)
+
+    rows =
+      Repo.all(
+        from t in Task,
+          where: t.repository_id == ^repository.id and t.state == "queued",
+          order_by: [asc: t.inserted_at, asc: t.id],
+          select: %{
+            id: t.id,
+            number: t.number,
+            title: t.title,
+            inserted_at: t.inserted_at,
+            origin_task_id: t.origin_task_id
+          }
+      )
+
+    merged =
+      Repo.all(
+        from p in PullRequest,
+          where: p.repository_id == ^repository.id and p.state == "merged",
+          select: %{id: p.id, number: p.number, title: p.title}
+      )
+
+    origins = origin_numbers(rows)
+    items = Enum.map(rows, &queue_item(&1, merged, origins, now, last_visit))
+    counts = queue_counts(items)
+
+    filtered = filter_items(items, filter)
+
+    %{
+      items: Enum.take(filtered, limit),
+      total: length(filtered),
+      hidden: max(length(filtered) - limit, 0),
+      limit: limit,
+      counts: counts,
+      filters: filters(counts),
+      filter: filter
+    }
+  end
+
+  defp queue_item(row, merged, origins, now, last_visit) do
+    duplicate = Titles.duplicate(row.title, merged)
+
+    %{
+      key: "task-#{row.id}",
+      id: row.id,
+      number: row.number,
+      title: row.title,
+      age_seconds: Time.age_seconds(row.inserted_at, now),
+      is_new: new?(row.inserted_at, last_visit),
+      sub:
+        case Map.get(origins, row.origin_task_id) do
+          nil -> nil
+          number -> "dividido de ##{number}"
+        end,
+      note: duplicate && "Parece repetir ##{duplicate.number}, já mesclado"
+    }
+  end
+
+  defp origin_numbers(rows) do
+    ids = rows |> Enum.map(& &1.origin_task_id) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    if ids == [] do
+      %{}
+    else
+      Repo.all(from t in Task, where: t.id in ^ids, select: {t.id, t.number}) |> Map.new()
+    end
+  end
+
+  defp queue_counts(items) do
+    %{
+      all: length(items),
+      new: Enum.count(items, & &1.is_new),
+      split: Enum.count(items, &(!is_nil(&1.sub))),
+      dupes: Enum.count(items, &(!is_nil(&1.note)))
+    }
+  end
+
+  defp filters(%{all: all}) when all <= @queue_limit, do: []
+
+  defp filters(counts) do
+    [
+      {"Todas", counts.all},
+      {"Novas", counts.new},
+      {"Divididas", counts.split},
+      {"Possíveis repetidas", counts.dupes}
+    ]
+  end
+
+  defp filter_items(items, :new), do: Enum.filter(items, & &1.is_new)
+  defp filter_items(items, :split), do: Enum.filter(items, &(!is_nil(&1.sub)))
+  defp filter_items(items, :dupes), do: Enum.filter(items, &(!is_nil(&1.note)))
+  defp filter_items(items, _all), do: items
+
+  @doc "Seven days of merges: the dots, the day counts and the per-day record."
+  def merge_log(repository, opts \\ []) do
+    now = Keyword.get(opts, :now, DateTime.utc_now())
+    offset = Keyword.get(opts, :tz_offset, 0)
+    today = Time.local_date(now, offset)
+    start = Date.add(today, -(@log_days - 1))
+    start_utc = DateTime.new!(start, ~T[00:00:00Z]) |> DateTime.add(offset * 60, :second)
+
+    pulls =
+      Repo.all(
+        from p in PullRequest,
+          where:
+            p.repository_id == ^repository.id and p.state == "merged" and
+              p.merged_at >= ^start_utc,
+          order_by: [desc: p.merged_at, desc: p.id]
+      )
+
+    days =
+      Enum.map(0..(@log_days - 1), fn index ->
+        date = Date.add(start, index)
+        day_pulls = Enum.filter(pulls, &(Time.local_date(&1.merged_at, offset) == date))
+
+        %{
+          date: date,
+          label: Time.short_day_label(date, today),
+          n: length(day_pulls),
+          fail: Enum.count(day_pulls, &(&1.checks_state == "failure")),
+          today: date == today
+        }
+      end)
+
+    groups =
+      days
+      |> Enum.reverse()
+      |> Enum.reject(&(&1.n == 0))
+      |> Enum.map(fn day ->
+        day_pulls =
+          pulls
+          |> Enum.filter(&(Time.local_date(&1.merged_at, offset) == day.date))
+          |> Enum.sort_by(& &1.merged_at, :desc)
+
+        shown = Enum.take(day_pulls, @day_limit)
+
+        %{
+          label: Time.day_label(day.date, today),
+          n: length(day_pulls),
+          more: max(length(day_pulls) - @day_limit, 0),
+          items: Enum.map(shown, &merged_pr(&1, offset))
+        }
+      end)
+
+    %{days: days, groups: groups, total: Enum.sum(Enum.map(days, & &1.n))}
+  end
+
+  defp merged_pr(pull, offset) do
+    {ci, ci_note} = ci_label(pull)
+
+    %{
+      id: pull.id,
+      number: pull.number,
+      title: pull.title,
+      url: pull.url,
+      ci: ci,
+      ciNote: ci_note,
+      review: review_label(pull.review_state),
+      at: Time.local_time(pull.merged_at, offset)
+    }
+  end
+
+  defp ci_label(%PullRequest{checks_state: "failure"} = pull) do
+    case checks_label(pull) do
+      "" -> {"fail", "CI falhou"}
+      checks -> {"fail", "CI falhou · #{checks}"}
+    end
+  end
+
+  defp ci_label(%PullRequest{checks_state: "success"}), do: {"pass", "CI ok"}
+  defp ci_label(%PullRequest{checks_state: "none"}), do: {"unknown", "sem CI"}
+  defp ci_label(%PullRequest{checks_state: "pending"}), do: {"unknown", "CI rodando"}
+  defp ci_label(_pull), do: {"unknown", "CI desconhecido"}
+
+  defp review_label("approved"), do: "revisado"
+  defp review_label("changes_requested"), do: "mudanças pedidas"
+  defp review_label("pending"), do: "revisão pendente"
+  defp review_label(_state), do: "sem revisão"
+
+  @doc """
+  The one-sentence digest. Since the previous visit when there is one; the
+  current state on a first visit; the saved state when the board is frozen.
+  """
+  def digest(repository, board, opts \\ []) do
+    now = Keyword.get(opts, :now, DateTime.utc_now())
+    last_visit = Keyword.get(opts, :last_visit)
+    offset = Keyword.get(opts, :tz_offset, 0)
+    frozen_at = Keyword.get(opts, :frozen_at)
+
+    if is_nil(last_visit) do
+      first_digest(repository, board, now, offset, frozen_at)
+    else
+      since_digest(repository, board, last_visit, now, offset, frozen_at)
+    end
+  end
+
+  defp first_digest(repository, board, now, offset, frozen_at) do
+    case first_phrases(repository, board) do
+      [] ->
+        nil
+
+      phrases ->
+        %{
+          prefix:
+            (frozen_at && "Até #{Time.local_time(frozen_at, offset)}: ") || "Primeira visita: ",
+          segments: join_phrases(phrases),
+          suffix: (frozen_at && " Depois disso, não sabemos.") || ".",
+          now: now
+        }
+    end
+  end
+
+  defp first_phrases(repository, board) do
+    running = length(Map.get(board, :running, []))
+    waiting = length(Map.get(board, :ready, [])) + length(Map.get(board, :question, []))
+    blocked = length(Map.get(board, :blocked, []))
+    queued = Map.get(board, :task_counts, %{}) |> Map.get(:queued, 0)
+    failures = merged_failures(repository)
+
+    [
+      failures > 0 &&
+        [%{text: "#{failures} #{plural(failures, "PR")} com CI falhando na main", role: :halt}],
+      running > 0 && [%{text: "#{running} #{plural(running, "rodando")}", role: :agent}],
+      waiting > 0 && [%{text: "#{waiting} esperando você", role: :you}],
+      blocked > 0 && [%{text: "#{blocked} #{plural(blocked, "bloqueado")}", role: :halt}],
+      queued > 0 && [%{text: "#{queued} na fila", role: :agent}]
+    ]
+    |> Enum.reject(&(&1 == false))
+  end
+
+  defp merged_failures(repository) do
+    Repo.aggregate(
+      from(p in PullRequest,
+        where:
+          p.repository_id == ^repository.id and p.state == "merged" and
+            p.checks_state == "failure"
+      ),
+      :count
+    )
+  end
+
+  defp since_digest(repository, board, last_visit, now, offset, frozen_at) do
+    counts = since_counts(repository, last_visit)
+    phrases = since_phrases(repository, board, last_visit, counts, offset)
+
+    segments =
+      if phrases == [] do
+        [%{text: "nada mudou", role: :plain}]
+      else
+        join_phrases(phrases)
+      end
+
+    %{
+      prefix: since_prefix(last_visit, offset, frozen_at, now),
+      segments: segments,
+      suffix: since_suffix(phrases, frozen_at),
+      now: now
+    }
+  end
+
+  defp since_counts(repository, last_visit) do
+    %{
+      merged: merged_count(repository, last_visit),
+      merged_fail: merged_fail_count(repository, last_visit),
+      reviews: review_count(repository, last_visit),
+      questions: question_count(repository, last_visit),
+      queue_new: queue_new_count(repository, last_visit)
+    }
+  end
+
+  defp merged_count(repository, last_visit) do
+    Repo.aggregate(
+      from(p in PullRequest,
+        where:
+          p.repository_id == ^repository.id and p.state == "merged" and
+            p.merged_at >= ^last_visit
+      ),
+      :count
+    )
+  end
+
+  defp merged_fail_count(repository, last_visit) do
+    Repo.aggregate(
+      from(p in PullRequest,
+        where:
+          p.repository_id == ^repository.id and p.state == "merged" and
+            p.merged_at >= ^last_visit and p.checks_state == "failure"
+      ),
+      :count
+    )
+  end
+
+  defp review_count(repository, last_visit) do
+    Repo.aggregate(
+      from(p in PullRequest,
+        where:
+          p.repository_id == ^repository.id and p.state == "open" and
+            p.opened_at >= ^last_visit
+      ),
+      :count
+    )
+  end
+
+  defp question_count(repository, last_visit) do
+    Repo.aggregate(
+      from(t in Task,
+        where:
+          t.repository_id == ^repository.id and t.state == "question" and
+            t.state_changed_at >= ^last_visit
+      ),
+      :count
+    )
+  end
+
+  defp queue_new_count(repository, last_visit) do
+    Repo.aggregate(
+      from(t in Task,
+        where:
+          t.repository_id == ^repository.id and t.state == "queued" and
+            t.inserted_at >= ^last_visit
+      ),
+      :count
+    )
+  end
+
+  defp since_phrases(repository, board, last_visit, counts, _offset) do
+    running = Map.get(board, :running, [])
+    blocked = Map.get(board, :blocked, [])
+    first_review = first_review(repository, last_visit)
+
+    [
+      counts.merged > 0 && merged_phrase(counts.merged, counts.merged_fail),
+      counts.reviews > 0 && [review_phrase(counts.reviews, first_review)],
+      counts.questions > 0 &&
+        [%{text: "fez #{counts.questions} #{plural(counts.questions, "pergunta")}", role: :you}],
+      running != [] && [running_phrase(running)],
+      blocked != [] && [blocked_phrase(blocked)],
+      counts.queue_new > 0 && [queue_phrase(counts.queue_new)]
+    ]
+    |> Enum.reject(&(&1 == false))
+    |> Enum.map(&List.wrap/1)
+  end
+
+  defp since_prefix(_last_visit, offset, %DateTime{} = frozen_at, _now),
+    do: "Até #{Time.local_time(frozen_at, offset)}, "
+
+  defp since_prefix(last_visit, offset, nil, now),
+    do: "Desde #{Time.since_label(last_visit, offset, now)} "
+
+  defp since_suffix(_phrases, %DateTime{}), do: ". Depois disso, não sabemos."
+  defp since_suffix([], nil), do: "nada mudou."
+  defp since_suffix(_phrases, nil), do: "."
+
+  defp queue_phrase(1), do: %{text: "1 nova na fila", role: :agent}
+  defp queue_phrase(n), do: %{text: "#{n} novas na fila", role: :agent}
+
+  defp merged_phrase(merged, 0),
+    do: [%{text: "o agente mesclou #{merged} #{plural(merged, "PR")}", role: :agent}]
+
+  defp merged_phrase(1, 1) do
+    [
+      %{text: "o agente mesclou 1 PR", role: :agent},
+      %{text: " com CI falhando", role: :halt}
+    ]
+  end
+
+  defp merged_phrase(merged, fail) when fail == merged do
+    [
+      %{text: "o agente mesclou #{merged} #{plural(merged, "PR")}", role: :agent},
+      %{text: ", os #{merged} com CI falhando", role: :halt}
+    ]
+  end
+
+  defp merged_phrase(merged, fail) do
+    [
+      %{text: "o agente mesclou #{merged} #{plural(merged, "PR")}", role: :agent},
+      %{text: ", #{fail} com CI falhando", role: :halt}
+    ]
+  end
+
+  defp review_phrase(1, pr) do
+    %{text: "abriu 1 PR para revisão", role: :you, url: pr && pr.url}
+  end
+
+  defp review_phrase(n, pr) do
+    %{text: "abriu #{n} PRs para revisão", role: :you, url: pr && pr.url}
+  end
+
+  defp running_phrase([task]) do
+    %{text: "está trabalhando em ##{task.number}", role: :agent, task_id: task.id}
+  end
+
+  defp running_phrase(tasks) do
+    %{text: "está trabalhando em #{length(tasks)} tarefas", role: :agent}
+  end
+
+  defp blocked_phrase([task]) do
+    %{text: "##{task.number} continua bloqueado", role: :halt, task_id: task.id}
+  end
+
+  defp blocked_phrase(tasks) do
+    %{text: "#{length(tasks)} continuam bloqueados", role: :halt}
+  end
+
+  defp first_review(repository, last_visit) do
+    Repo.one(
+      from p in PullRequest,
+        where:
+          p.repository_id == ^repository.id and p.state == "open" and
+            p.opened_at >= ^last_visit,
+        order_by: [desc: p.opened_at],
+        limit: 1
+    )
+  end
+
+  defp join_phrases([]), do: []
+
+  defp join_phrases([only]), do: only
+
+  defp join_phrases(phrases) do
+    {init, [last]} = Enum.split(phrases, -1)
+
+    init
+    |> Enum.intersperse([%{text: ", ", role: :plain}])
+    |> List.flatten()
+    |> Kernel.++([%{text: " e ", role: :plain}])
+    |> Kernel.++(last)
+  end
+
+  defp new?(nil, _last_visit), do: false
+  defp new?(_at, nil), do: false
+  defp new?(at, %DateTime{} = last_visit), do: DateTime.compare(at, last_visit) == :gt
+
+  defp excerpt(nil), do: ""
+
+  defp excerpt(text) do
+    text
+    |> String.split("\n", parts: 2)
+    |> hd()
+    |> String.trim()
+    |> String.slice(0, 160)
+  end
+
+  defp plural(1, singular), do: singular
+  defp plural(_n, singular), do: singular <> "s"
+end

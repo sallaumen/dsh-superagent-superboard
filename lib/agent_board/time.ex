@@ -1,0 +1,82 @@
+defmodule AgentBoard.Time do
+  @moduledoc """
+  Presentation of time for the board: relative for what is recent, absolute
+  for the record, always in the reader's offset (minutes west of UTC, as the
+  browser reports it).
+  """
+
+  @weekdays ~w(segunda terça quarta quinta sexta sábado domingo)
+  @months ~w(jan fev mar abr mai jun jul ago set out nov dez)
+
+  @doc "Whole seconds between `at` and `now`; never negative."
+  def age_seconds(nil, _now), do: nil
+
+  def age_seconds(%DateTime{} = at, %DateTime{} = now) do
+    max(DateTime.diff(now, at, :second), 0)
+  end
+
+  @doc "A relative phrase in the board's voice."
+  def ago(nil), do: "desconhecido"
+  def ago(sec) when sec < 60, do: "há #{sec} s"
+  def ago(sec) when sec < 3600, do: "há #{div(sec, 60)} min"
+  def ago(sec) when sec < 86_400, do: "há #{div(sec, 3600)} h"
+  def ago(sec), do: "há #{div(sec, 86_400)} d"
+
+  @doc "Elapsed time for a running task: m:ss, or h mm min past an hour."
+  def duration(nil), do: "—"
+  def duration(sec) when sec < 0, do: "0:00"
+
+  def duration(sec) do
+    h = div(sec, 3600)
+    m = div(rem(sec, 3600), 60)
+    s = rem(sec, 60)
+
+    if h > 0,
+      do: "#{h} h #{String.pad_leading("#{m}", 2, "0")} min",
+      else: "#{m}:#{String.pad_leading("#{s}", 2, "0")}"
+  end
+
+  @doc "UTC to the reader's local DateTime; offset is minutes west of UTC."
+  def local(%DateTime{} = at, offset) when is_integer(offset),
+    do: DateTime.add(at, -offset * 60, :second)
+
+  def local_time(nil, _offset), do: "—"
+
+  def local_time(%DateTime{} = at, offset) do
+    local(at, offset) |> DateTime.to_time() |> Time.to_string() |> String.slice(0, 5)
+  end
+
+  def local_date(%DateTime{} = at, offset), do: local(at, offset) |> DateTime.to_date()
+
+  @doc "hoje às 22:10, ontem às 22:10 ou terça, 4 nov às 22:10."
+  def since_label(nil, _offset, _now), do: "antes da última visita"
+
+  def since_label(%DateTime{} = at, offset, now) do
+    date = local_date(at, offset)
+    today = local_date(now, offset)
+    time = local_time(at, offset)
+
+    cond do
+      date == today -> "hoje às #{time}"
+      date == Date.add(today, -1) -> "ontem às #{time}"
+      true -> "#{weekday(date)}, #{date.day} #{month(date)} às #{time}"
+    end
+  end
+
+  @doc "The group heading: Hoje, Ontem, 5 nov or Terça, 4 nov."
+  def day_label(date, today) do
+    cond do
+      date == today -> "Hoje"
+      date == Date.add(today, -1) -> "Ontem, #{date.day} #{month(date)}"
+      true -> "#{String.capitalize(weekday(date))}, #{date.day} #{month(date)}"
+    end
+  end
+
+  @doc "Short label under the week dots."
+  def short_day_label(date, today) do
+    if date == today, do: "hoje", else: String.pad_leading("#{date.day}", 2, "0")
+  end
+
+  def weekday(%Date{} = date), do: Enum.at(@weekdays, Date.day_of_week(date) - 1)
+  def month(%Date{month: month}), do: Enum.at(@months, month - 1)
+end

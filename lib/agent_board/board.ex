@@ -11,7 +11,7 @@ defmodule AgentBoard.Board do
 
   @merged_page_size 50
   @task_page_size 50
-  @task_states [:running, :ready, :blocked, :queued]
+  @task_states [:running, :question, :ready, :blocked, :queued]
 
   def merged_page_size, do: @merged_page_size
   def task_page_size, do: @task_page_size
@@ -190,6 +190,7 @@ defmodule AgentBoard.Board do
         title: title,
         body: body,
         state: "queued",
+        state_changed_at: DateTime.utc_now(),
         url: issue["html_url"],
         author: "board"
       })
@@ -236,6 +237,7 @@ defmodule AgentBoard.Board do
     do: update_state(task, %{stopped: false, archived: false, state: "queued"})
 
   defp update_state(task, attrs) do
+    attrs = Map.put_new(attrs, :state_changed_at, DateTime.utc_now())
     result = task |> Task.changeset(attrs) |> Repo.update()
     broadcast(task.repository_id)
     result

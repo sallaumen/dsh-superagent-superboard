@@ -68,21 +68,35 @@ defmodule AgentBoard.Live do
           :ok
 
         overlay ->
-          Enum.each(ticket["numbers"], &overlay_number(repo, &1, overlay))
+          Enum.each(
+            ticket["numbers"],
+            &overlay_number(repo, &1, overlay, ticket["started_at"])
+          )
       end
     end)
   end
 
-  defp overlay_number(repo, raw, overlay) do
+  defp overlay_number(repo, raw, overlay, started_at) do
     number = if is_binary(raw), do: String.to_integer(raw), else: raw
 
-    Repo.update_all(
+    base =
       from(t in Task,
         where:
           t.repository_id == ^repo.id and t.number == ^number and
             not t.stopped and not t.archived
-      ),
-      set: [state: overlay, updated_at: DateTime.utc_now()]
+      )
+
+    now = DateTime.utc_now()
+
+    Repo.update_all(from(t in base, where: t.state != ^overlay),
+      set: [state: overlay, state_changed_at: now, updated_at: now]
     )
+
+    if started_at do
+      Repo.update_all(
+        from(t in base, where: is_nil(t.started_at) or t.started_at < ^started_at),
+        set: [started_at: started_at]
+      )
+    end
   end
 end

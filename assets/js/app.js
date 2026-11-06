@@ -50,7 +50,13 @@ const boardResume = () => {
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   // Read the mounted DOM on every connection so loaded pages survive a socket reconnect.
-  params: () => ({_csrf_token: csrfToken, board_resume: boardResume()}),
+  params: () => ({
+    _csrf_token: csrfToken,
+    board_resume: boardResume(),
+    // The last visit belongs to this browser: the server cannot know it.
+    board_last_visit: localStorage.getItem("ab:last-visit"),
+    board_tz_offset: new Date().getTimezoneOffset(),
+  }),
   hooks: {...colocatedHooks, DataAge, BoardMenu, BoardPanels, BoardClock, BoardConnection, VoiceCommand, VoicePlayer, VoicePresence},
   dom: {
     onBeforeElUpdated(from, to) {
@@ -69,6 +75,12 @@ window.addEventListener("phx:page-loading-start", _info => {
   topbar.show(300)
 })
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
+
+// Remember when this visit ended; the next page load uses it for "since your
+// last visit" and for the new markers. A crash keeps the older, honest time.
+window.addEventListener("pagehide", () => {
+  try { localStorage.setItem("ab:last-visit", new Date().toISOString()) } catch (_) {}
+})
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()
