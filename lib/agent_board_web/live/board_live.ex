@@ -849,14 +849,11 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("update", _params, socket) do
-    case updater().pull_changed() do
-      {:ok, sha, false} ->
-        {:noreply,
-         socket
-         |> assign(version: Version.status(), busy: false)
-         |> put_flash(:info, "Já está em dia (#{sha}).")}
-
-      {:ok, sha, true} ->
+    # The button only appears when the panel already knows the checkout is
+    # behind. A successful fast-forward is therefore always followed by a
+    # restart, even when the short-sha comparison races the fetch.
+    case updater().pull() do
+      {:ok, sha} ->
         {:noreply,
          restart_after_update(socket, "Atualizado para #{sha}; reiniciando o servidor…")}
 
