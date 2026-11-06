@@ -98,13 +98,12 @@ defmodule AgentBoardWeb.IntakeUITest do
     |> element("#composer-form")
     |> render_submit(%{"text" => "Fixture"})
 
-    assert has_element?(
-             view,
-             "#panel-composer .ab-compose__error",
-             "Não foi possível criar a tarefa"
-           )
+    render_async(view, 2000)
 
-    refute has_element?(view, "#flash-info", "Pedido na fila")
+    assert has_element?(view, "#composer-receipt", "Nada entrou na fila: 1 falhou")
+    assert has_element?(view, "#composer-receipt", "falhou: GitHub HTTP 422")
+    assert has_element?(view, "#composer-receipt button", "Tentar as 1 que falharam")
+    refute has_element?(view, "#flash-info")
   end
 
   test "successful creation reports success", %{conn: conn} do
@@ -122,7 +121,10 @@ defmodule AgentBoardWeb.IntakeUITest do
     |> element("#composer-form")
     |> render_submit(%{"text" => "Fixture"})
 
-    assert has_element?(view, "#flash-info", "Pedido na fila")
+    render_async(view, 2000)
+
+    assert has_element?(view, "#flash-info", "Pedido #123 na fila")
+    assert has_element?(view, "#composer-receipt", "#123")
     refute has_element?(view, "#panel-composer .ab-compose__error")
   end
 

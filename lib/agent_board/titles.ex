@@ -24,6 +24,50 @@ defmodule AgentBoard.Titles do
 
   def duplicate(_title, _merged), do: nil
 
+  @title_max 72
+  @title_min_cut 24
+
+  @doc """
+  The issue title for a free-text request: the first non-empty line, cut at
+  a sentence or clause boundary when it runs long, so a paragraph pasted as
+  a request does not become a title chopped mid-word.
+  """
+  @spec from_request(String.t() | nil) :: String.t()
+  def from_request(nil), do: ""
+
+  def from_request(text) when is_binary(text) do
+    line =
+      text
+      |> String.split("\n")
+      |> Enum.map(&String.trim/1)
+      |> Enum.find("", &(&1 != ""))
+      |> String.replace(~r/^#+\s*/, "")
+
+    if String.length(line) <= @title_max, do: line, else: cut_title(line)
+  end
+
+  defp cut_title(line) do
+    head = String.slice(line, 0, @title_max)
+
+    [
+      ~r/^(.{#{@title_min_cut},})[.!?](?=\s)/su,
+      ~r/^(.{#{@title_min_cut},})[,;:](?=\s)/su,
+      ~r/^(.{#{@title_min_cut},})\s/su
+    ]
+    |> Enum.find_value(fn regex ->
+      case Regex.run(regex, head, capture: :all_but_first) do
+        [prefix] -> prefix
+        _ -> nil
+      end
+    end)
+    |> case do
+      nil -> head
+      prefix -> prefix
+    end
+    |> String.trim()
+    |> Kernel.<>("…")
+  end
+
   @doc "A 0..1 score; exact after normalization is 1.0."
   @spec score(String.t() | nil, String.t() | nil) :: float()
   def score(a, b) do

@@ -50,6 +50,7 @@ defmodule AgentBoardWeb.ComposerTest do
 
     view |> element("#composer-form") |> render_change(%{"text" => "Quero respostas rápidas"})
     view |> element("#composer-form .ab-toggle") |> render_click()
+    render_async(view, 2000)
 
     assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
     assert has_element?(view, "#composer-form button", "Pôr 2 na fila")
@@ -65,9 +66,12 @@ defmodule AgentBoardWeb.ComposerTest do
     |> element("#composer-form")
     |> render_submit(%{"text" => "Quero respostas rápidas", "tasks" => ["0"]})
 
+    render_async(view, 2000)
+
     assert Repo.aggregate(Task, :count) == 1
     assert Repo.one(Task).title == "Medir o tempo de resposta do board"
-    assert has_element?(view, "#board-page[data-panel='']")
+    assert has_element?(view, "#composer-receipt", "Medir o tempo de resposta do board")
+    assert has_element?(view, "#composer-receipt", "#9001")
   end
 
   test "a dictated request lands in the composer for review", %{conn: conn} do
@@ -96,10 +100,12 @@ defmodule AgentBoardWeb.ComposerTest do
     |> element("#composer-form")
     |> render_submit(%{"text" => "Corrigir o contador\nEle está somando duas vezes."})
 
+    render_async(view, 2000)
+
     task = Repo.one(Task)
     assert task.title == "Corrigir o contador"
     assert task.body =~ "somando duas vezes"
     assert task.body =~ "@sallaumen-agent"
-    assert has_element?(view, "#board-page[data-panel='']")
+    assert has_element?(view, "#composer-receipt", "#9002")
   end
 end
