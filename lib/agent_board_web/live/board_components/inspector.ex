@@ -105,8 +105,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             :for={{key, label, count} <- @tabs}
             type="button"
             class="ab-tab"
+            id={"inspector-tab-#{key}"}
             role="tab"
             aria-selected={to_string(@tab == key)}
+            aria-controls={"inspector-panel-#{key}"}
             phx-click="inspector_tab"
             phx-value-tab={key}
           >
@@ -115,7 +117,12 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         </div>
       </div>
 
-      <div class="ab-insp__body" role="tabpanel">
+      <div
+        class="ab-insp__body"
+        id={"inspector-panel-#{@tab}"}
+        role="tabpanel"
+        aria-labelledby={"inspector-tab-#{@tab}"}
+      >
         <%= case @tab do %>
           <% "atividade" -> %>
             <.activity_tab activity={@activity} offset={@tz_offset} />

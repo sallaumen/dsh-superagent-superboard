@@ -4,13 +4,24 @@
 export const BoardConnection = {
   mounted() {
     this.mark("live")
+    // A reconnect that remounts the view does not call reconnected(); the
+    // frozen time survives in the tab so the server can still count changes.
+    const since = sessionStorage.getItem("ab:disconnected-at")
+    if (since) {
+      sessionStorage.removeItem("ab:disconnected-at")
+      setTimeout(() => this.pushEvent("board_reconnected", {since}), 600)
+    }
   },
   disconnected() {
+    const page = document.querySelector("#board-page")
+    this.frozenAt = page?.dataset.syncAt || new Date().toISOString()
+    sessionStorage.setItem("ab:disconnected-at", this.frozenAt)
     this.mark("down")
   },
   reconnected() {
     this.mark("live")
-    this.pushEvent("board_reconnected", {})
+    sessionStorage.removeItem("ab:disconnected-at")
+    this.pushEvent("board_reconnected", {since: this.frozenAt || null})
   },
   mark(state) {
     const page = document.querySelector("#board-page")

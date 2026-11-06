@@ -11,9 +11,13 @@ defmodule AgentBoardWeb.BoardComponents.FrozenBanner do
     ~H"""
     <div :if={@freshness.frozen?} class="ab-frozen" role="status">
       <.glyph kind={:stale} />
-      <span>
+      <span :if={@freshness.at}>
         <strong>Mostrando o que sabíamos às {time(@freshness.at)}.</strong>
         Tempos e contagens estão parados; o agente pode ter avançado.
+      </span>
+      <span :if={is_nil(@freshness.at)}>
+        <strong>Mostrando os últimos dados salvos.</strong>
+        Não sabemos a hora da última sincronia; tempos e contagens estão parados.
       </span>
       <span class="ab-top__spacer"></span>
       <button type="button" class="ab-btn ab-btn--sm" phx-click="sync_now">
@@ -23,9 +27,12 @@ defmodule AgentBoardWeb.BoardComponents.FrozenBanner do
 
     <div :if={not @freshness.frozen?} id="reconnect-banner" class="ab-frozen" role="status">
       <.glyph kind={:stale} />
-      <span>
+      <span :if={@freshness.at}>
         <strong>Reconectando.</strong>
         Mostrando o que sabíamos às {time(@freshness.at)}; os tempos estão parados.
+      </span>
+      <span :if={is_nil(@freshness.at)}>
+        <strong>Reconectando.</strong> Mostrando os últimos dados salvos; os tempos estão parados.
       </span>
       <span class="ab-top__spacer"></span>
       <button type="button" class="ab-btn ab-btn--sm" phx-click="sync_now">

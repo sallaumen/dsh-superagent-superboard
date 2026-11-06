@@ -31,7 +31,7 @@ defmodule AgentBoard.AgentWorktree do
   def step(_ticket), do: nil
 
   defp changed_files(dir) do
-    case git(dir, ["status", "--porcelain=v1", "--untracked-files=no"]) do
+    case git(dir, ["status", "--porcelain=v1", "--untracked-files=all"]) do
       {:ok, ""} ->
         []
 

@@ -60,10 +60,14 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeacon do
   defp age_text(%{state: :live, age_sec: sec}) when is_integer(sec), do: "há #{short(sec)}"
   defp age_text(%{state: :live}), do: "agora"
 
+  defp age_text(%{state: state, at: nil}) when state in [:delayed, :offline],
+    do: "dados de horário desconhecido"
+
   defp age_text(%{state: state} = freshness) when state in [:delayed, :offline] do
     "dados de #{time(freshness.at)} · #{ago(freshness.age_sec)}"
   end
 
+  defp age_text(%{state: :reconnecting, at: nil}), do: "dados de horário desconhecido"
   defp age_text(%{state: :reconnecting} = freshness), do: "dados de #{time(freshness.at)}"
   defp age_text(_freshness), do: "aguardando 1ª sincronia"
 
