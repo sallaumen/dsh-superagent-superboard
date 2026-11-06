@@ -674,3 +674,23 @@ body { margin: 0; background: var(--paper); }
 .panel-shortcuts .ab-keys { gap: 10px 20px; }
 .panel-shortcuts .ab-keys dt { justify-content: flex-start; }
 .ab-rail__foot .ab-btn { justify-content: flex-start; }
+
+/* Shown after a restart, once the new server has answered the LiveView. */
+.ab-reload-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateX(-50%);
+  padding: 8px 10px 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-layer);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 18px;
+}

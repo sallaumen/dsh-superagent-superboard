@@ -29,13 +29,26 @@ export const BoardConnection = {
   handleEvent(event) {
     if (event === "restart") sessionStorage.setItem("ab:reload-after-restart", "1")
   },
-  // A reload is safe only after the new server has answered the LiveView
-  // mount/reconnect; polling the URL can catch a half-closed socket and leave
-  // the browser on chrome-error. The flag survives the restart in the tab.
+  // A reload can catch a socket that is still closing and leave the browser
+  // on chrome-error. The new server has already answered the LiveView; give
+  // the person the explicit reload that also fetches the new assets.
   reloadIfRestarted() {
     if (sessionStorage.getItem("ab:reload-after-restart") !== "1") return
     sessionStorage.removeItem("ab:reload-after-restart")
-    setTimeout(() => window.location.reload(), 800)
+    setTimeout(() => this.showRestartNotice(), 500)
+  },
+  showRestartNotice() {
+    if (document.querySelector(".ab-reload-notice")) return
+    const page = document.querySelector("#board-page")
+    if (!page) return
+
+    const notice = document.createElement("div")
+    notice.className = "ab-reload-notice"
+    notice.setAttribute("role", "status")
+    notice.innerHTML =
+      '<span>Servidor atualizado.</span><button type="button" class="ab-btn ab-btn--sm ab-btn--primary">Recarregar</button>'
+    notice.querySelector("button").addEventListener("click", () => window.location.reload())
+    page.appendChild(notice)
   },
   mark(state) {
     const page = document.querySelector("#board-page")
