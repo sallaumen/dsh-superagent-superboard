@@ -48,16 +48,13 @@ export const BoardConnection = {
   },
   showRestartNotice() {
     if (document.querySelector(".ab-reload-notice")) return
-    const page = document.querySelector("#board-page")
-    if (!page) return
-
     const notice = document.createElement("div")
     notice.className = "ab-reload-notice"
     notice.setAttribute("role", "status")
     notice.innerHTML =
       '<span>Servidor atualizado.</span><button type="button" class="ab-btn ab-btn--sm ab-btn--primary">Recarregar</button>'
     notice.querySelector("button").addEventListener("click", () => window.location.reload())
-    page.appendChild(notice)
+    document.body.appendChild(notice)
   },
   mark(state) {
     const page = document.querySelector("#board-page")
