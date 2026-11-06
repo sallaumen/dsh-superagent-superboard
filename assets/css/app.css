@@ -3,6 +3,8 @@
 
 @import "tailwindcss" source(none);
 @import "phoenix-colocated/agent_board/colocated.css";
+/* The redesign's single source of color, space, radius, type and shadow. */
+@import "./tokens.css";
 @source "../css";
 @source "../js";
 @source "../../lib/agent_board_web";

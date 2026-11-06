@@ -1,0 +1,96 @@
+/* Agent Board — generated from tokens.json */
+:root, [data-theme="light"] {
+  --paper: #f6f4ef;
+  --paper-sunk: #eeebe4;
+  --surface: #fdfcf9;
+  --surface-raised: #ffffff;
+  --line: #e3ded4;
+  --line-strong: #8a8275;
+  --ink: #1f1d1a;
+  --ink-muted: #5c564d;
+  --ink-faint: #6f685e;
+  --agent: #2c6a4d;
+  --agent-wash: #e2eee6;
+  --on-agent: #ffffff;
+  --you: #2f4f9e;
+  --you-wash: #e7ecf8;
+  --on-you: #ffffff;
+  --halt: #a8401a;
+  --halt-wash: #f8e7dd;
+  --stale: #7f5a08;
+  --stale-wash: #f5edd8;
+  --focus-ring: var(--you);
+  --shadow-layer: 0 1px 2px rgba(31,29,26,0.06), 0 8px 24px rgba(31,29,26,0.08);
+}
+[data-theme="dark"] {
+  --paper: #171614;
+  --paper-sunk: #121110;
+  --surface: #201e1b;
+  --surface-raised: #292723;
+  --line: #34312c;
+  --line-strong: #7d756a;
+  --ink: #ece8e1;
+  --ink-muted: #aaa398;
+  --ink-faint: #958e83;
+  --agent: #7cc29d;
+  --agent-wash: #1d2c24;
+  --on-agent: #0e1d15;
+  --you: #a3b7ef;
+  --you-wash: #1e2538;
+  --on-you: #111a33;
+  --halt: #f09670;
+  --halt-wash: #36211a;
+  --stale: #dcb15e;
+  --stale-wash: #2d2616;
+  --focus-ring: var(--you);
+  --shadow-layer: 0 1px 2px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.45);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #171614;
+    --paper-sunk: #121110;
+    --surface: #201e1b;
+    --surface-raised: #292723;
+    --line: #34312c;
+    --line-strong: #7d756a;
+    --ink: #ece8e1;
+    --ink-muted: #aaa398;
+    --ink-faint: #958e83;
+    --agent: #7cc29d;
+    --agent-wash: #1d2c24;
+    --on-agent: #0e1d15;
+    --you: #a3b7ef;
+    --you-wash: #1e2538;
+    --on-you: #111a33;
+    --halt: #f09670;
+    --halt-wash: #36211a;
+    --stale: #dcb15e;
+    --stale-wash: #2d2616;
+    --focus-ring: var(--you);
+    --shadow-layer: 0 1px 2px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.45);
+  }
+}
+:root {
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 40px;
+  --space-8: 64px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+.t-display { font-family: var(--font-sans); font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; }
+.t-title { font-family: var(--font-sans); font-size: 16px; line-height: 22px; font-weight: 600; }
+.t-task { font-family: var(--font-sans); font-size: 14.5px; line-height: 21px; font-weight: 500; }
+.t-body { font-family: var(--font-sans); font-size: 14px; line-height: 21px; font-weight: 400; }
+.t-meta { font-family: var(--font-sans); font-size: 12.5px; line-height: 18px; font-weight: 400; }
+.t-label { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.01em; }
+.t-data { font-family: var(--font-mono); font-size: 12.5px; line-height: 18px; font-weight: 450; font-variant-numeric: tabular-nums; }
+.t-data-small { font-family: var(--font-mono); font-size: 11.5px; line-height: 16px; font-weight: 450; font-variant-numeric: tabular-nums; }
