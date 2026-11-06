@@ -83,7 +83,7 @@ defmodule AgentBoard.Live do
       from(t in Task,
         where:
           t.repository_id == ^repo.id and t.number == ^number and
-            not t.stopped and not t.archived
+            not t.stopped and not t.archived and t.state not in ["done", "closed"]
       )
 
     now = DateTime.utc_now()
