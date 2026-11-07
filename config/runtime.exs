@@ -62,6 +62,14 @@ with value when is_binary(value) <- System.get_env("ELEVENLABS_DAILY_CHAR_CAP"),
   config :agent_board, elevenlabs_daily_char_cap: cap
 end
 
+# The automatic retry of transient agent failures (AgentBoard.AutoRetry) is
+# the board's one write in the runner. AGENT_BOARD_AUTO_RETRY=0 switches it
+# off, for a second board (a worktree on another database) that must only
+# read.
+if System.get_env("AGENT_BOARD_AUTO_RETRY") in ~w(0 false) do
+  config :agent_board, auto_retry: false
+end
+
 config :agent_board, AgentBoardWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
