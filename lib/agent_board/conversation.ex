@@ -23,6 +23,7 @@ defmodule AgentBoard.Conversation do
   @recent 16
   @compact_after 28
   @proposal_ttl_seconds 600
+  @answer_wait_seconds 24 * 3600
   @max_text 2_000
 
   @doc "Records a turn. Text is trimmed and capped."
@@ -118,6 +119,54 @@ defmodule AgentBoard.Conversation do
     case Repo.update_all(
            from(t in Turn, where: t.id == ^id and t.proposal_status == "proposed"),
            set: [proposal_status: status, updated_at: DateTime.utc_now()]
+         ) do
+      {1, _} -> :ok
+      {0, _} -> :already_settled
+    end
+  end
+
+  @doc """
+  The questions sent to a task's agent that still wait for its reply, with
+  the reply when it arrived: the first agent comment on that task, created
+  after the question was confirmed, that is not the workpad (the agent edits
+  the workpad in place and answers a direct question with a new comment).
+  Questions older than a day are no longer waited for.
+  """
+  @spec arrived_answers(DateTime.t()) :: [{Turn.t(), AgentBoard.Board.Comment.t()}]
+  def arrived_answers(now \\ DateTime.utc_now()) do
+    since = DateTime.add(now, -@answer_wait_seconds, :second)
+
+    Repo.all(
+      from t in Turn,
+        where:
+          t.proposal_status == "confirmed" and t.updated_at > ^since and
+            fragment("?->>'kind' = 'ask_task'", t.proposal)
+    )
+    |> Enum.flat_map(fn ask ->
+      case reply_to(ask) do
+        nil -> []
+        comment -> [{ask, comment}]
+      end
+    end)
+  end
+
+  defp reply_to(%Turn{proposal: %{"task_id" => task_id}, updated_at: asked_at}) do
+    Repo.all(
+      from c in AgentBoard.Board.Comment,
+        where: c.task_id == ^task_id and c.kind == "agent" and c.inserted_at > ^asked_at,
+        order_by: [asc: c.inserted_at, asc: c.id]
+    )
+    |> Enum.find(&is_nil(AgentBoard.Workpad.parse(&1.body)))
+  end
+
+  defp reply_to(_turn), do: nil
+
+  @doc "Marks a question as answered, once: only the first caller speaks the reply."
+  @spec mark_answered(Turn.t()) :: :ok | :already_settled
+  def mark_answered(%Turn{id: id}) do
+    case Repo.update_all(
+           from(t in Turn, where: t.id == ^id and t.proposal_status == "confirmed"),
+           set: [proposal_status: "answered", updated_at: DateTime.utc_now()]
          ) do
       {1, _} -> :ok
       {0, _} -> :already_settled

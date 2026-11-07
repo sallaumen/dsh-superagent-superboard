@@ -24,6 +24,17 @@ rodando, nunca entra no worktree e nunca escreve na sqlite do agente.
    resposta pede um sim (criar, parar, arquivar) ou uma dúvida, o microfone
    reabre uma vez sozinho para a resposta.
 
+## Quando o agente de código responde
+
+Uma pergunta mandada pela conversa fica esperando a resposta por até um dia.
+A resposta é o primeiro comentário novo do agente naquela tarefa que não é o
+workpad (o agente edita o workpad no lugar e responde a uma pergunta direta
+com um comentário novo). O board fala um resumo de poucas frases uma vez só,
+mesmo com várias abas abertas, e a resposta entra na memória da conversa. A
+sincronização traz comentários a cada 5 minutos, então a resposta pode ser
+falada até uns minutos depois de aparecer no GitHub. O interruptor "Chamar
+quando uma tarefa precisar de mim" também silencia esse aviso.
+
 ## Ajustes (Configurações → Voz)
 
 Idioma, volume, velocidade (0,8–1,2×), entonação (estável, natural,
@@ -46,7 +57,7 @@ A antiga caixa de comando (rascunho em inglês com "Check command") saiu em
 | pedido vago | faz uma pergunta antes de propor | não |
 | "Para a tarefa 7" / "Arquiva a 7" | diz qual é e pergunta "Posso?" | só depois do seu sim |
 | "sim", "pode", "manda" / "não", "deixa pra lá" | confirma ou cancela a proposta pendente (reconhecido localmente, sem modelo) | a ação confirmada |
-| "Pergunta pro agente da tarefa 12 se ele já rodou os testes" | diz a pergunta e pergunta "Posso mandar?"; com o sim, comenta na issue com `@sallaumen-agent` | só depois do seu sim |
+| "Pergunta pro agente da tarefa 12 se ele já rodou os testes" | diz a pergunta e pergunta "Posso mandar?"; com o sim, comenta na issue com `@sallaumen-agent`; quando o agente responder, fala a resposta ("O agente da tarefa 12 respondeu: …") | só depois do seu sim |
 | "Repete" / "pode repetir?" | fala de novo a última resposta (local, sem modelo) | não |
 | "Fala mais devagar" / "mais rápido" / "mais alto" / "mais baixo" | ajusta velocidade (±0,1) ou volume (±20) e confirma já na voz nova (local) | o ajuste |
 | "Esquece a conversa" | apaga a memória | apaga as falas |
@@ -128,7 +139,5 @@ player considera a fala terminada quando ela para de avançar por 1 s.
 
 - Interromper a fala do agente falando por cima (barge-in), sem espaço duplo.
   Hoje espaço duplo durante a fala já interrompe e abre o microfone.
-- Avisar por voz quando o agente de código responder a uma pergunta feita
-  pela conversa.
 - Decidir se a avaliação de `answer_board_question` (`scripts/eval-board-ai.exs`)
   passa a avaliar `voice_agent`, que é o que a voz usa agora.

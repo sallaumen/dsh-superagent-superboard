@@ -324,6 +324,10 @@ defmodule AgentBoard.Voice.Phrases do
   def ask_sent("en-US", n), do: "Sent. The answer will show up in task #{n}'s conversation."
   def ask_sent(_lang, n), do: "Mandei. A resposta vai aparecer na conversa da tarefa #{n}."
 
+  @doc "The coding agent replied to a question sent from the conversation."
+  def agent_answered("en-US", n, text), do: "The agent on task #{n} replied: #{text}"
+  def agent_answered(_lang, n, text), do: "O agente da tarefa #{n} respondeu: #{text}"
+
   def ask_failed("en-US", n), do: "I couldn't send the question on task #{n}. Check the activity."
   def ask_failed(_lang, n), do: "Não consegui mandar a pergunta na tarefa #{n}. Veja a atividade."
 

@@ -109,6 +109,67 @@ defmodule AgentBoardWeb.VoiceConversation do
     speak(socket, Phrases.ai_failed(language(socket), :exit), false)
   end
 
+  @doc """
+  Speaks the coding agent's reply to a question the owner sent from the
+  conversation, once: the first board to claim it (`mark_answered/1`)
+  speaks, another tab stays quiet. The reply joins the conversation memory.
+  Silenced, like the other calls, by "Chamar quando uma tarefa precisar de
+  mim".
+  """
+  def check_answers(%{assigns: %{voice: %{attention: true}}} = socket) do
+    Enum.reduce(Conversation.arrived_answers(), socket, fn {ask, comment}, socket ->
+      case Conversation.mark_answered(ask) do
+        :ok -> announce_answer(socket, ask, comment)
+        :already_settled -> socket
+      end
+    end)
+  end
+
+  def check_answers(socket), do: socket
+
+  defp announce_answer(socket, ask, comment) do
+    number = ask.proposal["number"]
+    text = Phrases.agent_answered(language(socket), number, answer_summary(comment.body))
+
+    {:ok, _turn} =
+      Conversation.record("agent", text,
+        repository_id: ask.repository_id,
+        action: "agent_answered"
+      )
+
+    Activity.record(:action, :ok, "o agente respondeu na tarefa ##{number}")
+
+    socket
+    |> assign(:voice_turns, Conversation.recent())
+    |> speak(text, false)
+  end
+
+  # What is worth hearing of the reply: no hidden markers, no automated-agent
+  # banner, a few sentences at most (the whole reply is in the task).
+  @doc false
+  def answer_summary(body) do
+    body
+    |> String.replace(~r/<!--.*?-->/s, "")
+    |> String.split("\n")
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == "" or Regex.match?(~r/agente automatizado|automated agent|🤖/iu, &1)))
+    |> Enum.join(" ")
+    |> cut(240)
+  end
+
+  defp cut(text, max) do
+    if String.length(text) <= max do
+      text
+    else
+      head = String.slice(text, 0, max)
+
+      case Regex.run(~r/\A(.*[.!?])\s/su, head) do
+        [_, sentence] when byte_size(sentence) > 60 -> sentence
+        _ -> String.replace(head, ~r/\s+\S*\z/u, "") <> "…"
+      end
+    end
+  end
+
   @doc "The turn took too long: drop it and say so."
   def timeout(socket, ref) do
     case socket.assigns.chat_turn do
