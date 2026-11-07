@@ -40,7 +40,15 @@ launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.agentboard.plist
 ```
 
 `KeepAlive` restarts the board after a crash or an update; `RunAtLoad` starts
-it with the system. Read logs at the paths selected in the plist. The
+it with the system. Read logs at the paths selected in the plist.
+
+The board cannot boot without its Postgres on `127.0.0.1:5434`, and launchd
+starts the script before Docker has brought containers back. If that Postgres
+runs in Docker, give its container a restart policy (`restart: unless-stopped`
+in its compose file, or `docker update --restart unless-stopped <container>`):
+without one, Docker leaves it stopped after a reboot and the board never comes
+up. `scripts/service.sh` waits for the database before migrating, up to
+`AGENT_BOARD_DB_WAIT` seconds (300), then exits and launchd tries again. The
 **Atualizar e reiniciar** button is in **Configurações → Versão** and appears
 after **Verificar** when the checkout is behind; the service log records the
 deps/migrate/boot sequence.
