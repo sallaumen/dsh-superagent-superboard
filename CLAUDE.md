@@ -1,5 +1,3 @@
-
-
 <!-- elixir-agent-kit:start -->
 ## Elixir Agent Kit
 
