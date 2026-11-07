@@ -30,8 +30,10 @@ Idioma, volume, velocidade (0,8–1,2×), entonação (estável, natural,
 expressiva), pausa para enviar, os chamados de atenção, a narração do resto do
 quadro e o som ao abrir e fechar o microfone.
 
-Não há rascunho para revisar nem Enter. O painel "Comando de voz" mostra a
+Não há rascunho para revisar nem Enter. O painel "Conversa por voz" mostra a
 conversa para quem quiser ler, aceita texto digitado e tem "Esquecer conversa".
+A antiga caixa de comando (rascunho em inglês com "Check command") saiu em
+2026-11-07: tudo que ela fazia passa pela conversa.
 
 ## O que ele sabe fazer
 
@@ -44,6 +46,9 @@ conversa para quem quiser ler, aceita texto digitado e tem "Esquecer conversa".
 | pedido vago | faz uma pergunta antes de propor | não |
 | "Para a tarefa 7" / "Arquiva a 7" | diz qual é e pergunta "Posso?" | só depois do seu sim |
 | "sim", "pode", "manda" / "não", "deixa pra lá" | confirma ou cancela a proposta pendente (reconhecido localmente, sem modelo) | a ação confirmada |
+| "Pergunta pro agente da tarefa 12 se ele já rodou os testes" | diz a pergunta e pergunta "Posso mandar?"; com o sim, comenta na issue com `@sallaumen-agent` | só depois do seu sim |
+| "Repete" / "pode repetir?" | fala de novo a última resposta (local, sem modelo) | não |
+| "Fala mais devagar" / "mais rápido" / "mais alto" / "mais baixo" | ajusta velocidade (±0,1) ou volume (±20) e confirma já na voz nova (local) | o ajuste |
 | "Esquece a conversa" | apaga a memória | apaga as falas |
 
 A confirmação falada fica porque uma transcrição errada não pode abrir issue
@@ -105,7 +110,7 @@ player considera a fala terminada quando ela para de avançar por 1 s.
 
 ## Diagnóstico: logs e bastidores
 
-- **Na tela**: o painel "Comando de voz" tem "Bastidores da voz", ao vivo por
+- **Na tela**: o painel "Conversa por voz" tem "Bastidores da voz", ao vivo por
   PubSub: cada etapa de uma fala com o tempo (fala, transcrição, modelo,
   ação, voz), cada re-tentativa e cada erro, inclusive os do navegador
   (microfone, reprodução). Abre sozinho quando há um erro recente.
@@ -122,6 +127,8 @@ player considera a fala terminada quando ela para de avançar por 1 s.
 ## Próximos passos possíveis
 
 - Interromper a fala do agente falando por cima (barge-in), sem espaço duplo.
-- Perguntar a uma tarefa (comentário para o agente de código) pela conversa,
-  com confirmação.
-- Escolher a sensibilidade do silêncio nas configurações.
+  Hoje espaço duplo durante a fala já interrompe e abre o microfone.
+- Avisar por voz quando o agente de código responder a uma pergunta feita
+  pela conversa.
+- Decidir se a avaliação de `answer_board_question` (`scripts/eval-board-ai.exs`)
+  passa a avaliar `voice_agent`, que é o que a voz usa agora.

@@ -64,7 +64,7 @@ defmodule AgentBoard.Conversation.AgentTest do
     )
   end
 
-  defp ctx(repo, extra \\ %{}) do
+  defp ctx(repo, extra) do
     Map.merge(
       %{
         language: "pt-BR",
@@ -293,5 +293,76 @@ defmodule AgentBoard.Conversation.AgentTest do
              turn("esquece tudo", repo)
 
     assert [%{role: "agent"}] = Conversation.context().turns
+  end
+
+  test "asking the coding agent waits for a yes, then posts the question once", %{repo: repo} do
+    {:ok, task} =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        number: 12,
+        title: "Placar",
+        state: "running",
+        kind: "issue"
+      })
+      |> Repo.insert()
+
+    {:ok, posts} = Elixir.Agent.start_link(fn -> 0 end)
+
+    Req.Test.stub(@stub, fn conn ->
+      Elixir.Agent.update(posts, &(&1 + 1))
+      Req.Test.json(conn, %{"id" => 9001, "user" => %{"login" => "sallaumen"}})
+    end)
+
+    script(fn %{name: :voice_agent} ->
+      agent_answer("ask_task", %{"task_number" => 12, "request" => "Você já rodou os testes?"})
+    end)
+
+    proposed = turn("pergunta pro agente da doze se ele já rodou os testes", repo)
+
+    assert proposed.reply ==
+             "Vou perguntar ao agente na tarefa 12: Você já rodou os testes? Posso mandar?"
+
+    assert proposed.listen
+    assert Elixir.Agent.get(posts, & &1) == 0
+
+    assert %{reply: "Mandei. A resposta vai aparecer na conversa da tarefa 12."} =
+             turn("pode", repo)
+
+    assert Elixir.Agent.get(posts, & &1) == 1
+
+    comment = Repo.get_by!(AgentBoard.Board.Comment, task_id: task.id, kind: "user")
+    assert comment.body =~ "Você já rodou os testes?"
+    assert comment.body =~ "@sallaumen-agent"
+  end
+
+  test "repete says the last reply again without the model", %{repo: repo} do
+    script(fn _ -> flunk("the model must not be called") end)
+    {:ok, _} = Conversation.record("agent", "Duas tarefas rodando.")
+
+    assert %{reply: "Duas tarefas rodando.", action: "repeat"} = turn("Pode repetir?", repo)
+  end
+
+  test "mais devagar and mais alto change the voice without the model", %{repo: repo} do
+    script(fn _ -> flunk("the model must not be called") end)
+
+    assert %{reply: "Pronto, mais devagar.", effect: :voice_changed} =
+             turn("Fala mais devagar", repo)
+
+    assert AgentBoard.Voice.speed() == 0.9
+
+    :ok = AgentBoard.Voice.put_volume(90)
+    assert %{reply: "Pronto, mais alto."} = turn("mais alto", repo)
+    assert AgentBoard.Voice.volume() == 100
+    assert %{reply: "O volume já está no máximo."} = turn("mais alto", repo)
+  end
+
+  test "a long sentence about speed is a request for the model, not a voice change", %{repo: repo} do
+    script(fn %{name: :voice_agent} -> agent_answer("reply", %{"reply" => "Entendi."}) end)
+
+    assert %{reply: "Entendi."} =
+             turn("cria uma tarefa para deixar o jogo mais rápido no fim", repo)
+
+    assert AgentBoard.Voice.speed() == 1.0
   end
 end

@@ -69,7 +69,7 @@ defmodule AgentBoard.Conversation.Agent do
       case quick_answer(text, pending) do
         :yes -> confirm(pending, ctx)
         :no -> cancel(pending, lang)
-        :none -> think(text, pending, ctx)
+        :none -> local_command(text, lang) || think(text, pending, ctx)
       end
 
     record(outcome, ctx, System.monotonic_time(:millisecond) - started)
@@ -88,6 +88,86 @@ defmodule AgentBoard.Conversation.Agent do
       starts_with_any?(phrase, words, @no, @no_phrases) -> :no
       starts_with_any?(phrase, words, @yes, @yes_phrases) -> :yes
       true -> :none
+    end
+  end
+
+  # Short commands about the conversation itself never need the model:
+  # "repete" says the last reply again, "mais devagar" / "mais alto" adjust
+  # the voice. Long sentences are left to the model ("a tarefa de deixar o
+  # jogo mais rápido" is a request, not a speed change).
+  @repeat [
+    "repete",
+    "repita",
+    "pode repetir",
+    "repete por favor",
+    "fala de novo",
+    "de novo",
+    "nao entendi",
+    "o que",
+    "como",
+    "say again",
+    "repeat",
+    "repeat that"
+  ]
+  @voice_moves [
+    {~r/\b(mais devagar|devagar|mais lento|fala devagar|slower)\b/u, :speed, -0.1},
+    {~r/\b(mais rapido|mais depressa|fala rapido|faster)\b/u, :speed, 0.1},
+    {~r/\b(mais alto|aumenta o volume|aumenta a voz|louder)\b/u, :volume, 20},
+    {~r/\b(mais baixo|abaixa o volume|diminui o volume|baixa o volume|quieter)\b/u, :volume, -20}
+  ]
+
+  @doc false
+  def local_command(text, lang) do
+    phrase = normalize(text)
+    words = phrase |> String.split(" ", trim: true) |> length()
+
+    cond do
+      words == 0 or words > 6 ->
+        nil
+
+      phrase in @repeat ->
+        repeat(lang)
+
+      move = Enum.find(@voice_moves, fn {re, _, _} -> Regex.match?(re, phrase) end) ->
+        adjust(move, lang)
+
+      true ->
+        nil
+    end
+  end
+
+  defp repeat(lang) do
+    case Conversation.last_agent_text() do
+      nil -> say(Phrases.not_understood(lang), "repeat")
+      text -> say(text, "repeat")
+    end
+  end
+
+  defp adjust({_re, :speed, delta}, lang) do
+    current = AgentBoard.Voice.speed()
+    target = Float.round(min(max(current + delta, 0.8), 1.2), 2)
+
+    if target == current do
+      say(Phrases.voice_at_limit(lang, :speed, delta), "adjust_voice")
+    else
+      :ok = AgentBoard.Voice.put_speed(target)
+      %{say(Phrases.voice_adjusted(lang, :speed, delta), "adjust_voice") | effect: :voice_changed}
+    end
+  end
+
+  defp adjust({_re, :volume, delta}, lang) do
+    current = AgentBoard.Voice.volume()
+    target = min(max(current + delta, 0), 100)
+
+    if target == current do
+      say(Phrases.voice_at_limit(lang, :volume, delta), "adjust_voice")
+    else
+      :ok = AgentBoard.Voice.put_volume(target)
+
+      %{
+        say(Phrases.voice_adjusted(lang, :volume, delta), "adjust_voice")
+        | effect: :voice_changed
+      }
     end
   end
 
@@ -183,6 +263,17 @@ defmodule AgentBoard.Conversation.Agent do
        when action in ~w(stop_task archive_task),
        do: propose_task_action(action, n, ctx)
 
+  defp act("ask_task", %{"task_number" => n, "request" => question} = json, _pending, ctx) do
+    task = find_task(ctx.repo, n) || Map.get(ctx, :open_task)
+    question = String.trim(question || "")
+
+    cond do
+      question == "" -> say(reply(json, ctx), "ask_task")
+      is_nil(task) -> say(Phrases.task_not_found(ctx.language, n), "ask_task")
+      true -> propose_ask(task, question, ctx)
+    end
+  end
+
   defp act(_action, json, _pending, ctx), do: say(reply(json, ctx), "reply")
 
   # ---- proposals ------------------------------------------------------------
@@ -241,6 +332,19 @@ defmodule AgentBoard.Conversation.Agent do
       _ ->
         say(Phrases.task_not_found(lang, number), action)
     end
+  end
+
+  defp propose_ask(task, question, ctx) do
+    proposal(
+      %{
+        "kind" => "ask_task",
+        "task_id" => task.id,
+        "number" => task.number,
+        "question" => question,
+        "repository_id" => task.repository_id
+      },
+      Phrases.propose_ask(ctx.language, task.number, question)
+    )
   end
 
   defp proposal(proposal, text) do
@@ -358,6 +462,27 @@ defmodule AgentBoard.Conversation.Agent do
         )
 
         say(Phrases.task_action_failed(lang, kind, p["number"]), kind)
+    end
+  end
+
+  defp execute(%{"kind" => "ask_task", "task_id" => id} = p, ctx) do
+    lang = ctx.language
+
+    with %Task{} = task <- id && Repo.get(Task, id),
+         {:ok, _comment} <- Board.ask(task, p["question"], client(ctx)) do
+      Activity.record(:action, :ok, "pergunta enviada ao agente na tarefa ##{p["number"]}",
+        turn: ctx[:turn_id]
+      )
+
+      say(Phrases.ask_sent(lang, p["number"]), "ask_task")
+    else
+      failure ->
+        Activity.record(:action, :error, "a pergunta não foi enviada na tarefa ##{p["number"]}",
+          turn: ctx[:turn_id],
+          reason: create_failure(failure)
+        )
+
+        say(Phrases.ask_failed(lang, p["number"]), "ask_task")
     end
   end
 

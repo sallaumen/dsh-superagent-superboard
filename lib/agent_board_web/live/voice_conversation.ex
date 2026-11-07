@@ -209,6 +209,18 @@ defmodule AgentBoardWeb.VoiceConversation do
     do: push_patch(socket, to: BoardNavigation.path(repo))
 
   defp effect(socket, {:path, path}), do: push_patch(socket, to: path)
+  # A spoken "mais devagar" / "mais alto" changed a setting: the panel and
+  # the player (data-volume) follow at once.
+  defp effect(socket, :voice_changed) do
+    voice = socket.assigns.voice
+
+    assign(socket, :voice, %{
+      voice
+      | speed: AgentBoard.Voice.speed(),
+        volume: AgentBoard.Voice.volume()
+    })
+  end
+
   defp effect(socket, _effect), do: socket
 
   defp language(socket), do: socket.assigns.voice.language

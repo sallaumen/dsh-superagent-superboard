@@ -47,10 +47,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoardWeb.{
     BoardComponents,
     BoardNavigation,
-    VoiceAnswer,
-    VoiceCommands,
     VoiceConversation,
-    VoiceMutations,
     VoiceSpeech
   }
 
@@ -116,10 +113,6 @@ defmodule AgentBoardWeb.BoardLive do
         version: Version.status(),
         busy: false,
         voice: current_voice(),
-        voice_draft: "",
-        voice_result: nil,
-        voice_action: nil,
-        voice_generation: 0,
         spoken_text: nil,
         spoken_at: 0,
         # Rotates the attention phrases; a random start keeps a reload from
@@ -332,13 +325,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp load(socket, nil) do
     socket =
-      if socket.assigns.repo do
-        socket
-        |> invalidate_voice_answer()
-        |> assign(voice_draft: "", voice_result: nil, voice_action: nil)
-      else
-        socket
-      end
+      socket
 
     socket
     |> assign(
@@ -388,10 +375,6 @@ defmodule AgentBoardWeb.BoardLive do
             composer_job: nil,
             composer_receipt: nil,
             composer_answers: "",
-            voice_draft: "",
-            voice_result: nil,
-            voice_action: nil,
-            voice_generation: socket.assigns.voice_generation + 1,
             inspector_tab: "conversa",
             inspector_activity: [],
             inspector_calls: [],
@@ -571,13 +554,6 @@ defmodule AgentBoardWeb.BoardLive do
       |> load_inspector()
       |> announce(old_board, old_sync, old_needs)
 
-    socket =
-      if old_board != socket.assigns.board or old_sync != socket.assigns.sync_event do
-        invalidate_pending_voice_answer(socket)
-      else
-        socket
-      end
-
     {:noreply, socket}
   end
 
@@ -594,13 +570,6 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    socket =
-      if socket.assigns.panel == "voice" and params["panel"] != "voice" do
-        socket |> invalidate_voice_answer() |> assign(voice_result: nil)
-      else
-        socket
-      end
-
     repo =
       case params["repo"] do
         nil -> socket.assigns.repo
@@ -608,9 +577,6 @@ defmodule AgentBoardWeb.BoardLive do
       end
 
     socket = socket |> load(repo) |> BoardNavigation.apply_params(params) |> load_inspector()
-
-    socket =
-      if socket.assigns.panel == "voice", do: socket, else: assign(socket, :voice_action, nil)
 
     {:noreply, socket}
   end
@@ -813,96 +779,8 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("voice_command", %{"mode" => "intake", "text" => text}, socket)
-      when is_binary(text) do
-    {:noreply, prepare_intake(socket, text)}
-  end
-
-  @impl true
-  def handle_event("voice_command", %{"text" => text}, socket) when is_binary(text) do
-    draft = String.trim(text)
-
-    socket =
-      socket
-      |> invalidate_voice_answer()
-      |> assign(voice_draft: draft, voice_action: nil)
-
-    case VoiceMutations.prepare(draft, socket.assigns.repo) do
-      {:ok, intent} ->
-        {:noreply, assign(socket, voice_action: intent, voice_result: nil)}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, :voice_result, voice_action_result(:error, reason))}
-
-      :not_mutation ->
-        resolve_voice_read(socket, draft)
-    end
-  end
-
-  @impl true
-  def handle_event("voice_ask", _params, socket) do
-    case current_voice_ask(socket) do
-      {:ok, task, question} ->
-        socket = assign(socket, :voice_result, voice_action_result(:loading, "Sending question…"))
-        voice_ask(socket, task, question)
-
-      {:error, reason} ->
-        {:noreply, assign(socket, :voice_result, voice_action_result(:error, reason))}
-    end
-  end
-
-  @impl true
-  def handle_event("voice_command", _params, socket) do
-    result = %{
-      kind: :error,
-      text: "Command text is missing. Review the draft and try again.",
-      as_of: nil
-    }
-
-    {:noreply,
-     socket
-     |> invalidate_voice_answer()
-     |> assign(voice_result: result, voice_action: nil)}
-  end
-
-  @impl true
-  def handle_event("voice_cancel_action", _params, socket) do
-    {:noreply, assign(socket, voice_action: nil, voice_result: nil)}
-  end
-
-  @impl true
-  def handle_event("voice_confirm_action", _params, socket) do
-    case {socket.assigns.panel, socket.assigns.voice_action} do
-      {"voice", %{action: action} = intent} ->
-        socket = assign(socket, :voice_action, nil)
-
-        case VoiceMutations.current_task(intent, socket.assigns.repo) do
-          {:ok, task} ->
-            confirm_voice_action(socket, task, action)
-
-          {:error, :changed} ->
-            {:noreply,
-             assign(
-               socket,
-               :voice_result,
-               voice_action_result(
-                 :error,
-                 "Task or repository changed. Review the board and try again."
-               )
-             )}
-        end
-
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
-  @impl true
   def handle_event("dismiss_panel", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:voice_action, nil)
-     |> push_patch(to: BoardNavigation.path(socket.assigns.repo), replace: true)}
+    {:noreply, push_patch(socket, to: BoardNavigation.path(socket.assigns.repo), replace: true)}
   end
 
   @impl true
@@ -959,15 +837,6 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("restart", _params, socket) do
     {:noreply, restart_after_update(socket, "Reiniciando o servidor…")}
-  end
-
-  @impl true
-  def handle_event("voice_prepare_intake", %{"text" => text}, socket) when is_binary(text) do
-    {:noreply, prepare_intake(socket, text)}
-  end
-
-  def handle_event("voice_prepare_intake", _params, socket) do
-    {:noreply, put_flash(socket, :error, "Add a request before opening Split.")}
   end
 
   @impl true
@@ -1166,13 +1035,6 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("close", _params, socket) do
-    socket =
-      if socket.assigns.panel == "voice" do
-        socket |> invalidate_voice_answer() |> assign(voice_result: nil, voice_action: nil)
-      else
-        socket
-      end
-
     {:noreply,
      socket
      |> settle_composer()
@@ -1236,26 +1098,9 @@ defmodule AgentBoardWeb.BoardLive do
          assign(socket, composer_text: text, composer_error: nil)
          |> invalidate_intake_if_changed(text)}
 
+      # Outside the composer a transcript is a turn of the conversation.
       true ->
-        {:noreply,
-         socket
-         |> invalidate_voice_answer()
-         |> assign(voice_draft: text, voice_result: nil, voice_action: nil)
-         |> BoardNavigation.open_panel("voice")}
-    end
-  end
-
-  @impl true
-  def handle_event("voice_draft_changed", %{"text" => text}, socket) when is_binary(text) do
-    draft = String.slice(text, 0, 2000)
-
-    if draft == socket.assigns.voice_draft do
-      {:noreply, socket}
-    else
-      {:noreply,
-       socket
-       |> invalidate_voice_answer()
-       |> assign(voice_draft: draft, voice_result: nil, voice_action: nil)}
+        {:noreply, VoiceConversation.start(socket, text)}
     end
   end
 
@@ -1445,90 +1290,6 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, socket}
   end
 
-  defp current_voice_ask(socket) do
-    case {socket.assigns.panel, socket.assigns.voice_result, socket.assigns.repo,
-          socket.assigns.conversation} do
-      {"voice",
-       %{
-         kind: :ask,
-         question: question,
-         task_id: task_id,
-         task_updated_at: updated_at,
-         repository_id: repository_id
-       }, %{id: repository_id}, %Task{id: task_id}}
-      when is_binary(question) and question != "" ->
-        task = Repo.get(Task, task_id)
-
-        if valid_voice_ask_task?(task, repository_id, updated_at) &&
-             VoiceCommands.parse(socket.assigns.voice_draft) == {:ask, question},
-           do: {:ok, task, question},
-           else: {:error, "Task or question changed. Review the draft again before sending."}
-
-      _ ->
-        {:error, "Review the question and task before sending."}
-    end
-  end
-
-  defp valid_voice_ask_task?(%Task{} = task, repository_id, updated_at) do
-    task.repository_id == repository_id && task.updated_at == updated_at &&
-      task.kind == "issue" && task.state in ~w(queued running ready blocked) &&
-      !task.stopped && !task.archived
-  end
-
-  defp valid_voice_ask_task?(_task, _repository_id, _updated_at), do: false
-
-  # The ask is a write: the first submit only classifies the draft, the
-  # confirmed "Ask the agent" posts the question to the open task and the
-  # answer comes back spoken.
-  defp voice_ask(socket, task, question) do
-    case Board.ask(task, question, GitHub.client()) do
-      {:ok, _} ->
-        ask_in_background(task, question)
-
-        {:noreply,
-         socket
-         |> assign(
-           voice_result: voice_action_result(:success, "Question sent: #{question}"),
-           conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
-           comments: Board.comments(task)
-         )
-         |> put_flash(:info, "Question sent")}
-
-      {:error, _} ->
-        {:noreply,
-         assign(
-           socket,
-           :voice_result,
-           voice_action_result(:error, "The question did not reach GitHub.")
-         )}
-    end
-  end
-
-  defp resolve_voice_read(socket, draft) do
-    intent = VoiceCommands.parse(draft)
-    unanswered_question? = match?({:ask, _}, intent) and is_nil(socket.assigns.conversation)
-
-    if VoiceAnswer.archive_history_query?(draft) or
-         (VoiceAnswer.read_query?(draft) and (intent == :unknown or unanswered_question?)) do
-      start_voice_answer(socket, draft)
-    else
-      resolve_deterministic_voice_command(socket, draft)
-    end
-  end
-
-  defp resolve_deterministic_voice_command(socket, draft) do
-    %{result: result, path: path} = VoiceCommands.resolve(draft, socket.assigns)
-    socket = assign(socket, :voice_result, result)
-
-    case path do
-      nil ->
-        {:noreply, socket}
-
-      path ->
-        {:noreply, socket |> put_flash(:info, result.text) |> push_patch(to: path, replace: true)}
-    end
-  end
-
   @impl true
   def handle_async({:voice_turn, ref}, outcome, socket),
     do: {:noreply, VoiceConversation.finish(socket, ref, outcome)}
@@ -1539,122 +1300,6 @@ defmodule AgentBoardWeb.BoardLive do
     case socket.assigns.composer_job do
       %{ref: ^ref} = job -> {:noreply, finish_composer_job(socket, job, outcome)}
       _ -> {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_async({:voice_answer, generation, repo_id, draft}, outcome, socket) do
-    if current_voice_answer?(socket, generation, repo_id, draft) do
-      result =
-        case outcome do
-          {:ok, {:ok, answer}} ->
-            %{
-              kind: if(answer.engine == :board, do: :board_answer, else: :ai_answer),
-              text: answer.text,
-              as_of: answer.as_of,
-              source: answer.source,
-              sync_status: answer.sync_status
-            }
-
-          {:ok, {:error, reason}} ->
-            voice_answer_error(reason)
-
-          {:exit, _reason} ->
-            voice_answer_error(:unavailable)
-        end
-
-      {:noreply, socket |> assign(voice_result: result) |> refresh_ai()}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  defp start_voice_answer(%{assigns: %{repo: nil}} = socket, _draft) do
-    result = voice_answer_error(:no_repository)
-    {:noreply, assign(socket, voice_result: result)}
-  end
-
-  defp start_voice_answer(socket, draft) do
-    generation = socket.assigns.voice_generation
-    repo_id = socket.assigns.repo.id
-    snapshot = Map.take(socket.assigns, [:repo, :board, :sync_event])
-    name = {:voice_answer, generation, repo_id, draft}
-
-    socket =
-      assign(socket,
-        voice_result: %{
-          kind: :loading,
-          text: "Checking saved board data…",
-          as_of: nil
-        }
-      )
-
-    {:noreply, start_async(socket, name, fn -> VoiceAnswer.answer(snapshot, draft) end)}
-  end
-
-  defp current_voice_answer?(socket, generation, repo_id, draft) do
-    current_repo_id = socket.assigns.repo && socket.assigns.repo.id
-
-    socket.assigns.panel == "voice" and socket.assigns.voice_generation == generation and
-      current_repo_id == repo_id and socket.assigns.voice_draft == draft
-  end
-
-  defp invalidate_voice_answer(socket),
-    do: assign(socket, voice_generation: socket.assigns.voice_generation + 1)
-
-  defp invalidate_pending_voice_answer(%{assigns: %{voice_result: %{kind: :loading}}} = socket) do
-    socket
-    |> invalidate_voice_answer()
-    |> assign(
-      voice_result:
-        voice_answer_error_result(
-          "Board data changed while the AI was answering. Ask again for an updated answer."
-        )
-    )
-  end
-
-  defp invalidate_pending_voice_answer(socket), do: socket
-
-  defp voice_answer_error(:no_repository),
-    do: voice_answer_error_result("Choose a tracked repository before asking the AI.")
-
-  defp voice_answer_error(:budget_exhausted),
-    do:
-      voice_answer_error_result("The AI budget is exhausted. The saved board is still available.")
-
-  defp voice_answer_error(:question_too_long),
-    do: voice_answer_error_result("Keep the question under 1,000 characters and try again.")
-
-  defp voice_answer_error(:no_provider),
-    do:
-      voice_answer_error_result(
-        "No AI provider is configured. Read-only board commands still work."
-      )
-
-  defp voice_answer_error(:usage_limit),
-    do: voice_answer_error_result("The AI provider is at its usage limit. Try again later.")
-
-  defp voice_answer_error(_reason),
-    do: voice_answer_error_result("The AI could not answer. Your command draft is still here.")
-
-  defp voice_answer_error_result(text), do: %{kind: :error, text: text, as_of: nil}
-
-  defp prepare_intake(socket, text) do
-    case {socket.assigns.repo, String.trim(text)} do
-      {nil, _} ->
-        put_flash(socket, :error, "Select a repository before preparing a request.")
-
-      {_, ""} ->
-        put_flash(socket, :error, "Add a request before opening Split.")
-
-      {repo, draft} ->
-        socket
-        |> assign(
-          intake: nil,
-          intake_draft: %{text: draft, repo_id: repo.id, source: :voice},
-          voice_draft: draft
-        )
-        |> BoardNavigation.open_panel("intake")
     end
   end
 
@@ -1764,49 +1409,6 @@ defmodule AgentBoardWeb.BoardLive do
         |> say(text, fallback: voice.attention)
     end
   end
-
-  defp confirm_voice_action(socket, task, action) do
-    result =
-      case action do
-        :stop -> Board.stop_task(task, GitHub.client())
-        :archive -> Board.archive_task(task)
-      end
-
-    label = if action == :stop, do: "Stopped", else: "Archived"
-    outcome = if match?({:ok, _}, result), do: "completed", else: "failed"
-
-    Board.log_event(task.repository_id, "voice_action", "##{task.number}", %{
-      "action" => Atom.to_string(action),
-      "result" => outcome
-    })
-
-    Board.broadcast(task.repository_id)
-
-    socket = load(socket, socket.assigns.repo)
-
-    case result do
-      {:ok, _} ->
-        {:noreply,
-         assign(
-           socket,
-           :voice_result,
-           voice_action_result(:success, "#{label} task ##{task.number}.")
-         )}
-
-      _ ->
-        {:noreply,
-         assign(
-           socket,
-           :voice_result,
-           voice_action_result(
-             :error,
-             "Could not #{Atom.to_string(action)} task ##{task.number}. Check Activity and try again."
-           )
-         )}
-    end
-  end
-
-  defp voice_action_result(kind, text), do: %{kind: kind, text: text, as_of: nil}
 
   # Speaks through the agent's ElevenLabs voice when the key is configured
   # and the automatic speech is on; a repeated utterance within a short
@@ -2184,7 +1786,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="voice"
-          title="Comando de voz"
+          title="Conversa por voz"
           active={@panel == "voice"}
           flash={@flash}
         >
@@ -2193,11 +1795,6 @@ defmodule AgentBoardWeb.BoardLive do
             thinking={@chat_turn != nil}
           />
           <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} />
-          <BoardComponents.VoiceCommand.draft
-            draft={@voice_draft}
-            result={@voice_result}
-            action={@voice_action}
-          />
         </BoardComponents.Panel.shell>
       </div>
     </Layouts.app>
