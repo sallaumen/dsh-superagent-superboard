@@ -3,32 +3,93 @@ defmodule AgentBoard.AnnouncerTest do
   use ExUnit.Case, async: true
 
   alias AgentBoard.Announcer
+  alias AgentBoard.Voice.Phrases
 
   defp task(id, title, state), do: %{id: id, title: title, state: state}
 
   defp board(tasks \\ []) do
-    Enum.reduce(tasks, %{running: [], ready: [], blocked: [], queued: [], merged: []}, fn t,
-                                                                                          acc ->
-      Map.update!(acc, t.state, &[t | &1])
-    end)
+    empty = %{running: [], question: [], ready: [], blocked: [], queued: [], merged: []}
+
+    Enum.reduce(tasks, empty, fn t, acc -> Map.update!(acc, t.state, &[t | &1]) end)
   end
 
   defp sync(kind, errors \\ 0, id \\ 1) do
     %{id: id, kind: kind, payload: %{"errors" => errors}}
   end
 
-  test "a move between live lanes is spoken" do
+  test "a task that starts is spoken in Portuguese by default" do
     old = board([task(1, "Ship it", :queued)])
     new = board([task(1, "Ship it", :running)])
 
-    assert Announcer.board_changes(old, new, nil, nil) == ["Task 'Ship it' is now running."]
+    assert Announcer.board_changes(old, new, nil, nil) == ["Comecei Ship it."]
+  end
+
+  test "the language option switches every sentence" do
+    old = board([task(1, "Ship it", :queued)])
+    new = board([task(1, "Ship it", :running)])
+
+    assert Announcer.board_changes(old, new, nil, nil, language: "en-US") == [
+             "I started Ship it."
+           ]
+
+    assert Announcer.board_changes(board(), board(), nil, sync("sync_error"), language: "en-US") ==
+             ["The sync failed. I'm showing the saved data."]
+  end
+
+  test "a task that starts waiting for an answer calls the owner" do
+    old = board([task(1, "Ship it", :running)])
+    new = board([task(1, "Ship it", :question)])
+
+    assert [text] = Announcer.board_changes(old, new, nil, nil, turn: 0)
+    assert text == Phrases.attention("pt-BR", :question, "Ship it", 0)
+    assert text =~ "Ship it"
+  end
+
+  test "blocked and review are calls for attention too" do
+    old = board([task(1, "One", :running), task(2, "Two", :running)])
+    new = board([task(1, "One", :blocked), task(2, "Two", :ready)])
+
+    assert Announcer.board_changes(old, new, nil, nil, turn: 3) == [
+             Phrases.attention("pt-BR", :blocked, "One", 3),
+             Phrases.attention("pt-BR", :ready, "Two", 4)
+           ]
+  end
+
+  test "the turn rotates the phrase, so the same call is not repeated" do
+    old = board([task(1, "Ship it", :running)])
+    new = board([task(1, "Ship it", :question)])
+
+    texts =
+      for turn <- 0..9, do: hd(Announcer.board_changes(old, new, nil, nil, turn: turn))
+
+    assert length(Enum.uniq(texts)) == 10
+  end
+
+  test "attention comes before the other news and survives the cap" do
+    old =
+      board([task(1, "A", :queued), task(2, "B", :queued), task(3, "C", :running)])
+
+    new =
+      board([task(1, "A", :running), task(2, "B", :running), task(3, "C", :question)])
+
+    assert [first, second] = Announcer.board_changes(old, new, nil, nil, turn: 0)
+    assert first == Phrases.attention("pt-BR", :question, "C", 0)
+    assert second =~ "A"
+  end
+
+  test "each kind can be silenced on its own" do
+    old = board([task(1, "A", :queued), task(2, "B", :running)])
+    new = board([task(1, "A", :running), task(2, "B", :blocked)])
+
+    assert [only] = Announcer.board_changes(old, new, nil, nil, events: false)
+    assert only == Phrases.attention("pt-BR", :blocked, "B", 0)
+
+    assert Announcer.board_changes(old, new, nil, nil, attention: false) == ["Comecei A."]
   end
 
   test "a task that appears is not announced" do
-    old = board([])
-    new = board([task(1, "Ship it", :queued)])
-
-    assert Announcer.board_changes(old, new, nil, nil) == []
+    assert Announcer.board_changes(board([]), board([task(1, "Ship it", :queued)]), nil, nil) ==
+             []
   end
 
   test "a task moving into the merged history is not announced" do
@@ -40,7 +101,7 @@ defmodule AgentBoard.AnnouncerTest do
 
   test "a new sync failure is announced once" do
     assert Announcer.board_changes(board([]), board([]), nil, sync("sync_error")) ==
-             ["The sync failed. Showing saved data."]
+             ["A sincronização falhou. Estou mostrando os dados salvos."]
 
     # The same failure keeps repeating every minute: silence.
     assert Announcer.board_changes(board([]), board([]), sync("sync_error"), sync("sync_error")) ==
@@ -49,29 +110,22 @@ defmodule AgentBoard.AnnouncerTest do
 
   test "more errors than the last sync are announced, a clean sync is not" do
     assert Announcer.board_changes(board([]), board([]), sync("sync", 0), sync("sync", 2)) ==
-             ["The sync finished with 2 errors."]
+             ["A sincronização terminou com 2 erros."]
+
+    assert Announcer.board_changes(board([]), board([]), sync("sync", 0), sync("sync", 1)) ==
+             ["A sincronização terminou com 1 erro."]
 
     assert Announcer.board_changes(board([]), board([]), sync("sync", 2), sync("sync", 0)) == []
   end
 
-  test "a burst is capped" do
-    old =
-      board([
-        task(1, "One", :queued),
-        task(2, "Two", :queued),
-        task(3, "Three", :queued)
-      ])
-
-    new =
-      board([
-        task(1, "One", :running),
-        task(2, "Two", :running),
-        task(3, "Three", :running)
-      ])
+  test "a burst is capped and spoken as one utterance" do
+    old = board([task(1, "One", :queued), task(2, "Two", :queued), task(3, "Three", :queued)])
+    new = board([task(1, "One", :running), task(2, "Two", :running), task(3, "Three", :running)])
 
     changes = Announcer.board_changes(old, new, nil, nil)
     assert length(changes) == 2
-    assert Enum.all?(changes, &(&1 =~ "is now running."))
+    assert Announcer.utterance(changes) == Enum.join(changes, " ")
+    assert Announcer.utterance([]) == nil
   end
 
   test "a long answer is cut at a word boundary" do

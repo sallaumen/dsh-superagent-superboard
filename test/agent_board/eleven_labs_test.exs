@@ -182,6 +182,23 @@ defmodule AgentBoard.ElevenLabsTest do
              )
   end
 
+  test "speech enforces the language only on the models that accept it" do
+    Req.Test.stub(@stub, fn conn ->
+      assert conn.body_params["language_code"] == "pt"
+      Plug.Conn.put_resp_content_type(conn, "audio/mpeg") |> Plug.Conn.send_resp(200, <<1>>)
+    end)
+
+    assert {:ok, _} = ElevenLabs.speech("oi", language: "pt")
+
+    # v4 infers the language from the text; the field would be a 400 there.
+    Req.Test.stub(@stub, fn conn ->
+      refute Map.has_key?(conn.body_params, "language_code")
+      Plug.Conn.put_resp_content_type(conn, "audio/mpeg") |> Plug.Conn.send_resp(200, <<1>>)
+    end)
+
+    assert {:ok, _} = ElevenLabs.speech("oi", language: "pt", model: "eleven_v4")
+  end
+
   test "speech maps the paid failures to reasons" do
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 401, "unauthorized") end)
     assert {:error, :auth_expired} = ElevenLabs.speech("hi")

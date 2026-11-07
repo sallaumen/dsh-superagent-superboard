@@ -456,6 +456,11 @@
 .voice-feedback { font-size: 0.6875rem; color: color-mix(in oklab, var(--color-base-content) 50%, transparent); align-self: center; }
 .voice-toggle { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); cursor: pointer; }
 .voice-toggle input { accent-color: var(--color-base-content); }
+.voice-inline-form { display: contents; }
+.voice-panel fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.voice-field-label output { font-weight: 400; text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; color: var(--color-base-content); }
+.voice-volume { width: 100%; max-width: 16rem; height: 2.75rem; accent-color: var(--color-base-content); cursor: pointer; }
+.voice-note { font-size: 0.75rem; color: color-mix(in oklab, var(--color-base-content) 70%, transparent); }
 
 /* A temporary media surface: phase color comes from the theme, while text
    names the actual browser state. It never steals focus from the board. */

@@ -23,9 +23,9 @@ defmodule AgentBoard.ElevenLabs do
   # The pickers offer these; an id not in the catalog is refused, so the
   # saved value can never grow into a wrong request.
   @tts_models [
-    %{id: "eleven_flash_v2_5", name: "Flash v2.5", note: "fast, ~75ms"},
-    %{id: "eleven_v4", name: "v4", note: "highest quality"},
-    %{id: "eleven_multilingual_v2", name: "Multilingual v2", note: "stable, long-form"}
+    %{id: "eleven_flash_v2_5", name: "Flash v2.5", note: "rápido, ~75 ms"},
+    %{id: "eleven_v4", name: "v4", note: "maior qualidade"},
+    %{id: "eleven_multilingual_v2", name: "Multilingual v2", note: "estável, textos longos"}
   ]
 
   @max_voice_id 64
@@ -127,19 +127,27 @@ defmodule AgentBoard.ElevenLabs do
     * `:output_format` - an ElevenLabs format, default "mp3_44100_128"
     * `:latency` - 0..4; asks ElevenLabs for a faster first byte at a small
       quality cost, default 3 (the value for interactive feedback)
+    * `:language` - an ISO 639-1 code (`pt`, `en`). Sent as `language_code`
+      only to the models that enforce it (Flash v2.5), so the text is read
+      and normalized in that language instead of the voice's own; other
+      models infer the language from the text.
   """
   def speech(text, opts \\ []) when is_binary(text) do
     if configured?() do
       format = Keyword.get(opts, :output_format, @default_output_format)
 
-      body = %{
-        text: text,
-        model_id: Keyword.get(opts, :model, tts_model()),
-        voice_settings: %{
-          stability: Keyword.get(opts, :stability, 0.5),
-          similarity_boost: Keyword.get(opts, :similarity_boost, 0.75)
+      model = Keyword.get(opts, :model, tts_model())
+
+      body =
+        %{
+          text: text,
+          model_id: model,
+          voice_settings: %{
+            stability: Keyword.get(opts, :stability, 0.5),
+            similarity_boost: Keyword.get(opts, :similarity_boost, 0.75)
+          }
         }
-      }
+        |> put_language(model, opts[:language])
 
       case Req.post(client(),
              url: "/v1/text-to-speech/#{Keyword.get(opts, :voice, voice_id())}",
@@ -175,6 +183,15 @@ defmodule AgentBoard.ElevenLabs do
       {:error, :not_configured}
     end
   end
+
+  # Only these models accept `language_code`; another one answers 400.
+  @language_models ["eleven_flash_v2_5", "eleven_turbo_v2_5"]
+
+  defp put_language(body, model, code)
+       when model in @language_models and is_binary(code) and byte_size(code) == 2,
+       do: Map.put(body, :language_code, code)
+
+  defp put_language(body, _model, _code), do: body
 
   @doc """
   Transcribe audio bytes: `{:ok, transcript}` or `{:error, reason}`.

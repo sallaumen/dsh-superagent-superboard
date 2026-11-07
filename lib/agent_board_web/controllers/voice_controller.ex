@@ -12,6 +12,8 @@ defmodule AgentBoardWeb.VoiceController do
 
   alias AgentBoard.ElevenLabs
   alias AgentBoard.Settings
+  alias AgentBoard.Voice
+  alias AgentBoard.Voice.Phrases
 
   @voice_key "elevenlabs_voice_id"
   @tts_model_key "elevenlabs_tts_model"
@@ -22,16 +24,20 @@ defmodule AgentBoardWeb.VoiceController do
 
   @doc "GET /api/voice/status -- what is configured, without the key."
   def status(conn, _params) do
-    json(conn, %{
-      configured: ElevenLabs.configured?(),
-      status: ElevenLabs.status(),
-      voice_id: ElevenLabs.voice_id(),
-      voice_source: ElevenLabs.voice_source(),
-      tts_model: ElevenLabs.tts_model(),
-      tts_source: ElevenLabs.tts_source(),
-      stt_model: ElevenLabs.stt_model(),
-      speak_events: ElevenLabs.speak_events?()
-    })
+    json(
+      conn,
+      %{
+        configured: ElevenLabs.configured?(),
+        status: ElevenLabs.status(),
+        voice_id: ElevenLabs.voice_id(),
+        voice_source: ElevenLabs.voice_source(),
+        tts_model: ElevenLabs.tts_model(),
+        tts_source: ElevenLabs.tts_source(),
+        stt_model: ElevenLabs.stt_model(),
+        speak_events: ElevenLabs.speak_events?()
+      }
+      |> Map.merge(voice_prefs())
+    )
   end
 
   @doc "GET /api/voice/voices -- the account's voices, for the picker."
@@ -51,16 +57,38 @@ defmodule AgentBoardWeb.VoiceController do
   def update(conn, params) do
     with :ok <- put_voice(params),
          :ok <- put_model(params),
-         :ok <- put_speak_events(params) do
-      json(conn, %{
-        voice_id: ElevenLabs.voice_id(),
-        voice_source: ElevenLabs.voice_source(),
-        tts_model: ElevenLabs.tts_model(),
-        tts_source: ElevenLabs.tts_source(),
-        speak_events: ElevenLabs.speak_events?()
-      })
+         :ok <- put_speak_events(params),
+         :ok <- put_pref(params, "language", &Voice.put_language/1),
+         :ok <- put_pref(params, "volume", &Voice.put_volume/1),
+         :ok <- put_pref(params, "attention", &Voice.put_attention(&1 in [true, "true", "1"])) do
+      json(
+        conn,
+        Map.merge(
+          %{
+            voice_id: ElevenLabs.voice_id(),
+            voice_source: ElevenLabs.voice_source(),
+            tts_model: ElevenLabs.tts_model(),
+            tts_source: ElevenLabs.tts_source(),
+            speak_events: ElevenLabs.speak_events?()
+          },
+          voice_prefs()
+        )
+      )
     else
       {:error, reason} -> voice_error(conn, reason)
+    end
+  end
+
+  defp voice_prefs do
+    %{language: Voice.language(), volume: Voice.volume(), attention: Voice.attention?()}
+  end
+
+  # Key by key, like the voice and the model: a refused value answers 400
+  # and names itself; an absent key leaves its setting alone.
+  defp put_pref(params, key, put) do
+    case Map.fetch(params, key) do
+      {:ok, value} -> put.(value)
+      :error -> :ok
     end
   end
 
@@ -129,7 +157,8 @@ defmodule AgentBoardWeb.VoiceController do
   defp speech_params(_params), do: {:error, :missing_text}
 
   defp generate(text, voice) do
-    opts = if voice, do: [voice: voice], else: []
+    opts = [language: Phrases.tts_code(Voice.language())]
+    opts = if voice, do: [{:voice, voice} | opts], else: opts
 
     case ElevenLabs.speech(text, opts) do
       {:ok, %{audio: audio}} -> {:ok, audio}
@@ -167,6 +196,8 @@ defmodule AgentBoardWeb.VoiceController do
   defp status_and_message(:audio_too_large), do: {413, "the audio is too large"}
   defp status_and_message(:invalid_voice), do: {400, "a valid voice id is required"}
   defp status_and_message(:invalid_model), do: {400, "an offered TTS model is required"}
+  defp status_and_message(:invalid_language), do: {400, "an offered voice language is required"}
+  defp status_and_message(:invalid_volume), do: {400, "the volume must be 0 to 100"}
   defp status_and_message(:auth_expired), do: {401, "ElevenLabs rejected the key"}
   defp status_and_message(:usage_limit), do: {429, "ElevenLabs usage limit reached"}
   defp status_and_message({:http, status}), do: {502, "ElevenLabs HTTP #{status}"}

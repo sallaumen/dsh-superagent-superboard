@@ -25,6 +25,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Board.Task
   alias AgentBoard.Sync.{Freshness, Worker}
   alias AgentBoard.System.{Updater, Version}
+  alias AgentBoard.Voice.Phrases
 
   import AgentBoardWeb.BoardComponents.Composer, only: [composer: 1]
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
@@ -112,7 +113,10 @@ defmodule AgentBoardWeb.BoardLive do
         voice_action: nil,
         voice_generation: 0,
         spoken_text: nil,
-        spoken_at: 0
+        spoken_at: 0,
+        # Rotates the attention phrases; a random start keeps a reload from
+        # always opening with the same sentence.
+        voice_turn: :rand.uniform(1_000)
       )
 
     repo =
@@ -734,7 +738,7 @@ defmodule AgentBoardWeb.BoardLive do
          |> load(socket.assigns.repo)
          |> refresh_inspector_after_act(task_id)
          |> put_flash(:info, "Task updated")
-         |> speak(Voice.task_summary(task.title, action))}
+         |> speak(Voice.task_summary(task.title, action, socket.assigns.voice.language))}
 
       _ ->
         {:noreply, put_flash(socket, :error, "Could not update the task")}
@@ -1134,7 +1138,11 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("speak", _params, socket) do
-    text = Voice.spoken(socket.assigns.board)
+    text =
+      Voice.spoken(socket.assigns.board,
+        language: socket.assigns.voice.language,
+        tz_offset: socket.assigns.tz_offset
+      )
 
     if socket.assigns.voice.configured do
       # The agent's ElevenLabs voice speaks the status; the browser speech
@@ -1142,7 +1150,7 @@ defmodule AgentBoardWeb.BoardLive do
       url = speech_url(text, socket.assigns.voice.id)
       {:noreply, push_event(socket, "voice_play", %{url: url})}
     else
-      {:noreply, push_event(socket, "speak", %{text: text})}
+      {:noreply, push_event(socket, "speak", browser_speech(socket, text))}
     end
   end
 
@@ -1202,7 +1210,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply,
          socket
          |> assign(voice: %{socket.assigns.voice | loading: false})
-         |> put_flash(:error, "Could not list voices: #{voice_reason(reason)}")}
+         |> put_flash(:error, "Não foi possível listar as vozes: #{voice_reason(reason)}")}
     end
   end
 
@@ -1219,7 +1227,7 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply,
      push_event(socket, "voice_play", %{
-       url: speech_url("Hello! This is how your agent will sound.", id)
+       url: speech_url(Phrases.preview(socket.assigns.voice.language), id)
      })}
   end
 
@@ -1230,17 +1238,19 @@ defmodule AgentBoardWeb.BoardLive do
 
     cond do
       not ElevenLabs.valid_voice_id?(id) ->
-        {:noreply, put_flash(socket, :error, "Pick a voice from the list first")}
+        {:noreply, put_flash(socket, :error, "Escolha uma voz da lista primeiro")}
 
       Settings.put(@voice_key, id) == :ok ->
         {:noreply,
          socket
          |> assign(voice: %{current_voice() | pick: id, voices: socket.assigns.voice.voices})
-         |> put_flash(:info, "Voice saved: #{name || id}")
-         |> push_event("voice_play", %{url: speech_url("Voice selected.", id)})}
+         |> put_flash(:info, "Voz salva: #{name || id}")
+         |> push_event("voice_play", %{
+           url: speech_url(Phrases.voice_saved(socket.assigns.voice.language), id)
+         })}
 
       true ->
-        {:noreply, put_flash(socket, :error, "Could not save the voice")}
+        {:noreply, put_flash(socket, :error, "Não foi possível salvar a voz")}
     end
   end
 
@@ -1251,7 +1261,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      socket
      |> assign(voice: %{current_voice() | pick: ElevenLabs.voice_id()})
-     |> put_flash(:info, "Voice back to the default")}
+     |> put_flash(:info, "Voz de volta ao padrão")}
   end
 
   @impl true
@@ -1268,9 +1278,9 @@ defmodule AgentBoardWeb.BoardLive do
              model_source: ElevenLabs.tts_source()
          }
        )
-       |> put_flash(:info, "Model saved: #{String.trim(model)}")}
+       |> put_flash(:info, "Modelo salvo: #{String.trim(model)}")}
     else
-      {:noreply, put_flash(socket, :error, "Unknown TTS model")}
+      {:noreply, put_flash(socket, :error, "Modelo de fala desconhecido")}
     end
   end
 
@@ -1278,10 +1288,10 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("voice_try", %{"phrase" => phrase}, socket) do
     cond do
       String.trim(phrase) == "" ->
-        {:noreply, put_flash(socket, :error, "Type a phrase to hear it")}
+        {:noreply, put_flash(socket, :error, "Digite uma frase para ouvir")}
 
       not ElevenLabs.valid_text?(phrase) ->
-        {:noreply, put_flash(socket, :error, "The phrase is too long for one request")}
+        {:noreply, put_flash(socket, :error, "A frase é longa demais para um pedido")}
 
       true ->
         url = speech_url(phrase, socket.assigns.voice.id)
@@ -1295,6 +1305,33 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply,
      assign(socket, voice: %{socket.assigns.voice | speak_events: ElevenLabs.speak_events?()})}
+  end
+
+  @impl true
+  def handle_event("voice_attention", %{"attention" => value}, socket) do
+    :ok = Voice.put_attention(value == "true")
+    {:noreply, assign(socket, voice: %{socket.assigns.voice | attention: Voice.attention?()})}
+  end
+
+  @impl true
+  def handle_event("voice_language", %{"language" => lang}, socket) do
+    case Voice.put_language(lang) do
+      :ok ->
+        lang = Voice.language()
+        socket = assign(socket, voice: %{socket.assigns.voice | language: lang})
+        {:noreply, say(socket, Phrases.language_switched(lang))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, "Idioma não suportado")}
+    end
+  end
+
+  @impl true
+  def handle_event("voice_volume", %{"volume" => volume}, socket) do
+    case Voice.put_volume(volume) do
+      :ok -> {:noreply, assign(socket, voice: %{socket.assigns.voice | volume: Voice.volume()})}
+      {:error, _reason} -> {:noreply, socket}
+    end
   end
 
   defp current_voice_ask(socket) do
@@ -1553,7 +1590,11 @@ defmodule AgentBoardWeb.BoardLive do
       model: ElevenLabs.tts_model(),
       model_source: ElevenLabs.tts_source(),
       models: ElevenLabs.tts_models(),
-      speak_events: ElevenLabs.speak_events?()
+      speak_events: ElevenLabs.speak_events?(),
+      attention: Voice.attention?(),
+      language: Voice.language(),
+      languages: Phrases.languages(),
+      volume: Voice.volume()
     }
   end
 
@@ -1562,17 +1603,30 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The agent speaks what changed, once per change: the poller already
   # broadcasts only on new hashes, and the same utterance is not repeated
-  # within a short window.
-  defp announce(socket, old_board, old_sync) do
+  # within a short window. One update is one utterance: a second push would
+  # cut the first one off mid-sentence.
+  defp announce(%{assigns: %{voice: voice}} = socket, old_board, old_sync) do
     texts =
       Announcer.board_changes(
         old_board,
         socket.assigns.board,
         old_sync,
-        socket.assigns.sync_event
+        socket.assigns.sync_event,
+        language: voice.language,
+        turn: socket.assigns.voice_turn,
+        attention: voice.attention,
+        events: voice.speak_events
       )
 
-    Enum.reduce(texts, socket, &speak(&2, &1))
+    case Announcer.utterance(texts) do
+      nil ->
+        socket
+
+      text ->
+        socket
+        |> assign(voice_turn: socket.assigns.voice_turn + length(texts))
+        |> say(text, fallback: voice.attention)
+    end
   end
 
   defp confirm_voice_action(socket, task, action) do
@@ -1621,24 +1675,46 @@ defmodule AgentBoardWeb.BoardLive do
   # Speaks through the agent's ElevenLabs voice when the key is configured
   # and the automatic speech is on; a repeated utterance within a short
   # window is skipped, so a burst never doubles the audio.
-  defp speak(%{assigns: %{voice: %{configured: true, speak_events: true}}} = socket, text)
-       when is_binary(text) do
-    now = System.monotonic_time(:millisecond)
+  # A confirmation or an answer: spoken only while "narrate" is on.
+  defp speak(%{assigns: %{voice: %{speak_events: true}}} = socket, text), do: say(socket, text)
+  defp speak(socket, _text), do: socket
 
-    if socket.assigns.spoken_text == text and now - socket.assigns.spoken_at < 30_000 do
-      socket
-    else
-      socket
-      |> assign(spoken_text: text, spoken_at: now)
-      |> push_event("voice_play", %{url: speech_url(text, socket.assigns.voice.id)})
+  # Speaks in the agent's voice, deduped for a short window. Without an
+  # ElevenLabs key nothing is said, unless `fallback: true` asks for the
+  # browser's voice (the calls for attention must still reach the owner).
+  defp say(socket, text, opts \\ [])
+
+  defp say(socket, text, opts) when is_binary(text) and text != "" do
+    now = System.monotonic_time(:millisecond)
+    voice = socket.assigns.voice
+
+    cond do
+      socket.assigns.spoken_text == text and now - socket.assigns.spoken_at < 30_000 ->
+        socket
+
+      voice.configured ->
+        socket
+        |> assign(spoken_text: text, spoken_at: now)
+        |> push_event("voice_play", %{url: speech_url(text, voice.id)})
+
+      Keyword.get(opts, :fallback, false) ->
+        socket
+        |> assign(spoken_text: text, spoken_at: now)
+        |> push_event("speak", browser_speech(socket, text))
+
+      true ->
+        socket
     end
   end
 
-  defp speak(socket, _text), do: socket
+  defp say(socket, _text, _opts), do: socket
 
-  defp voice_reason(:not_configured), do: "no API key"
-  defp voice_reason(:auth_expired), do: "the key was rejected"
-  defp voice_reason(:usage_limit), do: "usage limit reached"
+  defp browser_speech(socket, text),
+    do: %{text: text, lang: socket.assigns.voice.language}
+
+  defp voice_reason(:not_configured), do: "sem chave de API"
+  defp voice_reason(:auth_expired), do: "a chave foi recusada"
+  defp voice_reason(:usage_limit), do: "limite de uso atingido"
   defp voice_reason({:http, status}), do: "HTTP #{status}"
   defp voice_reason(reason), do: inspect(reason)
 

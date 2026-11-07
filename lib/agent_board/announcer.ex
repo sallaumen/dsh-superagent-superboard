@@ -3,26 +3,56 @@ defmodule AgentBoard.Announcer do
   What the agent should say when the board changes, as a pure diff.
 
   The LiveView compares the previous and the current board on every
-  `:board_updated` and pushes the texts here to the agent's voice; nothing
-  here touches the network. A burst is capped, and only what the owner
-  needs to hear is spoken: task overlays moving between the live lanes and
-  sync outcomes getting worse. User actions speak their own confirmations,
-  so they are not announced here.
+  `:board_updated` and speaks the result in one utterance (two pushes in a
+  row would cut the first one off). Two kinds of news:
+
+    * **attention** - a task entered a lane that needs the owner (a
+      question, a block, a review). These come first and rotate through a
+      pool of phrases, so the call does not sound like a broken record.
+    * **events** - a task started or went back to the queue, and sync
+      outcomes getting worse.
+
+  A burst is capped; user actions speak their own confirmations, so they
+  are not announced here. Nothing here touches the network.
   """
 
-  @live_states [:running, :ready, :blocked, :queued]
+  alias AgentBoard.Voice.Phrases
+
+  @live_states [:running, :question, :ready, :blocked, :queued]
   @max_per_update 2
 
   @doc """
-  The texts to speak for a board change, at most `@max_per_update` items.
+  The texts to speak for a board change, at most `@max_per_update` items,
+  attention calls first.
 
   The boards are the column maps (`%{running: [...], ready: [...]}`) and
   the syncs are the latest `sync`/`sync_error` events, or nil.
+
+  Options: `:language` (default `Phrases.default_language/0`), `:turn`
+  (rotates the phrase pools, default 0), `:attention` and `:events`
+  (booleans, default true) to silence either kind.
   """
-  def board_changes(old_board, new_board, old_sync, new_sync) do
-    (state_changes(old_board, new_board) ++ sync_changes(old_sync, new_sync))
+  def board_changes(old_board, new_board, old_sync, new_sync, opts \\ []) do
+    lang = Keyword.get(opts, :language, Phrases.default_language())
+    turn = Keyword.get(opts, :turn, 0)
+    {attention, moves} = state_changes(old_board, new_board)
+
+    attention = if Keyword.get(opts, :attention, true), do: attention, else: []
+
+    events =
+      if Keyword.get(opts, :events, true),
+        do: moves ++ sync_changes(old_sync, new_sync),
+        else: []
+
+    (attention ++ events)
     |> Enum.take(@max_per_update)
+    |> Enum.with_index(turn)
+    |> Enum.map(fn {item, i} -> text(item, lang, i) end)
   end
+
+  @doc "The texts of one update as a single utterance."
+  def utterance([]), do: nil
+  def utterance(texts), do: Enum.join(texts, " ")
 
   @doc "A short, speakable form of an answer; long answers are cut at a word."
   def speakable_answer(text, max_bytes \\ 280) when is_binary(text) do
@@ -36,24 +66,34 @@ defmodule AgentBoard.Announcer do
     end
   end
 
+  defp text({:attention, kind, title}, lang, turn), do: Phrases.attention(lang, kind, title, turn)
+  defp text({:moved, state, title}, lang, turn), do: Phrases.moved(lang, state, title, turn)
+  defp text(:sync_failed, lang, _turn), do: Phrases.sync_failed(lang)
+  defp text({:sync_errors, n}, lang, _turn), do: Phrases.sync_errors(lang, n)
+
   # A move between two live lanes is news; appearing, vanishing or moving
   # into the merged history is not (the acting user already heard that).
   defp state_changes(old_board, new_board) do
     old = by_id(old_board)
     new = by_id(new_board)
 
-    for {id, {old_state, task}} <- Enum.sort_by(old, &elem(&1, 0)),
-        {new_state, _task} = Map.get(new, id, {nil, nil}),
-        new_state != old_state,
-        old_state in @live_states,
-        new_state in @live_states do
-      "Task '#{task.title}' is now #{new_state}."
-    end
+    changes =
+      for {id, {old_state, task}} <- Enum.sort_by(old, &elem(&1, 0)),
+          {new_state, _task} = Map.get(new, id, {nil, nil}),
+          new_state != old_state,
+          old_state in @live_states,
+          new_state in @live_states do
+        if new_state in Phrases.attention_kinds(),
+          do: {:attention, new_state, task.title},
+          else: {:moved, new_state, task.title}
+      end
+
+    Enum.split_with(changes, &match?({:attention, _, _}, &1))
   end
 
   defp by_id(board) do
     Enum.reduce(@live_states, %{}, fn state, acc ->
-      Enum.reduce(Map.get(board, state, []), acc, fn task, acc ->
+      Enum.reduce(Map.get(board, state) || [], acc, fn task, acc ->
         Map.put(acc, task.id, {state, task})
       end)
     end)
@@ -63,14 +103,11 @@ defmodule AgentBoard.Announcer do
   # one, is news; a clean sync and a repeating failure are silence.
   defp sync_changes(%{kind: "sync_error", id: id}, %{kind: "sync_error", id: id}), do: []
 
-  defp sync_changes(_old, %{kind: "sync_error"}), do: ["The sync failed. Showing saved data."]
+  defp sync_changes(_old, %{kind: "sync_error"}), do: [:sync_failed]
 
   defp sync_changes(%{kind: "sync", payload: old}, %{kind: "sync", payload: new}) do
     new_errors = errors(new)
-
-    if new_errors > errors(old),
-      do: ["The sync finished with #{new_errors} error#{if new_errors == 1, do: "", else: "s"}."],
-      else: []
+    if new_errors > errors(old), do: [{:sync_errors, new_errors}], else: []
   end
 
   defp sync_changes(_old, _new), do: []
