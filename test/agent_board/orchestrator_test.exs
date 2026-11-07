@@ -40,6 +40,32 @@ defmodule AgentBoard.OrchestratorTest do
     assert_receive {:header, ["1"]}
   end
 
+  test "the dispatch state names the watched repository and the pause" do
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, %{
+        "load" => %{"running" => 0, "queued" => 0, "maxWorkers" => 3},
+        "paused" => true,
+        "setup" => %{"accounts" => %{"repository" => "sallaumen/arena-rogue"}}
+      })
+    end)
+
+    assert Orchestrator.dispatch_state() ==
+             {:ok,
+              %{
+                repository: "sallaumen/arena-rogue",
+                paused: true,
+                load: %{running: 0, queued: 0, max_workers: 3}
+              }}
+  end
+
+  test "a state without the repository leaves it unknown" do
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, %{"load" => %{"running" => 1, "queued" => 0, "maxWorkers" => 2}})
+    end)
+
+    assert {:ok, %{repository: nil, paused: false}} = Orchestrator.dispatch_state()
+  end
+
   describe "set_max_workers/2" do
     @executor %{
       "model" => %{"provider" => "deepseek-account", "model" => "deepseek-flash"},

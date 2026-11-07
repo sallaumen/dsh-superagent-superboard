@@ -22,13 +22,33 @@ defmodule AgentBoard.Orchestrator do
   def load(nil), do: {:error, :not_configured}
 
   def load(client) do
+    with {:ok, state} <- dispatch_state(client), do: {:ok, state.load}
+  end
+
+  @type dispatch_state :: %{repository: String.t() | nil, paused: boolean(), load: load()}
+
+  @doc """
+  What the router needs from the runner (`GET state`): the one repository
+  it watches (`setup.accounts.repository`), whether it is paused, and the
+  load. A repository the state does not name is `nil`, never a guess.
+  """
+  @spec dispatch_state(Req.Request.t() | nil) :: {:ok, dispatch_state()} | {:error, term()}
+  def dispatch_state(client \\ client())
+
+  def dispatch_state(nil), do: {:error, :not_configured}
+
+  def dispatch_state(client) do
     case Req.get(client, url: "/state") do
-      {:ok, %{status: 200, body: %{"load" => %{} = load}}} ->
+      {:ok, %{status: 200, body: %{"load" => %{} = load} = body}} ->
         {:ok,
          %{
-           running: int(load["running"]),
-           queued: int(load["queued"]),
-           max_workers: int(load["maxWorkers"])
+           repository: repository(get_in(body, ["setup", "accounts", "repository"])),
+           paused: body["paused"] == true,
+           load: %{
+             running: int(load["running"]),
+             queued: int(load["queued"]),
+             max_workers: int(load["maxWorkers"])
+           }
          }}
 
       {:ok, %{status: 200}} ->
@@ -193,6 +213,9 @@ defmodule AgentBoard.Orchestrator do
       receive_timeout: 1_000
     )
   end
+
+  defp repository(value) when is_binary(value) and value != "", do: value
+  defp repository(_value), do: nil
 
   defp int(value) when is_integer(value), do: value
   defp int(_value), do: 0

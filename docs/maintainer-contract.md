@@ -28,6 +28,7 @@ differ. Change a general rule upstream, not here.
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.ExecutorUsage` | what the executor spent on a task, read from the harness transcripts; tokens measured, cost estimated |
 | `AgentBoard.Executors` | who a task is for (`dsh`, `claude`, `codex`): the label and the issue body each gets; pure |
+| `AgentBoard.Routing` | where a new task should go: `suggest/2` (pure rules), `Signals` (what it reads) and one `Decision` row per created task |
 | `AgentBoard.Attribution` | which task a session or a PR worked for: exact, `pr-link`, branch, repository or outside; pure |
 | `AgentBoard.Usage.ClaudeCode` | what Claude Code spent, read from its transcripts (`~/.claude/projects`); one count per `message.id` across files, numbers and named metadata only (`Usage.Fields`) |
 | `AgentBoard.Usage.Codex` | what Codex spent: the `threads` table by named columns (never `title`, `preview`, `name`, `first_user_message`) and the rollouts' cumulative totals as daily differences, plus the last `rate_limits`; zstd rollouts through `Usage.Lines` |
@@ -545,6 +546,40 @@ sync found or a task created before the choice existed.
   `listedUnaddressed: ignore` for issues, which belongs to the owner.
 - The tests: `executors_test.exs` and `create_request_test.exs` (the body
   and the label GitHub receives, the stored executor, a repeat).
+
+## Routing (mode "sugerir")
+
+`AgentBoard.Routing.suggest/2` is pure: rules in the plan's order
+(`docs/research/alfred.md`, 3.5), no model, a suggestion and never a
+dispatch.
+
+| Rule | Signal | Effect |
+|---|---|---|
+| hard restriction | the runner's `setup.accounts.repository` (`Orchestrator.dispatch_state/1`) | the DeepSeek runner is out in any other repository, and out when the board could not read which one |
+| explicit choice | the owner named an executor | decides, unless the restriction rules it out; then the reason says so |
+| availability | the runner paused or not answering | out; Claude Code and Codex have no reader yet: `:unknown`, which never rules them out and never counts as available |
+| budget, kind and size, history | the usage ledger (F1.3), not built yet | nothing; kind and size are stored for when it exists |
+| order | — | the runner first (the only executor the board dispatches), then `Executors.all/0` |
+
+- **The expected cost is unknown until the usage ledger exists**, stored
+  and shown as unknown, never zero.
+- **Every task the board creates for an executor has one row** in
+  `routing_decisions`: suggested (nil when nobody could take it), chosen,
+  mode, reasons in Portuguese, alternatives, the snapshot of the signals
+  (`Signals.snapshot/1`) and who decided (`composer`, `voice`, `api`). A
+  caller that showed the suggestion passes it; otherwise
+  `Board.create_request/3` runs the router with the chosen executor as the
+  explicit ask. A repeat of the same words writes no second row.
+- The row is written after the task row and outside its transaction: the
+  issue already exists, so a decision that fails is a `routing_error`
+  event, never a dropped task (a retry without the row would open a second
+  issue).
+- The signals are read once per request, not per render; a runner that
+  does not answer costs at most the orchestrator's 500 ms connect and 1 s
+  receive timeouts.
+- The tests: `routing_test.exs` (each rule), `routing_signals_test.exs`,
+  `orchestrator_test.exs` (`dispatch_state/1`) and `create_request_test.exs`
+  (the row, the repeat, the row computed without a shown suggestion).
 
 ## Attribution
 
