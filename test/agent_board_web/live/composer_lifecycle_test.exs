@@ -164,6 +164,38 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "#composer-text", "")
   end
 
+  # Typing fast: each keystroke's change carries the title field's value as
+  # the browser had it, the title derived from the previous words. Only a
+  # change of the title field itself (`_target`) is the owner's edit.
+  test "fast typing keeps the title derived from the words", %{conn: conn} do
+    github()
+    view = open_composer(conn)
+    form = element(view, "#composer-form")
+
+    render_change(form, %{"_target" => ["text"], "text" => "Ve"})
+
+    render_change(form, %{
+      "_target" => ["text"],
+      "text" => "Verificar o portão",
+      "title" => "Ve"
+    })
+
+    render_change(form, %{
+      "_target" => ["text"],
+      "text" => "Verificar o portão de risco",
+      "title" => "Verificar o portão"
+    })
+
+    assert has_element?(view, "#composer-issue-title[value='Verificar o portão de risco']")
+    assert has_element?(view, "#composer-title-hint", "Da primeira frase")
+    assert has_element?(view, "#composer-confirm", "“Verificar o portão de risco”")
+
+    # The send may carry the field as the browser last had it; the title is
+    # still the one the screen confirmed.
+    submit(view, %{"text" => "Verificar o portão de risco", "title" => "Verificar o portão"})
+    assert Repo.one(Task).title == "Verificar o portão de risco"
+  end
+
   test "an edited title is the issue title", %{conn: conn} do
     github()
     view = open_composer(conn)
@@ -172,14 +204,26 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     view
     |> element("#composer-form")
     |> render_change(%{
+      "_target" => ["title"],
       "text" => "Um parágrafo bem longo que descreve o pedido inteiro em uma só linha",
       "title" => "Pedido curto"
     })
 
     assert has_element?(view, "#composer-title-hint", "Editado por você")
 
+    # More words afterwards keep the owner's title.
+    view
+    |> element("#composer-form")
+    |> render_change(%{
+      "_target" => ["text"],
+      "text" => "Um parágrafo bem longo que descreve o pedido inteiro em uma só linha, e mais",
+      "title" => "Pedido curto"
+    })
+
+    assert has_element?(view, "#composer-issue-title[value='Pedido curto']")
+
     submit(view, %{
-      "text" => "Um parágrafo bem longo que descreve o pedido inteiro em uma só linha",
+      "text" => "Um parágrafo bem longo que descreve o pedido inteiro em uma só linha, e mais",
       "title" => "Pedido curto"
     })
 
@@ -331,7 +375,11 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     # A checkbox or title change keeps the failure on screen; new words clear it.
     view
     |> element("#composer-form")
-    |> render_change(%{"text" => "Pedido com resposta quebrada", "title" => "x"})
+    |> render_change(%{
+      "_target" => ["title"],
+      "text" => "Pedido com resposta quebrada",
+      "title" => "x"
+    })
 
     assert has_element?(view, "#composer-error")
 
