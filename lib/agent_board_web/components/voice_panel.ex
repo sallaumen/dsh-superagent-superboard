@@ -16,6 +16,11 @@ defmodule AgentBoardWeb.Components.VoicePanel do
   `voice_announce`, `voice_browse`, `voice_pick`, `voice_preview`,
   `voice_save`, `voice_reset`, `voice_model` and `voice_try`.
 
+  Every form here mirrors a saved setting, so it opts out of LiveView's form
+  recovery (`phx-auto-recover="ignore"`): on a reconnect, recovery re-sent
+  the voice picker without a value, which crashed the board, and replayed
+  the language confirmation out loud.
+
   The root carries `data-volume` and `data-lang`: the `VoicePlayer` hook and
   the browser-speech fallback read them, so a change applies to the audio
   already playing.
@@ -40,7 +45,12 @@ defmodule AgentBoardWeb.Components.VoicePanel do
       <div class="voice-fields">
         <div class="voice-field">
           <label for="voice-language" class="voice-field-label">Idioma da voz</label>
-          <form id="voice-language-form" phx-change="voice_language" class="settings-actions">
+          <form
+            id="voice-language-form"
+            phx-change="voice_language"
+            phx-auto-recover="ignore"
+            class="settings-actions"
+          >
             <select id="voice-language" name="language" class="voice-select">
               <option
                 :for={lang <- @voice.languages}
@@ -53,7 +63,12 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           </form>
         </div>
 
-        <form id="voice-volume-form" phx-change="voice_volume" class="voice-field">
+        <form
+          id="voice-volume-form"
+          phx-change="voice_volume"
+          phx-auto-recover="ignore"
+          class="voice-field"
+        >
           <label for="voice-volume" class="voice-field-label">
             Volume <output for="voice-volume" data-voice-volume-readout>{@voice.volume}%</output>
           </label>
@@ -71,7 +86,12 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           />
         </form>
 
-        <form id="voice-speed-form" phx-change="voice_speed" class="voice-field">
+        <form
+          id="voice-speed-form"
+          phx-change="voice_speed"
+          phx-auto-recover="ignore"
+          class="voice-field"
+        >
           <label for="voice-speed" class="voice-field-label">
             Velocidade <output for="voice-speed">{speed_label(@voice.speed)}</output>
           </label>
@@ -93,6 +113,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           :if={@voice.configured}
           id="voice-style-form"
           phx-change="voice_style"
+          phx-auto-recover="ignore"
           class="voice-field"
         >
           <label for="voice-style" class="voice-field-label">Entonação</label>
@@ -109,7 +130,12 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           </div>
         </form>
 
-        <form id="voice-pause-form" phx-change="voice_pause" class="voice-field">
+        <form
+          id="voice-pause-form"
+          phx-change="voice_pause"
+          phx-auto-recover="ignore"
+          class="voice-field"
+        >
           <label for="voice-pause" class="voice-field-label">
             Pausa para enviar
             <span class="voice-source-note">· quanto silêncio encerra a sua fala</span>
@@ -129,7 +155,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
         <fieldset class="voice-field">
           <legend class="voice-field-label">Quando falar</legend>
-          <form id="voice-attention-form" phx-change="voice_attention">
+          <form id="voice-attention-form" phx-change="voice_attention" phx-auto-recover="ignore">
             <input type="hidden" name="attention" value="false" />
             <label class="voice-toggle">
               <input
@@ -141,7 +167,12 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               /> Chamar quando uma tarefa precisar de mim
             </label>
           </form>
-          <form :if={@voice.configured} id="voice-announce-form" phx-change="voice_announce">
+          <form
+            :if={@voice.configured}
+            id="voice-announce-form"
+            phx-change="voice_announce"
+            phx-auto-recover="ignore"
+          >
             <input type="hidden" name="speak_events" value="false" />
             <label class="voice-toggle">
               <input
@@ -153,7 +184,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               /> Narrar o resto: início de tarefa, fila, sincronização e confirmações
             </label>
           </form>
-          <form id="voice-earcons-form" phx-change="voice_earcons">
+          <form id="voice-earcons-form" phx-change="voice_earcons" phx-auto-recover="ignore">
             <input type="hidden" name="earcons" value="false" />
             <label class="voice-toggle">
               <input
@@ -184,7 +215,12 @@ defmodule AgentBoardWeb.Components.VoicePanel do
             </span>
           </label>
           <div class="settings-actions">
-            <form id="voice-picker-form" phx-change="voice_pick" class="voice-inline-form">
+            <form
+              id="voice-picker-form"
+              phx-change="voice_pick"
+              phx-auto-recover="ignore"
+              class="voice-inline-form"
+            >
               <select
                 id="voice-picker"
                 name="voice"
@@ -254,7 +290,12 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               · definido no .env.local
             </span>
           </label>
-          <form id="voice-model-form" phx-change="voice_model" class="settings-actions">
+          <form
+            id="voice-model-form"
+            phx-change="voice_model"
+            phx-auto-recover="ignore"
+            class="settings-actions"
+          >
             <select
               id="voice-model"
               name="model"

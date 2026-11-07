@@ -2,11 +2,16 @@ defmodule AgentBoardWeb.VoiceControllerTest do
   @moduledoc "The voice API: status, speech and transcription, stubbed."
   use AgentBoardWeb.ConnCase
 
+  # Failures are exercised on purpose; their log lines show only if a test fails.
+  @moduletag capture_log: true
+
   alias AgentBoard.ElevenLabs.SpeechCache
 
   @stub AgentBoardWeb.VoiceControllerTest.Stub
 
   setup do
+    # Audio just produced is kept a minute for simultaneous requests: start clean.
+    SpeechCache.clear()
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
 
@@ -214,6 +219,31 @@ defmodule AgentBoardWeb.VoiceControllerTest do
 
     assert json_response(get(conn, "/api/voice/stream"), 400)
     assert json_response(get(conn, "/api/voice/stream?text=#{String.duplicate("x", 5_001)}"), 400)
+  end
+
+  test "a simultaneous request for the same audio waits for the first, without paying twice",
+       %{conn: conn} do
+    {:ok, calls} = Agent.start_link(fn -> 0 end)
+    test_pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      Agent.update(calls, &(&1 + 1))
+      send(test_pid, :generating)
+      Process.sleep(150)
+
+      conn
+      |> Plug.Conn.put_resp_content_type("audio/mpeg")
+      |> Plug.Conn.send_resp(200, "ID3twice")
+    end)
+
+    first = Task.async(fn -> get(conn, "/api/voice/stream?text=Duas+vezes") end)
+    assert_receive :generating, 1_000
+    second = get(build_conn(), "/api/voice/stream?text=Duas+vezes")
+
+    assert response(second, 200) == "ID3twice"
+    assert get_resp_header(second, "x-voice-cache") == ["inflight"]
+    assert response(Task.await(first), 200) == "ID3twice"
+    assert Agent.get(calls, & &1) == 1
   end
 
   test "a repeated text is served from the speech cache, once paid", %{conn: conn} do

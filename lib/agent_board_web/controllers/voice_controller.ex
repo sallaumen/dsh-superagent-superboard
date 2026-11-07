@@ -14,7 +14,7 @@ defmodule AgentBoardWeb.VoiceController do
   alias AgentBoard.ElevenLabs.SpeechCache
   alias AgentBoard.Settings
   alias AgentBoard.Voice
-  alias AgentBoard.Voice.Phrases
+  alias AgentBoard.Voice.{Activity, Phrases}
 
   @voice_key "elevenlabs_voice_id"
   @tts_model_key "elevenlabs_tts_model"
@@ -158,13 +158,42 @@ defmodule AgentBoardWeb.VoiceController do
 
     case SpeechCache.get(key) do
       {:ok, audio} ->
+        Activity.record(:tts, :ok, "voz do cache (#{String.length(text)} caracteres)", ms: 0)
+
         conn
         |> put_resp_content_type("audio/mpeg", nil)
         |> put_resp_header("x-voice-cache", "hit")
         |> send_resp(200, audio)
 
       :miss ->
-        stream_fresh(conn, text, opts, key)
+        stream_or_follow(conn, text, opts, key)
+    end
+  end
+
+  # WebKit asks for the same audio twice at once; the second request waits
+  # for the first instead of paying ElevenLabs again.
+  defp stream_or_follow(conn, text, opts, key) do
+    case SpeechCache.claim(key) do
+      :leader ->
+        try do
+          stream_fresh(conn, text, opts, key)
+        after
+          SpeechCache.release(key, Process.delete(:voice_stream_audio))
+        end
+
+      :follower ->
+        case SpeechCache.await(key, 10_000) do
+          {:ok, audio} ->
+            Activity.record(:tts, :ok, "mesma voz reaproveitada de um pedido simultâneo", ms: 0)
+
+            conn
+            |> put_resp_content_type("audio/mpeg", nil)
+            |> put_resp_header("x-voice-cache", "inflight")
+            |> send_resp(200, audio)
+
+          _gone_or_timeout ->
+            stream_fresh(conn, text, opts, key)
+        end
     end
   end
 
@@ -172,9 +201,16 @@ defmodule AgentBoardWeb.VoiceController do
   # while Req calls back with each chunk; both are read back right after.
   defp stream_fresh(conn, text, opts, key) do
     Process.put(:voice_stream, {conn, []})
+    started = System.monotonic_time(:millisecond)
 
     on_chunk = fn data ->
       {conn, audio} = Process.get(:voice_stream)
+
+      if conn.state != :chunked do
+        Activity.record(:tts, :info, "primeiro som a caminho",
+          ms: System.monotonic_time(:millisecond) - started
+        )
+      end
 
       conn =
         if conn.state == :chunked,
@@ -194,21 +230,36 @@ defmodule AgentBoardWeb.VoiceController do
 
     result = ElevenLabs.speech_stream(text, opts, on_chunk)
     {conn, audio} = Process.delete(:voice_stream)
+    ms = System.monotonic_time(:millisecond) - started
+    finish_stream(conn, result, audio, text, key, ms)
+  end
 
-    cond do
-      conn.state == :chunked ->
-        if result == :ok and is_list(audio),
-          do: SpeechCache.put(key, text, IO.iodata_to_binary(audio))
+  defp finish_stream(%{state: :chunked} = conn, :ok, audio, text, key, ms) when is_list(audio) do
+    audio = IO.iodata_to_binary(audio)
+    SpeechCache.put(key, text, audio)
+    Process.put(:voice_stream_audio, audio)
+    Activity.record(:tts, :ok, "voz gerada (#{String.length(text)} caracteres)", ms: ms)
+    conn
+  end
 
-        conn
+  defp finish_stream(%{state: :chunked} = conn, :ok, :abandoned, _text, _key, ms) do
+    Activity.record(:tts, :info, "o navegador parou de ouvir no meio", ms: ms)
+    conn
+  end
 
-      match?({:error, _}, result) ->
-        {:error, reason} = result
-        voice_error(conn, reason)
+  defp finish_stream(%{state: :chunked} = conn, {:error, reason}, _audio, _text, _key, ms) do
+    Activity.record(:tts, :error, "a voz parou no meio", ms: ms, reason: reason)
+    conn
+  end
 
-      true ->
-        voice_error(conn, :empty_audio)
-    end
+  defp finish_stream(conn, {:error, reason}, _audio, _text, _key, ms) do
+    Activity.record(:tts, :error, "a voz não foi gerada", ms: ms, reason: reason)
+    voice_error(conn, reason)
+  end
+
+  defp finish_stream(conn, _result, _audio, _text, _key, ms) do
+    Activity.record(:tts, :error, "a ElevenLabs não mandou áudio", ms: ms)
+    voice_error(conn, :empty_audio)
   end
 
   # The endpoint only ever answers mp3 (the fixed default output format), so
@@ -266,13 +317,35 @@ defmodule AgentBoardWeb.VoiceController do
   def transcribe(conn, params) do
     with {:ok, body, conn} <- read_body(conn, length: audio_max_bytes()),
          true <- byte_size(body) > 0 do
-      case ElevenLabs.transcribe(body, filename(conn, params), language: params["language"]) do
-        {:ok, transcript} -> json(conn, transcript)
-        {:error, reason} -> voice_error(conn, reason)
-      end
+      transcribed(conn, body, params)
     else
       {:more, _body, _conn} -> voice_error(conn, :audio_too_large)
       _ -> voice_error(conn, :missing_audio)
+    end
+  end
+
+  defp transcribed(conn, body, params) do
+    started = System.monotonic_time(:millisecond)
+
+    case ElevenLabs.transcribe(body, filename(conn, params), language: params["language"]) do
+      {:ok, transcript} ->
+        record_transcript(transcript, System.monotonic_time(:millisecond) - started)
+        json(conn, transcript)
+
+      {:error, reason} ->
+        Activity.record(:transcribe, :error, "a transcrição falhou",
+          ms: System.monotonic_time(:millisecond) - started,
+          reason: reason
+        )
+
+        voice_error(conn, reason)
+    end
+  end
+
+  defp record_transcript(transcript, ms) do
+    case transcript.text |> to_string() |> String.split() |> length() do
+      0 -> Activity.record(:transcribe, :info, "nenhuma palavra reconhecida", ms: ms)
+      words -> Activity.record(:transcribe, :ok, "ouvi #{words} palavras", ms: ms)
     end
   end
 

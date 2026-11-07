@@ -2,6 +2,9 @@ defmodule AgentBoard.ElevenLabsTest do
   @moduledoc "The ElevenLabs voice client: speech, transcription, voices, failures."
   use AgentBoard.DataCase, async: false
 
+  # Failures are exercised on purpose; their log lines show only if a test fails.
+  @moduletag capture_log: true
+
   alias AgentBoard.ElevenLabs
   alias AgentBoard.Settings
 

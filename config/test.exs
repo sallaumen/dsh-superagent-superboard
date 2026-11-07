@@ -56,3 +56,6 @@ config :agent_board, voice_speech_cache_entries: 0
 # touches the local runner. A test that needs a value sets
 # `:orchestrator_client` to a Req.Test plug.
 config :agent_board, orchestrator_api: false
+
+# Retries happen in tests (the stubs answer 429/5xx on purpose) but never wait.
+config :agent_board, voice_retry_base_ms: 0

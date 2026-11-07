@@ -23,7 +23,7 @@ defmodule AgentBoard.Conversation.Agent do
   alias AgentBoard.{AI, Board, Conversation, Repo, Titles}
   alias AgentBoard.Board.{Repository, Task}
   alias AgentBoard.Conversation.Turn
-  alias AgentBoard.Voice.Phrases
+  alias AgentBoard.Voice.{Activity, Phrases}
 
   @lane_sample 8
   @lanes [:question, :blocked, :ready, :running, :queued]
@@ -110,10 +110,33 @@ defmodule AgentBoard.Conversation.Agent do
     }
 
     # Compact JSON, without the default's indentation.
+    started = System.monotonic_time(:millisecond)
+
     case AI.call(:voice_agent, %{prompt: "Inputs:\n" <> Jason.encode!(inputs)}) do
-      {:ok, %{json: %{"action" => action} = json}} -> act(action, json, pending, ctx)
-      {:ok, _result} -> say(Phrases.not_understood(ctx.language), "error")
-      {:error, reason} -> say(Phrases.ai_failed(ctx.language, reason), "error")
+      {:ok, %{json: %{"action" => action} = json}} ->
+        Activity.record(:model, :ok, "decidiu: #{action}",
+          turn: ctx[:turn_id],
+          ms: System.monotonic_time(:millisecond) - started
+        )
+
+        act(action, json, pending, ctx)
+
+      {:ok, _result} ->
+        Activity.record(:model, :error, "a resposta do modelo veio fora do formato",
+          turn: ctx[:turn_id],
+          ms: System.monotonic_time(:millisecond) - started
+        )
+
+        say(Phrases.not_understood(ctx.language), "error")
+
+      {:error, reason} ->
+        Activity.record(:model, :error, "o modelo não respondeu",
+          turn: ctx[:turn_id],
+          ms: System.monotonic_time(:millisecond) - started,
+          reason: reason
+        )
+
+        say(Phrases.ai_failed(ctx.language, reason), "error")
     end
   end
 
@@ -222,6 +245,7 @@ defmodule AgentBoard.Conversation.Agent do
 
   defp proposal(proposal, text) do
     :ok = Conversation.supersede_proposals()
+    Activity.record(:action, :info, "proposta aguardando o seu sim: #{proposal["kind"]}")
 
     %{
       reply: text,
@@ -286,9 +310,22 @@ defmodule AgentBoard.Conversation.Agent do
           do: Phrases.task_created(lang, task.number, slug(repo)),
           else: Phrases.task_existing(lang, task.number)
 
+      Activity.record(
+        :action,
+        :ok,
+        "tarefa ##{task.number} #{if outcome == :created, do: "criada", else: "já existia"} em #{slug(repo)}",
+        turn: ctx[:turn_id]
+      )
+
       %{say(text, "create_task") | effect: {:changed, repo}}
     else
-      _ -> say(Phrases.task_failed(lang), "create_task")
+      failure ->
+        Activity.record(:action, :error, "não consegui criar a tarefa",
+          turn: ctx[:turn_id],
+          reason: create_failure(failure)
+        )
+
+        say(Phrases.task_failed(lang), "create_task")
     end
   end
 
@@ -314,12 +351,21 @@ defmodule AgentBoard.Conversation.Agent do
           | effect: repo && {:changed, repo}
         }
 
-      _ ->
+      failure ->
+        Activity.record(:action, :error, "não consegui mudar a tarefa ##{p["number"]}",
+          turn: ctx[:turn_id],
+          reason: create_failure(failure)
+        )
+
         say(Phrases.task_action_failed(lang, kind, p["number"]), kind)
     end
   end
 
   defp execute(_proposal, ctx), do: say(Phrases.task_failed(ctx.language), "confirm")
+
+  defp create_failure({:error, reason}), do: reason
+  defp create_failure(nil), do: :repository_missing
+  defp create_failure(other), do: other
 
   defp client(ctx), do: Map.get_lazy(ctx, :client, &AgentBoard.GitHub.client/0)
 

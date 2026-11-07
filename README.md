@@ -63,6 +63,14 @@ starts a detached shell and logs to `agent-board-update-restart.log` in the syst
 temp directory. The page keeps the old assets until you accept the **Recarregar**
 notice, so a restart cannot leave the browser on a dead navigation.
 
+## Logs
+
+The board logs with a timestamp on every line. `LOG_LEVEL=debug|info|warning|error`
+picks the level (the `scripts/service.sh` service on 4099 runs at `info`; dev
+defaults to `debug`, which logs every SQL query). Voice pipeline lines start
+with `voice stage=`; the same events show live in the voice panel. See
+[docs/voice-conversation.md](docs/voice-conversation.md#diagnóstico-logs-e-bastidores).
+
 ## Local secrets
 
 `.env.local` feeds the environment before any config: `KEY=value` lines, `#`

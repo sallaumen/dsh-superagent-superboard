@@ -24,13 +24,28 @@ defmodule AgentBoardWeb.VoiceConversation do
 
   alias AgentBoard.{AI, Conversation}
   alias AgentBoard.Conversation.Agent
-  alias AgentBoard.Voice.Phrases
+  alias AgentBoard.Voice.{Activity, Phrases}
   alias AgentBoardWeb.{BoardNavigation, VoiceCommands, VoiceSpeech}
 
   @max_text 2_000
+  @feed 25
 
   @doc "The assigns a socket needs before the first turn."
-  def mount(socket), do: assign(socket, chat_turn: nil, voice_turns: Conversation.recent())
+  def mount(socket) do
+    # The live feed: every stage, retry and failure of the voice pipeline,
+    # pushed by AgentBoard.Voice.Activity over PubSub.
+    if Phoenix.LiveView.connected?(socket), do: Activity.subscribe()
+
+    assign(socket,
+      chat_turn: nil,
+      voice_turns: Conversation.recent(),
+      voice_activity: Enum.take(Activity.recent(), @feed)
+    )
+  end
+
+  @doc "A new activity event reached this board: newest first, bounded."
+  def activity(socket, event),
+    do: assign(socket, :voice_activity, Enum.take([event | socket.assigns.voice_activity], @feed))
 
   @doc "A finished utterance (spoken or typed): record it and start thinking."
   def start(socket, text) do
@@ -39,16 +54,21 @@ defmodule AgentBoardWeb.VoiceConversation do
     if text == "" do
       socket
     else
-      socket = cancel(socket)
+      socket = cancel(socket, "substituída por uma fala nova")
       repo = socket.assigns.repo
-      {:ok, _turn} = Conversation.record("owner", text, repository_id: repo && repo.id)
+      {:ok, turn} = Conversation.record("owner", text, repository_id: repo && repo.id)
 
       ref = System.unique_integer([:positive])
       Process.send_after(self(), {:voice_turn_timeout, ref}, timeout())
-      ctx = context(socket)
+      ctx = socket |> context() |> Map.put(:turn_id, turn.id)
+      words = text |> String.split() |> length()
+      Activity.record(:turn, :start, "fala recebida (#{words} palavras), pensando", turn: turn.id)
 
       socket
-      |> assign(chat_turn: %{ref: ref}, voice_turns: Conversation.recent())
+      |> assign(
+        chat_turn: %{ref: ref, turn_id: turn.id, started: System.monotonic_time(:millisecond)},
+        voice_turns: Conversation.recent()
+      )
       |> push_event("voice_thinking", %{})
       |> push_event("voice_chat_clear", %{})
       |> start_async({:voice_turn, ref}, fn -> respond(text, ctx) end)
@@ -58,29 +78,46 @@ defmodule AgentBoardWeb.VoiceConversation do
   @doc "Applies a turn's result, only if it is still the current turn."
   def finish(socket, ref, outcome) do
     case socket.assigns.chat_turn do
-      %{ref: ^ref} ->
-        socket = assign(socket, chat_turn: nil, voice_turns: Conversation.recent())
-
-        case outcome do
-          {:ok, result} ->
-            socket
-            |> speak(result.reply, result.listen)
-            |> effect(result.effect)
-            |> start_async({:voice_compact, ref}, fn -> Conversation.compact() end)
-
-          {:exit, _reason} ->
-            speak(socket, Phrases.ai_failed(language(socket), :exit), false)
-        end
+      %{ref: ^ref} = turn ->
+        socket
+        |> assign(chat_turn: nil, voice_turns: Conversation.recent())
+        |> apply_outcome(turn, System.monotonic_time(:millisecond) - turn.started, outcome)
 
       _ ->
+        # A late result of a turn that was superseded, cancelled or timed out.
         socket
     end
+  end
+
+  defp apply_outcome(socket, turn, ms, {:ok, result}) do
+    status = if result.action == "error", do: :error, else: :ok
+    Activity.record(:turn, status, "respondeu (#{result.action})", turn: turn.turn_id, ms: ms)
+
+    socket
+    |> speak(result.reply, result.listen)
+    |> effect(result.effect)
+    |> start_async({:voice_compact, turn.ref}, fn -> Conversation.compact() end)
+  end
+
+  defp apply_outcome(socket, turn, ms, {:exit, reason}) do
+    Activity.record(:turn, :error, "o processo da resposta caiu",
+      turn: turn.turn_id,
+      ms: ms,
+      reason: exit_reason(reason)
+    )
+
+    speak(socket, Phrases.ai_failed(language(socket), :exit), false)
   end
 
   @doc "The turn took too long: drop it and say so."
   def timeout(socket, ref) do
     case socket.assigns.chat_turn do
-      %{ref: ^ref} ->
+      %{ref: ^ref} = turn ->
+        Activity.record(:turn, :error, "sem resposta a tempo, desisti",
+          turn: turn.turn_id,
+          ms: timeout()
+        )
+
         socket
         |> cancel_async({:voice_turn, ref})
         |> assign(:chat_turn, nil)
@@ -98,12 +135,19 @@ defmodule AgentBoardWeb.VoiceConversation do
   end
 
   @doc "The owner pressed Escape while the agent was thinking: drop the turn quietly."
-  def cancel_turn(socket), do: cancel(socket)
+  def cancel_turn(socket), do: cancel(socket, "cancelada com Esc")
 
-  defp cancel(%{assigns: %{chat_turn: %{ref: ref}}} = socket),
-    do: socket |> cancel_async({:voice_turn, ref}) |> assign(:chat_turn, nil)
+  defp cancel(socket, why \\ nil)
 
-  defp cancel(socket), do: socket
+  defp cancel(%{assigns: %{chat_turn: %{ref: ref} = turn}} = socket, why) do
+    if why, do: Activity.record(:turn, :info, "resposta #{why}", turn: turn.turn_id)
+    socket |> cancel_async({:voice_turn, ref}) |> assign(:chat_turn, nil)
+  end
+
+  defp cancel(socket, _why), do: socket
+
+  defp exit_reason({%{__exception__: true} = e, _stack}), do: e
+  defp exit_reason(reason), do: reason
 
   # Without a model the conversation still takes the simple commands.
   defp respond(text, %{ai_status: :not_configured} = ctx) do

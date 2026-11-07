@@ -2,9 +2,13 @@ defmodule AgentBoardWeb.VoiceUITest do
   @moduledoc "The voice section: browse, preview, save and reset."
   use AgentBoardWeb.ConnCase, async: false
 
+  # Failures are exercised on purpose; their log lines show only if a test fails.
+  @moduletag capture_log: true
+
   import Phoenix.LiveViewTest
 
   alias AgentBoard.Settings
+  alias AgentBoard.Voice.Activity
   alias AgentBoard.Voice.Phrases
 
   @stub AgentBoardWeb.VoiceUITest.Stub
@@ -457,5 +461,57 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(view, "speak", %{text: text, rate: 0.9})
     assert text =~ "Ver arena rogue 7"
     refute text =~ "**"
+  end
+
+  test "the settings forms opt out of form recovery, which crashed the board on reconnect",
+       %{conn: conn} do
+    with_key()
+    {:ok, view, _html} = live(conn, ~p"/")
+    panel = view |> element("#voice-panel") |> render()
+
+    forms = Regex.scan(~r/<form[^>]*phx-change="voice_[a-z_]+"[^>]*>/, panel)
+    assert length(forms) >= 9
+    assert Enum.all?(forms, fn [form] -> form =~ ~s(phx-auto-recover="ignore") end)
+  end
+
+  test "an event without the expected field is logged, not a crash", %{conn: conn} do
+    with_key()
+    Activity.subscribe()
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    # What recovery sent after a reconnect: the picker without a value.
+    render_hook(view, "voice_pick", %{"_target" => ["voice"]})
+
+    assert Process.alive?(view.pid)
+    assert_receive {:voice_activity, %{stage: :ui, status: :error, detail: detail}}
+    assert detail =~ "evento ignorado: voice_pick"
+  end
+
+  test "a browser voice error reaches the live feed", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/?panel=voice")
+
+    render_hook(view, "voice_client_error", %{
+      "title" => "A voz não tocou",
+      "detail" => "Confira a chave",
+      "source" => "elevenlabs"
+    })
+
+    assert render(view) =~ "A voz não tocou: Confira a chave (elevenlabs)"
+    assert has_element?(view, "#voice-activity-events [data-status=error]")
+  end
+
+  test "the feed shows events from the pipeline as they happen", %{conn: conn} do
+    # The ring is global: start from an empty feed.
+    Activity.clear()
+    {:ok, view, _html} = live(conn, ~p"/?panel=voice")
+
+    Activity.record(:tts, :retry, "nova tentativa em 300 ms",
+      attempt: 2,
+      reason: {:http, 503}
+    )
+
+    assert render(view) =~ "nova tentativa em 300 ms (HTTP 503)"
+    assert has_element?(view, "#voice-activity[open]")
+    assert render(view) =~ "1 re-tentativa"
   end
 end

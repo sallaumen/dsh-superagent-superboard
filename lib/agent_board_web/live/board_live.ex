@@ -29,7 +29,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Metrics.Observations
   alias AgentBoard.Sync.{Freshness, Worker}
   alias AgentBoard.System.{Updater, Version}
-  alias AgentBoard.Voice.Phrases
+  alias AgentBoard.Voice.{Activity, Phrases}
 
   import AgentBoardWeb.BoardComponents.Composer, only: [composer: 1]
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
@@ -555,6 +555,9 @@ defmodule AgentBoardWeb.BoardLive do
     System.stop()
     {:noreply, socket}
   end
+
+  def handle_info({:voice_activity, event}, socket),
+    do: {:noreply, VoiceConversation.activity(socket, event)}
 
   def handle_info(:board_updated, socket) do
     old_board = socket.assigns.board
@@ -1418,6 +1421,30 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("voice_earcons", %{"earcons" => value}, socket),
     do: {:noreply, save_voice_pref(socket, Voice.put_earcons(value == "true"))}
 
+  # A browser error the owner saw (microphone, playback, transcription):
+  # it reaches the log and the live feed instead of staying in one tab.
+  @impl true
+  def handle_event("voice_client_error", %{"title" => title} = params, socket)
+      when is_binary(title) do
+    detail = params |> Map.get("detail", "") |> to_string() |> String.slice(0, 200)
+    source = params |> Map.get("source", "browser") |> to_string() |> String.slice(0, 40)
+    Activity.record(:browser, :error, "#{String.slice(title, 0, 120)}: #{detail}", reason: source)
+    {:noreply, socket}
+  end
+
+  # Last clause: an event this view does not expect (a malformed payload, a
+  # form recovered after a reconnect, an old tab after a deploy) is logged
+  # and ignored. Before, it raised and took the whole board down.
+  def handle_event(event, params, socket) do
+    keys = params |> Map.keys() |> Enum.reject(&String.starts_with?(&1, "_")) |> Enum.join(", ")
+
+    Activity.record(:ui, :error, "evento ignorado: #{String.slice(to_string(event), 0, 60)}",
+      reason: "campos recebidos: [#{keys}]"
+    )
+
+    {:noreply, socket}
+  end
+
   defp current_voice_ask(socket) do
     case {socket.assigns.panel, socket.assigns.voice_result, socket.assigns.repo,
           socket.assigns.conversation} do
@@ -2165,6 +2192,7 @@ defmodule AgentBoardWeb.BoardLive do
             turns={@voice_turns}
             thinking={@chat_turn != nil}
           />
+          <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} />
           <BoardComponents.VoiceCommand.draft
             draft={@voice_draft}
             result={@voice_result}
