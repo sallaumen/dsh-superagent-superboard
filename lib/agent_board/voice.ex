@@ -245,5 +245,11 @@ defmodule AgentBoard.Voice do
   def local_hour(%DateTime{} = now, tz_offset) when is_integer(tz_offset),
     do: DateTime.add(now, -tz_offset * 60, :second).hour
 
-  defp count(board, key), do: length(Map.get(board, key) || [])
+  # The exact lane total when the board has one (a lane is a page of tasks).
+  defp count(board, key) do
+    case board |> Map.get(:task_counts, %{}) |> Kernel.||(%{}) |> Map.get(key) do
+      n when is_integer(n) -> n
+      _ -> length(Map.get(board, key) || [])
+    end
+  end
 end

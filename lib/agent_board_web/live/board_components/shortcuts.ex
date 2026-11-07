@@ -17,7 +17,9 @@ defmodule AgentBoardWeb.BoardComponents.Shortcuts do
         <dt><.kbd key="N" /></dt>
         <dd>Novo pedido</dd>
         <dt><.kbd key="Espaço" /><.kbd key="Espaço" /></dt>
-        <dd>Conversar com o agente: fale e pare, ele envia sozinho</dd>
+        <dd>
+          Conversar com o agente: fale e pare, ele envia sozinho. Diga "ajuda" para a lista do que pedir
+        </dd>
         <dt><.kbd key="Esc" /></dt>
         <dd>Cancelar a fala ou a resposta em andamento</dd>
         <dt><.kbd key="V" /></dt>

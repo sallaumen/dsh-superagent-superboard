@@ -1821,6 +1821,7 @@ defmodule AgentBoardWeb.BoardLive do
             turns={@voice_turns}
             thinking={@chat_turn != nil}
           />
+          <BoardComponents.VoiceCommandList.list open={@voice_commands_open} />
           <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} />
         </BoardComponents.Panel.shell>
       </div>

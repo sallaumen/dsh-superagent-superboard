@@ -59,7 +59,9 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
       "details" => [],
       "question" => "",
       "task_number" => 0,
-      "repository" => ""
+      "repository" => "",
+      "lookup" => "",
+      "direct" => false
     })
   end
 
@@ -112,7 +114,9 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
         "details" => [],
         "question" => "",
         "task_number" => task.number,
-        "repository" => ""
+        "repository" => "",
+        "lookup" => "",
+        "direct" => false
       })
     end)
 
@@ -206,6 +210,37 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     view |> element("#voice-forget") |> render_click()
     assert Conversation.recent() == []
     refute has_element?(view, "#voice-chat-turns")
+  end
+
+  test "the voice panel lists what can be asked, and an example can be sent", %{conn: conn} do
+    script(fn %{name: :voice_agent} -> reply("Nada falhando agora.") end)
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=voice")
+
+    assert has_element?(view, "#voice-commands:not([open])")
+    assert has_element?(view, "#voice-commands h4", "Execuções do agente")
+    assert has_element?(view, "#voice-commands .voice-command[data-mode=direct]", "desfaz")
+
+    view
+    |> element(~s(#voice-commands button[phx-value-text="O que está falhando?"]))
+    |> render_click()
+
+    render_async(view, 1_000)
+    assert_push_event(view, "voice_play", %{url: url}, 1_000)
+    assert spoken(url) == "Nada falhando agora."
+    assert [%{role: "owner", text: "O que está falhando?"}, _] = Conversation.recent()
+  end
+
+  test "a spoken ajuda opens the command list without the model", %{conn: conn} do
+    script(fn _ -> flunk("the model must not be called") end)
+    view = board(conn)
+
+    render_hook(view, "voice_turn", %{"text" => "ajuda"})
+    render_async(view, 1_000)
+
+    assert_push_event(view, "voice_play", %{url: url}, 1_000)
+    assert spoken(url) =~ "A lista completa está na tela."
+    assert has_element?(view, "#board-page[data-panel=voice]")
+    assert has_element?(view, "#voice-commands[open]")
   end
 
   test "without a model the simple commands still answer", %{conn: conn} do

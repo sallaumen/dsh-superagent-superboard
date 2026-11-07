@@ -38,6 +38,7 @@ defmodule AgentBoardWeb.VoiceConversation do
 
     assign(socket,
       chat_turn: nil,
+      voice_commands_open: false,
       voice_turns: Conversation.recent(),
       voice_activity: Enum.take(Activity.recent(), @feed)
     )
@@ -236,6 +237,7 @@ defmodule AgentBoardWeb.VoiceConversation do
       board: a.board,
       sync_event: a.sync_event,
       open_task: a.conversation,
+      tz_offset: Map.get(a, :tz_offset, 0),
       ai_status: AI.status(),
       assigns: Map.take(a, [:repo, :repos, :board, :sync_event, :conversation])
     }
@@ -263,6 +265,14 @@ defmodule AgentBoardWeb.VoiceConversation do
     do: push_patch(socket, to: BoardNavigation.path(repo))
 
   defp effect(socket, {:path, path}), do: push_patch(socket, to: path)
+
+  # "Ajuda": the command list opens in the conversation panel.
+  defp effect(socket, :show_commands) do
+    socket
+    |> assign(:voice_commands_open, true)
+    |> BoardNavigation.open_panel("voice")
+  end
+
   # A spoken "mais devagar" / "mais alto" changed a setting: the panel and
   # the player (data-volume) follow at once.
   defp effect(socket, :voice_changed) do
