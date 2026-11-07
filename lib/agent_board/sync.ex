@@ -375,6 +375,10 @@ defmodule AgentBoard.Sync do
   @doc """
   The state a ticket imposes on the task, or nil to keep the issue baseline.
 
+  A ticket whose PR merged is done, whatever its last report said: the
+  runner keeps the `ready` or `waiting` report it ended on, and the merge
+  is the newer fact. Nothing else about an ended ticket imposes a state.
+
   A `waiting` report means the executor needs input, not that it asked a
   question. It is a question only when the report or the newest agent
   comment (`asked?`, a boolean or a function the caller can leave lazy)
@@ -384,11 +388,11 @@ defmodule AgentBoard.Sync do
   def ticket_state(ticket, opts \\ []) do
     cond do
       stopped?(ticket) -> nil
+      ticket["ended_outcome"] == "merged" -> "done"
       ticket["report"] == "waiting" -> waiting_state(ticket, opts)
       blocked_ticket?(ticket) -> "blocked"
       ticket["report"] == "ready" -> "ready"
       running_ticket?(ticket) -> "running"
-      ticket["ended_outcome"] == "merged" -> "done"
       true -> nil
     end
   end

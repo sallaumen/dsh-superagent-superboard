@@ -119,9 +119,38 @@ only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
   [compatibility note](https://github.com/sallaumen/elixir-agent-kit/blob/v0.5.3/docs/compatibility.md)
   describes the fresh-session check.
 
-## 8. What not to do
+## 8. Merge policy
+
+The host has no merge logic. Whether the agent merges is prompt text: the
+**Delivery requirements** team section, read and saved through the panel or
+the API (`GET`/`PUT http://127.0.0.1:3082/orchestrator/api/prompts`, header
+`x-orchestrator-request: 1`, with the current revision as `baseRevision`).
+The built-in text lets a person merge every PR.
+
+This deployment delegates merging to the agent. The section says that nobody
+reviews PRs by hand and that the executor merges each PR it opened, as the
+bot, once all of these hold: the work is complete; `mix precommit` passed on
+the head commit and the PR and the report say so; no human review asks for
+changes; `gh pr view --json mergeable` answers `MERGEABLE`. GitHub Actions
+is never a reason to wait (it cannot run here: billing). It merges with
+`gh pr merge <n> --merge --match-head-commit <sha>` before it reports, puts
+`Closes #<issue>` in the PR so the merge closes the issue, and reports the PR
+as merged, never as ready for review. It never merges a PR someone else
+opened.
+
+For that the bot needs write permission on the repository and the base
+branch needs no rule that requires a review. Sessions read the newest
+revision on their next model request; no restart. The panel's history
+restores an earlier revision.
+
+The board marks the task done as soon as the ticket ends `merged`, whatever
+its last report said.
+
+## 9. What not to do
 
 - **Do not run two orchestrators** on the same state directory.
 - **Do not point the bot at a repository it has no write access to**; the
   failure shows as a `failed` ticket with the HTTP error in the report.
-- **Do not assume it merges.** A `ready` ticket means "a human reviews this".
+- **Do not read `ready` as merged.** Without the merge policy above a `ready`
+  ticket means "a human reviews this"; with it, the ticket ends `merged`
+  within the same run or says why a person must merge.

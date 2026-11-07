@@ -24,6 +24,19 @@ defmodule AgentBoard.SyncTest do
     assert Sync.ticket_state(ticket("ended", nil, "merged")) == "done"
   end
 
+  test "a merged outcome is done even when the last report is ready" do
+    assert Sync.ticket_state(ticket("ended", "ready", "merged")) == "done"
+  end
+
+  test "a merged outcome is done even when the ticket was waiting on its own PR" do
+    ticket =
+      "PR #28 remains ready for human review."
+      |> waiting()
+      |> Map.merge(%{"ended_outcome" => "merged", "own_threads" => [28]})
+
+    assert Sync.ticket_state(ticket) == "done"
+  end
+
   test "an ended ticket without an outcome has no overlay" do
     assert Sync.ticket_state(ticket("ended", nil, nil)) == nil
   end

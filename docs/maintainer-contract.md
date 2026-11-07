@@ -28,8 +28,9 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   migration.
 - The task state is two-layered: the **issue** is the baseline (`open` →
   `queued`, `closed` → `done`) and the **ticket** is the overlay (`running`,
-  `ready`, `blocked`) while the issue is open. A stopped or archived task keeps
-  its state.
+  `ready`, `blocked`) while the issue is open. A ticket that ended `merged` is
+  `done` whatever its last report said. A stopped or archived task keeps its
+  state.
 - A review rollup is the strongest review (`changes_requested` beats `approved`);
   a check rollup names the failing check.
 
