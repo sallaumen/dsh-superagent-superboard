@@ -44,6 +44,7 @@ watches GitHub; this board only mirrors it. It is documented in
 | `tickets.sh [n]` | what did the last tickets report? |
 | `counts.sh` | how much has it done, by table? |
 | `logs.sh` | what is it printing right now? |
+| `cleanup.sh [--apply]` | what did ended tickets leave behind (worktrees, orphan PRs), and remove it? |
 
 ## Shared practices
 
