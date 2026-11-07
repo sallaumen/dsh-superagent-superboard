@@ -55,7 +55,6 @@ defmodule AgentBoardWeb.BoardLive do
 
   alias AgentBoardWeb.BoardComponents.VoicePresence
 
-  @voice_key "elevenlabs_voice_id"
   @tts_model_key "elevenlabs_tts_model"
   @max_resume_items 1000
 
@@ -127,6 +126,10 @@ defmodule AgentBoardWeb.BoardLive do
         nil -> default_repo(repos)
         slug -> Board.repository_by_slug(slug) || default_repo(repos)
       end
+
+    # The voice settings are board-wide: a change in another tab, by the API
+    # or by a spoken command reaches this socket (handle_info setting_changed).
+    if connected?(socket), do: Settings.subscribe()
 
     {:ok, socket |> VoiceConversation.mount() |> load(repo)}
   end
@@ -576,6 +579,12 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, socket}
   end
 
+  # A setting changed somewhere (another tab, the API, a spoken command):
+  # this board's voice follows at once, keeping the list it already loaded.
+  def handle_info({:setting_changed, _key}, socket),
+    do: {:noreply, assign(socket, :voice, refreshed_voice(socket.assigns.voice))}
+
+  @impl true
   def handle_info({:voice_activity, event}, socket),
     do: {:noreply, VoiceConversation.activity(socket, event)}
 
@@ -1149,12 +1158,19 @@ defmodule AgentBoardWeb.BoardLive do
 
     case ElevenLabs.voices() do
       {:ok, voices} ->
-        pick =
-          if Enum.any?(voices, &(&1.id == socket.assigns.voice.id)), do: socket.assigns.voice.id
+        voice = socket.assigns.voice
+
+        # A voice saved without its name (before names were kept, or by the
+        # API) gets it from the list, once.
+        with :saved <- voice.source,
+             nil <- voice.name,
+             name when is_binary(name) <- voice_name(voices, voice.id) do
+          Settings.put("elevenlabs_voice_name", name)
+        end
 
         {:noreply,
          assign(socket,
-           voice: %{socket.assigns.voice | voices: voices, loading: false, pick: pick}
+           voice: %{refreshed_voice(voice) | voices: voices, loading: false}
          )}
 
       {:error, reason} ->
@@ -1169,37 +1185,27 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("voice_pick", %{"voice" => id}, socket) do
+    # Like every other field of this panel, a pick is saved on the spot: a
+    # separate "Salvar" button left picks unsaved when the panel closed.
     # A phx-change value is client input: only a voice-shaped id sticks.
-    pick = if ElevenLabs.valid_voice_id?(id), do: String.trim(id)
-    {:noreply, assign(socket, voice: %{socket.assigns.voice | pick: pick})}
-  end
-
-  @impl true
-  def handle_event("voice_preview", _params, socket) do
-    id = socket.assigns.voice.pick || socket.assigns.voice.id
-
-    {:noreply,
-     push_event(socket, "voice_play", %{
-       url: speech_url(Phrases.preview(socket.assigns.voice.language), id)
-     })}
-  end
-
-  @impl true
-  def handle_event("voice_save", _params, socket) do
-    id = socket.assigns.voice.pick || socket.assigns.voice.id
-    name = voice_name(socket.assigns.voice.voices, id)
+    id = String.trim(id)
+    voice = socket.assigns.voice
+    name = voice_name(voice.voices, id)
 
     cond do
       not ElevenLabs.valid_voice_id?(id) ->
-        {:noreply, put_flash(socket, :error, "Escolha uma voz da lista primeiro")}
+        {:noreply, put_flash(socket, :error, "Escolha uma voz da lista")}
 
-      Settings.put(@voice_key, id) == :ok ->
+      id == voice.id and voice.source == :saved ->
+        {:noreply, socket}
+
+      ElevenLabs.save_voice(id, name) == :ok ->
         {:noreply,
          socket
-         |> assign(voice: %{current_voice() | pick: id, voices: socket.assigns.voice.voices})
+         |> assign(voice: refreshed_voice(voice))
          |> put_flash(:info, "Voz salva: #{name || id}")
          |> push_event("voice_play", %{
-           url: speech_url(Phrases.voice_saved(socket.assigns.voice.language), id)
+           url: speech_url(Phrases.voice_saved(voice.language), id)
          })}
 
       true ->
@@ -1208,12 +1214,22 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("voice_preview", _params, socket) do
+    id = socket.assigns.voice.id
+
+    {:noreply,
+     push_event(socket, "voice_play", %{
+       url: speech_url(Phrases.preview(socket.assigns.voice.language), id)
+     })}
+  end
+
+  @impl true
   def handle_event("voice_reset", _params, socket) do
-    :ok = Settings.put(@voice_key, "")
+    :ok = ElevenLabs.save_voice("", nil)
 
     {:noreply,
      socket
-     |> assign(voice: %{current_voice() | pick: ElevenLabs.voice_id()})
+     |> assign(voice: refreshed_voice(socket.assigns.voice))
      |> put_flash(:info, "Voz de volta ao padrão")}
   end
 
@@ -1394,11 +1410,11 @@ defmodule AgentBoardWeb.BoardLive do
   defp current_voice do
     %{
       id: ElevenLabs.voice_id(),
+      name: ElevenLabs.voice_name(),
       source: ElevenLabs.voice_source(),
       configured: ElevenLabs.configured?(),
       voices: nil,
       loading: false,
-      pick: nil,
       model: ElevenLabs.tts_model(),
       model_source: ElevenLabs.tts_source(),
       models: ElevenLabs.tts_models(),
@@ -1417,6 +1433,10 @@ defmodule AgentBoardWeb.BoardLive do
       replies: Voice.replies()
     }
   end
+
+  # The saved settings, with what only this socket holds (the loaded list).
+  defp refreshed_voice(voice),
+    do: Map.merge(current_voice(), Map.take(voice, [:voices, :loading]))
 
   defp save_voice_pref(socket, :ok) do
     fresh = current_voice()

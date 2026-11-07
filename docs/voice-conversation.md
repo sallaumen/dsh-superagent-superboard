@@ -52,9 +52,14 @@ quando uma tarefa precisar de mim" também silencia esse aviso.
 
 - **Sua voz para o agente**: WisprFlow (padrão, sem custo) ou Microfone do
   board (ElevenLabs, pago).
-- **Voz do agente**: Navegador (padrão, grátis), Misto (ElevenLabs só nos
-  chamados de atenção e nas respostas do agente de código, o resto no
+- **Motor da voz**: Navegador em tudo (padrão, grátis), Misto (ElevenLabs só
+  nos chamados de atenção e nas respostas do agente de código, o resto no
   navegador) ou ElevenLabs em tudo. Sem chave, sempre o navegador.
+- **Voz da ElevenLabs**: escolher na lista já salva (não há botão
+  "Salvar") e toca "Voz escolhida." na voz nova. Depois de recarregar, o
+  campo mostra o nome da voz salva; a nota abaixo diz o que ela fala no
+  motor escolhido (no Navegador ela não é usada). Uma troca feita em outra
+  aba aparece em todas na hora.
 - **Respostas faladas**: curtas (padrão: a primeira frase falada, o resto
   escrito) ou completas. Propostas, perguntas de volta e confirmações sempre
   são faladas inteiras.

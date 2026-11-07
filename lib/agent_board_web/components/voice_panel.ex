@@ -8,13 +8,13 @@ defmodule AgentBoardWeb.Components.VoicePanel do
   Presentation lives here and nowhere else, so a design pass can restyle
   this file without touching `BoardLive` or `SettingsMenu`. The contract is
   the assigns (`voice`, a map with `id`, `source`, `configured`, `voices`,
-  `loading`, `pick`, `model`, `model_source`, `models`, `speak_events`,
+  `loading`, `name`, `model`, `model_source`, `models`, `speak_events`,
   `attention`, `language`, `languages`, `volume`, `speed`, `style`,
   `pause`, `earcons`; and `repo`) and the events: `voice_language`,
   `voice_volume`, `voice_speed`, `voice_style`, `voice_pause`,
   `voice_earcons`, `voice_attention`,
   `voice_announce`, `voice_browse`, `voice_pick`, `voice_preview`,
-  `voice_save`, `voice_reset`, `voice_model` and `voice_try`.
+  `voice_reset`, `voice_model` and `voice_try`.
 
   Every form here mirrors a saved setting, so it opts out of LiveView's form
   recovery (`phx-auto-recover="ignore"`): on a reconnect, recovery re-sent
@@ -69,7 +69,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           class="voice-field"
         >
           <label for="voice-engine" class="voice-field-label">
-            Voz do agente
+            Motor da voz
             <span :if={!@voice.configured} class="voice-source-note">
               · sem chave ElevenLabs, sempre a do navegador
             </span>
@@ -264,9 +264,9 @@ defmodule AgentBoardWeb.Components.VoicePanel do
       <div :if={@voice.configured} class="voice-fields">
         <div class="voice-field">
           <label for="voice-picker" class="voice-field-label">
-            Voz do agente
+            Voz da ElevenLabs
             <span class="voice-source-note">
-              · <code>{@voice.id}</code> · {source_label(@voice.source)}
+              · {@voice.name || "sem nome"} · <code>{@voice.id}</code> · {source_label(@voice.source)}
             </span>
           </label>
           <div class="settings-actions">
@@ -279,22 +279,24 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               <select
                 id="voice-picker"
                 name="voice"
-                aria-label="Voz do agente"
+                aria-label="Voz da ElevenLabs"
+                aria-describedby="voice-picker-note"
                 disabled={@voice.source == :environment}
                 class="voice-select"
               >
+                <%!-- Before "Listar vozes" the picker still names the voice in
+                     use: a blank picker read as "nothing was saved". --%>
                 <option
-                  :if={is_nil(@voice.voices) or @voice.voices == []}
-                  value=""
-                  disabled
-                  selected={is_nil(@voice.pick)}
+                  :if={not Enum.any?(@voice.voices || [], &(&1.id == @voice.id))}
+                  value={@voice.id}
+                  selected
                 >
-                  {if @voice.loading, do: "Carregando vozes…", else: "Nenhuma voz listada ainda"}
+                  {@voice.name || "Voz atual"} · {@voice.id}
                 </option>
                 <option
                   :for={voice <- @voice.voices || []}
                   value={voice.id}
-                  selected={voice.id == @voice.pick}
+                  selected={voice.id == @voice.id}
                 >
                   {voice.name} · {voice.id}
                 </option>
@@ -307,24 +309,15 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               phx-click="voice_browse"
               disabled={@voice.loading}
             >
-              {if @voice.loading, do: "Carregando…", else: "Listar vozes"}
+              {cond do
+                @voice.loading -> "Carregando…"
+                @voice.voices in [nil, []] -> "Listar vozes"
+                true -> "Atualizar lista"
+              end}
             </button>
 
-            <button
-              :if={not is_nil(@voice.pick) and @voice.source != :environment}
-              type="button"
-              phx-click="voice_preview"
-            >
+            <button type="button" phx-click="voice_preview">
               <.icon name="hero-play" class="size-3.5" />Ouvir
-            </button>
-
-            <button
-              :if={not is_nil(@voice.pick) and @voice.source != :environment}
-              type="button"
-              phx-click="voice_save"
-              class="voice-save"
-            >
-              Salvar
             </button>
 
             <button
@@ -336,6 +329,9 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               Voltar ao padrão
             </button>
           </div>
+          <p id="voice-picker-note" class="voice-source-note">
+            {picker_note(@voice.engine, @voice.source)}
+          </p>
         </div>
 
         <div class="voice-field">
@@ -400,7 +396,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
   defp engines,
     do: [
-      {"browser", "Navegador (grátis)"},
+      {"browser", "Navegador em tudo (grátis)"},
       {"mixed", "Misto: ElevenLabs só nos chamados"},
       {"elevenlabs", "ElevenLabs em tudo (pago)"}
     ]
@@ -416,6 +412,24 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
   defp pauses,
     do: [{"short", "Curta · 0,8 s"}, {"normal", "Normal · 1,2 s"}, {"long", "Longa · 1,8 s"}]
+
+  # What the picked voice is used for under the chosen engine: with Misto or
+  # Navegador, a saved voice that is never heard reads as "it didn't save".
+  defp picker_note(_engine, :environment),
+    do: "Definida no .env.local (ELEVENLABS_VOICE_ID); para trocar aqui, remova a variável."
+
+  defp picker_note("elevenlabs", _source),
+    do: "Escolher na lista já salva. Esta voz fala tudo."
+
+  defp picker_note("mixed", _source),
+    do:
+      "Escolher na lista já salva. Com o motor Misto, esta voz fala os chamados de atenção " <>
+        "e as respostas do agente de código; a conversa usa a voz do navegador."
+
+  defp picker_note(_engine, _source),
+    do:
+      "Escolher na lista já salva. Com o motor Navegador, esta voz não é usada: escolha " <>
+        "Misto ou ElevenLabs em tudo no Motor da voz."
 
   defp source_label(:environment), do: "definida no .env.local"
   defp source_label(:saved), do: "escolhida aqui"

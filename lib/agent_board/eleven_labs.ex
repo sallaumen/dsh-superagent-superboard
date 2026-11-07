@@ -17,6 +17,8 @@ defmodule AgentBoard.ElevenLabs do
   # George: male, narrative. The account's voice is picked in the UI or with
   # ELEVENLABS_VOICE_ID.
   @default_voice "JBFqnCBsd6RMkjVDRZzb"
+  @voice_key "elevenlabs_voice_id"
+  @voice_name_key "elevenlabs_voice_name"
   # ~75ms latency, the model for interactive feedback (v4 is the quality
   # option; both are a pick in the UI or a key away in the environment).
   @default_tts_model "eleven_flash_v2_5"
@@ -87,6 +89,39 @@ defmodule AgentBoard.ElevenLabs do
     end
   end
 
+  @doc """
+  The name of the voice in use, for the screen: the name saved with the
+  pick, "George" for the default, nil when unknown (a voice fixed by the
+  environment or saved by the API without a name).
+  """
+  def voice_name do
+    case voice_source() do
+      :saved -> AgentBoard.Settings.get(@voice_name_key)
+      :default -> "George"
+      :environment -> nil
+    end
+  end
+
+  @doc "Saves the picked voice with its name (the name may be nil)."
+  @spec save_voice(String.t(), String.t() | nil) :: :ok | {:error, :invalid_voice | :invalid}
+  def save_voice(id, name) do
+    id = String.trim(id || "")
+
+    cond do
+      id == "" ->
+        :ok = AgentBoard.Settings.put(@voice_name_key, "")
+        AgentBoard.Settings.put(@voice_key, "")
+
+      valid_voice_id?(id) ->
+        # The name first: the id's broadcast then finds both in place.
+        :ok = AgentBoard.Settings.put(@voice_name_key, name || "")
+        AgentBoard.Settings.put(@voice_key, id)
+
+      true ->
+        {:error, :invalid_voice}
+    end
+  end
+
   @doc "The text-to-speech model."
   def tts_model do
     config(:elevenlabs_tts_model, saved_tts_model() || @default_tts_model)
@@ -112,7 +147,7 @@ defmodule AgentBoard.ElevenLabs do
   @doc "Whether a TTS model id is one of the offered models."
   def valid_tts_model?(id), do: id in Enum.map(@tts_models, & &1.id)
 
-  defp saved_voice, do: AgentBoard.Settings.get("elevenlabs_voice_id")
+  defp saved_voice, do: AgentBoard.Settings.get(@voice_key)
   defp saved_tts_model, do: AgentBoard.Settings.get("elevenlabs_tts_model")
 
   @doc """
