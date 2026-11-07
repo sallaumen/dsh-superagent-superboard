@@ -109,6 +109,59 @@ defmodule AgentBoardWeb.InspectorTest do
     assert html =~ "mix precommit passed"
   end
 
+  test "the calls tab shows what the executor spent, with a minimum when cache reads have no price" do
+    task = %Task{
+      number: 25,
+      title: "Salvar replays",
+      state: "ready",
+      updated_at: DateTime.utc_now()
+    }
+
+    usage = %{
+      status: :measured,
+      reason: nil,
+      signature: [],
+      workers: 1,
+      subagents: 1,
+      unreadable: 0,
+      requests: 334,
+      input: 303_380,
+      output: 285_621,
+      cache_read: 79_984_000,
+      cache_write: 0,
+      models: ["deepseek-flash"],
+      cost: %{micros: 165_486, complete?: false}
+    }
+
+    html = render_inspector(task, "chamadas", usage)
+
+    assert html =~ "Executor do agente"
+    assert html =~ "1 worker + 1 subagente(s)"
+    assert html =~ "303.4k"
+    assert html =~ "80.0M"
+    assert html =~ "≥ $0.16"
+    assert html =~ "o custo é um mínimo"
+
+    assert render_inspector(task, "chamadas", %{usage | status: :none}) =~
+             "Nenhuma transcrição do executor"
+
+    assert render_inspector(task, "chamadas", %{usage | status: :unavailable}) =~ "falta o"
+    assert render_inspector(task, "chamadas", %{usage | cost: nil}) =~ "custo desconhecido"
+  end
+
+  defp render_inspector(task, tab, usage) do
+    render_component(&Inspector.inspector/1, %{
+      task: task,
+      comments: [],
+      tab: tab,
+      activity: [],
+      calls: [],
+      usage: usage,
+      tz_offset: 0,
+      live: false
+    })
+  end
+
   test "hidden executor markers never reach the conversation", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "inspector-marker")
     task = task(repo, 32, "Visible message", "ready")

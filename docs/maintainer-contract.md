@@ -20,6 +20,7 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 | `AgentBoard.AgentControl` | the owner's two confirmed asks: "Tentar de novo" (`retry/2`) and "Religar o agente" (`start_agent/1`) |
 | `AgentBoard.Metrics` | the throughput arithmetic, pure; `Metrics.Observations` reads what it counts |
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
+| `AgentBoard.ExecutorUsage` | what the executor spent on a task, read from the harness transcripts; tokens measured, cost estimated |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
 | `AgentBoard.Settings` | board-wide settings, one row per key (the voice picks) |
 | `AgentBoard.Voice` | the spoken summary and the voice settings (language, volume, attention) |
@@ -361,6 +362,31 @@ Agora and the detail):
   `:budget_exhausted` and records nothing.
 - **A task that cannot close on its own is dropped**, not created
   half-written (see `AgentBoard.Intake`).
+
+## Executor usage (Executor do agente)
+
+- The board's own calls are rows in `ai_calls` (above). The **executor's**
+  calls are not the board's: `AgentBoard.ExecutorUsage` reads them from the
+  harness transcripts, `~/.dsh/sessions/<ticket directory with / as ->/<session>/session.v4.jsonl.zstd`
+  (`:dsh_sessions_dir`), one per worker and one per subagent. It only reads;
+  nothing is stored in `tasks`, `ai_calls` or the runner's sqlite.
+- **Tokens are measured**: each `assistant/message` counts once (by
+  `data.message.id`), summing `data.usage` input, output, cache read and
+  cache write. Input excludes cache reads.
+- **Cost is an estimate** from `AI.Providers` prices, matched by model id
+  (`prices_for_model/1`). A token kind without a price (cache reads today)
+  makes the cost a minimum, shown `≥`; a model without a price makes it
+  unknown, shown `—`. Never zero for "no price".
+- It is read only while a task is open in the inspector, and a reading is
+  reused while no transcript changed (same files, sizes, mtimes). Without
+  `zstd` on the PATH (the launchd service's PATH includes Homebrew) the
+  transcripts are `:unavailable`, not empty. OTP 27 has no native zstd.
+- The encoded folder name was observed in `~/.dsh/sessions`, not documented
+  by the harness; a harness upgrade can move it. Reconciled on 2026-11-07
+  against an independent count of one finished ticket (302 requests,
+  232,749 input, 238,848 output tokens in its worker).
+- The tests: `executor_usage_test.exs` (parsing, dedupe, folder name, cost,
+  no `zstd`, reuse) and `inspector_test.exs` (rendered states).
 
 ## The request (composer)
 

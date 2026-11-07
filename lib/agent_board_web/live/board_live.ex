@@ -14,6 +14,7 @@ defmodule AgentBoardWeb.BoardLive do
     AutoRetry,
     Board,
     ElevenLabs,
+    ExecutorUsage,
     GitHub,
     Intake,
     LocalCI,
@@ -95,6 +96,7 @@ defmodule AgentBoardWeb.BoardLive do
         inspector_tab: "conversa",
         inspector_activity: [],
         inspector_calls: [],
+        inspector_usage: nil,
         inspector_pr: nil,
         inspector_ci: nil,
         inspector_failure: nil,
@@ -312,6 +314,7 @@ defmodule AgentBoardWeb.BoardLive do
         assign(socket,
           inspector_activity: [],
           inspector_calls: [],
+          inspector_usage: nil,
           inspector_pr: nil,
           inspector_ci: nil,
           inspector_failure: nil
@@ -325,6 +328,7 @@ defmodule AgentBoardWeb.BoardLive do
         assign(socket,
           inspector_activity: Board.task_activity(task, pr),
           inspector_calls: AI.recent_for_task(task.id),
+          inspector_usage: executor_usage(socket, task),
           inspector_pr: pr,
           inspector_ci: ci,
           inspector_failure: inspector_failure(socket, task),
@@ -346,6 +350,19 @@ defmodule AgentBoardWeb.BoardLive do
       tz_offset: socket.assigns.tz_offset,
       retries: AutoRetry.attempts(ticket && ticket["id"])
     )
+  end
+
+  # The executor's transcripts are read only while the task is open, and an
+  # unchanged reading is reused, so a board update does not decompress them.
+  defp executor_usage(socket, task) do
+    tickets =
+      case socket.assigns[:agent_snapshot] do
+        %{tickets: tickets} -> Enum.filter(tickets, &(task.number in (&1["numbers"] || [])))
+        _ -> []
+      end
+
+    previous = socket.assigns[:inspector_usage]
+    ExecutorUsage.for_tickets(tickets, previous)
   end
 
   defp refresh_inspector_after_act(socket, task_id) do
@@ -1725,6 +1742,7 @@ defmodule AgentBoardWeb.BoardLive do
             tab={@inspector_tab}
             activity={@inspector_activity}
             calls={@inspector_calls}
+            usage={@inspector_usage}
             pr={@inspector_pr}
             ci={@inspector_ci}
             failure={@inspector_failure}

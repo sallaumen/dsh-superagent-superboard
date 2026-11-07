@@ -14,6 +14,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :tab, :string, required: true
   attr :activity, :list, required: true
   attr :calls, :list, required: true
+  attr :usage, :map, default: nil
   attr :pr, :any, default: nil
   attr :ci, :map, default: nil
   attr :tz_offset, :integer, default: 0
@@ -136,7 +137,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <% "atividade" -> %>
             <.activity_tab activity={@activity} offset={@tz_offset} />
           <% "chamadas" -> %>
-            <.calls_tab calls={@calls} totals={@totals} offset={@tz_offset} />
+            <.calls_tab calls={@calls} totals={@totals} usage={@usage} offset={@tz_offset} />
           <% "pr" -> %>
             <.pr_tab pr={@pr} ci={@ci} offset={@tz_offset} />
           <% _ -> %>
@@ -336,12 +337,93 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       </table>
 
       <p :if={@calls != []} class="ab-meta">
-        Chamadas feitas pelo board. O executor mantém as dele fora do board.
+        Chamadas feitas pelo board.
         <span :if={@totals.missing_cost}>Custo ausente aparece como —; o total é um mínimo.</span>
       </p>
+
+      <.executor_usage usage={@usage} />
     </div>
     """
   end
+
+  attr :usage, :map, default: nil
+
+  defp executor_usage(%{usage: nil} = assigns), do: ~H""
+
+  defp executor_usage(%{usage: %{status: :none}} = assigns) do
+    ~H"""
+    <section id="executor-usage" class="ab-insp__usage">
+      <h3 class="ab-label">Executor do agente</h3>
+      <p class="ab-meta">Nenhuma transcrição do executor para esta tarefa.</p>
+    </section>
+    """
+  end
+
+  defp executor_usage(%{usage: %{status: :unavailable}} = assigns) do
+    ~H"""
+    <section id="executor-usage" class="ab-insp__usage">
+      <h3 class="ab-label">Executor do agente</h3>
+      <p class="ab-meta">
+        As transcrições existem, mas o board não consegue lê-las: falta o <code>zstd</code>.
+      </p>
+    </section>
+    """
+  end
+
+  defp executor_usage(assigns) do
+    ~H"""
+    <section id="executor-usage" class="ab-insp__usage">
+      <h3 class="ab-label">Executor do agente</h3>
+      <table class="ab-table">
+        <thead>
+          <tr>
+            <th>Sessões</th>
+            <th class="r">Requisições</th>
+            <th class="r">Entrada</th>
+            <th class="r">Saída</th>
+            <th class="r">Cache lido</th>
+            <th class="r">Custo estimado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{sessions(@usage)}</td>
+            <td class="r">{@usage.requests}</td>
+            <td class="r">{tokens(@usage.input)}</td>
+            <td class="r">{tokens(@usage.output)}</td>
+            <td class="r">{tokens(@usage.cache_read)}</td>
+            <td class="r">{usage_cost(@usage.cost)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="ab-meta">
+        Medido nas transcrições locais do executor ({models(@usage.models)}). O custo usa a tabela de preços do board.
+        <span :if={@usage.cost && not @usage.cost.complete?}>
+          Algum tipo de token não tem preço na tabela (a leitura de cache, hoje); o custo é um mínimo.
+        </span>
+        <span :if={@usage.cost == nil}>O modelo não tem preço na tabela; custo desconhecido.</span>
+        <span :if={@usage.unreadable > 0}>
+          {@usage.unreadable} {if @usage.unreadable == 1,
+            do: "transcrição ilegível",
+            else: "transcrições ilegíveis"}; os números são um mínimo.
+        </span>
+      </p>
+    </section>
+    """
+  end
+
+  defp sessions(%{workers: workers, subagents: 0}), do: "#{workers} worker"
+
+  defp sessions(%{workers: workers, subagents: subagents}),
+    do: "#{workers} worker + #{subagents} subagente(s)"
+
+  defp models([]), do: "modelo desconhecido"
+  defp models(models), do: Enum.join(models, ", ")
+
+  defp usage_cost(nil), do: "—"
+  defp usage_cost(%{micros: micros, complete?: true}), do: cost(micros)
+  defp usage_cost(%{micros: micros, complete?: false}) when micros > 0, do: "≥ #{cost(micros)}"
+  defp usage_cost(_), do: "—"
 
   defp pr_tab(assigns) do
     ~H"""
@@ -466,6 +548,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
   defp tokens(nil), do: "—"
   defp tokens(0), do: "—"
+  defp tokens(n) when n >= 1_000_000, do: "#{Float.round(n / 1_000_000, 1)}M"
   defp tokens(n) when n >= 1000, do: "#{Float.round(n / 1000, 1)}k"
   defp tokens(n), do: to_string(n)
 
