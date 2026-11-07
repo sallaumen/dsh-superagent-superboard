@@ -127,6 +127,20 @@ defmodule AgentBoard.LiveTest do
     assert Repo.get(Task, t.id).state == "ready"
   end
 
+  @merged_stale ~s({"mandate":{"basis":{"scope":{"number":42}}},"assignments":[{"state":"ended","idleAt":"2026-11-06T19:44:05.231Z","report":{"state":"waiting","summary":"No code change made; the PR remains open."}}],"follows":[{"thread":"github:30","own":true,"closed":{"at":"2026-11-07T00:01:15.000Z","outcome":"merged"}}],"ended":{"at":"2026-11-07T00:01:15.000Z","by":"executor","outcome":"merged"}})
+
+  test "a merged ticket is done even when its last report was a review", %{db: db} do
+    repo = isolated_repo()
+    t = task(repo)
+
+    :ok =
+      Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @merged_stale <> "')")
+
+    AgentBoard.Live.poll(%{})
+
+    assert Repo.get(Task, t.id).state == "done"
+  end
+
   test "a waiting ticket without a question or a PR is blocked", %{db: db} do
     repo = isolated_repo()
     t = task(repo)

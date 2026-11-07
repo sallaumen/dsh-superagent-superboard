@@ -66,7 +66,7 @@ polls; the human sentence is the trigger.
 
 | State | Meaning |
 |---|---|
-| `ready` | a PR is open and waiting for a human |
+| `ready` | a PR is open; under the [merge policy](setup.md#8-merge-policy) the executor merges it itself, otherwise a human does |
 | `progress` | the executor is still working |
 | `waiting` | the executor needs input |
 | `failed` | the run ended without a PR |
