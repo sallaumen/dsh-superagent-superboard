@@ -11,7 +11,7 @@ defmodule AgentBoardWeb.VoiceController do
   use AgentBoardWeb, :controller
 
   alias AgentBoard.ElevenLabs
-  alias AgentBoard.ElevenLabs.SpeechCache
+  alias AgentBoard.ElevenLabs.{SpeechCache, Usage}
   alias AgentBoard.Settings
   alias AgentBoard.Voice
   alias AgentBoard.Voice.{Activity, Phrases}
@@ -35,7 +35,9 @@ defmodule AgentBoardWeb.VoiceController do
         tts_model: ElevenLabs.tts_model(),
         tts_source: ElevenLabs.tts_source(),
         stt_model: ElevenLabs.stt_model(),
-        speak_events: ElevenLabs.speak_events?()
+        speak_events: ElevenLabs.speak_events?(),
+        usage: Usage.today(),
+        daily_char_cap: Usage.cap()
       }
       |> Map.merge(voice_prefs())
     )
@@ -158,6 +160,7 @@ defmodule AgentBoardWeb.VoiceController do
 
     case SpeechCache.get(key) do
       {:ok, audio} ->
+        Usage.record_tts(0, :cache)
         Activity.record(:tts, :ok, "voz do cache (#{String.length(text)} caracteres)", ms: 0)
 
         conn
@@ -184,6 +187,7 @@ defmodule AgentBoardWeb.VoiceController do
       :follower ->
         case SpeechCache.await(key, 10_000) do
           {:ok, audio} ->
+            Usage.record_tts(0, :cache)
             Activity.record(:tts, :ok, "mesma voz reaproveitada de um pedido simultâneo", ms: 0)
 
             conn
@@ -294,10 +298,16 @@ defmodule AgentBoardWeb.VoiceController do
     opts = speech_opts(voice)
     key = SpeechCache.key(text, opts)
 
-    with :miss <- SpeechCache.get(key),
-         {:ok, %{audio: audio}} <- ElevenLabs.speech(text, opts) do
-      SpeechCache.put(key, text, audio)
-      {:ok, audio}
+    case SpeechCache.get(key) do
+      {:ok, audio} ->
+        Usage.record_tts(0, :cache)
+        {:ok, audio}
+
+      :miss ->
+        with {:ok, %{audio: audio}} <- ElevenLabs.speech(text, opts) do
+          SpeechCache.put(key, text, audio)
+          {:ok, audio}
+        end
     end
   end
 

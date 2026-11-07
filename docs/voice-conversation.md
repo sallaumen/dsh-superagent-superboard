@@ -132,3 +132,29 @@ player considera a fala terminada quando ela para de avançar por 1 s.
   pela conversa.
 - Decidir se a avaliação de `answer_board_question` (`scripts/eval-board-ai.exs`)
   passa a avaliar `voice_agent`, que é o que a voz usa agora.
+
+## Custo da voz
+
+- **Onde se paga**: a ElevenLabs cobra caracteres de TTS (cada fala gerada) e
+  segundos de áudio de STT (cada transcrição). O modelo (DeepSeek) entra nas
+  linhas de `ai_calls` e no orçamento de IA, não aqui.
+- **O livro-caixa** (`AgentBoard.ElevenLabs.Usage`, tabela
+  `eleven_labs_usage`, uma linha por dia UTC): `AgentBoard.ElevenLabs` soma
+  cada resposta 200 paga, com os caracteres do header `x-character-count` (ou
+  o tamanho do texto, sem o header) e os segundos de `audio_duration_secs`;
+  o `VoiceController` conta as falas servidas do cache, que custam zero. Uma
+  falha re-tentada não entra: não foi cobrada.
+- **Onde ver**: o resumo de "Bastidores da voz" (por exemplo
+  "hoje: 3.420 de 20.000 caracteres · 1,2 min transcritos · 18 do cache") e
+  `GET /api/voice/status` (`usage` e `daily_char_cap`).
+- **O teto diário**: `ELEVENLABS_DAILY_CHAR_CAP` (padrão 20000 caracteres,
+  `0` desliga). A chamada que cruza o teto registra um evento
+  "teto diário atingido…" uma vez por dia. O teto não recusa nada sozinho:
+  `Usage.over_cap?/0` é o sinal para a fala passar para a voz grátis do
+  navegador.
+- **Pagar uma vez**: o cache de falas curtas (até 300 caracteres) tem a
+  memória (ETS, 150 entradas, uma semana) na frente da tabela
+  `voice_speech_cache` (1000 linhas, 30 dias desde o último uso). As frases
+  fixas (chamados, confirmações, erros) são pagas uma vez, não a cada
+  restart. A chave é a mesma de sempre: texto, voz, modelo, idioma,
+  velocidade e entonação; mudar qualquer um é outra fala.

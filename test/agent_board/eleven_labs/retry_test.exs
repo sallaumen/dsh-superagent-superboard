@@ -10,7 +10,7 @@ defmodule AgentBoard.ElevenLabs.RetryTest do
   @moduletag capture_log: true
 
   alias AgentBoard.ElevenLabs
-  alias AgentBoard.ElevenLabs.Retry
+  alias AgentBoard.ElevenLabs.{Retry, Usage}
   alias AgentBoard.Voice.Activity
 
   @stub AgentBoard.ElevenLabs.RetryTest.Stub
@@ -62,6 +62,8 @@ defmodule AgentBoard.ElevenLabs.RetryTest do
     assert Agent.get(calls, & &1) == 2
     assert_received {:voice_activity, %{stage: :tts, status: :retry, attempt: 2, detail: detail}}
     assert detail =~ "HTTP 503"
+    # The retried 503 cost nothing: the ledger has one paid request.
+    assert %{tts_requests: 1, tts_characters: 2} = Usage.today()
   end
 
   test "a dropped connection is tried again", %{calls: calls} do
@@ -97,6 +99,7 @@ defmodule AgentBoard.ElevenLabs.RetryTest do
 
     assert_received {:chunk, "ID3ok"}
     assert Agent.get(calls, & &1) == 2
+    assert %{tts_requests: 1, tts_characters: 2} = Usage.today()
   end
 
   test "a stream that already delivered audio is never retried" do

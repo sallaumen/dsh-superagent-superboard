@@ -10,7 +10,7 @@ defmodule AgentBoard.ElevenLabs do
   of times by `AgentBoard.ElevenLabs.Retry`; a 4xx about the request is final.
   """
 
-  alias AgentBoard.ElevenLabs.Retry
+  alias AgentBoard.ElevenLabs.{Retry, Usage}
 
   @base_url "https://api.elevenlabs.io"
 
@@ -150,11 +150,14 @@ defmodule AgentBoard.ElevenLabs do
              ] ++ Retry.options(:tts)
            ) do
         {:ok, %Req.Response{status: 200, body: audio, headers: headers}} ->
+          characters = header_number(headers, "x-character-count")
+          Usage.record_tts(characters || String.length(text), :paid)
+
           {:ok,
            %{
              audio: audio,
              format: format,
-             characters: header_number(headers, "x-character-count"),
+             characters: characters,
              request_id: header_string(headers, "request-id")
            }}
 
@@ -201,6 +204,7 @@ defmodule AgentBoard.ElevenLabs do
         ] ++ Retry.options(:tts)
       )
       |> tap(fn _ -> Retry.reset_streamed() end)
+      |> tap(&record_stream(&1, text))
       |> stream_result()
     else
       {:error, :not_configured}
@@ -220,6 +224,13 @@ defmodule AgentBoard.ElevenLabs do
         {:cont, acc}
     end
   end
+
+  # ElevenLabs charges a 200 whether or not the listener heard it to the end.
+  defp record_stream({:ok, %Req.Response{status: 200, headers: headers}}, text) do
+    Usage.record_tts(header_number(headers, "x-character-count") || String.length(text), :paid)
+  end
+
+  defp record_stream(_result, _text), do: :ok
 
   defp stream_result({:ok, %Req.Response{status: 200}}), do: :ok
   defp stream_result({:ok, %Req.Response{status: 401}}), do: {:error, :auth_expired}
@@ -284,7 +295,9 @@ defmodule AgentBoard.ElevenLabs do
              [url: "/v1/speech-to-text", form_multipart: form] ++ Retry.options(:transcribe)
            ) do
         {:ok, %Req.Response{status: 200, body: body}} ->
-          {:ok, transcript(body)}
+          transcript = transcript(body)
+          Usage.record_stt(transcript.audio_duration_secs)
+          {:ok, transcript}
 
         {:ok, %Req.Response{status: 401}} ->
           {:error, :auth_expired}

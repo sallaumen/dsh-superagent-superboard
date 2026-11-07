@@ -5,7 +5,7 @@ defmodule AgentBoardWeb.VoiceControllerTest do
   # Failures are exercised on purpose; their log lines show only if a test fails.
   @moduletag capture_log: true
 
-  alias AgentBoard.ElevenLabs.SpeechCache
+  alias AgentBoard.ElevenLabs.{SpeechCache, Usage}
 
   @stub AgentBoardWeb.VoiceControllerTest.Stub
 
@@ -44,7 +44,28 @@ defmodule AgentBoardWeb.VoiceControllerTest do
              "tts_model" => "eleven_flash_v2_5",
              "tts_source" => "default",
              "stt_model" => "scribe_v2",
-             "speak_events" => true
+             "speak_events" => true,
+             "daily_char_cap" => 20_000,
+             "usage" => %{"tts_characters" => 0, "cache_hits" => 0, "stt_seconds" => +0.0}
+           } = json_response(get(conn, "/api/voice/status"), 200)
+  end
+
+  test "GET /api/voice/status reports today's ElevenLabs usage", %{conn: conn} do
+    Usage.record_tts(3420, :paid)
+    Usage.record_tts(0, :cache)
+    Usage.record_stt(72.0)
+
+    today = Date.to_iso8601(Date.utc_today())
+
+    assert %{
+             "usage" => %{
+               "day" => ^today,
+               "tts_characters" => 3420,
+               "tts_requests" => 1,
+               "cache_hits" => 1,
+               "stt_seconds" => 72.0,
+               "stt_requests" => 1
+             }
            } = json_response(get(conn, "/api/voice/status"), 200)
   end
 
@@ -267,6 +288,15 @@ defmodule AgentBoardWeb.VoiceControllerTest do
     assert response(second, 200) == "ID3once"
     assert get_resp_header(second, "x-voice-cache") == ["hit"]
     assert Agent.get(calls, & &1) == 1
+
+    # A restart empties the memory; the paid phrase is still not paid again.
+    SpeechCache.clear()
+    third = get(build_conn(), "/api/voice/stream?text=Tudo+bem")
+    assert get_resp_header(third, "x-voice-cache") == ["hit"]
+    assert Agent.get(calls, & &1) == 1
+
+    # Paid once (no character header: the text length), hit twice for free.
+    assert %{tts_characters: 8, tts_requests: 1, cache_hits: 2} = Usage.today()
 
     # Another language is another audio: a miss, never the cached one.
     :ok = AgentBoard.Voice.put_language("en-US")

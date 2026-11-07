@@ -55,6 +55,13 @@ for {env, app} <- [
   config :agent_board, [{app, value}]
 end
 
+# The daily ElevenLabs character cap (AgentBoard.ElevenLabs.Usage): a whole
+# number, 0 for none; absent or malformed keeps the module default (20000).
+with value when is_binary(value) <- System.get_env("ELEVENLABS_DAILY_CHAR_CAP"),
+     {cap, ""} when cap >= 0 <- Integer.parse(String.trim(value)) do
+  config :agent_board, elevenlabs_daily_char_cap: cap
+end
+
 config :agent_board, AgentBoardWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 

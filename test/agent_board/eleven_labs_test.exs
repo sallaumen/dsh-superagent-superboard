@@ -6,6 +6,7 @@ defmodule AgentBoard.ElevenLabsTest do
   @moduletag capture_log: true
 
   alias AgentBoard.ElevenLabs
+  alias AgentBoard.ElevenLabs.Usage
   alias AgentBoard.Settings
 
   @stub AgentBoard.ElevenLabsTest.Stub
@@ -164,6 +165,9 @@ defmodule AgentBoard.ElevenLabsTest do
               characters: 12,
               request_id: "req-1"
             }} = ElevenLabs.speech("hello board")
+
+    # The ledger counts what the header says was charged.
+    assert %{tts_characters: 12, tts_requests: 1} = Usage.today()
   end
 
   test "speech passes the voice, model and settings from the options" do
@@ -228,6 +232,9 @@ defmodule AgentBoard.ElevenLabsTest do
 
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 500, "boom") end)
     assert {:error, {:http, 500}} = ElevenLabs.speech("hi")
+
+    # A refused request costs nothing and records nothing.
+    assert %{tts_characters: 0, tts_requests: 0} = Usage.today()
   end
 
   test "speech without a key never reaches the network" do
@@ -264,6 +271,8 @@ defmodule AgentBoard.ElevenLabsTest do
               language_probability: 0.99,
               audio_duration_secs: 1.5
             }} = ElevenLabs.transcribe("fake-audio-bytes", "recording.webm")
+
+    assert %{stt_seconds: 1.5, stt_requests: 1} = Usage.today()
   end
 
   test "transcribe passes the language hint and keyterms" do
