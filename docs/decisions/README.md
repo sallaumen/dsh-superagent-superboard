@@ -8,3 +8,4 @@ do template [decision](https://github.com/sallaumen/elixir-agent-kit/blob/v0.6.0
 |---|---|---|
 | [0001](0001-pipelines-separados.md) | Pipelines separados por tecnologia + caminho misto de release | Implementada |
 | [0002](0002-ci-indisponivel.md) | CI indisponível: pipeline local é o gate suficiente | Implementada |
+| [0003](0003-ciclo-de-vida-do-agente.md) | Ciclo de vida do agente em quatro situações de borda: o que o DSH faz e o que o board mostra | Proposta |
