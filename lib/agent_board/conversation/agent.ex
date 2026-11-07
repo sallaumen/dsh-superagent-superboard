@@ -21,13 +21,20 @@ defmodule AgentBoard.Conversation.Agent do
        question. "Cria direto" creates at once, and "desfaz" closes that
        task within 10 minutes.
 
+  Every write goes through `AgentBoard.Actions`, by the voice: a proposal
+  says the action's own sentence (`Actions.phrase/3`, the one the screen
+  shows) and the spoken yes passes it back to the gate, so a task that
+  changed in between is refused, not acted on. "Cria direto" and "desfaz"
+  are the owner's words, checked by `Actions.direct_order?/2`; the model's
+  `direct` flag alone never skips the question.
+
   The catalog the owner sees is `AgentBoard.Voice.Commands`.
 
   The coding agent is never involved: a created task is a GitHub issue the
   agent picks up on its own, exactly like the composer's.
   """
 
-  alias AgentBoard.{AI, Board, Conversation, Repo, Titles}
+  alias AgentBoard.{Actions, AI, Board, Conversation, Repo, Titles}
   alias AgentBoard.Board.{Repository, Task}
   alias AgentBoard.Conversation.{Lookup, Turn}
   alias AgentBoard.Voice.{Activity, Phrases}
@@ -171,7 +178,7 @@ defmodule AgentBoard.Conversation.Agent do
         status(ctx)
 
       phrase in @undo ->
-        undo(ctx)
+        undo(ctx, text)
 
       move = Enum.find(@voice_moves, fn {re, _, _} -> Regex.match?(re, phrase) end) ->
         adjust(move, lang)
@@ -203,33 +210,58 @@ defmodule AgentBoard.Conversation.Agent do
 
   # "Desfaz" closes the newest task the voice created in the last 10
   # minutes. The claim is conditional, so a repeated "desfaz" closes once.
-  defp undo(ctx) do
+  # Without the word itself (the model read an undo in other words) the
+  # board asks first, with the action's sentence.
+  defp undo(ctx, words) do
     lang = ctx.language
 
-    with %Turn{proposal: %{"task_id" => id, "number" => n}} = turn <- Conversation.last_created(),
-         :ok <- Conversation.mark_undone(turn) do
-      result =
-        case Repo.get(Task, id) do
-          nil -> {:error, :not_found}
-          task -> Board.stop_task(task, client(ctx))
-        end
+    with %Turn{proposal: %{"task_id" => id}} = turn <- Conversation.last_created(),
+         %Task{} = task <- Repo.get(Task, id) do
+      if Actions.direct_order?(:undo_created_task, words) do
+        undo_now(turn, task, ctx, {:words, words}, lang)
+      else
+        params = %{task: task}
 
-      case result do
-        {:ok, task} ->
-          Activity.record(:action, :ok, "desfeito: tarefa ##{n} fechada", turn: ctx[:turn_id])
-          repo = Repo.get(Repository, task.repository_id)
-          %{say(Phrases.undone(lang, n), "undo") | effect: repo && {:changed, repo}}
-
-        failure ->
-          Activity.record(:action, :error, "não consegui desfazer a tarefa ##{n}",
-            turn: ctx[:turn_id],
-            reason: create_failure(failure)
-          )
-
-          say(Phrases.undo_failed(lang, n), "undo")
+        proposal(
+          %{
+            "kind" => "undo_created_task",
+            "task_id" => task.id,
+            "number" => task.number,
+            "created_turn_id" => turn.id,
+            "repository_id" => task.repository_id
+          },
+          Actions.phrase(:undo_created_task, params, lang),
+          lang
+        )
       end
     else
       _ -> say(Phrases.nothing_to_undo(lang), "undo")
+    end
+  end
+
+  defp undo_now(turn, task, ctx, confirm, lang) do
+    n = task.number
+
+    with :ok <- Conversation.mark_undone(turn),
+         {:ok, task} <-
+           Actions.run(:undo_created_task, %{task: task, client: client(ctx)}, voice(),
+             confirm: confirm,
+             language: lang
+           ) do
+      Activity.record(:action, :ok, "desfeito: tarefa ##{n} fechada", turn: ctx[:turn_id])
+      repo = Repo.get(Repository, task.repository_id)
+      %{say(Phrases.undone(lang, n), "undo") | effect: repo && {:changed, repo}}
+    else
+      :already_settled ->
+        say(Phrases.nothing_to_undo(lang), "undo")
+
+      failure ->
+        Activity.record(:action, :error, "não consegui desfazer a tarefa ##{n}",
+          turn: ctx[:turn_id],
+          reason: create_failure(failure)
+        )
+
+        say(refusal_or(failure, lang, Phrases.undo_failed(lang, n)), "undo")
     end
   end
 
@@ -240,7 +272,7 @@ defmodule AgentBoard.Conversation.Agent do
     if target == current do
       say(Phrases.voice_at_limit(lang, :speed, delta), "adjust_voice")
     else
-      :ok = AgentBoard.Voice.put_speed(target)
+      :ok = save_setting("speed", target)
       %{say(Phrases.voice_adjusted(lang, :speed, delta), "adjust_voice") | effect: :voice_changed}
     end
   end
@@ -252,7 +284,7 @@ defmodule AgentBoard.Conversation.Agent do
     if target == current do
       say(Phrases.voice_at_limit(lang, :volume, delta), "adjust_voice")
     else
-      :ok = AgentBoard.Voice.put_volume(target)
+      :ok = save_setting("volume", target)
 
       %{
         say(Phrases.voice_adjusted(lang, :volume, delta), "adjust_voice")
@@ -324,9 +356,15 @@ defmodule AgentBoard.Conversation.Agent do
   defp act(action, json, nil, ctx) when action in ~w(confirm cancel),
     do: say(reply(json, ctx), "reply")
 
+  # Forgetting has no way back: a proposal like any other red action.
   defp act("forget", _json, _pending, ctx) do
-    :ok = Conversation.clear()
-    say(Phrases.forgot(ctx.language), "forget")
+    lang = ctx.language
+
+    proposal(
+      %{"kind" => "forget_conversation"},
+      Actions.phrase(:forget_conversation, %{}, lang),
+      lang
+    )
   end
 
   defp act("open_task", %{"task_number" => n} = json, _pending, ctx) do
@@ -353,7 +391,7 @@ defmodule AgentBoard.Conversation.Agent do
 
   defp act("look", json, _pending, ctx), do: look(json["lookup"], json, ctx)
   defp act("help", _json, _pending, ctx), do: help(ctx.language)
-  defp act("undo", _json, _pending, ctx), do: undo(ctx)
+  defp act("undo", _json, _pending, ctx), do: undo(ctx, ctx[:utterance])
 
   defp act(action, %{"task_number" => n}, _pending, ctx)
        when action in ~w(stop_task archive_task),
@@ -461,8 +499,9 @@ defmodule AgentBoard.Conversation.Agent do
       is_nil(repo) ->
         listen(say(Phrases.which_project(lang), "create_task"))
 
-      # "Cria direto": no question back, no "Posso criar?".
-      json["direct"] == true ->
+      # "Cria direto": no question back, no "Posso criar?" -- only when the
+      # owner's own words say so, whatever the model's flag reads.
+      json["direct"] == true and Actions.direct_order?(:create_tasks, ctx[:utterance]) ->
         json |> new_task(request, repo, lang) |> create_direct(ctx)
 
       not blank?(json["question"]) ->
@@ -470,7 +509,7 @@ defmodule AgentBoard.Conversation.Agent do
 
       true ->
         task = new_task(json, request, repo, lang)
-        proposal(task, Phrases.propose_task(lang, slug(repo), task["title"]))
+        proposal(task, Actions.phrase(:create_tasks, create_params(task, repo), lang), lang)
     end
   end
 
@@ -489,7 +528,7 @@ defmodule AgentBoard.Conversation.Agent do
   defp create_direct(task, ctx) do
     Activity.record(:action, :info, "pedido direto: cria sem perguntar", turn: ctx[:turn_id])
 
-    case execute(task, ctx) do
+    case execute(task, ctx, {:words, ctx[:utterance]}) do
       %{proposal: %{"kind" => "created", "number" => n, "repository" => slug}} = outcome ->
         %{outcome | reply: Phrases.task_created_direct(ctx.language, n, slug)}
 
@@ -513,7 +552,8 @@ defmodule AgentBoard.Conversation.Agent do
             "title" => task.title,
             "repository_id" => task.repository_id
           },
-          Phrases.propose_task_action(lang, kind, task.number, task.title || "")
+          Actions.phrase(task_action(kind), %{task: task}, lang),
+          lang
         )
 
       _ ->
@@ -522,6 +562,8 @@ defmodule AgentBoard.Conversation.Agent do
   end
 
   defp propose_ask(task, question, ctx) do
+    lang = ctx.language
+
     proposal(
       %{
         "kind" => "ask_task",
@@ -530,20 +572,23 @@ defmodule AgentBoard.Conversation.Agent do
         "question" => question,
         "repository_id" => task.repository_id
       },
-      Phrases.propose_ask(ctx.language, task.number, question)
+      Actions.phrase(:ask_task, %{task: task, question: question}, lang),
+      lang
     )
   end
 
-  defp proposal(proposal, text) do
+  # The proposal says the action's sentence and keeps it, with its language:
+  # the yes passes that same sentence to the gate.
+  defp proposal(proposal, phrase, lang) do
     :ok = Conversation.supersede_proposals()
     Activity.record(:action, :info, "proposta aguardando o seu sim: #{proposal["kind"]}")
 
     %{
-      reply: text,
+      reply: phrase,
       action: "propose_" <> proposal["kind"],
       effect: nil,
       listen: true,
-      proposal: proposal
+      proposal: Map.merge(proposal, %{"phrase" => phrase, "language" => lang})
     }
   end
 
@@ -571,31 +616,88 @@ defmodule AgentBoard.Conversation.Agent do
 
   # ---- confirmation ---------------------------------------------------------
 
+  # The spoken yes confirms the sentence the proposal said (an older
+  # proposal without one: the words it spoke), in the language it said it.
   defp confirm(%Turn{proposal: proposal} = pending, ctx) do
     lang = ctx.language
+    ctx = Map.put(ctx, :language, proposal["language"] || lang)
 
     case Conversation.settle(pending, "confirmed") do
-      :ok -> execute(proposal, ctx)
+      :ok -> execute(proposal, ctx, proposal["phrase"] || pending.text)
       :already_settled -> say(Phrases.already_settled(lang), "confirm")
     end
   end
 
-  defp cancel(%Turn{} = pending, lang) do
-    _ = Conversation.settle(pending, "cancelled")
+  defp cancel(%Turn{proposal: proposal} = pending, lang) do
+    with :ok <- Conversation.settle(pending, "cancelled"),
+         {name, params} <- action_of(proposal) do
+      Actions.decline(name, params, voice(), language: proposal["language"] || lang)
+    end
+
     say(Phrases.cancelled(lang), "cancel")
   end
 
-  defp execute(%{"kind" => "create_task"} = p, ctx) do
+  # The registry action a stored proposal names, with its values reloaded.
+  defp action_of(%{"kind" => "create_task"} = p) do
+    case Repo.get(Repository, p["repository_id"]) do
+      %Repository{} = repo -> {:create_tasks, create_params(p, repo)}
+      nil -> nil
+    end
+  end
+
+  defp action_of(%{"kind" => "ask_task", "task_id" => id} = p) do
+    case id && Repo.get(Task, id) do
+      %Task{} = task -> {:ask_task, %{task: task, question: p["question"]}}
+      nil -> nil
+    end
+  end
+
+  defp action_of(%{"kind" => kind, "task_id" => id})
+       when kind in ~w(stop_task archive_task undo_created_task) do
+    case id && Repo.get(Task, id) do
+      %Task{} = task -> {task_action(kind), %{task: task}}
+      nil -> nil
+    end
+  end
+
+  defp action_of(%{"kind" => "forget_conversation"}), do: {:forget_conversation, %{}}
+  defp action_of(_proposal), do: nil
+
+  defp create_params(p, repo) do
+    title = p["title"]
+    body = p["body"]
+
+    %{
+      repository: repo,
+      requests: [%{title: title, body: body, key: create_key(repo, title, body)}]
+    }
+  end
+
+  defp create_key(repo, title, body), do: Board.request_key(repo, "voice", [title, body])
+
+  defp task_action("stop_task"), do: :stop_task
+  defp task_action("archive_task"), do: :archive_task
+  defp task_action("undo_created_task"), do: :undo_created_task
+
+  defp voice, do: Actions.owner(:voice)
+
+  defp save_setting(setting, value),
+    do: Actions.run(:change_setting, %{setting: setting, value: value}, voice())
+
+  # The gate refused: say so plainly instead of the generic failure.
+  defp refusal_or({:error, {refusal, _phrase}}, lang, _fallback)
+       when refusal in [:unconfirmed, :phrase_changed],
+       do: Phrases.action_changed(lang)
+
+  defp refusal_or(_failure, _lang, fallback), do: fallback
+
+  defp execute(%{"kind" => "create_task"} = p, ctx, confirm) do
     lang = ctx.language
 
     with %Repository{} = repo <- Repo.get(Repository, p["repository_id"]),
-         key = Board.request_key(repo, "voice", [p["title"], p["body"]]),
-         {:ok, task, outcome} <-
-           Board.create_request(
-             repo,
-             %{title: p["title"], body: p["body"], key: key},
-             client(ctx)
-           ) do
+         params = Map.put(create_params(p, repo), :client, client(ctx)),
+         {:ok, [{_request, {:ok, task, outcome}}]} <-
+           Actions.run(:create_tasks, params, voice(), confirm: confirm, language: lang) do
       text =
         if outcome == :created,
           do: Phrases.task_created(lang, task.number, slug(repo)),
@@ -620,20 +722,25 @@ defmodule AgentBoard.Conversation.Agent do
           reason: create_failure(failure)
         )
 
-        say(Phrases.task_failed(lang), "create_task")
+        say(refusal_or(failure, lang, Phrases.task_failed(lang)), "create_task")
     end
   end
 
-  defp execute(%{"kind" => kind, "task_id" => id} = p, ctx)
+  defp execute(%{"kind" => kind, "task_id" => id} = p, ctx, confirm)
        when kind in ~w(stop_task archive_task) do
     lang = ctx.language
     task = id && Repo.get(Task, id)
 
     result =
-      case {kind, task} do
-        {_, nil} -> {:error, :not_found}
-        {"stop_task", task} -> Board.stop_task(task, client(ctx))
-        {"archive_task", task} -> Board.archive_task(task)
+      case task do
+        nil ->
+          {:error, :not_found}
+
+        task ->
+          Actions.run(task_action(kind), %{task: task, client: client(ctx)}, voice(),
+            confirm: confirm,
+            language: lang
+          )
       end
 
     case result do
@@ -652,15 +759,28 @@ defmodule AgentBoard.Conversation.Agent do
           reason: create_failure(failure)
         )
 
-        say(Phrases.task_action_failed(lang, kind, p["number"]), kind)
+        say(refusal_or(failure, lang, Phrases.task_action_failed(lang, kind, p["number"])), kind)
     end
   end
 
-  defp execute(%{"kind" => "ask_task", "task_id" => id} = p, ctx) do
+  defp execute(%{"kind" => "undo_created_task", "task_id" => id} = p, ctx, confirm) do
+    lang = ctx.language
+
+    with %Turn{} = turn <- p["created_turn_id"] && Repo.get(Turn, p["created_turn_id"]),
+         %Task{} = task <- id && Repo.get(Task, id) do
+      undo_now(turn, task, ctx, confirm, lang)
+    else
+      _ -> say(Phrases.nothing_to_undo(lang), "undo")
+    end
+  end
+
+  defp execute(%{"kind" => "ask_task", "task_id" => id} = p, ctx, confirm) do
     lang = ctx.language
 
     with %Task{} = task <- id && Repo.get(Task, id),
-         {:ok, _comment} <- Board.ask(task, p["question"], client(ctx)) do
+         params = %{task: task, question: p["question"], client: client(ctx)},
+         {:ok, _comment} <-
+           Actions.run(:ask_task, params, voice(), confirm: confirm, language: lang) do
       Activity.record(:action, :ok, "pergunta enviada ao agente na tarefa ##{p["number"]}",
         turn: ctx[:turn_id]
       )
@@ -673,11 +793,20 @@ defmodule AgentBoard.Conversation.Agent do
           reason: create_failure(failure)
         )
 
-        say(Phrases.ask_failed(lang, p["number"]), "ask_task")
+        say(refusal_or(failure, lang, Phrases.ask_failed(lang, p["number"])), "ask_task")
     end
   end
 
-  defp execute(_proposal, ctx), do: say(Phrases.task_failed(ctx.language), "confirm")
+  defp execute(%{"kind" => "forget_conversation"}, ctx, confirm) do
+    lang = ctx.language
+
+    case Actions.run(:forget_conversation, %{}, voice(), confirm: confirm, language: lang) do
+      :ok -> say(Phrases.forgot(lang), "forget")
+      failure -> say(refusal_or(failure, lang, Phrases.not_understood(lang)), "forget")
+    end
+  end
+
+  defp execute(_proposal, ctx, _confirm), do: say(Phrases.task_failed(ctx.language), "confirm")
 
   defp created(outcome, task, repo) do
     outcome

@@ -240,7 +240,7 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
 
     view |> element("#stop-#{blocked.id}-trigger", "Parar") |> render_click()
     refute Repo.get(Task, blocked.id).stopped
-    assert has_element?(view, "#stop-#{blocked.id} .ab-act__question", "Parar #71?")
+    assert has_element?(view, "#stop-#{blocked.id} .ab-act__question", "Parar a tarefa #71")
 
     view |> element("#stop-#{blocked.id}-confirm", "Parar a tarefa") |> render_click()
     assert Repo.get(Task, blocked.id).stopped

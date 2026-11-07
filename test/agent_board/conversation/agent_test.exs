@@ -8,8 +8,8 @@ defmodule AgentBoard.Conversation.AgentTest do
   # Failures are exercised on purpose; their log lines show only if a test fails.
   @moduletag capture_log: true
 
+  alias AgentBoard.{Actions, Board, Conversation, Repo}
   alias AgentBoard.AI.Engines.Scripted
-  alias AgentBoard.{Board, Conversation, Repo}
   alias AgentBoard.Board.Task
   alias AgentBoard.Conversation.{Agent, Turn}
 
@@ -160,10 +160,11 @@ defmodule AgentBoard.Conversation.AgentTest do
 
     assert proposed.listen
 
-    assert proposed.reply =~
-             "Vou criar no arena-rogue a tarefa: Mostrar o volume da voz no cabeçalho"
+    # The proposal says the registry's sentence, the one the screen shows.
+    assert proposed.reply ==
+             "Criar no arena-rogue a tarefa “Mostrar o volume da voz no cabeçalho”? " <>
+               "O board abre a issue no GitHub e o agente começa sozinho."
 
-    assert proposed.reply =~ "Posso criar?"
     assert %Turn{proposal: %{"kind" => "create_task"}} = Conversation.pending_proposal()
     # One model call refines it: no second, slower refine call.
     assert_received {:called, :voice_agent}
@@ -172,6 +173,12 @@ defmodule AgentBoard.Conversation.AgentTest do
     created = turn("Sim, pode.", repo)
     assert created.reply == "Pronto. A tarefa 42 entrou na fila do arena-rogue."
     assert Elixir.Agent.get(counter, & &1) == 42
+
+    # The yes is a recorded decision: confirmed by the owner, by voice, on that sentence.
+    assert [%{action: "create_tasks", decision: "confirmed", by: "owner", via: "voice"} = d] =
+             Actions.recent(1)
+
+    assert d.evidence == "phrase" and d.phrase == proposed.reply and d.outcome == "ok"
 
     task = Repo.get_by!(Task, repository_id: repo.id, number: 42)
     assert task.title == "Mostrar o volume da voz no cabeçalho"
@@ -267,7 +274,10 @@ defmodule AgentBoard.Conversation.AgentTest do
     script(fn %{name: :voice_agent} -> agent_answer("stop_task", %{"task_number" => 7}) end)
 
     result = turn("para a tarefa sete", repo)
-    assert result.reply == "Parar a tarefa 7, Placar? Posso?"
+
+    assert result.reply ==
+             "Parar a tarefa #7, “Placar”? O board fecha a issue e marca a tarefa como parada; " <>
+               "um passo que o agente já começou termina antes."
 
     assert %Turn{proposal: %{"kind" => "stop_task", "task_id" => id}} =
              Conversation.pending_proposal()
@@ -288,13 +298,75 @@ defmodule AgentBoard.Conversation.AgentTest do
     assert Agent.match_repository([repo], "outro") == nil
   end
 
-  test "forget clears the memory", %{repo: repo} do
+  test "forget asks first (there is no way back), then clears the memory", %{repo: repo} do
     script(fn %{name: :voice_agent} -> agent_answer("forget") end)
 
-    assert %{reply: "Pronto, esqueci a nossa conversa. Começando do zero."} =
-             turn("esquece tudo", repo)
+    proposed = turn("esquece tudo", repo)
 
+    assert proposed.reply ==
+             "Esquecer toda a conversa por voz? O agente perde o contexto, e não há como desfazer."
+
+    assert proposed.listen
+    assert length(Conversation.context().turns) == 2
+
+    assert %{reply: "Pronto, esqueci a nossa conversa. Começando do zero."} = turn("sim", repo)
     assert [%{role: "agent"}] = Conversation.context().turns
+  end
+
+  test "the model's direct flag without the owner's words still asks", %{repo: repo} do
+    Req.Test.stub(@stub, fn _conn -> flunk("GitHub must not be called before a yes") end)
+
+    script(fn %{name: :voice_agent} ->
+      agent_answer("create_task", %{
+        "request" => "corrigir o botão",
+        "title" => "Corrigir o botão",
+        "direct" => true
+      })
+    end)
+
+    proposed = turn("corrige o botão de salvar", repo)
+
+    assert proposed.listen
+    assert proposed.reply =~ "Criar no arena-rogue a tarefa “Corrigir o botão”?"
+    assert %Turn{proposal: %{"kind" => "create_task"}} = Conversation.pending_proposal()
+  end
+
+  test "a yes to a task that changed since the question is refused", %{repo: repo} do
+    Req.Test.stub(@stub, fn _conn -> flunk("GitHub must not be called") end)
+
+    {:ok, task} =
+      %Task{}
+      |> Task.changeset(%{repository_id: repo.id, number: 9, title: "Placar", kind: "issue"})
+      |> Repo.insert()
+
+    script(fn %{name: :voice_agent} -> agent_answer("stop_task", %{"task_number" => 9}) end)
+    turn("para a nove", repo)
+
+    # The sync renamed it between the question and the yes.
+    task |> Ecto.Changeset.change(title: "Placar novo") |> Repo.update!()
+
+    assert %{reply: "Não fiz nada: algo mudou desde que perguntei. Peça de novo."} =
+             turn("sim", repo)
+
+    refute Repo.get!(Task, task.id).stopped
+
+    assert [%{action: "stop_task", decision: "refused", detail: "phrase_changed"}] =
+             Actions.recent(1)
+  end
+
+  test "a spoken no is a refusal by the owner", %{repo: repo} do
+    {:ok, _task} =
+      %Task{}
+      |> Task.changeset(%{repository_id: repo.id, number: 10, title: "Placar", kind: "issue"})
+      |> Repo.insert()
+
+    script(fn %{name: :voice_agent} -> agent_answer("archive_task", %{"task_number" => 10}) end)
+    turn("arquiva a dez", repo)
+
+    assert %{reply: "Tudo bem, deixei pra lá."} = turn("não", repo)
+
+    assert [%{action: "archive_task", decision: "refused", detail: "declined", by: "owner"}] =
+             Actions.recent(1)
   end
 
   test "asking the coding agent waits for a yes, then posts the question once", %{repo: repo} do
@@ -323,7 +395,8 @@ defmodule AgentBoard.Conversation.AgentTest do
     proposed = turn("pergunta pro agente da doze se ele já rodou os testes", repo)
 
     assert proposed.reply ==
-             "Vou perguntar ao agente na tarefa 12: Você já rodou os testes? Posso mandar?"
+             "Perguntar ao agente na tarefa #12: “Você já rodou os testes?” " <>
+               "O board comenta na issue do GitHub."
 
     assert proposed.listen
     assert Elixir.Agent.get(posts, & &1) == 0

@@ -12,6 +12,11 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
   attr :thinking, :boolean, default: false
 
   def log(assigns) do
+    # Forgetting is red (no way back): the browser asks the registry's
+    # sentence and the click carries it to the gate.
+    assigns =
+      assign(assigns, :forget_phrase, AgentBoard.Actions.phrase(:forget_conversation, %{}))
+
     ~H"""
     <section class="voice-chat" aria-labelledby="voice-chat-heading">
       <div class="voice-chat-head">
@@ -21,7 +26,8 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
           id="voice-forget"
           type="button"
           phx-click="voice_forget"
-          data-confirm="Esquecer toda a conversa? O agente perde o contexto."
+          phx-value-confirm={@forget_phrase}
+          data-confirm={@forget_phrase}
           class="voice-chat-forget"
         >
           Esquecer conversa

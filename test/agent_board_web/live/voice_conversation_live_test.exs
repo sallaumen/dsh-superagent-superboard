@@ -124,7 +124,10 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     render_async(view, 1_000)
 
     assert_push_event(view, "voice_play", %{url: url, listen: true}, 1_000)
-    assert spoken(url) == "Parar a tarefa 7, Placar? Posso?"
+
+    assert spoken(url) ==
+             "Parar a tarefa 7, “Placar”? O board fecha a issue e marca a tarefa como parada; " <>
+               "um passo que o agente já começou termina antes."
   end
 
   test "without an ElevenLabs key the browser speaks in the voice language", %{conn: conn} do

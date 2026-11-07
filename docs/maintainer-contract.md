@@ -13,6 +13,7 @@ differ. Change a general rule upstream, not here.
 
 | Module | Role |
 |---|---|
+| `AgentBoard.Actions` | the one door for every write: each action's risk, its confirming sentence and its effect; refuses a red action without a confirmation; every decision a row |
 | `AgentBoard.Board` | the context: repositories, tasks, comments, events, broadcast |
 | `AgentBoard.Sync` | the GitHub sync: issues, pulls, reviews, checks, comments |
 | `AgentBoard.Sync.Worker` | the Oban job that runs the sync |
@@ -22,7 +23,7 @@ differ. Change a general rule upstream, not here.
 | `AgentBoard.AgentFailure` | what a `failed` report means: transient (network, provider) or a person's, pure |
 | `AgentBoard.AutoRetry` | the automatic retry of a transient failure: `plan/2` (pure, what the board shows) and the 30 s tick |
 | `AgentBoard.AgentBlock` | what the board says about a failed ticket: the card line, what the system does, what is left to the owner, the attempts; pure |
-| `AgentBoard.AgentControl` | the owner's two confirmed asks: "Tentar de novo" (`retry/2`) and "Religar o agente" (`start_agent/1`) |
+| `AgentBoard.AgentControl` | the owner's two confirmed asks, run by `Actions`: "Tentar de novo" (`retry/2`) and "Religar o agente" (`start_agent/1`) |
 | `AgentBoard.Metrics` | the throughput arithmetic, pure; `Metrics.Observations` reads what it counts |
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.ExecutorUsage` | what the executor spent on a task, read from the harness transcripts; tokens measured, cost estimated |
@@ -59,6 +60,94 @@ differ. Change a general rule upstream, not here.
   do (`sync_repo_test.exs`). A reopened issue is not moved back yet.
 - A review rollup is the strongest review (`changes_requested` beats `approved`);
   a check rollup names the failing check.
+
+## Board actions (o registro de ações)
+
+Every write the board makes goes through `AgentBoard.Actions.run/4`: the
+interface, the voice, the API and the board's own automatic work. Each action
+declares its **risk**, the **sentence that confirms it with the real values**
+(what, for whom, where) and the function that runs it. Decided with the owner
+on 2026-11-07 (`docs/research/alfred.md`, F2.3): the gate is in the code, not
+in a prompt, and it is the prerequisite of any dispatch that spends money.
+
+- **Risk.** Green only reads. Yellow changes something the board can change
+  back. Red sends something outside, spends money or has no way back.
+- **A red action always needs a confirmation, and the code refuses it
+  without one**: `run/4` answers `{:error, {:unconfirmed, phrase}}`, records
+  the refusal and runs nothing. A confirmation is either the **sentence**
+  the person saw or heard (`confirm: phrase`; it is rebuilt from the values
+  at run time, so a task renamed or another repository since the question
+  is refused with `{:phrase_changed, phrase}`) or, for the two actions that
+  take it, the **owner's own words** ("cria direto" for a voice create,
+  "desfaz" for its undo), checked by `Actions.direct_order?/2` and never
+  taken from the model's flag alone.
+- **The one exception is a standing authorization written here**: the
+  automatic retry of a transient failure (below), for the actor
+  `auto_retry` only. A new one is an owner's decision recorded in this
+  contract first.
+- **One sentence on the screen and in the voice**: `Actions.phrase/3`. The
+  confirmation in the interface shows it, the voice proposal says it (in the
+  voice language; `Speakable` reads `#12` as "12"), the API answers it.
+- **Every decision is a row** in `action_decisions`
+  (`AgentBoard.Actions.Decision`): `confirmed`, `automatic` or `refused`;
+  by whom (`owner`, `auto_retry`) and through which door (`ui`, `voice`,
+  `api`, `system`); the evidence (`phrase`, `words`, `standing`); the
+  sentence; the subject; and the outcome. An executed decision is written
+  before the effect and gets `ok` or `error` after. A person's no (Cancelar,
+  "não", "Voltar e editar") is `refused` with `declined`.
+- **A new write is a new action**: its risk, its sentence and its effect in
+  `Actions`, a test in `actions_test.exs`, and, when red, a confirmation on
+  every door that offers it.
+
+The inventory (2026-11-07). "Confirma" says where the confirmation lives on
+each door; a yellow or green action runs on the click and is recorded as
+`automatic`.
+
+| Action | Risk | Effect | Confirma |
+|---|---|---|---|
+| `create_tasks` | red | opens GitHub issues that mention the agent (`Board.create_request/3`, once per request key) | UI: the composer shows the sentence above the send button and the send carries it; the intake panel's Create asks it in the browser (`data-confirm`). Voice: proposal and yes, or "cria direto". API: `428` then `confirm` |
+| `ask_task` | red | comments on the issue with the mention | UI: the inspector asks in two steps ("Mandar a pergunta"). Voice: proposal and yes |
+| `stop_task` | red | closes the issue and marks the task stopped | UI: `AgentAction` "Parar". Voice: proposal and yes. API: `428` then `confirm` |
+| `undo_created_task` | red | closes the issue the voice just opened | Voice: "desfaz" within 10 minutes; a proposal when the model read an undo without the word |
+| `archive_task` | yellow | takes the task off the board (Retomar undoes it) | UI: one click. Voice: proposal (kept). API: direct |
+| `resume_task` | yellow | puts the task back in the board's queue (does not reopen the issue) | UI: one click. API: direct |
+| `retry_ticket` | red | `POST tickets/<id>/retry` asked by the owner; the executor spends tokens | UI: `AgentAction` "Tentar de novo" / "Tentar agora" |
+| `auto_retry_ticket` | red | the same request, asked by the board after a transient failure | System: the standing authorization ("Automatic retry"), `auto_retry` only |
+| `start_agent` | red | runs `dsh-superagent start` on this machine; clears a stop made on purpose | UI: `AgentAction` "Religar o agente" |
+| `set_max_workers` | yellow | `PUT settings/executor` with the new ceiling (− and + undo it) | UI: one click on the Paralelismo tile |
+| `add_repository` | yellow | tracks a repository | UI: settings menu. API: direct |
+| `change_setting` | yellow | one board preference: the voice (language, volume, speed, engine, voice, model…; a paid engine stays under its daily cap) or the daily summary (on/off, the hour) | UI: voice menu and daily summary settings. Voice: "mais devagar/alto". API: `PUT /api/voice/settings` |
+| `dismiss_summary` | yellow | takes the day's summary off the screen (the row stays) | UI: one click on the summary card |
+| `forget_conversation` | red | deletes the voice conversation's memory | UI: "Esquecer conversa" asks the sentence in the browser. Voice: proposal and yes |
+| `sync_now` | green | queues a sync (a read of GitHub) | UI: one click |
+| `update_board` | yellow | fast-forwards this checkout to `origin/main` | UI: "Atualizar", shown only when behind |
+| `restart_board` | yellow | restarts the board's server | UI: "Reiniciar", and after an update |
+
+Outside the registry, on purpose:
+
+- **Paid reads** change nothing outside the board and have their own gates:
+  the model calls (`AI.Registry`, `Budget.check/1`, a row in `ai_calls`) and
+  the ElevenLabs speech (`ElevenLabs.Usage`, the daily cap).
+- **The mirror** stores what it read: the sync, the 10 s poller,
+  `Sync.close_task/2`, `Board.reconcile_resolved_tasks/1`.
+- **The board's own records**: events (`Board.log_event/4`), the voice
+  turns and their proposal states (`Conversation.record/3`, `settle/2`,
+  `mark_*`), the claims in `agent_retries`, the day's summary row and its
+  spoken claim (`DailySummary.tick/1`, `claim_spoken/1`), the ledgers, the
+  caches and the voice activity ring.
+
+The tests: `actions_test.exs` (one test per action, every red action
+refused without a confirmation, a sentence for other values refused, the
+standing authorization scoped to its actor, the words, the record written
+before the effect, and a read of `lib/` that fails on an effect called
+outside `Actions`), `board_actions_test.exs` (the screen: a stop event
+without the sentence refused, the registry's sentence in "Parar", the
+question in two steps, a no recorded), `board_controller_test.exs` (the
+`428` and the echo), `conversation/agent_test.exs` (the proposal's
+sentence, a changed task refused on the yes, the model's `direct` flag
+without the words still asks, forget asks first) and the existing
+`board_agent_failure_test.exs` and `commands_test.exs` (the confirmations
+that already worked).
 
 ## Workpad
 
@@ -146,7 +235,11 @@ other), authorized by the owner on
 2026-11-07 after a reboot left six tickets `failed` on a dead network
 (ADR-0003, "Retentativa automática"). `AgentBoard.AutoRetry` asks
 `POST tickets/<id>/retry` (`Orchestrator.retry/2`) and nothing else; the
-board still never writes the runner's sqlite.
+board still never writes the runner's sqlite. The request is the registry's
+red action `auto_retry_ticket`, and this authorization is the only standing
+one the gate knows ("Board actions" above): it covers the actor
+`auto_retry`, each request is an `automatic` decision with the evidence
+`standing`, and nothing else may ask for a retry without a person.
 
 - **Only a transient failure.** The latest Assignment's report is `failed`
   and `AgentFailure.classify/1` reads its summary as the network or the
@@ -211,8 +304,10 @@ Agora and the detail):
   attempt (when, what happened, whether the board or a person asked for the
   retry).
 - **Every action asks first** (`AgentBoardWeb.BoardComponents.AgentAction`):
-  the first click shows what will happen, only the confirmation acts, the
-  button shows a loading state and the result stays in place.
+  the first click shows the registry's sentence (`Actions.phrase/3`), only
+  the confirmation acts and carries that sentence to the gate, Cancelar is a
+  recorded refusal, the button shows a loading state and the result stays
+  in place.
   "Tentar de novo" / "Tentar agora" is the same `POST tickets/<id>/retry`,
   asked by the owner and recorded as `agent_retry_manual`; "Parar" keeps
   the board's stop (`act`), now behind a confirmation; "Religar o agente"
@@ -326,12 +421,18 @@ Agora and the detail):
   turn cancels an older one, `:voice_turn_timeout_ms` drops a slow one) and
   speaks the reply. Memory is `voice_turns` (summary + recent turns); the
   model call is `:voice_agent`, the summary `:summarize_conversation`.
-  **Writes wait for a spoken yes**: create, stop and archive become a
-  proposal (`proposal_status`), settled once by a conditional update; yes
-  and no are recognized locally. `:voice_agent` refines a request itself
+  **Writes wait for a spoken yes**: create, stop, archive, ask and forget
+  become a proposal (`proposal_status`) that says the registry's sentence
+  (`Actions.phrase/3`, kept in the proposal with its language), settled
+  once by a conditional update; yes and no are recognized locally. The yes
+  passes that sentence to `AgentBoard.Actions`, so a task that changed in
+  between is refused ("Não fiz nada: algo mudou desde que perguntei") and
+  the no is a recorded refusal. `:voice_agent` refines a request itself
   (title, acceptance criteria, or one question): no second model call.
   The one exception is a **direct create**: only when the owner says so
-  ("cria direto", the model's `direct` flag) the task is created at once,
+  ("cria direto", "já cria", "sem perguntar": the model's `direct` flag
+  **and** the owner's words, checked by `Actions.direct_order?/2`) the task
+  is created at once,
   recorded as `%{"kind" => "created"}` with `proposal_status` `done`, and
   "desfaz" closes it (`Board.stop_task/2`) within 10 minutes, claimed once
   (`done` → `undone`). A task that already existed is never undoable.
@@ -670,7 +771,8 @@ nothing takes the whole sync down for one bad item. Each branch has a test in
 ## Boundaries
 
 - The board **reads** the agent's state (the sqlite); it never writes to it.
-  It writes to the runner only through the API, twice: the automatic retry
+  It writes to the runner only through the API and only through
+  `AgentBoard.Actions`, twice: the automatic retry
   above, and the ceiling when the owner clicks − or + in the Paralelismo
   tile (`set_max_workers/2`: `GET settings`, then `PUT settings/executor`
   with the whole block and the revision it read; a save in between is a

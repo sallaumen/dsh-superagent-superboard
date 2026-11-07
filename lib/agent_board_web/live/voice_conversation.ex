@@ -20,9 +20,11 @@ defmodule AgentBoardWeb.VoiceConversation do
   """
 
   import Phoenix.Component, only: [assign: 3, assign: 2]
-  import Phoenix.LiveView, only: [start_async: 3, cancel_async: 2, push_event: 3, push_patch: 2]
 
-  alias AgentBoard.{AI, Conversation}
+  import Phoenix.LiveView,
+    only: [start_async: 3, cancel_async: 2, push_event: 3, push_patch: 2, put_flash: 3]
+
+  alias AgentBoard.{Actions, AI, Conversation}
   alias AgentBoard.Conversation.Agent
   alias AgentBoard.Voice.{Activity, Phrases}
   alias AgentBoardWeb.{BoardNavigation, VoiceCommands, VoiceSpeech}
@@ -191,9 +193,11 @@ defmodule AgentBoardWeb.VoiceConversation do
   end
 
   @doc "The owner asked to forget the conversation from the UI."
-  def forget(socket) do
-    :ok = Conversation.clear()
-    socket |> cancel() |> assign(:voice_turns, [])
+  def forget(socket, confirm) do
+    case Actions.run(:forget_conversation, %{}, Actions.owner(:ui), confirm: confirm) do
+      :ok -> socket |> cancel() |> assign(:voice_turns, [])
+      {:error, _refusal} -> put_flash(socket, :error, "Nada foi apagado: confirme para esquecer.")
+    end
   end
 
   @doc "The owner pressed Escape while the agent was thinking: drop the turn quietly."

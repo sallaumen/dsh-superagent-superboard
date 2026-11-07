@@ -7,6 +7,11 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   (`ready`, `needs_clarification`, `no_tasks`), a failure with a retry, and
   a receipt that names what was created. The receipt is read from the tasks
   the board stored, so a reload shows the same thing.
+
+  Creating a task is a red action (`AgentBoard.Actions`): the sentence that
+  confirms it, with the repository and the titles, sits above the send
+  button (`confirm`), and the send passes it to the gate. A retry of the
+  failures shows its own (`retry_confirm`).
   """
   use AgentBoardWeb, :html
 
@@ -28,6 +33,8 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   attr :voice_configured, :boolean, default: false
   attr :error, :string, default: nil
   attr :retry, :any, default: nil
+  attr :confirm, :string, default: nil
+  attr :retry_confirm, :string, default: nil
 
   def composer(assigns) do
     tasks = (assigns.intake && assigns.intake.tasks) || []
@@ -71,7 +78,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
         </button>
       </div>
 
-      <.receipt :if={@receipt} receipt={@receipt} />
+      <.receipt :if={@receipt} receipt={@receipt} retry_confirm={@retry_confirm} />
 
       <form
         :if={is_nil(@receipt)}
@@ -90,6 +97,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           >
             Tentar de novo
           </button>
+          <span :if={@retry && @retry_confirm} class="ab-compose__retry-confirm">{@retry_confirm}</span>
         </p>
 
         <textarea
@@ -194,6 +202,10 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           </label>
         </div>
 
+        <p :if={@confirm && !@busy} id="composer-confirm" class="ab-compose__confirm">
+          {@confirm}
+        </p>
+
         <div class="ab-compose__bar">
           <button
             type="button"
@@ -253,6 +265,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   end
 
   attr :receipt, :map, required: true
+  attr :retry_confirm, :string, default: nil
 
   defp receipt(assigns) do
     created = Enum.count(assigns.receipt.items, &(&1.outcome == :created))
@@ -296,6 +309,9 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           </span>
         </li>
       </ul>
+      <p :if={@failed > 0 && @retry_confirm} id="composer-retry-confirm" class="ab-compose__confirm">
+        {@retry_confirm}
+      </p>
       <div class="ab-receipt__actions">
         <button
           :if={@failed > 0}

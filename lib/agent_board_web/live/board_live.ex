@@ -5,6 +5,7 @@ defmodule AgentBoardWeb.BoardLive do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{
+    Actions,
     AgentBlock,
     AgentSignal,
     AgentState,
@@ -31,8 +32,8 @@ defmodule AgentBoardWeb.BoardLive do
 
   alias AgentBoard.Board.Task
   alias AgentBoard.Metrics.Observations
-  alias AgentBoard.Sync.{Freshness, Worker}
-  alias AgentBoard.System.{Updater, Version}
+  alias AgentBoard.Sync.Freshness
+  alias AgentBoard.System.Version
   alias AgentBoard.Voice.{Activity, Phrases}
 
   import AgentBoardWeb.BoardComponents.Composer, only: [composer: 1]
@@ -58,7 +59,9 @@ defmodule AgentBoardWeb.BoardLive do
 
   alias AgentBoardWeb.BoardComponents.VoicePresence
 
-  @tts_model_key "elevenlabs_tts_model"
+  # The task actions a button may send, mapped explicitly (never to_atom).
+  @task_actions %{"stop" => :stop_task, "archive" => :archive_task, "resume" => :resume_task}
+  @refused_text "Nada foi feito: a ação mudou desde a confirmação. Confira e confirme de novo."
   @max_resume_items 1000
 
   @impl true
@@ -96,6 +99,8 @@ defmodule AgentBoardWeb.BoardLive do
         panel: nil,
         conversation: nil,
         comments: [],
+        ask_pending: nil,
+        ask_draft: "",
         inspector_tab: "conversa",
         inspector_activity: [],
         inspector_calls: [],
@@ -364,7 +369,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The runner's ceiling, saved through its API; the tile re-reads the load.
   defp set_max_workers(socket, max) do
-    case Orchestrator.set_max_workers(Orchestrator.client(), max) do
+    case Actions.run(:set_max_workers, %{max: max}, ui()) do
       {:ok, max} ->
         socket
         |> load(socket.assigns.repo)
@@ -650,8 +655,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_info(:restart_server, socket) do
-    updater().restart()
-    System.stop()
+    Actions.run(:restart_board, %{}, ui())
     {:noreply, socket}
   end
 
@@ -739,7 +743,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_event("sync_now", _params, socket) do
-    case Oban.insert(Worker.new(%{})) do
+    case Actions.run(:sync_now, %{}, ui()) do
       {:ok, _job} ->
         {:noreply, put_flash(socket, :info, "Sincronização pedida.")}
 
@@ -813,7 +817,9 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_event("dismiss_daily_summary", %{"id" => id}, socket) do
-    with {id, ""} <- Integer.parse(to_string(id)), do: DailySummary.dismiss(id)
+    with {id, ""} <- Integer.parse(to_string(id)),
+         do: Actions.run(:dismiss_summary, %{id: id}, ui())
+
     {:noreply, assign(socket, :daily_summary, nil)}
   end
 
@@ -893,7 +899,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("add", %{"owner" => owner, "name" => name}, socket) do
-    case Board.add_repository(owner, name) do
+    case Actions.run(:add_repository, %{owner: owner, name: name}, ui()) do
       {:ok, _} ->
         repos = Board.list_repositories()
         repo = Enum.find(repos, &(&1.owner == owner and &1.name == name))
@@ -905,19 +911,24 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("act", %{"id" => id, "action" => action}, socket) do
+  def handle_event("act", %{"id" => id, "action" => action} = params, socket) do
     {task_id, _} = Integer.parse(id)
     task = Repo.get(Task, task_id) |> Repo.preload(:repository)
 
+    # Stop is red: it runs only with the sentence its confirmation showed.
     result =
-      case {action, task} do
-        {"stop", %Task{}} -> Board.stop_task(task, GitHub.client())
-        {"archive", %Task{}} -> Board.archive_task(task)
-        {"resume", %Task{}} -> Board.resume_task(task)
-        _ -> {:error, :not_found}
+      case {Map.get(@task_actions, action), task} do
+        {name, %Task{}} when not is_nil(name) ->
+          Actions.run(name, %{task: task}, ui(), confirm: params["confirm"])
+
+        _ ->
+          {:error, :not_found}
       end
 
     case result do
+      {:error, {refusal, _phrase}} when refusal in [:unconfirmed, :phrase_changed] ->
+        {:noreply, put_flash(socket, :error, @refused_text)}
+
       {:ok, _} ->
         {:noreply,
          socket
@@ -952,14 +963,53 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, push_patch(socket, to: BoardNavigation.path(socket.assigns.repo), replace: true)}
   end
 
+  # A question to the agent is red (it posts on GitHub): the first submit
+  # shows the sentence, only "Mandar" posts it, Cancelar records the no.
   @impl true
   def handle_event("ask", %{"body" => body}, socket) do
-    case socket.assigns.conversation do
-      nil ->
+    case {socket.assigns.conversation, String.trim(body)} do
+      {nil, _body} ->
         {:noreply, put_flash(socket, :error, "Open a task first")}
 
-      task ->
-        case Board.ask(task, body, GitHub.client()) do
+      {_task, ""} ->
+        {:noreply, socket}
+
+      {task, body} ->
+        params = %{task: task, question: body}
+        pending = %{task_id: task.id, body: body, phrase: Actions.phrase(:ask_task, params)}
+        {:noreply, assign(socket, ask_pending: pending)}
+    end
+  end
+
+  @impl true
+  def handle_event("ask_cancel", _params, socket) do
+    case {socket.assigns.conversation, socket.assigns.ask_pending} do
+      {%Task{} = task, %{body: body}} ->
+        :ok = Actions.decline(:ask_task, %{task: task, question: body}, ui())
+        {:noreply, assign(socket, ask_pending: nil, ask_draft: body)}
+
+      _ ->
+        {:noreply, assign(socket, ask_pending: nil)}
+    end
+  end
+
+  @impl true
+  def handle_event("ask_confirm", _params, socket) do
+    case {socket.assigns.conversation, socket.assigns.ask_pending} do
+      {nil, _pending} ->
+        {:noreply, put_flash(socket, :error, "Open a task first")}
+
+      {_task, pending} when not is_map(pending) ->
+        {:noreply, socket}
+
+      {%Task{id: id} = task, %{task_id: id, body: body, phrase: phrase}} ->
+        socket = assign(socket, ask_pending: nil, ask_draft: "")
+        params = %{task: task, question: body, client: GitHub.client()}
+
+        case Actions.run(:ask_task, params, ui(), confirm: phrase) do
+          {:error, {refusal, _phrase}} when refusal in [:unconfirmed, :phrase_changed] ->
+            {:noreply, socket |> assign(ask_draft: body) |> put_flash(:error, @refused_text)}
+
           {:ok, _} ->
             ask_in_background(task, body)
 
@@ -972,8 +1022,14 @@ defmodule AgentBoardWeb.BoardLive do
              |> put_flash(:info, "Question sent")}
 
           {:error, _} ->
-            {:noreply, put_flash(socket, :error, "The question did not reach GitHub")}
+            {:noreply,
+             socket
+             |> assign(ask_draft: body)
+             |> put_flash(:error, "The question did not reach GitHub")}
         end
+
+      {_task, _pending_for_another_task} ->
+        {:noreply, assign(socket, ask_pending: nil)}
     end
   end
 
@@ -993,7 +1049,7 @@ defmodule AgentBoardWeb.BoardLive do
     # The button only appears when the panel already knows the checkout is
     # behind. A successful fast-forward is therefore always followed by a
     # restart, even when the short-sha comparison races the fetch.
-    case updater().pull() do
+    case Actions.run(:update_board, %{}, ui()) do
       {:ok, sha} ->
         {:noreply,
          restart_after_update(socket, "Atualizado para #{sha}; reiniciando o servidor…")}
@@ -1092,6 +1148,8 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("composer_submit", params, socket) do
     text = String.trim(params["text"] || socket.assigns.composer_text)
+    # The sentence the composer showed when the person pressed send.
+    shown = composer_phrase(socket.assigns)
 
     socket =
       assign(socket, composer_answers: params["answers"] || socket.assigns.composer_answers)
@@ -1108,10 +1166,11 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, composer_error(socket, "Escreva o pedido antes de enviar.")}
 
       socket.assigns.composer_split ->
-        submit_split(socket, text, params)
+        submit_split(socket, text, params, shown)
 
       true ->
-        start_single(socket, text, title_from_params(params, text, socket.assigns.composer_title))
+        title = title_from_params(params, text, socket.assigns.composer_title)
+        start_single(socket, text, title, shown)
     end
   end
 
@@ -1120,9 +1179,14 @@ defmodule AgentBoardWeb.BoardLive do
     socket = assign(socket, composer_error: nil, composer_receipt: nil)
 
     case {socket.assigns.composer_job, socket.assigns.composer_retry} do
-      {nil, {:split, text}} -> start_split(socket, text)
-      {nil, {:enqueue, requests}} -> start_enqueue(socket, requests)
-      _ -> {:noreply, socket}
+      {nil, {:split, text}} ->
+        start_split(socket, text)
+
+      {nil, {:enqueue, requests} = retry} ->
+        start_enqueue(socket, requests, retry_phrase(socket.assigns.repo, retry))
+
+      _ ->
+        {:noreply, socket}
     end
   end
 
@@ -1134,11 +1198,12 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("composer_single", _params, socket) do
     text = String.trim(socket.assigns.composer_text)
+    shown = composer_phrase(socket.assigns)
     socket = assign(socket, composer_split: false, intake: nil, composer_selected: MapSet.new())
 
     if text == "",
       do: {:noreply, socket},
-      else: start_single(socket, text, socket.assigns.composer_title)
+      else: start_single(socket, text, socket.assigns.composer_title, shown)
   end
 
   @impl true
@@ -1186,7 +1251,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("create_from_intake", %{"index" => index}, socket) do
+  def handle_event("create_from_intake", %{"index" => index} = params, socket) do
     with {:ok, position} <- intake_index(index),
          %{repo: repo} when not is_nil(repo) <- socket.assigns,
          %{repo_id: repo_id, status: :ready} = intake <- socket.assigns.intake,
@@ -1194,11 +1259,9 @@ defmodule AgentBoardWeb.BoardLive do
          %{text: request_text, repo_id: ^repo_id} <- socket.assigns.intake_draft,
          true <- request_text == intake.text,
          task when not is_nil(task) <- Enum.at(intake.tasks, position),
-         {:ok, _created} <-
-           Board.create_task(repo, task.title, intake_body(task), GitHub.client(),
-             work_type: task.kind,
-             size: task.size
-           ) do
+         action = %{repository: repo, requests: [intake_request(repo, request_text, task)]},
+         {:ok, [{_request, {:ok, _task, _outcome}}]} <-
+           Actions.run(:create_tasks, action, ui(), confirm: params["confirm"]) do
       {:noreply, put_flash(socket, :info, "Task created: #{task.title}")}
     else
       _ -> {:noreply, put_flash(socket, :error, "Could not create the task")}
@@ -1248,8 +1311,8 @@ defmodule AgentBoardWeb.BoardLive do
     do: {:noreply, VoiceConversation.cancel_turn(socket)}
 
   @impl true
-  def handle_event("voice_forget", _params, socket),
-    do: {:noreply, VoiceConversation.forget(socket)}
+  def handle_event("voice_forget", params, socket),
+    do: {:noreply, VoiceConversation.forget(socket, params["confirm"])}
 
   @impl true
   def handle_event("voice_transcript", %{"text" => text}, socket) when is_binary(text) do
@@ -1283,7 +1346,7 @@ defmodule AgentBoardWeb.BoardLive do
         with :saved <- voice.source,
              nil <- voice.name,
              name when is_binary(name) <- voice_name(voices, voice.id) do
-          Settings.put("elevenlabs_voice_name", name)
+          save_setting("voice_name", name)
         end
 
         {:noreply,
@@ -1317,7 +1380,7 @@ defmodule AgentBoardWeb.BoardLive do
       id == voice.id and voice.source == :saved ->
         {:noreply, socket}
 
-      ElevenLabs.save_voice(id, name) == :ok ->
+      save_setting("voice", {id, name}) == :ok ->
         {:noreply,
          socket
          |> assign(voice: refreshed_voice(voice))
@@ -1343,7 +1406,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("voice_reset", _params, socket) do
-    :ok = ElevenLabs.save_voice("", nil)
+    :ok = save_setting("voice", {"", nil})
 
     {:noreply,
      socket
@@ -1354,7 +1417,7 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("voice_model", %{"model" => model}, socket) do
     if ElevenLabs.valid_tts_model?(String.trim(model)) do
-      :ok = Settings.put(@tts_model_key, model)
+      :ok = save_setting("tts_model", model)
 
       {:noreply,
        socket
@@ -1388,7 +1451,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("voice_announce", %{"speak_events" => value}, socket) do
-    :ok = Voice.put_narrate(value == "true")
+    :ok = save_setting("narrate", value == "true")
 
     {:noreply,
      assign(socket, voice: %{socket.assigns.voice | speak_events: ElevenLabs.speak_events?()})}
@@ -1396,13 +1459,13 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("voice_attention", %{"attention" => value}, socket) do
-    :ok = Voice.put_attention(value == "true")
+    :ok = save_setting("attention", value == "true")
     {:noreply, assign(socket, voice: %{socket.assigns.voice | attention: Voice.attention?()})}
   end
 
   @impl true
   def handle_event("voice_language", %{"language" => lang}, socket) do
-    case Voice.put_language(lang) do
+    case save_setting("language", lang) do
       :ok ->
         lang = Voice.language()
         socket = assign(socket, voice: %{socket.assigns.voice | language: lang})
@@ -1415,7 +1478,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("voice_volume", %{"volume" => volume}, socket) do
-    case Voice.put_volume(volume) do
+    case save_setting("volume", volume) do
       :ok -> {:noreply, assign(socket, voice: %{socket.assigns.voice | volume: Voice.volume()})}
       {:error, _reason} -> {:noreply, socket}
     end
@@ -1425,31 +1488,31 @@ defmodule AgentBoardWeb.BoardLive do
   # change and the voice assign is re-read, so the panel shows what stuck.
   @impl true
   def handle_event("voice_speed", %{"speed" => speed}, socket),
-    do: {:noreply, save_voice_pref(socket, Voice.put_speed(speed))}
+    do: {:noreply, save_voice_pref(socket, save_setting("speed", speed))}
 
   @impl true
   def handle_event("voice_style", %{"style" => style}, socket),
-    do: {:noreply, save_voice_pref(socket, Voice.put_style(style))}
+    do: {:noreply, save_voice_pref(socket, save_setting("style", style))}
 
   @impl true
   def handle_event("voice_pause", %{"pause" => pause}, socket),
-    do: {:noreply, save_voice_pref(socket, Voice.put_pause(pause))}
+    do: {:noreply, save_voice_pref(socket, save_setting("pause", pause))}
 
   @impl true
   def handle_event("voice_earcons", %{"earcons" => value}, socket),
-    do: {:noreply, save_voice_pref(socket, Voice.put_earcons(value == "true"))}
+    do: {:noreply, save_voice_pref(socket, save_setting("earcons", value == "true"))}
 
   @impl true
   def handle_event("voice_input", %{"input" => value}, socket),
-    do: {:noreply, save_voice_pref(socket, Voice.put_input(value))}
+    do: {:noreply, save_voice_pref(socket, save_setting("input", value))}
 
   @impl true
   def handle_event("voice_engine", %{"engine" => value}, socket),
-    do: {:noreply, save_voice_pref(socket, Voice.put_engine(value))}
+    do: {:noreply, save_voice_pref(socket, save_setting("engine", value))}
 
   @impl true
   def handle_event("voice_replies", %{"replies" => value}, socket),
-    do: {:noreply, save_voice_pref(socket, Voice.put_replies(value))}
+    do: {:noreply, save_voice_pref(socket, save_setting("replies", value))}
 
   # A browser error the owner saw (microphone, playback, transcription):
   # it reaches the log and the live feed instead of staying in one tab.
@@ -1555,6 +1618,11 @@ defmodule AgentBoardWeb.BoardLive do
   # The saved settings, with what only this socket holds (the loaded list).
   defp refreshed_voice(voice),
     do: Map.merge(current_voice(), Map.take(voice, [:voices, :loading]))
+
+  defp save_setting(setting, value),
+    do: Actions.run(:change_setting, %{setting: setting, value: value}, ui())
+
+  defp ui, do: Actions.owner(:ui)
 
   defp save_voice_pref(socket, :ok) do
     fresh = current_voice()
@@ -1693,6 +1761,27 @@ defmodule AgentBoardWeb.BoardLive do
       {:error, reason} -> "The AI did not answer: #{inspect(reason)}"
     end
   end
+
+  # The sentence on each Create button of the intake panel (data-confirm).
+  defp intake_phrases(%{} = repo, %{status: :ready, text: text, tasks: tasks}),
+    do:
+      Enum.map(tasks, fn task ->
+        Actions.phrase(:create_tasks, %{
+          repository: repo,
+          requests: [intake_request(repo, text, task)]
+        })
+      end)
+
+  defp intake_phrases(_repo, _intake), do: []
+
+  defp intake_request(repo, text, task),
+    do: %{
+      title: task.title,
+      body: intake_body(task),
+      key: Board.request_key(repo, "intake", [text, task.title]),
+      work_type: task.kind,
+      size: task.size
+    }
 
   defp intake_body(task) do
     """
@@ -1881,6 +1970,8 @@ defmodule AgentBoardWeb.BoardLive do
             failure={@inspector_failure}
             tz_offset={@tz_offset}
             live={@freshness.live?}
+            ask_pending={@ask_pending}
+            ask_draft={@ask_draft}
           />
         </div>
 
@@ -1956,6 +2047,17 @@ defmodule AgentBoardWeb.BoardLive do
             voice_configured={@voice.configured}
             error={@composer_error}
             retry={@composer_retry}
+            confirm={
+              composer_phrase(
+                @repo,
+                @composer_text,
+                @composer_title,
+                @composer_split,
+                @intake,
+                @composer_selected
+              )
+            }
+            retry_confirm={retry_phrase(@repo, @composer_retry)}
           />
         </dialog>
 
@@ -2009,6 +2111,7 @@ defmodule AgentBoardWeb.BoardLive do
             id="intake"
             intake={@intake}
             draft={@intake_draft}
+            phrases={intake_phrases(@repo, @intake)}
             repo={@repo}
             ai_status={@ai_status}
           />
@@ -2057,8 +2160,6 @@ defmodule AgentBoardWeb.BoardLive do
     |> put_flash(:info, message)
   end
 
-  defp updater, do: Application.get_env(:agent_board, :updater, Updater)
-
   # -- the composer lifecycle ---------------------------------------------------
   #
   # One job at a time, keyed by a ref: a late or cancelled result finds no job
@@ -2076,10 +2177,11 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp title_from_params(_params, _text, current), do: current
 
-  defp submit_split(socket, text, params) do
+  defp submit_split(socket, text, params, shown) do
     case socket.assigns.intake do
       %{status: :ready, text: ^text, tasks: tasks} when tasks != [] ->
-        start_enqueue(socket, split_requests(socket, text, tasks, selected_from(params, socket)))
+        requests = split_requests(socket.assigns.repo, text, tasks, selected_from(params, socket))
+        start_enqueue(socket, requests, shown)
 
       %{status: :needs_clarification, text: ^text} ->
         answer_and_split(socket, text)
@@ -2116,9 +2218,7 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
-  defp split_requests(socket, text, tasks, selected) do
-    repo = socket.assigns.repo
-
+  defp split_requests(repo, text, tasks, selected) do
     tasks
     |> Enum.with_index()
     |> Enum.filter(fn {_task, index} -> MapSet.member?(selected, index) end)
@@ -2133,20 +2233,72 @@ defmodule AgentBoardWeb.BoardLive do
     end)
   end
 
-  defp start_single(socket, text, title) do
-    repo = socket.assigns.repo
-    title = title || Titles.from_request(text)
-
-    if title == "" do
-      {:noreply, composer_error(socket, "A primeira linha vira o título; escreva algo.")}
-    else
-      body = text <> "\n\n@sallaumen-agent"
-
-      start_enqueue(socket, [
-        %{title: title, body: body, key: Board.request_key(repo, "single", [title, body])}
-      ])
+  defp start_single(socket, text, title, shown) do
+    case single_requests(socket.assigns.repo, text, title) do
+      [] -> {:noreply, composer_error(socket, "A primeira linha vira o título; escreva algo.")}
+      requests -> start_enqueue(socket, requests, shown)
     end
   end
+
+  defp single_requests(repo, text, title) do
+    title = title || Titles.from_request(text)
+    body = text <> "\n\n@sallaumen-agent"
+
+    if title == "",
+      do: [],
+      else: [%{title: title, body: body, key: Board.request_key(repo, "single", [title, body])}]
+  end
+
+  # What the composer's primary button would create now, and the sentence
+  # that confirms it: shown above the button, passed to the gate on send.
+  defp composer_phrase(assigns) do
+    composer_phrase(
+      assigns.repo,
+      assigns.composer_text,
+      assigns.composer_title,
+      assigns.composer_split,
+      assigns.intake,
+      assigns.composer_selected
+    )
+  end
+
+  @doc false
+  def composer_phrase(nil, _text, _title, _split, _intake, _selected), do: nil
+
+  def composer_phrase(repo, text, title, split, intake, selected) do
+    text = String.trim(text || "")
+
+    requests =
+      cond do
+        text == "" ->
+          []
+
+        not split ->
+          single_requests(repo, text, title)
+
+        true ->
+          case intake do
+            %{status: :ready, text: ^text, tasks: [_ | _] = tasks} ->
+              split_requests(repo, text, tasks, selected)
+
+            %{status: :no_tasks} ->
+              single_requests(repo, text, title)
+
+            _ ->
+              []
+          end
+      end
+
+    if requests == [],
+      do: nil,
+      else: Actions.phrase(:create_tasks, %{repository: repo, requests: requests})
+  end
+
+  @doc false
+  def retry_phrase(%{} = repo, {:enqueue, [_ | _] = requests}),
+    do: Actions.phrase(:create_tasks, %{repository: repo, requests: requests})
+
+  def retry_phrase(_repo, _retry), do: nil
 
   defp start_split(socket, text) do
     cond do
@@ -2170,13 +2322,14 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
-  defp start_enqueue(socket, []),
+  defp start_enqueue(socket, [], _shown),
     do: {:noreply, composer_error(socket, "Escolha ao menos uma tarefa.")}
 
-  defp start_enqueue(socket, requests) do
+  defp start_enqueue(socket, requests, shown) do
     repo = socket.assigns.repo
     client = GitHub.client()
     job = composer_job(:enqueue, requests, length(requests))
+    action = %{repository: repo, requests: requests, client: client}
 
     {:noreply,
      socket
@@ -2187,7 +2340,10 @@ defmodule AgentBoardWeb.BoardLive do
        composer_receipt: nil
      )
      |> start_async({:composer, job.ref}, fn ->
-       {:enqueue, requests, Enum.map(requests, &{&1, Board.create_request(repo, &1, client)})}
+       case Actions.run(:create_tasks, action, Actions.owner(:ui), confirm: shown) do
+         {:ok, results} -> {:enqueue, requests, results}
+         {:error, {refusal, _phrase}} -> {:enqueue_refused, requests, refusal}
+       end
      end)}
   end
 
@@ -2211,6 +2367,16 @@ defmodule AgentBoardWeb.BoardLive do
     |> assign(composer_job: nil)
     |> composer_error(split_failure(reason), {:split, text})
     |> refresh_ai()
+  end
+
+  # The words changed between what the composer showed and what was sent:
+  # nothing was created; the person reads the new sentence and sends again.
+  defp finish_composer_job(socket, _job, {:ok, {:enqueue_refused, _requests, _refusal}}) do
+    socket
+    |> assign(composer_job: nil)
+    |> composer_error(
+      "Nada foi criado: o pedido mudou antes do envio. Confira a frase e envie de novo."
+    )
   end
 
   defp finish_composer_job(socket, _job, {:ok, {:enqueue, requests, results}}) do
