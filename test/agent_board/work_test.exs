@@ -132,6 +132,76 @@ defmodule AgentBoard.WorkTest do
     assert whys[33] =~ "sem motivo no relatório"
   end
 
+  test "a running task that went silent needs the owner; a fresh one is quiet" do
+    {:ok, repo} = Board.add_repository("fixture", "silence")
+    now = ~U[2026-11-07 12:00:00Z]
+    quiet = task(repo, 50, "Silent run", "running", DateTime.add(now, -3600, :second))
+    busy = task(repo, 51, "Busy run", "running", DateTime.add(now, -3600, :second))
+
+    silences = %{
+      50 => %{at: ~U[2026-11-07 11:30:00Z], source: :report, seconds: 1800},
+      51 => %{at: ~U[2026-11-07 11:58:00Z], source: :worktree, seconds: 120}
+    }
+
+    [need] =
+      Work.needs(repo, %{ready: [], blocked: [], question: [], running: [quiet, busy]},
+        now: now,
+        last_visit: DateTime.add(now, -1200, :second),
+        silences: silences,
+        stall_after: 900
+      )
+
+    assert need.kind == :stalled
+    assert need.number == 50
+    assert need.why =~ "**Sem sinal há 30 min.** O último relatório do agente foi às 11:30"
+    # it crossed the threshold at 11:45: that is its age, and it is newer than the 11:40 visit
+    assert need.age_seconds == 900
+    assert need.is_new
+    assert need.actions == [%{label: "Ver detalhe", task_id: quiet.id}]
+  end
+
+  test "a silence says what the board saw last" do
+    {:ok, repo} = Board.add_repository("fixture", "silence-why")
+    now = ~U[2026-11-07 12:00:00Z]
+    edited = task(repo, 52, "Edited", "running", now)
+    started = task(repo, 53, "Started", "running", now)
+
+    silences = %{
+      52 => %{at: ~U[2026-11-07 11:00:00Z], source: :worktree, seconds: 3600},
+      53 => %{at: ~U[2026-11-07 10:00:00Z], source: :start, seconds: 7200}
+    }
+
+    whys =
+      Work.needs(repo, %{ready: [], blocked: [], question: [], running: [edited, started]},
+        now: now,
+        silences: silences,
+        stall_after: 900,
+        tz_offset: 180
+      )
+      |> Map.new(&{&1.number, &1.why})
+
+    assert whys[52] =~ "A última mudança no worktree foi às 08:00; nenhum relatório depois."
+    assert whys[53] =~ "Começou às 07:00 e não deu sinal desde então"
+  end
+
+  test "a silence ranks after a block and before a review" do
+    {:ok, repo} = Board.add_repository("fixture", "silence-rank")
+    now = ~U[2026-11-07 12:00:00Z]
+    at = DateTime.add(now, -60, :second)
+    review = task(repo, 60, "Review", "ready", at)
+    quiet = task(repo, 61, "Quiet", "running", at)
+    blocked = task(repo, 62, "Blocked", "blocked", at)
+
+    needs =
+      Work.needs(repo, %{ready: [review], blocked: [blocked], question: [], running: [quiet]},
+        now: now,
+        silences: %{61 => %{at: ~U[2026-11-07 11:00:00Z], source: :report, seconds: 3600}},
+        stall_after: 900
+      )
+
+    assert Enum.map(needs, & &1.kind) == [:blocked, :stalled, :review]
+  end
+
   test "queue keeps arrival order and warns about a merged duplicate" do
     {:ok, repo} = Board.add_repository("fixture", "queue")
     now = ~U[2026-11-06 15:00:00Z]

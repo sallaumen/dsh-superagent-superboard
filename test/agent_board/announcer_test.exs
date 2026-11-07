@@ -55,6 +55,21 @@ defmodule AgentBoard.AnnouncerTest do
            ]
   end
 
+  test "a silence calls the owner once, when its item first appears" do
+    need = %{key: "task-1", kind: :stalled, title: "Ship it"}
+    review = %{key: "task-2", kind: :review, title: "Other"}
+
+    assert Announcer.board_changes(board(), board(), nil, nil, needs: {[review], [need, review]}) ==
+             [Phrases.attention("pt-BR", :stalled, "Ship it", 0)]
+
+    assert Announcer.board_changes(board(), board(), nil, nil, needs: {[need], [need]}) == []
+
+    assert Announcer.board_changes(board(), board(), nil, nil,
+             needs: {[], [need]},
+             attention: false
+           ) == []
+  end
+
   test "the turn rotates the phrase, so the same call is not repeated" do
     old = board([task(1, "Ship it", :running)])
     new = board([task(1, "Ship it", :question)])

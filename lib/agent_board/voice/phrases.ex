@@ -83,6 +83,18 @@ defmodule AgentBoard.Voice.Phrases do
         "Entreguei %{t}. Falta só a sua revisão.",
         "%{t} chegou na revisão. Quando quiser, é sua vez.",
         "Pronto, %{t} está pronta para revisar."
+      ],
+      stalled: [
+        "Fiquei em silêncio em %{t} faz um tempo. Dá uma olhada?",
+        "Não dou sinal em %{t} há um bom tempo. Pode conferir se travei?",
+        "Parece que empaquei em %{t}: nenhum relatório nem mudança no código.",
+        "Silêncio demais em %{t}. Vale checar o que está acontecendo.",
+        "Ei, %{t} ficou sem sinal meu. Melhor você olhar.",
+        "Faz tempo que não mexo em %{t}. Pode ver se ainda estou indo?",
+        "Nada novo meu em %{t} há um bom tempo. Confere para mim?",
+        "Em %{t} eu sumi: nem relatório, nem commit. Dá uma espiada.",
+        "Acho que travei em %{t}. Se puder, veja o que falta.",
+        "%{t} está sem sinal meu há mais tempo que o normal. Quer olhar?"
       ]
     },
     "en-US" => %{
@@ -121,12 +133,24 @@ defmodule AgentBoard.Voice.Phrases do
         "I delivered %{t}. It only needs your review.",
         "%{t} reached review. Whenever you like, it's yours.",
         "All set, %{t} is ready to review."
+      ],
+      stalled: [
+        "I've gone quiet on %{t} for a while. Can you take a look?",
+        "No sign from me on %{t} in a good while. Could you check whether I'm stuck?",
+        "Looks like I stalled on %{t}: no report and no code change.",
+        "Too much silence on %{t}. Worth checking what's going on.",
+        "Hey, %{t} has had no signal from me. Better have a look.",
+        "I haven't touched %{t} in a while. Can you see whether I'm still moving?",
+        "Nothing new from me on %{t} in a good while. Would you check?",
+        "On %{t} I went dark: no report, no commit. Have a peek.",
+        "I think I'm stuck on %{t}. If you can, see what's missing.",
+        "%{t} has had no signal from me for longer than usual. Want to look?"
       ]
     }
   }
 
-  @doc "The attention kinds: the states where the agent needs the owner."
-  def attention_kinds, do: [:question, :blocked, :ready]
+  @doc "The attention kinds: the states where the agent needs the owner, and the silence."
+  def attention_kinds, do: [:question, :blocked, :ready, :stalled]
 
   @doc "The pool of attention phrases for a language and kind."
   def attention_pool(lang, kind), do: @attention |> lang_map(lang) |> Map.fetch!(kind)

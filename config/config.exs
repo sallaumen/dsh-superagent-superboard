@@ -9,7 +9,10 @@ import Config
 
 config :agent_board,
   ecto_repos: [AgentBoard.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  # A running ticket with no report and no worktree change for this long is
+  # a silence the owner should see (AgentBoard.AgentSignal).
+  stall_after_ms: 15 * 60 * 1000
 
 # Configure the endpoint
 config :agent_board, AgentBoardWeb.Endpoint,

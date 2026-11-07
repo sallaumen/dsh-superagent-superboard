@@ -7,8 +7,10 @@ defmodule AgentBoard.Announcer do
   row would cut the first one off). Two kinds of news:
 
     * **attention** - a task entered a lane that needs the owner (a
-      question, a block, a review). These come first and rotate through a
-      pool of phrases, so the call does not sound like a broken record.
+      question, a block, a review), or a running task went silent (a
+      `:stalled` item in the needs list, derived, so it is diffed by item,
+      not by lane). These come first and rotate through a pool of phrases,
+      so the call does not sound like a broken record.
     * **events** - a task started or went back to the queue, and sync
       outcomes getting worse.
 
@@ -30,12 +32,14 @@ defmodule AgentBoard.Announcer do
 
   Options: `:language` (default `Phrases.default_language/0`), `:turn`
   (rotates the phrase pools, default 0), `:attention` and `:events`
-  (booleans, default true) to silence either kind.
+  (booleans, default true) to silence either kind, and `:needs` (`{old,
+  new}` attention lists from `Work.needs/3`) for the silences.
   """
   def board_changes(old_board, new_board, old_sync, new_sync, opts \\ []) do
     lang = Keyword.get(opts, :language, Phrases.default_language())
     turn = Keyword.get(opts, :turn, 0)
     {attention, moves} = state_changes(old_board, new_board)
+    attention = attention ++ silence_changes(Keyword.get(opts, :needs))
 
     attention = if Keyword.get(opts, :attention, true), do: attention, else: []
 
@@ -89,6 +93,17 @@ defmodule AgentBoard.Announcer do
       end
 
     Enum.split_with(changes, &match?({:attention, _, _}, &1))
+  end
+
+  # A silence is news when its item first appears, and quiet while it stays.
+  defp silence_changes(nil), do: []
+
+  defp silence_changes({old_needs, new_needs}) do
+    old_keys = for need <- old_needs, need.kind == :stalled, into: MapSet.new(), do: need.key
+
+    for need <- new_needs, need.kind == :stalled, not MapSet.member?(old_keys, need.key) do
+      {:attention, :stalled, need.title}
+    end
   end
 
   defp by_id(board) do

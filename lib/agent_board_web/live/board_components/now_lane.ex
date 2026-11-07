@@ -1,5 +1,11 @@
 defmodule AgentBoardWeb.BoardComponents.NowLane do
-  @moduledoc "Agora: the real step of each running assignment, never a progress bar."
+  @moduledoc """
+  Agora: the real step of each running assignment, never a progress bar.
+
+  A silent run keeps its place here (it is still running) and says so: the
+  glyph stops pulsing, because motion that says "working" would misrepresent
+  the state, and the line says how long the board has seen nothing.
+  """
   use AgentBoardWeb, :html
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
@@ -30,17 +36,17 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
         <article
           :for={task <- @running}
           id={"task-#{task.id}"}
-          class={"ab-run" <> if(@frozen, do: " is-frozen", else: "")}
+          class={["ab-run", @frozen && "is-frozen", task[:stalled] && "is-stalled"]}
           tabindex="0"
           role="button"
           data-task={task.id}
+          data-silence={task[:silence] && task.silence.seconds}
           phx-click="open"
           phx-value-id={task.id}
           data-panel-trigger
-          data-panel-trigger
           aria-label={"Abrir tarefa ##{task.number}: #{task.title}"}
         >
-          <.glyph kind={:run} live={not @frozen} />
+          <.glyph kind={:run} live={not @frozen and not task[:stalled]} />
 
           <div class="ab-run__title">
             <span class="ab-need__id">#{task.number}</span>
@@ -52,6 +58,11 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
             <span :if={not @frozen} data-tick={task.elapsed}>{Time.duration(task.elapsed)}</span>
             <small :if={@frozen and @sync_at}>visto às {Time.local_time(@sync_at, @tz_offset)}</small>
             <small :if={not @frozen and task.agent}>{task.agent}</small>
+          </div>
+
+          <div :if={task[:stalled]} class="ab-run__silence">
+            <.glyph kind={:stalled} />
+            <span>sem sinal {Time.ago(task.silence.seconds)}</span>
           </div>
 
           <div :if={task.step} class="ab-run__step">

@@ -220,6 +220,9 @@ body { margin: 0; background: var(--paper); }
 .ab-phase.is-done { color: var(--ink); }
 .ab-phase.is-now { color: var(--agent); font-weight: 600; }
 .ab-phase + .ab-phase::before { content: ""; width: 14px; height: 1px; background: var(--line-strong); margin-right: 2px; }
+.ab-run.is-stalled { border-color: var(--halt); }
+.ab-run__silence { grid-column: 2; display: flex; gap: 8px; align-items: center; color: var(--halt); font-size: 12.5px; font-weight: 600; }
+.ab-run__silence .ab-g { margin-top: 0; }
 .ab-run.is-frozen { background: repeating-linear-gradient(135deg, var(--stale-wash) 0 6px, var(--surface) 6px 12px); }
 .ab-run.is-frozen .ab-run__clock, .ab-run.is-frozen .ab-run__step code { color: var(--stale); }
 

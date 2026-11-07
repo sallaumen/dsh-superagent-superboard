@@ -47,7 +47,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
           </div>
 
           <article
-            id={need[:id] && "task-#{need[:id]}"}
+            id={dom_id(need)}
             class="ab-need"
             aria-selected={to_string(not is_nil(@selected) and @selected == need[:id])}
             data-task={need[:id]}
@@ -116,12 +116,19 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
     """
   end
 
+  # A silent run is also the card in Agora: one task, two items, two ids.
+  defp dom_id(%{kind: :stalled, id: id}) when not is_nil(id), do: "silence-#{id}"
+  defp dom_id(%{id: id}) when not is_nil(id), do: "task-#{id}"
+  defp dom_id(_need), do: nil
+
   defp tone(:cifail), do: "is-halt"
   defp tone(:blocked), do: "is-halt"
+  defp tone(:stalled), do: "is-halt"
   defp tone(_kind), do: "is-you"
 
   defp action_class(:cifail), do: "ab-btn--halt"
   defp action_class(:blocked), do: "ab-btn--halt"
+  defp action_class(:stalled), do: "ab-btn--halt"
   defp action_class(_kind), do: "ab-btn--quiet"
 
   defp count(0, _frozen), do: "0"

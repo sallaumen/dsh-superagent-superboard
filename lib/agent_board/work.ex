@@ -9,7 +9,7 @@ defmodule AgentBoard.Work do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Board, Repo, Sync, Time, Titles}
+  alias AgentBoard.{AgentSignal, Board, Repo, Sync, Time, Titles}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   @queue_limit 8
@@ -17,42 +17,60 @@ defmodule AgentBoard.Work do
   @log_days 7
 
   @doc """
-  The attention list: blocked work, PRs for review and questions, in that
-  order. Merged work is done and its CI lives in Mesclados, where a failed
-  GitHub check is quiet and the local gate is the evidence that counts.
+  The attention list: blocked work, silent runs, PRs for review and
+  questions, in that order. Merged work is done and its CI lives in
+  Mesclados, where a failed GitHub check is quiet and the local gate is the
+  evidence that counts.
+
+  A silence (`:silences`, from `AgentBoard.AgentSignal`) is derived, never a
+  task state: a running task is the owner's only while its ticket has given
+  no signal for `:stall_after` seconds.
   """
   def needs(_repository, board, opts \\ []) do
-    now = Keyword.get(opts, :now, DateTime.utc_now())
-    last_visit = Keyword.get(opts, :last_visit)
-    tickets = Keyword.get(opts, :tickets_by_number, %{})
-    local_ci = Keyword.get(opts, :local_ci, %{})
+    context = context(board, opts)
 
-    ready = Map.get(board, :ready, [])
-    pulls = Board.linked_pull_requests(ready, tickets)
-
-    context = %{
-      now: now,
-      last_visit: last_visit,
-      tickets: tickets,
-      pulls: pulls,
-      local_ci: local_ci
-    }
-
-    blocked = board |> Map.get(:blocked, []) |> Enum.map(&task_need(&1, :blocked, context))
-    review = Enum.map(ready, &task_need(&1, :review, context))
-    question = board |> Map.get(:question, []) |> Enum.map(&task_need(&1, :question, context))
-
-    (blocked ++ review ++ question)
+    [
+      lane(board, :blocked, :blocked, context),
+      silent_lane(board, context),
+      lane(board, :ready, :review, context),
+      lane(board, :question, :question, context)
+    ]
+    |> List.flatten()
     |> Enum.sort_by(fn need ->
       {rank(need.kind), not need.is_new, -(need.age_seconds || 0)}
     end)
+  end
+
+  defp context(board, opts) do
+    tickets = Keyword.get(opts, :tickets_by_number, %{})
+
+    %{
+      now: Keyword.get(opts, :now, DateTime.utc_now()),
+      last_visit: Keyword.get(opts, :last_visit),
+      tz_offset: Keyword.get(opts, :tz_offset, 0),
+      tickets: tickets,
+      pulls: Board.linked_pull_requests(Map.get(board, :ready, []), tickets),
+      local_ci: Keyword.get(opts, :local_ci, %{}),
+      silences: Keyword.get(opts, :silences, %{}),
+      stall_after: Keyword.get(opts, :stall_after, AgentSignal.stall_after())
+    }
+  end
+
+  defp lane(board, key, kind, context),
+    do: board |> Map.get(key, []) |> Enum.map(&task_need(&1, kind, context))
+
+  defp silent_lane(board, context) do
+    board
+    |> Map.get(:running, [])
+    |> Enum.filter(&AgentSignal.stalled?(context.silences[&1.number], context.stall_after))
+    |> Enum.map(&task_need(&1, :stalled, context))
   end
 
   # Every item says what to do, where and why: the kind is the what, the
   # actions are the where, and `why` is the evidence the board has. A fact
   # the board cannot see is said to be missing, never filled in.
   defp task_need(task, kind, context) do
-    at = task.state_changed_at || task.updated_at || task.inserted_at
+    at = need_at(task, kind, context)
     ticket = Map.get(context.tickets, task.number)
     pull = Map.get(context.pulls, task.id)
     ci = pull && need_ci(pull, Map.get(context.local_ci, pull.number))
@@ -63,7 +81,7 @@ defmodule AgentBoard.Work do
       number: task.number,
       kind: kind,
       title: task.title,
-      why: task_why(task, kind, ticket, pull),
+      why: task_why(task, kind, ticket, pull, context),
       ci: ci,
       age_seconds: Time.age_seconds(at, context.now),
       is_new: new?(at, context.last_visit),
@@ -71,10 +89,19 @@ defmodule AgentBoard.Work do
     }
   end
 
-  defp task_why(_task, :review, _ticket, %PullRequest{number: number}),
+  # A silence is news from the moment it crossed the threshold, not from the
+  # last signal: that is when the item appeared, and what "novo" refers to.
+  defp need_at(task, :stalled, context) do
+    DateTime.add(context.silences[task.number].at, context.stall_after, :second)
+  end
+
+  defp need_at(task, _kind, _context),
+    do: task.state_changed_at || task.updated_at || task.inserted_at
+
+  defp task_why(_task, :review, _ticket, %PullRequest{number: number}, _context),
     do: "**PR ##{number} pronto para revisão**"
 
-  defp task_why(_task, :review, ticket, nil) do
+  defp task_why(_task, :review, ticket, nil, _context) do
     case ticket && ticket["report_summary"] do
       summary when is_binary(summary) and summary != "" ->
         "**Pronto para revisão**, PR não identificado. O agente disse: " <> excerpt(summary)
@@ -84,7 +111,7 @@ defmodule AgentBoard.Work do
     end
   end
 
-  defp task_why(task, :question, ticket, _pull) do
+  defp task_why(task, :question, ticket, _pull, _context) do
     question =
       case last_agent_comment(task) do
         %Comment{body: body} -> if Sync.question?(body), do: body
@@ -105,12 +132,30 @@ defmodule AgentBoard.Work do
     end
   end
 
-  defp task_why(_task, :blocked, ticket, _pull) do
+  defp task_why(_task, :blocked, ticket, _pull, _context) do
     case ticket && ticket["report_summary"] do
       summary when is_binary(summary) and summary != "" -> "**Bloqueado:** " <> excerpt(summary)
       _ -> "**Bloqueado**, sem motivo no relatório do agente. Abra o detalhe."
     end
   end
+
+  # The item says what the board saw last and when; it never says the agent
+  # died. A long model turn with no file change is a silence too.
+  defp task_why(task, :stalled, _ticket, _pull, context) do
+    silence = Map.fetch!(context.silences, task.number)
+    since = Time.local_time(silence.at, context.tz_offset)
+    "**Sem sinal #{Time.ago(silence.seconds)}.** " <> silence_source(silence.source, since)
+  end
+
+  defp silence_source(:report, since),
+    do: "O último relatório do agente foi às #{since}; nenhum sinal no worktree desde então."
+
+  defp silence_source(:worktree, since),
+    do: "A última mudança no worktree foi às #{since}; nenhum relatório depois."
+
+  defp silence_source(:start, since),
+    do:
+      "Começou às #{since} e não deu sinal desde então: nenhum relatório nem mudança no worktree."
 
   defp need_actions(task, :review, %PullRequest{url: url, number: number}) when is_binary(url) do
     [
@@ -152,12 +197,16 @@ defmodule AgentBoard.Work do
   defp action_label(:review), do: "Revisar"
   defp action_label(:question), do: "Responder"
   defp action_label(:blocked), do: "Ver detalhe"
+  defp action_label(:stalled), do: "Ver detalhe"
   defp action_label(:cifail), do: "Ver falha"
 
+  # A silent run blocks the whole queue while there is one worker: it comes
+  # right after a block, before the work that only waits for the owner.
   defp rank(:cifail), do: 0
   defp rank(:blocked), do: 1
-  defp rank(:review), do: 2
-  defp rank(:question), do: 3
+  defp rank(:stalled), do: 2
+  defp rank(:review), do: 3
+  defp rank(:question), do: 4
 
   @doc """
   The queue, numbered in arrival order. A title that repeats a merged PR gets
