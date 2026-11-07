@@ -9,6 +9,9 @@ export MIX_ENV="${MIX_ENV:-dev}"
 export PORT="${PORT:-4099}"
 export PHX_SERVER=true
 export AGENT_BOARD_RESTART_MODE="${AGENT_BOARD_RESTART_MODE:-supervised}"
+# Info, not the dev default of debug: the log keeps errors, retries and the
+# voice pipeline's lines instead of every SQL query the poller runs.
+export LOG_LEVEL="${LOG_LEVEL:-info}"
 
 mix deps.get
 mix ecto.migrate

@@ -103,6 +103,22 @@ player considera a fala terminada quando ela para de avançar por 1 s.
 - Sem chave ElevenLabs, o navegador usa a melhor voz que tiver no idioma
   (exata, depois "enhanced/premium/natural"), com a velocidade escolhida.
 
+## Diagnóstico: logs e bastidores
+
+- **Na tela**: o painel "Comando de voz" tem "Bastidores da voz", ao vivo por
+  PubSub: cada etapa de uma fala com o tempo (fala, transcrição, modelo,
+  ação, voz), cada re-tentativa e cada erro, inclusive os do navegador
+  (microfone, reprodução). Abre sozinho quando há um erro recente.
+- **No log** (`~/Library/Logs/AgentBoard.log` no serviço da 4099): as mesmas
+  linhas, com data e hora, por exemplo
+  `2026-11-07 12:01:02.123 [warning] voice stage=tts status=retry attempt=2 reason="HTTP 503" — nova tentativa em 300 ms`.
+  Para ver só a voz: `grep "voice stage=" ~/Library/Logs/AgentBoard.log`.
+- **Nível**: `LOG_LEVEL` (`debug`, `info`, `warning`, `error`). O serviço
+  roda em `info`; em `debug` o dev registra cada consulta SQL (foi o que
+  levou o log a quase 1 GB).
+- **Re-tentativas**: só ElevenLabs, só falhas sem cobrança (conexão, 429,
+  5xx), no máximo duas, e um stream só antes do primeiro byte.
+
 ## Próximos passos possíveis
 
 - Interromper a fala do agente falando por cima (barge-in), sem espaço duplo.

@@ -15,6 +15,7 @@ defmodule AgentBoard.Application do
       AgentBoard.ElevenLabs.SpeechCache,
       {DNSCluster, query: Application.get_env(:agent_board, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: AgentBoard.PubSub},
+      AgentBoard.Voice.Activity,
       # Start a worker by calling: AgentBoard.Worker.start_link(arg)
       # {AgentBoard.Worker, arg},
       # Start to serve requests, typically the last entry

@@ -5,6 +5,9 @@ defmodule AgentBoard.Conversation.AgentTest do
   """
   use AgentBoard.DataCase, async: false
 
+  # Failures are exercised on purpose; their log lines show only if a test fails.
+  @moduletag capture_log: true
+
   alias AgentBoard.AI.Engines.Scripted
   alias AgentBoard.{Board, Conversation, Repo}
   alias AgentBoard.Board.Task

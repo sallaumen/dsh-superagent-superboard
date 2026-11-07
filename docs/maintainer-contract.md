@@ -115,8 +115,25 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   `ELEVENLABS_API_KEY` from the environment, never from code, and returns
   `{:ok, ...}` or a reason (`:not_configured`, `:auth_expired`,
   `:usage_limit`, `{:http, status}`) — a raise never reaches the caller.
-  No retry: a retried paid request is a second charge. The key never
-  reaches the browser: the endpoints answer with audio or a transcript.
+  **Bounded retry** (`AgentBoard.ElevenLabs.Retry`, decided with the owner
+  on 2026-11-07): only failures with nothing to pay for are retried — a
+  transport error before a response, a 429 (honoring `retry-after` up to
+  2 s) and a 500/502/503/504 — at most twice, with a growing delay; a 4xx
+  about the key, voice or text is final, and a stream is never retried after
+  its first chunk reached the browser. Every retry is a voice activity
+  event. The AI calls keep "no retry" below. The key never reaches the
+  browser: the endpoints answer with audio or a transcript.
+- **Voice activity** (`AgentBoard.Voice.Activity`): each stage of a turn,
+  every retry and every failure (server, or browser via
+  `voice_client_error`) is one event: a log line `voice stage=… status=…`,
+  a broadcast on the `"voice:activity"` PubSub topic shown live in the
+  voice panel ("Bastidores da voz"), and an entry in a 60-event ring. It
+  never carries a secret or a whole utterance.
+- **Settings forms opt out of form recovery** (`phx-auto-recover="ignore"`):
+  they mirror saved settings, and recovery re-sent them on every reconnect
+  (a picker without a value crashed the board; the language confirmation
+  replayed). `BoardLive.handle_event/3` ends with a clause that records an
+  unexpected event instead of raising.
 - The voice the agent speaks with resolves in this order: the environment
   (`ELEVENLABS_VOICE_ID`) → the pick saved in the UI (`AgentBoard.Settings`,
   key `elevenlabs_voice_id`) → the default (George). The TTS model resolves

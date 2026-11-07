@@ -69,8 +69,10 @@ config :agent_board, AgentBoardWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :agent_board, dev_routes: true
 
-# Do not include metadata nor timestamps in development logs
-config :logger, :default_formatter, format: "[$level] $message\n"
+# The time on every line: the board on 4099 runs in dev, and a log without
+# timestamps cannot tell when a failure happened. LOG_LEVEL (runtime.exs)
+# picks the level; the service runs at info, so SQL debug lines stay out.
+config :logger, :default_formatter, format: "$date $time [$level] $message\n"
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.

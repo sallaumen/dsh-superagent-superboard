@@ -5,9 +5,12 @@ defmodule AgentBoard.ElevenLabs do
   The key is read from `ELEVENLABS_API_KEY` -- loaded from `.env.local` by
   `config/runtime.exs`, never from code. A 4xx/5xx is a reason, not a body:
   every function returns `{:ok, ...}` or `{:error, reason}`, so a caller
-  survives every failure and no raise reaches it. No retry: a retried paid
-  request is a second charge.
+  survives every failure and no raise reaches it. A failure that produced
+  nothing to pay for (connection error, 429, 5xx) is retried a bounded number
+  of times by `AgentBoard.ElevenLabs.Retry`; a 4xx about the request is final.
   """
+
+  alias AgentBoard.ElevenLabs.Retry
 
   @base_url "https://api.elevenlabs.io"
 
@@ -137,11 +140,14 @@ defmodule AgentBoard.ElevenLabs do
     if configured?() do
       format = Keyword.get(opts, :output_format, @default_output_format)
 
-      case Req.post(client(),
-             url: "/v1/text-to-speech/#{Keyword.get(opts, :voice, voice_id())}",
-             params: speech_params(format, opts),
-             json: speech_body(text, opts),
-             decode_body: false
+      case Req.post(
+             client(),
+             [
+               url: "/v1/text-to-speech/#{Keyword.get(opts, :voice, voice_id())}",
+               params: speech_params(format, opts),
+               json: speech_body(text, opts),
+               decode_body: false
+             ] ++ Retry.options(:tts)
            ) do
         {:ok, %Req.Response{status: 200, body: audio, headers: headers}} ->
           {:ok,
@@ -175,21 +181,26 @@ defmodule AgentBoard.ElevenLabs do
   second or more for the whole file) and answers `:ok` to continue or `:halt`
   when the listener went away. Returns `:ok` or `{:error, reason}`; a failure
   status arrives before any chunk, so a caller can still answer it cleanly.
-  Same options as `speech/2`. No retry: a retried paid request is a second
-  charge.
+  Same options as `speech/2`. Retried by `Retry` only before the first chunk.
   """
   @spec speech_stream(String.t(), keyword(), (binary() -> :ok | :halt)) :: :ok | {:error, term()}
   def speech_stream(text, opts, on_chunk) when is_binary(text) and is_function(on_chunk, 1) do
     if configured?() do
       format = Keyword.get(opts, :output_format, @default_output_format)
 
-      Req.post(client(),
-        url: "/v1/text-to-speech/#{Keyword.get(opts, :voice, voice_id())}/stream",
-        params: speech_params(format, opts),
-        json: speech_body(text, opts),
-        decode_body: false,
-        into: stream_into(on_chunk)
+      Retry.reset_streamed()
+
+      Req.post(
+        client(),
+        [
+          url: "/v1/text-to-speech/#{Keyword.get(opts, :voice, voice_id())}/stream",
+          params: speech_params(format, opts),
+          json: speech_body(text, opts),
+          decode_body: false,
+          into: stream_into(on_chunk)
+        ] ++ Retry.options(:tts)
       )
+      |> tap(fn _ -> Retry.reset_streamed() end)
       |> stream_result()
     else
       {:error, :not_configured}
@@ -201,6 +212,8 @@ defmodule AgentBoard.ElevenLabs do
   defp stream_into(on_chunk) do
     fn
       {:data, data}, {req, %Req.Response{status: 200} = resp} ->
+        # From here on a retry would splice two recordings: the policy stops.
+        Retry.mark_streamed()
         if on_chunk.(data) == :ok, do: {:cont, {req, resp}}, else: {:halt, {req, resp}}
 
       {:data, _data}, acc ->
@@ -266,7 +279,10 @@ defmodule AgentBoard.ElevenLabs do
           maybe_field("language_code", opts[:language]) ++
           repeated_field("keyterms", opts[:keyterms])
 
-      case Req.post(client(), url: "/v1/speech-to-text", form_multipart: form) do
+      case Req.post(
+             client(),
+             [url: "/v1/speech-to-text", form_multipart: form] ++ Retry.options(:transcribe)
+           ) do
         {:ok, %Req.Response{status: 200, body: body}} ->
           {:ok, transcript(body)}
 
@@ -339,7 +355,10 @@ defmodule AgentBoard.ElevenLabs do
   end
 
   defp fetch_voices do
-    case Req.get(client(), url: "/v1/voices", params: [page_size: 100]) do
+    case Req.get(
+           client(),
+           [url: "/v1/voices", params: [page_size: 100]] ++ Retry.options(:voices)
+         ) do
       {:ok, %Req.Response{status: 200, body: %{"voices" => list}}} ->
         {:ok, Enum.map(list, &%{id: &1["voice_id"], name: &1["name"]})}
 

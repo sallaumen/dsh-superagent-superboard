@@ -6,6 +6,9 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
   """
   use AgentBoardWeb.ConnCase, async: false
 
+  # Failures are exercised on purpose; their log lines show only if a test fails.
+  @moduletag capture_log: true
+
   import Phoenix.LiveViewTest
 
   alias AgentBoard.AI.Engines.Scripted

@@ -29,6 +29,19 @@ if System.get_env("PHX_SERVER") do
   config :agent_board, AgentBoardWeb.Endpoint, server: true
 end
 
+# LOG_LEVEL=info|warning|error|debug overrides the environment's level. The
+# 4099 service sets info: in dev the default debug level logs every query,
+# which grew its log to almost 1 GB of SQL with the errors buried in it.
+if config_env() != :test do
+  case System.get_env("LOG_LEVEL") do
+    level when level in ~w(debug info notice warning error) ->
+      config :logger, level: String.to_existing_atom(level)
+
+    _ ->
+      :ok
+  end
+end
+
 # The voice defaults come from the environment when present; the key itself
 # (ELEVENLABS_API_KEY) is read straight from the environment by
 # AgentBoard.ElevenLabs. Only set a key that exists: a nil app key would

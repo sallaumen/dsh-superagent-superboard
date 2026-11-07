@@ -73,6 +73,21 @@ export const VoiceCommand = {
     this.onReply = () => { this.thinking = false }
     window.addEventListener("phx:voice_play", this.onReply)
     window.addEventListener("phx:speak", this.onReply)
+    // A voice error the owner sees in this tab also reaches the server log
+    // and the live feed; at most one report every two seconds.
+    this.lastErrorReport = 0
+    this.onVoiceState = ({detail}) => {
+      if (detail?.phase !== "error") return
+      const now = performance.now()
+      if (now - this.lastErrorReport < 2000) return
+      this.lastErrorReport = now
+      this.pushEvent("voice_client_error", {
+        title: String(detail.title || "").slice(0, 120),
+        detail: String(detail.detail || "").slice(0, 200),
+        source: String(detail.source || "browser").slice(0, 40),
+      })
+    }
+    window.addEventListener("board:voice-state", this.onVoiceState)
     this.onStopRequest = () => {
       if (this.phase === "listening") this.stop()
       else if (this.phase !== "idle") this.cancel()
@@ -402,6 +417,7 @@ export const VoiceCommand = {
     window.removeEventListener("board:voice-start", this.onStartRequest)
     window.removeEventListener("board:voice-stop", this.onStopRequest)
     window.removeEventListener("phx:voice_play", this.onReply)
+    window.removeEventListener("board:voice-state", this.onVoiceState)
     window.removeEventListener("phx:speak", this.onReply)
   },
 }
