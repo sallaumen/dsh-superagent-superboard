@@ -127,10 +127,10 @@ defmodule AgentBoard.CreateRequestTest do
 
     assert [decision] = Repo.all(Decision)
     assert decision.task_id == task.id
-    assert {decision.suggested, decision.chosen} == {"claude", "codex"}
+    assert {decision.suggested, decision.chosen} == {"dsh", "codex"}
     assert decision.mode == "suggest"
     assert decision.decided_by == "composer"
-    assert decision.alternatives == ["codex"]
+    assert decision.alternatives == ["claude", "codex"]
     assert Enum.any?(decision.reasons, &(&1 =~ "Não deu para ler qual repositório"))
     assert decision.signals["dsh"]["state"] == "unavailable: o orquestrador não respondeu"
     assert decision.signals["claude"]["state"] == "unknown"
@@ -149,8 +149,7 @@ defmodule AgentBoard.CreateRequestTest do
 
     assert {:ok, task, :created} = Board.create_request(repo, request, client())
 
-    # The test environment has no orchestrator API, so the runner is out
-    # and the owner's explicit choice decides.
+    # The owner's explicit choice decides, whatever the router reads.
     assert %Decision{suggested: "claude", chosen: "claude", decided_by: "api"} =
              Repo.get_by(Decision, task_id: task.id)
   end

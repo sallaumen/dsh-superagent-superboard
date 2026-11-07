@@ -34,7 +34,7 @@ defmodule AgentBoard.Conversation.Agent do
   agent picks up on its own, exactly like the composer's.
   """
 
-  alias AgentBoard.{Actions, AI, Board, Conversation, Repo, Titles}
+  alias AgentBoard.{Actions, AI, Board, Conversation, Executors, Repo, Titles}
   alias AgentBoard.Board.{Repository, Task}
   alias AgentBoard.Conversation.{Lookup, Turn}
   alias AgentBoard.Voice.{Activity, Phrases}
@@ -513,13 +513,21 @@ defmodule AgentBoard.Conversation.Agent do
     end
   end
 
+  # The executor the owner named, or the router's suggestion read now, so
+  # the confirmation names who the task is for. `requested` keeps whether
+  # the owner named it, for the router's line.
   defp new_task(json, request, repo, lang) do
+    requested = if Executors.valid?(json["executor"]), do: json["executor"]
+    routed = Board.route(repo, %{}, requested, "voice")
+
     %{
       "kind" => "create_task",
       "repository_id" => repo.id,
       "repository" => slug(repo),
       "title" => title(json["title"], request),
-      "body" => body(json["details"], request, lang)
+      "body" => body(json["details"], request, lang),
+      "executor" => routed.executor,
+      "requested" => requested
     }
   end
 
@@ -663,14 +671,24 @@ defmodule AgentBoard.Conversation.Agent do
   defp action_of(%{"kind" => "forget_conversation"}), do: {:forget_conversation, %{}}
   defp action_of(_proposal), do: nil
 
+  # A proposal saved before the executor existed has none: it stays the
+  # board's dispatch as it was, without a label or a router line.
   defp create_params(p, repo) do
     title = p["title"]
     body = p["body"]
+    request = %{title: title, body: body, key: create_key(repo, title, body)}
 
-    %{
-      repository: repo,
-      requests: [%{title: title, body: body, key: create_key(repo, title, body)}]
-    }
+    request =
+      if Executors.valid?(p["executor"]),
+        do:
+          Map.merge(request, %{
+            executor: p["executor"],
+            requested: p["requested"],
+            decided_by: "voice"
+          }),
+        else: request
+
+    %{repository: repo, requests: [request]}
   end
 
   defp create_key(repo, title, body), do: Board.request_key(repo, "voice", [title, body])

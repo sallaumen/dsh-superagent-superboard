@@ -104,7 +104,8 @@ defmodule AgentBoard.AI.Registry do
       "details" => %{"type" => "array", "items" => %{"type" => "string"}},
       "question" => %{"type" => "string"},
       "task_number" => %{"type" => "integer"},
-      "repository" => %{"type" => "string"}
+      "repository" => %{"type" => "string"},
+      "executor" => %{"type" => "string", "enum" => ["" | AgentBoard.Executors.all()]}
     },
     "required" => [
       "reply",
@@ -116,7 +117,8 @@ defmodule AgentBoard.AI.Registry do
       "task_number",
       "repository",
       "lookup",
-      "direct"
+      "direct",
+      "executor"
     ]
   }
 
@@ -181,6 +183,9 @@ defmodule AgentBoard.AI.Registry do
         `direct` is true only when the owner explicitly says to create it
         without asking ("cria direto", "já cria", "sem perguntar"); then
         never ask a question, make the reasonable choice yourself.
+        `executor` is who should do it, only when the owner names one:
+        dsh (DeepSeek, "o agente"), claude (Claude Code) or codex ("manda
+        pro Claude", "pro Codex"); else empty, and the board suggests.
       - open_task: show task `task_number`.
       - select_repository: switch to project `repository`.
       - stop_task / archive_task: the owner asked to stop or archive task

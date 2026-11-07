@@ -16,6 +16,7 @@ defmodule AgentBoardWeb.BoardLive do
     Board,
     DailySummary,
     ElevenLabs,
+    Executors,
     ExecutorUsage,
     GitHub,
     Intake,
@@ -32,6 +33,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   alias AgentBoard.Board.Task
   alias AgentBoard.Metrics.Observations
+  alias AgentBoard.Routing.Signals
   alias AgentBoard.Sync.Freshness
   alias AgentBoard.System.Version
   alias AgentBoard.Voice.{Activity, Phrases}
@@ -119,6 +121,10 @@ defmodule AgentBoardWeb.BoardLive do
         composer_job: nil,
         composer_receipt: nil,
         composer_answers: "",
+        composer_routing: nil,
+        composer_routing_for: nil,
+        composer_executor: nil,
+        composer_executor_touched: false,
         ai_calls: [],
         ai_status: AI.status(),
         version: Version.status(),
@@ -495,6 +501,10 @@ defmodule AgentBoardWeb.BoardLive do
             composer_job: nil,
             composer_receipt: nil,
             composer_answers: "",
+            composer_routing: nil,
+            composer_routing_for: nil,
+            composer_executor: nil,
+            composer_executor_touched: false,
             inspector_tab: "conversa",
             inspector_activity: [],
             inspector_calls: [],
@@ -726,7 +736,12 @@ defmodule AgentBoardWeb.BoardLive do
     # changes only the panel: the board is already loaded and every change
     # to it arrives as :board_updated.
     socket = if showing?(socket, repo), do: socket, else: load(socket, repo)
-    socket = socket |> BoardNavigation.apply_params(params) |> load_inspector()
+
+    socket =
+      socket
+      |> BoardNavigation.apply_params(params)
+      |> load_inspector()
+      |> load_composer_routing()
 
     {:noreply, socket}
   end
@@ -1115,11 +1130,13 @@ defmodule AgentBoardWeb.BoardLive do
         else: assign(socket, composer_selected: selected)
 
     {:noreply,
-     assign(socket,
+     socket
+     |> assign(
        composer_text: text,
        composer_title: edited_title(params, text, socket.assigns.composer_title),
        composer_answers: params["answers"] || socket.assigns.composer_answers
-     )}
+     )
+     |> choose_executor(params["executor"])}
   end
 
   @impl true
@@ -1148,6 +1165,7 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("composer_submit", params, socket) do
     text = String.trim(params["text"] || socket.assigns.composer_text)
+    socket = socket |> choose_executor(params["executor"]) |> ensure_composer_routing()
     # The sentence the composer showed when the person pressed send.
     shown = composer_phrase(socket.assigns)
 
@@ -1199,6 +1217,7 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("composer_single", _params, socket) do
     text = String.trim(socket.assigns.composer_text)
+    socket = ensure_composer_routing(socket)
     shown = composer_phrase(socket.assigns)
     socket = assign(socket, composer_split: false, intake: nil, composer_selected: MapSet.new())
 
@@ -1544,6 +1563,19 @@ defmodule AgentBoardWeb.BoardLive do
     do: {:noreply, VoiceConversation.finish(socket, ref, outcome)}
 
   def handle_async({:voice_compact, _ref}, _outcome, socket), do: {:noreply, socket}
+
+  def handle_async({:composer_routing, repo_id}, outcome, socket) do
+    signals =
+      case outcome do
+        {:ok, signals} -> signals
+        {:exit, _reason} -> Signals.read(fn -> {:error, :unreachable} end)
+      end
+
+    case socket.assigns.repo do
+      %{id: ^repo_id} -> {:noreply, put_composer_routing(socket, signals)}
+      _ -> {:noreply, socket}
+    end
+  end
 
   def handle_async({:composer, ref}, outcome, socket) do
     case socket.assigns.composer_job do
@@ -2055,9 +2087,12 @@ defmodule AgentBoardWeb.BoardLive do
                 @composer_title,
                 @composer_split,
                 @intake,
-                @composer_selected
+                @composer_selected,
+                @composer_executor
               )
             }
+            executor={@composer_executor}
+            suggestion={@composer_routing && @composer_routing.suggestion}
             retry_confirm={retry_phrase(@repo, @composer_retry)}
           />
         </dialog>
@@ -2185,7 +2220,11 @@ defmodule AgentBoardWeb.BoardLive do
   defp submit_split(socket, text, params, shown) do
     case socket.assigns.intake do
       %{status: :ready, text: ^text, tasks: tasks} when tasks != [] ->
-        requests = split_requests(socket.assigns.repo, text, tasks, selected_from(params, socket))
+        requests =
+          socket.assigns.repo
+          |> split_requests(text, tasks, selected_from(params, socket))
+          |> for_executor(socket.assigns)
+
         start_enqueue(socket, requests, shown)
 
       %{status: :needs_clarification, text: ^text} ->
@@ -2240,9 +2279,70 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp start_single(socket, text, title, shown) do
     case single_requests(socket.assigns.repo, text, title) do
-      [] -> {:noreply, composer_error(socket, "A primeira linha vira o título; escreva algo.")}
-      requests -> start_enqueue(socket, requests, shown)
+      [] ->
+        {:noreply, composer_error(socket, "A primeira linha vira o título; escreva algo.")}
+
+      requests ->
+        start_enqueue(socket, for_executor(requests, socket.assigns), shown)
     end
+  end
+
+  # Who the composer's requests are for, and the router's line the board
+  # stores with each task: the suggestion the composer showed and the
+  # executor the person left chosen.
+  defp for_executor(requests, %{composer_executor: executor} = assigns)
+       when is_binary(executor) do
+    routing = assigns.composer_routing
+
+    Enum.map(requests, fn request ->
+      request
+      |> Map.put(:executor, executor)
+      |> then(&if(routing, do: Map.put(&1, :routing, routing), else: &1))
+    end)
+  end
+
+  defp for_executor(requests, _assigns), do: requests
+
+  defp choose_executor(socket, executor) do
+    if Executors.valid?(executor) and executor != socket.assigns.composer_executor,
+      do: assign(socket, composer_executor: executor, composer_executor_touched: true),
+      else: socket
+  end
+
+  # The router reads the runner once per opening of the composer in a
+  # repository, never per render: a runner that does not answer costs the
+  # orchestrator's timeouts in the background, not in the form.
+  defp load_composer_routing(%{assigns: %{panel: "composer", repo: %{id: id}}} = socket) do
+    if connected?(socket) and socket.assigns.composer_routing_for != id do
+      socket
+      |> assign(composer_routing_for: id)
+      |> start_async({:composer_routing, id}, fn -> Signals.read() end)
+    else
+      socket
+    end
+  end
+
+  defp load_composer_routing(socket), do: socket
+
+  # A submit before the background read answered reads the signals now.
+  defp ensure_composer_routing(%{assigns: %{composer_routing: nil, repo: %{} = repo}} = socket) do
+    socket
+    |> assign(composer_routing_for: repo.id)
+    |> put_composer_routing(Signals.read())
+  end
+
+  defp ensure_composer_routing(socket), do: socket
+
+  defp put_composer_routing(socket, signals) do
+    routed = Board.route(socket.assigns.repo, %{}, nil, "composer", signals)
+
+    socket
+    |> assign(composer_routing: routed.routing)
+    |> then(fn socket ->
+      if socket.assigns.composer_executor_touched,
+        do: socket,
+        else: assign(socket, composer_executor: routed.executor)
+    end)
   end
 
   defp single_requests(repo, text, title) do
@@ -2263,14 +2363,15 @@ defmodule AgentBoardWeb.BoardLive do
       assigns.composer_title,
       assigns.composer_split,
       assigns.intake,
-      assigns.composer_selected
+      assigns.composer_selected,
+      assigns.composer_executor
     )
   end
 
   @doc false
-  def composer_phrase(nil, _text, _title, _split, _intake, _selected), do: nil
+  def composer_phrase(nil, _text, _title, _split, _intake, _selected, _executor), do: nil
 
-  def composer_phrase(repo, text, title, split, intake, selected) do
+  def composer_phrase(repo, text, title, split, intake, selected, executor) do
     text = String.trim(text || "")
 
     requests =
@@ -2293,6 +2394,8 @@ defmodule AgentBoardWeb.BoardLive do
               []
           end
       end
+
+    requests = for_executor(requests, %{composer_executor: executor, composer_routing: nil})
 
     if requests == [],
       do: nil,
@@ -2505,7 +2608,11 @@ defmodule AgentBoardWeb.BoardLive do
       composer_retry: nil,
       composer_receipt: nil,
       composer_answers: "",
-      intake: nil
+      intake: nil,
+      composer_executor_touched: false,
+      composer_executor:
+        socket.assigns.composer_routing &&
+          (socket.assigns.composer_routing.suggestion.executor || Executors.default())
     )
   end
 end

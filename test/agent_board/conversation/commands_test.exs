@@ -61,7 +61,8 @@ defmodule AgentBoard.Conversation.CommandsTest do
           "task_number" => 0,
           "repository" => "",
           "lookup" => "",
-          "direct" => false
+          "direct" => false,
+          "executor" => ""
         },
         fields
       )

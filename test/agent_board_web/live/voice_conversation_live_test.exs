@@ -61,7 +61,8 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
       "task_number" => 0,
       "repository" => "",
       "lookup" => "",
-      "direct" => false
+      "direct" => false,
+      "executor" => ""
     })
   end
 
@@ -116,7 +117,8 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
         "task_number" => task.number,
         "repository" => "",
         "lookup" => "",
-        "direct" => false
+        "direct" => false,
+        "executor" => ""
       })
     end)
 

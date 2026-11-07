@@ -7,11 +7,14 @@ defmodule AgentBoard.Routing do
   why in sentences the owner reads:
 
   1. **Hard restriction**: the DeepSeek runner watches one repository; it is
-     out anywhere else, and out when the board could not read which one.
+     out in any other one the board read. When the orchestrator does not
+     answer, the repository is unknown and the runner stays the board's
+     default, as before the router: an issue with the mention waits for it
+     to come back, and in a repository it does not watch does nothing.
   2. **The owner's explicit choice** decides when there is one.
-  3. **Availability**: a paused or silent runner is out. Claude Code and
-     Codex have no reader yet, so their availability is unknown, which
-     never rules them out and never counts as available.
+  3. **Availability**: a paused runner is out (the owner paused it). Claude
+     Code and Codex have no reader yet, so their availability is unknown,
+     which never rules them out and never counts as available.
   4. **Budget, kind and size, history**: there is no usage ledger yet, so
      none of them orders anything; the caller keeps them in the snapshot.
   5. **Order**: the DeepSeek runner first (the only executor the board
@@ -102,17 +105,12 @@ defmodule AgentBoard.Routing do
     watched = dsh[:repository]
 
     cond do
-      is_nil(watched) ->
-        "não deu para ler qual repositório o DeepSeek atende (#{silence(dsh)})."
-
-      String.downcase(watched) != String.downcase(to_string(task.repository)) ->
+      is_binary(watched) and
+          String.downcase(watched) != String.downcase(to_string(task.repository)) ->
         "o DeepSeek só atende o #{watched}."
 
       dsh[:state] == :paused ->
         "o DeepSeek está pausado."
-
-      match?({:unavailable, _}, dsh[:state]) ->
-        "o DeepSeek não responde (#{silence(dsh)})."
 
       true ->
         nil
@@ -132,13 +130,21 @@ defmodule AgentBoard.Routing do
   defp why(nil, _candidates, _signals), do: ["Nenhum executor pode receber a tarefa agora."]
 
   defp why("dsh", _candidates, signals) do
-    load =
-      case signal(signals, "dsh")[:load] do
-        %{running: running, max_workers: max} -> " Agora: #{running} de #{max} rodando."
-        _ -> ""
-      end
+    dsh = signal(signals, "dsh")
 
-    ["O DeepSeek atende este repositório e é o único que o board despacha sozinho." <> load]
+    if is_binary(dsh[:repository]) do
+      load =
+        case dsh[:load] do
+          %{running: running, max_workers: max} -> " Agora: #{running} de #{max} rodando."
+          _ -> ""
+        end
+
+      ["O DeepSeek atende este repositório e é o único que o board despacha sozinho." <> load]
+    else
+      [
+        "Não deu para ler qual repositório o DeepSeek atende (#{silence(dsh)}): fica o padrão do board, a issue com a menção, que só anda se ele vigiar este repositório."
+      ]
+    end
   end
 
   defp why(executor, candidates, signals) do
@@ -156,18 +162,13 @@ defmodule AgentBoard.Routing do
     order ++ note(executor, signals)
   end
 
-  # What the owner should know about an executor the board does not start.
+  # What the board does not know about an executor it cannot read yet.
   defp note("dsh", _signals), do: []
 
   defp note(executor, signals) do
-    name = Executors.name(executor)
-
-    availability =
-      if signal(signals, executor)[:state] == :ready,
-        do: [],
-        else: ["A disponibilidade do #{name} é desconhecida."]
-
-    availability ++ ["O board ainda não inicia o #{name}: a issue fica registrada para você."]
+    if signal(signals, executor)[:state] == :ready,
+      do: [],
+      else: ["A disponibilidade do #{Executors.name(executor)} é desconhecida."]
   end
 
   defp cost(nil, _signals), do: :unknown

@@ -59,7 +59,8 @@ defmodule AgentBoard.Conversation.AgentTest do
           "task_number" => 0,
           "repository" => "",
           "lookup" => "",
-          "direct" => false
+          "direct" => false,
+          "executor" => ""
         },
         fields
       )
@@ -99,6 +100,88 @@ defmodule AgentBoard.Conversation.AgentTest do
     end)
 
     counter
+  end
+
+  test "a task the owner sends to Claude Code says so, and its issue has no mention",
+       %{repo: repo} do
+    test_pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      send(test_pid, {:issue, Jason.decode!(body)})
+
+      Req.Test.json(conn, %{
+        "number" => 77,
+        "html_url" => "https://github.com/sallaumen/arena-rogue/issues/77"
+      })
+    end)
+
+    script(fn %{name: :voice_agent} ->
+      agent_answer("create_task", %{
+        "request" => "refazer o placar",
+        "title" => "Refazer o placar",
+        "details" => ["o placar cabe na tela do celular"],
+        "repository" => "arena rogue",
+        "executor" => "claude"
+      })
+    end)
+
+    proposed = turn("Manda pro Claude refazer o placar do arena rogue", repo)
+
+    assert proposed.reply ==
+             "Criar no arena-rogue a tarefa “Refazer o placar” para o Claude Code? " <>
+               "O board abre com o rótulo executor:claude; nada começa sozinho."
+
+    turn("Sim.", repo)
+
+    assert_received {:issue, sent}
+    refute sent["body"] =~ "@sallaumen-agent"
+    assert sent["labels"] == ["executor:claude"]
+
+    task = Repo.get_by!(Task, repository_id: repo.id, number: 77)
+    assert task.executor == "claude"
+
+    assert %AgentBoard.Routing.Decision{
+             chosen: "claude",
+             suggested: "claude",
+             decided_by: "voice"
+           } =
+             Repo.get_by!(AgentBoard.Routing.Decision, task_id: task.id)
+  end
+
+  test "a voice task without a named executor goes where the router suggests", %{repo: repo} do
+    test_pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      send(test_pid, {:issue, Jason.decode!(body)})
+      Req.Test.json(conn, %{"number" => 78, "html_url" => "https://github.com/x/y/issues/78"})
+    end)
+
+    script(fn %{name: :voice_agent} ->
+      agent_answer("create_task", %{
+        "request" => "mostrar o placar",
+        "title" => "Mostrar o placar",
+        "details" => ["o placar aparece"],
+        "repository" => "arena rogue"
+      })
+    end)
+
+    turn("Cria uma tarefa no arena rogue pra mostrar o placar", repo)
+    turn("Sim.", repo)
+
+    # No orchestrator answers in the test: the runner stays the board's
+    # default, and its issue carries the mention it acts on.
+    assert_received {:issue, sent}
+    assert sent["body"] =~ ~r/@sallaumen-agent\z/
+    assert sent["labels"] == ["executor:dsh"]
+
+    task = Repo.get_by!(Task, repository_id: repo.id, number: 78)
+
+    assert %AgentBoard.Routing.Decision{chosen: "dsh", suggested: "dsh", decided_by: "voice"} =
+             decision = Repo.get_by!(AgentBoard.Routing.Decision, task_id: task.id)
+
+    refute Enum.any?(decision.reasons, &(&1 =~ "Você pediu"))
   end
 
   test "yes and no are recognized locally, long sentences are not" do

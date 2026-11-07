@@ -308,6 +308,112 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "#composer-receipt .ab-work", "bug")
   end
 
+  test "the composer suggests an executor, says why, and records the person's choice",
+       %{conn: conn, repo: repo} do
+    test_pid = self()
+    previous = Application.get_env(:agent_board, :orchestrator_client)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:agent_board, :orchestrator_client, previous),
+        else: Application.delete_env(:agent_board, :orchestrator_client)
+    end)
+
+    # The runner watches another repository, so it is out here.
+    Application.put_env(:agent_board, :orchestrator_client, fn ->
+      Req.new(base_url: "http://orchestrator.test", plug: {Req.Test, @stub}, retry: false)
+    end)
+
+    Req.Test.stub(@stub, fn
+      %{host: "orchestrator.test"} = conn ->
+        Req.Test.json(conn, %{
+          "load" => %{"running" => 0, "queued" => 0, "maxWorkers" => 3},
+          "paused" => false,
+          "setup" => %{"accounts" => %{"repository" => "fixture/other"}}
+        })
+
+      conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(test_pid, {:issue, Jason.decode!(body)})
+
+        Req.Test.json(conn, %{
+          "number" => 301,
+          "html_url" => "https://github.com/fixture/lifecycle/issues/301"
+        })
+    end)
+
+    view = open_composer(conn)
+    render_async(view)
+    type(view, "Refazer o placar")
+
+    assert has_element?(view, "label[for=composer-executor-claude].is-on", "sugerido")
+    assert has_element?(view, "#composer-routing", "Sugestão: Claude Code.")
+    assert has_element?(view, "#composer-routing", "O DeepSeek só atende o fixture/other.")
+    assert has_element?(view, "#composer-routing", "Custo esperado: desconhecido")
+    assert has_element?(view, "#composer-executor-note", "o DeepSeek não pega o pedido")
+    assert has_element?(view, "#composer-confirm", "para o Claude Code")
+
+    # The person picks Codex: the sentence and the note follow the choice.
+    view
+    |> element("#composer-form")
+    |> render_change(%{"text" => "Refazer o placar", "executor" => "codex"})
+
+    assert has_element?(view, "label[for=composer-executor-codex].is-on")
+    assert has_element?(view, "#composer-confirm", "para o Codex")
+    refute has_element?(view, "#composer-executor-warning")
+
+    # Picking the runner where it does not watch is allowed, and warned.
+    view
+    |> element("#composer-form")
+    |> render_change(%{"text" => "Refazer o placar", "executor" => "dsh"})
+
+    assert has_element?(
+             view,
+             "#composer-executor-warning",
+             "O DeepSeek só atende o fixture/other. A issue abre, mas não anda."
+           )
+
+    view
+    |> element("#composer-form")
+    |> render_change(%{"text" => "Refazer o placar", "executor" => "codex"})
+
+    submit(view, %{"text" => "Refazer o placar", "executor" => "codex"})
+
+    assert_received {:issue, sent}
+    refute sent["body"] =~ "@sallaumen-agent"
+    assert sent["labels"] == ["executor:codex"]
+    assert has_element?(view, "#composer-receipt .ab-receipt__exec", "Codex")
+
+    task = Repo.get_by!(Task, repository_id: repo.id, number: 301)
+    assert task.executor == "codex"
+
+    assert %AgentBoard.Routing.Decision{
+             suggested: "claude",
+             chosen: "codex",
+             decided_by: "composer",
+             alternatives: ["codex"]
+           } = decision = Repo.get_by!(AgentBoard.Routing.Decision, task_id: task.id)
+
+    assert "O DeepSeek só atende o fixture/other." in decision.reasons
+    assert decision.signals["dsh"]["repository"] == "fixture/other"
+  end
+
+  test "without an answer from the runner the composer keeps the board's default",
+       %{conn: conn} do
+    github()
+    view = open_composer(conn)
+    render_async(view)
+    type(view, "Corrigir o contador")
+
+    assert has_element?(view, "label[for=composer-executor-dsh].is-on", "sugerido")
+    assert has_element?(view, "#composer-routing", "Não deu para ler qual repositório")
+    refute has_element?(view, "#composer-executor-note")
+
+    submit(view, %{"text" => "Corrigir o contador"})
+    assert %Task{executor: "dsh", body: body} = Repo.one(Task)
+    assert body =~ ~r/@sallaumen-agent\z/
+  end
+
   test "a single request has no kind and no size", %{conn: conn} do
     github()
     view = open_composer(conn)

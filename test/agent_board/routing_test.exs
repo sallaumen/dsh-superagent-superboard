@@ -39,17 +39,21 @@ defmodule AgentBoard.RoutingTest do
     assert "O DeepSeek só atende o sallaumen/arena-rogue." in suggestion.reasons
     assert Enum.any?(suggestion.reasons, &(&1 =~ "vem antes do Codex na ordem fixa"))
     assert "A disponibilidade do Claude Code é desconhecida." in suggestion.reasons
-    assert Enum.any?(suggestion.reasons, &(&1 =~ "ainda não inicia o Claude Code"))
     assert [%{executor: "codex"}] = suggestion.alternatives
   end
 
-  test "an unreadable runner is out: the board cannot confirm the repository" do
+  test "an unreadable runner stays the board's default, and says why" do
     signals = Map.put(@ready, "dsh", %{repository: nil, state: {:unavailable, "sem resposta"}})
-    suggestion = Routing.suggest(task("sallaumen/arena-rogue"), signals)
 
-    assert suggestion.executor == "claude"
-    assert [%{executor: "dsh", reason: reason}] = suggestion.ruled_out
-    assert reason =~ "não deu para ler qual repositório"
+    for repository <- ["sallaumen/arena-rogue", "sallaumen/o_colmex"] do
+      suggestion = Routing.suggest(task(repository), signals)
+
+      assert suggestion.executor == "dsh"
+      assert suggestion.ruled_out == []
+      assert [reason] = suggestion.reasons
+      assert reason =~ "Não deu para ler qual repositório o DeepSeek atende (sem resposta)"
+      assert reason =~ "só anda se ele vigiar este repositório"
+    end
   end
 
   test "a paused runner is out" do

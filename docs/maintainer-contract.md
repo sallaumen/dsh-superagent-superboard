@@ -533,6 +533,19 @@ sync found or a task created before the choice existed.
   GitHub creates on first use.
 - **Choosing Claude Code or Codex records the choice; nothing starts them**
   (decisions D1 to D5 are open, `docs/research/alfred.md`).
+- **Where the choice is made.** The composer shows the three executors as
+  one radio group (`ExecutorPicker`) with the router's suggestion checked,
+  its reasons and the expected cost; the person's pick is the request's
+  executor and the confirmation sentence names it ("… para o Claude Code?
+  O board abre com o rótulo executor:claude; nada começa sozinho."). Picking
+  an executor the router ruled out is allowed and warned in the form ("O
+  DeepSeek só atende o … A issue abre, mas não anda."). The
+  voice fills `executor` only when the owner names one ("manda pro
+  Claude"), else the proposal carries the suggestion, read when the voice
+  proposes. The API takes `executor` (`dsh`, `claude`, `codex`; anything
+  else is a 400), else the suggestion. A voice task for the runner now
+  carries the mention its confirmation always promised; before, a voice
+  issue had none and the runner only observed it.
 - **Why the runner leaves those issues alone, and its limit.** The board
   opens issues as `sallaumen`, a listed sender. An issue without the
   mention is a `listedUnaddressed` message: the runner admits it as an
@@ -555,9 +568,9 @@ dispatch.
 
 | Rule | Signal | Effect |
 |---|---|---|
-| hard restriction | the runner's `setup.accounts.repository` (`Orchestrator.dispatch_state/1`) | the DeepSeek runner is out in any other repository, and out when the board could not read which one |
+| hard restriction | the runner's `setup.accounts.repository` (`Orchestrator.dispatch_state/1`) | the DeepSeek runner is out in any other repository the board read; when the orchestrator does not answer the repository is unknown and the runner stays the default, as before the router (a mention waits for it to come back, and does nothing where it does not watch), with the reason said |
 | explicit choice | the owner named an executor | decides, unless the restriction rules it out; then the reason says so |
-| availability | the runner paused or not answering | out; Claude Code and Codex have no reader yet: `:unknown`, which never rules them out and never counts as available |
+| availability | the runner paused | out (the owner paused it); Claude Code and Codex have no reader yet: `:unknown`, which never rules them out and never counts as available |
 | budget, kind and size, history | the usage ledger (F1.3), not built yet | nothing; kind and size are stored for when it exists |
 | order | — | the runner first (the only executor the board dispatches), then `Executors.all/0` |
 
@@ -574,9 +587,11 @@ dispatch.
   issue already exists, so a decision that fails is a `routing_error`
   event, never a dropped task (a retry without the row would open a second
   issue).
-- The signals are read once per request, not per render; a runner that
-  does not answer costs at most the orchestrator's 500 ms connect and 1 s
-  receive timeouts.
+- The signals are read once per opening of the composer in a repository
+  (a background `start_async`, never per render), once per voice proposal
+  and once per API call; a runner that does not answer costs at most the
+  orchestrator's 500 ms connect and 1 s receive timeouts. A composer submit
+  before the background read answered reads them then.
 - The tests: `routing_test.exs` (each rule), `routing_signals_test.exs`,
   `orchestrator_test.exs` (`dispatch_state/1`) and `create_request_test.exs`
   (the row, the repeat, the row computed without a shown suggestion).

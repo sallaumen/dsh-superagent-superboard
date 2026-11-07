@@ -17,6 +17,9 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
 
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
   import AgentBoardWeb.BoardComponents.WorkTag, only: [work_tag: 1]
+  import AgentBoardWeb.BoardComponents.ExecutorPicker, only: [executor_picker: 1]
+
+  alias AgentBoard.Executors
 
   alias AgentBoard.Titles
 
@@ -35,6 +38,8 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   attr :retry, :any, default: nil
   attr :confirm, :string, default: nil
   attr :retry_confirm, :string, default: nil
+  attr :executor, :string, default: nil
+  attr :suggestion, :map, default: nil
 
   def composer(assigns) do
     tasks = (assigns.intake && assigns.intake.tasks) || []
@@ -202,6 +207,13 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           </label>
         </div>
 
+        <.executor_picker
+          :if={@executor && String.trim(@text) != ""}
+          chosen={@executor}
+          suggestion={@suggestion}
+          disabled={@busy}
+        />
+
         <p :if={@confirm && !@busy} id="composer-confirm" class="ab-compose__confirm">
           {@confirm}
         </p>
@@ -286,6 +298,9 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           <span class="ab-receipt__title">
             {item.title}
             <.work_tag :if={item.task} work_type={item.task.work_type} size={item.task.size} />
+            <span :if={item.task && item.task.executor} class="ab-meta ab-receipt__exec">
+              {Executors.name(item.task.executor)}
+            </span>
           </span>
           <span class={["ab-tag", outcome_class(item.outcome)]}>{outcome_label(item.outcome)}</span>
           <span :if={item.task} class="ab-receipt__links">
