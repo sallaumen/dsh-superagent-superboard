@@ -138,8 +138,10 @@ defmodule AgentBoard.AgentState do
     ended = ticket["ended"] || %{}
 
     %{
+      "id" => ticket["id"],
       "numbers" => Enum.uniq(numbers),
       "assignment" => last["state"],
+      "assignment_id" => last["id"],
       "report" => report["state"],
       "report_summary" => report["summary"],
       "report_at" => parse(report["at"]),
@@ -157,8 +159,32 @@ defmodule AgentBoard.AgentState do
         |> Enum.map(&get_in(&1, ["address", "url"]))
         |> Enum.filter(&is_binary/1),
       "own_threads" => own_threads(ticket, numbers),
-      "reports" => reports(ticket)
+      "reports" => reports(ticket),
+      "assignments" => assignments(ticket)
     }
+  end
+
+  # Every Assignment in order, with its report and how it ended: the retry
+  # policy counts the retries of a failure from them, and the detail lists
+  # them as the attempts.
+  defp assignments(ticket) do
+    (ticket["assignments"] || [])
+    |> Enum.filter(&is_map/1)
+    |> Enum.map(fn assignment ->
+      report = if is_map(assignment["report"]), do: assignment["report"], else: %{}
+
+      %{
+        "id" => assignment["id"],
+        "state" => assignment["state"],
+        "report" => report["state"],
+        "summary" => report["summary"],
+        "report_at" => parse(report["at"]),
+        "created_at" => parse(assignment["createdAt"]),
+        "started_at" => parse(assignment["startedAt"]),
+        "ended_at" => parse(assignment["endedAt"]),
+        "ended_reason" => assignment["endedReason"]
+      }
+    end)
   end
 
   # The GitHub threads the ticket opened itself (`follows` with `own`): the PR

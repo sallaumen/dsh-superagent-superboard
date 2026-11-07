@@ -1,7 +1,7 @@
 # ADR 0003 — Ciclo de vida do agente em quatro situações de borda
 
 - **Decisão:** registrar, com citação de arquivo e linha, o que o `dsh-superagent` e o board fazem quando a issue é fechada durante o run, quando o DSH reinicia com uma Assignment `running`, quando uma segunda menção chega na mesma issue e quando o PR do ticket é fechado sem merge; e propor as regras que o [contrato](../maintainer-contract.md) passa a ter para cada caso. O contrato não muda neste PR.
-- **Estado:** proposta. O comportamento está documentado; as regras ficam pendentes de um PR no contrato e de código no board.
+- **Estado:** proposta. O comportamento está documentado; as regras ficam pendentes de um PR no contrato e de código no board. Emenda de 2026-11-07: o dono autorizou uma escrita na API do DSH, a retentativa automática de falha transitória (seção "Retentativa automática"), já no contrato.
 
 ## Problema e contexto
 
@@ -109,7 +109,7 @@ Vocabulário do DSH (`dsh: docs/001-domain.md:35-37`): um **Ticket** é aberto a
 As regras abaixo são a proposta para `docs/maintainer-contract.md`, seção "The data" e uma seção nova "The agent's lifecycle". Este PR não edita o contrato.
 
 1. **O estado da task segue `ended.outcome` quando o ticket encerrou:** `merged` → `done`; `closed` → `closed` (fechado sem merge; não conta em Concluídas); `stopped` → `stopped`; `completed` → `ready` com a nota "sem PR"; `dropped` → baseline da issue com a nota "o agente não fez nada". Hoje só `merged` é lido (`sync.ex:484`).
-2. **Um ticket só está "parado" quando o SQLite diz `ended.by == "human"`.** O Parar do board fecha a issue e marca a task; se o ticket seguir vivo, a task aparece em Precisa de você com "o agente continua; o board não o parou" até o ticket encerrar. Se o contrato um dia autorizar uma escrita no DSH, é esta, e só esta.
+2. **Um ticket só está "parado" quando o SQLite diz `ended.by == "human"`.** O Parar do board fecha a issue e marca a task; se o ticket seguir vivo, a task aparece em Precisa de você com "o agente continua; o board não o parou" até o ticket encerrar. A escrita que esta regra reservava ao stop não foi a primeira autorizada: em 2026-11-07 o dono autorizou o retry de falha transitória (abaixo). O stop pela API continua fora do contrato.
 3. **Um ticket `running` com o orquestrador inalcançável é "fora do ar", não "rodando".** A vivacidade vem da API (`Orchestrator.load/0`) e do mtime do WAL; o board diz qual das duas falhou.
 4. **`tasks.started_at` é o `startedAt` da primeira Assignment do ticket**, nunca o da retomada ou do retry.
 5. **Uma segunda menção nunca cria uma segunda task.** O board mostra o follow-up a partir de `inputs[]` (entregue, lido, devolvido), sem escrever no SQLite.
@@ -117,9 +117,23 @@ As regras abaixo são a proposta para `docs/maintainer-contract.md`, seção "Th
 
 ## Escolha e consequência
 
-O board continua um espelho (`maintainer-contract.md:262`): nenhuma regra acima escreve no SQLite nem na API do DSH. O que muda é o que o espelho mostra: o `outcome` em vez do último relatório, a vivacidade do processo em vez do mtime sozinho, e a verdade sobre o Parar. As lacunas que só o DSH fecha, reconciliar a issue fechada (`SPEC.md:831-839`) e limpar worktrees terminais (`SPEC.md:841-849`), ficam registradas aqui como sugestão para o repositório do DSH; a frente 4 (script de limpeza, `docs/research/symphony.md` §5) cobre a limpeza por fora enquanto isso.
+O board continua um espelho (`maintainer-contract.md`, "Boundaries"): nenhuma regra acima escreve no SQLite nem na API do DSH; a única escrita do board na API é a retentativa automática da seção seguinte. O que muda é o que o espelho mostra: o `outcome` em vez do último relatório, a vivacidade do processo em vez do mtime sozinho, e a verdade sobre o Parar. As lacunas que só o DSH fecha, reconciliar a issue fechada (`SPEC.md:831-839`) e limpar worktrees terminais (`SPEC.md:841-849`), ficam registradas aqui como sugestão para o repositório do DSH; a frente 4 (script de limpeza, `docs/research/symphony.md` §5) cobre a limpeza por fora enquanto isso.
 
 Achado lateral, para uma issue à parte: `scripts/agent/tickets.sh` lê `assignments[0]` e o board lê a última Assignment (`agent_state.ex:136`); depois de um reinício ou retry o script mostra o relatório antigo (já anotado em `docs/research/symphony.md` §5).
+
+## Retentativa automática (emenda de 2026-11-07)
+
+**Contexto.** Depois do reboot de 2026-11-07 o DSH subiu sem rede: #50, #52 e #53 falharam com `LlmError: DeepSeek Messages transport failed`, #54, #55 e #56 com `Could not resolve host: github.com` no `prepare`. Os seis ficaram `failed` até uma pessoa chamar `POST tickets/<id>/retry` à mão. O DSH tem retry só dentro do turno (`TRANSIENT_TRIES = 3`, `TRANSIENT_BACKOFF_MS = 15_000`, constantes em `dsh: src/executor/dsh.ts:30`, sem configuração; cerca de dois minutos ao todo) e recusa de propósito o retry de um `prepare` que falhou (`PrepareFailed`, `dsh.ts:40-43,278-280`), porque um diretório que ficou com arquivos passaria por worktree preparado.
+
+**Decisão.** O dono autorizou o board a chamar `POST tickets/<id>/retry`, e só isso, com estes limites (o texto vinculante está em `docs/maintainer-contract.md`, "Automatic retry"):
+
+1. Só a última Assignment, só com relatório `failed` lido como transitório (`AgentBoard.AgentFailure`: transporte do modelo, DNS, conexão recusada ou derrubada, timeout, rate limit, 5xx). Texto desconhecido, credencial recusada, prazo do próprio runner estourado e `prepare` que deixou arquivos no diretório precisam de pessoa.
+2. No máximo três retries por sequência de falhas, depois de 1, 5 e 15 minutos; a sequência conta os `endedReason: "retried"` do próprio DSH, de quem quer que tenha pedido.
+3. Um retry por id de Assignment, garantido por uma linha em `agent_retries` (índice único) gravada antes do pedido; o `canRetry` do DSH é a segunda trava.
+4. Só quando `GET /state` responde; nada é enviado com o orquestrador fora.
+5. Cada pedido vira evento `agent_retry` (ou `agent_retry_error`) no board e linha de log.
+
+**Alternativa preferida e descartada.** Mudar o DSH para um retry configurável entre Assignments resolveria na origem, mas o protótipo não é deste repositório e o retry do `prepare` é recusado lá por um motivo válido que o board consegue checar (o diretório do ticket está vazio ou não existe). Fica como sugestão upstream: expor `TRANSIENT_TRIES`/`TRANSIENT_BACKOFF_MS` nas configurações e classificar `LlmError ... transport failed` como passageiro: o texto não casa com `PASSING` (`dsh.ts:44-45`), então, sem `status` nem `code` no erro original, a falha foi tratada como definitiva já na primeira vez.
 
 ## Implantação e revisão
 

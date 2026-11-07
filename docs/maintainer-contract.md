@@ -13,7 +13,9 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 | `AgentBoard.Sync.Worker` | the Oban job that runs the sync |
 | `AgentBoard.Live` | the 10s poller that reads the runner's tickets |
 | `AgentBoard.GitHub` | the HTTP client (`body!/1`, rate limits) |
-| `AgentBoard.Orchestrator` | the runner's HTTP API, read-only: the load (`running`, `queued`, `maxWorkers`) |
+| `AgentBoard.Orchestrator` | the runner's HTTP API: the load (`running`, `queued`, `maxWorkers`) and its one write, `retry/2` |
+| `AgentBoard.AgentFailure` | what a `failed` report means: transient (network, provider) or a person's, pure |
+| `AgentBoard.AutoRetry` | the automatic retry of a transient failure: `plan/2` (pure, what the board shows) and the 30 s tick |
 | `AgentBoard.Metrics` | the throughput arithmetic, pure; `Metrics.Observations` reads what it counts |
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
@@ -96,13 +98,61 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   start) and when; it never says the agent died. A long model turn with no
   file change is a silence too (ADR-0003, "não verificado (a)").
 - Its only action opens the task. The board does not retry or stop the
-  ticket in the runner: the orchestrator client stays read-only (ADR-0003
-  reserves that write for its own decision) and the runner refuses a retry
+  ticket in the runner: the automatic retry (below) covers only a `failed`
+  report, never a silence, and the runner refuses a retry
   while a ticket runs (`canRetry` in `dsh: src/core/stage.ts`).
 - The tests: `agent_signal_test.exs` and `agent_worktree_test.exs` (the
   signal), `work_test.exs` (the lane, its text and its order),
   `announcer_test.exs` (spoken once) and `board_stall_test.exs` (rendered in
   both lanes).
+
+## Automatic retry
+
+The board's one write in the runner, authorized by the owner on
+2026-11-07 after a reboot left six tickets `failed` on a dead network
+(ADR-0003, "Retentativa automática"). `AgentBoard.AutoRetry` asks
+`POST tickets/<id>/retry` (`Orchestrator.retry/2`) and nothing else; the
+board still never writes the runner's sqlite.
+
+- **Only a transient failure.** The latest Assignment's report is `failed`
+  and `AgentFailure.classify/1` reads its summary as the network or the
+  provider: the model's transport, a host that did not resolve, a
+  connection refused or reset, a timeout, a rate limit, a 5xx. An unknown
+  text, a refused credential, a test failure or a command the runner
+  aborted at its own deadline need a person. A prepare failure that left
+  files in the ticket's directory needs a person too: the runner would
+  take them for a prepared worktree (`dsh: src/executor/dsh.ts`,
+  `PrepareFailed`).
+- **Three retries per streak, after 1, 5 and 15 minutes.** The streak is
+  the trailing Assignments that failed, counted from the runner's own
+  `endedReason: "retried"` (whoever asked), back to the last report that
+  was not a failure. A fourth failure is `:exhausted`: the owner decides.
+- **Once per Assignment.** A row in `agent_retries` (unique
+  `assignment_id`) is claimed before the request; a board restart or a
+  second board on the same database cannot ask twice. Only an unanswered
+  request (`unreachable`, `timeout`) may be claimed again, after 60 s and
+  while the same Assignment is still the latest failure. The runner's
+  `canRetry` is the second guard: it refuses a ticket whose latest
+  Assignment did not fail.
+- **Only when the orchestrator answers.** A tick with something due asks
+  `GET /state` first and sends nothing when it fails; a tick with nothing
+  due sends nothing at all.
+- **Every request is recorded**: the row, a log line `auto_retry ticket=…
+  outcome=…`, and an `agent_retry` event (`agent_retry_error` when the
+  runner refused or did not answer) in the activity of each repository the
+  ticket worked.
+- **Switch:** `AGENT_BOARD_AUTO_RETRY=0` (`config :agent_board,
+  auto_retry: false`) makes a board read-only again, for a second board on
+  another database.
+- **Why not the runner's own retry:** the runner retries a turn that failed
+  for a passing reason three times within about two minutes (15/30/60 s,
+  constants in `dsh: src/executor/dsh.ts`, not configurable) and never
+  retries a failed prepare on purpose; an outage longer than that, like a
+  boot without network, ends in `failed` and waits for a person.
+- The tests: `agent_failure_test.exs` (the classification),
+  `auto_retry_test.exs` (plan, delays, streak, limit, once per Assignment,
+  orchestrator down, unanswered and refused requests, the switch) and
+  `orchestrator_test.exs` (the request and its reasons).
 
 ## The voice
 
@@ -375,5 +425,6 @@ nothing takes the whole sync down for one bad item. Each branch has a test in
 ## Boundaries
 
 - The board **reads** the agent's state (the sqlite); it never writes to it.
+  Its one write in the runner is the automatic retry above, through the API.
 - The web layer never talks to GitHub directly: it goes through `AgentBoard.Board`
   and `AgentBoard.GitHub`.
