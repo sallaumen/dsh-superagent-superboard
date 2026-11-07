@@ -246,7 +246,7 @@ defmodule AgentBoard.Board.ConversationTest do
   use AgentBoard.DataCase, async: true
 
   alias AgentBoard.{Board, Repo}
-  alias AgentBoard.Board.Task
+  alias AgentBoard.Board.{PullRequest, Task}
 
   defp task(repo) do
     %Task{}
@@ -274,6 +274,88 @@ defmodule AgentBoard.Board.ConversationTest do
     assert [comment] = Board.comments(t)
     assert comment.kind == "agent"
     assert comment.body == "On it."
+  end
+
+  @workpad """
+  This is by an automated agent, not a human.
+
+  ## Relatório do agente
+
+  ### Plano
+  Abrir o PR #28. Devo perguntar? Não: isto é o plano.
+
+  ### Validação
+  mix precommit: passou (326 testes) em 44653e8
+
+  ### Pergunta
+  Devo manter o boss na arena
+
+  ### Bloqueio
+  """
+
+  test "the newest agent comment's workpad decides the question, without a question mark" do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    t = task(repo)
+    agent_comment(t, 1, "Is the API ready?")
+    agent_comment(t, 2, @workpad)
+
+    assert Board.agent_asked?(repo.id, 77)
+
+    assert %{question: "Devo manter o boss na arena", validation: %{sha: "44653e8"}} =
+             Board.agent_workpad(repo.id, 77)
+
+    assert %{77 => %{question: "Devo manter o boss na arena"}} = Board.agent_workpads(repo.id)
+  end
+
+  test "a workpad with an empty Pergunta is not a question, whatever its other text asks" do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    t = task(repo)
+    agent_comment(t, 1, String.replace(@workpad, "Devo manter o boss na arena\n", ""))
+
+    refute Board.agent_asked?(repo.id, 77)
+    assert %{question: nil, plan: plan} = Board.agent_workpad(repo.id, 77)
+    assert plan =~ "Devo perguntar?"
+  end
+
+  test "without a workpad the newest agent comment asks by its question mark, as before" do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    t = task(repo)
+    agent_comment(t, 1, @workpad)
+    agent_comment(t, 2, "On it: which API should the board use?")
+
+    assert Board.agent_asked?(repo.id, 77)
+    assert Board.agent_workpad(repo.id, 77) == nil
+    assert Board.agent_workpads(repo.id) == %{}
+
+    agent_comment(t, 3, "Done, PR #28 opened.")
+    refute Board.agent_asked?(repo.id, 77)
+  end
+
+  test "the PR heads come from the sync, absent until it wrote one" do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    for {number, head} <- [{28, "44653e8abcdef0123456789abcdef0123456789a"}, {29, nil}] do
+      %PullRequest{}
+      |> PullRequest.changeset(%{
+        repository_id: repo.id,
+        number: number,
+        title: "PR #{number}",
+        state: "open",
+        head_sha: head
+      })
+      |> Repo.insert!()
+    end
+
+    assert Board.pull_heads(repo.id) == %{28 => "44653e8abcdef0123456789abcdef0123456789a"}
+  end
+
+  defp agent_comment(task, id, body) do
+    {:ok, _} =
+      Board.upsert_comment(
+        task,
+        %{"id" => id, "user" => %{"login" => "sallaumen-agent"}, "body" => body},
+        "sallaumen-agent"
+      )
   end
 
   test "a user comment is marked as user" do

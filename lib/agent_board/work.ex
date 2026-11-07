@@ -9,7 +9,7 @@ defmodule AgentBoard.Work do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AgentSignal, Board, Repo, Sync, Time, Titles}
+  alias AgentBoard.{AgentSignal, Board, Repo, Sync, Time, Titles, Workpad}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   @queue_limit 8
@@ -114,7 +114,7 @@ defmodule AgentBoard.Work do
   defp task_why(task, :question, ticket, _pull, _context) do
     question =
       case last_agent_comment(task) do
-        %Comment{body: body} -> if Sync.question?(body), do: body
+        %Comment{body: body} -> comment_question(body)
         nil -> nil
       end
 
@@ -132,10 +132,19 @@ defmodule AgentBoard.Work do
     end
   end
 
-  defp task_why(_task, :blocked, ticket, _pull, _context) do
-    case ticket && ticket["report_summary"] do
-      summary when is_binary(summary) and summary != "" -> "**Bloqueado:** " <> excerpt(summary)
-      _ -> "**Bloqueado**, sem motivo no relatório do agente. Abra o detalhe."
+  defp task_why(task, :blocked, ticket, _pull, _context) do
+    blockage =
+      case last_agent_comment(task) do
+        %Comment{body: body} -> comment_blockage(body)
+        nil -> nil
+      end
+
+    summary = ticket && ticket["report_summary"]
+
+    cond do
+      blockage -> "**Bloqueado:** " <> excerpt(blockage)
+      is_binary(summary) and summary != "" -> "**Bloqueado:** " <> excerpt(summary)
+      true -> "**Bloqueado**, sem motivo no relatório do agente. Abra o detalhe."
     end
   end
 
@@ -192,6 +201,22 @@ defmodule AgentBoard.Work do
         order_by: [desc: c.inserted_at, desc: c.id],
         limit: 1
     )
+  end
+
+  # A workpad is quoted by its section; any other comment by its text, and
+  # only when it asks.
+  defp comment_question(body) do
+    case Workpad.parse(body) do
+      %{question: question} -> question
+      nil -> if Sync.question?(body), do: body
+    end
+  end
+
+  defp comment_blockage(body) do
+    case Workpad.parse(body) do
+      %{blockage: blockage} -> blockage
+      nil -> nil
+    end
   end
 
   defp action_label(:review), do: "Revisar"
@@ -389,6 +414,10 @@ defmodule AgentBoard.Work do
   defp ci_status(_pull, %{state: :fail} = local) do
     {"fail", "CI local falhou", local_title(local, nil)}
   end
+
+  # The workpad names a gate on another commit than the PR's head: the
+  # evidence exists but does not cover what would merge.
+  defp ci_status(_pull, %{state: :stale, detail: detail}), do: {"unknown", "CI local ?", detail}
 
   defp ci_status(%PullRequest{checks_state: "failure"} = pull, nil) do
     {"unknown", "CI local ?", remote_failure_title(pull)}

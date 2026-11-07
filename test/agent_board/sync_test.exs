@@ -131,6 +131,49 @@ defmodule AgentBoard.SyncTest do
     assert Sync.ticket_state(Map.put(ticket, "own_threads", [28])) == "question"
   end
 
+  # The workpad says it in a field: no "?" in the summary is needed, and a
+  # filled Bloqueio beats the PR the ticket opened.
+  test "a waiting ticket whose workpad has a question is a question without any ?" do
+    ticket = waiting("Waiting for the owner.") |> Map.put("own_threads", [28])
+
+    assert Sync.ticket_state(ticket, workpad: workpad(question: "Devo manter o boss")) ==
+             "question"
+
+    assert Sync.ticket_state(ticket, workpad: fn -> workpad(question: "Devo manter o boss") end) ==
+             "question"
+  end
+
+  test "a waiting ticket whose workpad has a blockage is blocked even with its own PR" do
+    ticket = waiting("PR #28 is open for review.") |> Map.put("own_threads", [28])
+
+    assert Sync.ticket_state(ticket, workpad: workpad(blockage: "Sem acesso ao registry")) ==
+             "blocked"
+  end
+
+  test "a workpad with both fields empty leaves the text heuristic in charge" do
+    ticket = waiting("PR #28 remains ready for human review.")
+
+    assert Sync.ticket_state(ticket, workpad: workpad([])) == "ready"
+    assert Sync.ticket_state(waiting("Which API?"), workpad: workpad([])) == "question"
+
+    assert Sync.ticket_state(waiting("Cannot reach the registry."), workpad: workpad([])) ==
+             "blocked"
+  end
+
+  test "a ticket without a workpad behaves as before" do
+    ticket = waiting("Asked the owner about the API.")
+
+    assert Sync.ticket_state(ticket, workpad: nil) == "blocked"
+    assert Sync.ticket_state(ticket, workpad: fn -> nil end, asked?: true) == "question"
+  end
+
+  defp workpad(fields) do
+    Map.merge(
+      %{plan: nil, validation: nil, question: nil, blockage: nil, pull_requests: []},
+      Map.new(fields)
+    )
+  end
+
   defp waiting(summary) do
     %{
       "assignment" => "running",

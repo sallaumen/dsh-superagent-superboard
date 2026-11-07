@@ -11,6 +11,13 @@ defmodule AgentBoard.LocalCI do
   Reports are text written by the executor. This module extracts the PR
   numbers they name, the local state and a short excerpt for the hover. It
   never invents a run that is not in the text.
+
+  The agent's workpad (`AgentBoard.Workpad`) says the same in a field: its
+  Validação names the command, the result and the sha it ran on. When a
+  ticket's issue has a workpad whose Validação names a result, that is the
+  ticket's gate and the reports are not read; a gate on another commit than
+  the PR's head is `:stale`, shown as unknown, never as a pass. Without a
+  workpad, or with Validação empty, the reports decide as before.
   """
 
   @pr ~r/(?:PR\s*#|pull\/)(\d+)/i
@@ -21,29 +28,106 @@ defmodule AgentBoard.LocalCI do
   @report_limit 220
 
   @type status :: %{
-          state: :pass | :fail,
+          state: :pass | :fail | :stale,
           detail: String.t(),
           remote_blocked: boolean(),
-          at: DateTime.t() | nil
+          at: DateTime.t() | nil,
+          scope: :pr | :ticket | :workpad,
+          evidence_pr: integer() | nil
         }
 
-  @doc "Local CI status by PR number for one repository."
-  @spec by_pr(struct(), [map()]) :: %{optional(integer()) => status()}
-  def by_pr(repository, tickets) do
-    slug = "#{repository.owner}/#{repository.name}"
+  @doc """
+  Local CI status by PR number for one repository.
 
-    tickets
-    |> Enum.filter(&same_repo?(&1, slug))
-    |> Enum.reduce(%{}, fn ticket, acc ->
-      ticket
-      |> own_statuses()
-      |> Enum.reduce(acc, fn {number, status}, inner ->
-        Map.put(inner, number, status)
+  Options: `:workpads`, the workpad per issue number (`Board.agent_workpads/1`),
+  preferred over the reports of that issue's ticket when its Validação names
+  a result; `:heads`, the head sha per PR number (`Board.pull_heads/1`), to
+  check the sha the gate ran on. A workpad whose issue has no ticket still
+  counts: the comment is on GitHub, the ticket in the runner's sqlite.
+  """
+  @spec by_pr(struct(), [map()], keyword()) :: %{optional(integer()) => status()}
+  def by_pr(repository, tickets, opts \\ []) do
+    workpads = Keyword.get(opts, :workpads, %{})
+    heads = Keyword.get(opts, :heads, %{})
+    slug = "#{repository.owner}/#{repository.name}"
+    own = Enum.filter(tickets, &same_repo?(&1, slug))
+    covered = own |> Enum.flat_map(&(&1["numbers"] || [])) |> MapSet.new()
+
+    from_tickets =
+      Enum.reduce(own, %{}, fn ticket, acc ->
+        Map.merge(acc, own_statuses(ticket, workpads, heads))
       end)
+
+    workpads
+    |> Enum.reject(fn {number, _workpad} -> MapSet.member?(covered, number) end)
+    |> Enum.reduce(from_tickets, fn {_number, workpad}, acc ->
+      Map.merge(workpad_statuses(%{}, workpad, heads), acc)
     end)
   end
 
-  defp own_statuses(ticket) do
+  defp own_statuses(ticket, workpads, heads) do
+    case ticket_workpad(ticket, workpads) do
+      %{validation: %{passed?: passed?}} = workpad when is_boolean(passed?) ->
+        workpad_statuses(ticket, workpad, heads)
+
+      _no_gate ->
+        report_statuses(ticket)
+    end
+  end
+
+  defp ticket_workpad(ticket, workpads) do
+    Enum.find_value(ticket["numbers"] || [], &Map.get(workpads, &1))
+  end
+
+  # The workpad's gate covers every PR the ticket names and every PR the
+  # workpad names, each checked against its own head.
+  defp workpad_statuses(ticket, workpad, heads) do
+    reports = Map.get(ticket, "reports", [])
+
+    (Enum.flat_map(reports, &pr_numbers/1) ++
+       Map.get(ticket, "own_threads", []) ++ workpad.pull_requests)
+    |> Enum.uniq()
+    |> Map.new(&{&1, workpad_status(workpad.validation, Map.get(heads, &1))})
+  end
+
+  defp workpad_status(validation, head) do
+    state = workpad_state(validation, head)
+
+    %{
+      state: state,
+      detail: workpad_detail(state, validation, head),
+      remote_blocked: remote_blocked?(validation.detail),
+      at: nil,
+      scope: :workpad,
+      evidence_pr: nil,
+      sha: validation.sha,
+      head_sha: head
+    }
+  end
+
+  defp workpad_state(%{sha: sha, passed?: passed?}, head) do
+    cond do
+      is_binary(sha) and is_binary(head) and not same_commit?(sha, head) -> :stale
+      passed? -> :pass
+      true -> :fail
+    end
+  end
+
+  defp same_commit?(sha, head) do
+    sha = String.downcase(sha)
+    head = String.downcase(head)
+    String.starts_with?(head, sha) or String.starts_with?(sha, head)
+  end
+
+  defp workpad_detail(:stale, validation, head) do
+    String.slice(validation.detail, 0, @report_limit) <>
+      ", mas o head do PR é #{String.slice(head, 0, 7)}: o gate não cobre o commit atual."
+  end
+
+  defp workpad_detail(_state, validation, _head),
+    do: String.slice(validation.detail, 0, @report_limit)
+
+  defp report_statuses(ticket) do
     reports =
       ticket
       |> Map.get("reports", [])

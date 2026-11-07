@@ -295,7 +295,8 @@ defmodule AgentBoard.Sync do
       review_state: review_state,
       checks_state: checks_state,
       checks_failed: checks_failed,
-      checks_changed_at: checks_changed_at
+      checks_changed_at: checks_changed_at,
+      head_sha: get_in(pull, ["head", "sha"])
     })
     |> Repo.insert(
       on_conflict:
@@ -309,6 +310,7 @@ defmodule AgentBoard.Sync do
            :checks_state,
            :checks_failed,
            :checks_changed_at,
+           :head_sha,
            :merged_at,
            :updated_at
          ]},
@@ -420,7 +422,10 @@ defmodule AgentBoard.Sync do
 
   defp apply_ticket(repository, by_number, ticket) do
     Enum.each(ticket["numbers"], fn number ->
-      case ticket_state(ticket, asked?: fn -> Board.agent_asked?(repository.id, number) end) do
+      case ticket_state(ticket,
+             workpad: fn -> Board.agent_workpad(repository.id, number) end,
+             asked?: fn -> Board.agent_asked?(repository.id, number) end
+           ) do
         nil ->
           :ok
 
@@ -473,10 +478,13 @@ defmodule AgentBoard.Sync do
   is the newer fact. Nothing else about an ended ticket imposes a state.
 
   A `waiting` report means the executor needs input, not that it asked a
-  question. It is a question only when the report or the newest agent
-  comment (`asked?`, a boolean or a function the caller can leave lazy)
-  actually asks one; a waiting ticket that opened a PR is a review; anything
-  else is a block whose reason is the report itself.
+  question. When the newest agent comment is a workpad (`workpad`, the map
+  from `AgentBoard.Workpad.parse/1` or a function the caller can leave
+  lazy) its fields decide: a filled Pergunta is a question, a filled
+  Bloqueio is a block. Otherwise it is a question only when the report or
+  the newest agent comment (`asked?`, a boolean or a function) actually
+  asks one; a waiting ticket that opened a PR is a review; anything else is
+  a block whose reason is the report itself.
   """
   def ticket_state(ticket, opts \\ []) do
     cond do
@@ -494,6 +502,14 @@ defmodule AgentBoard.Sync do
   @review_word ~r/\b(review|revis(ão|ao|ar|ado|ada))\b/iu
 
   defp waiting_state(ticket, opts) do
+    case workpad(opts) do
+      %{question: question} when is_binary(question) -> "question"
+      %{blockage: blockage} when is_binary(blockage) -> "blocked"
+      _no_field -> waiting_state_by_text(ticket, opts)
+    end
+  end
+
+  defp waiting_state_by_text(ticket, opts) do
     summary = ticket["report_summary"] || ""
 
     cond do
@@ -513,6 +529,13 @@ defmodule AgentBoard.Sync do
     case Keyword.get(opts, :asked?, false) do
       fun when is_function(fun, 0) -> fun.() == true
       value -> value == true
+    end
+  end
+
+  defp workpad(opts) do
+    case Keyword.get(opts, :workpad) do
+      fun when is_function(fun, 0) -> fun.()
+      value -> value
     end
   end
 

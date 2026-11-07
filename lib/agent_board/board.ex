@@ -6,7 +6,7 @@ defmodule AgentBoard.Board do
   import Ecto.Query, warn: false
 
   alias AgentBoard.Board.{Comment, Event, PullRequest, Repository, Review, Task}
-  alias AgentBoard.{Repo, Sync}
+  alias AgentBoard.{Repo, Sync, Workpad}
   alias AgentBoard.Sync.Freshness
 
   @merged_page_size 50
@@ -465,11 +465,70 @@ defmodule AgentBoard.Board do
   @doc """
   Whether the newest agent comment on a task asks the person something.
 
+  When that comment is a workpad, its Pergunta section decides, with or
+  without a question mark. Otherwise a real question mark in the text does.
   The runner's hidden marker (`<!-- dsh-superagent:... -->`) is not part of
   the message. No comment, or a comment that only reports, is `false`.
   """
   @spec agent_asked?(integer(), integer()) :: boolean()
   def agent_asked?(repository_id, number) do
+    case newest_agent_comment(repository_id, number) do
+      nil ->
+        false
+
+      body ->
+        case Workpad.parse(body) do
+          %{question: question} -> is_binary(question)
+          nil -> comment_asks?(body)
+        end
+    end
+  end
+
+  @doc """
+  The workpad in the newest agent comment on a task, or nil when there is no
+  agent comment or it is not one (`AgentBoard.Workpad.parse/1`).
+  """
+  @spec agent_workpad(integer(), integer()) :: Workpad.t() | nil
+  def agent_workpad(repository_id, number) do
+    repository_id |> newest_agent_comment(number) |> Workpad.parse()
+  end
+
+  @doc """
+  The workpad per task number, for every task of a repository whose newest
+  agent comment is one. The local CI reads Validação from it.
+  """
+  @spec agent_workpads(integer()) :: %{optional(integer()) => Workpad.t()}
+  def agent_workpads(repository_id) do
+    Repo.all(
+      from c in Comment,
+        join: t in Task,
+        on: t.id == c.task_id,
+        where: t.repository_id == ^repository_id and c.kind == "agent",
+        order_by: [asc: t.number, desc: c.inserted_at, desc: c.id],
+        select: {t.number, c.body}
+    )
+    |> Enum.uniq_by(fn {number, _body} -> number end)
+    |> Enum.flat_map(fn {number, body} ->
+      case Workpad.parse(body) do
+        nil -> []
+        workpad -> [{number, workpad}]
+      end
+    end)
+    |> Map.new()
+  end
+
+  @doc "The head sha per PR number, as the sync last saw it; a PR synced before the column is absent."
+  @spec pull_heads(integer()) :: %{optional(integer()) => String.t()}
+  def pull_heads(repository_id) do
+    Repo.all(
+      from p in PullRequest,
+        where: p.repository_id == ^repository_id and not is_nil(p.head_sha),
+        select: {p.number, p.head_sha}
+    )
+    |> Map.new()
+  end
+
+  defp newest_agent_comment(repository_id, number) do
     Repo.one(
       from c in Comment,
         join: t in Task,
@@ -479,10 +538,7 @@ defmodule AgentBoard.Board do
         limit: 1,
         select: c.body
     )
-    |> comment_asks?()
   end
-
-  defp comment_asks?(nil), do: false
 
   defp comment_asks?(body) do
     body

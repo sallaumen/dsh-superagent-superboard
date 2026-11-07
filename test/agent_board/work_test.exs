@@ -87,6 +87,84 @@ defmodule AgentBoard.WorkTest do
     assert need.ci.title =~ "126 tests"
   end
 
+  test "a question quotes the workpad's Pergunta, not the comment's first line" do
+    {:ok, repo} = Board.add_repository("fixture", "workpad-question")
+    now = ~U[2026-11-06 15:00:00Z]
+    question = task(repo, 31, "Boss fight", "question", DateTime.add(now, -60, :second))
+
+    comment(question, "agent", """
+    This is by an automated agent, not a human.
+
+    ## Relatório do agente
+
+    ### Plano
+    Trocar a arena.
+
+    ### Pergunta
+    Devo manter o boss na arena ou tirar
+
+    ### Bloqueio
+    """)
+
+    [need] = Work.needs(repo, %{ready: [], blocked: [], question: [question]}, now: now)
+
+    assert need.why == "**O agente perguntou:** Devo manter o boss na arena ou tirar"
+  end
+
+  test "a block quotes the workpad's Bloqueio before the report" do
+    {:ok, repo} = Board.add_repository("fixture", "workpad-block")
+    now = ~U[2026-11-06 15:00:00Z]
+    blocked = task(repo, 32, "Registry", "blocked", DateTime.add(now, -60, :second))
+
+    comment(blocked, "agent", """
+    ## Relatório do agente
+    ### Bloqueio
+    Sem acesso ao registry npm (403).
+    """)
+
+    ticket = %{"numbers" => [32], "report" => "waiting", "report_summary" => "Waiting."}
+
+    [need] =
+      Work.needs(repo, %{ready: [], blocked: [blocked], question: []},
+        now: now,
+        tickets_by_number: %{32 => ticket}
+      )
+
+    assert need.why == "**Bloqueado:** Sem acesso ao registry npm (403)."
+  end
+
+  test "a review whose gate ran on another commit shows an unknown local CI" do
+    {:ok, repo} = Board.add_repository("fixture", "review-stale")
+    now = ~U[2026-11-06 15:00:00Z]
+    review = task(repo, 27, "Pixel art", "ready", DateTime.add(now, -60, :second))
+    _pull = open_pull(repo, 28, "Replace geometric art", "failure")
+
+    local = %{
+      28 => %{
+        state: :stale,
+        detail:
+          "mix precommit: passou em 44653e8, mas o head do PR é 9f1c2ab: o gate não cobre o commit atual.",
+        remote_blocked: false,
+        at: nil,
+        scope: :workpad,
+        evidence_pr: nil,
+        sha: "44653e8",
+        head_sha: "9f1c2ab0000000000000000000000000000000000"
+      }
+    }
+
+    [need] =
+      Work.needs(repo, %{ready: [review], blocked: [], question: []},
+        now: now,
+        tickets_by_number: %{27 => %{"numbers" => [27], "own_threads" => [28]}},
+        local_ci: local
+      )
+
+    assert need.ci.state == "unknown"
+    assert need.ci.note == "CI local ?"
+    assert need.ci.title =~ "head do PR é 9f1c2ab"
+  end
+
   test "a review whose PR the board cannot find says so instead of guessing" do
     {:ok, repo} = Board.add_repository("fixture", "review-nopr")
     now = ~U[2026-11-06 15:00:00Z]

@@ -37,6 +37,33 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 - A review rollup is the strongest review (`changes_requested` beats `approved`);
   a check rollup names the failing check.
 
+## Workpad
+
+- The agent keeps one comment per issue, edited in place, headed
+  `## Relatório do agente` with the sections `### Plano`, `### Validação`,
+  `### Pergunta` and `### Bloqueio` (the Communication prompt,
+  `docs/agent/prompts/communication.md`). `AgentBoard.Workpad.parse/1` reads
+  it by section name; any other comment is `nil`, and an empty section is
+  `nil`: the parser never invents a question, a block or a gate.
+- When the newest agent comment on a task is a workpad, its fields decide: a
+  filled Pergunta makes a `waiting` ticket a `question` with or without a
+  "?" (`Board.agent_asked?/2`, `Sync.waiting_state/2`), a filled Bloqueio
+  makes it `blocked` even when the ticket opened a PR, and the item in
+  Precisa de você quotes the section, never the whole comment.
+- Validação is the local CI of the PRs the ticket and the workpad name
+  (`LocalCI.by_pr/3`, scope `:workpad`): the command, its result and the
+  sha it ran on. The sha is checked against the PR's head
+  (`pull_requests.head_sha`, written by the sync): a gate on another commit
+  is `:stale`, shown as `CI local ?` with both shas in the tooltip, never as
+  a pass. A head the sync has not written yet cannot contradict the gate.
+- Without a workpad, or with the section empty, the text heuristics stay
+  exactly as before: a "?" in the summary or in the newest comment, "PR" with
+  "review" in the report, `mix precommit` sentences in the reports.
+- The tests: `workpad_test.exs` (the parser), `sync_test.exs`,
+  `board_test.exs`, `local_ci_test.exs` and `work_test.exs` (preference and
+  fallback), `board_live_test.exs` and `board_workpad_test.exs` (the item
+  quotes the question; the gate reaches the card from a waiting ticket).
+
 ## Real-time
 
 - The sync (the Oban `Sync.Worker`, every five minutes) and every task action call

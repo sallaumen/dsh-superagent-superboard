@@ -69,10 +69,13 @@ defmodule AgentBoard.Live do
     :ok
   end
 
-  # The question check reads the conversation only for a waiting ticket:
-  # Sync.ticket_state calls it lazily.
+  # The workpad and the question check read the conversation only for a
+  # waiting ticket: Sync.ticket_state calls them lazily.
   defp overlay_ticket(repo, ticket, number) do
-    case Sync.ticket_state(ticket, asked?: fn -> Board.agent_asked?(repo.id, number) end) do
+    case Sync.ticket_state(ticket,
+           workpad: fn -> Board.agent_workpad(repo.id, number) end,
+           asked?: fn -> Board.agent_asked?(repo.id, number) end
+         ) do
       nil -> :ok
       overlay -> overlay_number(repo, number, overlay, ticket["started_at"])
     end
