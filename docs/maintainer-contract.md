@@ -196,14 +196,14 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   Speed (`voice_speed`), intonation (`voice_style` → stability), pause
   (`voice_pause`) and microphone sounds (`voice_earcons`) are settings. The conversation never reaches the coding
   agent except through the board actions a button would take.
-- **Voice asks** are a write and always confirmed: a draft that ends in a
-  question mark (or starts with "perguntar"/"ask") and matches no read-only
-  command resolves to an `:ask` proposal showing the target task; the
-  "Ask the agent" button posts it to the task the owner was reading, and the
-  asynchronous answer is spoken back in the agent's voice (cut at a word
-  boundary). Opening the voice panel keeps the conversation's task, or the
-  ask would have no target. Read-only commands keep precedence, so
-  "O que está bloqueado?" still opens the blocked report.
+- **Voice asks** are a write and always confirmed: the conversation's
+  `ask_task` action becomes a proposal naming the task and the question,
+  and only the spoken yes posts it (`Board.ask/3`, a comment with
+  `@sallaumen-agent`). "Repete" and "mais devagar/rápido/alto/baixo" are
+  local commands of the conversation, no model. The old draft panel
+  (`VoiceCommand.draft`, `VoiceMutations`, `VoiceActionConfirmation`) was
+  removed; `AgentBoardWeb.VoiceCommands` stays as the no-model fallback and
+  `AgentBoardWeb.VoiceAnswer` only feeds the board AI evaluation.
 
 ## AI calls
 

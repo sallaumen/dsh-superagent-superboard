@@ -235,4 +235,17 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
     assert has_element?(view, "#voice-chat-turns [data-role=agent] .voice-chat-time", "pensou em")
   end
+
+  test "a spoken mais baixo lowers the volume the player uses at once", %{conn: conn} do
+    script(fn _ -> flunk("the model must not be called") end)
+    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    assert html =~ ~s(data-volume="100")
+
+    render_hook(view, "voice_turn", %{"text" => "mais baixo"})
+    render_async(view)
+
+    assert render(view) =~ ~s(data-volume="80")
+    assert_push_event(view, "voice_play", %{url: url})
+    assert spoken(url) == "Pronto, mais baixo."
+  end
 end

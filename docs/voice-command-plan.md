@@ -1,6 +1,9 @@
 # Voice commands: implementation plan
 
-Status: proposed implementation sequence, 2026-11-05. The interaction decisions
+Status: **superseded** on 2026-11-07 by [voice-conversation.md](voice-conversation.md):
+the double Space shortcut, single microphone owner and confirmations stand;
+the reviewable draft and its panel were replaced by the spoken conversation.
+Historical plan below, proposed 2026-11-05. The interaction decisions
 under **Agreed behavior** come from the user's choices. The sequencing and time
 limits below are implementation proposals to verify in a browser before release.
 

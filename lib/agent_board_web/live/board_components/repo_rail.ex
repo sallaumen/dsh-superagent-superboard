@@ -91,7 +91,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           phx-click="show_panel"
           phx-value-panel="voice"
         >
-          <.ico name="mic" /><span>Comandos de voz</span>
+          <.ico name="mic" /><span>Conversa por voz</span>
         </button>
         <.live_component
           module={AgentBoardWeb.BoardComponents.SettingsMenu}

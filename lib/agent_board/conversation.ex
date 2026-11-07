@@ -66,6 +66,18 @@ defmodule AgentBoard.Conversation do
     }
   end
 
+  @doc "What the agent said last, for \"repete\"."
+  @spec last_agent_text() :: String.t() | nil
+  def last_agent_text do
+    Repo.one(
+      from t in Turn,
+        where: t.role == "agent",
+        order_by: [desc: t.id],
+        limit: 1,
+        select: t.text
+    )
+  end
+
   @doc "The recent turns for the history view, oldest first."
   @spec recent(pos_integer()) :: [Turn.t()]
   def recent(limit \\ 12) do

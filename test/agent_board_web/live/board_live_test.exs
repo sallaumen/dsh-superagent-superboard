@@ -106,30 +106,16 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, ".ab-beacon[data-state=live]")
   end
 
-  test "transcription opens an editable command draft without creating a task", %{conn: conn} do
+  test "a transcript outside the composer is a conversation turn, never a draft", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
-
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
     render_hook(view, "voice_transcript", %{"text" => "  show blocked tasks  "})
-    assert render(view) =~ ~s(data-panel="voice")
-    assert has_element?(view, "#voice-command-text", "show blocked tasks")
-    refute has_element?(view, "#record-task-title")
-    refute has_element?(view, "#dictate-task-title")
-    refute has_element?(view, "#ask-by-voice")
 
-    view |> form("#voice-command-form", %{"text" => "show ready tasks"}) |> render_change()
-    assert has_element?(view, "#voice-command-text", "show ready tasks")
-  end
-
-  test "voice transcript review also works before a repository is tracked", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/")
-
-    render_hook(view, "voice_transcript", %{"text" => "  what is running?  "})
-
-    assert render(view) =~ ~s(data-panel="voice")
-    assert has_element?(view, "#voice-command-text", "what is running?")
-    refute has_element?(view, "#create-task")
+    refute render(view) =~ ~s(data-panel="voice")
+    refute has_element?(view, "#voice-command-text")
+    assert [%{role: "owner", text: "show blocked tasks"} | _] = AgentBoard.Conversation.recent()
+    assert AgentBoard.Repo.aggregate(Task, :count) == 0
   end
 
   test "Speak status pushes the board summary", %{conn: conn} do

@@ -318,6 +318,31 @@ defmodule AgentBoard.Voice.Phrases do
   def repository_not_found("en-US", name), do: "I don't follow a project called #{name}."
   def repository_not_found(_lang, name), do: "Não acompanho nenhum projeto chamado #{name}."
 
+  def propose_ask("en-US", n, q), do: "I'll ask the agent on task #{n}: #{q} Shall I send it?"
+  def propose_ask(_lang, n, q), do: "Vou perguntar ao agente na tarefa #{n}: #{q} Posso mandar?"
+
+  def ask_sent("en-US", n), do: "Sent. The answer will show up in task #{n}'s conversation."
+  def ask_sent(_lang, n), do: "Mandei. A resposta vai aparecer na conversa da tarefa #{n}."
+
+  def ask_failed("en-US", n), do: "I couldn't send the question on task #{n}. Check the activity."
+  def ask_failed(_lang, n), do: "Não consegui mandar a pergunta na tarefa #{n}. Veja a atividade."
+
+  @doc "The confirmation after a spoken voice adjustment, said in the new voice."
+  def voice_adjusted("en-US", :speed, d) when d < 0, do: "Okay, slower now."
+  def voice_adjusted("en-US", :speed, _d), do: "Okay, faster now."
+  def voice_adjusted("en-US", :volume, d) when d < 0, do: "Okay, quieter."
+  def voice_adjusted("en-US", :volume, _d), do: "Okay, louder."
+  def voice_adjusted(_lang, :speed, d) when d < 0, do: "Pronto, mais devagar."
+  def voice_adjusted(_lang, :speed, _d), do: "Pronto, mais rápido."
+  def voice_adjusted(_lang, :volume, d) when d < 0, do: "Pronto, mais baixo."
+  def voice_adjusted(_lang, :volume, _d), do: "Pronto, mais alto."
+
+  def voice_at_limit("en-US", _what, _d), do: "That's already the limit."
+  def voice_at_limit(_lang, :speed, d) when d < 0, do: "Já estou no mais devagar que dá."
+  def voice_at_limit(_lang, :speed, _d), do: "Já estou no mais rápido que dá."
+  def voice_at_limit(_lang, :volume, d) when d < 0, do: "O volume já está no mínimo."
+  def voice_at_limit(_lang, :volume, _d), do: "O volume já está no máximo."
+
   def cancelled("en-US"), do: "Okay, I won't do it."
   def cancelled(_lang), do: "Tudo bem, deixei pra lá."
 
