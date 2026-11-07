@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Brings dsh-superagent back at login and every five minutes, unless it
+	     was stopped on purpose (scripts/dsh-superagent stop). Install and
+	     remove: docs/agent/setup.md, section 4. -->
+	<key>Label</key>
+	<string>com.dsh.superagent</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>/Users/tavano/src/agent_board/scripts/agent/keepalive.sh</string>
+	</array>
+
+	<key>WorkingDirectory</key>
+	<string>/Users/tavano/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype</string>
+
+	<key>EnvironmentVariables</key>
+	<dict>
+		<!-- dsh, node and python come from asdf (the shims call
+		     /opt/homebrew/bin/asdf); gh-agent lives in ~/.local/bin. A tmux
+		     server this job starts keeps this PATH for the workers. -->
+		<key>PATH</key>
+		<string>/Users/tavano/.local/bin:/Users/tavano/.asdf/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<key>LANG</key>
+		<string>en_US.UTF-8</string>
+		<key>DSH_SUPERAGENT_HOME</key>
+		<string>/Users/tavano/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype</string>
+	</dict>
+
+	<key>RunAtLoad</key>
+	<true/>
+
+	<key>StartInterval</key>
+	<integer>300</integer>
+
+	<!-- The job exits after each check; the tmux server it may start must
+	     outlive it. -->
+	<key>AbandonProcessGroup</key>
+	<true/>
+
+	<!-- keepalive.sh writes its own log; these catch only what fails before. -->
+	<key>StandardOutPath</key>
+	<string>/Users/tavano/Library/Logs/dsh-superagent-keepalive.log</string>
+
+	<key>StandardErrorPath</key>
+	<string>/Users/tavano/Library/Logs/dsh-superagent-keepalive.log</string>
+</dict>
+</plist>

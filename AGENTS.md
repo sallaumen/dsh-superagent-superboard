@@ -46,6 +46,7 @@ watches GitHub; this board only mirrors it. It is documented in
 | `logs.sh` | what is it printing right now? |
 | `prompts.sh get\|diff\|put` | what do its three prompt sections say, and does git hold the active revision? |
 | `cleanup.sh [--apply]` | what did ended tickets leave behind (worktrees, orphan PRs), and remove it? |
+| `keepalive.sh` | is it down without a stop on purpose? start it (launchd runs this, `ops/com.dsh.superagent.plist`) |
 
 ## Shared practices
 

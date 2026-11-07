@@ -25,7 +25,7 @@ HEADER="x-orchestrator-request: 1"
 fetch() {
   if ! PROMPTS=$(curl -sf -H "$HEADER" "$API/prompts") || [ -z "$PROMPTS" ]; then
     echo "AGENT DOWN: no answer at $API"
-    echo "  start it:  tmux new -s dsh-superagent && dsh --profile superagent"
+    echo "  start it:  scripts/agent/keepalive.sh   (stopped on purpose? python3 $DSH_SUPERAGENT_HOME/scripts/dsh-superagent start)"
     exit 1
   fi
   ACTIVE=$(printf '%s' "$PROMPTS" | jq -r '.current.revision')
