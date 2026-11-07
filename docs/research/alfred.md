@@ -204,7 +204,7 @@ Esforço: **P** ≤ meio dia · **M** 1–2 dias · **G** > 2 dias. Cada item é
 | D1 | O board pode iniciar Claude Code e Codex locais por uma ação confirmada (a fronteira da seção 3.6)? | Sem isso a fase 3 não existe; as fases 1 e 2 não dependem dela | O dono |
 | D2 | Tetos: orçamento mensal (o perfil do Alfred dizia US$ 300 por mês; vale para a plataforma?), teto por tarefa em cada executor e a reserva de cota das assinaturas para o uso direto | O roteador e os runners checam antes de iniciar | O dono |
 | D3 | Usar a assinatura Claude Max em `claude -p` e o plano ChatGPT em `codex exec`, para uso pessoal, despachado pelo board | Termos de uso das assinaturas; nenhuma credencial nova | O dono confirma os termos |
-| D4 | Quais repositórios entram no board (hoje 2; o dono trabalhou em 11 na semana) | Atribuição e "Hoje" dependem disso; o sync gasta cota da API do GitHub por repositório | O dono |
+| D4 | Quais repositórios entram no board (hoje 2; o dono trabalhou em 11 na semana) | Atribuição e "Hoje" dependem disso; o sync gasta cota da API do GitHub por repositório | **Decidido em 2026-11-07: só os atuais**, `sallaumen/arena-rogue` e `sallaumen/o_colmex`. Uso de Claude e Codex em outros repositórios aparece como fora do board, sem tarefa |
 | D5 | Quem abre e mescla os PRs de Claude e Codex: o bot `sallaumen-agent` (como o DSH) ou a conta do dono; e se vale a mesma política de merge do DSH | Os runners precisam de um `gh` autenticado com escrita | O dono; se for o bot, o token dele no ambiente do runner |
 
 ### Fase 1 — Ver as três ferramentas (só leitura)
@@ -217,7 +217,7 @@ Esforço: **P** ≤ meio dia · **M** 1–2 dias · **G** > 2 dias. Cada item é
 | F1.4 | **Branch do PR e atribuição**: coluna `head_ref` em `pull_requests` (o sync já busca o PR) e as quatro regras de atribuição da seção 3.4 | P | Médio: liga sessões diretas a tarefas | — | PR sem `Closes #n` fica sem tarefa (é o comportamento certo) | Uma sessão do Claude que abriu o PR de uma tarefa aparece nela, por `pr-link` ou branch |
 | F1.5 | **Painel "Executores" e "Execuções" no inspetor** (seção 3.4), cada executor na sua moeda, `?` para o desconhecido | M | Alto: responde "para onde foi e quanto custou" por tarefa, dia e executor | F1.3, F1.4 | Ler como fatura o que é estimativa: cada valor diz se é medido, estimado ou desconhecido | O dono vê os últimos 7 dias dos três executores sem abrir nenhuma ferramenta |
 | F1.6 | **Resumo do dia com relógio de parede**: a cada tick, "já saiu o de hoje depois das 8h?"; feito, gasto por executor, falhas, o que o board fez sozinho (retentativas); no board e na voz; template sem modelo | P/M | Médio: o relatório diário do Alfred, sem canal novo | F1.3 só para a linha de gasto (o resto sai antes) | Disparar duas vezes depois de um reinício: a execução do dia é uma linha única | Com o Mac dormindo às 8h, o resumo sai ao acordar, uma vez |
-| F1.7 | **Repositórios do dono no board** (decisão D4): adicionar pela API existente (`POST /api/repos`) e medir o custo do sync | P | Médio: a visão "Hoje" e a atribuição cobrem o trabalho real | D4 | Cota da API do GitHub com mais repositórios a cada 5 min | O sync de todos fecha sem `sync_error` e dentro da cota |
+| F1.7 | ~~**Repositórios do dono no board**~~: não se aplica pela decisão D4 (só os repositórios atuais); reabrir se o dono mudar de ideia, adicionando pela API existente (`POST /api/repos`) e medindo o custo do sync | — | — | D4 | — | — |
 
 ### Fase 2 — O board sugere, o dono escolhe
 
@@ -276,7 +276,7 @@ Esforço: **P** ≤ meio dia · **M** 1–2 dias · **G** > 2 dias. Cada item é
 1. O board pode iniciar Claude Code e Codex nesta máquina (D1)? Se não, as fases 1, 2 e 4.2–4.4 ainda valem, e o despacho fica manual.
 2. Qual é o orçamento mensal da plataforma e o teto por tarefa de cada executor (D2)? Quanto da cota das assinaturas fica reservado para o uso direto do dono?
 3. Os termos das assinaturas cobrem execuções headless disparadas pelo board, para uso pessoal (D3)?
-4. Quais repositórios entram no board (D4)? Os 11 da semana, ou só os que o dono quer delegar?
+4. ~~Quais repositórios entram no board (D4)?~~ Respondida em 2026-11-07: só os atuais.
 5. Quem abre e mescla os PRs de Claude e Codex, e com que política (D5)?
 6. O DSH deve ganhar mais repositórios (um orquestrador por repositório) ou os outros repositórios ficam com Claude e Codex?
 7. O que conta como "boa escolha" para o dono: mesclar sem correção em quantas horas, com que custo máximo?
