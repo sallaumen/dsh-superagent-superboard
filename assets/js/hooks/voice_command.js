@@ -172,6 +172,18 @@ export const VoiceCommand = {
     }
   },
   async start({followup = false} = {}) {
+    // WisprFlow is the default input: the board opens a field and the owner's
+    // Wispr types into it. No microphone here, no paid transcription.
+    if (this.el.dataset.input !== "microphone") {
+      const composer = document.querySelector("#panel-composer[open] #composer-text")
+      if (composer) {
+        composer.focus()
+        voiceState("complete", "Fale com o Wispr", "O texto entra no pedido.", source)
+      } else {
+        window.dispatchEvent(new CustomEvent("board:voice-wispr-open", {detail: {followup}}))
+      }
+      return
+    }
     if (this.el.dataset.configured !== "true") {
       voiceState("error", "Transcrição indisponível", "Configure a chave ElevenLabs ou escreva no painel de voz.", source)
       return

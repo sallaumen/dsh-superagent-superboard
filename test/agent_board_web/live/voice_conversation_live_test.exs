@@ -43,6 +43,10 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     end)
 
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    # These tests cover the paid voice and whole replies; the defaults are
+    # the browser voice and short replies (covered in voice_speech_test).
+    :ok = AgentBoard.Settings.put("voice_engine", "elevenlabs")
+    :ok = AgentBoard.Settings.put("voice_replies", "full")
     :ok
   end
 
@@ -76,7 +80,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     render_hook(view, "voice_turn", %{"text" => "Como está o quadro?"})
     render_async(view, 1_000)
 
-    assert_push_event(view, "voice_play", %{url: url, listen: false})
+    assert_push_event(view, "voice_play", %{url: url, listen: false}, 1_000)
     assert spoken(url) == "Duas tarefas rodando e nada bloqueado."
     refute has_element?(view, "#board-page[data-panel=voice]")
 
@@ -115,7 +119,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     render_hook(view, "voice_turn", %{"text" => "para a tarefa sete"})
     render_async(view, 1_000)
 
-    assert_push_event(view, "voice_play", %{url: url, listen: true})
+    assert_push_event(view, "voice_play", %{url: url, listen: true}, 1_000)
     assert spoken(url) == "Parar a tarefa 7, Placar? Posso?"
   end
 
@@ -127,7 +131,12 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     render_hook(view, "voice_turn", %{"text" => "oi"})
     render_async(view, 1_000)
 
-    assert_push_event(view, "speak", %{text: "Oi! Tudo certo.", lang: "pt-BR", listen: false})
+    assert_push_event(
+      view,
+      "speak",
+      %{text: "Oi! Tudo certo.", lang: "pt-BR", listen: false},
+      1_000
+    )
   end
 
   test "a newer utterance supersedes a slower one", %{conn: conn} do
@@ -151,7 +160,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     render_async(view, 1_000)
     Process.sleep(400)
 
-    assert_push_event(view, "voice_play", %{url: url})
+    assert_push_event(view, "voice_play", %{url: url}, 1_000)
     assert spoken(url) == "Resposta nova."
     refute_push_event(view, "voice_play", %{url: _}, 100)
   end
@@ -206,7 +215,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     render_hook(view, "voice_turn", %{"text" => "status"})
     render_async(view, 1_000)
 
-    assert_push_event(view, "voice_play", %{url: _url})
+    assert_push_event(view, "voice_play", %{url: _url}, 1_000)
     assert [%{role: "owner"}, %{role: "agent", action: "command"}] = Conversation.recent()
   end
 
@@ -247,7 +256,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     render_async(view, 1_000)
 
     assert render(view) =~ ~s(data-volume="80")
-    assert_push_event(view, "voice_play", %{url: url})
+    assert_push_event(view, "voice_play", %{url: url}, 1_000)
     assert spoken(url) == "Pronto, mais baixo."
   end
 
@@ -294,7 +303,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     asked_task()
 
     send(view.pid, :board_updated)
-    assert_push_event(view, "voice_play", %{url: url})
+    assert_push_event(view, "voice_play", %{url: url}, 1_000)
 
     assert spoken(url) ==
              "O agente da tarefa 12 respondeu: Sim, rodei os testes e todos passaram."

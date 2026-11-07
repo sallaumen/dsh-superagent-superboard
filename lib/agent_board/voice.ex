@@ -16,6 +16,16 @@ defmodule AgentBoard.Voice do
       `normal` (default) or `long`
     * `voice_earcons` - `"0"` silences the sounds that mark the microphone
       opening and closing
+    * `voice_input` - how the owner's speech becomes text: `wispr` (default:
+      the owner's WisprFlow app types into the board, no transcription cost)
+      or `microphone` (the board records and ElevenLabs Scribe transcribes)
+    * `voice_engine` - who speaks: `browser` (default, free), `mixed`
+      (ElevenLabs for the calls for attention and the coding agent's
+      replies, the browser for the rest) or `elevenlabs` (everything)
+    * `voice_replies` - `short` (default: the first sentence of a reply is
+      spoken, the whole reply is written) or `full`
+    * `voice_narrate` - `"1"` narrates the rest of the board (a task
+      starting, the queue, the sync, confirmations); off by default
   """
 
   alias AgentBoard.Settings
@@ -149,6 +159,44 @@ defmodule AgentBoard.Voice do
   @doc "Turns the microphone sounds on or off."
   def put_earcons(on?) when is_boolean(on?),
     do: Settings.put("voice_earcons", if(on?, do: "", else: "0"))
+
+  @inputs ~w(wispr microphone)
+  @engines ~w(browser mixed elevenlabs)
+  @replies ~w(short full)
+
+  @doc "How the owner's speech becomes text: `wispr` (default) or `microphone`."
+  def input, do: choice("voice_input", @inputs, "wispr")
+
+  @doc "Saves the input method."
+  def put_input(value), do: put_choice("voice_input", @inputs, value, :invalid_input)
+
+  @doc "Who speaks: `browser` (default), `mixed` or `elevenlabs`."
+  def engine, do: choice("voice_engine", @engines, "browser")
+
+  @doc "Saves the voice engine."
+  def put_engine(value), do: put_choice("voice_engine", @engines, value, :invalid_engine)
+
+  @doc "How much of a reply is spoken: `short` (default) or `full`."
+  def replies, do: choice("voice_replies", @replies, "short")
+
+  @doc "Saves the spoken reply length."
+  def put_replies(value), do: put_choice("voice_replies", @replies, value, :invalid_replies)
+
+  @doc "Whether the rest of the board is narrated (default off: it costs voice)."
+  def narrate?, do: Settings.get("voice_narrate") == "1"
+
+  @doc "Turns the narration on or off."
+  def put_narrate(on?) when is_boolean(on?),
+    do: Settings.put("voice_narrate", if(on?, do: "1", else: ""))
+
+  defp choice(key, allowed, default) do
+    value = Settings.get(key)
+    if value in allowed, do: value, else: default
+  end
+
+  defp put_choice(key, allowed, value, error) do
+    if value in allowed, do: Settings.put(key, value), else: {:error, error}
+  end
 
   @doc "Whether the agent calls the owner when a task needs them (default on)."
   def attention?, do: Settings.get(@attention_key) != "0"

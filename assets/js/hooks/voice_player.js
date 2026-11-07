@@ -44,12 +44,12 @@ export const VoicePlayer = {
       }
     }
     window.addEventListener("board:voice-control", this.onControl)
-    this.handleEvent("voice_play", ({url, listen}) => this.play(url, {listen: Boolean(listen)}))
+    this.handleEvent("voice_play", ({url, listen, text}) => this.play(url, {listen: Boolean(listen), text}))
   },
   // The audio element plays the stream as it arrives: the first words are
   // heard about half a second after the request, instead of after the whole
   // file was downloaded.
-  play(url, {listen = false} = {}) {
+  play(url, {listen = false, text = ""} = {}) {
     if (voiceInputActive()) return
     this.cancel()
     const generation = ++this.generation
@@ -58,7 +58,8 @@ export const VoicePlayer = {
 
     this.audio.onplaying = () => {
       if (generation !== this.generation) return
-      voiceState("speaking", "O agente está falando", latencyDetail(), "elevenlabs")
+      // The whole reply is written here; a short reply speaks only its start.
+      voiceState("speaking", "O agente está falando", [latencyDetail(), text].filter(Boolean).join(" "), "elevenlabs")
     }
     const finish = () => {
       if (generation !== this.generation || !this.active) return

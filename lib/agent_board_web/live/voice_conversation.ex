@@ -94,7 +94,7 @@ defmodule AgentBoardWeb.VoiceConversation do
     Activity.record(:turn, status, "respondeu (#{result.action})", turn: turn.turn_id, ms: ms)
 
     socket
-    |> speak(result.reply, result.listen)
+    |> speak(result.reply, result.listen, kind(result.action))
     |> effect(result.effect)
     |> start_async({:voice_compact, turn.ref}, fn -> Conversation.compact() end)
   end
@@ -106,7 +106,7 @@ defmodule AgentBoardWeb.VoiceConversation do
       reason: exit_reason(reason)
     )
 
-    speak(socket, Phrases.ai_failed(language(socket), :exit), false)
+    speak(socket, Phrases.ai_failed(language(socket), :exit), false, :confirm)
   end
 
   @doc """
@@ -141,7 +141,7 @@ defmodule AgentBoardWeb.VoiceConversation do
 
     socket
     |> assign(:voice_turns, Conversation.recent())
-    |> speak(text, false)
+    |> speak(text, false, :call)
   end
 
   # What is worth hearing of the reply: no hidden markers, no automated-agent
@@ -182,7 +182,7 @@ defmodule AgentBoardWeb.VoiceConversation do
         socket
         |> cancel_async({:voice_turn, ref})
         |> assign(:chat_turn, nil)
-        |> speak(Phrases.too_slow(language(socket)), false)
+        |> speak(Phrases.too_slow(language(socket)), false, :confirm)
 
       _ ->
         socket
@@ -241,24 +241,17 @@ defmodule AgentBoardWeb.VoiceConversation do
     }
   end
 
-  defp speak(socket, text, listen) do
-    voice = socket.assigns.voice
-
-    if voice.configured do
-      push_event(socket, "voice_play", %{
-        url: VoiceSpeech.url(text, voice.id),
-        listen: listen,
-        text: text
-      })
-    else
-      push_event(socket, "speak", %{
-        text: VoiceSpeech.text(text),
-        lang: voice.language,
-        rate: voice.speed,
-        listen: listen
-      })
-    end
+  # The engine (ElevenLabs or the free browser voice) and how much is
+  # spoken are VoiceSpeech's decision; this only names the kind.
+  defp speak(socket, text, listen, kind) do
+    {event, payload} = VoiceSpeech.push(socket.assigns.voice, text, kind: kind, listen: listen)
+    push_event(socket, event, payload)
   end
+
+  # A free answer can be cut to its first sentence; a proposal, a question
+  # back or a confirmation is always spoken whole.
+  defp kind("reply"), do: :reply
+  defp kind(_action), do: :confirm
 
   defp effect(socket, {:open_task, task}) do
     if socket.assigns.repo && socket.assigns.repo.id == task.repository_id,

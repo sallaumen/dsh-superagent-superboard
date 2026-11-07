@@ -35,6 +35,7 @@ import {Throughput} from "./hooks/throughput"
 import {VoiceCommand} from "./hooks/voice_command"
 import {VoicePlayer} from "./hooks/voice_player"
 import {VoicePresence} from "./hooks/voice_presence"
+import {VoiceWispr} from "./hooks/voice_wispr"
 import {voiceInputActive, voiceState} from "./voice_state"
 import topbar from "../vendor/topbar"
 
@@ -61,7 +62,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     board_last_visit: localStorage.getItem("ab:last-visit"),
     board_tz_offset: new Date().getTimezoneOffset(),
   }),
-  hooks: {...colocatedHooks, DataAge, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, Composer, Throughput, VoiceCommand, VoicePlayer, VoicePresence},
+  hooks: {...colocatedHooks, DataAge, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, Composer, Throughput, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
@@ -189,7 +190,7 @@ window.addEventListener("phx:speak", (event) => {
   const voice = bestBrowserVoice(utterance.lang)
   if (voice) utterance.voice = voice
   utterance.volume = Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 100) / 100 : 1
-  utterance.onstart = () => voiceState("speaking", "Falando", "Usando a voz do navegador.", "browser-speech")
+  utterance.onstart = () => voiceState("speaking", "O agente está falando", event.detail.display || "Usando a voz do navegador.", "browser-speech")
   utterance.onend = () => {
     if (browserSpeech !== utterance) return
     browserSpeech = null
