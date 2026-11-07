@@ -87,9 +87,46 @@ defmodule AgentBoard.ExecutorUsage do
     end
   end
 
-  @doc "One transcript's usage. Malformed lines are skipped; each message counts once."
-  @spec parse(binary()) :: session()
-  def parse(jsonl) do
+  @doc """
+  Everything the harness spent between two instants: every session
+  transcript under `sessions_dir/0` changed since `since` (the workers, their
+  subagents and the orchestrator), counting only the messages whose `time`
+  falls in `[since, until)`. The summary of the day reads it once a day; a
+  board render never does.
+  """
+  @spec window(DateTime.t(), DateTime.t()) :: t()
+  def window(%DateTime{} = since, %DateTime{} = until) do
+    from = DateTime.to_unix(since)
+
+    files =
+      [sessions_dir(), "*", "*", @transcript]
+      |> Path.join()
+      |> Path.wildcard()
+      |> Enum.filter(&changed_since?(&1, from))
+      |> Enum.sort()
+
+    signature = Enum.map(files, &{&1, stamp(&1)})
+    bounds = {DateTime.to_unix(since, :millisecond), DateTime.to_unix(until, :millisecond)}
+
+    if files == [], do: empty(:none, nil, []), else: read(files, signature, window: bounds)
+  end
+
+  defp changed_since?(file, from) do
+    case File.stat(file, time: :posix) do
+      {:ok, %{mtime: mtime}} -> mtime >= from
+      {:error, _} -> false
+    end
+  end
+
+  @doc """
+  One transcript's usage. Malformed lines are skipped; each message counts
+  once. With `window: {from_ms, until_ms}` only the messages whose `time`
+  falls in `[from_ms, until_ms)` count; a message without a time does not.
+  """
+  @spec parse(binary(), keyword()) :: session()
+  def parse(jsonl, opts \\ []) do
+    window = Keyword.get(opts, :window)
+
     acc = %{
       requests: 0,
       input: 0,
@@ -105,8 +142,11 @@ defmodule AgentBoard.ExecutorUsage do
     |> String.split("\n", trim: true)
     |> Enum.reduce(acc, fn line, acc ->
       case Jason.decode(line) do
-        {:ok, event} when is_map(event) -> take(event, acc)
-        _ -> acc
+        {:ok, event} when is_map(event) ->
+          if counted?(event, window), do: take(event, acc), else: acc
+
+        _ ->
+          acc
       end
     end)
     |> Map.delete(:seen)
@@ -146,6 +186,14 @@ defmodule AgentBoard.ExecutorUsage do
   defp priced(_tokens, nil), do: {0, false}
   defp priced(tokens, price), do: {round(tokens * price), true}
 
+  defp counted?(_event, nil), do: true
+
+  defp counted?(%{"type" => "assistant/message", "time" => t}, {from, until}) when is_integer(t),
+    do: t >= from and t < until
+
+  defp counted?(%{"type" => "assistant/message"}, _window), do: false
+  defp counted?(_event, _window), do: true
+
   defp transcripts(directory) do
     folder = transcript_dir(directory)
 
@@ -170,18 +218,19 @@ defmodule AgentBoard.ExecutorUsage do
 
   # `zstd` comes from the PATH; the launchd service's PATH includes Homebrew
   # (`ops/com.agentboard.plist`).
-  defp read(files, signature) do
+  defp read(files, signature, opts \\ []) do
     if System.find_executable("zstd") do
-      {sessions, unreadable} = Enum.reduce(files, {[], 0}, &read_one/2)
+      {sessions, unreadable} = Enum.reduce(files, {[], 0}, &read_one(&1, &2, opts))
+      sessions = if opts[:window], do: Enum.filter(sessions, &(&1.requests > 0)), else: sessions
       summarize(sessions, unreadable, signature)
     else
       empty(:unavailable, :zstd_missing, signature)
     end
   end
 
-  defp read_one(file, {sessions, unreadable}) do
+  defp read_one(file, {sessions, unreadable}, opts) do
     case decompress(file) do
-      {:ok, jsonl} -> {[parse(jsonl) | sessions], unreadable}
+      {:ok, jsonl} -> {[parse(jsonl, window: opts[:window]) | sessions], unreadable}
       :error -> {sessions, unreadable + 1}
     end
   end

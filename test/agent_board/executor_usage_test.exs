@@ -158,6 +158,67 @@ defmodule AgentBoard.ExecutorUsageTest do
     end
   end
 
+  describe "a time window" do
+    test "parse counts only the messages sent inside it, end excluded" do
+      lines = [
+        ~s({"type":"model/selection","seq":1,"time":500,"data":{"model":"deepseek-flash"}}),
+        timed(assistant_line("m1", 100, 10, 0), 1_000),
+        timed(assistant_line("m2", 50, 5, 0), 5_000),
+        timed(assistant_line("m3", 20, 2, 0), 9_000),
+        assistant_line("untimed", 7, 7, 0)
+      ]
+
+      usage = ExecutorUsage.parse(Enum.join(lines, "\n"), window: {2_000, 9_000})
+
+      assert usage.requests == 1
+      assert usage.input == 50
+      assert usage.output == 5
+      assert usage.model == "deepseek-flash"
+    end
+
+    @tag skip: is_nil(@zstd) && "zstd is not installed"
+    test "window/2 reads every session changed since the start, the orchestrator's too", %{
+      root: root
+    } do
+      since = ~U[2026-11-06 11:00:00Z]
+      until = ~U[2026-11-07 11:00:00Z]
+      inside = DateTime.to_unix(~U[2026-11-07 09:00:00Z], :millisecond)
+      before = DateTime.to_unix(~U[2026-11-06 09:00:00Z], :millisecond)
+
+      write_transcript(Path.join(root, "--Users-x-.dsh-state-superagent--"), "orchestrator-1", [
+        ~s({"type":"model/selection","data":{"model":"deepseek-flash"}}),
+        timed(assistant_line("o1", 1_000_000, 0, 0), inside),
+        timed(assistant_line("o0", 5, 5, 0), before)
+      ])
+
+      write_transcript(Path.join(root, "--tmp-work-a--"), "worker-a", [
+        ~s({"type":"model/selection","data":{"model":"deepseek-flash"}}),
+        timed(assistant_line("w1", 0, 1_000_000, 0), inside)
+      ])
+
+      # A session nobody touched since the start is not decompressed.
+      stale = Path.join(root, "--tmp-work-old--")
+      write_transcript(stale, "worker-old", [timed(assistant_line("x", 9, 9, 0), inside)])
+      old = stale |> Path.join("worker-old/session.v4.jsonl.zstd")
+      File.touch!(old, ~U[2026-11-05 00:00:00Z] |> DateTime.to_unix())
+
+      usage = ExecutorUsage.window(since, until)
+
+      assert usage.status == :measured
+      assert usage.requests == 2
+      assert usage.input == 1_000_000
+      assert usage.output == 1_000_000
+      assert usage.models == ["deepseek-flash"]
+    end
+
+    test "window/2 with no session changed has nothing to measure" do
+      assert ExecutorUsage.window(~U[2026-11-06 11:00:00Z], ~U[2026-11-07 11:00:00Z]).status ==
+               :none
+    end
+  end
+
+  defp timed(line, ms), do: line |> Jason.decode!() |> Map.put("time", ms) |> Jason.encode!()
+
   defp ticket(directory), do: %{"execution" => %{"directory" => directory}}
 
   defp session_line(id, depth),

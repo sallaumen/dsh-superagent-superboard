@@ -50,6 +50,10 @@ config :agent_board, live_poll_interval: 3_600_000
 # AutoRetry.tick/1 itself.
 config :agent_board, auto_retry_interval: 3_600_000
 
+# The summary of the day too: the suite calls DailySummary.tick/1 with its
+# own clock.
+config :agent_board, daily_summary_interval: 3_600_000
+
 # The voices cache would leak between tests through the persistent term;
 # the client goes to the stub every time.
 config :agent_board, voice_voices_ttl: 0
