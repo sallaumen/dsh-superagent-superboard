@@ -6,7 +6,10 @@ defmodule AgentBoard.Usage.Codex do
   `threads` (`:codex_state_db`), and one rollout per thread under
   `~/.codex/sessions/YYYY/MM/DD/rollout-<time>-<thread id>.jsonl`
   (`:codex_sessions_dir`); older rollouts are zstd-compressed (`.jsonl.zst`)
-  while `threads.rollout_path` still names the `.jsonl`.
+  while `threads.rollout_path` still names the `.jsonl`. A long thread
+  continues in `rollout-<time>-<thread id>_<id>.jsonl` (`read_thread/1`), and
+  an archived thread's rollouts move to `~/.codex/archived_sessions`
+  (`:codex_archived_dir`).
 
   Counting rules, observed on 2026-11-07 (`docs/research/alfred.md` §3.3):
 
@@ -38,7 +41,8 @@ defmodule AgentBoard.Usage.Codex do
               cli_version tokens_used archived)a
   @counts [:input, :cached_input, :cache_write, :output, :reasoning, :total]
   @strings MapSet.new(~w(type timestamp limit_id plan_type rate_limit_reached_type balance))
-  @thread_id ~r/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl(?:\.zst)?$/
+  @uuid "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+  @thread_id ~r/^rollout-.+?-(#{@uuid})(?:_#{@uuid})?\.jsonl(?:\.zst)?$/
 
   @typedoc """
   Codex's own counts: `input` includes `cached_input`, `output` includes
@@ -133,6 +137,16 @@ defmodule AgentBoard.Usage.Codex do
     Application.get_env(:agent_board, :codex_sessions_dir) || Path.expand("~/.codex/sessions")
   end
 
+  @doc """
+  Where Codex moves the rollouts of archived threads
+  (`:codex_archived_dir`); their `threads` rows keep `tokens_used`.
+  """
+  @spec archived_dir() :: String.t()
+  def archived_dir do
+    Application.get_env(:agent_board, :codex_archived_dir) ||
+      Path.expand("~/.codex/archived_sessions")
+  end
+
   @doc "Every rollout under `dir`, plain or zstd, sorted."
   @spec rollouts(String.t()) :: [String.t()]
   def rollouts(dir \\ sessions_dir()) do
@@ -190,19 +204,62 @@ defmodule AgentBoard.Usage.Codex do
   not be read.
   """
   @spec read_rollout(String.t()) :: {:ok, rollout()} | {:error, term()}
-  def read_rollout(path) do
-    acc = %{previous: nil, days: %{}, rate_limits: nil, skipped: 0}
+  def read_rollout(path), do: read_thread([path])
 
-    with {:ok, acc} <- Lines.reduce(path, acc, &take_line/2) do
-      {:ok,
-       %{
-         thread_id: thread_id(path),
-         total: acc.previous,
-         days: acc.days |> Map.values() |> Enum.sort_by(& &1.day, Date),
-         rate_limits: acc.rate_limits,
-         skipped: acc.skipped
-       }}
+  @doc """
+  A thread's rollouts read as one count, in the order given (`segments/1`).
+  A long thread continues in another file, `rollout-<time>-<thread>_<id>.jsonl`,
+  whose cumulative total carries on from the thread's count (observed on
+  2026-11-07: 94,050,120 at the end of one file, 94,158,677 at the start of
+  the next), sometimes from an earlier point than the previous file's end
+  (174,819,363 after a file that ended at 175,596,871). So a continuation's
+  first total is credited with that response's own `last_token_usage`, and
+  only its later growth counts; it is never a new count from zero.
+
+  Inside one file a total below the previous one is a new count: Codex
+  restarted it (51,126,844, then 0, in one observed thread), and
+  `threads.tokens_used` then holds only the last count, while the days hold
+  every count's growth.
+  """
+  @spec read_thread([String.t()]) :: {:ok, rollout()} | {:error, term()}
+  def read_thread([first | _] = paths) do
+    acc = %{previous: nil, continued?: false, days: %{}, rate_limits: nil, skipped: 0}
+
+    paths
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, acc}, fn {path, index}, {:ok, acc} ->
+      case Lines.reduce(path, %{acc | continued?: index > 0}, &take_line/2) do
+        {:ok, acc} -> {:cont, {:ok, acc}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, acc} ->
+        {:ok,
+         %{
+           thread_id: thread_id(first),
+           total: acc.previous,
+           days: acc.days |> Map.values() |> Enum.sort_by(& &1.day, Date),
+           rate_limits: acc.rate_limits,
+           skipped: acc.skipped
+         }}
+
+      error ->
+        error
     end
+  end
+
+  @doc """
+  The rollouts grouped by thread, each thread's files in the order they
+  were written (by the time in the file name). Files without a thread id
+  are left out.
+  """
+  @spec segments([String.t()]) :: %{String.t() => [String.t()]}
+  def segments(paths) do
+    paths
+    |> Enum.group_by(&thread_id/1)
+    |> Map.delete(nil)
+    |> Map.new(fn {thread, files} -> {thread, Enum.sort_by(files, &Path.basename/1)} end)
   end
 
   defp take_line(line, acc) do
@@ -226,17 +283,34 @@ defmodule AgentBoard.Usage.Codex do
 
   defp take_token_count(payload, {:ok, at}, acc) do
     acc
-    |> take_total(get_in(payload, ["info", "total_token_usage"]), at)
+    |> take_total(payload["info"], at)
     |> take_rate_limits(payload["rate_limits"], at)
   end
 
-  defp take_total(acc, total, at) when is_map(total) do
+  # The first total of a continuation file is credited with that response's
+  # own usage: the file forks the thread's count at some earlier point (a
+  # continuation was seen starting below the previous file's last total),
+  # so the previous file's last total is not its baseline.
+  defp take_total(%{continued?: true} = acc, %{"total_token_usage" => total} = info, at)
+       when is_map(total) do
+    total = usage(total)
+
+    delta =
+      case info["last_token_usage"] do
+        %{} = last -> usage(last)
+        _ -> delta(acc.previous, total)
+      end
+
+    %{acc | previous: total, continued?: false, days: credit(acc.days, at, delta)}
+  end
+
+  defp take_total(acc, %{"total_token_usage" => total}, at) when is_map(total) do
     total = usage(total)
     delta = delta(acc.previous, total)
     %{acc | previous: total, days: credit(acc.days, at, delta)}
   end
 
-  defp take_total(acc, _total, _at), do: acc
+  defp take_total(acc, _info, _at), do: acc
 
   # A total below the previous one is a new count, not a negative usage.
   defp delta(nil, total), do: total

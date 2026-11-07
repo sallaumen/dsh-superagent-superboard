@@ -18,10 +18,27 @@ defmodule AgentBoard.ExecutorUsage do
   """
 
   alias AgentBoard.AI.Providers
+  alias AgentBoard.Usage.Fields
 
   @transcript "session.v4.jsonl.zstd"
+  @strings MapSet.new(~w(type id model cwd))
 
   @type cost :: %{micros: non_neg_integer(), complete?: boolean()} | nil
+  @type message :: %{
+          key: String.t() | integer(),
+          at: DateTime.t() | nil,
+          model: String.t() | nil,
+          input: non_neg_integer(),
+          output: non_neg_integer(),
+          cache_read: non_neg_integer(),
+          cache_write: non_neg_integer()
+        }
+  @type transcript :: %{
+          messages: [message()],
+          model: String.t() | nil,
+          subagent?: boolean(),
+          cwd: String.t() | nil
+        }
   @type session :: %{
           requests: non_neg_integer(),
           input: non_neg_integer(),
@@ -125,28 +142,64 @@ defmodule AgentBoard.ExecutorUsage do
   """
   @spec parse(binary(), keyword()) :: session()
   def parse(jsonl, opts \\ []) do
-    window = Keyword.get(opts, :window)
+    transcript = read_transcript(jsonl)
+    messages = Enum.filter(transcript.messages, &in_window?(&1, Keyword.get(opts, :window)))
+    sum = fn key -> messages |> Enum.map(&Map.fetch!(&1, key)) |> Enum.sum() end
 
-    acc = %{
-      requests: 0,
-      input: 0,
-      output: 0,
-      cache_read: 0,
-      cache_write: 0,
-      model: nil,
-      subagent?: false,
-      seen: MapSet.new()
+    %{
+      requests: length(messages),
+      input: sum.(:input),
+      output: sum.(:output),
+      cache_read: sum.(:cache_read),
+      cache_write: sum.(:cache_write),
+      model: transcript.model,
+      subagent?: transcript.subagent?
     }
+  end
+
+  @doc """
+  One transcript's messages, each once (by `data.message.id`, else `seq`),
+  with the time of the event, the model selected before it, and the
+  session's cwd and depth. `parse/1` sums these; the usage ledger
+  (`AgentBoard.Usage.Ledger`) stores them per day. Lines go through
+  `AgentBoard.Usage.Fields`: numbers and named metadata only.
+  """
+  @spec read_transcript(binary()) :: transcript()
+  def read_transcript(jsonl) do
+    acc = %{messages: [], model: nil, subagent?: false, cwd: nil, seen: MapSet.new()}
 
     jsonl
     |> String.split("\n", trim: true)
     |> Enum.reduce(acc, fn line, acc ->
-      case Jason.decode(line) do
-        {:ok, event} when is_map(event) -> take_counted(event, acc, window)
-        _ -> acc
+      case Fields.decode(line, @strings) do
+        {:ok, event} -> take(event, acc)
+        :error -> acc
       end
     end)
-    |> Map.delete(:seen)
+    |> then(fn acc ->
+      %{
+        messages: Enum.reverse(acc.messages),
+        model: acc.model,
+        subagent?: acc.subagent?,
+        cwd: acc.cwd
+      }
+    end)
+  end
+
+  @doc """
+  One session transcript from disk. `{:error, :zstd_missing}` without
+  `zstd` on the PATH, `{:error, :unreadable}` when it cannot decompress it.
+  """
+  @spec read_file(String.t()) :: {:ok, transcript()} | {:error, :zstd_missing | :unreadable}
+  def read_file(path) do
+    if System.find_executable("zstd") do
+      case decompress(path) do
+        {:ok, jsonl} -> {:ok, read_transcript(jsonl)}
+        :error -> {:error, :unreadable}
+      end
+    else
+      {:error, :zstd_missing}
+    end
   end
 
   @doc """
@@ -183,16 +236,13 @@ defmodule AgentBoard.ExecutorUsage do
   defp priced(_tokens, nil), do: {0, false}
   defp priced(tokens, price), do: {round(tokens * price), true}
 
-  defp take_counted(event, acc, window),
-    do: if(counted?(event, window), do: take(event, acc), else: acc)
+  defp in_window?(_message, nil), do: true
+  defp in_window?(%{at: nil}, _window), do: false
 
-  defp counted?(_event, nil), do: true
-
-  defp counted?(%{"type" => "assistant/message", "time" => t}, {from, until}) when is_integer(t),
-    do: t >= from and t < until
-
-  defp counted?(%{"type" => "assistant/message"}, _window), do: false
-  defp counted?(_event, _window), do: true
+  defp in_window?(%{at: at}, {from, until}) do
+    ms = DateTime.to_unix(at, :millisecond)
+    ms >= from and ms < until
+  end
 
   defp transcripts(directory) do
     folder = transcript_dir(directory)
@@ -280,7 +330,7 @@ defmodule AgentBoard.ExecutorUsage do
   end
 
   defp take(%{"type" => "session"} = event, acc),
-    do: %{acc | subagent?: (event["delegationDepth"] || 0) > 0}
+    do: %{acc | subagent?: (event["delegationDepth"] || 0) > 0, cwd: event["cwd"]}
 
   defp take(%{"type" => "model/selection", "data" => %{"model" => model}}, acc)
        when is_binary(model),
@@ -293,19 +343,28 @@ defmodule AgentBoard.ExecutorUsage do
     if key != nil and MapSet.member?(acc.seen, key) do
       acc
     else
+      message = %{
+        key: key,
+        at: time(event["time"]),
+        model: acc.model,
+        input: count(usage["inputTokens"]),
+        output: count(usage["outputTokens"]),
+        cache_read: count(usage["cacheReadTokens"]),
+        cache_write: count(usage["cacheWriteTokens"])
+      }
+
       %{
         acc
-        | requests: acc.requests + 1,
-          input: acc.input + count(usage["inputTokens"]),
-          output: acc.output + count(usage["outputTokens"]),
-          cache_read: acc.cache_read + count(usage["cacheReadTokens"]),
-          cache_write: acc.cache_write + count(usage["cacheWriteTokens"]),
+        | messages: [message | acc.messages],
           seen: if(key, do: MapSet.put(acc.seen, key), else: acc.seen)
       }
     end
   end
 
   defp take(_event, acc), do: acc
+
+  defp time(ms) when is_integer(ms) and ms > 0, do: DateTime.from_unix!(ms, :millisecond)
+  defp time(_ms), do: nil
 
   defp count(n) when is_integer(n) and n > 0, do: n
   defp count(_), do: 0

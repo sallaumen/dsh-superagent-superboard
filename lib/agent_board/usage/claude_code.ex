@@ -87,7 +87,8 @@ defmodule AgentBoard.Usage.ClaudeCode do
           messages: [message()],
           cost_states: [cost_state()],
           pr_links: [pr_link()],
-          skipped: non_neg_integer()
+          skipped: non_neg_integer(),
+          offset: non_neg_integer()
         }
 
   @doc "The only keys whose string values this reader keeps; every other string is dropped."
@@ -111,29 +112,57 @@ defmodule AgentBoard.Usage.ClaudeCode do
   end
 
   @doc """
-  One transcript, streamed line by line: its messages (each `message.id`
+  One transcript, read line by line: its messages (each `message.id`
   once), its `cost-state` snapshots, the PRs it linked (`pr-link` lines) and
-  how many candidate lines could not be read. A line that is not JSON, or an assistant line without an id or a
-  timestamp, is skipped and counted.
-  """
-  @spec read_file(String.t()) :: {:ok, file()} | {:error, File.posix() | term()}
-  def read_file(path) do
-    acc = %{messages: %{}, order: [], cost_states: [], pr_links: [], skipped: 0}
+  how many candidate lines could not be read. A line that is not JSON, or an
+  assistant line without an id or a timestamp, is skipped and counted.
 
-    path
-    |> File.stream!(:line, [])
-    |> Enum.reduce(acc, &take_line/2)
-    |> then(fn acc ->
-      {:ok,
-       %{
-         messages: acc.order |> Enum.reverse() |> Enum.map(&Map.fetch!(acc.messages, &1)),
-         cost_states: Enum.reverse(acc.cost_states),
-         pr_links: acc.pr_links |> Enum.reverse() |> Enum.uniq(),
-         skipped: acc.skipped
-       }}
-    end)
-  rescue
-    error in File.Error -> {:error, error.reason}
+  `from:` starts at a byte offset (a transcript only grows, so a reader can
+  continue where it stopped). `offset` is where the next read should start:
+  the end of the last complete line, so a line still being written is read
+  again, whole, next time.
+  """
+  @spec read_file(String.t(), keyword()) :: {:ok, file()} | {:error, File.posix() | term()}
+  def read_file(path, opts \\ []) do
+    from = Keyword.get(opts, :from, 0)
+    acc = %{messages: %{}, order: [], cost_states: [], pr_links: [], skipped: 0, offset: from}
+
+    with {:ok, fd} <- :file.open(path, [:read, :raw, :binary, {:read_ahead, 65_536}]) do
+      try do
+        with {:ok, _position} <- :file.position(fd, from),
+             {:ok, acc} <- read_lines(fd, acc) do
+          {:ok,
+           %{
+             messages: acc.order |> Enum.reverse() |> Enum.map(&Map.fetch!(acc.messages, &1)),
+             cost_states: Enum.reverse(acc.cost_states),
+             pr_links: acc.pr_links |> Enum.reverse() |> Enum.uniq(),
+             skipped: acc.skipped,
+             offset: acc.offset
+           }}
+        end
+      after
+        :file.close(fd)
+      end
+    end
+  end
+
+  defp read_lines(fd, acc) do
+    case :file.read_line(fd) do
+      {:ok, line} ->
+        if :binary.last(line) == ?\n do
+          read_lines(fd, %{take_line(line, acc) | offset: acc.offset + byte_size(line)})
+        else
+          # The last line has no newline yet: count it if it is whole, but
+          # leave the offset before it.
+          {:ok, take_line(line, acc)}
+        end
+
+      :eof ->
+        {:ok, acc}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @doc """

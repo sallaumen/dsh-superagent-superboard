@@ -75,7 +75,7 @@ defmodule AgentBoard.Usage.Lines do
         {:error, :enoent}
 
       true ->
-        case System.cmd("zstd", ["-dcq", "--", path], into: %Sink{acc: acc, fun: fun}) do
+        case System.cmd("zstd", ["-dc", "-qq", "--", path], into: %Sink{acc: acc, fun: fun}) do
           {%Sink{acc: acc}, 0} -> {:ok, acc}
           {_sink, status} -> {:error, {:zstd, status}}
         end

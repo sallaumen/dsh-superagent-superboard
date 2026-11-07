@@ -8,6 +8,7 @@ defmodule AgentBoard.Usage.CodexTest do
   @zstd System.find_executable("zstd")
   @secret "SEGREDO-DA-CONVERSA"
   @thread "01a1ab5d-868b-7992-8c07-03ac39510001"
+  @other "01a0ea97-2494-7850-9084-adbaa0d7af83"
 
   setup do
     root = Path.join(System.tmp_dir!(), "codex-usage-#{System.unique_integer([:positive])}")
@@ -131,6 +132,87 @@ defmodule AgentBoard.Usage.CodexTest do
 
       assert Codex.thread_id("rollout-2026-10-01T09-29-34-#{@thread}.jsonl.zst") == @thread
       assert Codex.thread_id("notes.jsonl") == nil
+
+      # A thread that continues in a second file names itself first.
+      continued =
+        "rollout-2026-09-28T21-36-08-#{@thread}_01a0ea97-2494-7850-9084-adbaa0d7af83.jsonl.zst"
+
+      assert Codex.thread_id(continued) == @thread
+    end
+  end
+
+  describe "read_thread/1 and segments/1" do
+    test "a continued thread counts on from its first file's last total", %{root: root} do
+      first =
+        write(root, "2026/09/28/rollout-2026-09-28T07-48-49-#{@thread}.jsonl", [
+          token_count_line("2026-09-28T10:00:00.000Z", total(1_000, 0, 50, 0)),
+          token_count_line("2026-09-28T20:00:00.000Z", total(9_000, 0, 1_000, 0))
+        ])
+
+      second =
+        write(root, "2026/09/28/rollout-2026-09-28T21-36-08-#{@thread}_#{@other}.jsonl", [
+          token_count_line(
+            "2026-09-29T00:36:00.000Z",
+            total(9_500, 0, 1_100, 0),
+            nil,
+            total(500, 0, 100, 0)
+          ),
+          token_count_line("2026-09-29T10:00:00.000Z", total(20_000, 0, 2_000, 0))
+        ])
+
+      assert Codex.segments([second, first, Path.join(root, "notes.jsonl")]) == %{
+               @thread => [first, second]
+             }
+
+      assert {:ok, rollout} = Codex.read_thread([first, second])
+      assert rollout.thread_id == @thread
+      assert rollout.total.total == 22_000
+      assert [%{total: 10_000}, %{total: 12_000, requests: 2}] = rollout.days
+
+      # Read alone, the second file would count the first one's tokens again.
+      assert {:ok, %{days: [%{total: 22_000}]}} = Codex.read_rollout(second)
+    end
+
+    test "a continuation that forks from an earlier point counts only its own growth",
+         %{root: root} do
+      base =
+        write(root, "rollout-2026-09-23T08-14-38-#{@thread}.jsonl", [
+          token_count_line("2026-09-23T11:00:00.000Z", total(9_000, 0, 1_000, 0))
+        ])
+
+      fork = fn name, at, total, last ->
+        write(root, "rollout-#{name}-#{@thread}_#{@other}.jsonl", [
+          token_count_line(at, total, nil, last)
+        ])
+      end
+
+      # Both continuations start below the base's last total (10,000).
+      a =
+        fork.(
+          "2026-09-23T14-29-25",
+          "2026-09-23T17:29:00.000Z",
+          total(9_000, 0, 800, 0),
+          total(250, 0, 50, 0)
+        )
+
+      b =
+        fork.(
+          "2026-09-23T14-51-25",
+          "2026-09-23T17:51:00.000Z",
+          total(9_100, 0, 800, 0),
+          total(350, 0, 50, 0)
+        )
+
+      File.write!(
+        b,
+        token_count_line("2026-09-23T20:00:00.000Z", total(18_000, 0, 2_000, 0)) <> "\n",
+        [:append]
+      )
+
+      assert {:ok, rollout} = Codex.read_thread([base, a, b])
+      assert rollout.total.total == 20_000
+      assert [%{total: total, requests: 4}] = rollout.days
+      assert total == 10_000 + 300 + 400 + (20_000 - 9_900)
     end
   end
 
@@ -222,10 +304,14 @@ defmodule AgentBoard.Usage.CodexTest do
     }
   end
 
-  defp token_count_line(timestamp, total, rate_limits \\ nil) do
+  defp token_count_line(timestamp, total, rate_limits \\ nil, last \\ nil) do
     info =
       if total,
-        do: %{total_token_usage: total, last_token_usage: total, model_context_window: 400_000}
+        do: %{
+          total_token_usage: total,
+          last_token_usage: last || total,
+          model_context_window: 400_000
+        }
 
     Jason.encode!(%{
       timestamp: timestamp,
