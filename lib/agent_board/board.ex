@@ -265,7 +265,9 @@ defmodule AgentBoard.Board do
         url: issue["html_url"],
         author: "board",
         request_key: Keyword.get(opts, :request_key),
-        origin_task_id: Keyword.get(opts, :origin_task_id)
+        origin_task_id: Keyword.get(opts, :origin_task_id),
+        work_type: Keyword.get(opts, :work_type),
+        size: Keyword.get(opts, :size)
       })
       |> Repo.insert(on_conflict: :nothing)
       |> tap(fn _ -> broadcast(repository.id) end)
@@ -319,7 +321,9 @@ defmodule AgentBoard.Board do
     created =
       create_task(repository, title, body, client,
         request_key: key,
-        origin_task_id: Map.get(request, :origin_task_id)
+        origin_task_id: Map.get(request, :origin_task_id),
+        work_type: Map.get(request, :work_type),
+        size: Map.get(request, :size)
       )
 
     case created do

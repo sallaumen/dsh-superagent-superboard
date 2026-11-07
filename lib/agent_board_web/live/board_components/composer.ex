@@ -11,6 +11,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   use AgentBoardWeb, :html
 
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
+  import AgentBoardWeb.BoardComponents.WorkTag, only: [work_tag: 1]
 
   alias AgentBoard.Titles
 
@@ -189,7 +190,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             ></span>
             <span class="ab-row__pos">{index + 1}</span>
             <span>{task.title}</span>
-            <span class="ab-meta">{task.size}</span>
+            <.work_tag work_type={task.kind} size={task.size} />
           </label>
         </div>
 
@@ -269,7 +270,10 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       <ul class="ab-receipt__list">
         <li :for={item <- @receipt.items} class="ab-receipt__item">
           <span class="ab-need__id">{receipt_number(item)}</span>
-          <span class="ab-receipt__title">{item.title}</span>
+          <span class="ab-receipt__title">
+            {item.title}
+            <.work_tag :if={item.task} work_type={item.task.work_type} size={item.task.size} />
+          </span>
           <span class={["ab-tag", outcome_class(item.outcome)]}>{outcome_label(item.outcome)}</span>
           <span :if={item.task} class="ab-receipt__links">
             <a

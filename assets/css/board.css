@@ -698,6 +698,8 @@ body { margin: 0; background: var(--paper); }
 }
 .ab-receipt__item:first-child { border-top: 0; }
 .ab-receipt__title { min-width: 0; overflow-wrap: anywhere; }
+.ab-work { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.ab-receipt__title .ab-work { margin-left: var(--space-2); }
 .ab-receipt__links { grid-column: 2 / -1; display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .ab-receipt__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .ab-dot--agent { width: 8px; height: 8px; border-radius: 50%; background: var(--agent); display: inline-block; }

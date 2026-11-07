@@ -465,6 +465,15 @@ records are the `ai_calls` rows (the split) and the tasks with their
   request).
 - **The title is the first sentence**, cut at a clause boundary
   (`Titles.from_request/1`), shown and editable before the submit.
+- **The split classifies, the task keeps it.** `:propose_tasks` answers each
+  task's `kind` (where the work lands: `ui`, `backend`, `docs`, `bug`,
+  `research`, `infra`) and `size` (`S`, `M`, `L`), from the lists
+  `Task.work_types/0` and `Task.sizes/0` that the registry's schema reads,
+  so an answer outside them is `:malformed_output`, never a default. The
+  chosen tasks store them in `tasks.work_type` and `tasks.size`; the review
+  list, the receipt and the inspector show them in Portuguese ("UI · P",
+  `WorkTag`). A single request, a voice task or a synced issue has neither,
+  and shows nothing.
 
 ## Types at the boundary
 

@@ -45,13 +45,10 @@ defmodule AgentBoard.AI.Registry do
           "properties" => %{
             "title" => %{"type" => "string"},
             "body" => %{"type" => "string"},
-            "kind" => %{
-              "type" => "string",
-              "enum" => ["bug", "feature", "design", "docs", "refactor"]
-            },
+            "kind" => %{"type" => "string", "enum" => AgentBoard.Board.Task.work_types()},
             "acceptance" => %{"type" => "array", "items" => %{"type" => "string"}},
             "depends_on" => %{"type" => "array", "items" => %{"type" => "integer"}},
-            "size" => %{"type" => "string", "enum" => ["S", "M", "L"]}
+            "size" => %{"type" => "string", "enum" => AgentBoard.Board.Task.sizes()}
           },
           "required" => ["title", "body", "kind", "acceptance", "depends_on", "size"]
         }
@@ -307,6 +304,11 @@ defmodule AgentBoard.AI.Registry do
       Reply with JSON only, matching the schema.
       Each task must close on its own: title, body, acceptance criteria.
       depends_on uses indices of this list, only when there is a real order.
+      kind is where the work lands: ui (screens, components, styles, copy),
+      backend (server logic, data, APIs, jobs), docs (only documentation),
+      bug (a defect in behavior that exists), research (investigate, measure
+      or decide; no code change expected), infra (CI, build, deploy, tooling).
+      size is the effort: S up to half a day, M one or two days, L more.
       A size L task is almost always two tasks.
       Keep every constraint and non_goal; a task that violates one is wrong.
       Keep each body under 400 characters: the whole list must fit one answer.

@@ -71,14 +71,17 @@ defmodule AgentBoard.Intake do
     task["title"] in [nil, ""] or task["body"] in [nil, ""] or task["acceptance"] in [nil, []]
   end
 
+  # The kind and the size are the model's classification. The registry's
+  # schema already refused an answer outside `Task.work_types/0` and
+  # `Task.sizes/0`, so they are taken as given, never defaulted.
   defp normalize_task(task) do
     %{
       title: task["title"],
       body: task["body"],
-      kind: task["kind"] || "feature",
+      kind: task["kind"],
       acceptance: task["acceptance"] || [],
       depends_on: task["depends_on"] || [],
-      size: task["size"] || "M"
+      size: task["size"]
     }
   end
 end
