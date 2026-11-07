@@ -14,8 +14,11 @@
 		<string>/Users/tavano/src/agent_board/scripts/agent/keepalive.sh</string>
 	</array>
 
+	<!-- Not the prototype: a launchd job may not read ~/Documents (privacy
+	     protection), so the asdf shims fail to resolve a cwd there. The
+	     tmux server the manager starts can, and dsh runs from it. -->
 	<key>WorkingDirectory</key>
-	<string>/Users/tavano/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype</string>
+	<string>/Users/tavano</string>
 
 	<key>EnvironmentVariables</key>
 	<dict>
