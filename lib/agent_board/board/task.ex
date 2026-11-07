@@ -6,7 +6,7 @@ defmodule AgentBoard.Board.Task do
   @derive {Jason.Encoder,
            only: [:id, :kind, :number, :title, :state, :url, :author, :stopped, :archived]}
 
-  @states ~w(queued running question ready blocked done closed stopped archived)
+  @states ~w(queued running retrying question ready blocked done closed stopped archived)
 
   schema "tasks" do
     field :kind, :string, default: "issue"

@@ -55,6 +55,18 @@ defmodule AgentBoard.AnnouncerTest do
            ]
   end
 
+  test "a failure the board retries by itself is quiet; running out of retries is the call" do
+    retrying = %{board() | running: []} |> Map.put(:retrying, [task(1, "Ship it", :retrying)])
+
+    assert Announcer.board_changes(board([task(1, "Ship it", :running)]), retrying, nil, nil) ==
+             []
+
+    assert Announcer.board_changes(retrying, board([task(1, "Ship it", :blocked)]), nil, nil,
+             turn: 0
+           ) ==
+             [Phrases.attention("pt-BR", :blocked, "Ship it", 0)]
+  end
+
   test "a silence calls the owner once, when its item first appears" do
     need = %{key: "task-1", kind: :stalled, title: "Ship it"}
     review = %{key: "task-2", kind: :review, title: "Other"}

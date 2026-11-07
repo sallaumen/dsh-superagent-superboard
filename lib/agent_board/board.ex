@@ -11,7 +11,7 @@ defmodule AgentBoard.Board do
 
   @merged_page_size 50
   @task_page_size 50
-  @task_states [:running, :question, :ready, :blocked, :queued]
+  @task_states [:running, :retrying, :question, :ready, :blocked, :queued]
 
   def merged_page_size, do: @merged_page_size
   def task_page_size, do: @task_page_size
@@ -716,6 +716,7 @@ defmodule AgentBoard.Board do
   defp state_label("question"), do: "pergunta"
   defp state_label("ready"), do: "para revisar"
   defp state_label("blocked"), do: "bloqueado"
+  defp state_label("retrying"), do: "tentando de novo"
   defp state_label("queued"), do: "na fila"
   defp state_label("done"), do: "mesclado"
   defp state_label("stopped"), do: "parado"
@@ -723,6 +724,7 @@ defmodule AgentBoard.Board do
   defp state_label(state), do: state || "desconhecido"
 
   defp state_tone("blocked"), do: :halt
+  defp state_tone("retrying"), do: :agent
   defp state_tone("question"), do: :you
   defp state_tone("ready"), do: :you
   defp state_tone("running"), do: :agent

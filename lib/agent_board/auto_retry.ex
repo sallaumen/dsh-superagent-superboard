@@ -126,6 +126,21 @@ defmodule AgentBoard.AutoRetry do
     }
   end
 
+  @doc "Whether the ticket's latest Assignment is a retry still waiting for a worker."
+  @spec queued_retry?(map()) :: boolean()
+  def queued_retry?(ticket) do
+    open? = !(ticket["ended_outcome"] || ticket["stopped"] || ticket["archived"])
+
+    case Enum.take(ticket["assignments"] || [], -2) do
+      [%{"ended_reason" => "retried"}, %{"state" => "pending"}] -> open?
+      _other -> false
+    end
+  end
+
+  @doc "The retries already made in the ticket's current failure streak."
+  @spec streak(map()) :: non_neg_integer()
+  def streak(ticket), do: streak_retries(ticket["assignments"] || [])
+
   defp failed_at(assignment),
     do: assignment["report_at"] || assignment["started_at"] || assignment["created_at"]
 

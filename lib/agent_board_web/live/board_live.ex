@@ -5,11 +5,13 @@ defmodule AgentBoardWeb.BoardLive do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{
+    AgentBlock,
     AgentSignal,
     AgentState,
     AgentWorktree,
     AI,
     Announcer,
+    AutoRetry,
     Board,
     ElevenLabs,
     GitHub,
@@ -96,6 +98,7 @@ defmodule AgentBoardWeb.BoardLive do
         inspector_calls: [],
         inspector_pr: nil,
         inspector_ci: nil,
+        inspector_failure: nil,
         intake: nil,
         intake_draft: nil,
         composer_text: "",
@@ -171,15 +174,23 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp parse_offset(_value), do: 0
 
-  defp work_for(repo, board, agent, freshness, socket, local_ci) do
+  defp work_for(repo, board, agent, freshness, socket, local_ci, orchestrator) do
     now = DateTime.utc_now()
     tz_offset = socket.assigns.tz_offset
     last_visit = socket.assigns.last_visit
     frozen_at = if freshness.frozen?, do: freshness.at, else: nil
     run = run_context(agent, board, now, frozen_at)
+    agent_up = agent_status(orchestrator)
 
     %{
       running: Enum.map(board.running, &running_card(&1, run)),
+      retrying:
+        Work.retrying(board,
+          now: now,
+          tz_offset: tz_offset,
+          tickets_by_number: run.tickets,
+          agent: agent_up
+        ),
       needs:
         Work.needs(repo, board,
           now: now,
@@ -188,7 +199,8 @@ defmodule AgentBoardWeb.BoardLive do
           tickets_by_number: run.tickets,
           local_ci: local_ci,
           silences: run.silences,
-          stall_after: run.stall_after
+          stall_after: run.stall_after,
+          agent: agent_up
         ),
       queue:
         Work.queue(repo, board,
@@ -212,6 +224,13 @@ defmodule AgentBoardWeb.BoardLive do
         end
     }
   end
+
+  # The orchestrator's answer, asked once per load (the throughput strip
+  # reads the same answer): only a refused or broken API is "down"; a board
+  # with the API switched off does not know.
+  defp agent_status({:ok, _load}), do: :up
+  defp agent_status({:error, :not_configured}), do: :unknown
+  defp agent_status({:error, _reason}), do: :down
 
   # The silences are read once per render, with the real clock: the ticket
   # database is local and live even when GitHub is frozen.
@@ -259,6 +278,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp empty_work do
     %{
       running: [],
+      retrying: [],
       needs: [],
       queue: %{
         items: [],
@@ -290,7 +310,8 @@ defmodule AgentBoardWeb.BoardLive do
           inspector_activity: [],
           inspector_calls: [],
           inspector_pr: nil,
-          inspector_ci: nil
+          inspector_ci: nil,
+          inspector_failure: nil
         )
 
       task ->
@@ -303,9 +324,25 @@ defmodule AgentBoardWeb.BoardLive do
           inspector_calls: AI.recent_for_task(task.id),
           inspector_pr: pr,
           inspector_ci: ci,
+          inspector_failure: inspector_failure(socket, task),
           inspector_tab: socket.assigns.inspector_tab || "conversa"
         )
     end
+  end
+
+  # The failure block of the open task: the same words as its card, with
+  # the attempts and which of them the board asked for.
+  defp inspector_failure(socket, task) do
+    ticket =
+      socket.assigns
+      |> Map.get(:agent_snapshot, %{tickets: []})
+      |> Map.get(:tickets, [])
+      |> Enum.find(&(task.number in (&1["numbers"] || [])))
+
+    AgentBlock.explain(ticket,
+      tz_offset: socket.assigns.tz_offset,
+      retries: AutoRetry.attempts(ticket && ticket["id"])
+    )
   end
 
   defp refresh_inspector_after_act(socket, task_id) do
@@ -408,8 +445,9 @@ defmodule AgentBoardWeb.BoardLive do
             heads: Board.pull_heads(repo.id)
           )
 
-        work = work_for(repo, board, agent, freshness, socket, local_ci)
-        flow = flow_for(repo, agent, socket.assigns.tz_offset)
+        orchestrator = Orchestrator.load()
+        work = work_for(repo, board, agent, freshness, socket, local_ci, orchestrator)
+        flow = flow_for(repo, agent, socket.assigns.tz_offset, orchestrator)
 
         assign(socket,
           repo: repo,
@@ -454,11 +492,11 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The throughput strip: read once per load, from the tables, the agent's
   # tickets and the orchestrator; the arithmetic is pure and tested apart.
-  defp flow_for(repo, agent, tz_offset) do
+  defp flow_for(repo, agent, tz_offset, orchestrator) do
     now = DateTime.utc_now()
 
     repo
-    |> Observations.read(agent, now: now, load: Orchestrator.load())
+    |> Observations.read(agent, now: now, load: orchestrator)
     |> Metrics.throughput(now, tz_offset)
   end
 
@@ -540,6 +578,13 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_info({:voice_activity, event}, socket),
     do: {:noreply, VoiceConversation.activity(socket, event)}
+
+  # "Religar o agente" worked: the item that held the button leaves on the
+  # reload, so the result is said here (AgentAction), then every board reloads.
+  def handle_info({:agent_restarted, text}, socket) do
+    AgentBoard.AgentControl.refresh_boards()
+    {:noreply, put_flash(socket, :info, text)}
+  end
 
   def handle_info(:board_updated, socket) do
     old_board = socket.assigns.board
@@ -1627,6 +1672,7 @@ defmodule AgentBoardWeb.BoardLive do
               <div class="ab-col">
                 <.now_lane
                   running={@work.running}
+                  retrying={@work.retrying}
                   frozen={@freshness.frozen?}
                   frozen_at={@freshness.at}
                   sync_at={@freshness.at}
@@ -1661,6 +1707,7 @@ defmodule AgentBoardWeb.BoardLive do
             calls={@inspector_calls}
             pr={@inspector_pr}
             ci={@inspector_ci}
+            failure={@inspector_failure}
             tz_offset={@tz_offset}
             live={@freshness.live?}
           />

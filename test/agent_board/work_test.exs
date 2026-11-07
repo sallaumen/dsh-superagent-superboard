@@ -210,6 +210,107 @@ defmodule AgentBoard.WorkTest do
     assert whys[33] =~ "sem motivo no relatório"
   end
 
+  describe "agent failures" do
+    @transport "LlmError: DeepSeek Messages transport failed"
+
+    defp failed_ticket(number, summary, retried) do
+      previous =
+        for i <- 1..retried//1 do
+          %{
+            "id" => "a#{i}",
+            "state" => "ended",
+            "report" => %{"state" => "failed"},
+            "endedReason" => "retried"
+          }
+        end
+
+      AgentBoard.AgentState.normalize(%{
+        "id" => "t#{number}",
+        "mandate" => %{"basis" => %{"scope" => %{"number" => number}}},
+        "assignments" =>
+          previous ++
+            [
+              %{
+                "id" => "latest-#{number}",
+                "state" => "running",
+                "report" => %{
+                  "state" => "failed",
+                  "summary" => summary,
+                  "at" => "2026-11-07T17:10:00Z"
+                }
+              }
+            ]
+      })
+    end
+
+    test "a block says what failed and what is left to the owner" do
+      {:ok, repo} = Board.add_repository("fixture", "failure-why")
+      now = ~U[2026-11-07 18:00:00Z]
+      out = task(repo, 60, "Out of retries", "blocked", DateTime.add(now, -60, :second))
+      person = task(repo, 61, "Needs a person", "blocked", DateTime.add(now, -60, :second))
+
+      tickets = %{
+        60 => failed_ticket(60, @transport, 3),
+        61 => failed_ticket(61, "Tests failed: 3 failures", 0)
+      }
+
+      needs =
+        Work.needs(repo, %{ready: [], blocked: [out, person], question: []},
+          now: now,
+          tickets_by_number: tickets
+        )
+
+      whys = Map.new(needs, &{&1.number, &1.why})
+
+      assert whys[60] ==
+               "**Falha de rede ao chamar o modelo.** As 3 tentativas automáticas falharam; " <>
+                 "tente de novo quando a rede voltar."
+
+      assert whys[61] =~
+               "Não parece falha de rede: leia o erro no detalhe antes de tentar de novo."
+    end
+
+    test "a retrying task is a row in Agora with its next attempt, not an item for the owner" do
+      {:ok, repo} = Board.add_repository("fixture", "failure-retrying")
+      now = ~U[2026-11-07 17:10:30Z]
+      retrying = task(repo, 62, "Retrying", "retrying", DateTime.add(now, -30, :second))
+      board = %{ready: [], blocked: [], question: [], retrying: [retrying]}
+      tickets = %{62 => failed_ticket(62, @transport, 0)}
+
+      assert Work.needs(repo, board, now: now, tickets_by_number: tickets) == []
+
+      assert [%{number: 62, line: line}] =
+               Work.retrying(board, now: now, tz_offset: 180, tickets_by_number: tickets)
+
+      assert line ==
+               "**Falha de rede ao chamar o modelo.** Nova tentativa automática às 14:11 (1 de 3)."
+    end
+
+    test "with the orchestrator down, blocks and silences become one item" do
+      {:ok, repo} = Board.add_repository("fixture", "agent-down")
+      now = ~U[2026-11-07 18:00:00Z]
+      blocked = task(repo, 63, "Blocked", "blocked", DateTime.add(now, -60, :second))
+      review = task(repo, 64, "Review", "ready", DateTime.add(now, -60, :second))
+      retrying = task(repo, 65, "Retrying", "retrying", DateTime.add(now, -60, :second))
+      board = %{ready: [review], blocked: [blocked], question: [], retrying: [retrying]}
+
+      assert [down, %{number: 64, kind: :review}] =
+               Work.needs(repo, board, now: now, agent: :down)
+
+      assert %{kind: :agent_down, title: "Agente fora do ar", number: nil, waiting: 2} = down
+
+      assert down.why ==
+               "**O orquestrador não responde.** 2 tarefas esperam ele voltar; as falhas de rede voltam a ser tentadas sozinhas."
+
+      assert [%{label: "Religar o agente", restart_agent: true}] = down.actions
+
+      assert Enum.map(Work.needs(repo, board, now: now, agent: :up), & &1.kind) == [
+               :blocked,
+               :review
+             ]
+    end
+  end
+
   test "a running task that went silent needs the owner; a fresh one is quiet" do
     {:ok, repo} = Board.add_repository("fixture", "silence")
     now = ~U[2026-11-07 12:00:00Z]

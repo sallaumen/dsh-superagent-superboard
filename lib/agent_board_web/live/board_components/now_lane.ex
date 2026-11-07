@@ -5,9 +5,14 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
   A silent run keeps its place here (it is still running) and says so: the
   glyph stops pulsing, because motion that says "working" would misrepresent
   the state, and the line says how long the board has seen nothing.
+
+  A failure the board retries by itself is here too, after the running
+  cards: nobody has to act, the system is on it. Its row says what failed
+  and when the next attempt goes out; the glyph is the queue's, still.
   """
   use AgentBoardWeb, :html
 
+  import AgentBoardWeb.BoardComponents.Markup, only: [markup: 1]
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
   alias AgentBoard.Time
 
@@ -17,16 +22,19 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
   attr :sync_at, :any, default: nil
   attr :tz_offset, :integer, default: 0
   attr :next_queued, :any, default: nil
+  attr :retrying, :list, default: []
 
   def now_lane(assigns) do
     ~H"""
     <section id="sec-now" aria-labelledby="sec-now-title">
       <div class="ab-sec__head">
         <h2 id="sec-now-title">Agora</h2>
-        <span class="ab-sec__count">{count(@running, @frozen, @sync_at, @tz_offset)}</span>
+        <span class="ab-sec__count">
+          {count(@running, @frozen, @sync_at, @tz_offset)}{retry_count(@retrying)}
+        </span>
       </div>
 
-      <div :if={@running == []} class="ab-sec__empty">
+      <div :if={@running == [] and @retrying == []} class="ab-sec__empty">
         <.glyph kind={:queue} />Nenhum agente trabalhando.<span :if={@next_queued} class="ab-meta">
           A próxima da fila é #{@next_queued}.
         </span>
@@ -83,10 +91,35 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
             </span>
           </div>
         </article>
+
+        <article
+          :for={task <- @retrying}
+          id={"task-#{task.id}"}
+          class="ab-run ab-run--retry"
+          tabindex="0"
+          role="button"
+          data-task={task.id}
+          phx-click="open"
+          phx-value-id={task.id}
+          data-panel-trigger
+          aria-label={"Abrir tarefa ##{task.number}: #{task.title}"}
+        >
+          <.glyph kind={:retrying} />
+
+          <div class="ab-run__title">
+            <span class="ab-need__id">#{task.number}</span>
+            <span>{task.title}</span>
+          </div>
+
+          <div class="ab-run__retry"><.markup text={task.line} /></div>
+        </article>
       </div>
     </section>
     """
   end
+
+  defp retry_count([]), do: ""
+  defp retry_count(retrying), do: " · #{length(retrying)} em nova tentativa"
 
   defp count([], _frozen, _sync_at, _offset), do: "0"
 

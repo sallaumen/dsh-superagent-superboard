@@ -16,6 +16,8 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 | `AgentBoard.Orchestrator` | the runner's HTTP API: the load (`running`, `queued`, `maxWorkers`) and its one write, `retry/2` |
 | `AgentBoard.AgentFailure` | what a `failed` report means: transient (network, provider) or a person's, pure |
 | `AgentBoard.AutoRetry` | the automatic retry of a transient failure: `plan/2` (pure, what the board shows) and the 30 s tick |
+| `AgentBoard.AgentBlock` | what the board says about a failed ticket: the card line, what the system does, what is left to the owner, the attempts; pure |
+| `AgentBoard.AgentControl` | the owner's two confirmed asks: "Tentar de novo" (`retry/2`) and "Religar o agente" (`start_agent/1`) |
 | `AgentBoard.Metrics` | the throughput arithmetic, pure; `Metrics.Observations` reads what it counts |
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
@@ -33,7 +35,9 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   migration.
 - The task state is two-layered: the **issue** is the baseline (`open` →
   `queued`, `closed` → `done`) and the **ticket** is the overlay (`running`,
-  `ready`, `blocked`) while the issue is open. A ticket that ended `merged` is
+  `retrying`, `ready`, `blocked`) while the issue is open. `retrying` is a
+  failure `AgentBoard.AutoRetry` will retry by itself, or a retry waiting
+  for a worker ("Automatic retry" below). A ticket that ended `merged` is
   `done` whatever its last report said. A stopped or archived task keeps its
   state.
 - A review rollup is the strongest review (`changes_requested` beats `approved`);
@@ -153,6 +157,43 @@ board still never writes the runner's sqlite.
   `auto_retry_test.exs` (plan, delays, streak, limit, once per Assignment,
   orchestrator down, unanswered and refused requests, the switch) and
   `orchestrator_test.exs` (the request and its reasons).
+
+**What the board shows** (`AgentBoard.AgentBlock`, one source for the card,
+Agora and the detail):
+
+- A ticket the board retries by itself is `retrying` (`Sync.ticket_state/2`
+  asks `AutoRetry.plan/2`; a retry still waiting for a worker is
+  `retrying` too). It is a row in **Agora**, after the running cards, not an
+  item in Precisa de você: nobody has to act, the system is on it, and
+  Agora is where the board says what is happening now. The row says what
+  failed and when the next attempt goes out ("Falha de rede ao chamar o
+  modelo. Nova tentativa automática às 14:20 (2 de 3)."). Entering
+  `retrying` is silent (`Announcer`); leaving it for `blocked` is the call.
+- When the retries ran out or the failure is not transient, the task is
+  `blocked` and its item in Precisa de você says what failed and the step
+  left to the owner, never only the raw error.
+- When the orchestrator does not answer `GET /state` (asked once per load,
+  the same answer as the throughput strip), the blocks and silences collapse
+  into **one** item, "Agente fora do ar", with "Religar o agente". A board
+  with the API switched off does not know, and collapses nothing.
+- The detail of a failed task shows the headline, what the system will do,
+  what is left to the owner, the whole error and every Assignment as an
+  attempt (when, what happened, whether the board or a person asked for the
+  retry).
+- **Every action asks first** (`AgentBoardWeb.BoardComponents.AgentAction`):
+  the first click shows what will happen, only the confirmation acts, the
+  button shows a loading state and the result stays in place.
+  "Tentar de novo" / "Tentar agora" is the same `POST tickets/<id>/retry`,
+  asked by the owner and recorded as `agent_retry_manual`; "Parar" keeps
+  the board's stop (`act`), now behind a confirmation; "Religar o agente"
+  runs the prototype's manager (`python3 scripts/dsh-superagent start`,
+  idempotent, `DSH_SUPERAGENT_HOME`) on this machine, never from the
+  browser, and clears a stop made on purpose because the owner asked.
+- The tests: `agent_block_test.exs` (every sentence), `sync_test.exs`
+  (`retrying`), `work_test.exs` (the item, the Agora row, the collapse),
+  `announcer_test.exs` (quiet, then the call), `agent_control_test.exs`
+  (both actions and their sentences) and `board_agent_failure_test.exs`
+  (rendered lanes, confirm, cancel, loading, result, Parar, Religar).
 
 ## The voice
 

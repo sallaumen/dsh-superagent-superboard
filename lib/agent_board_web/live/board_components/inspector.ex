@@ -7,6 +7,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [status_mark: 1]
 
   alias AgentBoard.Time
+  alias AgentBoardWeb.BoardComponents.AgentAction
 
   attr :task, :any, required: true
   attr :comments, :list, required: true
@@ -17,6 +18,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :ci, :map, default: nil
   attr :tz_offset, :integer, default: 0
   attr :live, :boolean, default: false
+  attr :failure, :map, default: nil
 
   def inspector(assigns) do
     tabs = [
@@ -74,6 +76,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           </a>
         </div>
 
+        <.failure_block :if={@failure} failure={@failure} task={@task} offset={@tz_offset} />
+
         <div class="ab-insp__actions">
           <button
             :if={@task.stopped or @task.archived}
@@ -83,14 +87,18 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             phx-value-id={@task.id}
             phx-value-action="resume"
           >Retomar</button>
-          <button
+          <.live_component
             :if={not (@task.stopped or @task.archived)}
-            type="button"
-            class="ab-btn ab-btn--sm ab-btn--halt"
-            phx-click="act"
-            phx-value-id={@task.id}
-            phx-value-action="stop"
-          >Parar</button>
+            module={AgentAction}
+            id={"stop-#{@task.id}"}
+            mode={:stop}
+            tone={:halt}
+            task_id={@task.id}
+            label="Parar"
+            question={"Parar ##{@task.number}? O board fecha a issue e marca a tarefa como parada; um passo que o agente já começou termina antes."}
+            confirm_label="Parar a tarefa"
+            busy_label="Parando…"
+          />
           <button
             :if={not (@task.stopped or @task.archived)}
             type="button"
@@ -166,6 +174,54 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         </form>
       </div>
     </aside>
+    """
+  end
+
+  attr :failure, :map, required: true
+  attr :task, :any, required: true
+  attr :offset, :integer, default: 0
+
+  # What failed, what the board does about it, what is left to the owner,
+  # then the evidence: the whole error and every attempt.
+  defp failure_block(assigns) do
+    ~H"""
+    <section
+      id="agent-failure"
+      class={["ab-fail", "is-#{@failure.state}"]}
+      aria-labelledby="agent-failure-title"
+    >
+      <h3 id="agent-failure-title" class="ab-fail__title">{@failure.headline}</h3>
+      <p class="ab-fail__system">{@failure.system}</p>
+      <p class="ab-fail__action">{@failure.action}</p>
+
+      <.live_component
+        :if={@failure.retry && @failure.ticket_id}
+        module={AgentAction}
+        id={"retry-#{@task.id}"}
+        mode={:retry}
+        tone={if @failure.state == :scheduled, do: :quiet, else: :primary}
+        ticket_id={@failure.ticket_id}
+        task_id={@task.id}
+        repository_id={@task.repository_id}
+        number={@task.number}
+        label={@failure.retry}
+        question={"Pedir ao agente uma nova tentativa de ##{@task.number} agora?"}
+        confirm_label="Pedir nova tentativa"
+        busy_label="Pedindo ao agente…"
+      />
+
+      <details class="ab-fail__evidence">
+        <summary>Erro e tentativas</summary>
+        <pre :if={@failure.error} class="ab-fail__error">{@failure.error}</pre>
+        <ol class="ab-fail__attempts">
+          <li :for={attempt <- @failure.attempts}>
+            <span class="ab-data-sm ab-faint">{attempt.n}</span>
+            <span :if={attempt.at} class="ab-meta">{Time.local_time(attempt.at, @offset)}</span>
+            <span>{attempt.text}</span>
+          </li>
+        </ol>
+      </details>
+    </section>
     """
   end
 
@@ -326,6 +382,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp status_kind("question"), do: :question
   defp status_kind("ready"), do: :review
   defp status_kind("blocked"), do: :blocked
+  defp status_kind("retrying"), do: :retrying
   defp status_kind("queued"), do: :queue
   defp status_kind("done"), do: :done
   defp status_kind("stopped"), do: :queue
