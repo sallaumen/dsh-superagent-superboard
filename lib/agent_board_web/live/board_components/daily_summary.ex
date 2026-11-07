@@ -5,7 +5,8 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
   executor spent. It renders the facts stored in the row
   (`AgentBoard.DailySummary.Entry`), never a recomputation; it arrives with
   a broadcast and leaves when dismissed, without motion (`docs/ui-motion.md`:
-  data that arrives is not animated).
+  data that arrives is not animated). The `DailySummaryVoice` hook asks to
+  speak it from a tab the owner has interacted with.
   """
   use AgentBoardWeb, :html
 
@@ -29,7 +30,14 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
       )
 
     ~H"""
-    <section id="daily-summary" class="ab-daily" aria-labelledby="daily-summary-title">
+    <section
+      id="daily-summary"
+      class="ab-daily"
+      aria-labelledby="daily-summary-title"
+      phx-hook="DailySummaryVoice"
+      data-id={@entry.id}
+      data-spoken={to_string(not is_nil(@entry.spoken_at))}
+    >
       <header class="ab-daily__head">
         <h2 id="daily-summary-title">Resumo do dia</h2>
         <span class="ab-daily__since">
@@ -41,6 +49,7 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
           class="ab-btn ab-btn--sm ab-daily__dismiss"
           phx-click="dismiss_daily_summary"
           phx-value-id={@entry.id}
+          data-daily-dismiss
           aria-label="Dispensar o resumo do dia"
         >
           Dispensar
@@ -56,7 +65,7 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
         <div>
           <dt>Falhas e pendências</dt>
           <dd>
-            {needs_text(@needs, @sync_errors)}<.refs items={@needs["items"] || []} />
+            {needs_text(@needs)}<.refs items={@needs["items"] || []} />{sync_text(@sync_errors)}
           </dd>
         </div>
         <div>
@@ -88,24 +97,22 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
   defp merged_text(1), do: "1 PR mesclado"
   defp merged_text(n), do: "#{n} PRs mesclados"
 
-  defp needs_text(needs, sync_errors) do
+  defp needs_text(needs) do
     blocked = needs["blocked"] || 0
     waiting = needs["waiting"] || 0
 
-    parts =
-      [
-        blocked > 0 && "#{blocked} #{plural(blocked, "bloqueada", "bloqueadas")}",
-        waiting > 0 && "#{waiting} esperando você",
-        sync_errors > 0 &&
-          "a sincronização falhou #{sync_errors} #{plural(sync_errors, "vez", "vezes")}"
-      ]
-      |> Enum.filter(& &1)
-
-    case parts do
-      [] -> "Nada esperando você"
-      parts -> Enum.join(parts, ", ")
+    case {blocked, waiting} do
+      {0, 0} -> "Nada esperando você"
+      {b, 0} -> "#{b} #{plural(b, "bloqueada", "bloqueadas")}"
+      {0, w} -> "#{w} esperando você"
+      {b, w} -> "#{b} #{plural(b, "bloqueada", "bloqueadas")}, #{w} esperando você"
     end
   end
+
+  defp sync_text(n) when is_integer(n) and n > 0,
+    do: "; a sincronização falhou #{n} #{plural(n, "vez", "vezes")}"
+
+  defp sync_text(_n), do: nil
 
   defp retries_text(%{"sent" => sent} = retries) when is_integer(sent) and sent > 0 do
     tasks = retries["tasks"] || 0

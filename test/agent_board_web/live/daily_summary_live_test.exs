@@ -35,33 +35,52 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
     ExUnit.AssertionError -> false
   end
 
-  test "a summary that goes out while two boards are open shows on both and is spoken once",
+  defp ask(view, entry), do: render_hook(view, "daily_summary_claim", %{"id" => entry.id})
+
+  test "a summary that goes out while two boards are open shows on both, silent until asked",
        %{conn: conn} do
     {:ok, one, _html} = live(conn, @path)
     {:ok, two, _html} = live(conn, @path)
     refute has_element?(one, "#daily-summary")
 
-    generate()
+    entry = generate()
 
-    assert has_element?(one, "#daily-summary", "Resumo do dia")
+    assert has_element?(one, ~s(#daily-summary[data-spoken="false"]), "Resumo do dia")
     assert has_element?(two, "#daily-summary", "Resumo do dia")
-    assert Enum.count([one, two], &spoke?/1) == 1
+    # Showing it spends nothing: a preview or a tab nobody touched never asks.
+    refute spoke?(one)
+    refute spoke?(two)
 
-    # A board opened later shows it and stays quiet.
-    {:ok, three, _html} = live(conn, @path)
-    assert has_element?(three, "#daily-summary")
-    refute spoke?(three)
+    ask(one, entry)
+    ask(two, entry)
+
+    assert spoke?(one)
+    refute spoke?(two)
+    assert has_element?(one, ~s(#daily-summary[data-spoken="true"]))
+    assert has_element?(two, ~s(#daily-summary[data-spoken="true"]))
   end
 
-  test "a board that connects after the summary went out speaks it once", %{conn: conn} do
-    generate()
+  test "a board that connects later is told it was spoken and stays quiet", %{conn: conn} do
+    entry = generate()
+    {:ok, first, _html} = live(conn, @path)
+    ask(first, entry)
+    assert spoke?(first)
 
+    {:ok, later, _html} = live(conn, @path)
+    assert has_element?(later, ~s(#daily-summary[data-spoken="true"]))
+    ask(later, entry)
+    refute spoke?(later)
+  end
+
+  test "an ask for another summary than the one shown does nothing", %{conn: conn} do
+    entry = generate()
     {:ok, view, _html} = live(conn, @path)
-    assert has_element?(view, "#daily-summary")
-    assert spoke?(view)
 
-    {:ok, again, _html} = live(conn, @path)
-    refute spoke?(again)
+    render_hook(view, "daily_summary_claim", %{"id" => entry.id + 1})
+    render_hook(view, "daily_summary_claim", %{"id" => "x"})
+
+    refute spoke?(view)
+    assert Repo.get!(Entry, entry.id).spoken_at == nil
   end
 
   test "Dispensar hides it on every open board", %{conn: conn} do
@@ -103,7 +122,7 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
           ]
         },
         "needs" => %{"blocked" => 1, "waiting" => 0, "items" => []},
-        "sync_errors" => 0,
+        "sync_errors" => 2,
         "retries" => %{"sent" => 3, "tasks" => 2, "not_accepted" => 1},
         "spend" => [
           %{
@@ -126,7 +145,7 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
 
     assert html =~ "2 PRs mesclados"
     assert has_element?(view, ~s(#daily-summary a[href="u12"]), "#12")
-    assert html =~ "1 bloqueada"
+    assert html =~ "1 bloqueada; a sincronização falhou 2 vezes"
     assert html =~ "3 novas tentativas automáticas em 2 tarefas; 1 não foi aceita"
     assert html =~ "DeepSeek <b>≈ US$ 1,23</b>"
     assert html =~ "Claude Code <b>desconhecido</b>"
@@ -167,6 +186,9 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
     {:ok, view, _html} = live(conn, @path)
 
     :ok = DailySummary.put_settings(%{"at" => "07:30"})
+    # The broadcast reaches the board, which then updates the fold: one
+    # render lets the second message in.
+    _ = render(view)
 
     assert has_element?(view, "#settings-daily-summary-section", "Todo dia às 07:30")
   end

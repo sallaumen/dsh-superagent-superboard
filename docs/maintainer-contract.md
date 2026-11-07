@@ -506,12 +506,16 @@ slept is never recovered; this routine asks a question instead.
 - **In the voice** it is said once, by template, from the stored facts
   (`Voice.Phrases.daily_summary/2`, sentences in
   `Voice.Phrases.DailySummary`): no model, no cost beyond the voice engine.
-  The first connected board that sees it claims `spoken_at` with a
-  conditional update; a second tab, a reconnect or a later visit stays
-  quiet. Its own switch governs it, not the narration toggle; for the engine
-  choice it is narration (the free browser voice unless the engine is
-  `elevenlabs`). A fresh tab the owner never touched may have its audio
-  blocked by the browser; the claim is spent all the same.
+  Showing it spends nothing: the browser asks (`daily_summary_claim`, the
+  `DailySummaryVoice` hook) only from a tab the owner has clicked or typed
+  in, at once or on the first interaction, and never on the click that
+  dismisses it. The server claims `spoken_at` with a conditional update;
+  the first ask speaks, every other tab, reconnect or later visit stays
+  quiet. This is why the claim is not made on mount:
+  `com.localwebmonitorex` takes WebKit previews of every dev server on
+  4000-4500, the live board included, and would spend it. Its own switch
+  governs the voice, not the narration toggle; for the engine choice it is
+  narration (the free browser voice unless the engine is `elevenlabs`).
 - **Settings** live in Configurações → Resumo do dia: `daily_summary_enabled`
   (`"false"` switches it off) and `daily_summary_at` (`HH:MM`, default
   08:00); a malformed hour is refused in words and saves nothing.
@@ -520,8 +524,9 @@ slept is never recovered; this routine asks a question instead.
   concurrent ticks, the next day, the window, the zone, the settings, the
   content), `daily_summary_phrases_test.exs` (every sentence, both
   languages), `executor_usage_test.exs` (the window) and
-  `daily_summary_live_test.exs` (two boards, spoken once, dismissed
-  everywhere, the stored facts, the settings fold).
+  `daily_summary_live_test.exs` (two boards, silent until a tab asks,
+  spoken once, dismissed everywhere, the stored facts, the settings fold)
+  and `test/assets/daily_summary_voice_test.mjs` (who may ask).
 
 ## The request (composer)
 

@@ -805,6 +805,13 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("dismiss_toast", _params, socket), do: {:noreply, assign(socket, :toast, nil)}
 
   @impl true
+  def handle_event("daily_summary_claim", %{"id" => id}, socket) do
+    case Integer.parse(to_string(id)) do
+      {id, ""} -> {:noreply, claim_daily_summary(socket, id)}
+      _other -> {:noreply, socket}
+    end
+  end
+
   def handle_event("dismiss_daily_summary", %{"id" => id}, socket) do
     with {id, ""} <- Integer.parse(to_string(id)), do: DailySummary.dismiss(id)
     {:noreply, assign(socket, :daily_summary, nil)}
@@ -1609,24 +1616,31 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
-  # Today's summary of the day, shown until dismissed. The first board that
-  # sees it claims it and speaks it, so a second tab or a reconnect stays
-  # quiet. Its own switch (Configurações → Resumo do dia) governs the voice,
-  # not the narration toggle; it is narration for the engine choice. Read
-  # only on a connected socket.
+  # Today's summary of the day, shown until dismissed. Read only on a
+  # connected socket.
   defp show_daily_summary(socket) do
-    entry = if connected?(socket), do: DailySummary.visible()
+    assign(socket, :daily_summary, if(connected?(socket), do: DailySummary.visible()))
+  end
 
-    if entry && is_nil(entry.spoken_at) && DailySummary.claim_spoken(entry.id) do
+  # The browser asks to speak it only from a tab the owner interacted with
+  # (the DailySummaryVoice hook), so a preview never spends it; the first
+  # ask wins the conditional claim and the other tabs stay quiet. Its own
+  # switch governs the voice, not the narration toggle; for the engine
+  # choice it is narration.
+  defp claim_daily_summary(%{assigns: %{daily_summary: %{id: id} = entry}} = socket, id) do
+    if DailySummary.claim_spoken(id) do
       text = Phrases.daily_summary(socket.assigns.voice.language, entry.content)
+      spoken_at = DateTime.utc_now() |> DateTime.truncate(:second)
 
       socket
-      |> assign(:daily_summary, entry)
+      |> assign(:daily_summary, %{entry | spoken_at: spoken_at})
       |> say(text, kind: :narration)
     else
-      assign(socket, :daily_summary, entry)
+      show_daily_summary(socket)
     end
   end
+
+  defp claim_daily_summary(socket, _id), do: socket
 
   # A confirmation or an answer: spoken only while the narration is on.
   defp speak(%{assigns: %{voice: %{speak_events: true}}} = socket, text),

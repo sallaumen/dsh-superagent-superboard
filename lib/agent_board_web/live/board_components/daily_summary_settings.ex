@@ -32,7 +32,8 @@ defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
   @impl true
   def render(assigns) do
     ~H"""
-    <details id={@id} class="settings-fold">
+    <%!-- A save re-renders this root; the fold the owner opened stays open. --%>
+    <details id={@id} class="settings-fold" phx-mounted={JS.ignore_attributes("open")}>
       <summary>
         <span class="settings-fold-label">
           Resumo do dia <small>{fold_summary(@settings)}</small>
