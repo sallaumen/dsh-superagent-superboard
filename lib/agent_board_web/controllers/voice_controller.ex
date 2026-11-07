@@ -16,7 +16,6 @@ defmodule AgentBoardWeb.VoiceController do
   alias AgentBoard.Voice
   alias AgentBoard.Voice.{Activity, Phrases}
 
-  @voice_key "elevenlabs_voice_id"
   @tts_model_key "elevenlabs_tts_model"
   # A dictated task title is seconds of audio, not a podcast: the cap keeps a
   # stray upload from reaching ElevenLabs. Overridable for tests.
@@ -104,13 +103,9 @@ defmodule AgentBoardWeb.VoiceController do
     end
   end
 
-  defp put_voice(%{"voice_id" => voice_id}) when is_binary(voice_id) do
-    cond do
-      String.trim(voice_id) == "" -> Settings.put(@voice_key, "")
-      ElevenLabs.valid_voice_id?(voice_id) -> Settings.put(@voice_key, voice_id)
-      true -> {:error, :invalid_voice}
-    end
-  end
+  # The API knows no name: a stale one from an earlier pick is cleared.
+  defp put_voice(%{"voice_id" => voice_id}) when is_binary(voice_id),
+    do: ElevenLabs.save_voice(voice_id, nil)
 
   defp put_voice(_params), do: :ok
 

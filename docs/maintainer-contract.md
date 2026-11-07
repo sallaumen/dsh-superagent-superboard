@@ -201,8 +201,13 @@ board still never writes the runner's sqlite.
   the same way (`ELEVENLABS_TTS_MODEL` → `elevenlabs_tts_model` → the
   default `eleven_flash_v2_5`); a saved model must be one of the offered
   `AgentBoard.ElevenLabs.tts_models/0`. The Voice section of the settings
-  menu lists the account's voices, previews them through
-  `/api/voice/speech?voice=...`, saves with `PUT /api/voice/settings`,
+  menu lists the account's voices and **saves a voice when it is picked**,
+  like every other field there (a separate "Salvar" left picks unsaved);
+  the name is kept with it (`elevenlabs_voice_name`, filled from the list
+  when missing) so the picker names the voice in use after a reload, and a
+  note says what that voice speaks under the chosen engine. It previews
+  through `/api/voice/speech?voice=...`, the API saves with
+  `PUT /api/voice/settings`,
   speaks the board status in the agent's voice and dictates a task through
   `/api/voice/transcribe` (MediaRecorder → Scribe). The controls are
   `AgentBoardWeb.Components.VoicePanel` (rendered by the settings menu) and
@@ -215,6 +220,10 @@ board still never writes the runner's sqlite.
 - The account's voices are cached for the `:voice_voices_ttl` window
   (default 5 minutes, 0 disables — the test env disables it); a browse
   does not pay a request every time.
+- **Settings are board-wide and live**: `AgentBoard.Settings.put/2`
+  broadcasts `{:setting_changed, key}` on the `"settings"` topic and every
+  `BoardLive` re-reads its voice assign, so a change in another tab, by the
+  API or by a spoken command reaches every open board without a reload.
 - **Every spoken word comes from `AgentBoard.Voice.Phrases`**, in the voice
   language (`voice_language`: `pt-BR` default, `en-US`). A sentence typed
   in English inside a caller is the language mix this rule prevents. The

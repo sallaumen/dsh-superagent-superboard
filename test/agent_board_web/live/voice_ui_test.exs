@@ -75,12 +75,12 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert render(view) =~ "George · abc"
   end
 
-  test "picking and saving a voice persists it and plays a confirmation", %{conn: conn} do
+  test "picking a voice saves it on the spot and plays a confirmation", %{conn: conn} do
     with_key()
 
     Req.Test.stub(@stub, fn conn ->
       Req.Test.json(conn, %{
-        "voices" => [%{"voice_id" => "abc", "name" => "George"}]
+        "voices" => [%{"voice_id" => "abc", "name" => "Rachel"}]
       })
     end)
 
@@ -88,10 +88,12 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     view |> element("button", "Listar vozes") |> render_click()
     view |> element("#voice-picker-form") |> render_change(%{"voice" => "abc"})
-    view |> element("button", "Salvar") |> render_click()
 
+    # No separate "Salvar": the pick is the save, like every other field.
     assert Settings.get("elevenlabs_voice_id") == "abc"
-    assert render(view) =~ "Voz salva: George"
+    assert Settings.get("elevenlabs_voice_name") == "Rachel"
+    assert render(view) =~ "Voz salva: Rachel"
+    refute has_element?(view, "button", "Salvar")
 
     assert_push_event(
       view,
@@ -99,6 +101,59 @@ defmodule AgentBoardWeb.VoiceUITest do
       %{url: "/api/voice/stream?text=Voz+escolhida.&voice=abc"},
       1_000
     )
+  end
+
+  test "after a reload the picker names the saved voice, without listing", %{conn: conn} do
+    with_key()
+    :ok = AgentBoard.ElevenLabs.save_voice("abc", "Rachel")
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    assert has_element?(view, "#voice-picker option[selected][value=abc]", "Rachel · abc")
+    assert has_element?(view, "label[for=voice-picker]", "escolhida aqui")
+    refute render(view) =~ "Nenhuma voz listada ainda"
+  end
+
+  test "a voice saved without a name gets it from the list", %{conn: conn} do
+    with_key()
+    :ok = Settings.put("elevenlabs_voice_id", "abc")
+
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, %{"voices" => [%{"voice_id" => "abc", "name" => "Rachel"}]})
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    assert has_element?(view, "#voice-picker option[selected]", "Voz atual · abc")
+
+    view |> element("button", "Listar vozes") |> render_click()
+
+    assert Settings.get("elevenlabs_voice_name") == "Rachel"
+    assert has_element?(view, "label[for=voice-picker]", "Rachel")
+  end
+
+  test "a voice saved in another tab reaches this one at once", %{conn: conn} do
+    with_key()
+    {:ok, view, _html} = live(conn, ~p"/")
+    refute has_element?(view, "#voice-picker option[selected][value=abc]")
+
+    # Another tab, the API or a spoken command saves a voice.
+    :ok = AgentBoard.ElevenLabs.save_voice("abc", "Rachel")
+
+    assert has_element?(view, "#voice-picker option[selected][value=abc]", "Rachel · abc")
+    render_click(view, "voice_preview", %{})
+    assert_push_event(view, "voice_play", %{url: url}, 1_000)
+    assert url =~ "voice=abc"
+  end
+
+  test "the note says what the saved voice speaks under the engine", %{conn: conn} do
+    with_key()
+    :ok = Settings.put("voice_engine", "mixed")
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    assert has_element?(view, "#voice-picker-note", "a conversa usa a voz do navegador")
+
+    :ok = Settings.put("voice_engine", "browser")
+    assert has_element?(view, "#voice-picker-note", "esta voz não é usada")
   end
 
   test "reset puts the default voice back", %{conn: conn} do
@@ -141,7 +196,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 500, "boom") end)
 
-    view |> element("button", "Listar vozes") |> render_click()
+    view |> element("button", "Atualizar lista") |> render_click()
 
     html = render(view)
     assert html =~ "Não foi possível listar as vozes: HTTP 500"
@@ -231,7 +286,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     assert html =~ "env-voice"
     assert html =~ "definida no .env.local"
-    refute html =~ "Salvar"
+    assert html =~ "remova a variável"
     refute html =~ "Listar vozes"
   end
 
