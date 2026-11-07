@@ -45,6 +45,7 @@ watches GitHub; this board only mirrors it. It is documented in
 | `counts.sh` | how much has it done, by table? |
 | `logs.sh` | what is it printing right now? |
 | `prompts.sh get\|diff\|put` | what do its three prompt sections say, and does git hold the active revision? |
+| `cleanup.sh [--apply]` | what did ended tickets leave behind (worktrees, orphan PRs), and remove it? |
 
 ## Shared practices
 

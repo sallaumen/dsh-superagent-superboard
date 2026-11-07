@@ -76,6 +76,29 @@ The report always carries a `summary` and an `at`. A `ready` report names the
 PR, its head sha, the gates that ran, and the limitations -- it is evidence,
 not a claim.
 
+## What a ticket leaves behind
+
+Nothing in `dsh-superagent` deletes old records. A ticket that ended keeps its
+worktree under `~/.dsh/state/superagent/work/`, and one that ended `closed`,
+`dropped` or `stopped` may also leave its PR open. `scripts/agent/cleanup.sh`
+reads the ended tickets from the sqlite (`ended.outcome`, the **last**
+Assignment), removes every worktree that still exists with `git worktree
+remove` from the main checkout the prepare command used, prunes it, and closes
+as the bot each open PR on `agent/<name>` (or any `agent/*-<ticket id prefix>`
+branch) of a ticket that ended without a merge, with a comment saying so. It
+never touches an open ticket, a PR someone else opened, a merged PR, or the PR
+of a ticket that ended `completed` or `merged`. By default it is a dry run that
+prints one line per action; `--apply` executes, `--force` also removes a
+worktree that still holds uncommitted changes.
+
+The main checkout is written nowhere in this repository: the prepare command
+lives in the orchestrator's Execution settings (the panel), today
+`git -C /Users/tavano/src/arena-rogue worktree add -b "agent/$DSH_SUPERAGENT_NAME" …`.
+The script reads it from each worktree's own `.git` file; `--repo DIR` names
+it when that file is gone. Directories under `work/` that match no ticket in
+the sqlite (an earlier database, another repository) are listed on stderr and
+left alone.
+
 ## What the board adds
 
 - **Visibility**: the five columns, the conversation, the AI panel.
