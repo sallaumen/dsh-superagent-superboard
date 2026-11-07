@@ -6,7 +6,8 @@ defmodule AgentBoard.Board do
   import Ecto.Query, warn: false
 
   alias AgentBoard.Board.{Comment, Event, PullRequest, Repository, Review, Task}
-  alias AgentBoard.{Executors, Repo, Sync, Workpad}
+  alias AgentBoard.{Executors, Repo, Routing, Sync, Workpad}
+  alias AgentBoard.Routing.Decision
   alias AgentBoard.Sync.Freshness
 
   @merged_page_size 50
@@ -290,6 +291,7 @@ defmodule AgentBoard.Board do
         executor: executor
       })
       |> Repo.insert(on_conflict: :nothing)
+      |> tap(&record_routing(&1, repository, executor, Keyword.get(opts, :routing)))
       |> tap(fn _ -> broadcast(repository.id) end)
     end
   rescue
@@ -300,6 +302,36 @@ defmodule AgentBoard.Board do
 
       {:error, exception}
   end
+
+  # The router's line for the task (AgentBoard.Routing.Decision). The issue
+  # already exists, so a decision that fails is an event, never a reason to
+  # drop the task row: a retry without the row would open a second issue.
+  defp record_routing({:ok, %Task{id: id} = task}, repository, executor, routing)
+       when is_integer(id) and is_binary(executor) and is_map(routing) do
+    %Decision{}
+    |> Decision.changeset(%{
+      task_id: task.id,
+      suggested: routing.suggestion.executor,
+      chosen: executor,
+      mode: routing.suggestion.mode,
+      reasons: routing.suggestion.reasons,
+      alternatives: Enum.map(routing.suggestion.alternatives, & &1.executor),
+      signals: routing.signals,
+      decided_by: routing.decided_by
+    })
+    |> Repo.insert()
+    |> case do
+      {:ok, _decision} ->
+        :ok
+
+      {:error, changeset} ->
+        log_event(repository.id, "routing_error", "##{task.number}", %{
+          "reason" => inspect(changeset.errors)
+        })
+    end
+  end
+
+  defp record_routing(_result, _repository, _executor, _routing), do: :ok
 
   @doc """
   The key of a request the board is about to create: the repository, the
@@ -346,14 +378,43 @@ defmodule AgentBoard.Board do
     end
   end
 
+  # Every task the board creates for an executor gets a router line. A
+  # caller that showed the suggestion passes it (`:routing`); otherwise the
+  # router runs here, with the chosen executor as the owner's explicit ask.
+  defp with_routing(%{executor: executor} = request, repository) when is_binary(executor) do
+    Map.put_new_lazy(request, :routing, fn ->
+      signals = Routing.Signals.read()
+
+      %{
+        suggestion:
+          Routing.suggest(
+            %{
+              repository: "#{repository.owner}/#{repository.name}",
+              work_type: Map.get(request, :work_type),
+              size: Map.get(request, :size),
+              requested: executor
+            },
+            signals
+          ),
+        signals: Routing.Signals.snapshot(signals),
+        decided_by: Map.get(request, :decided_by, "api")
+      }
+    end)
+  end
+
+  defp with_routing(request, _repository), do: request
+
   defp create_new_request(repository, %{title: title, body: body, key: key} = request, client) do
+    request = with_routing(request, repository)
+
     created =
       create_task(repository, title, body, client,
         request_key: key,
         origin_task_id: Map.get(request, :origin_task_id),
         work_type: Map.get(request, :work_type),
         size: Map.get(request, :size),
-        executor: Map.get(request, :executor)
+        executor: Map.get(request, :executor),
+        routing: Map.get(request, :routing)
       )
 
     case created do

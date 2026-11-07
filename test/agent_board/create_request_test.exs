@@ -2,8 +2,9 @@ defmodule AgentBoard.CreateRequestTest do
   @moduledoc "A board request is created once: the key is the receipt."
   use AgentBoard.DataCase, async: false
 
-  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.{Board, Repo, Routing}
   alias AgentBoard.Board.Task
+  alias AgentBoard.Routing.Decision
 
   @stub AgentBoard.CreateRequestTest.Stub
 
@@ -101,6 +102,59 @@ defmodule AgentBoard.CreateRequestTest do
     assert Repo.get(Task, task.id).executor == "dsh"
   end
 
+  test "the router's suggestion and the owner's choice are one row per created task",
+       %{repo: repo} do
+    capture_issues()
+    signals = Routing.Signals.read(fn -> {:error, :unreachable} end)
+
+    suggestion =
+      Routing.suggest(%{repository: "sallaumen/arena-rogue", work_type: "ui"}, signals)
+
+    request = %{
+      title: "Refazer a tela",
+      body: "Refazer a tela",
+      key: Board.request_key(repo, "single", ["Refazer a tela"]),
+      executor: "codex",
+      routing: %{
+        suggestion: suggestion,
+        signals: Routing.Signals.snapshot(signals),
+        decided_by: "composer"
+      }
+    }
+
+    assert {:ok, task, :created} = Board.create_request(repo, request, client())
+    assert {:ok, _task, :existing} = Board.create_request(repo, request, client())
+
+    assert [decision] = Repo.all(Decision)
+    assert decision.task_id == task.id
+    assert {decision.suggested, decision.chosen} == {"claude", "codex"}
+    assert decision.mode == "suggest"
+    assert decision.decided_by == "composer"
+    assert decision.alternatives == ["codex"]
+    assert Enum.any?(decision.reasons, &(&1 =~ "Não deu para ler qual repositório"))
+    assert decision.signals["dsh"]["state"] == "unavailable: o orquestrador não respondeu"
+    assert decision.signals["claude"]["state"] == "unknown"
+  end
+
+  test "a request for an executor without a suggestion gets the router's line anyway",
+       %{repo: repo} do
+    capture_issues()
+
+    request = %{
+      title: "Add a boss",
+      body: "Add a boss",
+      key: Board.request_key(repo, "single", ["Add a boss"]),
+      executor: "claude"
+    }
+
+    assert {:ok, task, :created} = Board.create_request(repo, request, client())
+
+    # The test environment has no orchestrator API, so the runner is out
+    # and the owner's explicit choice decides.
+    assert %Decision{suggested: "claude", chosen: "claude", decided_by: "api"} =
+             Repo.get_by(Decision, task_id: task.id)
+  end
+
   test "a request without an executor is opened as given, with no label", %{repo: repo} do
     capture_issues()
     body = "Add a boss\n\n@sallaumen-agent"
@@ -113,6 +167,7 @@ defmodule AgentBoard.CreateRequestTest do
     assert sent["body"] == body
     refute Map.has_key?(sent, "labels")
     assert Repo.get(Task, task.id).executor == nil
+    assert Repo.all(Decision) == []
   end
 
   test "the key ignores spacing differences and keeps distinct requests apart", %{repo: repo} do
