@@ -225,6 +225,135 @@ defmodule AgentBoard.Voice.Phrases do
   def voice_saved("en-US"), do: "Voice selected."
   def voice_saved(_lang), do: "Voz escolhida."
 
+  # ---- the conversation -------------------------------------------------
+
+  @doc "The model answered with something the board cannot use."
+  def not_understood("en-US"), do: "Sorry, I didn't get that. Can you say it another way?"
+  def not_understood(_lang), do: "Desculpa, não entendi. Pode falar de outro jeito?"
+
+  @doc "The model could not answer; the reason is said in words."
+  def ai_failed(lang, reason) do
+    case {lang, reason} do
+      {"en-US", :not_configured} ->
+        "The AI is not configured, so I can only take simple commands."
+
+      {"en-US", :budget_exhausted} ->
+        "Today's AI budget is used up. Try again tomorrow."
+
+      {"en-US", :usage_limit} ->
+        "The AI provider hit its usage limit. Try again in a bit."
+
+      {"en-US", _} ->
+        "I couldn't think that through right now. Try again in a moment."
+
+      {_, :not_configured} ->
+        "A IA não está configurada, então só entendo comandos simples."
+
+      {_, :budget_exhausted} ->
+        "O orçamento de IA de hoje acabou. Tenta de novo amanhã."
+
+      {_, :usage_limit} ->
+        "O provedor de IA atingiu o limite de uso. Tenta daqui a pouco."
+
+      {_, _} ->
+        "Não consegui pensar nisso agora. Tenta de novo em um instante."
+    end
+  end
+
+  @doc "Asked for new work without a project to put it in."
+  def which_project("en-US"), do: "Sure. Which project should this task go to?"
+  def which_project(_lang), do: "Claro. Em qual projeto eu coloco essa tarefa?"
+
+  @doc "The request needs one answer before it can become a task."
+  def clarify("en-US", question), do: "Before I create it, one question: #{question}"
+  def clarify(_lang, question), do: "Antes de criar, uma dúvida: #{question}"
+
+  @doc "The refined task, waiting for a spoken yes."
+  def propose_task("en-US", repo, title),
+    do: "Got it. I'll create in #{repo_name(repo)}: #{short_title(title)}. Shall I?"
+
+  def propose_task(_lang, repo, title),
+    do: "Entendi. Vou criar no #{repo_name(repo)} a tarefa: #{short_title(title)}. Posso criar?"
+
+  @doc "A stop or archive, waiting for a spoken yes."
+  def propose_task_action("en-US", "stop_task", n, t),
+    do: "Stop task #{n}, #{short_title(t)}? Shall I?"
+
+  def propose_task_action("en-US", _kind, n, t),
+    do: "Archive task #{n}, #{short_title(t)}? Shall I?"
+
+  def propose_task_action(_lang, "stop_task", n, t),
+    do: "Parar a tarefa #{n}, #{short_title(t)}? Posso?"
+
+  def propose_task_action(_lang, _kind, n, t),
+    do: "Arquivar a tarefa #{n}, #{short_title(t)}? Posso?"
+
+  def task_created("en-US", n, repo), do: "Done. Task #{n} is in the #{repo_name(repo)} queue."
+
+  def task_created(_lang, n, repo),
+    do: "Pronto. A tarefa #{n} entrou na fila do #{repo_name(repo)}."
+
+  def task_existing("en-US", n), do: "That one was already in the queue, as task #{n}."
+  def task_existing(_lang, n), do: "Essa já estava na fila, como tarefa #{n}."
+
+  def task_failed("en-US"), do: "I couldn't create the task. Check the activity and try again."
+
+  def task_failed(_lang),
+    do: "Não consegui criar a tarefa. Dá uma olhada na atividade e tenta de novo."
+
+  def task_action_done("en-US", "stop_task", n), do: "Stopped task #{n}."
+  def task_action_done("en-US", _kind, n), do: "Archived task #{n}."
+  def task_action_done(_lang, "stop_task", n), do: "Parei a tarefa #{n}."
+  def task_action_done(_lang, _kind, n), do: "Arquivei a tarefa #{n}."
+
+  def task_action_failed("en-US", _kind, n),
+    do: "I couldn't change task #{n}. Check the activity."
+
+  def task_action_failed(_lang, _kind, n),
+    do: "Não consegui mudar a tarefa #{n}. Veja a atividade."
+
+  def task_not_found("en-US", n), do: "I can't find task #{n} in this project."
+  def task_not_found(_lang, n), do: "Não achei a tarefa #{n} neste projeto."
+
+  def repository_not_found("en-US", name), do: "I don't follow a project called #{name}."
+  def repository_not_found(_lang, name), do: "Não acompanho nenhum projeto chamado #{name}."
+
+  def cancelled("en-US"), do: "Okay, I won't do it."
+  def cancelled(_lang), do: "Tudo bem, deixei pra lá."
+
+  def already_settled("en-US"), do: "That was already handled."
+  def already_settled(_lang), do: "Isso já foi resolvido."
+
+  def forgot("en-US"), do: "Done, I forgot our conversation. Fresh start."
+  def forgot(_lang), do: "Pronto, esqueci a nossa conversa. Começando do zero."
+
+  def didnt_hear("en-US"), do: "I didn't hear anything."
+  def didnt_hear(_lang), do: "Não ouvi nada."
+
+  def too_slow("en-US"), do: "That took too long, so I stopped. Ask me again."
+  def too_slow(_lang), do: "Demorei demais e parei. Pode me pedir de novo."
+
+  @doc "The section headings of an issue body written from a spoken request."
+  def issue_labels("en-US"),
+    do: %{
+      constraints: "Constraints",
+      assumptions: "Assumptions",
+      risks: "Risks",
+      open_questions: "Open questions",
+      spoken: "Spoken request"
+    }
+
+  def issue_labels(_lang),
+    do: %{
+      constraints: "Restrições",
+      assumptions: "Premissas",
+      risks: "Riscos",
+      open_questions: "Perguntas em aberto",
+      spoken: "Pedido por voz"
+    }
+
+  defp repo_name(slug), do: slug |> to_string() |> String.split("/") |> List.last()
+
   # ---- the status summary -------------------------------------------------
 
   @doc "The greeting for a local hour of the day."

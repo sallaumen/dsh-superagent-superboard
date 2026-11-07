@@ -1,8 +1,18 @@
 import {interruptVoiceOutput, voiceState} from "../voice_state"
 
 const doubleSpaceMs = 420
-const maxSeconds = 20
+const maxSeconds = 30
 const source = "command-recorder"
+// The turn ends on its own: once speech was heard, this much silence means
+// the owner finished. Without any speech the microphone closes quietly.
+const silenceMs = 1200
+const noSpeechMs = 8000
+const followupNoSpeechMs = 6000
+const calibrateMs = 250
+const minLevel = 0.012
+// Speech sits well above this; a threshold derived from a loud room (or
+// from a voice that started during calibration) must not climb past it.
+const maxThreshold = 0.04
 
 const stopTracks = stream => stream?.getTracks().forEach(track => track.stop())
 
@@ -49,9 +59,15 @@ export const VoiceCommand = {
       if (this.phase === "listening") this.stop()
       else this.cancel()
     }
-    this.onStartRequest = () => {
-      if (this.phase === "idle") this.start()
+    // A reply that asked something reopens the microphone once (followup).
+    this.onStartRequest = ({detail} = {}) => {
+      if (this.phase !== "idle") return
+      if (detail?.followup && (document.hidden || !document.hasFocus())) return
+      this.start({followup: Boolean(detail?.followup)})
     }
+    this.handleEvent("voice_thinking", () => {
+      if (this.phase === "idle") voiceState("thinking", "Pensando…", "O agente está preparando a resposta.", source)
+    })
     this.onStopRequest = () => {
       if (this.phase === "listening") this.stop()
       else if (this.phase !== "idle") this.cancel()
@@ -126,22 +142,25 @@ export const VoiceCommand = {
       window.scrollBy({top: Math.round(window.innerHeight * 0.9), behavior: "auto"})
     }
   },
-  async start() {
+  async start({followup = false} = {}) {
     if (this.el.dataset.configured !== "true") {
-      voiceState("error", "Voice transcription is unavailable", "Type a request instead.", source)
+      voiceState("error", "Transcrição indisponível", "Configure a chave ElevenLabs ou escreva no painel de voz.", source)
       return
     }
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-      voiceState("error", "Recording is unavailable", "Type a request instead.", source)
+      voiceState("error", "Gravação indisponível", "Escreva no painel de voz.", source)
       return
     }
+    // Created on the first (trusted) key press and kept: a follow-up turn
+    // has no gesture to unlock a new AudioContext.
+    this.ensureAudioContext()
     const generation = ++this.generation
     this.phase = "permission"
     this.repoPath = document.querySelector("#board-page")?.dataset.baseUrl
     this.originDialog = document.querySelector(".board-dialog[open]")?.id || null
     this.originUrl = location.pathname + location.search
     interruptVoiceOutput()
-    voiceState("permission", "Waiting for microphone", "Allow access to record one command.", source)
+    voiceState("permission", "Aguardando o microfone", "Permita o acesso para falar com o agente.", source)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({audio: true})
       if (generation !== this.generation) {
@@ -151,13 +170,13 @@ export const VoiceCommand = {
       if (document.hidden || !document.hasFocus() || !this.el.isConnected) {
         stopTracks(stream)
         this.reset()
-        voiceState("complete", "Recording cancelled", "The board is no longer in focus.", source)
+        voiceState("complete", "Gravação cancelada", "O board saiu de foco.", source)
         return
       }
       this.stream = stream
       for (const track of stream.getTracks()) {
         track.addEventListener("ended", () => {
-          if (this.phase === "listening") this.cancel("Microphone disconnected")
+          if (this.phase === "listening") this.cancel("Microfone desconectado")
         })
       }
       const type = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : ""
@@ -172,29 +191,87 @@ export const VoiceCommand = {
       }
       recorder.onerror = () => {
         this.cancel()
-        voiceState("error", "Microphone recording failed", "Type a request instead.", source)
+        voiceState("error", "A gravação falhou", "Tente de novo ou escreva no painel de voz.", source)
       }
       recorder.start()
       this.phase = "listening"
-      voiceState("listening", "Listening for a command",
-        `Press Space twice to finish, or Escape to cancel. Stops after ${maxSeconds} seconds.`, source)
+      voiceState("listening", followup ? "Pode responder" : "Ouvindo",
+        "Fale e pare: quando você terminar, eu envio. Esc cancela.", source)
       this.recordTimer = setTimeout(() => this.stop(), maxSeconds * 1000)
+      this.watchSilence(stream, generation, followup ? followupNoSpeechMs : noSpeechMs)
     } catch (_) {
       if (generation !== this.generation) return
       this.reset()
-      voiceState("error", "Microphone is unavailable", "Check permission or type instead.", source)
+      voiceState("error", "Microfone indisponível", "Confira a permissão ou escreva no painel de voz.", source)
     }
+  },
+  ensureAudioContext() {
+    const Context = window.AudioContext || window.webkitAudioContext
+    if (!Context) return null
+    if (!this.audioContext) {
+      try { this.audioContext = new Context() } catch (_) { return null }
+    }
+    if (this.audioContext.state === "suspended") this.audioContext.resume().catch(() => {})
+    return this.audioContext
+  },
+  // Voice activity from the input level: calibrate the room's noise for a
+  // moment, then end the turn after silence once speech was heard. Without
+  // an AudioContext the turn still ends by double Space or the time limit.
+  watchSilence(stream, generation, quietLimitMs) {
+    const context = this.audioContext
+    if (!context) return
+    let analyser
+    try {
+      this.vadSource = context.createMediaStreamSource(stream)
+      analyser = context.createAnalyser()
+      analyser.fftSize = 1024
+      this.vadSource.connect(analyser)
+    } catch (_) {
+      return
+    }
+    const samples = new Float32Array(analyser.fftSize)
+    const startedAt = performance.now()
+    let floor = Infinity
+    let heard = false
+    let lastVoiceAt = 0
+    this.vadTimer = setInterval(() => {
+      if (generation !== this.generation || this.phase !== "listening") return
+      analyser.getFloatTimeDomainData(samples)
+      let sum = 0
+      for (const value of samples) sum += value * value
+      const level = Math.sqrt(sum / samples.length)
+      const now = performance.now()
+      // The quietest moment is the room; the owner may start talking at once.
+      floor = Math.min(floor, level)
+      if (now - startedAt < calibrateMs) return
+      const threshold = Math.min(maxThreshold, Math.max(minLevel, floor * 3))
+      if (level > threshold) {
+        heard = true
+        lastVoiceAt = now
+      } else if (heard && now - lastVoiceAt >= silenceMs) {
+        this.stop()
+      } else if (!heard && now - startedAt >= quietLimitMs) {
+        this.cancel("Não ouvi nada")
+      }
+    }, 100)
+  },
+  stopSilenceWatch() {
+    clearInterval(this.vadTimer)
+    this.vadTimer = null
+    try { this.vadSource?.disconnect() } catch (_) { /* Already disconnected. */ }
+    this.vadSource = null
   },
   stop() {
     if (this.phase !== "listening" || this.recorder?.state !== "recording") return
     clearTimeout(this.recordTimer)
+    this.stopSilenceWatch()
     this.phase = "transcribing"
-    voiceState("transcribing", "Transcribing command", "The microphone is off while audio is processed.", source)
+    voiceState("transcribing", "Entendendo…", "O microfone está desligado enquanto o áudio é transcrito.", source)
     try {
       this.recorder.stop()
     } catch (_) {
       this.cancel()
-      voiceState("error", "Microphone recording failed", "Type a request instead.", source)
+      voiceState("error", "A gravação falhou", "Tente de novo ou escreva no painel de voz.", source)
     } finally {
       stopTracks(this.stream)
       this.stream = null
@@ -204,12 +281,14 @@ export const VoiceCommand = {
     const blob = new Blob(this.chunks, {type: this.recorder?.mimeType || "audio/webm"})
     if (!blob.size) {
       this.reset()
-      voiceState("error", "Nothing was recorded", "Press Space twice to try again.", source)
+      voiceState("error", "Nada foi gravado", "Aperte espaço duas vezes para tentar de novo.", source)
       return
     }
     this.abort = new AbortController()
     try {
-      const response = await fetch("/api/voice/transcribe", {
+      const lang = document.querySelector("#voice-panel")?.dataset.lang
+      const hint = lang ? `?language=${encodeURIComponent(lang.slice(0, 2))}` : ""
+      const response = await fetch(`/api/voice/transcribe${hint}`, {
         method: "POST",
         headers: {"content-type": blob.type || "audio/webm"},
         body: blob,
@@ -219,35 +298,36 @@ export const VoiceCommand = {
       if (generation !== this.generation) return
       if (!response.ok) {
         this.reset()
-        voiceState("error", "Transcription failed", data.error || `HTTP ${response.status}`, source)
+        voiceState("error", "A transcrição falhou", data.error || `HTTP ${response.status}`, source)
         return
       }
       const transcript = typeof data.text === "string" ? data.text.trim() : ""
       if (!transcript) {
         this.reset()
-        voiceState("error", "No words recognized", "Press Space twice to try again.", source)
+        voiceState("complete", "Não entendi nenhuma palavra", "Aperte espaço duas vezes para tentar de novo.", source)
         return
       }
       this.reset()
-      voiceState("complete", "Command transcribed", "Review the words before taking action.", source)
-      window.dispatchEvent(new Event("board:panel-intent"))
-      this.pushEvent("voice_transcript", {text: transcript})
+      // No draft to review: the finished utterance goes to the conversation.
+      voiceState("thinking", "Pensando…", "O agente está preparando a resposta.", source)
+      this.pushEvent("voice_turn", {text: transcript})
     } catch (error) {
       if (generation !== this.generation || error?.name === "AbortError") return
       this.reset()
-      voiceState("error", "Could not reach the board", "Check the connection and try again.", source)
+      voiceState("error", "Sem conexão com o board", "Confira a conexão e tente de novo.", source)
     }
   },
-  cancel(reason = "Recording cancelled") {
+  cancel(reason = "Gravação cancelada") {
     this.clearFirstSpace()
     if (this.phase === "idle") return
     ++this.generation
     this.abort?.abort()
     this.reset()
-    voiceState("complete", reason, "Nothing was sent.", source)
+    voiceState("complete", reason, "Nada foi enviado.", source)
   },
   reset() {
     clearTimeout(this.recordTimer)
+    this.stopSilenceWatch()
     stopTracks(this.stream)
     if (this.recorder?.state === "recording") {
       try { this.recorder.stop() } catch (_) { /* The stream is already released. */ }
@@ -263,6 +343,8 @@ export const VoiceCommand = {
   disconnected() { this.cancel() },
   destroyed() {
     this.cancel()
+    this.audioContext?.close().catch(() => {})
+    this.audioContext = null
     document.removeEventListener("keydown", this.onKeyDown, true)
     document.removeEventListener("cancel", this.onDialogCancel, true)
     document.removeEventListener("pointerdown", this.onPointerDown)

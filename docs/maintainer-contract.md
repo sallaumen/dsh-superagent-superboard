@@ -161,6 +161,17 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   the `VoicePlayer` hook and the browser fallback read it, so a change
   applies to the audio already playing. `PUT /api/voice/settings` accepts
   `speak_events`, `attention`, `language` and `volume`.
+- **The spoken conversation** (`docs/voice-conversation.md`) is the default
+  for a double Space outside the composer: the `VoiceCommand` hook ends the
+  turn on silence and pushes `voice_turn`; `AgentBoardWeb.VoiceConversation`
+  records it, runs `AgentBoard.Conversation.Agent` keyed by a `ref` (a newer
+  turn cancels an older one, `:voice_turn_timeout_ms` drops a slow one) and
+  speaks the reply. Memory is `voice_turns` (summary + recent turns); the
+  model call is `:voice_agent`, the summary `:summarize_conversation`.
+  **Writes wait for a spoken yes**: create, stop and archive become a
+  proposal (`proposal_status`), settled once by a conditional update; yes
+  and no are recognized locally. The conversation never reaches the coding
+  agent except through the board actions a button would take.
 - **Voice asks** are a write and always confirmed: a draft that ends in a
   question mark (or starts with "perguntar"/"ask") and matches no read-only
   command resolves to an `:ask` proposal showing the target task; the

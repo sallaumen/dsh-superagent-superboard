@@ -25,26 +25,26 @@ export const VoicePlayer = {
     this.onControl = ({detail}) => {
       if (detail.source === "elevenlabs" && this.active) {
         this.cancel()
-        voiceState("complete", "Voice stopped", "Playback was stopped.", "elevenlabs")
+        voiceState("complete", "Voz interrompida", "A reprodução parou.", "elevenlabs")
       }
     }
     window.addEventListener("board:voice-control", this.onControl)
-    this.handleEvent("voice_play", ({url}) => this.play(url))
+    this.handleEvent("voice_play", ({url, listen}) => this.play(url, {listen: Boolean(listen)}))
   },
-  async play(url) {
+  async play(url, {listen = false} = {}) {
     if (voiceInputActive()) return
     this.cancel()
     const generation = ++this.generation
     this.active = true
     this.abort = new AbortController()
-    voiceState("generating", "Preparing agent voice", "Waiting for ElevenLabs audio.", "elevenlabs")
+    voiceState("generating", "Preparando a voz do agente", "Esperando o áudio da ElevenLabs.", "elevenlabs")
 
     let blob
     try {
       const response = await fetch(url, {signal: this.abort.signal})
       if (generation !== this.generation) return
       if (!response.ok) {
-        let message = `Voice request failed (HTTP ${response.status}).`
+        let message = `O pedido de voz falhou (HTTP ${response.status}).`
         try {
           const data = await response.json()
           if (data.error) message = data.error
@@ -52,7 +52,7 @@ export const VoicePlayer = {
           // The status still identifies the failed request.
         }
         this.active = false
-        voiceState("error", "Voice could not be prepared", message, "elevenlabs")
+        voiceState("error", "Não deu para preparar a voz", message, "elevenlabs")
         return
       }
       blob = await response.blob()
@@ -60,7 +60,7 @@ export const VoicePlayer = {
     } catch (error) {
       if (generation !== this.generation || error?.name === "AbortError") return
       this.active = false
-      voiceState("error", "Voice service is unreachable", "Check the board connection and try again.", "elevenlabs")
+      voiceState("error", "Serviço de voz fora do ar", "Confira a conexão do board e tente de novo.", "elevenlabs")
       return
     }
 
@@ -68,17 +68,19 @@ export const VoicePlayer = {
     this.objectUrl = URL.createObjectURL(blob)
     this.audio.src = this.objectUrl
     this.audio.onplaying = () => {
-      if (generation === this.generation) voiceState("speaking", "Agent is speaking", "ElevenLabs audio is playing.", "elevenlabs")
+      if (generation === this.generation) voiceState("speaking", "O agente está falando", "Tocando o áudio da ElevenLabs.", "elevenlabs")
     }
     this.audio.onended = () => {
       if (generation !== this.generation) return
       this.active = false
-      voiceState("complete", "Agent finished speaking", "Playback finished.", "elevenlabs")
+      voiceState("complete", "O agente terminou de falar", "Reprodução concluída.", "elevenlabs")
+      // The reply asked something: hear the answer without a key press.
+      if (listen) window.dispatchEvent(new CustomEvent("board:voice-start", {detail: {followup: true}}))
     }
     this.audio.onerror = () => {
       if (generation !== this.generation) return
       this.active = false
-      voiceState("error", "Audio could not play", "Check the audio format or browser policy.", "elevenlabs")
+      voiceState("error", "O áudio não tocou", "Confira o formato do áudio ou a política do navegador.", "elevenlabs")
     }
 
     try {
@@ -88,10 +90,10 @@ export const VoicePlayer = {
       this.active = false
       voiceState(
         "error",
-        "Audio could not play",
+        "O áudio não tocou",
         error?.name === "NotAllowedError"
-          ? "The browser blocked playback. Try again after interacting with the page."
-          : "Check the browser sound and try again.",
+          ? "O navegador bloqueou o som. Tente de novo depois de interagir com a página."
+          : "Confira o som do navegador e tente de novo.",
         "elevenlabs"
       )
     }

@@ -146,13 +146,19 @@ window.addEventListener("board:voice-state", ({detail}) => {
   }
 })
 
+// The typed chat line empties once the board took the words.
+window.addEventListener("phx:voice_chat_clear", () => {
+  const input = document.querySelector("#voice-chat-text")
+  if (input) input.value = ""
+})
+
 // Voice out: the server pushes the summary, the browser speaks it.
 let browserSpeech = null
 window.addEventListener("phx:speak", (event) => {
   const text = event.detail.text
   if (!text || voiceInputActive()) return
   if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
-    voiceState("error", "Speech is unavailable", "This browser cannot play the board status.", "browser-speech")
+    voiceState("error", "Fala indisponível", "Este navegador não consegue falar.", "browser-speech")
     return
   }
   browserSpeech = null
@@ -165,23 +171,24 @@ window.addEventListener("phx:speak", (event) => {
   const volume = Number(panel?.dataset.volume)
   utterance.lang = event.detail.lang || panel?.dataset.lang || navigator.language || "pt-BR"
   utterance.volume = Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 100) / 100 : 1
-  utterance.onstart = () => voiceState("speaking", "Speaking board status", "Browser voice is playing.", "browser-speech")
+  utterance.onstart = () => voiceState("speaking", "Falando", "Usando a voz do navegador.", "browser-speech")
   utterance.onend = () => {
     if (browserSpeech !== utterance) return
     browserSpeech = null
-    voiceState("complete", "Board status spoken", "Playback finished.", "browser-speech")
+    voiceState("complete", "Terminei de falar", "Reprodução concluída.", "browser-speech")
+    if (event.detail.listen) window.dispatchEvent(new CustomEvent("board:voice-start", {detail: {followup: true}}))
   }
   utterance.onerror = () => {
     if (browserSpeech !== utterance) return
     browserSpeech = null
-    voiceState("error", "Speech could not play", "Try again or check the browser sound.", "browser-speech")
+    voiceState("error", "A fala não tocou", "Tente de novo ou confira o som do navegador.", "browser-speech")
   }
-  voiceState("generating", "Preparing board status", "Using the browser voice.", "browser-speech")
+  voiceState("generating", "Preparando a fala", "Usando a voz do navegador.", "browser-speech")
   try {
     window.speechSynthesis.speak(utterance)
   } catch (_) {
     browserSpeech = null
-    voiceState("error", "Speech could not start", "Try again after interacting with the page.", "browser-speech")
+    voiceState("error", "A fala não começou", "Tente de novo depois de interagir com a página.", "browser-speech")
   }
 })
 
@@ -189,6 +196,6 @@ window.addEventListener("board:voice-control", ({detail}) => {
   if (browserSpeech && detail.source === "browser-speech") {
     browserSpeech = null
     window.speechSynthesis.cancel()
-    voiceState("complete", "Speech stopped", "Playback was stopped.", "browser-speech")
+    voiceState("complete", "Fala interrompida", "A reprodução parou.", "browser-speech")
   }
 })

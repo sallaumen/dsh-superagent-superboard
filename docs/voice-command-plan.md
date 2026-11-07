@@ -53,7 +53,10 @@ message, creates a task, or changes a task's state.
    surface must describe the **actual** phase; its visual bars are decorative
    unless connected to measured input levels. Respect reduced motion and keep
    a text status for assistive technology.
-5. Transcription opens an editable command draft. The user decides whether to
+5. *(Superseded on 2026-11-07 by the owner's request for a hands-free
+   conversation, see [voice-conversation.md](voice-conversation.md): the
+   transcript is no longer shown for review; writes now wait for a spoken
+   yes instead of a click.)* Transcription opens an editable command draft. The user decides whether to
    run a read-only command or proceed to a task or message form. Actions that
    write to GitHub or change task state require an explicit review of target
    and effect and a separate confirmation in the UI.
