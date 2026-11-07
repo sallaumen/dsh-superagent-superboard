@@ -21,6 +21,7 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 | `AgentBoard.Metrics` | the throughput arithmetic, pure; `Metrics.Observations` reads what it counts |
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.ExecutorUsage` | what the executor spent on a task, read from the harness transcripts; tokens measured, cost estimated |
+| `AgentBoard.Attribution` | which task a session or a PR worked for: exact, `pr-link`, branch, repository or outside; pure |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
 | `AgentBoard.Settings` | board-wide settings, one row per key (the voice picks) |
 | `AgentBoard.Voice` | the spoken summary and the voice settings (language, volume, attention) |
@@ -406,6 +407,33 @@ Agora and the detail):
   232,749 input, 238,848 output tokens in its worker).
 - The tests: `executor_usage_test.exs` (parsing, dedupe, folder name, cost,
   no `zstd`, reuse) and `inspector_test.exs` (rendered states).
+
+## Attribution
+
+Which task an executor's session or a PR worked for
+(`AgentBoard.Attribution`, pure; `docs/research/alfred.md`, 3.4). The sync
+writes what it needs from the pull it already fetches, at no extra call:
+`pull_requests.head_ref` (`head.ref`, `nil` for a fork's branch, which does
+not exist in this repository) and `pull_requests.closes_issues` (the issues
+the body closes with GitHub's keywords, `Closes #n`, `owner/repo#n` or the
+issue URL of the same repository, in the order named).
+
+| Rule | Holds when | Result |
+|---|---|---|
+| exact | the session carries its task id (dispatched, or a DSH ticket's issue) | `{:task, id, :exact}` |
+| pr-link | a Claude Code `pr-link` names a stored PR whose body closes a task's issue | `{:task, id, :pr_link}` |
+| branch | the session's branch is the `head_ref` of a PR in the same repository that closes a task's issue (`HEAD` is not a branch) | `{:task, id, :branch}` |
+| repository | the remote, a `pr-link` or the project folder names one board repository | `{:repository, id}` |
+| outside | none of the above | `{:outside, folder}`, or `:unknown` with no folder |
+
+- **A PR without `Closes #n` has no task.** The board never guesses by
+  title, branch name or the conversation: a session is metadata the reader
+  chose field by field.
+- The first closed issue that is a task wins; a folder name two board
+  repositories share picks neither.
+- The tests: `attribution_test.exs` (each rule and keyword) and
+  `sync_repo_test.exs` (the columns through the sync, the fork, a session
+  attributed by branch).
 
 ## The request (composer)
 

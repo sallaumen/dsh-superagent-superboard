@@ -112,6 +112,59 @@ defmodule AgentBoard.SyncRepoTest do
     assert stored.head_sha == "abc"
   end
 
+  test "the sync stores the PR's branch and the issues its body closes", %{repo: repo} do
+    pull = fn number, head, body ->
+      %{
+        "number" => number,
+        "title" => "PR #{number}",
+        "state" => "open",
+        "html_url" => "https://github.com/sallaumen/arena-rogue/pull/#{number}",
+        "user" => %{"login" => "sallaumen-agent"},
+        "created_at" => "2026-11-04T00:00:00Z",
+        "body" => body,
+        "head" => Map.put(head, "sha", "abc")
+      }
+    end
+
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Req.Test.json(conn, [issue(7, "open")])
+
+        "/repos/sallaumen/arena-rogue/pulls" ->
+          Req.Test.json(conn, [
+            pull.(
+              21,
+              %{"ref" => "agent/7-fix", "repo" => %{"full_name" => "sallaumen/arena-rogue"}},
+              "Closes #7\n\nAlso see #3."
+            ),
+            pull.(22, %{"ref" => "main", "repo" => %{"full_name" => "someone/arena-rogue"}}, nil),
+            pull.(23, %{"ref" => "gone", "repo" => nil}, "Fixes #7")
+          ])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    stored = fn number ->
+      Repo.one(from p in AgentBoard.Board.PullRequest, where: p.number == ^number)
+    end
+
+    assert %{head_ref: "agent/7-fix", closes_issues: [7]} = stored.(21)
+    # A fork's branch, or a deleted fork's, is not a branch of this repository.
+    assert %{head_ref: nil, closes_issues: []} = stored.(22)
+    assert %{head_ref: nil, closes_issues: [7]} = stored.(23)
+
+    task = Repo.one(from t in Task, where: t.number == 7)
+    session = %{git_branch: "agent/7-fix", origin_url: "https://github.com/sallaumen/arena-rogue"}
+
+    assert AgentBoard.Attribution.for_session(session, Board.attribution_index()) ==
+             {:task, task.id, :branch}
+  end
+
   test "all/1 syncs every active repo with the injected client", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do

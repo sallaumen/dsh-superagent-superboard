@@ -30,6 +30,8 @@ defmodule AgentBoard.Board.PullRequest do
     field :checks_failed, :string
     field :checks_changed_at, :utc_datetime
     field :head_sha, :string
+    field :head_ref, :string
+    field :closes_issues, {:array, :integer}, default: []
 
     belongs_to :repository, AgentBoard.Board.Repository
     has_many :reviews, AgentBoard.Board.Review
@@ -53,6 +55,8 @@ defmodule AgentBoard.Board.PullRequest do
       :checks_failed,
       :checks_changed_at,
       :head_sha,
+      :head_ref,
+      :closes_issues,
       :repository_id
     ])
     |> validate_required([:number, :title, :state, :repository_id])

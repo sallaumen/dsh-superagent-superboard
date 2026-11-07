@@ -517,6 +517,31 @@ defmodule AgentBoard.Board do
     |> Map.new()
   end
 
+  @doc """
+  What `AgentBoard.Attribution.for_session/2` needs: every repository, the
+  PRs with their branch and the issues they close, and the issue tasks.
+  """
+  @spec attribution_index() :: AgentBoard.Attribution.index()
+  def attribution_index do
+    AgentBoard.Attribution.index(
+      Repo.all(from r in Repository, select: %{id: r.id, owner: r.owner, name: r.name}),
+      Repo.all(
+        from p in PullRequest,
+          select: %{
+            repository_id: p.repository_id,
+            number: p.number,
+            head_ref: p.head_ref,
+            closes_issues: p.closes_issues
+          }
+      ),
+      Repo.all(
+        from t in Task,
+          where: t.kind == "issue" and not is_nil(t.number),
+          select: %{id: t.id, repository_id: t.repository_id, number: t.number}
+      )
+    )
+  end
+
   @doc "The head sha per PR number, as the sync last saw it; a PR synced before the column is absent."
   @spec pull_heads(integer()) :: %{optional(integer()) => String.t()}
   def pull_heads(repository_id) do
