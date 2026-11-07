@@ -1213,6 +1213,10 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("voice_cancel_turn", _params, socket),
+    do: {:noreply, VoiceConversation.cancel_turn(socket)}
+
+  @impl true
   def handle_event("voice_forget", _params, socket),
     do: {:noreply, VoiceConversation.forget(socket)}
 
@@ -1395,6 +1399,24 @@ defmodule AgentBoardWeb.BoardLive do
       {:error, _reason} -> {:noreply, socket}
     end
   end
+
+  # Speed, intonation, pause and the start/end sounds: each control saves on
+  # change and the voice assign is re-read, so the panel shows what stuck.
+  @impl true
+  def handle_event("voice_speed", %{"speed" => speed}, socket),
+    do: {:noreply, save_voice_pref(socket, Voice.put_speed(speed))}
+
+  @impl true
+  def handle_event("voice_style", %{"style" => style}, socket),
+    do: {:noreply, save_voice_pref(socket, Voice.put_style(style))}
+
+  @impl true
+  def handle_event("voice_pause", %{"pause" => pause}, socket),
+    do: {:noreply, save_voice_pref(socket, Voice.put_pause(pause))}
+
+  @impl true
+  def handle_event("voice_earcons", %{"earcons" => value}, socket),
+    do: {:noreply, save_voice_pref(socket, Voice.put_earcons(value == "true"))}
 
   defp current_voice_ask(socket) do
     case {socket.assigns.panel, socket.assigns.voice_result, socket.assigns.repo,
@@ -1661,9 +1683,28 @@ defmodule AgentBoardWeb.BoardLive do
       attention: Voice.attention?(),
       language: Voice.language(),
       languages: Phrases.languages(),
-      volume: Voice.volume()
+      volume: Voice.volume(),
+      speed: Voice.speed(),
+      style: Voice.style(),
+      pause: Voice.pause(),
+      pause_ms: Voice.pause_ms(),
+      earcons: Voice.earcons?()
     }
   end
+
+  defp save_voice_pref(socket, :ok) do
+    fresh = current_voice()
+
+    assign(socket,
+      voice:
+        Map.merge(
+          socket.assigns.voice,
+          Map.take(fresh, [:speed, :style, :pause, :pause_ms, :earcons])
+        )
+    )
+  end
+
+  defp save_voice_pref(socket, {:error, _reason}), do: socket
 
   defp voice_name(nil, _id), do: nil
   defp voice_name(voices, id), do: Enum.find_value(voices, fn v -> if v.id == id, do: v.name end)
@@ -1778,7 +1819,11 @@ defmodule AgentBoardWeb.BoardLive do
   defp say(socket, _text, _opts), do: socket
 
   defp browser_speech(socket, text),
-    do: %{text: text, lang: socket.assigns.voice.language}
+    do: %{
+      text: VoiceSpeech.text(text),
+      lang: socket.assigns.voice.language,
+      rate: socket.assigns.voice.speed
+    }
 
   defp voice_reason(:not_configured), do: "sem chave de API"
   defp voice_reason(:auth_expired), do: "a chave foi recusada"
@@ -1992,6 +2037,8 @@ defmodule AgentBoardWeb.BoardLive do
           id="voice-command-shortcut"
           phx-hook="VoiceCommand"
           data-configured={to_string(@voice.configured)}
+          data-pause-ms={@voice.pause_ms}
+          data-earcons={to_string(@voice.earcons)}
           hidden
         />
 

@@ -382,7 +382,7 @@
 .voice-source-note { font-weight: 400; text-transform: none; letter-spacing: 0; color: color-mix(in oklab, var(--color-base-content) 50%, transparent); }
 .voice-select { flex: 1 1 12rem; max-width: 16rem; padding: 0.5rem 0.75rem; border: 1px solid var(--color-base-300); border-radius: 0.5rem; background: var(--color-base-200); font-size: 0.75rem; }
 .voice-select:disabled { opacity: 0.4; }
-.voice-panel form input { flex: 1 1 12rem; padding: 0.5rem 0.75rem; border: 1px solid var(--color-base-300); border-radius: 0.5rem; background: var(--color-base-200); font-size: 0.75rem; }
+.voice-panel form input:not([type="checkbox"]):not([type="range"]):not([type="hidden"]) { flex: 1 1 12rem; padding: 0.5rem 0.75rem; border: 1px solid var(--color-base-300); border-radius: 0.5rem; background: var(--color-base-200); font-size: 0.75rem; }
 .voice-save { border-color: color-mix(in oklab, var(--color-base-content) 45%, transparent); background: var(--color-base-content); color: var(--color-base-100); }
 .voice-save:hover { background: color-mix(in oklab, var(--color-base-content) 85%, transparent); }
 .voice-reset { border-color: transparent; background: transparent; color: color-mix(in oklab, var(--color-base-content) 50%, transparent); text-decoration: underline; text-underline-offset: 0.25rem; }
@@ -399,6 +399,7 @@
 .voice-chat-turn { display: grid; gap: 0.125rem; max-width: 88%; align-self: flex-start; padding: 0.5rem 0.75rem; border-radius: 0.75rem; background: var(--color-base-200); font-size: 0.8125rem; line-height: 1.5; }
 .voice-chat-turn[data-role="owner"] { align-self: flex-end; background: color-mix(in oklab, var(--color-secondary) 14%, var(--color-base-100)); }
 .voice-chat-who { font-size: 0.625rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in oklab, var(--color-base-content) 60%, transparent); }
+.voice-chat-time { font-size: 0.6875rem; color: color-mix(in oklab, var(--color-base-content) 55%, transparent); font-variant-numeric: tabular-nums; }
 .voice-chat-thinking { font-size: 0.8125rem; color: color-mix(in oklab, var(--color-base-content) 70%, transparent); }
 .voice-chat-form { display: flex; gap: 0.5rem; }
 .voice-chat-form input { flex: 1; min-height: 2.75rem; padding: 0 0.875rem; border: 1px solid var(--color-base-300); border-radius: 0.75rem; background: var(--color-base-200); font-size: 0.875rem; }
@@ -518,14 +519,21 @@
 .voice-presence[data-phase="speaking"] .voice-presence-bar { opacity: 0.8; }
 .voice-presence[data-phase="permission"] .voice-presence-bar,
 .voice-presence[data-phase="transcribing"] .voice-presence-bar,
+.voice-presence[data-phase="thinking"] .voice-presence-bar,
 .voice-presence[data-phase="generating"] .voice-presence-bar { opacity: 0.25; }
+/* Listening draws the measured input level, not a decorative loop. With
+   reduced motion the level changes the ink, not the height. */
+.voice-presence[data-phase="listening"] .voice-presence-bar { opacity: calc(0.45 + var(--voice-level, 0) * 0.55); }
 .voice-presence-copy h2 { font-size: 1.3125rem; font-weight: 650; letter-spacing: -0.035em; line-height: 1.25; }
 .voice-presence-copy p { margin-top: 0.25rem; color: color-mix(in oklab, var(--color-base-content) 75%, transparent); font-size: 0.8125rem; line-height: 1.45; }
 @media (prefers-reduced-motion: no-preference) {
-  .voice-presence[data-phase="listening"] .voice-presence-bar,
   .voice-presence[data-phase="speaking"] .voice-presence-bar {
     animation: voice-flow 1.65s ease-in-out infinite alternate;
     animation-delay: calc(var(--bar-index) * -47ms);
+  }
+  .voice-presence[data-phase="listening"] .voice-presence-bar {
+    transform: scaleY(calc(0.2 + var(--voice-level, 0) * 0.85));
+    transition: transform 90ms linear;
   }
 }
 @keyframes voice-flow { from { transform: scaleY(0.45); } to { transform: scaleY(1); } }

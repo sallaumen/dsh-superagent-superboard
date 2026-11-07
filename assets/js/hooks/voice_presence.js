@@ -30,6 +30,10 @@ export const VoicePresence = {
       if (["complete", "error", "thinking"].includes(this.phase)) this.hide()
       else window.dispatchEvent(new CustomEvent("board:voice-control", {detail: {phase: this.phase, source: this.source}}))
     }
+    // The bars follow the measured input level while listening (CSS reads
+    // --voice-level); without measurements they stay at rest.
+    this.onLevel = ({detail}) => this.el.style.setProperty("--voice-level", String(detail.level || 0))
+    window.addEventListener("board:voice-level", this.onLevel)
     window.addEventListener("board:voice-state", this.onState)
     window.addEventListener("board:voice-context", this.onContext)
     this.control.addEventListener("click", this.onControl)
@@ -64,6 +68,7 @@ export const VoicePresence = {
   destroyed() {
     clearTimeout(this.closeTimer)
     window.removeEventListener("board:voice-state", this.onState)
+    window.removeEventListener("board:voice-level", this.onLevel)
     window.removeEventListener("board:voice-context", this.onContext)
     this.control.removeEventListener("click", this.onControl)
     this.host?.removeEventListener("close", this.onHostClose)

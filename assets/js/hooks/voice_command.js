@@ -5,7 +5,7 @@ const maxSeconds = 30
 const source = "command-recorder"
 // The turn ends on its own: once speech was heard, this much silence means
 // the owner finished. Without any speech the microphone closes quietly.
-const silenceMs = 1200
+const defaultSilenceMs = 1200
 const noSpeechMs = 8000
 const followupNoSpeechMs = 6000
 const calibrateMs = 250
@@ -66,8 +66,13 @@ export const VoiceCommand = {
       this.start({followup: Boolean(detail?.followup)})
     }
     this.handleEvent("voice_thinking", () => {
-      if (this.phase === "idle") voiceState("thinking", "Pensando…", "O agente está preparando a resposta.", source)
+      this.thinking = true
+      if (this.phase === "idle") voiceState("thinking", "Pensando…", "O agente está preparando a resposta. Esc cancela.", source)
     })
+    // The reply arrived (agent voice or browser voice): nothing to cancel.
+    this.onReply = () => { this.thinking = false }
+    window.addEventListener("phx:voice_play", this.onReply)
+    window.addEventListener("phx:speak", this.onReply)
     this.onStopRequest = () => {
       if (this.phase === "listening") this.stop()
       else if (this.phase !== "idle") this.cancel()
@@ -86,6 +91,12 @@ export const VoiceCommand = {
   handleKeyDown(event) {
     if (event.key === "Escape") {
       this.clearFirstSpace(true)
+      if (this.phase === "idle" && this.thinking) {
+        this.thinking = false
+        this.pushEvent("voice_cancel_turn", {})
+        voiceState("complete", "Pedido cancelado", "O agente não vai responder a essa fala.", source)
+        return
+      }
       if (this.phase !== "idle") {
         event.preventDefault()
         event.stopImmediatePropagation()
@@ -107,12 +118,15 @@ export const VoiceCommand = {
     const focus = document.activeElement
     const dialog = document.querySelector(".board-dialog[open]")
     const neutralFocus = focus === document.body || focus === document.documentElement || focus === this.el
-    const conversationHeading = dialog?.id === "panel-conversation" && focus?.id === "panel-title-conversation"
-    if (!neutralFocus && !conversationHeading) {
+    // The task conversation and the voice panel (where the agent's
+    // conversation is shown) both accept the shortcut from their heading.
+    const talkDialogs = ["panel-conversation", "panel-voice"]
+    const dialogHeading = talkDialogs.includes(dialog?.id) && focus?.id === `panel-title-${dialog.id.slice(6)}`
+    if (!neutralFocus && !dialogHeading) {
       this.clearFirstSpace(true)
       return
     }
-    if ((dialog && dialog.id !== "panel-conversation") || document.querySelector("[data-board-menu][open]")) {
+    if ((dialog && !talkDialogs.includes(dialog.id)) || document.querySelector("[data-board-menu][open]")) {
       this.clearFirstSpace(true)
       return
     }
@@ -195,6 +209,7 @@ export const VoiceCommand = {
       }
       recorder.start()
       this.phase = "listening"
+      this.earcon("open")
       voiceState("listening", followup ? "Pode responder" : "Ouvindo",
         "Fale e pare: quando você terminar, eu envio. Esc cancela.", source)
       this.recordTimer = setTimeout(() => this.stop(), maxSeconds * 1000)
@@ -204,6 +219,31 @@ export const VoiceCommand = {
       this.reset()
       voiceState("error", "Microfone indisponível", "Confira a permissão ou escreva no painel de voz.", source)
     }
+  },
+  // A soft two-note cue: rising when the microphone opens, falling when it
+  // closes, so a hands-free turn is clear without looking. Quiet, short,
+  // follows the voice volume and can be turned off in the settings.
+  earcon(kind) {
+    if (this.el.dataset.earcons === "false") return
+    const context = this.audioContext
+    if (!context || context.state !== "running") return
+    const panelVolume = Number(document.querySelector("#voice-panel")?.dataset.volume)
+    const volume = (Number.isFinite(panelVolume) ? panelVolume / 100 : 1) * 0.12
+    if (volume <= 0) return
+    const notes = kind === "open" ? [660, 880] : [700, 520]
+    notes.forEach((frequency, index) => {
+      const start = context.currentTime + index * 0.09
+      const osc = context.createOscillator()
+      const gain = context.createGain()
+      osc.type = "sine"
+      osc.frequency.value = frequency
+      gain.gain.setValueAtTime(0, start)
+      gain.gain.linearRampToValueAtTime(volume, start + 0.015)
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.12)
+      osc.connect(gain).connect(context.destination)
+      osc.start(start)
+      osc.stop(start + 0.13)
+    })
   },
   ensureAudioContext() {
     const Context = window.AudioContext || window.webkitAudioContext
@@ -231,6 +271,7 @@ export const VoiceCommand = {
     }
     const samples = new Float32Array(analyser.fftSize)
     const startedAt = performance.now()
+    const silenceMs = Number(this.el.dataset.pauseMs) || defaultSilenceMs
     let floor = Infinity
     let heard = false
     let lastVoiceAt = 0
@@ -245,6 +286,8 @@ export const VoiceCommand = {
       floor = Math.min(floor, level)
       if (now - startedAt < calibrateMs) return
       const threshold = Math.min(maxThreshold, Math.max(minLevel, floor * 3))
+      // The presence surface draws this: it shows the board is hearing you.
+      window.dispatchEvent(new CustomEvent("board:voice-level", {detail: {level: Math.min(1, level / 0.12)}}))
       if (level > threshold) {
         heard = true
         lastVoiceAt = now
@@ -256,6 +299,7 @@ export const VoiceCommand = {
     }, 100)
   },
   stopSilenceWatch() {
+    if (this.vadTimer) window.dispatchEvent(new CustomEvent("board:voice-level", {detail: {level: 0}}))
     clearInterval(this.vadTimer)
     this.vadTimer = null
     try { this.vadSource?.disconnect() } catch (_) { /* Already disconnected. */ }
@@ -265,6 +309,8 @@ export const VoiceCommand = {
     if (this.phase !== "listening" || this.recorder?.state !== "recording") return
     clearTimeout(this.recordTimer)
     this.stopSilenceWatch()
+    window.boardVoiceTurnEndedAt = performance.now()
+    this.earcon("close")
     this.phase = "transcribing"
     voiceState("transcribing", "Entendendo…", "O microfone está desligado enquanto o áudio é transcrito.", source)
     try {
@@ -355,5 +401,7 @@ export const VoiceCommand = {
     window.removeEventListener("board:voice-control", this.onControl)
     window.removeEventListener("board:voice-start", this.onStartRequest)
     window.removeEventListener("board:voice-stop", this.onStopRequest)
+    window.removeEventListener("phx:voice_play", this.onReply)
+    window.removeEventListener("phx:speak", this.onReply)
   },
 }

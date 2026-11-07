@@ -51,6 +51,7 @@ defmodule AgentBoardWeb.Router do
     pipe_through :voice
 
     get "/voice/speech", VoiceController, :speech
+    get "/voice/stream", VoiceController, :stream
     post "/voice/speech", VoiceController, :speech_post
   end
 

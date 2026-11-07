@@ -2,6 +2,8 @@ defmodule AgentBoardWeb.VoiceControllerTest do
   @moduledoc "The voice API: status, speech and transcription, stubbed."
   use AgentBoardWeb.ConnCase
 
+  alias AgentBoard.ElevenLabs.SpeechCache
+
   @stub AgentBoardWeb.VoiceControllerTest.Stub
 
   setup do
@@ -154,6 +156,92 @@ defmodule AgentBoardWeb.VoiceControllerTest do
     end)
 
     assert response(get(conn, "/api/voice/speech?text=hi"), 200) == "ID3"
+  end
+
+  test "GET /api/voice/stream streams the audio from the streaming endpoint", %{conn: conn} do
+    Req.Test.stub(@stub, fn conn ->
+      assert conn.request_path == "/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb/stream"
+      assert conn.body_params["language_code"] == "pt"
+
+      conn
+      |> Plug.Conn.put_resp_content_type("audio/mpeg")
+      |> Plug.Conn.send_resp(200, "ID3stream")
+    end)
+
+    conn = get(conn, "/api/voice/stream?text=oi")
+
+    assert response(conn, 200) == "ID3stream"
+    assert get_resp_header(conn, "content-type") == ["audio/mpeg"]
+  end
+
+  test "the stream reads the text with the saved speed and intonation", %{conn: conn} do
+    :ok = AgentBoard.Voice.put_speed("1.15")
+    :ok = AgentBoard.Voice.put_style("steady")
+
+    Req.Test.stub(@stub, fn conn ->
+      assert conn.body_params["voice_settings"]["speed"] == 1.15
+      assert conn.body_params["voice_settings"]["stability"] == 0.7
+      conn |> Plug.Conn.put_resp_content_type("audio/mpeg") |> Plug.Conn.send_resp(200, "ID3")
+    end)
+
+    assert response(get(conn, "/api/voice/stream?text=oi"), 200) == "ID3"
+  end
+
+  test "PUT /api/voice/settings stores speed, style and pause", %{conn: conn} do
+    assert %{"speed" => 0.9, "style" => "expressive", "pause" => "short"} =
+             json_response(
+               put(conn, "/api/voice/settings", %{
+                 "speed" => "0.9",
+                 "style" => "expressive",
+                 "pause" => "short"
+               }),
+               200
+             )
+
+    assert %{"error" => "the speed must be 0.8 to 1.2"} =
+             json_response(put(conn, "/api/voice/settings", %{"speed" => "3"}), 400)
+  end
+
+  test "GET /api/voice/stream answers a failure before the first byte as JSON", %{conn: conn} do
+    Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 429, "{}") end)
+
+    assert %{"error" => "ElevenLabs usage limit reached"} =
+             json_response(get(conn, "/api/voice/stream?text=oi"), 429)
+  end
+
+  test "GET /api/voice/stream validates before paying", %{conn: conn} do
+    Req.Test.stub(@stub, fn _conn -> flunk("ElevenLabs must not be called") end)
+
+    assert json_response(get(conn, "/api/voice/stream"), 400)
+    assert json_response(get(conn, "/api/voice/stream?text=#{String.duplicate("x", 5_001)}"), 400)
+  end
+
+  test "a repeated text is served from the speech cache, once paid", %{conn: conn} do
+    Application.put_env(:agent_board, :voice_speech_cache_entries, 10)
+    SpeechCache.clear()
+
+    on_exit(fn ->
+      Application.put_env(:agent_board, :voice_speech_cache_entries, 0)
+      SpeechCache.clear()
+    end)
+
+    {:ok, calls} = Agent.start_link(fn -> 0 end)
+
+    Req.Test.stub(@stub, fn conn ->
+      Agent.update(calls, &(&1 + 1))
+      conn |> Plug.Conn.put_resp_content_type("audio/mpeg") |> Plug.Conn.send_resp(200, "ID3once")
+    end)
+
+    assert response(get(conn, "/api/voice/stream?text=Tudo+bem"), 200) == "ID3once"
+    second = get(build_conn(), "/api/voice/stream?text=Tudo+bem")
+    assert response(second, 200) == "ID3once"
+    assert get_resp_header(second, "x-voice-cache") == ["hit"]
+    assert Agent.get(calls, & &1) == 1
+
+    # Another language is another audio: a miss, never the cached one.
+    :ok = AgentBoard.Voice.put_language("en-US")
+    assert response(get(build_conn(), "/api/voice/stream?text=Tudo+bem"), 200) == "ID3once"
+    assert Agent.get(calls, & &1) == 2
   end
 
   test "GET /api/voice/speech refuses a text that is too long", %{conn: conn} do

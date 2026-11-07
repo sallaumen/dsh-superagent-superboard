@@ -131,31 +131,16 @@ defmodule AgentBoard.ElevenLabs do
       only to the models that enforce it (Flash v2.5), so the text is read
       and normalized in that language instead of the voice's own; other
       models infer the language from the text.
+    * `:speed` - 0.7..1.2, the speaking rate; omitted keeps the voice's own
   """
   def speech(text, opts \\ []) when is_binary(text) do
     if configured?() do
       format = Keyword.get(opts, :output_format, @default_output_format)
 
-      model = Keyword.get(opts, :model, tts_model())
-
-      body =
-        %{
-          text: text,
-          model_id: model,
-          voice_settings: %{
-            stability: Keyword.get(opts, :stability, 0.5),
-            similarity_boost: Keyword.get(opts, :similarity_boost, 0.75)
-          }
-        }
-        |> put_language(model, opts[:language])
-
       case Req.post(client(),
              url: "/v1/text-to-speech/#{Keyword.get(opts, :voice, voice_id())}",
-             params: [
-               output_format: format,
-               optimize_streaming_latency: Keyword.get(opts, :latency, 3)
-             ],
-             json: body,
+             params: speech_params(format, opts),
+             json: speech_body(text, opts),
              decode_body: false
            ) do
         {:ok, %Req.Response{status: 200, body: audio, headers: headers}} ->
@@ -182,6 +167,69 @@ defmodule AgentBoard.ElevenLabs do
     else
       {:error, :not_configured}
     end
+  end
+
+  @doc """
+  Speak a text as a stream: `on_chunk` receives each piece of mp3 as it
+  arrives (the first one about half a second after the request, against a
+  second or more for the whole file) and answers `:ok` to continue or `:halt`
+  when the listener went away. Returns `:ok` or `{:error, reason}`; a failure
+  status arrives before any chunk, so a caller can still answer it cleanly.
+  Same options as `speech/2`. No retry: a retried paid request is a second
+  charge.
+  """
+  @spec speech_stream(String.t(), keyword(), (binary() -> :ok | :halt)) :: :ok | {:error, term()}
+  def speech_stream(text, opts, on_chunk) when is_binary(text) and is_function(on_chunk, 1) do
+    if configured?() do
+      format = Keyword.get(opts, :output_format, @default_output_format)
+
+      Req.post(client(),
+        url: "/v1/text-to-speech/#{Keyword.get(opts, :voice, voice_id())}/stream",
+        params: speech_params(format, opts),
+        json: speech_body(text, opts),
+        decode_body: false,
+        into: stream_into(on_chunk)
+      )
+      |> stream_result()
+    else
+      {:error, :not_configured}
+    end
+  end
+
+  # Only a 200 reaches the listener; an error body is dropped and the status
+  # becomes the reason.
+  defp stream_into(on_chunk) do
+    fn
+      {:data, data}, {req, %Req.Response{status: 200} = resp} ->
+        if on_chunk.(data) == :ok, do: {:cont, {req, resp}}, else: {:halt, {req, resp}}
+
+      {:data, _data}, acc ->
+        {:cont, acc}
+    end
+  end
+
+  defp stream_result({:ok, %Req.Response{status: 200}}), do: :ok
+  defp stream_result({:ok, %Req.Response{status: 401}}), do: {:error, :auth_expired}
+  defp stream_result({:ok, %Req.Response{status: 429}}), do: {:error, :usage_limit}
+  defp stream_result({:ok, %Req.Response{status: status}}), do: {:error, {:http, status}}
+  defp stream_result({:error, reason}), do: {:error, reason}
+
+  defp speech_params(format, opts) do
+    [output_format: format, optimize_streaming_latency: Keyword.get(opts, :latency, 3)]
+  end
+
+  defp speech_body(text, opts) do
+    model = Keyword.get(opts, :model, tts_model())
+
+    settings =
+      %{
+        stability: Keyword.get(opts, :stability, 0.5),
+        similarity_boost: Keyword.get(opts, :similarity_boost, 0.75)
+      }
+      |> then(fn s -> if opts[:speed], do: Map.put(s, :speed, opts[:speed]), else: s end)
+
+    %{text: text, model_id: model, voice_settings: settings}
+    |> put_language(model, opts[:language])
   end
 
   # Only these models accept `language_code`; another one answers 400.

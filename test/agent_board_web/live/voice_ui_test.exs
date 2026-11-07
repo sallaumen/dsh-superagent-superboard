@@ -90,7 +90,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(
       view,
       "voice_play",
-      %{url: "/api/voice/speech?text=Voz+escolhida.&voice=abc"}
+      %{url: "/api/voice/stream?text=Voz+escolhida.&voice=abc"}
     )
   end
 
@@ -174,7 +174,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(
       view,
       "voice_play",
-      %{url: "/api/voice/speech?text=All+clear&voice=JBFqnCBsd6RMkjVDRZzb"}
+      %{url: "/api/voice/stream?text=All+clear&voice=JBFqnCBsd6RMkjVDRZzb"}
     )
   end
 
@@ -188,7 +188,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(
       view,
       "voice_play",
-      %{url: "/api/voice/speech?text=Hello+agent&voice=JBFqnCBsd6RMkjVDRZzb"}
+      %{url: "/api/voice/stream?text=Hello+agent&voice=JBFqnCBsd6RMkjVDRZzb"}
     )
   end
 
@@ -290,7 +290,7 @@ defmodule AgentBoardWeb.VoiceUITest do
       "voice_play",
       %{
         url:
-          "/api/voice/speech?text=All+good.+The+sync+is+clean+and+nothing+is+blocked.&voice=JBFqnCBsd6RMkjVDRZzb"
+          "/api/voice/stream?text=All+good.+The+sync+is+clean+and+nothing+is+blocked.&voice=JBFqnCBsd6RMkjVDRZzb"
       }
     )
   end
@@ -327,7 +327,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "question"}))
     send(view.pid, :board_updated)
 
-    assert_push_event(view, "voice_play", %{url: "/api/voice/speech?text=" <> _})
+    assert_push_event(view, "voice_play", %{url: "/api/voice/stream?text=" <> _})
   end
 
   test "without a key the attention call uses the browser voice in the chosen language",
@@ -374,7 +374,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     assert_push_event(view, "voice_play", %{
       url:
-        "/api/voice/speech?text=Done.+From+now+on+I%27ll+speak+English.&voice=JBFqnCBsd6RMkjVDRZzb"
+        "/api/voice/stream?text=Done.+From+now+on+I%27ll+speak+English.&voice=JBFqnCBsd6RMkjVDRZzb"
     })
   end
 
@@ -422,5 +422,40 @@ defmodule AgentBoardWeb.VoiceUITest do
     panel = view |> element("#voice-panel") |> render()
     refute panel =~ ~r/<(input|select)\b[^>]*phx-change/
     assert panel =~ ~r/<form[^>]*phx-change="voice_volume"/
+  end
+
+  test "speed, intonation, pause and sounds save from the panel and reach the browser",
+       %{conn: conn} do
+    with_key()
+    {:ok, view, html} = live(conn, ~p"/")
+    assert html =~ ~s(data-pause-ms="1200")
+    assert html =~ ~s(data-earcons="true")
+
+    view |> element("#voice-speed-form") |> render_change(%{"speed" => "1.1"})
+    assert Settings.get("voice_speed") == "1.10"
+    assert render(view) =~ "1,10×"
+
+    view |> element("#voice-style-form") |> render_change(%{"style" => "expressive"})
+    assert Settings.get("voice_style") == "expressive"
+
+    view |> element("#voice-pause-form") |> render_change(%{"pause" => "long"})
+    assert render(view) =~ ~s(data-pause-ms="1800")
+
+    view |> element("#voice-earcons-form") |> render_change(%{"earcons" => "false"})
+    assert render(view) =~ ~s(data-earcons="false")
+  end
+
+  test "the browser voice gets readable text and the saved speed", %{conn: conn} do
+    :ok = Settings.put("voice_speed", "0.9")
+    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    task = voice_task(repo, "Ver **sallaumen/arena-rogue** #7", "running")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
+    send(view.pid, :board_updated)
+
+    assert_push_event(view, "speak", %{text: text, rate: 0.9})
+    assert text =~ "Ver arena rogue 7"
+    refute text =~ "**"
   end
 end

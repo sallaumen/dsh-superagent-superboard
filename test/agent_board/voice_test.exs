@@ -104,4 +104,27 @@ defmodule AgentBoard.VoiceTest do
     assert String.starts_with?(title, short)
     refute short =~ ~r/\s\z/
   end
+
+  test "speed, intonation, pause and sounds persist and refuse bad values" do
+    assert Voice.speed() == 1.0
+    assert Voice.style() == "natural" and Voice.stability() == 0.5
+    assert Voice.pause() == "normal" and Voice.pause_ms() == 1200
+    assert Voice.earcons?()
+
+    assert :ok = Voice.put_speed("1.1")
+    assert Voice.speed() == 1.1
+    assert {:error, :invalid_speed} = Voice.put_speed("2")
+    assert {:error, :invalid_speed} = Voice.put_speed("rápido")
+
+    assert :ok = Voice.put_style("expressive")
+    assert Voice.stability() == 0.3
+    assert {:error, :invalid_style} = Voice.put_style("robô")
+
+    assert :ok = Voice.put_pause("long")
+    assert Voice.pause_ms() == 1800
+    assert {:error, :invalid_pause} = Voice.put_pause("eterna")
+
+    assert :ok = Voice.put_earcons(false)
+    refute Voice.earcons?()
+  end
 end

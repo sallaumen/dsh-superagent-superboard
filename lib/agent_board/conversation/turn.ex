@@ -21,6 +21,7 @@ defmodule AgentBoard.Conversation.Turn do
     field :proposal, :map
     field :proposal_status, :string
     field :summary_through_id, :integer
+    field :duration_ms, :integer
     timestamps(type: :utc_datetime_usec)
   end
 
@@ -33,7 +34,8 @@ defmodule AgentBoard.Conversation.Turn do
       :action,
       :proposal,
       :proposal_status,
-      :summary_through_id
+      :summary_through_id,
+      :duration_ms
     ])
     |> validate_required([:role, :text])
     |> validate_inclusion(:role, @roles)

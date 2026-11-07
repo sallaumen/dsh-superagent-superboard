@@ -152,6 +152,20 @@ window.addEventListener("phx:voice_chat_clear", () => {
   if (input) input.value = ""
 })
 
+// The browser's own voices vary a lot: prefer one in the exact language,
+// then an enhanced or neural one, then any voice of the language family.
+const bestBrowserVoice = (lang) => {
+  const voices = window.speechSynthesis?.getVoices?.() || []
+  if (!voices.length) return null
+  const family = lang.slice(0, 2).toLowerCase()
+  const quality = v => /premium|enhanced|natural|neural|google/i.test(v.name) ? 2 : (v.localService ? 1 : 0)
+  const score = v => (v.lang.toLowerCase() === lang.toLowerCase() ? 10 : v.lang.toLowerCase().startsWith(family) ? 5 : 0) + quality(v)
+  const best = voices.reduce((a, b) => (score(b) > score(a) ? b : a), voices[0])
+  return score(best) >= 5 ? best : null
+}
+// Voices load asynchronously in some browsers; asking once warms the list.
+window.speechSynthesis?.getVoices?.()
+
 // Voice out: the server pushes the summary, the browser speaks it.
 let browserSpeech = null
 window.addEventListener("phx:speak", (event) => {
@@ -170,6 +184,10 @@ window.addEventListener("phx:speak", (event) => {
   const panel = document.querySelector("#voice-panel")
   const volume = Number(panel?.dataset.volume)
   utterance.lang = event.detail.lang || panel?.dataset.lang || navigator.language || "pt-BR"
+  const rate = Number(event.detail.rate)
+  if (Number.isFinite(rate)) utterance.rate = rate
+  const voice = bestBrowserVoice(utterance.lang)
+  if (voice) utterance.voice = voice
   utterance.volume = Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 100) / 100 : 1
   utterance.onstart = () => voiceState("speaking", "Falando", "Usando a voz do navegador.", "browser-speech")
   utterance.onend = () => {
