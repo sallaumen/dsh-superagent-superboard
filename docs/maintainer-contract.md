@@ -250,6 +250,21 @@ board still never writes the runner's sqlite.
   proposal (`proposal_status`), settled once by a conditional update; yes
   and no are recognized locally. `:voice_agent` refines a request itself
   (title, acceptance criteria, or one question): no second model call.
+  The one exception is a **direct create**: only when the owner says so
+  ("cria direto", the model's `direct` flag) the task is created at once,
+  recorded as `%{"kind" => "created"}` with `proposal_status` `done`, and
+  "desfaz" closes it (`Board.stop_task/2`) within 10 minutes, claimed once
+  (`done` → `undone`). A task that already existed is never undoable.
+- **Voice reads** (`look`) never write: `AgentBoard.Conversation.Lookup`
+  reads the board's own data (tasks, PRs, the runner's tickets, the voice
+  activity ring) and the registered `:voice_explain` call answers only from
+  those facts, with ages precomputed in minutes. A missing task, an empty
+  search or no project is said without a model call. The catalog the owner
+  sees ("O que posso pedir", the spoken "ajuda") is
+  `AgentBoard.Voice.Commands`; a new lookup kind is added there and to the
+  `:voice_agent` schema together (a test compares them). "Status",
+  "ajuda", "desfaz", "repete" and the voice adjustments are local: no
+  model, no cost.
 - **Playback** goes through `/api/voice/stream` (ElevenLabs streaming) and
   `AgentBoard.ElevenLabs.SpeechCache` (short texts, keyed by every input
   that changes the audio, bounded, off in tests; ETS in front of the

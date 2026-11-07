@@ -70,22 +70,51 @@ A antiga caixa de comando (rascunho em inglês com "Check command") saiu em
 
 ## O que ele sabe fazer
 
-| Você diz | Ele faz | Escreve algo? |
-|---|---|---|
-| "Como está o quadro?", "o que está bloqueado?" | responde com o quadro atual | não |
-| "Abre a tarefa 42" | abre a conversa da tarefa | não |
-| "Muda para o arena rogue" | troca de projeto | não |
-| "Cria uma tarefa no arena rogue para mostrar o volume" | refina o pedido (`Intake.refine`), diz o título e pergunta "Posso criar?" | só depois do seu sim |
-| pedido vago | faz uma pergunta antes de propor | não |
-| "Para a tarefa 7" / "Arquiva a 7" | diz qual é e pergunta "Posso?" | só depois do seu sim |
-| "sim", "pode", "manda" / "não", "deixa pra lá" | confirma ou cancela a proposta pendente (reconhecido localmente, sem modelo) | a ação confirmada |
-| "Pergunta pro agente da tarefa 12 se ele já rodou os testes" | diz a pergunta e pergunta "Posso mandar?"; com o sim, comenta na issue com `@sallaumen-agent`; quando o agente responder, fala a resposta ("O agente da tarefa 12 respondeu: …") | só depois do seu sim |
-| "Repete" / "pode repetir?" | fala de novo a última resposta (local, sem modelo) | não |
-| "Fala mais devagar" / "mais rápido" / "mais alto" / "mais baixo" | ajusta velocidade (±0,1) ou volume (±20) e confirma já na voz nova (local) | o ajuste |
-| "Esquece a conversa" | apaga a memória | apaga as falas |
+A lista completa fica no painel "Conversa por voz", em **O que posso
+pedir** (diga "ajuda" e ela abre). Ela vem de `AgentBoard.Voice.Commands`,
+a mesma fonte da ajuda falada; os exemplos que não precisam de número são
+botões que mandam a frase na hora. Cada item diz como roda:
 
-A confirmação falada fica porque uma transcrição errada não pode abrir issue
-sozinha; ela custa uma palavra e mantém a conversa natural.
+- **na hora**: reconhecido no board, sem modelo e sem custo.
+- **só lê**: o modelo entende e o board lê os próprios dados; nada é escrito.
+- **pede seu sim**: uma escrita que espera "sim".
+- **faz na hora**: só quando você pede ("cria direto"); "desfaz" volta atrás.
+
+| Grupo | Você diz | Ele faz |
+|---|---|---|
+| Status e resumo | "Status" / "resumo" | o quadro em uma frase, com os totais exatos (local, instantâneo) |
+| | "Como está o quadro?" | o que precisa de você, o que roda, a fila |
+| | "O que mudou hoje?" / "Como foi a semana?" | merges, tarefas novas e execuções encerradas hoje; totais de 7 dias |
+| Execuções | "O que está rodando agora?" | cada execução, há quanto tempo, o último relato e o último arquivo ou commit |
+| | "O agente está vivo?" | o último sinal do agente e quantas execuções abertas |
+| | "O que terminou hoje?" | execuções encerradas nas últimas 24 h e como terminaram |
+| Analisar uma tarefa | "Por que a 42 está bloqueada?" | o bloqueio ou a pergunta do workpad, o relato, o PR e o CI; abre a tarefa |
+| | "Como está a tarefa 42?" | estado, há quanto tempo, a execução, o PR, os últimos comentários |
+| Bugs e falhas | "O que está falhando?" | CI vermelho em PR aberto, tarefas bloqueadas, execuções que acabaram sem merge, falha de sync |
+| | "Teve erro na voz?" | os erros recentes da própria voz |
+| Buscar | "Acha a tarefa sobre volume" | busca no título e na descrição das tarefas e nos títulos dos PRs, sem acento ("botao" acha "botão") |
+| Pedidos | "Cria uma tarefa no arena rogue para …" | refina, diz o título e pergunta "Posso criar?" |
+| | "Cria direto: …" | cria na hora e diz "Se não era isso, diga desfaz" |
+| | "Desfaz" | fecha a última tarefa que a voz criou, nos últimos 10 minutos (local) |
+| | "Pergunta pro agente da 12 se …" | depois do sim, comenta na issue e fala a resposta quando chegar |
+| | "Para a 7" / "Arquiva a 7" | diz qual é e pergunta "Posso?" |
+| A conversa | "sim" / "não" | confirma ou cancela a proposta pendente (local) |
+| | "Repete", "mais devagar/rápido/alto/baixo" | local, sem modelo |
+| | "Abre a 42", "Muda para o arena rogue", "Esquece a conversa", "Ajuda" | navega, troca de projeto, apaga a memória, abre a lista |
+
+**Como uma leitura responde.** O `voice_agent` escolhe `look` e o tipo
+(`task`, `runs`, `failures`, `search`, `activity`). O board lê os próprios
+dados (`AgentBoard.Conversation.Lookup`: banco, a sqlite do agente só para
+leitura, a lista de eventos da voz) e uma segunda chamada,
+`:voice_explain`, responde só com esses fatos, até três frases, falada
+inteira. As idades chegam prontas em minutos, para o modelo não fazer
+conta de data. Uma tarefa que não existe, uma busca sem palavras ou nenhum
+projeto escolhido são ditos sem chamar o modelo. Custa uma chamada a mais
+(~1–2 s) só nas perguntas que precisam de dados além do retrato.
+
+A confirmação falada fica para toda escrita, menos o "cria direto" que você
+pediu: uma transcrição errada não abre issue sozinha, e o direto tem o
+"desfaz".
 
 ## O contexto
 

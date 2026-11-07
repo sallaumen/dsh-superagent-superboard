@@ -24,6 +24,7 @@ defmodule AgentBoard.Conversation do
   @compact_after 28
   @proposal_ttl_seconds 600
   @answer_wait_seconds 24 * 3600
+  @undo_seconds 600
   @max_text 2_000
 
   @doc "Records a turn. Text is trimmed and capped."
@@ -36,7 +37,7 @@ defmodule AgentBoard.Conversation do
       repository_id: opts[:repository_id],
       action: opts[:action],
       proposal: opts[:proposal],
-      proposal_status: if(opts[:proposal], do: "proposed"),
+      proposal_status: opts[:proposal_status] || if(opts[:proposal], do: "proposed"),
       duration_ms: opts[:duration_ms]
     })
     |> Repo.insert()
@@ -167,6 +168,36 @@ defmodule AgentBoard.Conversation do
     case Repo.update_all(
            from(t in Turn, where: t.id == ^id and t.proposal_status == "confirmed"),
            set: [proposal_status: "answered", updated_at: DateTime.utc_now()]
+         ) do
+      {1, _} -> :ok
+      {0, _} -> :already_settled
+    end
+  end
+
+  @doc """
+  The newest task the voice created, within `@undo_seconds`, that was not
+  undone yet: what "desfaz" takes back.
+  """
+  @spec last_created(DateTime.t()) :: Turn.t() | nil
+  def last_created(now \\ DateTime.utc_now()) do
+    since = DateTime.add(now, -@undo_seconds, :second)
+
+    Repo.one(
+      from t in Turn,
+        where:
+          t.proposal_status == "done" and t.inserted_at > ^since and
+            fragment("?->>'kind' = 'created'", t.proposal),
+        order_by: [desc: t.id],
+        limit: 1
+    )
+  end
+
+  @doc "Marks a created task as undone, once: two \"desfaz\" close it once."
+  @spec mark_undone(Turn.t()) :: :ok | :already_settled
+  def mark_undone(%Turn{id: id}) do
+    case Repo.update_all(
+           from(t in Turn, where: t.id == ^id and t.proposal_status == "done"),
+           set: [proposal_status: "undone", updated_at: DateTime.utc_now()]
          ) do
       {1, _} -> :ok
       {0, _} -> :already_settled

@@ -293,6 +293,46 @@ defmodule AgentBoard.Voice.Phrases do
   def task_created(_lang, n, repo),
     do: "Pronto. A tarefa #{n} entrou na fila do #{repo_name(repo)}."
 
+  @doc "A task created at once (\"cria direto\"): how to take it back."
+  def task_created_direct("en-US", n, repo),
+    do: "Created task #{n} in #{repo_name(repo)}. If that's wrong, say undo."
+
+  def task_created_direct(_lang, n, repo),
+    do: "Criei a tarefa #{n} no #{repo_name(repo)}. Se não era isso, diga desfaz."
+
+  @doc "\"Desfaz\": the task the voice created was closed."
+  def undone("en-US", n), do: "Undone. I closed task #{n}."
+  def undone(_lang, n), do: "Desfeito. Fechei a tarefa #{n}."
+
+  def nothing_to_undo("en-US"), do: "There's nothing of mine to undo from the last ten minutes."
+  def nothing_to_undo(_lang), do: "Não tenho nada para desfazer dos últimos dez minutos."
+
+  def undo_failed("en-US", n), do: "I couldn't close task #{n}. Check the activity."
+  def undo_failed(_lang, n), do: "Não consegui fechar a tarefa #{n}. Veja a atividade."
+
+  @doc "\"Ajuda\": what can be asked; the list opens on the screen."
+  def help("en-US"),
+    do:
+      "Ask me for status, what's running, what's failing, why a task is blocked, " <>
+        "to find a task, or to create one. The full list is on the screen."
+
+  def help(_lang),
+    do:
+      "Pode me pedir status, o que está rodando, o que está falhando, por que uma " <>
+        "tarefa travou, buscar uma tarefa ou criar uma. A lista completa está na tela."
+
+  @doc "A search without words to search for."
+  def search_what("en-US"), do: "Sure. What should I search for?"
+  def search_what(_lang), do: "Claro. Procuro o quê?"
+
+  @doc "A question about a task without its number and with none open."
+  def which_task("en-US"), do: "Which task? Tell me its number."
+  def which_task(_lang), do: "Qual tarefa? Me diz o número."
+
+  @doc "A read that needs a project, with none selected."
+  def no_project("en-US"), do: "Pick a project first, then ask me again."
+  def no_project(_lang), do: "Escolhe um projeto primeiro e me pergunta de novo."
+
   def task_existing("en-US", n), do: "That one was already in the queue, as task #{n}."
   def task_existing(_lang, n), do: "Essa já estava na fila, como tarefa #{n}."
 

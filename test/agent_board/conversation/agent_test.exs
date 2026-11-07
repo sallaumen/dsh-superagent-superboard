@@ -57,7 +57,9 @@ defmodule AgentBoard.Conversation.AgentTest do
           "details" => [],
           "question" => "",
           "task_number" => 0,
-          "repository" => ""
+          "repository" => "",
+          "lookup" => "",
+          "direct" => false
         },
         fields
       )

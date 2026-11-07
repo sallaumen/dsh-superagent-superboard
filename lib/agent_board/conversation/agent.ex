@@ -6,15 +6,22 @@ defmodule AgentBoard.Conversation.Agent do
   The order is deliberate:
 
     1. A yes or no to the proposal waiting for one is recognized locally
-       (no model, no cost, no latency).
+       (no model, no cost, no latency), and so are the short commands
+       ("status", "ajuda", "desfaz", "repete", "mais devagar").
     2. Anything else goes to the registered `:voice_agent` call with the
        conversation memory, the waiting proposal and a compact board
        snapshot; the answer names one action.
-    3. Reads (status, open a task, switch project) happen at once. Writes
+    3. Reads (status, open a task, switch project) happen at once. A `look`
+       (one task in depth, the runs, the failures, a search, the day) reads
+       the board's own data (`AgentBoard.Conversation.Lookup`) and a second
+       call, `:voice_explain`, answers only from those facts. Writes
        (create, stop or archive a task) become a **proposal** the owner
        confirms by voice; a request for new work is refined in the same
        call (title and acceptance criteria), and an unclear one becomes a
-       question.
+       question. "Cria direto" creates at once, and "desfaz" closes that
+       task within 10 minutes.
+
+  The catalog the owner sees is `AgentBoard.Voice.Commands`.
 
   The coding agent is never involved: a created task is a GitHub issue the
   agent picks up on its own, exactly like the composer's.
@@ -22,7 +29,7 @@ defmodule AgentBoard.Conversation.Agent do
 
   alias AgentBoard.{AI, Board, Conversation, Repo, Titles}
   alias AgentBoard.Board.{Repository, Task}
-  alias AgentBoard.Conversation.Turn
+  alias AgentBoard.Conversation.{Lookup, Turn}
   alias AgentBoard.Voice.{Activity, Phrases}
 
   @lane_sample 8
@@ -51,7 +58,9 @@ defmodule AgentBoard.Conversation.Agent do
             nil
             | {:open_task, Task.t()}
             | {:select_repository, Repository.t()}
-            | {:changed, Repository.t()},
+            | {:changed, Repository.t()}
+            | :show_commands
+            | :voice_changed,
           listen: boolean()
         }
 
@@ -69,7 +78,7 @@ defmodule AgentBoard.Conversation.Agent do
       case quick_answer(text, pending) do
         :yes -> confirm(pending, ctx)
         :no -> cancel(pending, lang)
-        :none -> local_command(text, lang) || think(text, pending, ctx)
+        :none -> local_command(text, ctx) || think(text, pending, ctx)
       end
 
     record(outcome, ctx, System.monotonic_time(:millisecond) - started)
@@ -115,9 +124,36 @@ defmodule AgentBoard.Conversation.Agent do
     {~r/\b(mais alto|aumenta o volume|aumenta a voz|louder)\b/u, :volume, 20},
     {~r/\b(mais baixo|abaixa o volume|diminui o volume|baixa o volume|quieter)\b/u, :volume, -20}
   ]
+  @help [
+    "ajuda",
+    "socorro",
+    "comandos",
+    "lista de comandos",
+    "o que voce sabe fazer",
+    "o que voce faz",
+    "o que posso pedir",
+    "o que eu posso pedir",
+    "o que eu posso falar",
+    "help",
+    "commands",
+    "what can you do",
+    "what can i say"
+  ]
+  @status ["status", "resumo", "status rapido", "resumo rapido", "status do quadro", "summary"]
+  @undo [
+    "desfaz",
+    "desfazer",
+    "desfaca",
+    "desfaz isso",
+    "desfaz a ultima",
+    "desfaz a tarefa",
+    "undo",
+    "undo that"
+  ]
 
   @doc false
-  def local_command(text, lang) do
+  def local_command(text, ctx) do
+    lang = ctx.language
     phrase = normalize(text)
     words = phrase |> String.split(" ", trim: true) |> length()
 
@@ -127,6 +163,15 @@ defmodule AgentBoard.Conversation.Agent do
 
       phrase in @repeat ->
         repeat(lang)
+
+      phrase in @help ->
+        help(lang)
+
+      phrase in @status ->
+        status(ctx)
+
+      phrase in @undo ->
+        undo(ctx)
 
       move = Enum.find(@voice_moves, fn {re, _, _} -> Regex.match?(re, phrase) end) ->
         adjust(move, lang)
@@ -140,6 +185,51 @@ defmodule AgentBoard.Conversation.Agent do
     case Conversation.last_agent_text() do
       nil -> say(Phrases.not_understood(lang), "repeat")
       text -> say(text, "repeat")
+    end
+  end
+
+  defp help(lang), do: %{say(Phrases.help(lang), "help") | effect: :show_commands}
+
+  # The template summary, with the exact lane totals: instant and free.
+  defp status(ctx) do
+    text =
+      AgentBoard.Voice.summary(ctx.board || %{},
+        language: ctx.language,
+        tz_offset: Map.get(ctx, :tz_offset, 0)
+      )
+
+    say(text, "status")
+  end
+
+  # "Desfaz" closes the newest task the voice created in the last 10
+  # minutes. The claim is conditional, so a repeated "desfaz" closes once.
+  defp undo(ctx) do
+    lang = ctx.language
+
+    with %Turn{proposal: %{"task_id" => id, "number" => n}} = turn <- Conversation.last_created(),
+         :ok <- Conversation.mark_undone(turn) do
+      result =
+        case Repo.get(Task, id) do
+          nil -> {:error, :not_found}
+          task -> Board.stop_task(task, client(ctx))
+        end
+
+      case result do
+        {:ok, task} ->
+          Activity.record(:action, :ok, "desfeito: tarefa ##{n} fechada", turn: ctx[:turn_id])
+          repo = Repo.get(Repository, task.repository_id)
+          %{say(Phrases.undone(lang, n), "undo") | effect: repo && {:changed, repo}}
+
+        failure ->
+          Activity.record(:action, :error, "não consegui desfazer a tarefa ##{n}",
+            turn: ctx[:turn_id],
+            reason: create_failure(failure)
+          )
+
+          say(Phrases.undo_failed(lang, n), "undo")
+      end
+    else
+      _ -> say(Phrases.nothing_to_undo(lang), "undo")
     end
   end
 
@@ -181,6 +271,8 @@ defmodule AgentBoard.Conversation.Agent do
   # ---- the model ------------------------------------------------------------
 
   defp think(text, pending, ctx) do
+    ctx = Map.put(ctx, :utterance, text)
+
     inputs = %{
       language: ctx.language,
       utterance: text,
@@ -259,6 +351,10 @@ defmodule AgentBoard.Conversation.Agent do
 
   defp act("create_task", json, _pending, ctx), do: propose_task(json, ctx)
 
+  defp act("look", json, _pending, ctx), do: look(json["lookup"], json, ctx)
+  defp act("help", _json, _pending, ctx), do: help(ctx.language)
+  defp act("undo", _json, _pending, ctx), do: undo(ctx)
+
   defp act(action, %{"task_number" => n}, _pending, ctx)
        when action in ~w(stop_task archive_task),
        do: propose_task_action(action, n, ctx)
@@ -276,6 +372,80 @@ defmodule AgentBoard.Conversation.Agent do
 
   defp act(_action, json, _pending, ctx), do: say(reply(json, ctx), "reply")
 
+  # ---- reads with a second step ----------------------------------------------
+
+  # The board reads its own data, then `:voice_explain` answers from it. A
+  # missing task, an empty search or no project is said without a model.
+  defp look(kind, json, ctx) do
+    lang = ctx.language
+    number = json["task_number"]
+
+    args = %{
+      task_number: number,
+      query: if(blank?(json["request"]), do: ctx[:utterance], else: json["request"])
+    }
+
+    case Lookup.facts(kind, ctx, args) do
+      {:ok, facts, effect} ->
+        %{explain(kind, facts, ctx) | effect: effect}
+
+      {:error, :task_not_found} when is_integer(number) and number > 0 ->
+        say(Phrases.task_not_found(lang, number), "look")
+
+      {:error, :task_not_found} ->
+        listen(say(Phrases.which_task(lang), "look"))
+
+      {:error, :empty_query} ->
+        listen(say(Phrases.search_what(lang), "look"))
+
+      {:error, :no_repository} ->
+        say(Phrases.no_project(lang), "look")
+
+      {:error, :unknown_lookup} ->
+        say(reply(json, ctx), "reply")
+    end
+  end
+
+  defp explain(kind, facts, ctx) do
+    started = System.monotonic_time(:millisecond)
+
+    inputs = %{
+      language: ctx.language,
+      question: ctx[:utterance],
+      lookup: kind,
+      facts: facts
+    }
+
+    case AI.call(:voice_explain, %{prompt: "Inputs:\n" <> Jason.encode!(inputs)}) do
+      {:ok, %{json: %{"reply" => text}}} when is_binary(text) and text != "" ->
+        Activity.record(:model, :ok, "explicou a partir do quadro (#{kind})",
+          turn: ctx[:turn_id],
+          ms: System.monotonic_time(:millisecond) - started
+        )
+
+        say(text, "look_" <> kind)
+
+      {:ok, _result} ->
+        Activity.record(:model, :error, "a explicação veio fora do formato",
+          turn: ctx[:turn_id],
+          ms: System.monotonic_time(:millisecond) - started
+        )
+
+        say(Phrases.not_understood(ctx.language), "error")
+
+      {:error, reason} ->
+        Activity.record(:model, :error, "o modelo não explicou",
+          turn: ctx[:turn_id],
+          ms: System.monotonic_time(:millisecond) - started,
+          reason: reason
+        )
+
+        say(Phrases.ai_failed(ctx.language, reason), "error")
+    end
+  end
+
+  defp blank?(text), do: String.trim(text || "") == ""
+
   # ---- proposals ------------------------------------------------------------
 
   # The model refines the request in the same call that understood it: a
@@ -283,31 +453,48 @@ defmodule AgentBoard.Conversation.Agent do
   defp propose_task(%{"request" => request} = json, ctx) do
     lang = ctx.language
     repo = match_repository(ctx.repos, json["repository"]) || ctx.repo
-    question = String.trim(json["question"] || "")
 
     cond do
-      String.trim(request || "") == "" ->
+      blank?(request) ->
         say(reply(json, ctx), "create_task")
 
       is_nil(repo) ->
         listen(say(Phrases.which_project(lang), "create_task"))
 
-      question != "" ->
-        listen(say(Phrases.clarify(lang, question), "create_task"))
+      # "Cria direto": no question back, no "Posso criar?".
+      json["direct"] == true ->
+        json |> new_task(request, repo, lang) |> create_direct(ctx)
+
+      not blank?(json["question"]) ->
+        listen(say(Phrases.clarify(lang, String.trim(json["question"])), "create_task"))
 
       true ->
-        title = title(json["title"], request)
+        task = new_task(json, request, repo, lang)
+        proposal(task, Phrases.propose_task(lang, slug(repo), task["title"]))
+    end
+  end
 
-        proposal(
-          %{
-            "kind" => "create_task",
-            "repository_id" => repo.id,
-            "repository" => slug(repo),
-            "title" => title,
-            "body" => body(json["details"], request, lang)
-          },
-          Phrases.propose_task(lang, slug(repo), title)
-        )
+  defp new_task(json, request, repo, lang) do
+    %{
+      "kind" => "create_task",
+      "repository_id" => repo.id,
+      "repository" => slug(repo),
+      "title" => title(json["title"], request),
+      "body" => body(json["details"], request, lang)
+    }
+  end
+
+  # The owner said "cria direto": no "Posso criar?", and "desfaz" takes it
+  # back for 10 minutes (the reply says so).
+  defp create_direct(task, ctx) do
+    Activity.record(:action, :info, "pedido direto: cria sem perguntar", turn: ctx[:turn_id])
+
+    case execute(task, ctx) do
+      %{proposal: %{"kind" => "created", "number" => n, "repository" => slug}} = outcome ->
+        %{outcome | reply: Phrases.task_created_direct(ctx.language, n, slug)}
+
+      outcome ->
+        outcome
     end
   end
 
@@ -421,7 +608,11 @@ defmodule AgentBoard.Conversation.Agent do
         turn: ctx[:turn_id]
       )
 
-      %{say(text, "create_task") | effect: {:changed, repo}}
+      said = %{say(text, "create_task") | effect: {:changed, repo}}
+
+      # Only a task this turn created can be undone; one that already
+      # existed belongs to whoever opened it.
+      if outcome == :created, do: created(said, task, repo), else: said
     else
       failure ->
         Activity.record(:action, :error, "não consegui criar a tarefa",
@@ -487,6 +678,17 @@ defmodule AgentBoard.Conversation.Agent do
   end
 
   defp execute(_proposal, ctx), do: say(Phrases.task_failed(ctx.language), "confirm")
+
+  defp created(outcome, task, repo) do
+    outcome
+    |> Map.put(:proposal, %{
+      "kind" => "created",
+      "task_id" => task.id,
+      "number" => task.number,
+      "repository" => slug(repo)
+    })
+    |> Map.put(:proposal_status, "done")
+  end
 
   defp create_failure({:error, reason}), do: reason
   defp create_failure(nil), do: :repository_missing
@@ -554,6 +756,7 @@ defmodule AgentBoard.Conversation.Agent do
       repository_id: ctx.repo && ctx.repo.id,
       action: outcome.action,
       proposal: outcome.proposal,
+      proposal_status: Map.get(outcome, :proposal_status),
       duration_ms: duration_ms
     )
   end

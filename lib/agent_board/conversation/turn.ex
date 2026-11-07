@@ -6,14 +6,15 @@ defmodule AgentBoard.Conversation.Turn do
   `proposal` (a write the owner must confirm by voice) whose lifecycle is
   `proposal_status`: `proposed` → `confirmed` | `cancelled` | `expired`,
   and a confirmed question to a task's agent → `answered` once its reply
-  was spoken.
+  was spoken. A task the voice created carries `%{"kind" => "created"}`
+  with `done` → `undone` once "desfaz" closed it.
   A summary turn compresses every turn up to `summary_through_id`.
   """
   use Ecto.Schema
   import Ecto.Changeset
 
   @roles ~w(owner agent summary)
-  @statuses ~w(proposed confirmed cancelled expired answered)
+  @statuses ~w(proposed confirmed cancelled expired answered done undone)
 
   schema "voice_turns" do
     field :role, :string
