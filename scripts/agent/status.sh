@@ -5,7 +5,7 @@ set -eu
 
 if ! STATE=$(api) || [ -z "$STATE" ]; then
   echo "AGENT DOWN: no answer at $API"
-  echo "  start it:  tmux new -s dsh-superagent && dsh --profile superagent"
+  echo "  start it:  scripts/agent/keepalive.sh   (stopped on purpose? python3 $DSH_SUPERAGENT_HOME/scripts/dsh-superagent start)"
   exit 1
 fi
 

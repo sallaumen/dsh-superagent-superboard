@@ -58,15 +58,60 @@ gh-agent api user --jq .login # must print the bot, not you
 The state directory is created on first start; it holds the sqlite, the
 worktrees and the worker binaries.
 
-## 4. Start it
+## 4. Start it, and keep it up
+
+The prototype's manager starts the orchestrator in the tmux session
+`dsh-superagent`, writes its log under the prototype's `.artifacts/` and
+refuses to start a second one:
 
 ```sh
-tmux new -s dsh-superagent
-dsh --profile superagent
+cd <prototype>     # ~/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype here
+python3 scripts/dsh-superagent start     # idempotent; also clears a stop marker
+python3 scripts/dsh-superagent status    # exit 0 = running and healthy
+python3 scripts/dsh-superagent stop      # graceful; leaves the manually-stopped marker
 ```
 
-The profile opens its own tmux window (`dsh-superagent`). Leave it running:
-it is the orchestrator.
+`tmux new -s dsh-superagent && dsh --profile superagent` still works; the
+manager finds that process and does not start another.
+
+Nothing starts the orchestrator after a reboot on its own. The LaunchAgent
+[`ops/com.dsh.superagent.plist`](../../ops/com.dsh.superagent.plist) runs
+[`scripts/agent/keepalive.sh`](../../scripts/agent/keepalive.sh) at login and
+every five minutes. The script asks the manager for `status` and, only when
+the orchestrator is down and was not stopped on purpose, runs
+`start --respect-stop`. A component error or a pending setup (status 2 or 3)
+needs a person and is logged, never restarted. The paths in the plist are
+this machine's; change them for another one.
+
+Install it (once):
+
+```sh
+cp ops/com.dsh.superagent.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dsh.superagent.plist
+launchctl print gui/$(id -u)/com.dsh.superagent | grep -E 'state|last exit'
+```
+
+Run a check now, without waiting for the interval:
+
+```sh
+launchctl kickstart gui/$(id -u)/com.dsh.superagent
+```
+
+Stop the agent and keep it stopped: `python3 scripts/dsh-superagent stop` in
+the prototype. The marker it leaves makes every later check skip the start;
+`start` (or `restart`) removes it and the checks resume. To remove the
+LaunchAgent itself:
+
+```sh
+launchctl bootout gui/$(id -u)/com.dsh.superagent
+rm ~/Library/LaunchAgents/com.dsh.superagent.plist
+```
+
+Logs: `~/Library/Logs/dsh-superagent-keepalive.log` holds one line per action
+the check took (quiet while the agent runs; moved to `.1` above 1 MB); the
+orchestrator's own output is in the newest
+`<prototype>/.artifacts/dsh-superagent-superagent-*.log` and in
+`scripts/agent/logs.sh`.
 
 ## 5. Verify it is configured and alive
 
