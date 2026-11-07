@@ -14,6 +14,8 @@ defmodule AgentBoardWeb.BoardLive do
     GitHub,
     Intake,
     LocalCI,
+    Metrics,
+    Orchestrator,
     Repo,
     Settings,
     Time,
@@ -23,6 +25,7 @@ defmodule AgentBoardWeb.BoardLive do
   }
 
   alias AgentBoard.Board.Task
+  alias AgentBoard.Metrics.Observations
   alias AgentBoard.Sync.{Freshness, Worker}
   alias AgentBoard.System.{Updater, Version}
   alias AgentBoard.Voice.Phrases
@@ -38,6 +41,7 @@ defmodule AgentBoardWeb.BoardLive do
   import AgentBoardWeb.BoardComponents.QueueList, only: [queue_list: 1]
   import AgentBoardWeb.BoardComponents.Shortcuts, only: [shortcuts: 1]
   import AgentBoardWeb.BoardComponents.Summary, only: [summary: 1]
+  import AgentBoardWeb.BoardComponents.Throughput, only: [throughput: 1]
 
   alias AgentBoardWeb.{
     BoardComponents,
@@ -68,6 +72,7 @@ defmodule AgentBoardWeb.BoardLive do
         last_visit: last_visit,
         tz_offset: tz_offset,
         work: empty_work(),
+        flow: nil,
         digest: nil,
         needs_expanded: false,
         queue_limit: 8,
@@ -396,11 +401,13 @@ defmodule AgentBoardWeb.BoardLive do
 
         local_ci = LocalCI.by_pr(repo, agent.tickets)
         work = work_for(repo, board, agent, freshness, socket, local_ci)
+        flow = flow_for(repo, agent, socket.assigns.tz_offset)
 
         assign(socket,
           repo: repo,
           local_ci: local_ci,
           board: board,
+          flow: flow,
           resume: nil,
           events: Board.events(repo),
           sync_event: snapshot.last_attempt,
@@ -428,12 +435,23 @@ defmodule AgentBoardWeb.BoardLive do
           repo_overview: Board.repo_overview(),
           agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
           work: empty_work(),
+          flow: nil,
           digest: nil,
           live: connected?(socket),
           ai_calls: [],
           ai_status: AI.status()
         )
     end
+  end
+
+  # The throughput strip: read once per load, from the tables, the agent's
+  # tickets and the orchestrator; the arithmetic is pure and tested apart.
+  defp flow_for(repo, agent, tz_offset) do
+    now = DateTime.utc_now()
+
+    repo
+    |> Observations.read(agent, now: now, load: Orchestrator.load())
+    |> Metrics.throughput(now, tz_offset)
   end
 
   defp pagination_limits(socket, repo) do
@@ -1872,6 +1890,12 @@ defmodule AgentBoardWeb.BoardLive do
                 <.ico name="plus" />Novo pedido
               </button>
             </div>
+
+            <.throughput
+              :if={@repo && @flow && not empty?(@board)}
+              flow={@flow}
+              tz_offset={@tz_offset}
+            />
 
             <div :if={@repo && not empty?(@board)} class="ab-cols">
               <div class="ab-col">

@@ -31,6 +31,7 @@ número.
 | `--motion-feedback` | 110 ms | Cor de hover, foco e estado de botão e link |
 | `--motion-inplace` | 160 ms | Mudança no lugar, como a rotação de um chevron |
 | `--motion-enter` | 200 ms | Entrada de superfície nova: painel, menu, aviso |
+| `--motion-notice` | 600 ms | Valor que mudou no lugar: a tinta vai de `--agent` a `--ink` |
 | `--ease-standard` | `cubic-bezier(0.2, 0, 0.38, 0.9)` | Utilidade (Carbon productive standard) |
 | `--ease-enter` | `cubic-bezier(0.05, 0.7, 0.1, 1)` | Entrada que importa (Material 3 emphasized decelerate) |
 
@@ -48,6 +49,7 @@ não antes.
 | Hover, foco e estado de botão/link | 110 ms de fundo e borda, `--ease-standard` | `button, a` |
 | Chevron de configurações e de seção | 160 ms de rotação; o estado continua legível sem movimento | `.settings-chevron`, `.settings-fold-chevron` |
 | Ponto de atenção e barras de voz | loop lento apenas sob `no-preference`; comunica estado real, não decoração | keyframes `attention-breathe` e `voice-flow` |
+| Valor da vazão que mudou | 600 ms de cor, `--agent` → `--ink`, `--ease-standard`; o hook `Throughput` compara o valor anterior e só então aplica `.is-changed`, então um broadcast sem mudança não move nada; a barra nova do sparkline simplesmente aparece | `.ab-flow__value.is-changed` |
 
 ## O que não se move
 

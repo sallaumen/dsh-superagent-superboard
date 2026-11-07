@@ -80,6 +80,22 @@ defmodule AgentBoard.AgentStateTest do
     assert ticket["own_threads"] == []
   end
 
+  test "an ended ticket keeps its outcome and the instant it ended", %{db: db} do
+    ended = %{"at" => "2026-11-04T14:54:06.000Z", "by" => "executor", "outcome" => "merged"}
+    insert(db, Map.put(@sample, "ended", ended))
+
+    assert [ticket] = AgentState.tickets()
+    assert ticket["ended_outcome"] == "merged"
+    assert ticket["ended_at"] == ~U[2026-11-04 14:54:06.000Z]
+  end
+
+  test "a ticket that has not ended has no ended_at", %{db: db} do
+    insert(db, @sample)
+
+    assert [ticket] = AgentState.tickets()
+    assert ticket["ended_at"] == nil
+  end
+
   test "the heartbeat comes from the sqlite file", %{db: db} do
     insert(db, @sample)
 
