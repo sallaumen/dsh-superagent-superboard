@@ -121,6 +121,41 @@ defmodule AgentBoardWeb.VoiceControllerTest do
              json_response(put(conn, "/api/voice/settings", %{"tts_model" => "not-a-model"}), 400)
   end
 
+  test "PUT /api/voice/settings stores the language, volume and attention", %{conn: conn} do
+    assert %{"language" => "pt-BR", "volume" => 100, "attention" => true} =
+             json_response(get(conn, "/api/voice/status"), 200)
+
+    assert %{"language" => "en-US", "volume" => 30, "attention" => false} =
+             json_response(
+               put(conn, "/api/voice/settings", %{
+                 "language" => "en-US",
+                 "volume" => 30,
+                 "attention" => false
+               }),
+               200
+             )
+
+    assert %{"error" => "an offered voice language is required"} =
+             json_response(put(conn, "/api/voice/settings", %{"language" => "xx"}), 400)
+
+    assert %{"error" => "the volume must be 0 to 100"} =
+             json_response(put(conn, "/api/voice/settings", %{"volume" => 101}), 400)
+
+    assert AgentBoard.Voice.language() == "en-US"
+    assert AgentBoard.Voice.volume() == 30
+  end
+
+  test "GET /api/voice/speech reads the text in the voice language", %{conn: conn} do
+    :ok = AgentBoard.Voice.put_language("en-US")
+
+    Req.Test.stub(@stub, fn conn ->
+      assert conn.body_params["language_code"] == "en"
+      Plug.Conn.put_resp_content_type(conn, "audio/mpeg") |> Plug.Conn.send_resp(200, "ID3")
+    end)
+
+    assert response(get(conn, "/api/voice/speech?text=hi"), 200) == "ID3"
+  end
+
   test "GET /api/voice/speech refuses a text that is too long", %{conn: conn} do
     assert %{"error" => "the text is too long for one request"} =
              json_response(

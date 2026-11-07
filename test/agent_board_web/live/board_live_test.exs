@@ -1102,8 +1102,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     view |> element("button", "Falar status") |> render_click()
 
-    assert_push_event(view, "speak", %{text: text})
-    assert text =~ "calm"
+    assert_push_event(view, "speak", %{text: text, lang: "pt-BR"})
+    assert text =~ "Tudo tranquilo"
   end
 
   test "switching repositories closes the previous conversation", %{conn: conn} do

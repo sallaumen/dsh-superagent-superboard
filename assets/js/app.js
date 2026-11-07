@@ -158,7 +158,12 @@ window.addEventListener("phx:speak", (event) => {
   window.speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text)
   browserSpeech = utterance
-  utterance.lang = navigator.language || "en-US"
+  // The language and volume are the owner's voice settings, not the
+  // browser's locale: a Portuguese board is read in Portuguese.
+  const panel = document.querySelector("#voice-panel")
+  const volume = Number(panel?.dataset.volume)
+  utterance.lang = event.detail.lang || panel?.dataset.lang || navigator.language || "pt-BR"
+  utterance.volume = Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 100) / 100 : 1
   utterance.onstart = () => voiceState("speaking", "Speaking board status", "Browser voice is playing.", "browser-speech")
   utterance.onend = () => {
     if (browserSpeech !== utterance) return

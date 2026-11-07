@@ -5,6 +5,7 @@ defmodule AgentBoardWeb.VoiceUITest do
   import Phoenix.LiveViewTest
 
   alias AgentBoard.Settings
+  alias AgentBoard.Voice.Phrases
 
   @stub AgentBoardWeb.VoiceUITest.Stub
 
@@ -27,6 +28,9 @@ defmodule AgentBoardWeb.VoiceUITest do
     on_exit(fn -> Application.put_env(:agent_board, :elevenlabs_api_key, previous) end)
   end
 
+  defp spoken(url),
+    do: url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query() |> Map.fetch!("text")
+
   defp voice_task(repo, title, state) do
     %AgentBoard.Board.Task{}
     |> AgentBoard.Board.Task.changeset(%{
@@ -42,9 +46,9 @@ defmodule AgentBoardWeb.VoiceUITest do
   test "without a key the section says so and hides the picker", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "no key"
+    assert html =~ "Sem chave"
     assert html =~ "ELEVENLABS_API_KEY"
-    refute html =~ "List voices"
+    refute html =~ "Listar vozes"
   end
 
   test "browsing lists the account voices", %{conn: conn} do
@@ -60,7 +64,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element("button", "List voices") |> render_click()
+    view |> element("button", "Listar vozes") |> render_click()
 
     assert render(view) =~ "George · abc"
   end
@@ -76,17 +80,17 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element("button", "List voices") |> render_click()
-    view |> element("select[name=voice]") |> render_change(%{"voice" => "abc"})
-    view |> element("button", "Save") |> render_click()
+    view |> element("button", "Listar vozes") |> render_click()
+    view |> element("#voice-picker-form") |> render_change(%{"voice" => "abc"})
+    view |> element("button", "Salvar") |> render_click()
 
     assert Settings.get("elevenlabs_voice_id") == "abc"
-    assert render(view) =~ "Voice saved: George"
+    assert render(view) =~ "Voz salva: George"
 
     assert_push_event(
       view,
       "voice_play",
-      %{url: "/api/voice/speech?text=Voice+selected.&voice=abc"}
+      %{url: "/api/voice/speech?text=Voz+escolhida.&voice=abc"}
     )
   end
 
@@ -96,12 +100,12 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    assert render(view) =~ "Back to default"
+    assert render(view) =~ "Voltar ao padrão"
 
-    view |> element("button", "Back to default") |> render_click()
+    view |> element("button", "Voltar ao padrão") |> render_click()
 
     assert Settings.get("elevenlabs_voice_id") == nil
-    assert render(view) =~ "default voice"
+    assert render(view) =~ "voz padrão"
   end
 
   test "changing the model saves it on the spot", %{conn: conn} do
@@ -109,10 +113,10 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element("select[name=model]") |> render_change(%{"model" => "eleven_v4"})
+    view |> element("#voice-model-form") |> render_change(%{"model" => "eleven_v4"})
 
     assert Settings.get("elevenlabs_tts_model") == "eleven_v4"
-    assert render(view) =~ "Model saved: eleven_v4"
+    assert render(view) =~ "Modelo salvo: eleven_v4"
     assert render(view) =~ "eleven_v4"
   end
 
@@ -125,15 +129,15 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element("button", "List voices") |> render_click()
+    view |> element("button", "Listar vozes") |> render_click()
     assert render(view) =~ "George · abc"
 
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 500, "boom") end)
 
-    view |> element("button", "List voices") |> render_click()
+    view |> element("button", "Listar vozes") |> render_click()
 
     html = render(view)
-    assert html =~ "Could not list voices: HTTP 500"
+    assert html =~ "Não foi possível listar as vozes: HTTP 500"
     assert html =~ "George · abc"
   end
 
@@ -179,7 +183,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element("#voice-panel form") |> render_submit(%{"phrase" => "Hello agent"})
+    view |> element("#voice-try") |> render_submit(%{"phrase" => "Hello agent"})
 
     assert_push_event(
       view,
@@ -217,9 +221,9 @@ defmodule AgentBoardWeb.VoiceUITest do
     {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "env-voice"
-    assert html =~ "fixed in .env.local"
-    refute html =~ ">Save<"
-    refute html =~ "List voices"
+    assert html =~ "definida no .env.local"
+    refute html =~ "Salvar"
+    refute html =~ "Listar vozes"
   end
 
   test "an agent state change is spoken", %{conn: conn} do
@@ -234,14 +238,12 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     send(view.pid, :board_updated)
 
-    assert_push_event(
-      view,
-      "voice_play",
-      %{
-        url:
-          "/api/voice/speech?text=Task+%27Live+task%27+is+now+running.&voice=JBFqnCBsd6RMkjVDRZzb"
-      }
-    )
+    assert_push_event(view, "voice_play", %{url: url})
+
+    assert spoken(url) in Enum.map(
+             0..2,
+             &Phrases.moved("pt-BR", :running, "Live task", &1)
+           )
   end
 
   test "no announcement when the toggle is off", %{conn: conn} do
@@ -264,10 +266,10 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element("#voice-announce") |> render_change(%{"speak_events" => "false"})
+    view |> element("#voice-announce-form") |> render_change(%{"speak_events" => "false"})
     assert Settings.get("elevenlabs_speak_events") == "0"
 
-    view |> element("#voice-announce") |> render_change(%{"speak_events" => "true"})
+    view |> element("#voice-announce-form") |> render_change(%{"speak_events" => "true"})
     assert Settings.get("elevenlabs_speak_events") == nil
   end
 
@@ -291,5 +293,134 @@ defmodule AgentBoardWeb.VoiceUITest do
           "/api/voice/speech?text=All+good.+The+sync+is+clean+and+nothing+is+blocked.&voice=JBFqnCBsd6RMkjVDRZzb"
       }
     )
+  end
+
+  test "a task that needs the owner is a call for attention", %{conn: conn} do
+    with_key()
+
+    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    task = voice_task(repo, "Live task", "running")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
+    send(view.pid, :board_updated)
+
+    assert_push_event(view, "voice_play", %{url: url})
+    text = url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query() |> Map.fetch!("text")
+
+    assert text in Enum.map(
+             0..9,
+             &Phrases.attention("pt-BR", :blocked, "Live task", &1)
+           )
+  end
+
+  test "the attention call still speaks when narration is off", %{conn: conn} do
+    with_key()
+    :ok = Settings.put("elevenlabs_speak_events", "0")
+
+    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    task = voice_task(repo, "Live task", "running")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "question"}))
+    send(view.pid, :board_updated)
+
+    assert_push_event(view, "voice_play", %{url: "/api/voice/speech?text=" <> _})
+  end
+
+  test "without a key the attention call uses the browser voice in the chosen language",
+       %{conn: conn} do
+    :ok = Settings.put("voice_language", "en-US")
+
+    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    task = voice_task(repo, "Live task", "running")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "ready"}))
+    send(view.pid, :board_updated)
+
+    assert_push_event(view, "speak", %{text: text, lang: "en-US"})
+    assert text =~ "Live task"
+  end
+
+  test "attention off keeps the owner's calls silent", %{conn: conn} do
+    with_key()
+    :ok = Settings.put("voice_attention", "0")
+    :ok = Settings.put("elevenlabs_speak_events", "0")
+
+    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    task = voice_task(repo, "Live task", "running")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
+    send(view.pid, :board_updated)
+
+    refute_receive {_, _, "voice_play", _}, 100
+  end
+
+  test "the language picker saves and confirms in the new language", %{conn: conn} do
+    with_key()
+
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view |> element("#voice-language-form") |> render_change(%{"language" => "en-US"})
+
+    assert Settings.get("voice_language") == "en-US"
+    assert render(view) =~ ~s(data-lang="en-US")
+
+    assert_push_event(view, "voice_play", %{
+      url:
+        "/api/voice/speech?text=Done.+From+now+on+I%27ll+speak+English.&voice=JBFqnCBsd6RMkjVDRZzb"
+    })
+  end
+
+  test "an unknown language is refused", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view |> element("#voice-language-form") |> render_change(%{"language" => "xx"})
+
+    assert Settings.get("voice_language") == nil
+    assert render(view) =~ "Idioma não suportado"
+  end
+
+  test "the volume slider persists and reaches the player", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/")
+    assert html =~ ~s(data-volume="100")
+
+    view |> element("#voice-volume-form") |> render_change(%{"volume" => "40"})
+
+    assert Settings.get("voice_volume") == "40"
+    html = render(view)
+    assert html =~ ~s(data-volume="40")
+    assert html =~ "40%"
+
+    # A value outside 0..100 changes nothing.
+    view |> element("#voice-volume-form") |> render_change(%{"volume" => "400"})
+    assert Settings.get("voice_volume") == "40"
+  end
+
+  test "the attention toggle persists", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    view |> element("#voice-attention-form") |> render_change(%{"attention" => "false"})
+    assert Settings.get("voice_attention") == "0"
+
+    view |> element("#voice-attention-form") |> render_change(%{"attention" => "true"})
+    assert Settings.get("voice_attention") == nil
+  end
+
+  test "every voice control changes through a form", %{conn: conn} do
+    # The browser refuses phx-change on a control outside a form ("form
+    # events require the input to be inside a form"); LiveViewTest does not.
+    with_key()
+    {:ok, view, _html} = live(conn, ~p"/")
+
+    panel = view |> element("#voice-panel") |> render()
+    refute panel =~ ~r/<(input|select)\b[^>]*phx-change/
+    assert panel =~ ~r/<form[^>]*phx-change="voice_volume"/
   end
 end

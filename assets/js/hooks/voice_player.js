@@ -2,9 +2,24 @@ import {voiceInputActive, voiceState} from "../voice_state"
 
 // The server chooses the speech URL. Playback state follows the audio element,
 // never the request or the presence of an ElevenLabs key alone.
+// The panel root carries the saved volume (0..100); dragging the slider
+// applies it at once, before the server has saved it.
+const volumeOf = (value) => {
+  const n = Number(value)
+  return Number.isFinite(n) ? Math.min(Math.max(n, 0), 100) / 100 : 1
+}
+
 export const VoicePlayer = {
   mounted() {
     this.audio = new Audio()
+    this.audio.volume = volumeOf(this.el.dataset.volume)
+    this.onInput = (event) => {
+      if (event.target?.name !== "volume") return
+      this.audio.volume = volumeOf(event.target.value)
+      const readout = this.el.querySelector("[data-voice-volume-readout]")
+      if (readout) readout.textContent = `${event.target.value}%`
+    }
+    this.el.addEventListener("input", this.onInput)
     this.objectUrl = null
     this.generation = 0
     this.onControl = ({detail}) => {
@@ -96,7 +111,11 @@ export const VoicePlayer = {
     if (this.objectUrl) URL.revokeObjectURL(this.objectUrl)
     this.objectUrl = null
   },
+  updated() {
+    if (this.audio) this.audio.volume = volumeOf(this.el.dataset.volume)
+  },
   destroyed() {
+    this.el.removeEventListener("input", this.onInput)
     window.removeEventListener("board:voice-control", this.onControl)
     this.cancel()
   },

@@ -1,15 +1,22 @@
 defmodule AgentBoardWeb.Components.VoicePanel do
   @moduledoc """
-  The ElevenLabs voice controls of the Voice settings section: which voice
-  and model the agent speaks with, the account's voices, a preview, the
+  The voice controls of the Voz settings section: the language and the
+  volume the agent speaks with, when it speaks (calls for attention and the
+  rest of the board), and the ElevenLabs voice and model, a preview, the
   save and a free-form phrase to try the voice.
 
   Presentation lives here and nowhere else, so a design pass can restyle
   this file without touching `BoardLive` or `SettingsMenu`. The contract is
   the assigns (`voice`, a map with `id`, `source`, `configured`, `voices`,
-  `loading`, `pick`, `model`, `model_source`, `models`; and `repo`) and the
-  events: `voice_browse`, `voice_pick`, `voice_preview`, `voice_save`,
-  `voice_reset`, `voice_model` and `voice_try`.
+  `loading`, `pick`, `model`, `model_source`, `models`, `speak_events`,
+  `attention`, `language`, `languages`, `volume`; and `repo`) and the
+  events: `voice_language`, `voice_volume`, `voice_attention`,
+  `voice_announce`, `voice_browse`, `voice_pick`, `voice_preview`,
+  `voice_save`, `voice_reset`, `voice_model` and `voice_try`.
+
+  The root carries `data-volume` and `data-lang`: the `VoicePlayer` hook and
+  the browser-speech fallback read them, so a change applies to the audio
+  already playing.
   """
 
   use Phoenix.Component
@@ -21,46 +28,117 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
   def voice_panel(assigns) do
     ~H"""
-    <div id="voice-panel" phx-hook="VoicePlayer" class="voice-panel">
-      <p :if={!@voice.configured}>
-        no key: set <code class="text-base-content">ELEVENLABS_API_KEY</code>
-        in <code class="text-base-content">.env.local</code>
-        and restart the board to pick the agent's voice.
+    <div
+      id="voice-panel"
+      phx-hook="VoicePlayer"
+      class="voice-panel"
+      data-volume={@voice.volume}
+      data-lang={@voice.language}
+    >
+      <div class="voice-fields">
+        <div class="voice-field">
+          <label for="voice-language" class="voice-field-label">Idioma da voz</label>
+          <form id="voice-language-form" phx-change="voice_language" class="settings-actions">
+            <select id="voice-language" name="language" class="voice-select">
+              <option
+                :for={lang <- @voice.languages}
+                value={lang.id}
+                selected={lang.id == @voice.language}
+              >
+                {lang.name}
+              </option>
+            </select>
+          </form>
+        </div>
+
+        <form id="voice-volume-form" phx-change="voice_volume" class="voice-field">
+          <label for="voice-volume" class="voice-field-label">
+            Volume <output for="voice-volume" data-voice-volume-readout>{@voice.volume}%</output>
+          </label>
+          <input
+            id="voice-volume"
+            type="range"
+            name="volume"
+            min="0"
+            max="100"
+            step="5"
+            value={@voice.volume}
+            phx-debounce="250"
+            aria-valuetext={"#{@voice.volume}%"}
+            class="voice-volume"
+          />
+        </form>
+
+        <fieldset class="voice-field">
+          <legend class="voice-field-label">Quando falar</legend>
+          <form id="voice-attention-form" phx-change="voice_attention">
+            <input type="hidden" name="attention" value="false" />
+            <label class="voice-toggle">
+              <input
+                id="voice-attention"
+                type="checkbox"
+                name="attention"
+                value="true"
+                checked={@voice.attention}
+              /> Chamar quando uma tarefa precisar de mim
+            </label>
+          </form>
+          <form :if={@voice.configured} id="voice-announce-form" phx-change="voice_announce">
+            <input type="hidden" name="speak_events" value="false" />
+            <label class="voice-toggle">
+              <input
+                id="voice-announce"
+                type="checkbox"
+                name="speak_events"
+                value="true"
+                checked={@voice.speak_events}
+              /> Narrar o resto: início de tarefa, fila, sincronização e confirmações
+            </label>
+          </form>
+        </fieldset>
+      </div>
+
+      <p :if={!@voice.configured} class="voice-note">
+        Sem chave, os chamados usam a voz do navegador. Para a voz do agente, defina
+        <code class="text-base-content">ELEVENLABS_API_KEY</code>
+        no <code class="text-base-content">.env.local</code>
+        e reinicie o board.
       </p>
 
       <div :if={@voice.configured} class="voice-fields">
         <div class="voice-field">
           <label for="voice-picker" class="voice-field-label">
-            Agent voice
+            Voz do agente
             <span class="voice-source-note">
               · <code>{@voice.id}</code> · {source_label(@voice.source)}
             </span>
           </label>
           <div class="settings-actions">
-            <select
-              id="voice-picker"
-              name="voice"
-              phx-change="voice_pick"
-              aria-label="Agent voice"
-              disabled={@voice.source == :environment}
-              class="voice-select"
-            >
-              <option
-                :if={is_nil(@voice.voices) or @voice.voices == []}
-                value=""
-                disabled
-                selected={is_nil(@voice.pick)}
+            <form id="voice-picker-form" phx-change="voice_pick" class="voice-inline-form">
+              <select
+                id="voice-picker"
+                name="voice"
+                aria-label="Voz do agente"
+                disabled={@voice.source == :environment}
+                class="voice-select"
               >
-                {if @voice.loading, do: "Loading voices…", else: "No voices listed yet"}
-              </option>
-              <option
-                :for={voice <- @voice.voices || []}
-                value={voice.id}
-                selected={voice.id == @voice.pick}
-              >
-                {voice.name} · {voice.id}
-              </option>
-            </select>
+                <option
+                  :if={is_nil(@voice.voices) or @voice.voices == []}
+                  value=""
+                  disabled
+                  selected={is_nil(@voice.pick)}
+                >
+                  {if @voice.loading, do: "Carregando vozes…", else: "Nenhuma voz listada ainda"}
+                </option>
+                <option
+                  :for={voice <- @voice.voices || []}
+                  value={voice.id}
+                  selected={voice.id == @voice.pick}
+                >
+                  {voice.name} · {voice.id}
+                </option>
+              </select>
+            </form>
 
             <button
               :if={@voice.source != :environment}
@@ -68,7 +146,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               phx-click="voice_browse"
               disabled={@voice.loading}
             >
-              {if @voice.loading, do: "Loading…", else: "List voices"}
+              {if @voice.loading, do: "Carregando…", else: "Listar vozes"}
             </button>
 
             <button
@@ -76,7 +154,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               type="button"
               phx-click="voice_preview"
             >
-              <.icon name="hero-play" class="size-3.5" />Preview
+              <.icon name="hero-play" class="size-3.5" />Ouvir
             </button>
 
             <button
@@ -85,7 +163,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               phx-click="voice_save"
               class="voice-save"
             >
-              Save
+              Salvar
             </button>
 
             <button
@@ -94,24 +172,23 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               phx-click="voice_reset"
               class="voice-reset"
             >
-              Back to default
+              Voltar ao padrão
             </button>
           </div>
         </div>
 
         <div class="voice-field">
           <label for="voice-model" class="voice-field-label">
-            Speech model
+            Modelo de fala
             <span :if={@voice.model_source == :environment} class="voice-source-note">
-              · fixed in .env.local
+              · definido no .env.local
             </span>
           </label>
-          <div class="settings-actions">
+          <form id="voice-model-form" phx-change="voice_model" class="settings-actions">
             <select
               id="voice-model"
               name="model"
-              phx-change="voice_model"
-              aria-label="TTS model"
+              aria-label="Modelo de fala"
               disabled={@voice.model_source == :environment}
               class="voice-select"
             >
@@ -123,32 +200,19 @@ defmodule AgentBoardWeb.Components.VoicePanel do
                 {model.name} — {model.note}
               </option>
             </select>
-          </div>
+          </form>
         </div>
 
-        <div class="voice-field">
-          <label for="voice-announce" class="voice-field-label">Automatic feedback</label>
-          <label class="voice-toggle">
-            <input
-              id="voice-announce"
-              type="checkbox"
-              name="speak_events"
-              phx-change="voice_announce"
-              checked={@voice.speak_events}
-            /> Speak board events as they happen
-          </label>
-        </div>
-
-        <form phx-submit="voice_try" class="voice-field">
-          <label for="voice-phrase" class="voice-field-label">Try a phrase</label>
+        <form id="voice-try" phx-submit="voice_try" class="voice-field">
+          <label for="voice-phrase" class="voice-field-label">Testar uma frase</label>
           <div class="settings-actions">
             <input
               id="voice-phrase"
               name="phrase"
-              placeholder="Type something to hear the agent…"
-              aria-label="Phrase to speak"
+              placeholder="Digite algo para ouvir o agente…"
+              aria-label="Frase para falar"
             />
-            <button type="submit"><.icon name="hero-play" class="size-3.5" />Play</button>
+            <button type="submit"><.icon name="hero-play" class="size-3.5" />Tocar</button>
           </div>
         </form>
       </div>
@@ -156,7 +220,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
     """
   end
 
-  defp source_label(:environment), do: "fixed in .env.local"
-  defp source_label(:saved), do: "picked here"
-  defp source_label(:default), do: "default voice"
+  defp source_label(:environment), do: "definida no .env.local"
+  defp source_label(:saved), do: "escolhida aqui"
+  defp source_label(:default), do: "voz padrão"
 end

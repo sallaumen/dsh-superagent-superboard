@@ -16,7 +16,8 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
 | `AgentBoard.Settings` | board-wide settings, one row per key (the voice picks) |
-| `AgentBoard.Voice` | the spoken summary (the model writes it when it can) |
+| `AgentBoard.Voice` | the spoken summary and the voice settings (language, volume, attention) |
+| `AgentBoard.Voice.Phrases` | every sentence the agent speaks, per language |
 | `AgentBoard.ElevenLabs` | the server-side voice client: TTS, STT, voices |
 | `AgentBoardWeb.BoardLive` | the real-time UI |
 | `AgentBoardWeb.BoardController` | the JSON API (`/api/...`) |
@@ -80,14 +81,30 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 - The account's voices are cached for the `:voice_voices_ttl` window
   (default 5 minutes, 0 disables — the test env disables it); a browse
   does not pay a request every time.
+- **Every spoken word comes from `AgentBoard.Voice.Phrases`**, in the voice
+  language (`voice_language`: `pt-BR` default, `en-US`). A sentence typed
+  in English inside a caller is the language mix this rule prevents. The
+  summary prompt receives the language; the TTS sends `language_code` only
+  to Flash v2.5 (another model answers 400). The greeting uses the
+  browser's clock (`tz_offset`), never the UTC hour.
 - **Automatic speech** is `AgentBoard.Announcer`: a pure diff between the
-  previous and the current board. The agent speaks task overlays moving
-  between the live lanes and sync outcomes getting worse, capped at two
-  utterances per update and deduped for a short window; user actions speak
-  their own confirmations, so they are not announced twice. The settings
-  key `elevenlabs_speak_events` (`"0"` disables, absent is on) is the
-  toggle; the UI checkbox writes it and `PUT /api/voice/settings`
-  accepts `speak_events`.
+  previous and the current board, spoken as **one utterance per update**
+  (a second `voice_play` cuts the first off), capped at two sentences and
+  deduped for a short window. Two kinds:
+  - **attention**: a task entering `question`, `blocked` or `ready`. It
+    comes first, rotates through ten phrases per kind (`voice_turn`, a
+    random start per socket) and has its own toggle (`voice_attention`,
+    `"0"` disables). Without an ElevenLabs key it falls back to the
+    browser's voice, in the voice language.
+  - **events**: a task starting or going back to the queue and sync
+    outcomes getting worse, plus the confirmations of user actions and the
+    spoken answers; toggled by `elevenlabs_speak_events` (`"0"` disables,
+    absent is on). User actions speak their own confirmations, so they are
+    not announced twice.
+  The volume (`voice_volume`, 0..100) rides on `#voice-panel[data-volume]`;
+  the `VoicePlayer` hook and the browser fallback read it, so a change
+  applies to the audio already playing. `PUT /api/voice/settings` accepts
+  `speak_events`, `attention`, `language` and `volume`.
 - **Voice asks** are a write and always confirmed: a draft that ends in a
   question mark (or starts with "perguntar"/"ask") and matches no read-only
   command resolves to an `:ask` proposal showing the target task; the

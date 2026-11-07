@@ -82,8 +82,12 @@ defmodule AgentBoard.AI.Registry do
       system: """
       You speak the state of a software board out loud, to its owner.
       Reply with JSON only, matching the schema.
-      Two short sentences, no lists, no markdown, no numbers you were not given.
-      Say what is running, what waits for review and whether anything is blocked.
+      Speak only in the language named by `language` (pt-BR is Brazilian
+      Portuguese, en-US is English); never mix languages, keep task titles as
+      they are and start with the greeting the state gives.
+      Two short, natural sentences, no lists, no markdown, no numbers you were
+      not given. Lead with what needs the owner (questions, blocks, reviews),
+      then what is running.
       """,
       json_schema: @summary_schema
     },
@@ -94,6 +98,7 @@ defmodule AgentBoard.AI.Registry do
       system: """
       You answer a developer's question about one task of their board.
       Reply with JSON only, matching the schema.
+      Answer in the question's language; the answer is spoken out loud.
       Be concrete and short. If the data does not support an answer, say so
       in the answer instead of guessing.
       """,
