@@ -40,6 +40,7 @@ GitHub comment mentioning @sallaumen-agent
 | Worker bin | the tools the executor may call | `~/.dsh/state/superagent/worker-bin/` |
 | Bot identity | the `gh` the worker uses | `~/.local/bin/gh-agent` (config `~/.config/gh-agent`) |
 | Worktrees | one checkout per assignment | `~/.dsh/state/superagent/work/` |
+| Team prompts | the three sections every session reads: Communication, Ticket scope, Delivery requirements | the orchestrator's prompt revisions, mirrored in [`prompts/`](prompts/) by `scripts/agent/prompts.sh` |
 
 ## The tables
 

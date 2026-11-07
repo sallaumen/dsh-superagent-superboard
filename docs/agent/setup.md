@@ -122,12 +122,28 @@ only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
 ## 8. Merge policy
 
 The host has no merge logic. Whether the agent merges is prompt text: the
-**Delivery requirements** team section, read and saved through the panel or
-the API (`GET`/`PUT http://127.0.0.1:3082/orchestrator/api/prompts`, header
-`x-orchestrator-request: 1`, with the current revision as `baseRevision`).
-The built-in text lets a person merge every PR.
+**Delivery requirements** team section. The three team sections --
+Communication, Ticket scope and Delivery requirements -- are versioned in
+[`prompts/`](prompts/) as the literal text the orchestrator holds, next to
+`revision`, the revision they were read from, and move through
+`scripts/agent/prompts.sh`:
 
-This deployment delegates merging to the agent. The section says that nobody
+```sh
+scripts/agent/prompts.sh get    # write the active sections and their revision to the files
+scripts/agent/prompts.sh diff   # compare the files with the active revision; exit 1 if they differ
+scripts/agent/prompts.sh put    # save the files as a new revision
+```
+
+The panel and the API (`GET`/`PUT http://127.0.0.1:3082/orchestrator/api/prompts`,
+header `x-orchestrator-request: 1`, body `{config, baseRevision}`) read and
+save the same text. `put` refuses when the panel saved a revision newer than
+`revision`, so an edit made there is never overwritten unseen: run `get`,
+review the change, commit it, then `put` again. To change the policy, edit
+the file in a PR, merge it, run `put`, and commit the new `revision`. Team
+skills and overrides of built-in parts stay in the orchestrator only.
+
+The built-in text lets a person merge every PR. This deployment delegates
+merging to the agent: [`prompts/delivery.md`](prompts/delivery.md) says that nobody
 reviews PRs by hand and that the executor merges each PR it opened, as the
 bot, once all of these hold: the work is complete; `mix precommit` passed on
 the head commit and the PR and the report say so; no human review asks for
