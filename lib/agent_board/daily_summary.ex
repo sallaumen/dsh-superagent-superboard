@@ -27,8 +27,8 @@ defmodule AgentBoard.DailySummary do
   import Ecto.Query, warn: false
   require Logger
 
-  alias AgentBoard.{Repo, Settings}
   alias AgentBoard.DailySummary.{Entry, Facts}
+  alias AgentBoard.{Repo, Settings}
 
   @topic "daily_summary"
   @enabled_key "daily_summary_enabled"

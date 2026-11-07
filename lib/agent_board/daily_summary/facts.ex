@@ -22,8 +22,8 @@ defmodule AgentBoard.DailySummary.Facts do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Board, ExecutorUsage, Repo}
   alias AgentBoard.AutoRetry.Attempt
+  alias AgentBoard.{Board, ExecutorUsage, Repo}
   alias AgentBoard.Board.{Event, PullRequest, Repository, Task}
 
   @merged_items 5

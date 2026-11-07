@@ -5,10 +5,11 @@ defmodule AgentBoard.DailySummaryTest do
   """
   use AgentBoard.DataCase, async: false
 
-  alias AgentBoard.{Board, DailySummary, Repo, Settings}
   alias AgentBoard.AutoRetry.Attempt
+  alias AgentBoard.{Board, DailySummary, Repo, Settings}
   alias AgentBoard.Board.{Event, PullRequest, Task}
   alias AgentBoard.DailySummary.Entry
+  alias Ecto.Adapters.SQL.Sandbox
 
   # The owner's clock (São Paulo, UTC-3), passed as an offset so the test
   # does not depend on the machine's zone: 11:00Z is 08:00 local.
@@ -53,7 +54,7 @@ defmodule AgentBoard.DailySummaryTest do
             id: :daily_summary_test
           )
 
-        Ecto.Adapters.SQL.Sandbox.allow(Repo, self(), pid)
+        Sandbox.allow(Repo, self(), pid)
         pid
       end
 

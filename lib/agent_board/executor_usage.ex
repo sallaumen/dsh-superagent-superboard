@@ -142,11 +142,8 @@ defmodule AgentBoard.ExecutorUsage do
     |> String.split("\n", trim: true)
     |> Enum.reduce(acc, fn line, acc ->
       case Jason.decode(line) do
-        {:ok, event} when is_map(event) ->
-          if counted?(event, window), do: take(event, acc), else: acc
-
-        _ ->
-          acc
+        {:ok, event} when is_map(event) -> take_counted(event, acc, window)
+        _ -> acc
       end
     end)
     |> Map.delete(:seen)
@@ -185,6 +182,9 @@ defmodule AgentBoard.ExecutorUsage do
   defp priced(0, _price), do: {0, true}
   defp priced(_tokens, nil), do: {0, false}
   defp priced(tokens, price), do: {round(tokens * price), true}
+
+  defp take_counted(event, acc, window),
+    do: if(counted?(event, window), do: take(event, acc), else: acc)
 
   defp counted?(_event, nil), do: true
 
