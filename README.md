@@ -40,7 +40,11 @@ launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.agentboard.plist
 ```
 
 `KeepAlive` restarts the board after a crash or an update; `RunAtLoad` starts
-it with the system. Read logs at the paths selected in the plist.
+it with the system. The plist names the log in `AGENT_BOARD_LOG`; at every
+start `scripts/service.sh` moves it to `<log>.1` once it passes 50 MB
+(`AGENT_BOARD_LOG_MAX_BYTES`), keeping one old copy, and reopens it, as the
+`o_colmex` hive does. The plist's `StandardOutPath` only catches what fails
+before that. A manual run without `AGENT_BOARD_LOG` writes to the terminal.
 
 The board cannot boot without its Postgres on `127.0.0.1:5434`, and launchd
 starts the script before Docker has brought containers back. If that Postgres
