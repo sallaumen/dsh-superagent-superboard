@@ -47,12 +47,11 @@ watches GitHub; this board only mirrors it. It is documented in
 
 ## Shared practices
 
-- Read the versioned Elixir Agent Kit through the entry point below, after
-  `mix deps.get`. Workflow bodies live in the dependency, not copied project files.
+- The kit's entry is the managed block below; workflow bodies live in the
+  dependency, never in copied project files.
 - Reusable improvements belong upstream in the kit; application-specific rules
   stay in this repository. Follow [practice ownership](docs/agent/practices.md).
 - Do not recreate `capabilities/skills` or manually edit generated kit files.
-
 
 <!-- elixir-agent-kit:start -->
 ## Elixir Agent Kit

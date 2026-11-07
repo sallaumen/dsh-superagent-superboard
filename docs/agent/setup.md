@@ -116,7 +116,7 @@ only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
 - Treat a `ready` report as evidence only for what it names. A report that
   names no practice file read means the kit was not loaded; a model name
   establishes nothing. The kit's
-  [compatibility note](https://github.com/sallaumen/elixir-agent-kit/blob/v0.5.3/docs/compatibility.md)
+  [compatibility note](https://github.com/sallaumen/elixir-agent-kit/blob/v0.6.0/docs/compatibility.md)
   describes the fresh-session check.
 
 ## 8. Merge policy
