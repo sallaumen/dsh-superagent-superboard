@@ -13,6 +13,25 @@ export AGENT_BOARD_RESTART_MODE="${AGENT_BOARD_RESTART_MODE:-supervised}"
 # voice pipeline's lines instead of every SQL query the poller runs.
 export LOG_LEVEL="${LOG_LEVEL:-info}"
 
+# The log rotates here, at every start, keeping one old file, as o_colmex's
+# hive does: launchd only appends, and the file reached a gigabyte. It applies
+# when AGENT_BOARD_LOG names the file (the plist sets it); a manual run keeps
+# writing to the terminal. The rotation reopens the log, so everything after
+# this point lands in the new file, not in the one launchd opened.
+if [ -n "${AGENT_BOARD_LOG:-}" ]; then
+  max_log_bytes="${AGENT_BOARD_LOG_MAX_BYTES:-52428800}"
+  mkdir -p "$(dirname "$AGENT_BOARD_LOG")"
+  rotation_error=
+  if [ -f "$AGENT_BOARD_LOG" ] && [ "$(stat -f %z "$AGENT_BOARD_LOG")" -gt "$max_log_bytes" ]; then
+    rotation_error=$(mv -f "$AGENT_BOARD_LOG" "$AGENT_BOARD_LOG.1" 2>&1) ||
+      rotation_error=${rotation_error:-mv failed}
+  fi
+  exec >>"$AGENT_BOARD_LOG" 2>&1
+  if [ -n "$rotation_error" ]; then
+    echo "service.sh: $AGENT_BOARD_LOG could not move to $AGENT_BOARD_LOG.1; it keeps growing: $rotation_error"
+  fi
+fi
+
 # The database is a Docker container that comes back a minute or two after
 # login, later than launchd starts this script. Wait for it here: without the
 # wait, `mix ecto.migrate` fails and launchd retries every ten seconds, and a
