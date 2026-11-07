@@ -52,6 +52,13 @@ defmodule AgentBoardWeb.Telemetry do
         unit: {:native, :millisecond}
       ),
 
+      # Board Metrics
+      summary("agent_board.board.load.stop.duration",
+        tags: [:repository],
+        unit: {:native, :millisecond},
+        description: "One board load: tables, tickets, worktrees and the throughput strip"
+      ),
+
       # Database Metrics
       summary("agent_board.repo.query.total_time",
         unit: {:native, :millisecond},

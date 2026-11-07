@@ -133,7 +133,9 @@ defmodule AgentBoardWeb.BoardLive do
     # or by a spoken command reaches this socket (handle_info setting_changed).
     if connected?(socket), do: Settings.subscribe()
 
-    {:ok, socket |> VoiceConversation.mount() |> load(repo)}
+    # handle_params/3 always follows mount and loads the board: loading here
+    # too read everything twice on every page and every connection.
+    {:ok, socket |> VoiceConversation.mount() |> assign(:opening_repo, repo)}
   end
 
   defp empty do
@@ -406,9 +408,17 @@ defmodule AgentBoardWeb.BoardLive do
     )
   end
 
+  # The span is the board's load budget on the dashboard
+  # (`agent_board.board.load`): every reload goes through here.
   defp load(socket, repo) do
-    # load/2 runs on mount and again on handle_params: subscribing twice would
-    # deliver every broadcast twice (and keep listening to the old repo).
+    :telemetry.span([:agent_board, :board, :load], %{repository: repo_slug(repo)}, fn ->
+      {read_board(socket, repo), %{repository: repo_slug(repo)}}
+    end)
+  end
+
+  defp read_board(socket, repo) do
+    # load/2 runs again on every reload: subscribing twice would deliver every
+    # broadcast twice (and keep listening to the old repo).
     if connected?(socket) and socket.assigns.repo != repo do
       if socket.assigns.repo, do: Board.unsubscribe(socket.assigns.repo.id)
       Board.subscribe(repo.id)
@@ -641,16 +651,25 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
+    current = socket.assigns.repo || socket.assigns.opening_repo
+
     repo =
       case params["repo"] do
-        nil -> socket.assigns.repo
-        slug -> Board.repository_by_slug(slug) || socket.assigns.repo
+        nil -> current
+        slug -> Board.repository_by_slug(slug) || current
       end
 
-    socket = socket |> load(repo) |> BoardNavigation.apply_params(params) |> load_inspector()
+    # A patch inside the same repository (opening a task, a panel, a tab)
+    # changes only the panel: the board is already loaded and every change
+    # to it arrives as :board_updated.
+    socket = if showing?(socket, repo), do: socket, else: load(socket, repo)
+    socket = socket |> BoardNavigation.apply_params(params) |> load_inspector()
 
     {:noreply, socket}
   end
+
+  defp showing?(%{assigns: %{repo: %{id: id}}}, %{id: id}), do: true
+  defp showing?(_socket, _repo), do: false
 
   @impl true
   def handle_event("sync_now", _params, socket) do
