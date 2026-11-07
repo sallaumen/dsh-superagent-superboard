@@ -378,28 +378,56 @@ defmodule AgentBoard.Board do
     end
   end
 
+  @doc """
+  Fills a request's executor and its router line from the signals read now.
+
+  `requested` is the executor the owner named (the voice's "manda pro
+  Claude", an API field), or nil. A request that already carries an
+  executor keeps it (a choice made when the suggestion was shown);
+  otherwise the executor is the one requested, else the router's
+  suggestion, else the DeepSeek runner when nobody can take the task. The
+  line records who decided (`composer`, `voice`, `api`).
+  """
+  @spec route(Repository.t(), map(), String.t() | nil, String.t(), AgentBoard.Routing.signals()) ::
+          map()
+  def route(repository, request, requested, decided_by, signals \\ Routing.Signals.read()) do
+    suggestion =
+      Routing.suggest(
+        %{
+          repository: "#{repository.owner}/#{repository.name}",
+          work_type: Map.get(request, :work_type),
+          size: Map.get(request, :size),
+          requested: requested
+        },
+        signals
+      )
+
+    executor =
+      cond do
+        Executors.valid?(Map.get(request, :executor)) -> request.executor
+        Executors.valid?(requested) -> requested
+        true -> suggestion.executor || Executors.default()
+      end
+
+    request
+    |> Map.put(:executor, executor)
+    |> Map.put(:routing, %{
+      suggestion: suggestion,
+      signals: Routing.Signals.snapshot(signals),
+      decided_by: decided_by
+    })
+  end
+
   # Every task the board creates for an executor gets a router line. A
   # caller that showed the suggestion passes it (`:routing`); otherwise the
   # router runs here, with the chosen executor as the owner's explicit ask.
-  defp with_routing(%{executor: executor} = request, repository) when is_binary(executor) do
-    Map.put_new_lazy(request, :routing, fn ->
-      signals = Routing.Signals.read()
+  defp with_routing(%{executor: executor, routing: %{}} = request, _repository)
+       when is_binary(executor),
+       do: request
 
-      %{
-        suggestion:
-          Routing.suggest(
-            %{
-              repository: "#{repository.owner}/#{repository.name}",
-              work_type: Map.get(request, :work_type),
-              size: Map.get(request, :size),
-              requested: executor
-            },
-            signals
-          ),
-        signals: Routing.Signals.snapshot(signals),
-        decided_by: Map.get(request, :decided_by, "api")
-      }
-    end)
+  defp with_routing(%{executor: executor} = request, repository) when is_binary(executor) do
+    requested = Map.get(request, :requested, executor)
+    route(repository, request, requested, Map.get(request, :decided_by, "api"))
   end
 
   defp with_routing(request, _repository), do: request

@@ -82,6 +82,46 @@ defmodule AgentBoardWeb.BoardControllerTest do
              AgentBoard.Actions.recent(2)
   end
 
+  test "POST /api/tasks names the executor, and an unknown one is a 400", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    test_pid = self()
+
+    previous = Application.get_env(:agent_board, :github_client)
+    on_exit(fn -> Application.put_env(:agent_board, :github_client, previous) end)
+
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(
+        base_url: "https://api.github.com",
+        plug: {Req.Test, AgentBoardWeb.BoardControllerTest.Stub},
+        retry: false
+      )
+    end)
+
+    Req.Test.stub(AgentBoardWeb.BoardControllerTest.Stub, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      send(test_pid, {:issue, Jason.decode!(body)})
+      Req.Test.json(conn, %{"number" => 56, "html_url" => "https://github.com/x/y/issues/56"})
+    end)
+
+    params = %{repo: "sallaumen/arena-rogue", title: "Placar", body: "hi", executor: "codex"}
+    first = post(conn, "/api/tasks", params)
+    assert %{"confirm" => phrase} = json_response(first, 428)
+    assert phrase =~ "para o Codex"
+
+    conn = post(build_conn(), "/api/tasks", Map.put(params, :confirm, phrase))
+    assert %{"number" => 56} = json_response(conn, 201)
+
+    assert_received {:issue, %{"labels" => ["executor:codex"], "body" => "hi"}}
+    task = Repo.get_by!(Task, repository_id: repo.id, number: 56)
+
+    assert %AgentBoard.Routing.Decision{chosen: "codex", decided_by: "api"} =
+             Repo.get_by!(AgentBoard.Routing.Decision, task_id: task.id)
+
+    bad = post(build_conn(), "/api/tasks", %{params | executor: "gpt"})
+    assert %{"error" => error} = json_response(bad, 400)
+    assert error =~ "executor"
+  end
+
   test "POST /api/tasks with a sentence for other values is refused", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 

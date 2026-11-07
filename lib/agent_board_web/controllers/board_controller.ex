@@ -12,7 +12,7 @@ defmodule AgentBoardWeb.BoardController do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Actions, Board, Repo}
+  alias AgentBoard.{Actions, Board, Executors, Repo}
   alias AgentBoard.Board.{Repository, Task}
 
   # The task actions the API accepts, mapped explicitly (never to_atom).
@@ -52,9 +52,12 @@ defmodule AgentBoardWeb.BoardController do
     with [owner, name] <- String.split(slug, "/", parts: 2),
          repo when not is_nil(repo) <-
            Repo.one(from r in Repository, where: r.owner == ^owner and r.name == ^name),
-         true <- String.trim(title) != "" do
+         true <- String.trim(title) != "",
+         true <- params["executor"] in [nil, "" | Executors.all()] do
       text = String.trim(params["body"] || "") <> "\n\n@sallaumen-agent"
       request = %{title: title, body: text, key: Board.request_key(repo, "api", [title, text])}
+      # `executor` names who the task is for; without it the router suggests.
+      request = Board.route(repo, request, params["executor"], "api")
       action = %{repository: repo, requests: [request], client: client()}
 
       case Actions.run(:create_tasks, action, api(), confirm: params["confirm"]) do
@@ -68,7 +71,12 @@ defmodule AgentBoardWeb.BoardController do
           needs_confirmation(conn, refusal)
       end
     else
-      _ -> conn |> put_status(400) |> json(%{error: "a repository and a title are required"})
+      _ ->
+        conn
+        |> put_status(400)
+        |> json(%{
+          error: "a repository and a title are required; executor is one of dsh, claude, codex"
+        })
     end
   end
 

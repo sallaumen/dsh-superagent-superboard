@@ -68,6 +68,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             começou às {Time.local_time(@task.started_at, @tz_offset)}
           </span>
           <.work_tag work_type={@task.work_type} size={@task.size} />
+          <span :if={@task.executor} class="ab-meta">
+            para o {AgentBoard.Executors.name(@task.executor)}
+          </span>
           <span :if={@pr} class="ab-meta">PR #{@pr.number}</span>
           <span :if={@calls != []} class="ab-meta">{length(@calls)} chamadas</span>
           <a

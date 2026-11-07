@@ -702,7 +702,29 @@ body { margin: 0; background: var(--paper); }
 .ab-receipt__item:first-child { border-top: 0; }
 .ab-receipt__title { min-width: 0; overflow-wrap: anywhere; }
 .ab-work { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
-.ab-receipt__title .ab-work { margin-left: var(--space-2); }
+
+/* ---------- composer: who the request is for ---------- */
+.ab-exec { margin: 0; padding: var(--space-3) var(--space-5) var(--space-4); border: 0; border-top: 1px solid var(--line); display: grid; gap: var(--space-3); min-width: 0; }
+.ab-exec legend { float: left; width: 100%; padding: 0; margin-bottom: var(--space-3); }
+.ab-exec__options { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); clear: both; }
+.ab-exec__opt {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-pill); background: var(--surface);
+  font-size: 13px; cursor: pointer; color: var(--ink);
+  transition: background-color var(--motion-feedback) var(--ease-standard), border-color var(--motion-feedback) var(--ease-standard);
+}
+.ab-exec__opt.is-on { border-color: var(--you); background: var(--you-wash); color: var(--you); font-weight: 500; }
+.ab-exec__opt:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ab-exec[disabled] .ab-exec__opt { opacity: .6; cursor: not-allowed; }
+.ab-exec__hint { font-size: 11.5px; font-weight: 500; color: var(--agent); }
+.ab-exec__warn { color: var(--halt); font-weight: 500; }
+.ab-exec__why { display: grid; gap: var(--space-2); min-width: 0; }
+.ab-exec__why p { margin: 0; overflow-wrap: anywhere; }
+.ab-exec__why b { font-weight: 600; color: var(--ink); margin-right: 4px; }
+.ab-exec__reasons summary { cursor: pointer; width: fit-content; }
+.ab-exec__reasons ul { margin: var(--space-2) 0 0; padding-left: var(--space-5); display: grid; gap: var(--space-1); }
+@container board (max-width: 640px) { .ab-exec__opt { min-height: 44px; } }
+.ab-receipt__title .ab-work, .ab-receipt__exec { margin-left: var(--space-2); }
 .ab-receipt__links { grid-column: 2 / -1; display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .ab-receipt__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .ab-dot--agent { width: 8px; height: 8px; border-radius: 50%; background: var(--agent); display: inline-block; }
