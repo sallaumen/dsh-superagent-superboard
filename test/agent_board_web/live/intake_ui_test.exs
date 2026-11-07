@@ -227,7 +227,7 @@ defmodule AgentBoardWeb.IntakeUITest do
           Req.Test.json(
             conn,
             answer(
-              ~s({"tasks":[{"title":"Tarefa A","body":"pedido A","kind":"feature","acceptance":["teste"],"depends_on":[],"size":"S"}]})
+              ~s({"tasks":[{"title":"Tarefa A","body":"pedido A","kind":"backend","acceptance":["teste"],"depends_on":[],"size":"S"}]})
             )
           )
 

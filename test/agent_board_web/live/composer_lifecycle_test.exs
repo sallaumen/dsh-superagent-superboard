@@ -206,20 +206,41 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
 
   test "a split shows progress, then the proposal, then enqueues only the chosen", %{conn: conn} do
     counter = github()
-    happy_model()
+    test_pid = self()
+
+    # The model holds its answer until the test has seen the progress: an
+    # instant scripted answer could land before the first assertion.
+    script(fn
+      %{name: :refine_request} ->
+        send(test_pid, {:refining, self()})
+
+        receive do
+          :answer -> Scripted.answer(@refined)
+        end
+
+      %{name: :propose_tasks} ->
+        Scripted.answer(@tasks)
+    end)
+
     view = open_composer(conn, true)
     type(view, "O board está lento")
 
     view |> element("#composer-form") |> render_submit(%{"text" => "O board está lento"})
+    assert_receive {:refining, model}, 2000
 
     # The job is on screen while the model answers; the submit is disabled.
     assert has_element?(view, "#composer-progress", "Dividindo")
     assert has_element?(view, "#composer-form button.ab-btn--primary[disabled]")
 
+    send(model, :answer)
     render_async(view)
 
     assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
     assert has_element?(view, "#composer-form button", "Pôr 2 na fila")
+    # The split's kind and size, in the board's words, before anything is sent.
+    assert has_element?(view, "label[for=composer-task-0] .ab-work", "bug")
+    assert has_element?(view, "label[for=composer-task-0] .ab-work", "P")
+    assert has_element?(view, "label[for=composer-task-1] .ab-work", "M")
     assert Repo.aggregate(Task, :count) == 0
 
     view
@@ -237,6 +258,20 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert task.body =~ "Atacar a causa"
     assert task.body =~ "@sallaumen-agent"
     assert Agent.get(counter, & &1) == 101
+
+    # The classification is stored on the task and read back in the receipt.
+    assert {task.work_type, task.size} == {"bug", "M"}
+    assert has_element?(view, "#composer-receipt .ab-work", "bug")
+  end
+
+  test "a single request has no kind and no size", %{conn: conn} do
+    github()
+    view = open_composer(conn)
+    type(view, "Corrigir o contador")
+    submit(view, %{"text" => "Corrigir o contador"})
+
+    assert %Task{work_type: nil, size: nil} = Repo.one(Task)
+    refute has_element?(view, "#composer-receipt .ab-work")
   end
 
   test "open questions get an answer box and the answered request is split again",

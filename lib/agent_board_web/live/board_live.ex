@@ -1164,7 +1164,10 @@ defmodule AgentBoardWeb.BoardLive do
          true <- request_text == intake.text,
          task when not is_nil(task) <- Enum.at(intake.tasks, position),
          {:ok, _created} <-
-           Board.create_task(repo, task.title, intake_body(task), GitHub.client()) do
+           Board.create_task(repo, task.title, intake_body(task), GitHub.client(),
+             work_type: task.kind,
+             size: task.size
+           ) do
       {:noreply, put_flash(socket, :info, "Task created: #{task.title}")}
     else
       _ -> {:noreply, put_flash(socket, :error, "Could not create the task")}
@@ -2060,7 +2063,9 @@ defmodule AgentBoardWeb.BoardLive do
       %{
         title: task.title,
         body: intake_body(task) <> "\n\n@sallaumen-agent",
-        key: Board.request_key(repo, "split", [text, task.title])
+        key: Board.request_key(repo, "split", [text, task.title]),
+        work_type: task.kind,
+        size: task.size
       }
     end)
   end

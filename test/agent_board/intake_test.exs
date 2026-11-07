@@ -57,6 +57,42 @@ defmodule AgentBoard.IntakeTest do
     assert task.acceptance == ["p95 < 200ms"]
   end
 
+  test "propose keeps the split's kind of work and size" do
+    tasks = """
+    {"tasks":[
+      {"title":"tela","body":"refaz a tela","kind":"ui","acceptance":["a tela abre"],"depends_on":[],"size":"S"},
+      {"title":"medir","body":"mede","kind":"research","acceptance":["p95"],"depends_on":[],"size":"L"}
+    ]}
+    """
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(tasks)) end)
+
+    assert {:ok, [ui, research]} = Intake.propose(%{"goal" => "x"})
+    assert {ui.kind, ui.size} == {"ui", "S"}
+    assert {research.kind, research.size} == {"research", "L"}
+  end
+
+  test "a kind outside the board's list is a malformed split, not a guess" do
+    tasks = """
+    {"tasks":[
+      {"title":"tela","body":"refaz","kind":"feature","acceptance":["abre"],"depends_on":[],"size":"S"}
+    ]}
+    """
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(tasks)) end)
+
+    assert {:error, :malformed_output} = Intake.propose(%{"goal" => "x"})
+  end
+
+  test "the split's schema offers exactly the kinds and sizes a task stores" do
+    {:ok, spec} = AgentBoard.AI.Registry.fetch(:propose_tasks)
+    item = spec.json_schema["properties"]["tasks"]["items"]["properties"]
+
+    assert item["kind"]["enum"] == AgentBoard.Board.Task.work_types()
+    assert item["size"]["enum"] == AgentBoard.Board.Task.sizes()
+    assert AgentBoard.Board.Task.work_types() == ~w(ui backend docs bug research infra)
+  end
+
   test "run chains refine and split" do
     tasks = """
     {"tasks":[

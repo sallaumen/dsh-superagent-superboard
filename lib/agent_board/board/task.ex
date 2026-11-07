@@ -8,6 +8,18 @@ defmodule AgentBoard.Board.Task do
 
   @states ~w(queued running retrying question ready blocked done closed stopped archived)
 
+  # The split's classification (the `:propose_tasks` call): where the work
+  # lands and how big it is. The registry's schema reads these lists, so
+  # the model and the column cannot disagree.
+  @work_types ~w(ui backend docs bug research infra)
+  @sizes ~w(S M L)
+
+  @doc "The kinds of work a split task can be."
+  def work_types, do: @work_types
+
+  @doc "The sizes a split task can be: S, M, L."
+  def sizes, do: @sizes
+
   schema "tasks" do
     field :kind, :string, default: "issue"
     field :number, :integer
@@ -21,6 +33,8 @@ defmodule AgentBoard.Board.Task do
     field :started_at, :utc_datetime
     field :state_changed_at, :utc_datetime
     field :request_key, :string
+    field :work_type, :string
+    field :size, :string
 
     belongs_to :repository, AgentBoard.Board.Repository
     belongs_to :origin_task, AgentBoard.Board.Task
@@ -46,10 +60,14 @@ defmodule AgentBoard.Board.Task do
       :started_at,
       :state_changed_at,
       :origin_task_id,
-      :request_key
+      :request_key,
+      :work_type,
+      :size
     ])
     |> validate_required([:title, :repository_id])
     |> validate_inclusion(:state, @states)
+    |> validate_inclusion(:work_type, @work_types)
+    |> validate_inclusion(:size, @sizes)
     |> unique_constraint([:repository_id, :kind, :number])
     |> unique_constraint([:repository_id, :request_key])
   end

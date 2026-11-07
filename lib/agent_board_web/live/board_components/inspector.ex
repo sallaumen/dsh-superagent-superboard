@@ -5,6 +5,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
   import AgentBoardWeb.BoardComponents.Markup, only: [markup: 1]
   import AgentBoardWeb.BoardComponents.StatusMark, only: [status_mark: 1]
+  import AgentBoardWeb.BoardComponents.WorkTag, only: [work_tag: 1]
 
   alias AgentBoard.Time
   alias AgentBoardWeb.BoardComponents.AgentAction
@@ -64,6 +65,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <span :if={@task.started_at} class="ab-meta">
             começou às {Time.local_time(@task.started_at, @tz_offset)}
           </span>
+          <.work_tag work_type={@task.work_type} size={@task.size} />
           <span :if={@pr} class="ab-meta">PR #{@pr.number}</span>
           <span :if={@calls != []} class="ab-meta">{length(@calls)} chamadas</span>
           <a

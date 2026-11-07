@@ -2,6 +2,8 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
   @moduledoc "The board's intake region. Events are handled by BoardLive."
   use AgentBoardWeb, :live_component
 
+  import AgentBoardWeb.BoardComponents.WorkTag, only: [work_tag: 1]
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -95,8 +97,11 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
           >
             <p class="text-[13px]">
               {task.title}
-              <span class="ml-2 text-[10px] uppercase text-base-content/75">{task.kind}</span>
-              <span class="ml-2 text-[10px] uppercase text-base-content/75">{task.size}</span>
+              <.work_tag
+                work_type={task.kind}
+                size={task.size}
+                class="ml-2 text-[10px] uppercase text-base-content/75"
+              />
             </p>
             <p class="mt-1 text-[11px] text-base-content/75">{task.body}</p>
             <button
