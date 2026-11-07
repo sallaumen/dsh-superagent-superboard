@@ -63,6 +63,11 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           </div>
         </details>
 
+        <.live_component
+          module={AgentBoardWeb.BoardComponents.DailySummarySettings}
+          id="settings-daily-summary-section"
+        />
+
         <details id="settings-repositories-section" class="settings-fold">
           <summary>
             <span class="settings-fold-label">Repositórios <small>Acompanhar outro repositório</small></span>

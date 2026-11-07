@@ -26,8 +26,11 @@ differ. Change a general rule upstream, not here.
 | `AgentBoard.Metrics` | the throughput arithmetic, pure; `Metrics.Observations` reads what it counts |
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.ExecutorUsage` | what the executor spent on a task, read from the harness transcripts; tokens measured, cost estimated |
+| `AgentBoard.Executors` | who a task is for (`dsh`, `claude`, `codex`): the label and the issue body each gets; pure |
 | `AgentBoard.Attribution` | which task a session or a PR worked for: exact, `pr-link`, branch, repository or outside; pure |
 | `AgentBoard.Usage.ClaudeCode` | what Claude Code spent, read from its transcripts (`~/.claude/projects`); one count per `message.id` across files, numbers and named metadata only (`Usage.Fields`) |
+| `AgentBoard.Usage.Codex` | what Codex spent: the `threads` table by named columns (never `title`, `preview`, `name`, `first_user_message`) and the rollouts' cumulative totals as daily differences, plus the last `rate_limits`; zstd rollouts through `Usage.Lines` |
+| `AgentBoard.DailySummary` | the summary of the day on a wall clock: the tick, the settings, one row per local day; `DailySummary.Facts` collects what it says |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
 | `AgentBoard.Settings` | board-wide settings, one row per key (the voice picks) |
 | `AgentBoard.Voice` | the spoken summary and the voice settings (language, volume, attention) |
@@ -404,7 +407,8 @@ Agora and the detail):
   makes the cost a minimum, shown `≥`; a model without a price makes it
   unknown, shown `—`. Never zero for "no price".
 - It is read only while a task is open in the inspector, and a reading is
-  reused while no transcript changed (same files, sizes, mtimes). Without
+  reused while no transcript changed (same files, sizes, mtimes). The one
+  other reader is the summary of the day, once a day (`window/2`, below). Without
   `zstd` on the PATH (the launchd service's PATH includes Homebrew) the
   transcripts are `:unavailable`, not empty. OTP 27 has no native zstd.
 - The encoded folder name was observed in `~/.dsh/sessions`, not documented
@@ -413,6 +417,33 @@ Agora and the detail):
   232,749 input, 238,848 output tokens in its worker).
 - The tests: `executor_usage_test.exs` (parsing, dedupe, folder name, cost,
   no `zstd`, reuse) and `inspector_test.exs` (rendered states).
+
+## Executors
+
+A task the board creates can be for the DeepSeek runner (`dsh`), Claude
+Code (`claude`) or Codex (`codex`): `tasks.executor`, nil for an issue the
+sync found or a task created before the choice existed.
+
+- **The runner is dispatched by the mention, and only the runner.** Its
+  issue ends with `@sallaumen-agent`; anyone else's mentions nobody, and a
+  mention inside the text loses its `@` (`Executors.issue_body/2`). Every
+  board issue for an executor carries the label `executor:<name>`, which
+  GitHub creates on first use.
+- **Choosing Claude Code or Codex records the choice; nothing starts them**
+  (decisions D1 to D5 are open, `docs/research/alfred.md`).
+- **Why the runner leaves those issues alone, and its limit.** The board
+  opens issues as `sallaumen`, a listed sender. An issue without the
+  mention is a `listedUnaddressed` message: the runner admits it as an
+  *inferred* candidate and runs its evaluation, and with `eval.mode`
+  `observe` (read 2026-11-07) an inferred acceptance only becomes
+  `observed`, never a ticket (`dsh: src/policy.ts`, `assessmentOutcome`).
+  Observed live on 2026-11-07 with `sallaumen/arena-rogue#69` (decision
+  `ignore`, strength `inferred`, no ticket) and before on `#14`. With
+  `eval.mode` `auto`, an issue matching the copy or visual rule would become
+  an inferred ticket; the unconditional guard is the runner's setting
+  `listedUnaddressed: ignore` for issues, which belongs to the owner.
+- The tests: `executors_test.exs` and `create_request_test.exs` (the body
+  and the label GitHub receives, the stored executor, a repeat).
 
 ## Attribution
 
@@ -440,6 +471,67 @@ issue URL of the same repository, in the order named).
 - The tests: `attribution_test.exs` (each rule and keyword) and
   `sync_repo_test.exs` (the columns through the sync, the fork, a session
   attributed by branch).
+
+## Summary of the day (Resumo do dia)
+
+The Alfred's daily report on a wall clock (`docs/research/alfred.md`, F1.6).
+`Oban.Cron` only inserts a job when its expression matches the minute it
+evaluates (`deps/oban/lib/oban/cron.ex`), so an 08:00 missed while the Mac
+slept is never recovered; this routine asks a question instead.
+
+- **The tick** (`AgentBoard.DailySummary`, every `:daily_summary_interval`,
+  60 s; an hour in tests) asks: is it past the configured hour on the
+  owner's clock, and does today have no row? Only then it generates. The
+  owner's clock is the Mac's zone (`:calendar.universal_time_to_local_time/1`;
+  the launchd service reads `/etc/localtime`), never the UTC date.
+- **Once per local day.** `daily_summaries` has a unique `local_date`; the
+  insert is `on_conflict: :nothing`, so two ticks, a restart, a tick that
+  raced another or a second board on the same database find the row and do
+  nothing. A Mac asleep at 08:00 gets the summary on the first tick after it
+  wakes, once.
+- **The window** is everything since the previous summary's end (a day
+  missed while asleep is not lost), the last 24 hours for the first one, at
+  most seven days.
+- **The content is stored, not recomputed** (`DailySummary.Facts`, JSON in
+  the row): the PRs merged in the window (GitHub's `merged_at`), what needs
+  the owner at generation time (blocked; questions and reviews whose PR is
+  still open; stopped and archived tasks left out), the `sync_error` events
+  of the window, the automatic retries the board asked for (`agent_retries`:
+  sent, tasks, not accepted) and **each executor's spending apart, in its
+  own currency, never summed**: DeepSeek from the harness transcripts
+  (`ExecutorUsage.window/2`: every session changed since the window start,
+  the orchestrator's included, counting the messages whose `time` falls in
+  the window; US$, estimated, `≥` when a price or a file was missing), and
+  Claude Code and Codex `"unknown"` until the usage ledger (F1.3) is wired.
+  A source the board cannot read is `desconhecido`, never zero.
+- **On the board** it is a discreet block under the digest, today's only,
+  that arrives with `{:daily_summary, :generated, id}` on the
+  `"daily_summary"` topic and leaves on every board when one dismisses it
+  (`dismissed_at`). No motion: data that arrives is not animated.
+- **In the voice** it is said once, by template, from the stored facts
+  (`Voice.Phrases.daily_summary/2`, sentences in
+  `Voice.Phrases.DailySummary`): no model, no cost beyond the voice engine.
+  Showing it spends nothing: the browser asks (`daily_summary_claim`, the
+  `DailySummaryVoice` hook) only from a tab the owner has clicked or typed
+  in, at once or on the first interaction, and never on the click that
+  dismisses it. The server claims `spoken_at` with a conditional update;
+  the first ask speaks, every other tab, reconnect or later visit stays
+  quiet. This is why the claim is not made on mount:
+  `com.localwebmonitorex` takes WebKit previews of every dev server on
+  4000-4500, the live board included, and would spend it. Its own switch
+  governs the voice, not the narration toggle; for the engine choice it is
+  narration (the free browser voice unless the engine is `elevenlabs`).
+- **Settings** live in Configurações → Resumo do dia: `daily_summary_enabled`
+  (`"false"` switches it off) and `daily_summary_at` (`HH:MM`, default
+  08:00); a malformed hour is refused in words and saves nothing.
+- The tests: `daily_summary_test.exs` (the wall clock with a controlled
+  clock: asleep at 08:00, two ticks, a real restart of the ticker,
+  concurrent ticks, the next day, the window, the zone, the settings, the
+  content), `daily_summary_phrases_test.exs` (every sentence, both
+  languages), `executor_usage_test.exs` (the window) and
+  `daily_summary_live_test.exs` (two boards, silent until a tab asks,
+  spoken once, dismissed everywhere, the stored facts, the settings fold)
+  and `test/assets/daily_summary_voice_test.mjs` (who may ask).
 
 ## The request (composer)
 

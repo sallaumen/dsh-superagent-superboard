@@ -442,6 +442,12 @@ defmodule AgentBoard.Voice.Phrases do
     end
   end
 
+  @doc """
+  The summary of the day, from the facts stored in its row, by template (no
+  model). The sentences live in `AgentBoard.Voice.Phrases.DailySummary`.
+  """
+  defdelegate daily_summary(lang, content), to: AgentBoard.Voice.Phrases.DailySummary, as: :say
+
   @doc "The summary sentence for the counts (already spoken with `count/3`)."
   def summary(lang, greeting, []), do: "#{greeting}. #{calm(lang)}"
   def summary(lang, greeting, parts), do: "#{greeting}. #{on_board(lang)}: #{join(lang, parts)}."
