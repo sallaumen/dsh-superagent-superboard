@@ -220,6 +220,16 @@ defmodule AgentBoard.Conversation.CommandsTest do
         checks_state: "success"
       })
 
+      with_tickets([
+        %{
+          "title" => "Rede",
+          "mandate" => %{"basis" => %{"scope" => %{"number" => 12}}},
+          "assignments" => [
+            %{"state" => "idle", "report" => %{"state" => "failed", "summary" => "DNS falhou"}}
+          ]
+        }
+      ])
+
       script(fn
         %{name: :voice_agent} -> agent_answer("look", %{"lookup" => "failures"})
         request -> explained(test_pid, "O PR 77 está vermelho no teste.").(request)
@@ -229,6 +239,7 @@ defmodule AgentBoard.Conversation.CommandsTest do
 
       assert_received {:explain, %{"facts" => facts}}
       assert [%{"number" => 77, "failed_checks" => "test"}] = facts["failing_checks"]
+      assert [%{"numbers" => [12], "summary" => "DNS falhou"}] = facts["failed_runs"]
     end
 
     test "runs read the runner's tickets: last report and what ended", %{repo: repo} do

@@ -233,6 +233,20 @@ defmodule AgentBoard.Conversation.Lookup do
             run: ticket_fact(Map.get(by_number, task.number), now)
           }
         end),
+      # An open run whose last report failed: the board retries a transient
+      # one by itself (AgentBoard.AutoRetry); the rest wait for a person.
+      failed_runs:
+        snapshot.tickets
+        |> Enum.filter(&(&1["report"] == "failed" and is_nil(&1["ended_at"])))
+        |> Enum.take(@sample)
+        |> Enum.map(fn ticket ->
+          %{
+            numbers: ticket["numbers"],
+            title: ticket["title"],
+            summary: cut(ticket["report_summary"], 300),
+            minutes_ago: minutes(ticket["report_at"], now)
+          }
+        end),
       runs_ended_without_merge:
         snapshot.tickets
         |> ended(now)

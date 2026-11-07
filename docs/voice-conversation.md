@@ -90,7 +90,7 @@ botões que mandam a frase na hora. Cada item diz como roda:
 | | "O que terminou hoje?" | execuções encerradas nas últimas 24 h e como terminaram |
 | Analisar uma tarefa | "Por que a 42 está bloqueada?" | o bloqueio ou a pergunta do workpad, o relato, o PR e o CI; abre a tarefa |
 | | "Como está a tarefa 42?" | estado, há quanto tempo, a execução, o PR, os últimos comentários |
-| Bugs e falhas | "O que está falhando?" | CI vermelho em PR aberto, tarefas bloqueadas, execuções que acabaram sem merge, falha de sync |
+| Bugs e falhas | "O que está falhando?" | CI vermelho em PR aberto, tarefas bloqueadas, execuções abertas cujo último relato falhou, execuções que acabaram sem merge, falha de sync |
 | | "Teve erro na voz?" | os erros recentes da própria voz |
 | Buscar | "Acha a tarefa sobre volume" | busca no título e na descrição das tarefas e nos títulos dos PRs, sem acento ("botao" acha "botão") |
 | Pedidos | "Cria uma tarefa no arena rogue para …" | refina, diz o título e pergunta "Posso criar?" |
