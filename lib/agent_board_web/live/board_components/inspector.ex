@@ -346,6 +346,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
   defp pr_ci(_pr, %{state: :pass}), do: "CI local ok"
   defp pr_ci(_pr, %{state: :fail}), do: "CI local falhou"
+  defp pr_ci(_pr, %{state: :stale}), do: "CI local ?"
   defp pr_ci(%{checks_state: "failure"}, _ci), do: "CI local ?"
   defp pr_ci(%{checks_state: "success"}, _ci), do: "CI ok"
   defp pr_ci(%{checks_state: "none"}, _ci), do: "sem CI"
@@ -360,6 +361,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
   defp pr_ci_title(_pr, %{state: :fail, detail: detail}),
     do: "CI local falhou: #{detail}"
+
+  defp pr_ci_title(_pr, %{state: :stale, detail: detail}), do: detail
 
   defp pr_ci_title(%{checks_state: "failure"}, _ci),
     do: "GitHub Actions falhou (billing/sem crédito); sem evidência de CI local."

@@ -109,5 +109,10 @@ left alone.
   15 minutes is flagged in Agora and Precisa de você
   (`AgentBoard.AgentSignal`; the board only looks, it never retries or
   stops the ticket).
+- **Workpad**: the one structured comment the agent keeps per issue
+  (`## Relatório do agente`, see [`prompts/communication.md`](prompts/communication.md))
+  is read by section: Pergunta and Bloqueio decide the task state, Validação
+  the local CI checked against the PR's head; the text heuristics remain the
+  fallback (`AgentBoard.Workpad`, [`../maintainer-contract.md`](../maintainer-contract.md#workpad)).
 
 None of that is on the agent's critical path.

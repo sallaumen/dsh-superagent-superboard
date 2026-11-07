@@ -58,6 +58,88 @@ defmodule AgentBoard.LocalCITest do
     assert status[24].detail == status[21].detail
   end
 
+  @head "44653e8abcdef0123456789abcdef0123456789a"
+
+  defp workpad(validation, prs \\ []) do
+    %{plan: nil, question: nil, blockage: nil, pull_requests: prs, validation: validation}
+  end
+
+  defp gate(detail, passed?, sha),
+    do: %{command: "mix precommit", passed?: passed?, sha: sha, detail: detail}
+
+  test "the workpad's Validação beats the reports and names the sha it ran on" do
+    report = {"PR #21: mix precommit failed (2 tests, 1 failure).", ~U[2026-11-06 12:00:00Z]}
+    ticket = ticket([report]) |> Map.put("numbers", [1])
+    gate = gate("mix precommit: passou (326 testes) em 44653e8", true, "44653e8")
+
+    status =
+      LocalCI.by_pr(@repo, [ticket], workpads: %{1 => workpad(gate)}, heads: %{21 => @head})
+
+    assert %{21 => %{state: :pass, scope: :workpad, sha: "44653e8", head_sha: @head} = ci} =
+             status
+
+    assert ci.detail == "mix precommit: passou (326 testes) em 44653e8"
+    refute ci.remote_blocked
+  end
+
+  test "a gate on another commit than the PR head is stale, never a pass" do
+    ticket = ticket([{"PR #21 opened.", ~U[2026-11-06 12:00:00Z]}]) |> Map.put("numbers", [1])
+    gate = gate("mix precommit: passou (326 testes) em 44653e8", true, "44653e8")
+    heads = %{21 => "9f1c2ab0000000000000000000000000000000000"}
+
+    assert %{21 => %{state: :stale, detail: detail}} =
+             LocalCI.by_pr(@repo, [ticket], workpads: %{1 => workpad(gate)}, heads: heads)
+
+    assert detail ==
+             "mix precommit: passou (326 testes) em 44653e8, mas o head do PR é 9f1c2ab: o gate não cobre o commit atual."
+  end
+
+  test "an unknown head cannot contradict the gate, and a failed gate fails" do
+    ticket = ticket([{"PR #21 opened.", ~U[2026-11-06 12:00:00Z]}]) |> Map.put("numbers", [1])
+    pass = gate("mix precommit: passou em 44653e8", true, "44653e8")
+    fail = gate("mix precommit: falhou (2 falhas) em 44653e8", false, "44653e8")
+
+    assert %{21 => %{state: :pass, head_sha: nil}} =
+             LocalCI.by_pr(@repo, [ticket], workpads: %{1 => workpad(pass)})
+
+    assert %{21 => %{state: :fail}} =
+             LocalCI.by_pr(@repo, [ticket],
+               workpads: %{1 => workpad(fail)},
+               heads: %{21 => @head}
+             )
+  end
+
+  test "the gate covers the ticket's own PR and the PRs the workpad names" do
+    ticket = ticket([]) |> Map.merge(%{"numbers" => [1], "own_threads" => [21]})
+    gate = gate("mix precommit: passou em 44653e8", true, "44653e8")
+
+    status = LocalCI.by_pr(@repo, [ticket], workpads: %{1 => workpad(gate, [24])})
+
+    assert Map.keys(status) |> Enum.sort() == [21, 24]
+  end
+
+  test "a workpad whose Validação names no result leaves the reports in charge" do
+    pass = {"PR #21: mix precommit green (89 tests, 0 failures).", ~U[2026-11-06 11:00:00Z]}
+    ticket = ticket([pass]) |> Map.put("numbers", [1])
+    pending = gate("rodando ainda", nil, nil)
+
+    assert %{21 => %{state: :pass, scope: :pr}} =
+             LocalCI.by_pr(@repo, [ticket], workpads: %{1 => workpad(pending)})
+
+    assert %{21 => %{state: :pass, scope: :pr}} =
+             LocalCI.by_pr(@repo, [ticket], workpads: %{1 => workpad(nil)})
+  end
+
+  test "a workpad whose issue has no ticket still gates the PRs it names" do
+    gate = gate("mix precommit: passou em 44653e8", true, "44653e8")
+
+    assert %{30 => %{state: :pass, scope: :workpad}} =
+             LocalCI.by_pr(@repo, [],
+               workpads: %{7 => workpad(gate, [30])},
+               heads: %{30 => @head}
+             )
+  end
+
   test "another repository and a report without precommit stay unknown" do
     other =
       ticket([{"mix precommit passed (1 test, 0 failures).", ~U[2026-11-06 12:00:00Z]}], [

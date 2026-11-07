@@ -418,7 +418,12 @@ defmodule AgentBoardWeb.BoardLive do
             agent: agent
           )
 
-        local_ci = LocalCI.by_pr(repo, agent.tickets)
+        local_ci =
+          LocalCI.by_pr(repo, agent.tickets,
+            workpads: Board.agent_workpads(repo.id),
+            heads: Board.pull_heads(repo.id)
+          )
+
         work = work_for(repo, board, agent, freshness, socket, local_ci)
         flow = flow_for(repo, agent, socket.assigns.tz_offset)
 

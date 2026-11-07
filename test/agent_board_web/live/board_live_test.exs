@@ -688,6 +688,59 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#sec-now #task-#{task.id}")
   end
 
+  test "a question with a workpad quotes its Pergunta, without a question mark", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "workpad")
+    Board.log_event(repo.id, "sync", "fixture/workpad", %{"errors" => 0})
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 31,
+        title: "Boss fight",
+        state: "question"
+      })
+      |> Repo.insert!()
+
+    Board.upsert_comment(
+      task,
+      %{
+        "id" => 1,
+        "user" => %{"login" => "sallaumen-agent"},
+        "body" => """
+        This is by an automated agent, not a human.
+
+        ## Relatório do agente
+
+        ### Plano
+        Trocar a arena. Perguntar? Não: isto é o plano.
+
+        ### Validação
+
+        ### Pergunta
+        Devo manter o boss na arena ou tirar
+
+        ### Bloqueio
+        """
+      },
+      "sallaumen-agent"
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/workpad")
+
+    assert has_element?(view, "#sec-needs #task-#{task.id}", "O agente perguntou:")
+
+    assert has_element?(
+             view,
+             "#sec-needs #task-#{task.id}",
+             "Devo manter o boss na arena ou tirar"
+           )
+
+    refute has_element?(view, "#sec-needs #task-#{task.id}", "automated agent")
+    refute has_element?(view, "#sec-needs #task-#{task.id}", "Perguntar?")
+  end
+
   test "a review names its PR, links it and keeps the CI honest", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "review")
     Board.log_event(repo.id, "sync", "fixture/review", %{"errors" => 0})

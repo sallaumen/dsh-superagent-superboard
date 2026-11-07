@@ -109,6 +109,7 @@ defmodule AgentBoard.SyncRepoTest do
 
     stored = Repo.one(from p in AgentBoard.Board.PullRequest, where: p.number == 9)
     assert stored.review_state == "approved"
+    assert stored.head_sha == "abc"
   end
 
   test "all/1 syncs every active repo with the injected client", %{repo: repo} do
