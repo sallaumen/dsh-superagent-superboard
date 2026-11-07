@@ -128,9 +128,14 @@ defmodule AgentBoard.GitHub do
   end
 
   @doc "Open an issue."
-  def create_issue(client, owner, repo, title, body) do
+  def create_issue(client, owner, repo, title, body, labels \\ []) do
+    json =
+      if labels == [],
+        do: %{title: title, body: body},
+        else: %{title: title, body: body, labels: labels}
+
     client
-    |> Req.post!(url: "/repos/#{owner}/#{repo}/issues", json: %{title: title, body: body})
+    |> Req.post!(url: "/repos/#{owner}/#{repo}/issues", json: json)
     |> body!()
   end
 

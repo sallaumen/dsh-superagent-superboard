@@ -6,7 +6,7 @@ defmodule AgentBoard.Board do
   import Ecto.Query, warn: false
 
   alias AgentBoard.Board.{Comment, Event, PullRequest, Repository, Review, Task}
-  alias AgentBoard.{Repo, Sync, Workpad}
+  alias AgentBoard.{Executors, Repo, Sync, Workpad}
   alias AgentBoard.Sync.Freshness
 
   @merged_page_size 50
@@ -249,10 +249,29 @@ defmodule AgentBoard.Board do
     end)
   end
 
-  @doc "Create a task by opening an issue that mentions the agent."
+  @doc """
+  Create a task by opening its issue.
+
+  With `executor:` the board records who the task is for, labels the issue
+  `executor:<name>` and writes the body for that executor: the DeepSeek
+  runner's issue mentions the bot, anyone else's mentions nobody
+  (`AgentBoard.Executors.issue_body/2`). Without it the body is opened as
+  given and no executor is recorded.
+  """
   def create_task(repository, title, body, client, opts \\ []) do
+    executor = Keyword.get(opts, :executor)
+    body = if executor, do: Executors.issue_body(body, executor), else: body
+    labels = if executor, do: [Executors.label(executor)], else: []
+
     with issue <-
-           AgentBoard.GitHub.create_issue(client, repository.owner, repository.name, title, body) do
+           AgentBoard.GitHub.create_issue(
+             client,
+             repository.owner,
+             repository.name,
+             title,
+             body,
+             labels
+           ) do
       %Task{}
       |> Task.changeset(%{
         repository_id: repository.id,
@@ -267,7 +286,8 @@ defmodule AgentBoard.Board do
         request_key: Keyword.get(opts, :request_key),
         origin_task_id: Keyword.get(opts, :origin_task_id),
         work_type: Keyword.get(opts, :work_type),
-        size: Keyword.get(opts, :size)
+        size: Keyword.get(opts, :size),
+        executor: executor
       })
       |> Repo.insert(on_conflict: :nothing)
       |> tap(fn _ -> broadcast(repository.id) end)
@@ -311,6 +331,15 @@ defmodule AgentBoard.Board do
   @spec create_request(Repository.t(), map(), term()) ::
           {:ok, Task.t(), :created | :existing} | {:error, term()}
   def create_request(repository, %{title: title, body: body, key: key} = request, client) do
+    # The body the issue will carry, so a repeat matches the stored task.
+    body =
+      case Map.get(request, :executor) do
+        nil -> body
+        executor -> Executors.issue_body(body, executor)
+      end
+
+    request = %{request | body: body}
+
     case existing_request(repository, key, title, body) do
       %Task{} = task -> {:ok, task, :existing}
       nil -> create_new_request(repository, request, client)
@@ -323,7 +352,8 @@ defmodule AgentBoard.Board do
         request_key: key,
         origin_task_id: Map.get(request, :origin_task_id),
         work_type: Map.get(request, :work_type),
-        size: Map.get(request, :size)
+        size: Map.get(request, :size),
+        executor: Map.get(request, :executor)
       )
 
     case created do
