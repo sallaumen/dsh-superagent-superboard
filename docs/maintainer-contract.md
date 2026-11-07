@@ -50,6 +50,33 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   into the sandboxed database mid-suite.
 - Never poll the database from the browser; push.
 
+## Silence (Sem sinal)
+
+- A running ticket's **last signal** is derived on every render by
+  `AgentBoard.AgentSignal`: the newest of the runner's own timestamps
+  (`report.at`, `idleAt`, `startedAt`) and the worktree's last change
+  (`AgentWorktree.last_activity_at/1`: the newest uncommitted file, else the
+  last commit; ignored files such as `_build` are not evidence). It is
+  written nowhere: not in `tasks`, never in the runner's sqlite.
+- Past `:stall_after_ms` (default 15 min) the silence is shown: the Agora
+  card says "sem sinal há N min" and its glyph stops pulsing, and the task
+  enters Precisa de você as `:stalled`, after blocks and before reviews, with
+  the moment it crossed the threshold as its age and as what "novo" means.
+  The item's DOM id is `silence-<id>`: the task's card is still in Agora.
+- The voice says it once, when the item first appears in the needs list
+  (`Announcer`, the `:needs` option), and stays quiet while it remains.
+- The item says what the board saw last (a report, a worktree change or the
+  start) and when; it never says the agent died. A long model turn with no
+  file change is a silence too (ADR-0003, "não verificado (a)").
+- Its only action opens the task. The board does not retry or stop the
+  ticket in the runner: the orchestrator client stays read-only (ADR-0003
+  reserves that write for its own decision) and the runner refuses a retry
+  while a ticket runs (`canRetry` in `dsh: src/core/stage.ts`).
+- The tests: `agent_signal_test.exs` and `agent_worktree_test.exs` (the
+  signal), `work_test.exs` (the lane, its text and its order),
+  `announcer_test.exs` (spoken once) and `board_stall_test.exs` (rendered in
+  both lanes).
+
 ## The voice
 
 - The server builds the summary (`AgentBoard.Voice` — the model writes it

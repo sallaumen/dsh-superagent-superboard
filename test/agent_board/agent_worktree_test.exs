@@ -42,8 +42,36 @@ defmodule AgentBoard.AgentWorktreeTest do
     assert AgentWorktree.step(%{}) == nil
   end
 
-  defp git!(dir, args) do
-    {output, 0} = System.cmd("git", ["-C", dir | args], stderr_to_stdout: true)
+  test "the newest uncommitted file is the last activity", %{dir: dir} do
+    at = ~U[2026-11-06 12:00:00Z]
+    File.write!(Path.join(dir, "hud.ex"), "defmodule Hud do\nend\n")
+    File.touch!(Path.join(dir, "hud.ex"), DateTime.to_unix(at))
+
+    assert AgentWorktree.last_activity_at(%{"execution" => %{"directory" => dir}}) == at
+  end
+
+  test "with a clean tree the last commit is the last activity", %{dir: dir} do
+    File.write!(Path.join(dir, "arena.ex"), "defmodule Arena do\n  def hp, do: 1\nend\n")
+    git!(dir, ["add", "arena.ex"])
+
+    git!(dir, ["commit", "-qm", "More arena"],
+      env: [{"GIT_COMMITTER_DATE", "2026-11-06T13:30:00Z"}]
+    )
+
+    assert AgentWorktree.last_activity_at(%{"execution" => %{"directory" => dir}}) ==
+             ~U[2026-11-06 13:30:00Z]
+  end
+
+  test "no worktree is no activity" do
+    assert AgentWorktree.last_activity_at(%{"execution" => %{"directory" => "/does/not/exist"}}) ==
+             nil
+
+    assert AgentWorktree.last_activity_at(%{}) == nil
+  end
+
+  defp git!(dir, args, opts \\ []) do
+    env = Keyword.get(opts, :env, [])
+    {output, 0} = System.cmd("git", ["-C", dir | args], stderr_to_stdout: true, env: env)
     output
   end
 end

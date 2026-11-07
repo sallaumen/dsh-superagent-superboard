@@ -105,5 +105,9 @@ left alone.
 - **Intake**: a rough request refined into tasks before it becomes an issue
   (see [`../ai-layer.md`](../ai-layer.md)).
 - **Version**: whether this checkout is behind `main`, and a manual update.
+- **Silence**: a running ticket with no report and no worktree change for
+  15 minutes is flagged in Agora and Precisa de você
+  (`AgentBoard.AgentSignal`; the board only looks, it never retries or
+  stops the ticket).
 
 None of that is on the agent's critical path.

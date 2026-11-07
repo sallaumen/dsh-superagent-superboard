@@ -30,6 +30,42 @@ defmodule AgentBoard.AgentWorktree do
 
   def step(_ticket), do: nil
 
+  @doc """
+  When the worktree last changed, or nil: the newest uncommitted file or,
+  with a clean tree, the last commit. Ignored files (`_build`, `deps`) are
+  not evidence; a test run is not the agent's own progress.
+  """
+  @spec last_activity_at(map() | nil) :: DateTime.t() | nil
+  def last_activity_at(%{"execution" => %{"directory" => dir}}) when is_binary(dir) do
+    dir = Path.expand(dir)
+
+    if File.dir?(dir) do
+      case changed_files(dir) do
+        [file | _rest] -> changed_at(dir, file) || last_commit_at(dir)
+        [] -> last_commit_at(dir)
+      end
+    end
+  end
+
+  def last_activity_at(_ticket), do: nil
+
+  # A deleted file is a change without a time; the commit answers then.
+  defp changed_at(dir, file) do
+    case mtime(dir, file) do
+      0 -> nil
+      posix -> DateTime.from_unix!(posix)
+    end
+  end
+
+  defp last_commit_at(dir) do
+    with {:ok, output} <- git(dir, ["log", "-1", "--format=%ct"]),
+         {posix, ""} <- Integer.parse(output) do
+      DateTime.from_unix!(posix)
+    else
+      _ -> nil
+    end
+  end
+
   defp changed_files(dir) do
     case git(dir, ["status", "--porcelain=v1", "--untracked-files=all"]) do
       {:ok, ""} ->

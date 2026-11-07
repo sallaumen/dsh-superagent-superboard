@@ -5,6 +5,7 @@ defmodule AgentBoardWeb.BoardLive do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{
+    AgentSignal,
     AgentState,
     AgentWorktree,
     AI,
@@ -181,17 +182,19 @@ defmodule AgentBoardWeb.BoardLive do
     tz_offset = socket.assigns.tz_offset
     last_visit = socket.assigns.last_visit
     frozen_at = if freshness.frozen?, do: freshness.at, else: nil
-    tickets = tickets_by_number(agent.tickets)
+    run = run_context(agent, board, now, frozen_at)
 
     %{
-      running: Enum.map(board.running, &running_card(&1, tickets, now, frozen_at)),
+      running: Enum.map(board.running, &running_card(&1, run)),
       needs:
         Work.needs(repo, board,
           now: now,
           last_visit: last_visit,
           tz_offset: tz_offset,
-          tickets_by_number: tickets,
-          local_ci: local_ci
+          tickets_by_number: run.tickets,
+          local_ci: local_ci,
+          silences: run.silences,
+          stall_after: run.stall_after
         ),
       queue:
         Work.queue(repo, board,
@@ -216,16 +219,32 @@ defmodule AgentBoardWeb.BoardLive do
     }
   end
 
-  defp running_card(task, tickets, now, frozen_at) do
-    ticket = Map.get(tickets, task.number)
-    started_at = task.started_at
+  # The silences are read once per render, with the real clock: the ticket
+  # database is local and live even when GitHub is frozen.
+  defp run_context(agent, board, now, frozen_at) do
+    tickets = tickets_by_number(agent.tickets)
+
+    %{
+      tickets: tickets,
+      silences: AgentSignal.silences(board.running, tickets, now),
+      stall_after: AgentSignal.stall_after(),
+      now: now,
+      frozen_at: frozen_at
+    }
+  end
+
+  defp running_card(task, run) do
+    ticket = Map.get(run.tickets, task.number)
+    silence = Map.get(run.silences, task.number)
 
     %{
       id: task.id,
       number: task.number,
       title: task.title,
       step: AgentWorktree.step(ticket),
-      elapsed: started_at && Time.age_seconds(started_at, frozen_at || now),
+      elapsed: task.started_at && Time.age_seconds(task.started_at, run.frozen_at || run.now),
+      silence: silence,
+      stalled: AgentSignal.stalled?(silence, run.stall_after),
       agent: nil,
       phases: []
     }
@@ -530,13 +549,14 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_info(:board_updated, socket) do
     old_board = socket.assigns.board
     old_sync = socket.assigns.sync_event
+    old_needs = socket.assigns.work.needs
 
     socket =
       socket
       |> load(socket.assigns.repo)
       |> refresh_conversation()
       |> load_inspector()
-      |> announce(old_board, old_sync)
+      |> announce(old_board, old_sync, old_needs)
 
     socket =
       if old_board != socket.assigns.board or old_sync != socket.assigns.sync_event do
@@ -1623,7 +1643,7 @@ defmodule AgentBoardWeb.BoardLive do
   # broadcasts only on new hashes, and the same utterance is not repeated
   # within a short window. One update is one utterance: a second push would
   # cut the first one off mid-sentence.
-  defp announce(%{assigns: %{voice: voice}} = socket, old_board, old_sync) do
+  defp announce(%{assigns: %{voice: voice}} = socket, old_board, old_sync, old_needs) do
     texts =
       Announcer.board_changes(
         old_board,
@@ -1633,7 +1653,8 @@ defmodule AgentBoardWeb.BoardLive do
         language: voice.language,
         turn: socket.assigns.voice_turn,
         attention: voice.attention,
-        events: voice.speak_events
+        events: voice.speak_events,
+        needs: {old_needs, socket.assigns.work.needs}
       )
 
     case Announcer.utterance(texts) do
