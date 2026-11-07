@@ -47,6 +47,16 @@ defmodule AgentBoard.AI.Engines.Rehearsal do
     },
     answer_board_question: %{
       "answer" => "Modo de ensaio: nenhuma resposta foi gerada por um modelo."
+    },
+    voice_agent: %{
+      "reply" => "Modo de ensaio: esta resposta não veio de um modelo.",
+      "action" => "reply",
+      "request" => "",
+      "task_number" => 0,
+      "repository" => ""
+    },
+    summarize_conversation: %{
+      "summary" => "Modo de ensaio: resumo de fixture, sem modelo."
     }
   }
 

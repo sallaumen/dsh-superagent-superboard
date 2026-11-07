@@ -49,7 +49,9 @@ defmodule AgentBoardWeb.BoardLive do
     BoardNavigation,
     VoiceAnswer,
     VoiceCommands,
-    VoiceMutations
+    VoiceConversation,
+    VoiceMutations,
+    VoiceSpeech
   }
 
   alias AgentBoardWeb.BoardComponents.VoicePresence
@@ -131,7 +133,7 @@ defmodule AgentBoardWeb.BoardLive do
         slug -> Board.repository_by_slug(slug) || default_repo(repos)
       end
 
-    {:ok, load(socket, repo)}
+    {:ok, socket |> VoiceConversation.mount() |> load(repo)}
   end
 
   defp empty do
@@ -526,6 +528,9 @@ defmodule AgentBoardWeb.BoardLive do
       {:noreply, socket}
     end
   end
+
+  def handle_info({:voice_turn_timeout, ref}, socket),
+    do: {:noreply, VoiceConversation.timeout(socket, ref)}
 
   def handle_info({:composer_timeout, ref}, socket) do
     case socket.assigns.composer_job do
@@ -1197,6 +1202,20 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  # A finished utterance from the hands-free microphone (or the typed chat
+  # line): the conversation answers it. In the composer, dictation still
+  # fills the request instead.
+  @impl true
+  def handle_event("voice_turn", %{"text" => text}, socket) when is_binary(text) do
+    if socket.assigns.panel == "composer",
+      do: handle_event("voice_transcript", %{"text" => text}, socket),
+      else: {:noreply, VoiceConversation.start(socket, text)}
+  end
+
+  @impl true
+  def handle_event("voice_forget", _params, socket),
+    do: {:noreply, VoiceConversation.forget(socket)}
+
   @impl true
   def handle_event("voice_transcript", %{"text" => text}, socket) when is_binary(text) do
     text = text |> String.trim() |> String.slice(0, 2000)
@@ -1462,6 +1481,11 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_async({:voice_turn, ref}, outcome, socket),
+    do: {:noreply, VoiceConversation.finish(socket, ref, outcome)}
+
+  def handle_async({:voice_compact, _ref}, _outcome, socket), do: {:noreply, socket}
+
   def handle_async({:composer, ref}, outcome, socket) do
     case socket.assigns.composer_job do
       %{ref: ^ref} = job -> {:noreply, finish_composer_job(socket, job, outcome)}
@@ -1762,10 +1786,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp voice_reason({:http, status}), do: "HTTP #{status}"
   defp voice_reason(reason), do: inspect(reason)
 
-  defp speech_url(text, voice_id) do
-    "/api/voice/speech?text=" <>
-      URI.encode_www_form(text) <> "&voice=" <> URI.encode_www_form(voice_id)
-  end
+  defp speech_url(text, voice_id), do: VoiceSpeech.url(text, voice_id)
 
   defp answer(task, question) do
     case AI.call(
@@ -2093,6 +2114,10 @@ defmodule AgentBoardWeb.BoardLive do
           active={@panel == "voice"}
           flash={@flash}
         >
+          <BoardComponents.VoiceConversationLog.log
+            turns={@voice_turns}
+            thinking={@chat_turn != nil}
+          />
           <BoardComponents.VoiceCommand.draft
             draft={@voice_draft}
             result={@voice_result}

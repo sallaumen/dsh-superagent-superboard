@@ -1,14 +1,15 @@
 const phaseLabels = {
-  permission: ["Microphone", "Cancel"],
-  listening: ["Listening", "Finish & transcribe"],
-  transcribing: ["Transcribing", "Cancel"],
-  generating: ["Preparing speech", "Cancel"],
-  speaking: ["Speaking", "Stop voice"],
-  complete: ["Voice", "Dismiss"],
-  error: ["Voice", "Dismiss"],
+  permission: ["Microfone", "Cancelar"],
+  listening: ["Ouvindo", "Enviar agora"],
+  transcribing: ["Entendendo", "Cancelar"],
+  thinking: ["Pensando", "Fechar"],
+  generating: ["Preparando a fala", "Cancelar"],
+  speaking: ["Falando", "Parar a voz"],
+  complete: ["Voz", "Fechar"],
+  error: ["Voz", "Fechar"],
 }
 let latestVoiceState = null
-const activePhases = ["permission", "listening", "transcribing", "generating", "speaking"]
+const activePhases = ["permission", "listening", "transcribing", "thinking", "generating", "speaking"]
 
 export const VoicePresence = {
   mounted() {
@@ -26,7 +27,7 @@ export const VoicePresence = {
       else if (this.host !== document.querySelector(".board-dialog[open]")) this.hide()
     }
     this.onControl = () => {
-      if (["complete", "error"].includes(this.phase)) this.hide()
+      if (["complete", "error", "thinking"].includes(this.phase)) this.hide()
       else window.dispatchEvent(new CustomEvent("board:voice-control", {detail: {phase: this.phase, source: this.source}}))
     }
     window.addEventListener("board:voice-state", this.onState)
@@ -44,10 +45,10 @@ export const VoicePresence = {
     this.source = source
     this.el.dataset.phase = phase
     this.el.dataset.source = source
-    this.phaseLabel.textContent = phaseLabels[phase]?.[0] || "Voice"
+    this.phaseLabel.textContent = phaseLabels[phase]?.[0] || "Voz"
     this.control.textContent = source === "browser-dictation" && phase === "listening"
       ? "Finish dictation"
-      : phaseLabels[phase]?.[1] || "Dismiss"
+      : phaseLabels[phase]?.[1] || "Fechar"
     this.title.textContent = title
     this.detail.textContent = detail
     this.el.hidden = false

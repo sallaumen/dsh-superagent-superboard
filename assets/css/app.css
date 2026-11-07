@@ -389,6 +389,22 @@
 .voice-reset:hover { color: var(--color-base-content); }
 
 /* A spoken command becomes text for review before any board action. */
+.voice-chat { display: grid; gap: 0.875rem; padding: 1.5rem 1.5rem 0; }
+.voice-chat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.voice-chat-head h3 { color: var(--color-secondary); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; }
+.voice-chat-forget { min-height: 2.75rem; padding: 0 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; color: color-mix(in oklab, var(--color-base-content) 70%, transparent); }
+.voice-chat-forget:hover { background: var(--color-base-200); color: var(--color-base-content); }
+.voice-chat-empty { max-width: 52ch; font-size: 0.875rem; line-height: 1.55; color: color-mix(in oklab, var(--color-base-content) 78%, transparent); }
+.voice-chat-turns { display: flex; flex-direction: column-reverse; gap: 0.5rem; max-height: 22rem; overflow-y: auto; padding-right: 0.25rem; }
+.voice-chat-turn { display: grid; gap: 0.125rem; max-width: 88%; align-self: flex-start; padding: 0.5rem 0.75rem; border-radius: 0.75rem; background: var(--color-base-200); font-size: 0.8125rem; line-height: 1.5; }
+.voice-chat-turn[data-role="owner"] { align-self: flex-end; background: color-mix(in oklab, var(--color-secondary) 14%, var(--color-base-100)); }
+.voice-chat-who { font-size: 0.625rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: color-mix(in oklab, var(--color-base-content) 60%, transparent); }
+.voice-chat-thinking { font-size: 0.8125rem; color: color-mix(in oklab, var(--color-base-content) 70%, transparent); }
+.voice-chat-form { display: flex; gap: 0.5rem; }
+.voice-chat-form input { flex: 1; min-height: 2.75rem; padding: 0 0.875rem; border: 1px solid var(--color-base-300); border-radius: 0.75rem; background: var(--color-base-200); font-size: 0.875rem; }
+.voice-chat-form input:focus-visible { outline: 2px solid var(--color-secondary); outline-offset: 2px; }
+.voice-chat-form button { min-height: 2.75rem; padding: 0 1rem; border: 1px solid var(--color-base-300); border-radius: 0.75rem; background: var(--color-base-200); font-size: 0.8125rem; font-weight: 600; }
+.voice-chat-form button:hover { background: var(--color-base-300); }
 .voice-command-draft { display: grid; gap: 1.25rem; padding: 1.5rem; }
 .voice-command-intro { max-width: 46ch; color: color-mix(in oklab, var(--color-base-content) 78%, transparent); font-size: 0.875rem; line-height: 1.55; }
 .voice-command-draft form { display: grid; gap: 0.625rem; }
@@ -519,6 +535,7 @@
   .voice-presence-copy h2 { font-size: 1.125rem; }
   .create-task-title-row { flex-wrap: wrap; }
   .voice-command-draft { padding: 1rem; }
+  .voice-chat { padding: 1rem 1rem 0; }
 }
 
 /* Merged history: loaded counts are samples, while titles carry the scanning task. */

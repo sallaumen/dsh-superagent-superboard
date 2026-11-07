@@ -21,10 +21,10 @@ defmodule AgentBoardWeb.BoardComponents.VoicePresence do
         <span class="voice-presence-kicker">
           <.icon name="hero-microphone" class="voice-presence-listen-icon size-4" />
           <.icon name="hero-speaker-wave" class="voice-presence-speak-icon size-4" />
-          <span class="voice-presence-phase">Voice</span>
+          <span class="voice-presence-phase">Voz</span>
         </span>
         <button type="button" class="voice-presence-control">
-          Dismiss
+          Fechar
         </button>
       </div>
       <div class="voice-presence-flow" aria-hidden="true">
@@ -35,7 +35,7 @@ defmodule AgentBoardWeb.BoardComponents.VoicePresence do
         />
       </div>
       <div class="voice-presence-copy">
-        <h2 id={"#{@id}-title"} class="voice-presence-title">Voice</h2>
+        <h2 id={"#{@id}-title"} class="voice-presence-title">Voz</h2>
         <p class="voice-presence-detail"></p>
       </div>
     </aside>
