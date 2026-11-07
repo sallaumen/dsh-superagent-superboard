@@ -244,6 +244,24 @@ defmodule AgentBoard.Sync do
 
   # -- the issues -------------------------------------------------------------
 
+  # The insert above sets the baseline only once: on conflict it keeps the
+  # state, so an overlay (running, ready...) is not reset to `queued` on
+  # every sync. A closed issue is the exception: it is `done` whatever the
+  # overlay said, unless the owner stopped or archived the task. Without
+  # this, an issue closed after it entered the board stayed in the queue.
+  defp close_task(repository, number) do
+    now = DateTime.utc_now()
+
+    Repo.update_all(
+      from(t in Task,
+        where:
+          t.repository_id == ^repository.id and t.kind == "issue" and t.number == ^number and
+            not t.stopped and not t.archived and t.state not in ["done", "closed"]
+      ),
+      set: [state: "done", state_changed_at: now, updated_at: now]
+    )
+  end
+
   defp upsert_issue(repository, issue) do
     closed = issue["state"] == "closed"
 
@@ -262,6 +280,7 @@ defmodule AgentBoard.Sync do
     )
     |> case do
       {:ok, _} ->
+        if closed, do: close_task(repository, issue["number"])
         :ok
 
       {:error, changeset} ->

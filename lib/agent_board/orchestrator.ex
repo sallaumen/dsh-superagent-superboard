@@ -10,6 +10,9 @@ defmodule AgentBoard.Orchestrator do
 
   @default_api "http://127.0.0.1:3082/orchestrator/api"
 
+  @min_workers 1
+  @max_workers 16
+
   @type load :: %{running: integer(), queued: integer(), max_workers: integer()}
 
   @doc "The current load, or the reason it is unknown."
@@ -80,7 +83,81 @@ defmodule AgentBoard.Orchestrator do
     _exception -> {:error, :unreachable}
   end
 
+  @doc """
+  Set the runner's ceiling, `executor.maxWorkers`: read the executor block
+  and its revision (`GET settings`), then save the whole block with the new
+  ceiling at that revision (`PUT settings/executor`). A save in between is
+  a `:conflict`, never an overwrite. Only the ceiling changes, so the runner
+  does not restart; if it says it will (`restarting`), the answer says so.
+  """
+  @spec set_max_workers(Req.Request.t() | nil, integer()) ::
+          {:ok, pos_integer()}
+          | {:ok, pos_integer(), :restarting}
+          | {:error,
+             :not_configured
+             | :out_of_range
+             | :conflict
+             | :malformed
+             | :unreachable
+             | :timeout
+             | {:refused, String.t() | nil}
+             | {:http, integer()}}
+  def set_max_workers(nil, _max), do: {:error, :not_configured}
+
+  def set_max_workers(_client, max)
+      when not is_integer(max) or max < @min_workers or max > @max_workers,
+      do: {:error, :out_of_range}
+
+  def set_max_workers(client, max) do
+    with {:ok, value, revision} <- executor_block(client) do
+      save_executor(client, Map.put(value, "maxWorkers", max), revision, max)
+    end
+  rescue
+    _exception -> {:error, :unreachable}
+  end
+
+  @doc "The runner's range for the ceiling (`dsh: src/limits.ts`)."
+  @spec worker_range() :: Range.t()
+  def worker_range, do: @min_workers..@max_workers
+
+  defp executor_block(client) do
+    case Req.get(client, url: "/settings", receive_timeout: 5_000) do
+      {:ok,
+       %{
+         status: 200,
+         body: %{"blocks" => %{"executor" => %{"value" => %{} = value, "revision" => revision}}}
+       }}
+      when is_integer(revision) ->
+        {:ok, Map.delete(value, "paused"), revision}
+
+      {:ok, %{status: 200}} ->
+        {:error, :malformed}
+
+      other ->
+        failure(other)
+    end
+  end
+
+  defp save_executor(client, value, revision, max) do
+    case Req.put(client,
+           url: "/settings/executor",
+           json: %{value: value, revision: revision},
+           receive_timeout: 5_000
+         ) do
+      {:ok, %{status: 200, body: %{"restarting" => true}}} -> {:ok, max, :restarting}
+      {:ok, %{status: 200}} -> {:ok, max}
+      {:ok, %{status: 409}} -> {:error, :conflict}
+      {:ok, %{status: 400, body: body}} -> {:error, {:refused, refusal(body)}}
+      other -> failure(other)
+    end
+  end
+
+  defp failure({:ok, %{status: status}}), do: {:error, {:http, status}}
+  defp failure({:error, %{reason: :timeout}}), do: {:error, :timeout}
+  defp failure({:error, _exception}), do: {:error, :unreachable}
+
   defp refusal(%{"code" => code}) when is_binary(code), do: code
+  defp refusal(%{"error" => message}) when is_binary(message), do: message
   defp refusal(_body), do: nil
 
   @doc "A client bound to the API, or nil when the API is switched off."

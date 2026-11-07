@@ -13,7 +13,7 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 | `AgentBoard.Sync.Worker` | the Oban job that runs the sync |
 | `AgentBoard.Live` | the 10s poller that reads the runner's tickets |
 | `AgentBoard.GitHub` | the HTTP client (`body!/1`, rate limits) |
-| `AgentBoard.Orchestrator` | the runner's HTTP API: the load (`running`, `queued`, `maxWorkers`) and its one write, `retry/2` |
+| `AgentBoard.Orchestrator` | the runner's HTTP API: the load (`running`, `queued`, `maxWorkers`) and its two writes, `retry/2` and `set_max_workers/2` |
 | `AgentBoard.AgentFailure` | what a `failed` report means: transient (network, provider) or a person's, pure |
 | `AgentBoard.AutoRetry` | the automatic retry of a transient failure: `plan/2` (pure, what the board shows) and the 30 s tick |
 | `AgentBoard.AgentBlock` | what the board says about a failed ticket: the card line, what the system does, what is left to the owner, the attempts; pure |
@@ -41,6 +41,12 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   for a worker ("Automatic retry" below). A ticket that ended `merged` is
   `done` whatever its last report said. A stopped or archived task keeps its
   state.
+- The sync's insert sets the baseline once and keeps the state on conflict,
+  so an overlay is not reset to `queued` every five minutes. A **closed
+  issue** is the exception: every sync moves its task to `done`, unless it
+  is stopped or archived (`Sync.close_task/2`). Before this, an issue closed
+  after it entered the board stayed in Fila while the runner had nothing to
+  do (`sync_repo_test.exs`). A reopened issue is not moved back yet.
 - A review rollup is the strongest review (`changes_requested` beats `approved`);
   a check rollup names the failing check.
 
@@ -125,7 +131,8 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 
 ## Automatic retry
 
-The board's one write in the runner, authorized by the owner on
+The board's first write in the runner (the ceiling, under Boundaries, is the
+other), authorized by the owner on
 2026-11-07 after a reboot left six tickets `failed` on a dead network
 (ADR-0003, "Retentativa automática"). `AgentBoard.AutoRetry` asks
 `POST tickets/<id>/retry` (`Orchestrator.retry/2`) and nothing else; the
@@ -528,6 +535,11 @@ nothing takes the whole sync down for one bad item. Each branch has a test in
 ## Boundaries
 
 - The board **reads** the agent's state (the sqlite); it never writes to it.
-  Its one write in the runner is the automatic retry above, through the API.
+  It writes to the runner only through the API, twice: the automatic retry
+  above, and the ceiling when the owner clicks − or + in the Paralelismo
+  tile (`set_max_workers/2`: `GET settings`, then `PUT settings/executor`
+  with the whole block and the revision it read; a save in between is a
+  conflict, never an overwrite; 1..16, the runner's range). Changing only
+  `maxWorkers` does not restart the runner (`worker_limit_test.exs`).
 - The web layer never talks to GitHub directly: it goes through `AgentBoard.Board`
   and `AgentBoard.GitHub`.

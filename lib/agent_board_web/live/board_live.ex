@@ -354,6 +354,47 @@ defmodule AgentBoardWeb.BoardLive do
     )
   end
 
+  # The runner's ceiling, saved through its API; the tile re-reads the load.
+  defp set_max_workers(socket, max) do
+    case Orchestrator.set_max_workers(Orchestrator.client(), max) do
+      {:ok, max} ->
+        socket
+        |> load(socket.assigns.repo)
+        |> put_flash(:info, "Limite do executor: #{agents(max)}.")
+
+      {:ok, max, :restarting} ->
+        socket
+        |> load(socket.assigns.repo)
+        |> put_flash(:info, "Limite do executor: #{agents(max)}. O orquestrador vai reiniciar.")
+
+      {:error, :conflict} ->
+        socket
+        |> load(socket.assigns.repo)
+        |> put_flash(
+          :error,
+          "As configurações do executor mudaram no painel do agente. Confira o limite e tente de novo."
+        )
+
+      {:error, reason} ->
+        put_flash(
+          socket,
+          :error,
+          "Não foi possível mudar o limite do executor (#{limit_reason(reason)})."
+        )
+    end
+  end
+
+  defp agents(1), do: "1 agente"
+  defp agents(n), do: "#{n} agentes"
+
+  defp limit_reason(:out_of_range), do: "fica entre 1 e 16"
+  defp limit_reason(:not_configured), do: "API do orquestrador desligada"
+  defp limit_reason(:unreachable), do: "orquestrador fora do ar"
+  defp limit_reason(:timeout), do: "o orquestrador não respondeu"
+  defp limit_reason({:refused, message}) when is_binary(message), do: message
+  defp limit_reason({:http, status}), do: "HTTP #{status}"
+  defp limit_reason(_reason), do: "resposta inesperada"
+
   # The executor's transcripts are read only while the task is open, and an
   # unchanged reading is reused, so a board update does not decompress them.
   defp executor_usage(socket, task) do
@@ -672,6 +713,13 @@ defmodule AgentBoardWeb.BoardLive do
   defp showing?(_socket, _repo), do: false
 
   @impl true
+  def handle_event("set_max_workers", %{"to" => to}, socket) do
+    case Integer.parse(to) do
+      {max, ""} -> {:noreply, set_max_workers(socket, max)}
+      _ -> {:noreply, socket}
+    end
+  end
+
   def handle_event("sync_now", _params, socket) do
     case Oban.insert(Worker.new(%{})) do
       {:ok, _job} ->
