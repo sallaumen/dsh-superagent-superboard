@@ -13,6 +13,8 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 | `AgentBoard.Sync.Worker` | the Oban job that runs the sync |
 | `AgentBoard.Live` | the 10s poller that reads the runner's tickets |
 | `AgentBoard.GitHub` | the HTTP client (`body!/1`, rate limits) |
+| `AgentBoard.Orchestrator` | the runner's HTTP API, read-only: the load (`running`, `queued`, `maxWorkers`) |
+| `AgentBoard.Metrics` | the throughput arithmetic, pure; `Metrics.Observations` reads what it counts |
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
 | `AgentBoard.Settings` | board-wide settings, one row per key (the voice picks) |
@@ -182,13 +184,50 @@ records are the `ai_calls` rows (the split) and the tasks with their
   events update this indicator between server renders.
 - **synced YYYY-MM-DD HH:MM UTC · clean / N errors**: the latest completed
   `sync` event. `clean` means `errors == 0`; `N errors` counts `issue_error`,
-  `pull_error` and `comment_error` in that run.
+  `pull_error`, `comment_error` and `commit_error` in that run.
 - **sync failed … · showing saved data**: a newer `sync_error` supersedes the
   completed sync. `Board.latest_sync/1` reads the latest outcome independently
   of the 20-event activity window. With no outcome, it says `no sync yet`.
 
 The header is the health line: if it says errors, open the activity panel,
 where each failing item is one row.
+
+## Throughput (Vazão)
+
+The strip under the digest (`AgentBoardWeb.BoardComponents.Throughput`) shows
+the agent's throughput per hour. Every value is counted from a record the
+board holds; a source the board never read shows `?` and names the reason
+(`Metrics.reason/1`). Nothing is estimated and nothing is backfilled.
+
+Windows are sliding and end at the render: **última hora** is the last 60
+minutes, **24 h** and **7 d** the last 24 hours and 7 days; the delta chip
+compares the last 60 minutes with the 60 before. The sparkline is different on
+purpose: 24 clock hours in the reader's offset (`board_tz_offset`), 23 full
+ones and the current, partial one, so a bar reads "14:00–15:00". The strip is
+recomputed on every `:board_updated` (the sync and the 10 s poller), never on
+a browser timer, and says when it was computed.
+
+| Tile | Numerator | Instant | Source | Known limits |
+|---|---|---|---|---|
+| Concluídas | tasks with `state == "done"` | `tasks.state_changed_at` | the sync (`reconcile_resolved_tasks`, the ticket overlay) | the instant the **board observed** the close, not GitHub's `closed_at`; rows migrated before the redesign have no instant and are not counted |
+| Issues abertas | tasks with `kind == "issue"` | `tasks.inserted_at` | the sync's first sight of the issue | a repository added with a backlog shows that backlog in one hour |
+| PRs mesclados | pull requests with `merged_at` | `pull_requests.merged_at` | GitHub's own merge time | the sync reads the 100 most recently updated pulls per run |
+| Commits | rows in `commits` | `commits.committed_at` (the committer date, when it landed) | `GitHub.commits/5`: the default branch as GitHub resolves it, `since` the newest commit stored (the first read covers 7 days), up to 10 pages per run | merge commits count; a commit stays once seen, even if the branch is later rewritten; `?` until the latest completed `sync` event carries a `commits` count |
+| Tickets encerrados | the agent's tickets with `ended.outcome` in `merged`, `completed` | `ended.at` (`AgentState`, `"ended_at"`) | the runner's sqlite, read-only, filtered to the tickets whose channel is one of this repository's issues | `?` when the sqlite did not answer (`agent.ok == false`); a ticket with no channel URL belongs to no repository |
+| Fila | tasks queued at the instant (depth, not a rate) | queued from `inserted_at` until `started_at` (the ticket's clock) or, failing that, `state_changed_at` | tasks | a task that left the queue at an unknown instant is left out; **24 h** and **7 d** are the peak depth at hour ends |
+| Ciclo | mean issue → PR and PR → merge | `tasks.inserted_at` → `pull_requests.opened_at` → `pull_requests.merged_at` | one cycle per ticket that ended `merged`: its channel issue, the newest PR in its `own_threads`, that PR's merge | over the tickets whose PR merged in the window; a leg with a missing instant is left out of that mean, never counted as zero |
+| Paralelismo | `load.running` of `load.maxWorkers`, plus `load.queued` | now | `AgentBoard.Orchestrator.load/0`: `GET $SUPERAGENT_API/state` with `x-orchestrator-request: 1`, 500 ms to connect, 1 s to answer | no history: the value is the instant of the render; `?` with the reason when the API is off (`orchestrator_api: false`), unreachable or malformed |
+
+- A commit read that fails is one `commit_error` event; the issues, pulls and
+  tickets still sync, and the `sync` event has no `commits` key for that run.
+  `commit_error` counts in the header's `N errors`.
+- The orchestrator is never asked from the browser and never retried in the
+  same render; a dead runner costs a render at most the connect timeout.
+- The tests: `metrics_test.exs` (windows, the reader's clock including a
+  half-hour offset, empty and unknown sources), `metrics_observations_test.exs`
+  (each source against the tables), `sync_commits_test.exs` (paging, dedupe,
+  isolation), `orchestrator_test.exs` and `live/throughput_test.exs` (the strip,
+  `?` for the unread, the broadcast).
 
 ## Network paths
 
@@ -211,6 +250,7 @@ The sync is isolated **per item**, not per repository:
 | an issue fails validation | `issue_error` | continues |
 | a pull's reviews/checks fail | `pull_error` | continues |
 | a task's comments fail | `comment_error` | continues |
+| the commit read fails | `commit_error` | continues, without a `commits` count in the `sync` event |
 | the repository itself fails | `sync_error` | returns `{:error, exception}` and Oban retries |
 
 Every branch returns `:ok` or logs; nothing swallows an error silently and

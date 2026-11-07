@@ -147,6 +147,7 @@ defmodule AgentBoard.AgentState do
       "idle_at" => parse(last["idleAt"]),
       "updated_at" => parse(ticket["updatedAt"]),
       "ended_outcome" => ended["outcome"],
+      "ended_at" => parse(ended["at"]),
       "stopped" => ticket["stopped"] || false,
       "archived" => ticket["archived"] || false,
       "execution" => ticket["execution"] || %{},

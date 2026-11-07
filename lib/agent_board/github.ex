@@ -87,6 +87,32 @@ defmodule AgentBoard.GitHub do
     |> Map.get("check_runs", [])
   end
 
+  @doc """
+  One page of the commits on the default branch since an instant, newest
+  first, and whether GitHub has a next page.
+
+  `sha` is omitted on purpose: GitHub then lists the default branch, whatever
+  it is called. `since` filters by the committer date, the instant the commit
+  landed on the branch.
+  """
+  def commits(client, owner, repo, %DateTime{} = since, page \\ 1) do
+    response =
+      Req.get!(client,
+        url: "/repos/#{owner}/#{repo}/commits",
+        params: [since: DateTime.to_iso8601(since), per_page: 100, page: page]
+      )
+
+    {body!(response), next_page?(response)}
+  end
+
+  # GitHub paginates with a Link header; a page without rel="next" is the last.
+  defp next_page?(response) do
+    response.headers
+    |> Map.get("link", [])
+    |> List.wrap()
+    |> Enum.any?(&String.contains?(&1, ~s(rel="next")))
+  end
+
   @doc "The comments on an issue."
   def issue_comments(client, owner, repo, number) do
     client

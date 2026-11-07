@@ -770,3 +770,69 @@ body { margin: 0; background: var(--paper); }
   }
 }
 
+
+/* ---------- vazão: the hourly instrument strip ---------- */
+/* One strip of eight tiles over the reading columns. Mono numbers in fixed
+   slots, so a tick never moves the layout; a source the board never read
+   shows ? in the faint ink. */
+.ab-flow { margin: 0 0 40px; max-width: 1180px; }
+.ab-flow__grid {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden;
+}
+.ab-flow__tile { background: var(--surface); padding: 10px 14px 9px; display: grid; gap: 5px; min-width: 0; align-content: start; }
+.ab-flow__label { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .01em; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ab-flow__now { display: flex; align-items: baseline; gap: 6px; min-height: 28px; min-width: 0; }
+.ab-flow__value { font-family: var(--font-mono); font-size: 22px; line-height: 28px; font-weight: 500; font-variant-numeric: tabular-nums; min-width: 2ch; color: var(--ink); }
+.ab-flow__value--small { font-size: 14px; line-height: 20px; min-width: 0; }
+.ab-flow__value.is-unknown { color: var(--ink-faint); }
+.ab-flow__unit { font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ab-flow .ab-tag { margin-left: auto; min-width: 34px; justify-content: center; font-family: var(--font-mono); font-variant-numeric: tabular-nums; flex: none; }
+.ab-flow__spark { display: block; width: 100%; height: 26px; overflow: visible; }
+.ab-flow__spark rect { fill: var(--ink-muted); }
+.ab-flow__spark rect.is-now { fill: var(--agent); }
+.ab-flow__spark .ab-flow__base { stroke: var(--line-strong); stroke-width: 1; vector-effect: non-scaling-stroke; opacity: .6; }
+.ab-flow__spark.is-unknown { opacity: .5; }
+.ab-flow__spark--level .ab-flow__area { fill: var(--ink-muted); opacity: .14; }
+.ab-flow__spark--level .ab-flow__line { fill: none; stroke: var(--ink-muted); stroke-width: 1.25; }
+.ab-flow__spark--level .ab-flow__hover { fill: transparent; }
+.ab-flow__capacity rect { fill: var(--paper-sunk); stroke: var(--line-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.ab-flow__capacity rect.is-now { fill: var(--agent); stroke: var(--agent); }
+.ab-flow__win { margin: 0; display: grid; gap: 1px; font-family: var(--font-mono); font-size: 11.5px; line-height: 16px; font-variant-numeric: tabular-nums; }
+.ab-flow__win div { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; }
+.ab-flow__win dt { color: var(--ink-faint); }
+.ab-flow__win dd { margin: 0; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ab-flow__win dd b { font-weight: 500; color: var(--ink); }
+.ab-flow__cycle {
+  border-collapse: collapse; width: 100%; max-width: 320px; table-layout: fixed;
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 16px; font-variant-numeric: tabular-nums;
+}
+.ab-flow__cycle th, .ab-flow__cycle td { padding: 0; text-align: right; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ab-flow__cycle th[scope="row"], .ab-flow__cycle thead th:first-child { text-align: left; color: var(--ink-faint); width: 28%; }
+.ab-flow__cycle thead th { color: var(--ink-faint); padding-bottom: 2px; }
+.ab-flow__cycle td { color: var(--ink-muted); }
+.ab-flow__cycle td.ab-flow__value { font-size: 11.5px; line-height: 16px; font-weight: 600; color: var(--ink); min-width: 0; }
+.ab-flow__cycle-n td { color: var(--ink-faint); }
+
+@container main (max-width: 1000px) { .ab-flow { max-width: 760px; } }
+@container main (max-width: 900px) { .ab-flow__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container board (max-width: 640px) {
+  .ab-flow { margin-bottom: 32px; }
+  .ab-flow__tile { padding: 10px 12px 8px; }
+  /* The two tiles that are tables, not a number and a sparkline, take the row. */
+  #flow-cycle, #flow-load { grid-column: span 2; }
+}
+@container board (min-width: 1600px) { .ab-flow { max-width: 100%; } }
+@container board (min-width: 2000px) { .ab-flow__grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+@container board (min-width: 2000px) and (max-width: 2600px) {
+  .ab-board[data-inspector="open"] .ab-flow__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* The value that changed answers with one tint from the agent's ink back to
+   the reader's; the hook adds the class only on a real difference, so a
+   broadcast that changed nothing moves nothing. */
+@media (prefers-reduced-motion: no-preference) {
+  .ab-flow__value.is-changed { animation: ab-flow-change var(--motion-notice) var(--ease-standard) both; }
+  @keyframes ab-flow-change { from { color: var(--agent); } to { color: var(--ink); } }
+}

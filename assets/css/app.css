@@ -175,6 +175,7 @@
   --motion-feedback: 110ms;
   --motion-inplace: 160ms;
   --motion-enter: 200ms;
+  --motion-notice: 600ms;
   --ease-standard: cubic-bezier(0.2, 0, 0.38, 0.9);
   --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
 }

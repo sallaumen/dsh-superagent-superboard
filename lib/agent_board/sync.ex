@@ -14,7 +14,7 @@ defmodule AgentBoard.Sync do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{AgentState, Board, GitHub, Repo}
-  alias AgentBoard.Board.{PullRequest, Repository, Review, Task}
+  alias AgentBoard.Board.{Commit, PullRequest, Repository, Review, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()) do
@@ -77,15 +77,27 @@ defmodule AgentBoard.Sync do
       end
     end)
 
+    commits = sync_commits(client, repository)
+
     apply_tickets(repository, issues)
     sync_comments(repository, client)
     Board.reconcile_resolved_tasks(repository)
 
-    Board.log_event(repository.id, "sync", "#{repository.owner}/#{repository.name}", %{
+    # The "commits" key is the evidence that the branch was read: the
+    # throughput block shows `?` for a repository whose latest sync lacks it.
+    summary = %{
       "issues" => length(issues),
       "pulls" => length(pulls),
       "errors" => error_count(repository)
-    })
+    }
+
+    summary =
+      case commits do
+        {:ok, stored} -> Map.put(summary, "commits", stored)
+        :error -> summary
+      end
+
+    Board.log_event(repository.id, "sync", "#{repository.owner}/#{repository.name}", summary)
 
     Board.broadcast(repository.id)
   end
@@ -97,10 +109,91 @@ defmodule AgentBoard.Sync do
       from(e in AgentBoard.Board.Event,
         where:
           e.repository_id == ^repository.id and
-            e.kind in ["issue_error", "pull_error", "comment_error"]
+            e.kind in ["issue_error", "pull_error", "comment_error", "commit_error"]
       ),
       :count
     )
+  end
+
+  # -- the commits ------------------------------------------------------------
+
+  # The throughput block's longest window; the first read of a repository
+  # fills it, later reads continue from the newest commit stored.
+  @commit_window_days 7
+  @commit_pages 10
+
+  # The default branch's commits, stored once by sha. A GitHub failure here is
+  # one event and `:error`: the issues, pulls and tickets still sync.
+  defp sync_commits(client, repository) do
+    since = commits_since(repository)
+    {:ok, store_commit_pages(client, repository, since, 1, 0)}
+  rescue
+    exception ->
+      Board.log_event(
+        repository.id,
+        "commit_error",
+        "#{repository.owner}/#{repository.name}",
+        %{"reason" => Exception.message(exception)}
+      )
+
+      :error
+  end
+
+  defp commits_since(repository) do
+    Repo.one(
+      from c in Commit,
+        where: c.repository_id == ^repository.id,
+        select: max(c.committed_at)
+    ) || DateTime.add(DateTime.utc_now(), -@commit_window_days, :day)
+  end
+
+  defp store_commit_pages(_client, _repository, _since, page, stored) when page > @commit_pages,
+    do: stored
+
+  defp store_commit_pages(client, repository, since, page, stored) do
+    {commits, more?} = GitHub.commits(client, repository.owner, repository.name, since, page)
+    stored = stored + store_commits(repository, commits)
+
+    if more?,
+      do: store_commit_pages(client, repository, since, page + 1, stored),
+      else: stored
+  end
+
+  defp store_commits(_repository, []), do: 0
+
+  defp store_commits(repository, commits) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    rows =
+      commits
+      |> Enum.filter(&is_binary(&1["sha"]))
+      |> Enum.map(fn commit ->
+        %{
+          repository_id: repository.id,
+          sha: commit["sha"],
+          author:
+            get_in(commit, ["author", "login"]) || get_in(commit, ["commit", "author", "name"]),
+          message: first_line(get_in(commit, ["commit", "message"])),
+          authored_at: to_dt(get_in(commit, ["commit", "author", "date"])),
+          committed_at: to_dt(get_in(commit, ["commit", "committer", "date"])),
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    {count, _} =
+      Repo.insert_all(Commit, rows,
+        on_conflict: :nothing,
+        conflict_target: [:repository_id, :sha]
+      )
+
+    count
+  end
+
+  defp first_line(nil), do: nil
+
+  defp first_line(message) do
+    message |> String.split("\n", parts: 2) |> List.first() |> String.slice(0, 200)
   end
 
   # -- the conversation -------------------------------------------------------

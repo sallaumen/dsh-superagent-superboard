@@ -49,3 +49,8 @@ config :agent_board, live_poll_interval: 3_600_000
 # The voices cache would leak between tests through the persistent term;
 # the client goes to the stub every time.
 config :agent_board, voice_voices_ttl: 0
+
+# The throughput block asks the orchestrator for its load; the suite never
+# touches the local runner. A test that needs a value sets
+# `:orchestrator_client` to a Req.Test plug.
+config :agent_board, orchestrator_api: false
