@@ -154,6 +154,31 @@ defmodule AgentBoard.Usage.ClaudeCodeTest do
     end
   end
 
+  describe "pr_links/1" do
+    test "names the PRs each session linked, once, in order", %{root: root} do
+      a =
+        write(root, "proj/s1.jsonl", [
+          pr_link_line("s1", "sallaumen/o_colmex", 41),
+          assistant_line("m1", "s1"),
+          pr_link_line("s1", "sallaumen/o_colmex", 41),
+          pr_link_line("s1", "sallaumen/o_colmex", 42),
+          ~s({"type":"pr-link","sessionId":"s1","prRepository":"x/y","prNumber":"7"})
+        ])
+
+      b = write(root, "proj/s2.jsonl", [pr_link_line("s2", "sallaumen/arena-rogue", 9)])
+
+      assert ClaudeCode.pr_links([a, b]) == %{
+               "s1" => [
+                 %{repository: "sallaumen/o_colmex", number: 41},
+                 %{repository: "sallaumen/o_colmex", number: 42}
+               ],
+               "s2" => [%{repository: "sallaumen/arena-rogue", number: 9}]
+             }
+
+      assert {:ok, %{skipped: 1, messages: [_]}} = ClaudeCode.read_file(a)
+    end
+  end
+
   describe "transcripts/1" do
     test "finds sessions, subagents and workflow agents", %{root: root} do
       write(root, "p/s.jsonl", [])
@@ -205,7 +230,7 @@ defmodule AgentBoard.Usage.ClaudeCodeTest do
 
     test "the reader names only metadata strings and never a text field" do
       assert ClaudeCode.string_fields() ==
-               ~w(cwd gitBranch id model sessionId timestamp type)
+               ~w(cwd gitBranch id model prRepository sessionId timestamp type)
 
       source = File.read!("lib/agent_board/usage/claude_code.ex")
 
@@ -264,6 +289,17 @@ defmodule AgentBoard.Usage.ClaudeCodeTest do
 
     event = if timestamp, do: Map.put(event, :timestamp, timestamp), else: event
     Jason.encode!(event)
+  end
+
+  defp pr_link_line(session, repository, number) do
+    Jason.encode!(%{
+      type: "pr-link",
+      sessionId: session,
+      prRepository: repository,
+      prNumber: number,
+      prUrl: "https://github.com/#{repository}/pull/#{number}",
+      timestamp: "2026-11-07T10:00:00.000Z"
+    })
   end
 
   defp cost_state_line(session, start_time, cost, usage) do

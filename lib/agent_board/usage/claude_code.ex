@@ -25,6 +25,8 @@ defmodule AgentBoard.Usage.ClaudeCode do
   subscription, so there is no bill per token here: the `cost-state` lines
   carry Claude Code's own list-price estimate per process (`totalCostUSD`),
   which `cost_states/1` reads to reconcile the counts, never as a charge.
+  `pr_links/1` reads the `pr-link` lines (repository and number), what
+  `AgentBoard.Attribution.for_session/2` needs to tie a session to a task.
 
   Only numbers and named metadata are read (`AgentBoard.Usage.Fields`): no
   message content, title or prompt reaches this module. The board never
@@ -33,8 +35,8 @@ defmodule AgentBoard.Usage.ClaudeCode do
 
   alias AgentBoard.Usage.Fields
 
-  @strings MapSet.new(~w(type id model sessionId cwd gitBranch timestamp))
-  @wanted [~s("type":"assistant"), ~s("type":"cost-state")]
+  @strings MapSet.new(~w(type id model sessionId cwd gitBranch timestamp prRepository))
+  @wanted [~s("type":"assistant"), ~s("type":"cost-state"), ~s("type":"pr-link")]
 
   @type message :: %{
           id: String.t(),
@@ -79,9 +81,12 @@ defmodule AgentBoard.Usage.ClaudeCode do
           }
         }
 
+  @type pr_link :: %{session_id: String.t(), repository: String.t(), number: pos_integer()}
+
   @type file :: %{
           messages: [message()],
           cost_states: [cost_state()],
+          pr_links: [pr_link()],
           skipped: non_neg_integer()
         }
 
@@ -107,13 +112,13 @@ defmodule AgentBoard.Usage.ClaudeCode do
 
   @doc """
   One transcript, streamed line by line: its messages (each `message.id`
-  once), its `cost-state` snapshots and how many candidate lines could not
-  be read. A line that is not JSON, or an assistant line without an id or a
+  once), its `cost-state` snapshots, the PRs it linked (`pr-link` lines) and
+  how many candidate lines could not be read. A line that is not JSON, or an assistant line without an id or a
   timestamp, is skipped and counted.
   """
   @spec read_file(String.t()) :: {:ok, file()} | {:error, File.posix() | term()}
   def read_file(path) do
-    acc = %{messages: %{}, order: [], cost_states: [], skipped: 0}
+    acc = %{messages: %{}, order: [], cost_states: [], pr_links: [], skipped: 0}
 
     path
     |> File.stream!(:line, [])
@@ -123,6 +128,7 @@ defmodule AgentBoard.Usage.ClaudeCode do
        %{
          messages: acc.order |> Enum.reverse() |> Enum.map(&Map.fetch!(acc.messages, &1)),
          cost_states: Enum.reverse(acc.cost_states),
+         pr_links: acc.pr_links |> Enum.reverse() |> Enum.uniq(),
          skipped: acc.skipped
        }}
     end)
@@ -216,6 +222,26 @@ defmodule AgentBoard.Usage.ClaudeCode do
     |> Enum.sort_by(&{&1.session_id, &1.start_time || 0})
   end
 
+  @doc """
+  The PRs each session linked (`pr-link` lines: `prRepository` and
+  `prNumber`), in the order they were written, without repeats: the
+  `pr_links` of `AgentBoard.Attribution.for_session/2`.
+  """
+  @spec pr_links([String.t()]) :: %{
+          String.t() => [%{repository: String.t(), number: pos_integer()}]
+        }
+  def pr_links(paths) do
+    paths
+    |> Enum.flat_map(fn path ->
+      case read_file(path) do
+        {:ok, %{pr_links: links}} -> links
+        {:error, _reason} -> []
+      end
+    end)
+    |> Enum.uniq()
+    |> Enum.group_by(& &1.session_id, &Map.take(&1, [:repository, :number]))
+  end
+
   defp take_line(line, acc) do
     if :binary.match(line, @wanted) == :nomatch do
       acc
@@ -223,6 +249,7 @@ defmodule AgentBoard.Usage.ClaudeCode do
       case Fields.decode(line, @strings) do
         {:ok, %{"type" => "assistant"} = event} -> take_assistant(event, acc)
         {:ok, %{"type" => "cost-state"} = event} -> take_cost_state(event, acc)
+        {:ok, %{"type" => "pr-link"} = event} -> take_pr_link(event, acc)
         {:ok, _other} -> acc
         :error -> %{acc | skipped: acc.skipped + 1}
       end
@@ -298,6 +325,17 @@ defmodule AgentBoard.Usage.ClaudeCode do
   end
 
   defp take_cost_state(_event, acc), do: %{acc | skipped: acc.skipped + 1}
+
+  defp take_pr_link(
+         %{"sessionId" => session_id, "prRepository" => repo, "prNumber" => number},
+         acc
+       )
+       when is_binary(session_id) and is_binary(repo) and is_integer(number) and number > 0 do
+    link = %{session_id: session_id, repository: repo, number: number}
+    %{acc | pr_links: [link | acc.pr_links]}
+  end
+
+  defp take_pr_link(_event, acc), do: %{acc | skipped: acc.skipped + 1}
 
   defp time(value) when is_binary(value) do
     case DateTime.from_iso8601(value) do
