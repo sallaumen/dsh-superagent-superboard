@@ -13,6 +13,7 @@ defmodule AgentBoardWeb.BoardLive do
     Announcer,
     AutoRetry,
     Board,
+    DailySummary,
     ElevenLabs,
     ExecutorUsage,
     GitHub,
@@ -36,6 +37,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   import AgentBoardWeb.BoardComponents.Composer, only: [composer: 1]
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
+  import AgentBoardWeb.BoardComponents.DailySummary, only: [daily_summary: 1]
   import AgentBoardWeb.BoardComponents.FreshnessBeacon, only: [beacon: 1]
   import AgentBoardWeb.BoardComponents.FrozenBanner, only: [frozen_banner: 1]
   import AgentBoardWeb.BoardComponents.Inspector, only: [inspector: 1]
@@ -75,6 +77,7 @@ defmodule AgentBoardWeb.BoardLive do
         work: empty_work(),
         flow: nil,
         digest: nil,
+        daily_summary: nil,
         needs_expanded: false,
         queue_limit: 8,
         queue_filter: :all,
@@ -132,10 +135,15 @@ defmodule AgentBoardWeb.BoardLive do
     # The voice settings are board-wide: a change in another tab, by the API
     # or by a spoken command reaches this socket (handle_info setting_changed).
     if connected?(socket), do: Settings.subscribe()
+    if connected?(socket), do: DailySummary.subscribe()
 
     # handle_params/3 always follows mount and loads the board: loading here
     # too read everything twice on every page and every connection.
-    {:ok, socket |> VoiceConversation.mount() |> assign(:opening_repo, repo)}
+    {:ok,
+     socket
+     |> VoiceConversation.mount()
+     |> assign(:opening_repo, repo)
+     |> show_daily_summary()}
   end
 
   defp empty do
@@ -647,6 +655,16 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, socket}
   end
 
+  # The summary of the day's settings live in their own fold.
+  def handle_info({:setting_changed, "daily_summary_" <> _}, socket) do
+    send_update(BoardComponents.DailySummarySettings, id: "settings-daily-summary-section")
+    {:noreply, socket}
+  end
+
+  # A summary of the day went out or was dismissed on some board.
+  def handle_info({:daily_summary, _event, _id}, socket),
+    do: {:noreply, show_daily_summary(socket)}
+
   # A setting changed somewhere (another tab, the API, a spoken command):
   # this board's voice follows at once, keeping the list it already loaded.
   def handle_info({:setting_changed, _key}, socket),
@@ -785,6 +803,19 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("dismiss_toast", _params, socket), do: {:noreply, assign(socket, :toast, nil)}
+
+  @impl true
+  def handle_event("daily_summary_claim", %{"id" => id}, socket) do
+    case Integer.parse(to_string(id)) do
+      {id, ""} -> {:noreply, claim_daily_summary(socket, id)}
+      _other -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("dismiss_daily_summary", %{"id" => id}, socket) do
+    with {id, ""} <- Integer.parse(to_string(id)), do: DailySummary.dismiss(id)
+    {:noreply, assign(socket, :daily_summary, nil)}
+  end
 
   @impl true
   def handle_event("show_changes", _params, socket) do
@@ -1585,6 +1616,32 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  # Today's summary of the day, shown until dismissed. Read only on a
+  # connected socket.
+  defp show_daily_summary(socket) do
+    assign(socket, :daily_summary, if(connected?(socket), do: DailySummary.visible()))
+  end
+
+  # The browser asks to speak it only from a tab the owner interacted with
+  # (the DailySummaryVoice hook), so a preview never spends it; the first
+  # ask wins the conditional claim and the other tabs stay quiet. Its own
+  # switch governs the voice, not the narration toggle; for the engine
+  # choice it is narration.
+  defp claim_daily_summary(%{assigns: %{daily_summary: %{id: id} = entry}} = socket, id) do
+    if DailySummary.claim_spoken(id) do
+      text = Phrases.daily_summary(socket.assigns.voice.language, entry.content)
+      spoken_at = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      socket
+      |> assign(:daily_summary, %{entry | spoken_at: spoken_at})
+      |> say(text, kind: :narration)
+    else
+      show_daily_summary(socket)
+    end
+  end
+
+  defp claim_daily_summary(socket, _id), do: socket
+
   # A confirmation or an answer: spoken only while the narration is on.
   defp speak(%{assigns: %{voice: %{speak_events: true}}} = socket, text),
     do: say(socket, text, kind: :narration)
@@ -1740,6 +1797,12 @@ defmodule AgentBoardWeb.BoardLive do
             </header>
 
             <.summary :if={@repo} digest={@digest} />
+
+            <.daily_summary
+              :if={@repo && @daily_summary}
+              entry={@daily_summary}
+              tz_offset={@tz_offset}
+            />
 
             <.frozen_banner :if={@repo} freshness={@freshness} />
 
