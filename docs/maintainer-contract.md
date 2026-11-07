@@ -698,7 +698,12 @@ records are the `ai_calls` rows (the split) and the tasks with their
   a sentence and a way out (retry, answer the questions, send as a single
   request).
 - **The title is the first sentence**, cut at a clause boundary
-  (`Titles.from_request/1`), shown and editable before the submit.
+  (`Titles.from_request/1`), shown and editable before the submit. Only a
+  change of the title field itself (the change's `_target`) is the owner's
+  edit: every keystroke in the request also sends the title field as the
+  browser last had it, and reading that as an edit froze the title at a
+  prefix when the owner typed fast (`composer_lifecycle_test.exs`). The
+  send uses the title the screen confirmed, not the field it carried.
 - **The split classifies, the task keeps it.** `:propose_tasks` answers each
   task's `kind` (where the work lands: `ui`, `backend`, `docs`, `bug`,
   `research`, `infra`) and `size` (`S`, `M`, `L`), from the lists

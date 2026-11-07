@@ -1117,7 +1117,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      assign(socket,
        composer_text: text,
-       composer_title: title_from_params(params, text, socket.assigns.composer_title),
+       composer_title: edited_title(params, text, socket.assigns.composer_title),
        composer_answers: params["answers"] || socket.assigns.composer_answers
      )}
   end
@@ -1168,9 +1168,10 @@ defmodule AgentBoardWeb.BoardLive do
       socket.assigns.composer_split ->
         submit_split(socket, text, params, shown)
 
+      # The title the screen confirmed (`composer_title`, kept by the
+      # change events), never the field as the send carried it.
       true ->
-        title = title_from_params(params, text, socket.assigns.composer_title)
-        start_single(socket, text, title, shown)
+        start_single(socket, text, socket.assigns.composer_title, shown)
     end
   end
 
@@ -2170,12 +2171,16 @@ defmodule AgentBoardWeb.BoardLive do
   defp composer_error(socket, text, retry \\ nil),
     do: assign(socket, composer_error: text, composer_retry: retry)
 
-  defp title_from_params(%{"title" => title}, text, _current) do
+  # Only a change of the title field itself is the owner's edit. Every
+  # other change carries the field as the browser last had it, the title
+  # derived from the previous words; taking that for an edit froze the
+  # title at a prefix when the owner typed fast.
+  defp edited_title(%{"_target" => ["title"], "title" => title}, text, _current) do
     title = String.trim(title)
     if title == "" or title == Titles.from_request(text), do: nil, else: title
   end
 
-  defp title_from_params(_params, _text, current), do: current
+  defp edited_title(_params, _text, current), do: current
 
   defp submit_split(socket, text, params, shown) do
     case socket.assigns.intake do
