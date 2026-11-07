@@ -45,6 +45,69 @@ defmodule AgentBoard.SyncTest do
     assert Sync.ticket_state(ticket("ended", nil, "stopped")) == nil
   end
 
+  describe "a failed ticket" do
+    # The runner's ticket, normalized: one failed Assignment after `history`.
+    defp failed(summary, history \\ []) do
+      previous =
+        for {ended, i} <- Enum.with_index(history) do
+          %{
+            "id" => "a#{i}",
+            "state" => "ended",
+            "report" => %{"state" => "failed"},
+            "endedReason" => ended
+          }
+        end
+
+      AgentBoard.AgentState.normalize(%{
+        "id" => "t1",
+        "assignments" =>
+          previous ++
+            [
+              %{
+                "id" => "latest",
+                "state" => "running",
+                "report" => %{
+                  "state" => "failed",
+                  "summary" => summary,
+                  "at" => "2026-11-07T17:10:00Z"
+                }
+              }
+            ]
+      })
+    end
+
+    test "is retrying while the board retries a transient failure by itself" do
+      assert Sync.ticket_state(failed("LlmError: DeepSeek Messages transport failed")) ==
+               "retrying"
+    end
+
+    test "is blocked when the failure needs a person or the retries ran out" do
+      assert Sync.ticket_state(failed("Tests failed: 3")) == "blocked"
+
+      assert Sync.ticket_state(
+               failed("LlmError: DeepSeek Messages transport failed", ~w(retried retried retried))
+             ) == "blocked"
+    end
+
+    test "is retrying while a retry waits for a worker" do
+      ticket =
+        AgentBoard.AgentState.normalize(%{
+          "id" => "t1",
+          "assignments" => [
+            %{
+              "id" => "a",
+              "state" => "ended",
+              "report" => %{"state" => "failed"},
+              "endedReason" => "retried"
+            },
+            %{"id" => "b", "state" => "pending"}
+          ]
+        })
+
+      assert Sync.ticket_state(ticket) == "retrying"
+    end
+  end
+
   test "a single approval is approved" do
     assert Sync.review_rollup([%{"state" => "APPROVED"}]) == "approved"
   end

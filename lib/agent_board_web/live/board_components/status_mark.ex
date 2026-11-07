@@ -10,6 +10,8 @@ defmodule AgentBoardWeb.BoardComponents.StatusMark do
 
   @statuses %{
     run: %{glyph: "run", word: "Rodando", tone: "run"},
+    retrying: %{glyph: "queue", word: "Nova tentativa", tone: "run"},
+    agent_down: %{glyph: "halt", word: "Agente fora do ar", tone: "halt"},
     review: %{glyph: "you", word: "Para revisar", tone: "you"},
     question: %{glyph: "you", word: "Pergunta", tone: "you"},
     blocked: %{glyph: "halt", word: "Bloqueado", tone: "halt"},

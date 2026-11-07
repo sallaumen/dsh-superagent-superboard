@@ -13,7 +13,7 @@ defmodule AgentBoard.Sync do
   """
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AgentState, Board, GitHub, Repo}
+  alias AgentBoard.{AgentState, AutoRetry, Board, GitHub, Repo}
   alias AgentBoard.Board.{Commit, PullRequest, Repository, Review, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
@@ -230,7 +230,7 @@ defmodule AgentBoard.Sync do
   # A task waiting on the person (a question, a block) is the one whose
   # conversation matters most: the agent's last comment is what the person
   # must answer, and the PR it names is what the board links.
-  @conversation_states ["running", "ready", "queued", "question", "blocked"]
+  @conversation_states ["running", "retrying", "ready", "queued", "question", "blocked"]
 
   defp active_tasks(repository_id) do
     Repo.all(
@@ -491,6 +491,7 @@ defmodule AgentBoard.Sync do
       stopped?(ticket) -> nil
       ticket["ended_outcome"] == "merged" -> "done"
       ticket["report"] == "waiting" -> waiting_state(ticket, opts)
+      retrying?(ticket) -> "retrying"
       blocked_ticket?(ticket) -> "blocked"
       ticket["report"] == "ready" -> "ready"
       running_ticket?(ticket) -> "running"
@@ -540,6 +541,17 @@ defmodule AgentBoard.Sync do
   end
 
   defp stopped?(ticket), do: ticket["stopped"] || ticket["archived"]
+
+  # A failure the board retries by itself, or a retry waiting for a worker:
+  # nobody has to act, so the task leaves Precisa de você for Agora
+  # (`AgentBoard.AutoRetry`, `AgentBoard.AgentBlock`).
+  defp retrying?(ticket) do
+    case AutoRetry.plan(ticket) do
+      %{state: :scheduled} -> true
+      nil -> AutoRetry.queued_retry?(ticket)
+      _plan -> false
+    end
+  end
 
   defp blocked_ticket?(ticket),
     do: ticket["report"] in ["blocked", "failed"] or ticket["assignment"] == "blocked"

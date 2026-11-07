@@ -839,3 +839,47 @@ body { margin: 0; background: var(--paper); }
   .ab-flow__value.is-changed { animation: ab-flow-change var(--motion-notice) var(--ease-standard) both; }
   @keyframes ab-flow-change { from { color: var(--agent); } to { color: var(--ink); } }
 }
+
+/* ---------- agent failures: retry rows, the failure block, confirmed actions ---------- */
+/* A retry the board makes by itself sits in Agora, quieter than a run: no
+   wash, a dashed edge that reads "waiting", the agent's color for the words. */
+.ab-run--retry { background: var(--surface); border: 1px dashed var(--line-strong); }
+.ab-run--retry:hover { border-color: var(--agent); }
+.ab-run__retry { grid-column: 2 / -1; color: var(--ink-muted); font-size: 13px; line-height: 19px; }
+.ab-run__retry strong { color: var(--agent); font-weight: 500; }
+
+.ab-fail {
+  display: grid; gap: 6px; margin-top: var(--space-1); padding: 10px 12px;
+  border-left: 3px solid var(--halt); background: var(--halt-wash); border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+.ab-fail.is-scheduled, .ab-fail.is-queued { border-left-color: var(--agent); background: var(--agent-wash); }
+.ab-fail__title { font-size: 14px; font-weight: 600; line-height: 20px; margin: 0; }
+.ab-fail__system, .ab-fail__action { margin: 0; font-size: 13px; line-height: 19px; color: var(--ink); }
+.ab-fail__action { color: var(--ink-muted); }
+.ab-fail__evidence summary { cursor: pointer; font-size: 12.5px; color: var(--ink-muted); }
+.ab-fail__evidence[open] summary { margin-bottom: 6px; }
+.ab-fail__error {
+  margin: 0 0 8px; padding: 8px; max-height: 180px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  font-family: var(--font-mono); font-size: 12px; line-height: 17px; background: var(--surface); border-radius: var(--radius-md);
+}
+.ab-fail__attempts { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 12.5px; line-height: 18px; }
+.ab-fail__attempts li { display: grid; grid-template-columns: 16px auto minmax(0, 1fr); gap: 8px; align-items: baseline; }
+
+.ab-act { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.ab-act[data-step="confirm"], .ab-act[data-step="busy"], .ab-act[data-step="done"] { flex-basis: 100%; }
+.ab-act__confirm {
+  display: grid; gap: 8px; padding: 10px 12px; width: 100%;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised);
+}
+.ab-act__question { margin: 0; font-size: 13px; line-height: 19px; }
+.ab-act__buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.ab-act__busy, .ab-act__result { margin: 0; font-size: 13px; line-height: 19px; display: flex; gap: 8px; align-items: center; }
+.ab-act__busy { color: var(--ink-muted); }
+.ab-act__result { color: var(--agent); }
+.ab-act__result.is-error { color: var(--halt); }
+.ab-act__spin { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--line-strong); border-top-color: var(--agent); }
+@media (prefers-reduced-motion: no-preference) {
+  .ab-act__spin { animation: ab-act-spin 900ms linear infinite; }
+}
+@keyframes ab-act-spin { to { transform: rotate(360deg); } }
+.ab-need__actions .ab-act[data-step="confirm"] .ab-act__confirm { max-width: 360px; }

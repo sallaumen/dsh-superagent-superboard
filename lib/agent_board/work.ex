@@ -9,7 +9,7 @@ defmodule AgentBoard.Work do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AgentSignal, Board, Repo, Sync, Time, Titles, Workpad}
+  alias AgentBoard.{AgentBlock, AgentSignal, Board, Repo, Sync, Time, Titles, Workpad}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   @queue_limit 8
@@ -25,6 +25,11 @@ defmodule AgentBoard.Work do
   A silence (`:silences`, from `AgentBoard.AgentSignal`) is derived, never a
   task state: a running task is the owner's only while its ticket has given
   no signal for `:stall_after` seconds.
+
+  A failed ticket says what happened and what is left to the owner
+  (`AgentBoard.AgentBlock`). With `agent: :down` (the orchestrator did not
+  answer) the blocks and silences collapse into one `:agent_down` item:
+  they all wait for the same thing.
   """
   def needs(_repository, board, opts \\ []) do
     context = context(board, opts)
@@ -36,10 +41,64 @@ defmodule AgentBoard.Work do
       lane(board, :question, :question, context)
     ]
     |> List.flatten()
+    |> collapse_agent_down(board, context)
     |> Enum.sort_by(fn need ->
       {rank(need.kind), not need.is_new, -(need.age_seconds || 0)}
     end)
   end
+
+  defp collapse_agent_down(needs, board, %{agent: :down} = context) do
+    {waiting, rest} = Enum.split_with(needs, &(&1.kind in [:blocked, :stalled]))
+    [agent_down_need(length(waiting) + length(Map.get(board, :retrying, [])), context) | rest]
+  end
+
+  defp collapse_agent_down(needs, _board, _context), do: needs
+
+  defp agent_down_need(waiting, _context) do
+    tail =
+      case waiting do
+        0 -> "Nada anda até ele voltar."
+        1 -> "1 tarefa espera ele voltar; as falhas de rede voltam a ser tentadas sozinhas."
+        n -> "#{n} tarefas esperam ele voltar; as falhas de rede voltam a ser tentadas sozinhas."
+      end
+
+    %{
+      key: "agent-down",
+      id: nil,
+      number: nil,
+      kind: :agent_down,
+      title: "Agente fora do ar",
+      why: "**O orquestrador não responde.** " <> tail,
+      ci: nil,
+      age_seconds: nil,
+      is_new: false,
+      waiting: waiting,
+      actions: [%{label: "Religar o agente", restart_agent: true}]
+    }
+  end
+
+  @doc """
+  The failed tasks the board retries by itself, for Agora: nobody has to
+  act, so they are not in Precisa de você. Each row says what failed and
+  when the next attempt goes out.
+  """
+  def retrying(board, opts \\ []) do
+    context = context(board, opts)
+
+    for task <- Map.get(board, :retrying, []) do
+      block = AgentBlock.explain(Map.get(context.tickets, task.number), block_opts(context))
+
+      %{
+        id: task.id,
+        number: task.number,
+        title: task.title,
+        line: (block && block.line) || "**Nova tentativa automática.** Esperando o agente."
+      }
+    end
+  end
+
+  defp block_opts(context),
+    do: [now: context.now, tz_offset: context.tz_offset, agent: context.agent]
 
   defp context(board, opts) do
     tickets = Keyword.get(opts, :tickets_by_number, %{})
@@ -52,7 +111,8 @@ defmodule AgentBoard.Work do
       pulls: Board.linked_pull_requests(Map.get(board, :ready, []), tickets),
       local_ci: Keyword.get(opts, :local_ci, %{}),
       silences: Keyword.get(opts, :silences, %{}),
-      stall_after: Keyword.get(opts, :stall_after, AgentSignal.stall_after())
+      stall_after: Keyword.get(opts, :stall_after, AgentSignal.stall_after()),
+      agent: Keyword.get(opts, :agent, :unknown)
     }
   end
 
@@ -132,7 +192,24 @@ defmodule AgentBoard.Work do
     end
   end
 
-  defp task_why(task, :blocked, ticket, _pull, _context) do
+  defp task_why(task, :blocked, ticket, pull, context) do
+    case AgentBlock.explain(ticket, block_opts(context)) do
+      %{line: line} -> line
+      nil -> blockage_why(task, ticket, pull, context)
+    end
+  end
+
+  # The item says what the board saw last and when; it never says the agent
+  # died. A long model turn with no file change is a silence too.
+  defp task_why(task, :stalled, _ticket, _pull, context) do
+    silence = Map.fetch!(context.silences, task.number)
+    since = Time.local_time(silence.at, context.tz_offset)
+    "**Sem sinal #{Time.ago(silence.seconds)}.** " <> silence_source(silence.source, since)
+  end
+
+  # A block the agent reported itself (a workpad Bloqueio, a `blocked`
+  # report): its own words.
+  defp blockage_why(task, ticket, _pull, _context) do
     blockage =
       case last_agent_comment(task) do
         %Comment{body: body} -> comment_blockage(body)
@@ -146,14 +223,6 @@ defmodule AgentBoard.Work do
       is_binary(summary) and summary != "" -> "**Bloqueado:** " <> excerpt(summary)
       true -> "**Bloqueado**, sem motivo no relatório do agente. Abra o detalhe."
     end
-  end
-
-  # The item says what the board saw last and when; it never says the agent
-  # died. A long model turn with no file change is a silence too.
-  defp task_why(task, :stalled, _ticket, _pull, context) do
-    silence = Map.fetch!(context.silences, task.number)
-    since = Time.local_time(silence.at, context.tz_offset)
-    "**Sem sinal #{Time.ago(silence.seconds)}.** " <> silence_source(silence.source, since)
   end
 
   defp silence_source(:report, since),
@@ -227,6 +296,8 @@ defmodule AgentBoard.Work do
 
   # A silent run blocks the whole queue while there is one worker: it comes
   # right after a block, before the work that only waits for the owner.
+  # The agent being down explains every block and silence below it.
+  defp rank(:agent_down), do: -1
   defp rank(:cifail), do: 0
   defp rank(:blocked), do: 1
   defp rank(:stalled), do: 2
@@ -511,10 +582,12 @@ defmodule AgentBoard.Work do
     running = length(Map.get(board, :running, []))
     waiting = length(Map.get(board, :ready, [])) + length(Map.get(board, :question, []))
     blocked = length(Map.get(board, :blocked, []))
+    retrying = length(Map.get(board, :retrying, []))
     queued = Map.get(board, :task_counts, %{}) |> Map.get(:queued, 0)
 
     [
       running > 0 && [%{text: "#{running} rodando", role: :agent}],
+      retrying > 0 && [%{text: "#{retrying} em nova tentativa automática", role: :agent}],
       waiting > 0 && [%{text: "#{waiting} esperando você", role: :you}],
       blocked > 0 && [%{text: "#{blocked} #{plural(blocked, "bloqueado")}", role: :halt}],
       queued > 0 && [%{text: "#{queued} na fila", role: :agent}]

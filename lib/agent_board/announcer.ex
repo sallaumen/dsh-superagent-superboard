@@ -12,7 +12,8 @@ defmodule AgentBoard.Announcer do
       not by lane). These come first and rotate through a pool of phrases,
       so the call does not sound like a broken record.
     * **events** - a task started or went back to the queue, and sync
-      outcomes getting worse.
+      outcomes getting worse. A task entering `retrying` (a transient
+      failure the board retries by itself) is silent.
 
   A burst is capped; user actions speak their own confirmations, so they
   are not announced here. Nothing here touches the network.
@@ -20,7 +21,7 @@ defmodule AgentBoard.Announcer do
 
   alias AgentBoard.Voice.Phrases
 
-  @live_states [:running, :question, :ready, :blocked, :queued]
+  @live_states [:running, :retrying, :question, :ready, :blocked, :queued]
   @max_per_update 2
 
   @doc """
@@ -86,7 +87,10 @@ defmodule AgentBoard.Announcer do
           {new_state, _task} = Map.get(new, id, {nil, nil}),
           new_state != old_state,
           old_state in @live_states,
-          new_state in @live_states do
+          new_state in @live_states,
+          # A failure the board retries by itself needs nobody: quiet. When
+          # the retries run out, the move to `blocked` is the news.
+          new_state != :retrying do
         if new_state in Phrases.attention_kinds(),
           do: {:attention, new_state, task.title},
           else: {:moved, new_state, task.title}

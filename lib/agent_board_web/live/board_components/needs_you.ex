@@ -5,6 +5,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   import AgentBoardWeb.BoardComponents.Markup, only: [markup: 1]
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
   alias AgentBoard.Time
+  alias AgentBoardWeb.BoardComponents.AgentAction
 
   attr :needs, :list, required: true
   attr :max, :integer, default: 5
@@ -61,7 +62,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
             <.glyph kind={need.kind} />
 
             <div class="ab-need__title">
-              <span class="ab-need__id">#{need.number}</span>
+              <span :if={need.number} class="ab-need__id">#{need.number}</span>
               <span>{need.title}</span>
             </div>
 
@@ -83,11 +84,22 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
 
             <div class="ab-need__side ab-meta">
               <span :if={need.is_new} class="ab-new">novo</span>
-              <span>{Time.ago(need.age_seconds)}</span>
+              <span :if={need.age_seconds}>{Time.ago(need.age_seconds)}</span>
             </div>
 
             <div class="ab-need__actions">
               <%= for action <- need.actions do %>
+                <.live_component
+                  :if={action[:restart_agent]}
+                  module={AgentAction}
+                  id="agent-restart"
+                  mode={:restart}
+                  tone={:halt}
+                  label={action.label}
+                  question="Religar o agente nesta máquina? Se você o parou de propósito, isso desfaz o stop."
+                  confirm_label="Religar"
+                  busy_label="Religando o agente…"
+                />
                 <a
                   :if={action[:url]}
                   class={["ab-btn ab-btn--sm", action_class(need.kind)]}
@@ -117,15 +129,18 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   end
 
   # A silent run is also the card in Agora: one task, two items, two ids.
+  defp dom_id(%{kind: :agent_down}), do: "need-agent-down"
   defp dom_id(%{kind: :stalled, id: id}) when not is_nil(id), do: "silence-#{id}"
   defp dom_id(%{id: id}) when not is_nil(id), do: "task-#{id}"
   defp dom_id(_need), do: nil
 
+  defp tone(:agent_down), do: "is-halt"
   defp tone(:cifail), do: "is-halt"
   defp tone(:blocked), do: "is-halt"
   defp tone(:stalled), do: "is-halt"
   defp tone(_kind), do: "is-you"
 
+  defp action_class(:agent_down), do: "ab-btn--halt"
   defp action_class(:cifail), do: "ab-btn--halt"
   defp action_class(:blocked), do: "ab-btn--halt"
   defp action_class(:stalled), do: "ab-btn--halt"
