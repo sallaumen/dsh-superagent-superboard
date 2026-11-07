@@ -62,6 +62,14 @@ launchctl bootout "gui/$(id -u)/com.agentboard"   # stop for good
 launchctl kickstart -k "gui/$(id -u)/com.agentboard"  # restart now
 ```
 
+`ProcessType` is `Interactive`: without it launchd applies its light resource
+limits to the job (`launchctl print "gui/$(id -u)/com.agentboard"` says
+`spawn type = daemon`) and the board answers several times slower. `kickstart`
+restarts the process with the plist launchd already holds; a change to the
+plist itself needs the copy in `~/Library/LaunchAgents` updated, a `bootout`,
+waiting until `launchctl print` no longer finds the job, and a `bootstrap`
+(`bootstrap` answers error 5 while the job is still loaded).
+
 Unlike the `o_colmex` updater, **nothing here updates on a timer**: the board
 watches agents, and a restart would interrupt them. Updating is a button.
 

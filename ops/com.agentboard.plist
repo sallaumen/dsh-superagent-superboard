@@ -30,6 +30,13 @@
 		<string>/Users/tavano/Library/Logs/AgentBoard.log</string>
 	</dict>
 
+	<!-- Without a ProcessType launchd starts the job as a "daemon" with light
+	     resource limits: the BEAM runs at the utility QoS and the board,
+	     which answers the owner's clicks, became 3 to 40 times slower than
+	     the same code started from a shell. Interactive lifts those limits. -->
+	<key>ProcessType</key>
+	<string>Interactive</string>
+
 	<key>RunAtLoad</key>
 	<true/>
 
