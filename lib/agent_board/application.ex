@@ -11,6 +11,7 @@ defmodule AgentBoard.Application do
       AgentBoardWeb.Telemetry,
       AgentBoard.Repo,
       {Oban, Application.fetch_env!(:agent_board, Oban)},
+      AgentBoard.AgentWorktree.Cache,
       AgentBoard.Live,
       AgentBoard.AutoRetry,
       AgentBoard.ElevenLabs.SpeechCache,

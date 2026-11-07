@@ -83,6 +83,12 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   environment stretches it to an hour so the supervised poller never ticks
   into the sandboxed database mid-suite.
 - Never poll the database from the browser; push.
+- The board is read once per render of the page (in `handle_params/3`, never
+  also in `mount/3`), again on every `:board_updated` and task action, and
+  never for a patch inside the same repository: opening a task, a panel or a
+  tab changes only the panel. Every read is the `[:agent_board, :board,
+  :load]` telemetry span, on the dashboard as `agent_board.board.load`
+  (`board_load_test.exs`).
 
 ## Silence (Sem sinal)
 
@@ -92,6 +98,12 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   (`AgentWorktree.last_activity_at/1`: the newest uncommitted file, else the
   last commit; ignored files such as `_build` are not evidence). It is
   written nowhere: not in `tasks`, never in the runner's sqlite.
+- The worktree is observed once for both the signal and the card's step (one
+  `git status`, at most one `git log`), and the observation is shared by
+  every render for `:worktree_ttl_ms` (10 s, the poll interval; 0 in tests),
+  in memory only (`AgentWorktree.Cache`). A render therefore shows the
+  worktree as it was at most 10 s earlier; a fresh read per render cost 40 ms
+  of `git` per running ticket, per LiveView, per broadcast.
 - Past `:stall_after_ms` (default 15 min) the silence is shown: the Agora
   card says "sem sinal há N min" and its glyph stops pulsing, and the task
   enters Precisa de você as `:stalled`, after blocks and before reviews, with

@@ -55,6 +55,9 @@ config :agent_board, auto_retry_interval: 3_600_000
 config :agent_board, voice_voices_ttl: 0
 # Spoken audio is not cached in tests: each stub decides its own answer.
 config :agent_board, voice_speech_cache_entries: 0
+# Each test edits its own worktree and reads it back at once: no shared
+# observation may answer for it.
+config :agent_board, worktree_ttl_ms: 0
 
 # The throughput block asks the orchestrator for its load; the suite never
 # touches the local runner. A test that needs a value sets

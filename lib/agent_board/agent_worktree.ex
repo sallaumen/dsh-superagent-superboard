@@ -8,7 +8,12 @@ defmodule AgentBoard.AgentWorktree do
   answer is `nil` and the board omits the step instead of inventing one.
   """
 
+  alias AgentBoard.AgentWorktree.Cache
+
   @max_subject 80
+  @default_ttl_ms 10_000
+
+  @type observation :: %{step: map() | nil, last_activity_at: DateTime.t() | nil}
 
   @doc """
   A step for the ticket, or nil.
@@ -17,18 +22,7 @@ defmodule AgentBoard.AgentWorktree do
   code: sha, note: subject}` for the last commit.
   """
   @spec step(map() | nil) :: map() | nil
-  def step(%{"execution" => %{"directory" => dir}}) when is_binary(dir) do
-    dir = Path.expand(dir)
-
-    if File.dir?(dir) do
-      case changed_files(dir) do
-        [file | _rest] -> %{kind: :edit, code: file, note: nil}
-        [] -> last_commit(dir)
-      end
-    end
-  end
-
-  def step(_ticket), do: nil
+  def step(ticket), do: ticket |> observe() |> field(:step)
 
   @doc """
   When the worktree last changed, or nil: the newest uncommitted file or,
@@ -36,33 +30,50 @@ defmodule AgentBoard.AgentWorktree do
   not evidence; a test run is not the agent's own progress.
   """
   @spec last_activity_at(map() | nil) :: DateTime.t() | nil
-  def last_activity_at(%{"execution" => %{"directory" => dir}}) when is_binary(dir) do
-    dir = Path.expand(dir)
+  def last_activity_at(ticket), do: ticket |> observe() |> field(:last_activity_at)
 
+  @doc """
+  The step and the last activity together, from one `git status` and at most
+  one `git log`, or nil without a worktree.
+
+  The observation is shared: it is kept per directory for
+  `:worktree_ttl_ms` (10 s, the poll interval, by default; 0 reads every
+  time), so the renders inside that window ask `git` once between them.
+  """
+  @spec observe(map() | nil) :: observation() | nil
+  def observe(%{"execution" => %{"directory" => dir}}) when is_binary(dir) do
+    dir = Path.expand(dir)
+    Cache.fetch(dir, ttl_ms(), fn -> read(dir) end)
+  end
+
+  def observe(_ticket), do: nil
+
+  defp field(nil, _key), do: nil
+  defp field(observation, key), do: Map.fetch!(observation, key)
+
+  defp ttl_ms, do: Application.get_env(:agent_board, :worktree_ttl_ms, @default_ttl_ms)
+
+  defp read(dir) do
     if File.dir?(dir) do
       case changed_files(dir) do
-        [file | _rest] -> changed_at(dir, file) || last_commit_at(dir)
-        [] -> last_commit_at(dir)
+        [file | _rest] ->
+          %{
+            step: %{kind: :edit, code: file, note: nil},
+            # A deleted file is a change without a time; the commit answers then.
+            last_activity_at: changed_at(dir, file) || commit_at(last_commit(dir))
+          }
+
+        [] ->
+          commit = last_commit(dir)
+          %{step: commit_step(commit), last_activity_at: commit_at(commit)}
       end
     end
   end
 
-  def last_activity_at(_ticket), do: nil
-
-  # A deleted file is a change without a time; the commit answers then.
   defp changed_at(dir, file) do
     case mtime(dir, file) do
       0 -> nil
       posix -> DateTime.from_unix!(posix)
-    end
-  end
-
-  defp last_commit_at(dir) do
-    with {:ok, output} <- git(dir, ["log", "-1", "--format=%ct"]),
-         {posix, ""} <- Integer.parse(output) do
-      DateTime.from_unix!(posix)
-    else
-      _ -> nil
     end
   end
 
@@ -84,16 +95,26 @@ defmodule AgentBoard.AgentWorktree do
     end
   end
 
+  # One `git log` answers both the step (sha and subject) and the activity
+  # (the committer time).
   defp last_commit(dir) do
-    case git(dir, ["log", "-1", "--format=%h%x00%s"]) do
-      {:ok, output} ->
-        case String.split(output, "\0", parts: 2) do
-          [sha, subject] when sha != "" -> %{kind: :commit, code: sha, note: truncate(subject)}
-          _ -> nil
-        end
+    with {:ok, output} <- git(dir, ["log", "-1", "--format=%h%x00%ct%x00%s"]),
+         [sha, time, subject] when sha != "" <- String.split(output, "\0", parts: 3) do
+      %{sha: sha, time: time, subject: subject}
+    else
+      _ -> nil
+    end
+  end
 
-      :error ->
-        nil
+  defp commit_step(nil), do: nil
+  defp commit_step(commit), do: %{kind: :commit, code: commit.sha, note: truncate(commit.subject)}
+
+  defp commit_at(nil), do: nil
+
+  defp commit_at(%{time: time}) do
+    case Integer.parse(time) do
+      {posix, ""} -> DateTime.from_unix!(posix)
+      _ -> nil
     end
   end
 
