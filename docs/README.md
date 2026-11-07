@@ -13,6 +13,7 @@ Documentação do repositório além do README:
 | [agent/practices.md](agent/practices.md) | Fonte compartilhada, evolução e migração da antiga biblioteca |
 | [decisions/](decisions/README.md) | ADRs: decisões registradas com alternativas e condições de revisão |
 | [research/symphony.md](research/symphony.md) | Pesquisa de 06/11/2026: o que é o openai/symphony, saúde do projeto com dados, comparação com o dsh-superagent + board, recomendação e ideias para trazer |
+| [research/alfred.md](research/alfred.md) | Plano de produto de 07/11/2026: a especificação Alfred comparada com o board, o DSH e o uso direto de Claude Code e Codex; onde está o uso de cada ferramenta, o desenho do roteamento entre executores e o roteiro por fases |
 
 Se um documento novo não couber no README e não estiver listado aqui, ele não
 é encontrável — adicione a linha no índice junto com o arquivo.
