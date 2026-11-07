@@ -40,6 +40,72 @@ defmodule AgentBoard.OrchestratorTest do
     assert_receive {:header, ["1"]}
   end
 
+  describe "set_max_workers/2" do
+    @executor %{
+      "model" => %{"provider" => "deepseek-account", "model" => "deepseek-flash"},
+      "maxWorkers" => 3,
+      "directory" => "/work",
+      "prepare" => "git worktree add",
+      "blockedCommands" => []
+    }
+
+    test "saves the whole executor block with the new ceiling at the revision it read" do
+      test_pid = self()
+
+      Req.Test.stub(@stub, fn
+        %{method: "GET", request_path: "/orchestrator/api/settings"} = conn ->
+          Req.Test.json(conn, %{
+            "blocks" => %{"executor" => %{"value" => @executor, "revision" => 7}}
+          })
+
+        %{method: "PUT", request_path: "/orchestrator/api/settings/executor"} = conn ->
+          {:ok, body, conn} = Plug.Conn.read_body(conn)
+          send(test_pid, {:put, Jason.decode!(body)})
+          Req.Test.json(conn, %{"saved" => true, "revision" => 8, "restarting" => false})
+      end)
+
+      assert Orchestrator.set_max_workers(Orchestrator.client(), 5) == {:ok, 5}
+      assert_receive {:put, %{"revision" => 7, "value" => value}}
+      assert value == Map.put(@executor, "maxWorkers", 5)
+    end
+
+    test "a save that would restart the runner is reported" do
+      Req.Test.stub(@stub, fn
+        %{method: "GET"} = conn ->
+          Req.Test.json(conn, %{
+            "blocks" => %{"executor" => %{"value" => @executor, "revision" => 7}}
+          })
+
+        %{method: "PUT"} = conn ->
+          Req.Test.json(conn, %{"saved" => true, "revision" => 8, "restarting" => true})
+      end)
+
+      assert Orchestrator.set_max_workers(Orchestrator.client(), 2) == {:ok, 2, :restarting}
+    end
+
+    test "a settings change in between is a conflict, not an overwrite" do
+      Req.Test.stub(@stub, fn
+        %{method: "GET"} = conn ->
+          Req.Test.json(conn, %{
+            "blocks" => %{"executor" => %{"value" => @executor, "revision" => 7}}
+          })
+
+        %{method: "PUT"} = conn ->
+          conn |> Plug.Conn.put_status(409) |> Req.Test.json(%{"error" => "Settings changed."})
+      end)
+
+      assert Orchestrator.set_max_workers(Orchestrator.client(), 4) == {:error, :conflict}
+    end
+
+    test "a ceiling outside the runner's range is refused before the network" do
+      Req.Test.stub(@stub, fn _conn -> flunk("no request expected") end)
+
+      assert Orchestrator.set_max_workers(Orchestrator.client(), 0) == {:error, :out_of_range}
+      assert Orchestrator.set_max_workers(Orchestrator.client(), 17) == {:error, :out_of_range}
+      assert Orchestrator.set_max_workers(nil, 3) == {:error, :not_configured}
+    end
+  end
+
   test "a body without load is malformed" do
     Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, %{"health" => %{}}) end)
     assert Orchestrator.load() == {:error, :malformed}

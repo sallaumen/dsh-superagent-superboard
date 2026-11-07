@@ -792,6 +792,9 @@ body { margin: 0; background: var(--paper); }
 .ab-flow__value--small { font-size: 14px; line-height: 20px; min-width: 0; }
 .ab-flow__value.is-unknown { color: var(--ink-faint); }
 .ab-flow__unit { font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ab-flow__limit { display: inline-flex; align-items: center; gap: 4px; align-self: center; }
+.ab-flow__step { width: 22px; height: 22px; font-size: 14px; line-height: 1; }
+.ab-flow__limit [data-key="load-max"] { color: var(--ink); min-width: 2ch; text-align: center; }
 .ab-flow .ab-tag { margin-left: auto; min-width: 34px; justify-content: center; font-family: var(--font-mono); font-variant-numeric: tabular-nums; flex: none; }
 .ab-flow__spark { display: block; width: 100%; height: 26px; overflow: visible; }
 .ab-flow__spark rect { fill: var(--ink-muted); }

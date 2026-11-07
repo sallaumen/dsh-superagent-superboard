@@ -10,7 +10,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
   """
   use AgentBoardWeb, :html
 
-  alias AgentBoard.{Metrics, Time}
+  alias AgentBoard.{Metrics, Orchestrator, Time}
 
   attr :flow, :map, required: true
   attr :tz_offset, :integer, default: 0
@@ -136,7 +136,8 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
       >
         {Metrics.count(@tile.running)}
       </span>
-      <span class="ab-flow__unit">de {Metrics.count(@tile.max)}</span>
+      <span class="ab-flow__unit">de</span>
+      <.limit tile={@tile} />
       <span class="ab-tag" title="tickets esperando no orquestrador">
         {Metrics.count(@tile.queued)}<span class="ab-sr"> tickets</span> esperando
       </span>
@@ -150,6 +151,49 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
         </dd>
       </div>
     </dl>
+    """
+  end
+
+  attr :tile, :map, required: true
+
+  # The ceiling is changed where it is read: minus and plus save
+  # `executor.maxWorkers` in the runner (`Orchestrator.set_max_workers/2`).
+  defp limit(%{tile: %{status: :measured}} = assigns) do
+    range = Orchestrator.worker_range()
+    assigns = assign(assigns, min: range.first, max: range.last)
+
+    ~H"""
+    <span class="ab-flow__limit">
+      <button
+        type="button"
+        class="ab-btn ab-btn--icon ab-flow__step"
+        phx-click="set_max_workers"
+        phx-value-to={@tile.max - 1}
+        disabled={@tile.max <= @min}
+        aria-label="Menos um agente"
+        title="Menos um agente em paralelo"
+      >
+        −
+      </button>
+      <span class="ab-flow__unit" data-key="load-max">{@tile.max}</span>
+      <button
+        type="button"
+        class="ab-btn ab-btn--icon ab-flow__step"
+        phx-click="set_max_workers"
+        phx-value-to={@tile.max + 1}
+        disabled={@tile.max >= @max}
+        aria-label="Mais um agente"
+        title="Mais um agente em paralelo"
+      >
+        +
+      </button>
+    </span>
+    """
+  end
+
+  defp limit(assigns) do
+    ~H"""
+    <span class="ab-flow__unit" data-key="load-max">{Metrics.count(@tile.max)}</span>
     """
   end
 

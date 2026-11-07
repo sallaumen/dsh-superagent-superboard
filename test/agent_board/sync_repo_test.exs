@@ -537,6 +537,46 @@ defmodule AgentBoard.SyncRepoTest do
     assert %Task{state: "done"} = Repo.one(from t in Task, where: t.number == 8)
   end
 
+  test "an issue closed after it entered the board leaves the queue", %{repo: repo} do
+    for state <- ["open", "closed"] do
+      stub_github(fn conn ->
+        case conn.request_path do
+          "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(22, state)])
+          _ -> Req.Test.json(conn, [])
+        end
+      end)
+
+      assert Sync.sync_repo(client(), repo) == :ok
+    end
+
+    assert %Task{state: "done"} = Repo.one(from t in Task, where: t.number == 22)
+  end
+
+  test "a stopped task keeps its state when its issue closes", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(23, "open")])
+        _ -> Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    Repo.update_all(from(t in Task, where: t.number == 23),
+      set: [stopped: true, state: "stopped"]
+    )
+
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(23, "closed")])
+        _ -> Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert %Task{state: "stopped"} = Repo.one(from t in Task, where: t.number == 23)
+  end
+
   test "a pull request becomes a merged task with its rollups", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
