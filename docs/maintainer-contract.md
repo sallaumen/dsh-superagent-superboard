@@ -212,7 +212,11 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 - **Voice asks** are a write and always confirmed: the conversation's
   `ask_task` action becomes a proposal naming the task and the question,
   and only the spoken yes posts it (`Board.ask/3`, a comment with
-  `@sallaumen-agent`). "Repete" and "mais devagar/rápido/alto/baixo" are
+  `@sallaumen-agent`). Its reply — the first new agent comment on the task
+  after the confirmation that is not the workpad, within a day — is spoken
+  once on a board update (`Conversation.arrived_answers/1`, claimed by the
+  conditional `mark_answered/1` so a second tab stays quiet), joins the
+  memory and is silenced by `voice_attention`. "Repete" and "mais devagar/rápido/alto/baixo" are
   local commands of the conversation, no model. The old draft panel
   (`VoiceCommand.draft`, `VoiceMutations`, `VoiceActionConfirmation`) was
   removed; `AgentBoardWeb.VoiceCommands` stays as the no-model fallback and

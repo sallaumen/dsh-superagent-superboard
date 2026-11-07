@@ -553,6 +553,7 @@ defmodule AgentBoardWeb.BoardLive do
       |> refresh_conversation()
       |> load_inspector()
       |> announce(old_board, old_sync, old_needs)
+      |> VoiceConversation.check_answers()
 
     {:noreply, socket}
   end

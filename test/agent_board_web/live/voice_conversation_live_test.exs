@@ -13,6 +13,8 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
   alias AgentBoard.AI.Engines.Scripted
   alias AgentBoard.{Board, Conversation}
+  alias AgentBoard.Board.{Comment, Task}
+  alias AgentBoardWeb.VoiceConversation
 
   setup do
     previous =
@@ -72,7 +74,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     view = board(conn)
 
     render_hook(view, "voice_turn", %{"text" => "Como está o quadro?"})
-    render_async(view)
+    render_async(view, 1_000)
 
     assert_push_event(view, "voice_play", %{url: url, listen: false})
     assert spoken(url) == "Duas tarefas rodando e nada bloqueado."
@@ -87,8 +89,8 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     view = board(conn)
 
     {:ok, task} =
-      %AgentBoard.Board.Task{}
-      |> AgentBoard.Board.Task.changeset(%{
+      %Task{}
+      |> Task.changeset(%{
         repository_id: Board.list_repositories() |> hd() |> Map.fetch!(:id),
         number: 7,
         title: "Placar",
@@ -111,7 +113,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     end)
 
     render_hook(view, "voice_turn", %{"text" => "para a tarefa sete"})
-    render_async(view)
+    render_async(view, 1_000)
 
     assert_push_event(view, "voice_play", %{url: url, listen: true})
     assert spoken(url) == "Parar a tarefa 7, Placar? Posso?"
@@ -123,7 +125,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     view = board(conn)
 
     render_hook(view, "voice_turn", %{"text" => "oi"})
-    render_async(view)
+    render_async(view, 1_000)
 
     assert_push_event(view, "speak", %{text: "Oi! Tudo certo.", lang: "pt-BR", listen: false})
   end
@@ -187,7 +189,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     assert html =~ "Aperte espaço duas vezes"
 
     view |> element("#voice-chat-form") |> render_submit(%{"text" => "lembra do placar"})
-    render_async(view)
+    render_async(view, 1_000)
 
     assert has_element?(view, "#voice-chat-turns [data-role=owner]", "lembra do placar")
     assert has_element?(view, "#voice-chat-turns [data-role=agent]", "Pode deixar.")
@@ -202,7 +204,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     view = board(conn)
 
     render_hook(view, "voice_turn", %{"text" => "status"})
-    render_async(view)
+    render_async(view, 1_000)
 
     assert_push_event(view, "voice_play", %{url: _url})
     assert [%{role: "owner"}, %{role: "agent", action: "command"}] = Conversation.recent()
@@ -231,7 +233,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=voice")
 
     view |> element("#voice-chat-form") |> render_submit(%{"text" => "oi"})
-    render_async(view)
+    render_async(view, 1_000)
 
     assert has_element?(view, "#voice-chat-turns [data-role=agent] .voice-chat-time", "pensou em")
   end
@@ -242,10 +244,82 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     assert html =~ ~s(data-volume="100")
 
     render_hook(view, "voice_turn", %{"text" => "mais baixo"})
-    render_async(view)
+    render_async(view, 1_000)
 
     assert render(view) =~ ~s(data-volume="80")
     assert_push_event(view, "voice_play", %{url: url})
     assert spoken(url) == "Pronto, mais baixo."
+  end
+
+  defp asked_task do
+    repo = hd(Board.list_repositories())
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        number: 12,
+        title: "Placar",
+        state: "running",
+        kind: "issue"
+      })
+      |> AgentBoard.Repo.insert!()
+
+    {:ok, ask} =
+      Conversation.record("agent", "Posso mandar?",
+        proposal: %{"kind" => "ask_task", "task_id" => task.id, "number" => 12}
+      )
+
+    :ok = Conversation.settle(ask, "confirmed")
+    ask = AgentBoard.Repo.reload!(ask)
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: task.id,
+      github_id: 77,
+      kind: "agent",
+      body: "<!-- dsh-superagent:x -->\nSim, rodei os testes e todos passaram."
+    })
+    |> Ecto.Changeset.force_change(
+      :inserted_at,
+      ask.updated_at |> DateTime.add(30) |> DateTime.truncate(:second)
+    )
+    |> AgentBoard.Repo.insert!()
+
+    task
+  end
+
+  test "the coding agent's reply to a spoken question is said once", %{conn: conn} do
+    view = board(conn)
+    asked_task()
+
+    send(view.pid, :board_updated)
+    assert_push_event(view, "voice_play", %{url: url})
+
+    assert spoken(url) ==
+             "O agente da tarefa 12 respondeu: Sim, rodei os testes e todos passaram."
+
+    send(view.pid, :board_updated)
+    refute_push_event(view, "voice_play", %{url: _}, 100)
+    assert [%{action: "agent_answered"} | _] = Enum.reverse(Conversation.recent())
+  end
+
+  test "with the calls for attention off, the reply waits silently", %{conn: conn} do
+    :ok = AgentBoard.Settings.put("voice_attention", "0")
+    view = board(conn)
+    asked_task()
+
+    send(view.pid, :board_updated)
+    refute_push_event(view, "voice_play", %{url: _}, 100)
+    assert [_reply] = Conversation.arrived_answers()
+  end
+
+  test "the spoken summary drops markers and keeps a few sentences" do
+    long = "🤖 Resposta automática do agente\n" <> String.duplicate("Primeira frase longa. ", 20)
+    summary = VoiceConversation.answer_summary(long)
+
+    refute summary =~ "🤖"
+    assert String.length(summary) <= 241
+    assert String.ends_with?(summary, ".")
   end
 end

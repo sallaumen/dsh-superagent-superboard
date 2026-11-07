@@ -24,6 +24,10 @@
 		<string>4099</string>
 		<key>PHX_SERVER</key>
 		<string>true</string>
+		<!-- service.sh rotates this file at start (50 MB, one old copy) and
+		     reopens it; the paths below catch only what fails before that. -->
+		<key>AGENT_BOARD_LOG</key>
+		<string>/Users/tavano/Library/Logs/AgentBoard.log</string>
 	</dict>
 
 	<key>RunAtLoad</key>
