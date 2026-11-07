@@ -35,6 +35,7 @@ defmodule AgentBoard.Board.Task do
     field :request_key, :string
     field :work_type, :string
     field :size, :string
+    field :executor, :string
 
     belongs_to :repository, AgentBoard.Board.Repository
     belongs_to :origin_task, AgentBoard.Board.Task
@@ -62,12 +63,14 @@ defmodule AgentBoard.Board.Task do
       :origin_task_id,
       :request_key,
       :work_type,
-      :size
+      :size,
+      :executor
     ])
     |> validate_required([:title, :repository_id])
     |> validate_inclusion(:state, @states)
     |> validate_inclusion(:work_type, @work_types)
     |> validate_inclusion(:size, @sizes)
+    |> validate_inclusion(:executor, AgentBoard.Executors.all())
     |> unique_constraint([:repository_id, :kind, :number])
     |> unique_constraint([:repository_id, :request_key])
   end

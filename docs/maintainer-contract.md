@@ -21,6 +21,7 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 | `AgentBoard.Metrics` | the throughput arithmetic, pure; `Metrics.Observations` reads what it counts |
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.ExecutorUsage` | what the executor spent on a task, read from the harness transcripts; tokens measured, cost estimated |
+| `AgentBoard.Executors` | who a task is for (`dsh`, `claude`, `codex`): the label and the issue body each gets; pure |
 | `AgentBoard.Attribution` | which task a session or a PR worked for: exact, `pr-link`, branch, repository or outside; pure |
 | `AgentBoard.Usage.ClaudeCode` | what Claude Code spent, read from its transcripts (`~/.claude/projects`); one count per `message.id` across files, numbers and named metadata only (`Usage.Fields`) |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
@@ -408,6 +409,33 @@ Agora and the detail):
   232,749 input, 238,848 output tokens in its worker).
 - The tests: `executor_usage_test.exs` (parsing, dedupe, folder name, cost,
   no `zstd`, reuse) and `inspector_test.exs` (rendered states).
+
+## Executors
+
+A task the board creates can be for the DeepSeek runner (`dsh`), Claude
+Code (`claude`) or Codex (`codex`): `tasks.executor`, nil for an issue the
+sync found or a task created before the choice existed.
+
+- **The runner is dispatched by the mention, and only the runner.** Its
+  issue ends with `@sallaumen-agent`; anyone else's mentions nobody, and a
+  mention inside the text loses its `@` (`Executors.issue_body/2`). Every
+  board issue for an executor carries the label `executor:<name>`, which
+  GitHub creates on first use.
+- **Choosing Claude Code or Codex records the choice; nothing starts them**
+  (decisions D1 to D5 are open, `docs/research/alfred.md`).
+- **Why the runner leaves those issues alone, and its limit.** The board
+  opens issues as `sallaumen`, a listed sender. An issue without the
+  mention is a `listedUnaddressed` message: the runner admits it as an
+  *inferred* candidate and runs its evaluation, and with `eval.mode`
+  `observe` (read 2026-11-07) an inferred acceptance only becomes
+  `observed`, never a ticket (`dsh: src/policy.ts`, `assessmentOutcome`).
+  Observed live on 2026-11-07 with `sallaumen/arena-rogue#69` (decision
+  `ignore`, strength `inferred`, no ticket) and before on `#14`. With
+  `eval.mode` `auto`, an issue matching the copy or visual rule would become
+  an inferred ticket; the unconditional guard is the runner's setting
+  `listedUnaddressed: ignore` for issues, which belongs to the owner.
+- The tests: `executors_test.exs` and `create_request_test.exs` (the body
+  and the label GitHub receives, the stored executor, a repeat).
 
 ## Attribution
 

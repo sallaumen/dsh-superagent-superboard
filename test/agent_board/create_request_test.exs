@@ -44,6 +44,77 @@ defmodule AgentBoard.CreateRequestTest do
     assert Repo.get(Task, first.id).request_key == key
   end
 
+  # Answers every issue creation and sends the test the JSON GitHub received.
+  defp capture_issues do
+    test = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      send(test, {:issue, Jason.decode!(body)})
+      Req.Test.json(conn, %{"number" => 7, "html_url" => "https://github.com/x/y/issues/7"})
+    end)
+  end
+
+  test "a task for Claude Code opens an issue without the mention, labelled for it",
+       %{repo: repo} do
+    capture_issues()
+    body = "Refazer a tela\n\n@sallaumen-agent"
+    key = Board.request_key(repo, "single", ["Refazer a tela", body])
+
+    assert {:ok, task, :created} =
+             Board.create_request(
+               repo,
+               %{title: "Refazer a tela", body: body, key: key, executor: "claude"},
+               client()
+             )
+
+    assert_received {:issue, sent}
+    refute sent["body"] =~ "@sallaumen-agent"
+    assert sent["labels"] == ["executor:claude"]
+    assert %Task{executor: "claude", body: "Refazer a tela"} = Repo.get(Task, task.id)
+
+    # The same words again are the same task, not a second issue.
+    assert {:ok, %Task{id: id}, :existing} =
+             Board.create_request(
+               repo,
+               %{title: "Refazer a tela", body: body, key: key, executor: "claude"},
+               client()
+             )
+
+    assert id == task.id
+    refute_received {:issue, _}
+  end
+
+  test "a task for the DeepSeek runner keeps the mention and is labelled for it", %{repo: repo} do
+    capture_issues()
+    key = Board.request_key(repo, "single", ["Add a boss", "Add a boss"])
+
+    assert {:ok, task, :created} =
+             Board.create_request(
+               repo,
+               %{title: "Add a boss", body: "Add a boss", key: key, executor: "dsh"},
+               client()
+             )
+
+    assert_received {:issue, %{"body" => "Add a boss\n\n@sallaumen-agent", "labels" => labels}}
+    assert labels == ["executor:dsh"]
+    assert Repo.get(Task, task.id).executor == "dsh"
+  end
+
+  test "a request without an executor is opened as given, with no label", %{repo: repo} do
+    capture_issues()
+    body = "Add a boss\n\n@sallaumen-agent"
+    key = Board.request_key(repo, "single", ["Add a boss", body])
+
+    assert {:ok, task, :created} =
+             Board.create_request(repo, %{title: "Add a boss", body: body, key: key}, client())
+
+    assert_received {:issue, sent}
+    assert sent["body"] == body
+    refute Map.has_key?(sent, "labels")
+    assert Repo.get(Task, task.id).executor == nil
+  end
+
   test "the key ignores spacing differences and keeps distinct requests apart", %{repo: repo} do
     assert Board.request_key(repo, "single", ["a  b", "x"]) ==
              Board.request_key(repo, "single", [" a b ", "x"])
