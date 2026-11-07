@@ -63,13 +63,18 @@ config :phoenix, :json_library, Jason
 # The sync runs as a durable job: supervised, retried and observable.
 config :agent_board, Oban,
   repo: AgentBoard.Repo,
-  queues: [sync: 1],
+  # usage: the usage ledger reads local transcripts, one run at a time.
+  queues: [sync: 1, usage: 1],
   # Every five minutes, not every minute: one run costs ~2 API calls per
   # recent pull, and a 100-pull repo at 1/min burns the 5k/h token quota
   # (the board then shows "sync failed" until the hour resets).
   plugins: [
     Oban.Plugins.Pruner,
-    {Oban.Plugins.Cron, crontab: [{"*/5 * * * *", AgentBoard.Sync.Worker}]}
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"*/5 * * * *", AgentBoard.Sync.Worker},
+       {"*/5 * * * *", AgentBoard.Usage.Worker}
+     ]}
   ]
 
 # Import environment specific config. This must remain at the bottom

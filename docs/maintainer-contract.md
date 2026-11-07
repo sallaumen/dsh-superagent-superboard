@@ -33,6 +33,8 @@ differ. Change a general rule upstream, not here.
 | `AgentBoard.Usage.ClaudeCode` | what Claude Code spent, read from its transcripts (`~/.claude/projects`); one count per `message.id` across files, numbers and named metadata only (`Usage.Fields`) |
 | `AgentBoard.Usage.Codex` | what Codex spent: the `threads` table by named columns (never `title`, `preview`, `name`, `first_user_message`) and the rollouts' cumulative totals as daily differences, plus the last `rate_limits`; zstd rollouts through `Usage.Lines` |
 | `AgentBoard.DailySummary` | the summary of the day on a wall clock: the tick, the settings, one row per local day; `DailySummary.Facts` collects what it says |
+| `AgentBoard.Usage.Ledger` | the usage ledger: one row per execution and UTC day for Claude Code, Codex and the harness, read from changed files only; `daily/1`, `limits/0` |
+| `AgentBoard.Usage.Worker` | the Oban job (queue `usage`, every five minutes) that runs `Ledger.refresh/0` |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
 | `AgentBoard.Settings` | board-wide settings, one row per key (the voice picks) |
 | `AgentBoard.Voice` | the spoken summary and the voice settings (language, volume, attention) |
@@ -500,7 +502,10 @@ Agora and the detail):
   calls are not the board's: `AgentBoard.ExecutorUsage` reads them from the
   harness transcripts, `~/.dsh/sessions/<ticket directory with / as ->/<session>/session.v4.jsonl.zstd`
   (`:dsh_sessions_dir`), one per worker and one per subagent. It only reads;
-  nothing is stored in `tasks`, `ai_calls` or the runner's sqlite.
+  nothing is stored in `tasks`, `ai_calls` or the runner's sqlite. The
+  usage ledger (below) stores the same counts per day through the same
+  parser (`read_transcript/1`), so the inspector and the ledger count the
+  same messages the same way.
 - **Tokens are measured**: each `assistant/message` counts once (by
   `data.message.id`), summing `data.usage` input, output, cache read and
   cache write. Input excludes cache reads.
@@ -595,6 +600,77 @@ dispatch.
 - The tests: `routing_test.exs` (each rule), `routing_signals_test.exs`,
   `orchestrator_test.exs` (`dispatch_state/1`) and `create_request_test.exs`
   (the row, the repeat, the row computed without a shown suggestion).
+
+## Usage ledger (Livro de uso)
+
+What Claude Code, Codex and the harness spent, kept by the board so a screen
+never reads hundreds of transcripts on render (`docs/research/alfred.md`,
+3.3 and 3.4). `AgentBoard.Usage.Ledger` writes `usage_ledger`, one row per
+**execution** and UTC day; `AgentBoard.Usage.Worker` runs it every five
+minutes in its own Oban queue, `usage`. An execution is a Claude Code
+session (`sessionId`), a Codex thread (its id) or a harness ticket (its
+folder under `~/.dsh/sessions`). A row also keeps the cwd, branch and model,
+and counts messages (`requests`), input without the cache, output, cache
+read and cache write tokens, with the first and last time.
+
+| Source | Files | Reader | Rule |
+|---|---|---|---|
+| `claude_code` | `~/.claude/projects/**/*.jsonl` (`:claude_projects_dir`) | `Usage.ClaudeCode` | one row per `message.id` across every file in `usage_messages`; a later copy merges by the largest count and keeps the session stored first |
+| `codex` | `~/.codex/sessions/**/rollout-*.jsonl[.zst]`, `~/.codex/archived_sessions` and `state_5.sqlite` (`:codex_sessions_dir`, `:codex_archived_dir`, `:codex_state_db`) | `Usage.Codex` | a day is the growth of the thread's cumulative total, read across all the thread's files (a long thread continues in `rollout-<time>-<thread>_<id>.jsonl`, counting on from the first file); input is `input_tokens − cached_input_tokens`; cwd, branch and model come from `threads` |
+| `dsh` | `~/.dsh/sessions/*/*/session.v4.jsonl.zstd` (`:dsh_sessions_dir`) | `ExecutorUsage.read_transcript/1` | one row per `data.message.id` (else `seq`) per session in `usage_messages` |
+
+- **Only changed files are read.** `usage_files` keeps each path's size and
+  mtime. A Claude Code transcript that only grew is read from the end of its
+  last complete line, when the 4 KB before that point still hash the same;
+  otherwise from the start. A Codex thread is read whole when any of its
+  files changed. Files are read oldest first, so a session's original is
+  stored before a later copy.
+- **Reading the same files again changes no row.** A ledger row is written
+  only when its numbers change, and a message only when a count grows
+  (`ledger_test.exs` forces every file to be read again and compares).
+- **A file that cannot be read is not a gap filled with zero**: its reason
+  stays in `usage_files.error`, it is logged, and the next run tries it
+  again; the other files go on. Without `zstd` on the PATH the zstd files
+  fail with `:zstd_missing`. A transcript that disappears (Claude Code
+  deletes old sessions) keeps its rows: the ledger is history.
+- **Tokens are measured; there is no cost here.** Each source has its own
+  currency and the ledger never adds two sources together (`daily/1` keeps
+  one row per source and day): the harness spends DeepSeek balance (US$
+  estimated from `AI.Providers`, "Executor usage" above), Claude Code runs
+  on the Claude Max subscription (the list-price US$ of its `cost-state` is
+  a reference, not a bill; the real cost is a quota the files do not hold,
+  unknown and never zero), and Codex on the ChatGPT plan (only the share of
+  the weekly window: `usage_limits`, the newest `rate_limits` per limit,
+  `limits/0`). Input excludes the cache in all three so the counts line up;
+  output includes reasoning in Codex and thinking in Claude Code.
+- Days are UTC, like the AI budget and the ElevenLabs ledger.
+- **No conversation text is read or stored.** The readers keep numbers and
+  named metadata only (`Usage.Fields`); the `threads` query names its
+  columns and never reads `title`, `preview`, `name` or
+  `first_user_message`. The privacy tests fail if a reader touches them.
+- **Codex restarts and forks its count.** Inside one file, a total below
+  the previous one is a new count (one thread went from 51,126,844 to 0):
+  each count's growth is credited, while `threads.tokens_used` keeps only
+  the last count. A continuation file can fork the thread's count from
+  before the previous file's end: its first total is credited with that
+  response's own `last_token_usage`, so the abandoned tail of the previous
+  file stays counted once and nothing is counted twice.
+- Reconciled on 2026-11-07 against the real files (4,523 Claude Code
+  transcripts, 1,387 Codex rollouts, 100 harness sessions, 16 GB; a full
+  read takes 3–4 minutes on this Mac): Claude Code session `76474110…` (26
+  files, one process) matches its `cost-state` on all three models exactly;
+  1,309 of 1,315 Codex threads sum to `threads.tokens_used`, among them
+  `01a0cf47…` (two files) at 1,954,165,348 and `01a0150a…` at 1,798,055,349.
+  The other six are the restarts and forks above: four threads restarted
+  their count (the ledger holds 21.9 M to 183.8 M more than `tokens_used`),
+  two continuations forked (1.2 M and 5.0 M more). Forcing the 5,969 files
+  untouched for two hours to be read again changed none of their 5,843
+  rows.
+- The tests: `ledger_test.exs` (the reader's groups, no change on a second
+  read, a grown and a rewritten transcript, a copy that never counts twice,
+  Codex days against `tokens_used`, the newest quota, the harness through
+  `ExecutorUsage`, an unreadable file, one row per source and day),
+  `claude_code_test.exs` and `codex_test.exs`.
 
 ## Attribution
 
