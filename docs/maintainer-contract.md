@@ -123,6 +123,17 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   its first chunk reached the browser. Every retry is a voice activity
   event. The AI calls keep "no retry" below. The key never reaches the
   browser: the endpoints answer with audio or a transcript.
+- **ElevenLabs spending is a ledger** (`AgentBoard.ElevenLabs.Usage`, table
+  `eleven_labs_usage`, one row per UTC day): the client records every paid
+  TTS answer (characters from `x-character-count`, else the text length) and
+  every transcription (`audio_duration_secs`) where the 200 arrives; the
+  controller records cache hits at zero cost. A retried failure records
+  nothing. `over_cap?/0` compares today with `ELEVENLABS_DAILY_CHAR_CAP`
+  (default 20000, 0 = none) and the call that crosses it records one voice
+  activity event a day; the cap itself never refuses a call, the voice
+  routing reads `over_cap?/0`. A ledger write that fails is logged and
+  skipped, never a failed speech. `GET /api/voice/status` and the
+  "Bastidores da voz" summary show today's totals.
 - **Voice activity** (`AgentBoard.Voice.Activity`): each stage of a turn,
   every retry and every failure (server, or browser via
   `voice_client_error`) is one event: a log line `voice stage=… status=…`,
@@ -191,7 +202,9 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   (title, acceptance criteria, or one question): no second model call.
 - **Playback** goes through `/api/voice/stream` (ElevenLabs streaming) and
   `AgentBoard.ElevenLabs.SpeechCache` (short texts, keyed by every input
-  that changes the audio, bounded, off in tests). Every spoken text passes
+  that changes the audio, bounded, off in tests; ETS in front of the
+  durable `voice_speech_cache` table, so a fixed phrase is paid once, not
+  once per restart). Every spoken text passes
   `AgentBoard.Voice.Speakable.clean/1` (via `AgentBoardWeb.VoiceSpeech`).
   Speed (`voice_speed`), intonation (`voice_style` → stability), pause
   (`voice_pause`) and microphone sounds (`voice_earcons`) are settings. The conversation never reaches the coding
