@@ -138,7 +138,7 @@ defmodule AgentBoard.Voice.Commands do
       items: [
         %{
           say: "Cria uma tarefa no arena rogue para mostrar o volume",
-          does: "refina o pedido, diz o título e pergunta \"Posso criar?\"",
+          does: "refina o pedido e pergunta com o repositório e o título",
           mode: :confirm,
           try: false
         },
@@ -156,7 +156,7 @@ defmodule AgentBoard.Voice.Commands do
         },
         %{
           say: "Para a 7 / Arquiva a 7",
-          does: "diz qual é e pergunta \"Posso?\"",
+          does: "diz qual é e o que acontece, e pergunta",
           mode: :confirm,
           try: false
         },

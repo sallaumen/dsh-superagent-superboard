@@ -150,7 +150,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> element("#ask-agent")
     |> render_submit(%{"body" => "hi"})
 
+    view |> element("#ask-confirm-go") |> render_click()
+
     assert render(view) =~ "did not reach GitHub"
+    # The text comes back to the box, so nothing typed is lost.
+    assert has_element?(view, "#ask-body", "hi")
   end
 
   test "the conversation opens in the inspector on small screens", %{conn: conn} do

@@ -268,25 +268,16 @@ defmodule AgentBoard.Voice.Phrases do
   def clarify("en-US", question), do: "Before I create it, one question: #{question}"
   def clarify(_lang, question), do: "Antes de criar, uma dúvida: #{question}"
 
-  @doc "The refined task, waiting for a spoken yes."
-  def propose_task("en-US", repo, title),
-    do: "Got it. I'll create in #{repo_name(repo)}: #{short_title(title)}. Shall I?"
+  # The proposals (create, stop, archive, ask, undo, forget) say the
+  # registry's own sentence: `AgentBoard.Actions.phrase/3`, the one the
+  # screen shows.
 
-  def propose_task(_lang, repo, title),
-    do: "Entendi. Vou criar no #{repo_name(repo)} a tarefa: #{short_title(title)}. Posso criar?"
+  @doc "The gate refused a confirmed proposal: what was asked changed since."
+  def action_changed("en-US"),
+    do: "I didn't do it: something changed since I asked. Ask me again."
 
-  @doc "A stop or archive, waiting for a spoken yes."
-  def propose_task_action("en-US", "stop_task", n, t),
-    do: "Stop task #{n}, #{short_title(t)}? Shall I?"
-
-  def propose_task_action("en-US", _kind, n, t),
-    do: "Archive task #{n}, #{short_title(t)}? Shall I?"
-
-  def propose_task_action(_lang, "stop_task", n, t),
-    do: "Parar a tarefa #{n}, #{short_title(t)}? Posso?"
-
-  def propose_task_action(_lang, _kind, n, t),
-    do: "Arquivar a tarefa #{n}, #{short_title(t)}? Posso?"
+  def action_changed(_lang),
+    do: "Não fiz nada: algo mudou desde que perguntei. Peça de novo."
 
   def task_created("en-US", n, repo), do: "Done. Task #{n} is in the #{repo_name(repo)} queue."
 
@@ -357,9 +348,6 @@ defmodule AgentBoard.Voice.Phrases do
 
   def repository_not_found("en-US", name), do: "I don't follow a project called #{name}."
   def repository_not_found(_lang, name), do: "Não acompanho nenhum projeto chamado #{name}."
-
-  def propose_ask("en-US", n, q), do: "I'll ask the agent on task #{n}: #{q} Shall I send it?"
-  def propose_ask(_lang, n, q), do: "Vou perguntar ao agente na tarefa #{n}: #{q} Posso mandar?"
 
   def ask_sent("en-US", n), do: "Sent. The answer will show up in task #{n}'s conversation."
   def ask_sent(_lang, n), do: "Mandei. A resposta vai aparecer na conversa da tarefa #{n}."

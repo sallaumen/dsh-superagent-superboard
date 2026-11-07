@@ -674,6 +674,9 @@ body { margin: 0; background: var(--paper); }
 .ab-compose textarea { max-height: 40dvh; overflow: auto; }
 .ab-compose__error .ab-btn { margin-left: var(--space-2); vertical-align: middle; }
 .ab-compose__title { display: grid; gap: var(--space-1); padding: 0 var(--space-5) var(--space-3); }
+.ab-compose__confirm { margin: 0; padding: 0 var(--space-5) var(--space-3); color: var(--ink-muted); font-size: 13px; line-height: 19px; overflow-wrap: anywhere; }
+.ab-receipt .ab-compose__confirm { padding: 0; }
+.ab-compose__retry-confirm { display: block; margin-top: var(--space-1); color: var(--ink); }
 .ab-compose__title input {
   width: 100%; height: 32px; padding: 0 var(--space-3); font-size: 14px;
   border: 1px solid var(--line-strong); border-radius: var(--radius-sm);

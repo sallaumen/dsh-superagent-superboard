@@ -96,7 +96,6 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                   mode={:restart}
                   tone={:halt}
                   label={action.label}
-                  question="Religar o agente nesta máquina? Se você o parou de propósito, isso desfaz o stop."
                   confirm_label="Religar"
                   busy_label="Religando o agente…"
                 />

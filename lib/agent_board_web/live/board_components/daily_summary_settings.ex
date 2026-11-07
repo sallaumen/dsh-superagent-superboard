@@ -11,7 +11,7 @@ defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
   """
   use AgentBoardWeb, :live_component
 
-  alias AgentBoard.DailySummary
+  alias AgentBoard.{Actions, DailySummary}
 
   @impl true
   def update(assigns, socket) do
@@ -23,7 +23,10 @@ defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
 
   @impl true
   def handle_event("save", params, socket) do
-    case DailySummary.put_settings(Map.take(params, ["enabled", "at"])) do
+    form = Map.take(params, ["enabled", "at"])
+    change = %{setting: "daily_summary", value: form}
+
+    case Actions.run(:change_setting, change, Actions.owner(:ui)) do
       :ok -> {:noreply, assign(socket, settings: DailySummary.settings(), error: nil)}
       {:error, _reason} -> {:noreply, assign(socket, error: :invalid_time)}
     end

@@ -1,20 +1,22 @@
 defmodule AgentBoardWeb.BoardComponents.AgentAction do
   @moduledoc """
-  One action on the agent, in place: a button, a confirmation that names
-  what will happen, a loading state and the result. Nothing runs on the
-  first click.
+  One red action, in place: a button, a confirmation that says the
+  action's sentence (`AgentBoard.Actions.phrase/3`, the same the voice
+  says), a loading state and the result. Nothing runs on the first click;
+  the confirmation passes that sentence to the gate, and Cancelar records
+  the refusal.
 
-    * `:retry` - "Tentar de novo" / "Tentar agora" (`AgentControl.retry/2`)
-    * `:restart` - "Religar o agente" (`AgentControl.start_agent/1`)
-    * `:stop` - "Parar": only the confirmation lives here; the confirmed
-      click is BoardLive's `act` event, the same one the button sent before.
+    * `:retry` - "Tentar de novo" / "Tentar agora" (`:retry_ticket`)
+    * `:restart` - "Religar o agente" (`:start_agent`)
+    * `:stop` - "Parar" (`:stop_task`): only the confirmation lives here;
+      the confirmed click is BoardLive's `act` event, carrying the sentence.
 
   The result stays until the next action, so a board reload (every poll)
   does not erase it.
   """
   use AgentBoardWeb, :live_component
 
-  alias AgentBoard.AgentControl
+  alias AgentBoard.Actions
   alias Phoenix.LiveView.JS
 
   @impl true
@@ -29,7 +31,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:ticket_id, fn -> nil end)
      |> assign_new(:task_id, fn -> nil end)
      |> assign_new(:repository_id, fn -> nil end)
-     |> assign_new(:number, fn -> nil end)}
+     |> assign_new(:number, fn -> nil end)
+     |> assign_new(:task, fn -> nil end)
+     |> then(&assign(&1, :question, Actions.phrase(action(&1.assigns), params(&1.assigns))))}
   end
 
   @impl true
@@ -59,6 +63,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
             phx-click="act"
             phx-value-id={@task_id}
             phx-value-action="stop"
+            phx-value-confirm={@question}
             phx-disable-with={@busy_label}
             phx-mounted={JS.focus()}
           >
@@ -105,13 +110,20 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   def handle_event("ask", _params, socket),
     do: {:noreply, assign(socket, step: :confirm, result: nil, refocus: false)}
 
+  def handle_event("cancel", _params, %{assigns: %{step: :confirm} = assigns} = socket) do
+    :ok = Actions.decline(action(assigns), params(assigns), Actions.owner(:ui))
+    {:noreply, assign(socket, step: :idle, refocus: true)}
+  end
+
   def handle_event("cancel", _params, socket),
     do: {:noreply, assign(socket, step: :idle, refocus: true)}
 
-  # Only a confirmation starts the work, and only once.
-  def handle_event("go", _params, %{assigns: %{step: :confirm}} = socket) do
-    action = action(socket.assigns)
-    {:noreply, socket |> assign(step: :busy) |> start_async(:run, action)}
+  # Only a confirmation starts the work, and only once; it carries the
+  # sentence the person just read.
+  def handle_event("go", _params, %{assigns: %{step: :confirm} = assigns} = socket) do
+    {name, params, question} = {action(assigns), params(assigns), assigns.question}
+    run = fn -> Actions.run(name, params, Actions.owner(:ui), confirm: question) end
+    {:noreply, socket |> assign(step: :busy) |> start_async(:run, run)}
   end
 
   def handle_event("go", _params, socket), do: {:noreply, socket}
@@ -128,6 +140,13 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   def handle_async(:run, {:ok, {:ok, text}}, socket),
     do: {:noreply, assign(socket, step: :done, result: %{tone: :ok, text: text})}
 
+  # The gate refused: what the person confirmed is no longer what would run.
+  def handle_async(:run, {:ok, {:error, {refusal, _phrase}}}, socket)
+      when refusal in [:unconfirmed, :phrase_changed] do
+    text = "Nada foi feito: a ação mudou desde a confirmação. Confira e confirme de novo."
+    {:noreply, assign(socket, step: :done, result: %{tone: :error, text: text})}
+  end
+
   def handle_async(:run, {:ok, {:error, text}}, socket),
     do: {:noreply, assign(socket, step: :done, result: %{tone: :error, text: text})}
 
@@ -136,13 +155,19 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     {:noreply, assign(socket, step: :done, result: %{tone: :error, text: text})}
   end
 
-  defp action(%{mode: :retry} = assigns) do
-    opts = [repository_id: assigns.repository_id, number: assigns.number]
-    ticket_id = assigns.ticket_id
-    fn -> AgentControl.retry(ticket_id, opts) end
-  end
+  defp action(%{mode: :retry}), do: :retry_ticket
+  defp action(%{mode: :restart}), do: :start_agent
+  defp action(%{mode: :stop}), do: :stop_task
 
-  defp action(%{mode: :restart}), do: fn -> AgentControl.start_agent() end
+  defp params(%{mode: :retry} = assigns),
+    do: %{
+      ticket_id: assigns.ticket_id,
+      repository_id: assigns.repository_id,
+      number: assigns.number
+    }
+
+  defp params(%{mode: :restart}), do: %{}
+  defp params(%{mode: :stop, task: task}), do: %{task: task}
 
   defp tone(:halt), do: "ab-btn--halt"
   defp tone(:primary), do: "ab-btn--primary"

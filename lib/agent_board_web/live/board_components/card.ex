@@ -29,37 +29,6 @@ defmodule AgentBoardWeb.BoardComponents.Card do
         at={if @state == :merged, do: @item.merged_at, else: @item.updated_at}
         label={if @state == :merged, do: "Merged", else: "Updated"}
       />
-      <div
-        :if={@state in [:running, :ready, :blocked, :queued]}
-        class="task-actions"
-        role="group"
-        aria-label={"Actions for " <> (@item.title || "unknown")}
-      >
-        <button
-          phx-click="open"
-          id={"open-task-#{@item.id}"}
-          data-panel-trigger
-          aria-haspopup="dialog"
-          phx-value-id={@item.id}
-          aria-label={"Open task: " <> (@item.title || "unknown")}
-        >Open</button>
-        <button
-          phx-click="act"
-          phx-value-id={@item.id}
-          phx-value-action="stop"
-          phx-disable-with="Stopping…"
-          title="Closes the GitHub issue and stops this task"
-          aria-label={"Stop task: " <> (@item.title || "unknown")}
-        >Stop</button>
-        <button
-          phx-click="act"
-          phx-value-id={@item.id}
-          phx-value-action="archive"
-          phx-disable-with="Archiving…"
-          title="Hides this task from the board; keeps its history"
-          aria-label={"Archive task: " <> (@item.title || "unknown")}
-        >Archive</button>
-      </div>
     </article>
     """
   end

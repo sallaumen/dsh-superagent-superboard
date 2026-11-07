@@ -63,7 +63,8 @@ defmodule AgentBoardWeb.IntakeUITest do
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
     view |> element("[data-task]") |> render_click()
 
-    html = view |> element("#ask-agent") |> render_submit(%{"body" => "por que demora?"})
+    view |> element("#ask-agent") |> render_submit(%{"body" => "por que demora?"})
+    html = view |> element("#ask-confirm-go") |> render_click()
     assert html =~ "Question sent"
 
     # the model answers on another process: let it land, then render
@@ -94,6 +95,11 @@ defmodule AgentBoardWeb.IntakeUITest do
     {:ok, view, _} = live(conn, ~p"/?repo=fixture/actions")
     view |> element("#open-create") |> render_click()
 
+    # The browser sends the words before the submit; the sentence that
+    # confirms the creation is on screen when the person presses send.
+    view |> element("#composer-form") |> render_change(%{"text" => "Fixture"})
+    assert has_element?(view, "#composer-confirm", "Criar no actions a tarefa “Fixture”?")
+
     view
     |> element("#composer-form")
     |> render_submit(%{"text" => "Fixture"})
@@ -116,6 +122,11 @@ defmodule AgentBoardWeb.IntakeUITest do
 
     {:ok, view, _} = live(conn, ~p"/?repo=fixture/actions")
     view |> element("#open-create") |> render_click()
+
+    # The browser sends the words before the submit; the sentence that
+    # confirms the creation is on screen when the person presses send.
+    view |> element("#composer-form") |> render_change(%{"text" => "Fixture"})
+    assert has_element?(view, "#composer-confirm", "Criar no actions a tarefa “Fixture”?")
 
     view
     |> element("#composer-form")

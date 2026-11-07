@@ -21,6 +21,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :tz_offset, :integer, default: 0
   attr :live, :boolean, default: false
   attr :failure, :map, default: nil
+  attr :ask_pending, :map, default: nil
+  attr :ask_draft, :string, default: ""
 
   def inspector(assigns) do
     tabs = [
@@ -97,8 +99,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             mode={:stop}
             tone={:halt}
             task_id={@task.id}
+            task={@task}
             label="Parar"
-            question={"Parar ##{@task.number}? O board fecha a issue e marca a tarefa como parada; um passo que o agente já começou termina antes."}
             confirm_label="Parar a tarefa"
             busy_label="Parando…"
           />
@@ -148,7 +150,42 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       </div>
 
       <div :if={@tab == "conversa"} class="ab-insp__foot">
-        <form id="ask-agent" phx-submit="ask">
+        <%!-- A question posts on GitHub (red, AgentBoard.Actions): the
+             sentence comes first, and only "Mandar" sends it. --%>
+        <div
+          :if={@ask_pending && @ask_pending.task_id == @task.id}
+          id="ask-confirm"
+          class="ab-act__confirm"
+          role="group"
+          aria-labelledby="ask-confirm-q"
+        >
+          <p id="ask-confirm-q" class="ab-act__question">{@ask_pending.phrase}</p>
+          <div class="ab-act__buttons">
+            <button
+              id="ask-confirm-go"
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--primary"
+              phx-click="ask_confirm"
+              phx-disable-with="Mandando…"
+              phx-mounted={Phoenix.LiveView.JS.focus()}
+            >
+              Mandar a pergunta
+            </button>
+            <button
+              id="ask-confirm-cancel"
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="ask_cancel"
+            >
+              Voltar e editar
+            </button>
+          </div>
+        </div>
+        <form
+          :if={!(@ask_pending && @ask_pending.task_id == @task.id)}
+          id="ask-agent"
+          phx-submit="ask"
+        >
           <div class="ab-compose ab-compose--inline">
             <textarea
               id="ask-body"
@@ -157,7 +194,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               aria-label="Mensagem para o agente"
               placeholder="Responder ao agente…"
               required
-            ></textarea>
+            >{@ask_draft}</textarea>
             <div class="ab-compose__bar">
               <button
                 type="button"
@@ -208,7 +245,6 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         repository_id={@task.repository_id}
         number={@task.number}
         label={@failure.retry}
-        question={"Pedir ao agente uma nova tentativa de ##{@task.number} agora?"}
         confirm_label="Pedir nova tentativa"
         busy_label="Pedindo ao agente…"
       />

@@ -1,11 +1,23 @@
 defmodule AgentBoardWeb.BoardController do
-  @moduledoc "The JSON API the board and the tests speak."
+  @moduledoc """
+  The JSON API the board and the tests speak.
+
+  Every write goes through `AgentBoard.Actions`, by the API. A red one
+  (create, stop) answers `428` with the sentence that confirms it, and runs
+  only when the caller sends that sentence back as `confirm`: the caller
+  states the exact consequence before it happens, and both answers are
+  recorded decisions.
+  """
   use AgentBoardWeb, :controller
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.{Actions, Board, Repo}
   alias AgentBoard.Board.{Repository, Task}
+
+  # The task actions the API accepts, mapped explicitly (never to_atom).
+  @task_actions %{"stop" => :stop_task, "archive" => :archive_task, "resume" => :resume_task}
+  @refusals [:unconfirmed, :phrase_changed]
 
   # The client is injectable so the controller can be tested without GitHub.
   defp client do
@@ -27,7 +39,7 @@ defmodule AgentBoardWeb.BoardController do
   def repos(conn, _params), do: json(conn, Board.list_repositories())
 
   def add_repo(conn, %{"owner" => owner, "name" => name}) do
-    case Board.add_repository(owner, name) do
+    case Actions.run(:add_repository, %{owner: owner, name: name}, api()) do
       {:ok, repo} ->
         conn |> put_status(201) |> json(%{id: repo.id, owner: repo.owner, name: repo.name})
 
@@ -42,33 +54,69 @@ defmodule AgentBoardWeb.BoardController do
            Repo.one(from r in Repository, where: r.owner == ^owner and r.name == ^name),
          true <- String.trim(title) != "" do
       text = String.trim(params["body"] || "") <> "\n\n@sallaumen-agent"
+      request = %{title: title, body: text, key: Board.request_key(repo, "api", [title, text])}
+      action = %{repository: repo, requests: [request], client: client()}
 
-      case Board.create_task(repo, title, text, client()) do
-        {:ok, task} ->
-          conn |> put_status(201) |> json(%{id: task.id, number: task.number, url: task.url})
+      case Actions.run(:create_tasks, action, api(), confirm: params["confirm"]) do
+        {:ok, [{_request, {:ok, task, outcome}}]} ->
+          created(conn, task, outcome)
 
-        {:error, changeset} ->
-          conn |> put_status(400) |> json(%{error: inspect(changeset.errors)})
+        {:ok, [{_request, {:error, reason}}]} ->
+          conn |> put_status(400) |> json(%{error: describe(reason)})
+
+        {:error, refusal} ->
+          needs_confirmation(conn, refusal)
       end
     else
       _ -> conn |> put_status(400) |> json(%{error: "a repository and a title are required"})
     end
   end
 
-  def act(conn, %{"id" => id, "action" => action}) do
+  def act(conn, %{"id" => id, "action" => action} = params) do
     task = Repo.get(Task, id) |> Repo.preload(:repository)
 
     result =
-      case {action, task} do
-        {"stop", %Task{}} -> Board.stop_task(task, client())
-        {"archive", %Task{}} -> Board.archive_task(task)
-        {"resume", %Task{}} -> Board.resume_task(task)
-        _ -> {:error, :not_found}
+      case {Map.get(@task_actions, action), task} do
+        {name, %Task{}} when not is_nil(name) ->
+          Actions.run(name, %{task: task, client: client()}, api(), confirm: params["confirm"])
+
+        _ ->
+          {:error, :not_found}
       end
 
     case result do
-      {:ok, _} -> json(conn, %{ok: true})
-      _ -> conn |> put_status(404) |> json(%{error: "task not found"})
+      {:ok, _} ->
+        json(conn, %{ok: true})
+
+      {:error, {refusal, _phrase} = gate} when refusal in @refusals ->
+        needs_confirmation(conn, gate)
+
+      _ ->
+        conn |> put_status(404) |> json(%{error: "task not found"})
     end
   end
+
+  # 201 for a new issue, 200 for the receipt of an earlier identical request.
+  defp created(conn, task, outcome) do
+    conn
+    |> put_status(if outcome == :created, do: 201, else: 200)
+    |> json(%{id: task.id, number: task.number, url: task.url, outcome: outcome})
+  end
+
+  # 428: nothing ran. The body carries the sentence to send back.
+  defp needs_confirmation(conn, {refusal, phrase}) do
+    conn
+    |> put_status(428)
+    |> json(%{
+      error:
+        if(refusal == :phrase_changed, do: "confirmation_mismatch", else: "confirmation_required"),
+      confirm: phrase
+    })
+  end
+
+  defp describe(%{__exception__: true} = exception), do: Exception.message(exception)
+  defp describe(%Ecto.Changeset{errors: errors}), do: inspect(errors)
+  defp describe(reason), do: inspect(reason)
+
+  defp api, do: Actions.owner(:api)
 end

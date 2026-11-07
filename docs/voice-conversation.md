@@ -98,11 +98,11 @@ botões que mandam a frase na hora. Cada item diz como roda:
 | Bugs e falhas | "O que está falhando?" | CI vermelho em PR aberto, tarefas bloqueadas, execuções abertas cujo último relato falhou, execuções que acabaram sem merge, falha de sync |
 | | "Teve erro na voz?" | os erros recentes da própria voz |
 | Buscar | "Acha a tarefa sobre volume" | busca no título e na descrição das tarefas e nos títulos dos PRs, sem acento ("botao" acha "botão") |
-| Pedidos | "Cria uma tarefa no arena rogue para …" | refina, diz o título e pergunta "Posso criar?" |
+| Pedidos | "Cria uma tarefa no arena rogue para …" | refina e pergunta "Criar no arena-rogue a tarefa “…”?" |
 | | "Cria direto: …" | cria na hora e diz "Se não era isso, diga desfaz" |
 | | "Desfaz" | fecha a última tarefa que a voz criou, nos últimos 10 minutos (local) |
 | | "Pergunta pro agente da 12 se …" | depois do sim, comenta na issue e fala a resposta quando chegar |
-| | "Para a 7" / "Arquiva a 7" | diz qual é e pergunta "Posso?" |
+| | "Para a 7" / "Arquiva a 7" | diz qual é e o que acontece, e pergunta |
 | A conversa | "sim" / "não" | confirma ou cancela a proposta pendente (local) |
 | | "Repete", "mais devagar/rápido/alto/baixo" | local, sem modelo |
 | | "Abre a 42", "Muda para o arena rogue", "Esquece a conversa", "Ajuda" | navega, troca de projeto, apaga a memória, abre a lista |
@@ -119,7 +119,12 @@ projeto escolhido são ditos sem chamar o modelo. Custa uma chamada a mais
 
 A confirmação falada fica para toda escrita, menos o "cria direto" que você
 pediu: uma transcrição errada não abre issue sozinha, e o direto tem o
-"desfaz".
+"desfaz". A proposta diz a frase do registro de ações (`AgentBoard.Actions`),
+a mesma que a tela mostra, e o "sim" devolve essa frase ao portão: se a tarefa
+mudou entre a pergunta e o sim, nada roda e a voz diz que algo mudou. O "cria
+direto" e o "desfaz" valem pelas suas palavras, conferidas no código; a leitura
+do modelo sozinha não pula a pergunta. "Esquece tudo" também pergunta antes,
+porque não tem volta.
 
 ## O contexto
 

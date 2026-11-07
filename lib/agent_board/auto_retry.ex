@@ -32,7 +32,7 @@ defmodule AgentBoard.AutoRetry do
   import Ecto.Query, warn: false
   require Logger
 
-  alias AgentBoard.{AgentFailure, AgentState, Board, Orchestrator, Repo}
+  alias AgentBoard.{Actions, AgentFailure, AgentState, Board, Orchestrator, Repo}
   alias AgentBoard.AutoRetry.Attempt
   alias AgentBoard.Board.Repository
 
@@ -242,7 +242,15 @@ defmodule AgentBoard.AutoRetry do
   defp retry_one(client, ticket, plan, now) do
     case claim(plan, now) do
       {:ok, attempt} ->
-        result = Orchestrator.retry(client, plan.ticket_id)
+        # The standing authorization of the maintainer contract: the gate
+        # lets `auto_retry` ask for this one red action without a person.
+        result =
+          Actions.run(
+            :auto_retry_ticket,
+            %{client: client, ticket_id: plan.ticket_id, attempt: plan.attempt},
+            Actions.system("auto_retry")
+          )
+
         {outcome, detail} = outcome(result)
 
         {:ok, attempt} =

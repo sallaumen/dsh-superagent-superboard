@@ -61,10 +61,40 @@ defmodule AgentBoardWeb.BoardControllerTest do
       Req.Test.json(conn, %{"number" => 55, "html_url" => "https://github.com/x/y/issues/55"})
     end)
 
-    conn =
-      post(conn, "/api/tasks", %{repo: "sallaumen/arena-rogue", title: "From the API", body: "hi"})
+    params = %{repo: "sallaumen/arena-rogue", title: "From the API", body: "hi"}
 
-    assert %{"number" => 55} = json_response(conn, 201)
+    # Creating is red: the first call runs nothing and answers the sentence.
+    first = post(conn, "/api/tasks", params)
+
+    assert %{"error" => "confirmation_required", "confirm" => phrase} = json_response(first, 428)
+
+    assert phrase ==
+             "Criar no arena-rogue a tarefa “From the API”? " <>
+               "O board abre a issue no GitHub e o agente começa sozinho."
+
+    assert Repo.aggregate(Task, :count, :id) == 0
+
+    # Sending the sentence back is the confirmation.
+    conn = post(build_conn(), "/api/tasks", Map.put(params, :confirm, phrase))
+    assert %{"number" => 55, "outcome" => "created"} = json_response(conn, 201)
+
+    assert [%{decision: "confirmed", via: "api"}, %{decision: "refused", detail: "unconfirmed"}] =
+             AgentBoard.Actions.recent(2)
+  end
+
+  test "POST /api/tasks with a sentence for other values is refused", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    conn =
+      post(conn, "/api/tasks", %{
+        repo: "sallaumen/arena-rogue",
+        title: "Other title",
+        confirm: "Criar no arena-rogue a tarefa “From the API”? Pode."
+      })
+
+    assert %{"error" => "confirmation_mismatch", "confirm" => phrase} = json_response(conn, 428)
+    assert phrase =~ "“Other title”"
+    assert Repo.aggregate(Task, :count, :id) == 0
   end
 
   test "PATCH /api/tasks of an unknown id is 404", %{conn: conn} do
@@ -93,8 +123,8 @@ defmodule AgentBoardWeb.BoardControllerTest do
       Plug.Conn.send_resp(conn, 500, "boom")
     end)
 
-    conn =
-      patch(conn, "/api/tasks/#{t.id}", %{action: "stop"})
+    phrase = AgentBoard.Actions.phrase(:stop_task, %{task: t})
+    conn = patch(conn, "/api/tasks/#{t.id}", %{action: "stop", confirm: phrase})
 
     assert json_response(conn, 404)
   end
@@ -129,7 +159,11 @@ defmodule AgentBoardWeb.BoardControllerTest do
       Req.Test.json(conn, %{"state" => "closed"})
     end)
 
-    conn = patch(conn, "/api/tasks/#{t.id}", %{action: "stop"})
+    first = patch(conn, "/api/tasks/#{t.id}", %{action: "stop"})
+    assert %{"confirm" => phrase} = json_response(first, 428)
+    refute Repo.get(Task, t.id).stopped
+
+    conn = patch(build_conn(), "/api/tasks/#{t.id}", %{action: "stop", confirm: phrase})
 
     assert %{"ok" => true} = json_response(conn, 200)
     assert Repo.get(Task, t.id).stopped

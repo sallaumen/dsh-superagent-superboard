@@ -32,20 +32,37 @@ Corpo ilustrativo: `{"owner": "example", "name": "project"}`.
 - `201` — objeto com `id` (inteiro), `owner` e `name` (strings) do repositório criado.
 - `400` — `{"error": "invalid"}` quando a criação não é válida.
 
+## Confirmação das ações vermelhas
+
+Toda escrita da API passa pelo registro de ações (`AgentBoard.Actions`, contrato,
+"Board actions"). Criar uma tarefa e parar uma tarefa são **vermelhas**: abrem ou
+fecham uma issue no GitHub. A primeira chamada não faz nada e responde `428` com a
+frase que confirma a ação, com os valores reais; a chamada só age quando repete o
+pedido com essa frase em `confirm`. As duas respostas ficam registradas como
+decisões (`action_decisions`), recusada e confirmada, `via: api`.
+
+- `428` — `{"error": "confirmation_required", "confirm": "<frase>"}`: nada rodou;
+  repita o pedido com `"confirm": "<frase>"`.
+- `428` — `{"error": "confirmation_mismatch", "confirm": "<frase atual>"}`: a frase
+  enviada é de outros valores (outro título, a tarefa mudou de nome); nada rodou.
+
 ## POST /api/tasks
 
-Corpo ilustrativo: `{"repo": "example/project", "title": "Corrigir link da documentação"}`; `body` opcional (detalhes da issue).
+Corpo ilustrativo: `{"repo": "example/project", "title": "Corrigir link da documentação"}`; `body` opcional (detalhes da issue); `confirm` com a frase da resposta `428`.
 
-- `201` — objeto com `id` (inteiro local), `number` (inteiro da issue) e `url` (string). A issue menciona o agente automaticamente.
-- `400` — `{"error": "a repository and a title are required"}` quando o repositório não está rastreado, o slug é inválido ou o título é vazio; o campo `error` contém os erros do changeset quando essa validação falha.
+- `201` — objeto com `id` (inteiro local), `number` (inteiro da issue), `url` (string) e `outcome: "created"`. A issue menciona o agente automaticamente.
+- `200` — o mesmo objeto com `outcome: "existing"` quando o mesmo título e corpo já tinham entrado (a chave do pedido, `Board.request_key/3`): nenhuma issue nova.
+- `428` — sem `confirm`, ou com a frase de outros valores (acima).
+- `400` — `{"error": "a repository and a title are required"}` quando o repositório não está rastreado, o slug é inválido ou o título é vazio; com o motivo quando o GitHub recusa.
 - Efeito real: abre uma issue no GitHub do repositório rastreado.
 
 ## PATCH /api/tasks/:id
 
-Corpo: `{"action": "stop"}`. O valor de `action` também pode ser `"archive"` ou `"resume"`; envie uma ação por requisição.
+Corpo: `{"action": "stop"}`. O valor de `action` também pode ser `"archive"` ou `"resume"`; envie uma ação por requisição. `stop` é vermelha e pede `confirm`; `archive` e `resume` são amarelas e agem direto.
 
 - `200` — `{"ok": true}`.
-- `404` — `{"error": "task not found"}` para tarefa inexistente ou ação desconhecida.
+- `428` — `stop` sem `confirm`, ou com a frase de outros valores.
+- `404` — `{"error": "task not found"}` para tarefa inexistente, ação desconhecida ou falha do GitHub ao fechar a issue.
 - Efeitos reais: `stop` fecha a issue e marca a flag de parada; `archive` arquiva a tarefa; `resume` limpa as flags de parada/arquivamento e volta a tarefa para `queued` localmente. Não reabre a issue no GitHub (ver [Board.resume_task/1](../lib/agent_board/board.ex)).
 
 ## Contrato e limites

@@ -104,10 +104,14 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
               />
             </p>
             <p class="mt-1 text-[11px] text-base-content/75">{task.body}</p>
+            <%!-- Creating is red (AgentBoard.Actions): the browser asks the
+                 sentence, and the click carries it to the gate. --%>
             <button
               phx-click="create_from_intake"
               phx-disable-with="Creating…"
               phx-value-index={index}
+              phx-value-confirm={Enum.at(@phrases, index)}
+              data-confirm={Enum.at(@phrases, index)}
               class="mt-2 border border-base-content/10 px-2 py-1 text-[10px]"
             >
               Create

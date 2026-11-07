@@ -10,13 +10,11 @@ defmodule AgentBoardWeb.VoiceController do
 
   use AgentBoardWeb, :controller
 
-  alias AgentBoard.ElevenLabs
+  alias AgentBoard.{Actions, ElevenLabs}
   alias AgentBoard.ElevenLabs.{SpeechCache, Usage}
-  alias AgentBoard.Settings
   alias AgentBoard.Voice
   alias AgentBoard.Voice.{Activity, Phrases}
 
-  @tts_model_key "elevenlabs_tts_model"
   # A dictated task title is seconds of audio, not a podcast: the cap keeps a
   # stray upload from reaching ElevenLabs. Overridable for tests.
   @max_audio_bytes 10_000_000
@@ -59,12 +57,12 @@ defmodule AgentBoardWeb.VoiceController do
     with :ok <- put_voice(params),
          :ok <- put_model(params),
          :ok <- put_speak_events(params),
-         :ok <- put_pref(params, "language", &Voice.put_language/1),
-         :ok <- put_pref(params, "volume", &Voice.put_volume/1),
-         :ok <- put_pref(params, "speed", &Voice.put_speed/1),
-         :ok <- put_pref(params, "style", &Voice.put_style/1),
-         :ok <- put_pref(params, "pause", &Voice.put_pause/1),
-         :ok <- put_pref(params, "attention", &Voice.put_attention(&1 in [true, "true", "1"])) do
+         :ok <- put_pref(params, "language", & &1),
+         :ok <- put_pref(params, "volume", & &1),
+         :ok <- put_pref(params, "speed", & &1),
+         :ok <- put_pref(params, "style", & &1),
+         :ok <- put_pref(params, "pause", & &1),
+         :ok <- put_pref(params, "attention", &(&1 in [true, "true", "1"])) do
       json(
         conn,
         Map.merge(
@@ -95,23 +93,27 @@ defmodule AgentBoardWeb.VoiceController do
   end
 
   # Key by key, like the voice and the model: a refused value answers 400
-  # and names itself; an absent key leaves its setting alone.
-  defp put_pref(params, key, put) do
+  # and names itself; an absent key leaves its setting alone. Every save is
+  # a yellow action of the registry (`AgentBoard.Actions`), by the API.
+  defp put_pref(params, key, value_of) do
     case Map.fetch(params, key) do
-      {:ok, value} -> put.(value)
+      {:ok, value} -> save(key, value_of.(value))
       :error -> :ok
     end
   end
 
+  defp save(setting, value),
+    do: Actions.run(:change_setting, %{setting: setting, value: value}, Actions.owner(:api))
+
   # The API knows no name: a stale one from an earlier pick is cleared.
   defp put_voice(%{"voice_id" => voice_id}) when is_binary(voice_id),
-    do: ElevenLabs.save_voice(voice_id, nil)
+    do: save("voice", {voice_id, nil})
 
   defp put_voice(_params), do: :ok
 
   defp put_model(%{"tts_model" => model}) when is_binary(model) do
     if ElevenLabs.valid_tts_model?(String.trim(model)) do
-      Settings.put(@tts_model_key, model)
+      save("tts_model", model)
     else
       {:error, :invalid_model}
     end
@@ -123,7 +125,7 @@ defmodule AgentBoardWeb.VoiceController do
   # nothing stored) leaves the default on.
   # The narration of the rest of the board; off unless asked (it costs voice).
   defp put_speak_events(%{"speak_events" => value}),
-    do: Voice.put_narrate(value in [true, "true", "1"])
+    do: save("narrate", value in [true, "true", "1"])
 
   defp put_speak_events(_params), do: :ok
 
