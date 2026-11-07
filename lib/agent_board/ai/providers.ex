@@ -53,6 +53,27 @@ defmodule AgentBoard.AI.Providers do
     end
   end
 
+  @doc """
+  The price table of the tier that serves `model`, whatever the provider:
+  the coding agent's harness names its provider differently (DeepSeek's is
+  `deepseek-account`), but the model id is the same. `:cache_read` and
+  `:cache_write` are optional; a token kind without a price is unpriced, not
+  free. Nil for a model the catalog does not list.
+  """
+  @spec prices_for_model(String.t() | nil) :: map() | nil
+  def prices_for_model(nil), do: nil
+
+  def prices_for_model(model) do
+    Enum.find_value(@providers, fn {_id, provider} -> tier_prices(provider, model) end)
+  end
+
+  defp tier_prices(%{models: models, prices: prices}, model) do
+    case Enum.find(models, fn {_tier, id} -> id == model end) do
+      {tier, _id} -> Map.get(prices, tier)
+      nil -> nil
+    end
+  end
+
   @doc "The key, from the panel config first, then the environment."
   @spec key(atom()) :: String.t()
   def key(id) do
