@@ -14,15 +14,28 @@ rodando, nunca entra no worktree e nunca escreve na sqlite do agente.
 
 ## Como se usa
 
-1. Espaço duas vezes (com o board em foco, ou no título do painel de voz).
-   Um som curto subindo avisa que o microfone abriu.
-2. Fale e pare. Depois da pausa escolhida (0,8 / 1,2 / 1,8 s; padrão 1,2 s) a
-   fala é considerada pronta e vai sozinha, com um som descendo; sem fala por
-   8 s o microfone fecha. As barras mostram o nível real do microfone.
-   Espaço duas vezes de novo envia na hora; Esc cancela.
-3. O agente responde em voz. Enquanto ele pensa, Esc cancela a resposta. Se a
-   resposta pede um sim (criar, parar, arquivar) ou uma dúvida, o microfone
-   reabre uma vez sozinho para a resposta.
+Padrão desde 2026-11-07: **WisprFlow para a sua fala, voz do navegador para o
+agente**. As duas não custam nada por uso.
+
+1. Espaço duas vezes (com o board em foco, ou no título do painel de voz):
+   abre o campo "Fale com o Wispr", já focado.
+2. Segure a tecla do Wispr e fale. Quando o texto do Wispr chega no campo e
+   para de mudar por 0,7 s, o board envia sozinho. Digitado à mão, envia no
+   Enter (para não cortar quem digita devagar). Esc fecha.
+3. O agente responde (na voz escolhida). Com respostas curtas, ele fala a
+   primeira frase e a resposta inteira aparece escrita. Enquanto ele pensa,
+   Esc cancela. Se a resposta pede um sim ou uma dúvida, o campo do Wispr
+   reabre focado para a sua resposta.
+4. Com o composer aberto, espaço duas vezes (ou `V`) só foca o texto do
+   pedido: o Wispr digita lá.
+
+O board não aperta a tecla do Wispr por você; o Wispr não tem uma API
+pública confirmada, então ele entra como o teclado que já é.
+
+**Microfone do board** (opcional, pago): em Configurações → Voz → "Sua voz
+para o agente", escolha "Microfone do board". Aí o espaço duplo grava, o
+silêncio encerra a fala (0,8 / 1,2 / 1,8 s), um som marca abrir e fechar, as
+barras mostram o nível e a transcrição é da ElevenLabs (Scribe).
 
 ## Quando o agente de código responde
 
@@ -37,9 +50,18 @@ quando uma tarefa precisar de mim" também silencia esse aviso.
 
 ## Ajustes (Configurações → Voz)
 
-Idioma, volume, velocidade (0,8–1,2×), entonação (estável, natural,
-expressiva), pausa para enviar, os chamados de atenção, a narração do resto do
-quadro e o som ao abrir e fechar o microfone.
+- **Sua voz para o agente**: WisprFlow (padrão, sem custo) ou Microfone do
+  board (ElevenLabs, pago).
+- **Voz do agente**: Navegador (padrão, grátis), Misto (ElevenLabs só nos
+  chamados de atenção e nas respostas do agente de código, o resto no
+  navegador) ou ElevenLabs em tudo. Sem chave, sempre o navegador.
+- **Respostas faladas**: curtas (padrão: a primeira frase falada, o resto
+  escrito) ou completas. Propostas, perguntas de volta e confirmações sempre
+  são faladas inteiras.
+- Idioma, volume, velocidade (0,8–1,2×), entonação (estável, natural,
+  expressiva), pausa para enviar, os chamados de atenção, a narração do resto
+  do quadro (desligada por padrão: ela custa voz) e o som ao abrir e fechar o
+  microfone.
 
 Não há rascunho para revisar nem Enter. O painel "Conversa por voz" mostra a
 conversa para quem quiser ler, aceita texto digitado e tem "Esquecer conversa".

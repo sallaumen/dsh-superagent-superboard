@@ -55,7 +55,6 @@ defmodule AgentBoardWeb.BoardLive do
 
   @voice_key "elevenlabs_voice_id"
   @tts_model_key "elevenlabs_tts_model"
-  @speak_events_key "elevenlabs_speak_events"
   @max_resume_items 1000
 
   @impl true
@@ -1058,14 +1057,8 @@ defmodule AgentBoardWeb.BoardLive do
         tz_offset: socket.assigns.tz_offset
       )
 
-    if socket.assigns.voice.configured do
-      # The agent's ElevenLabs voice speaks the status; the browser speech
-      # engine is the fallback when no key is configured.
-      url = speech_url(text, socket.assigns.voice.id)
-      {:noreply, push_event(socket, "voice_play", %{url: url})}
-    else
-      {:noreply, push_event(socket, "speak", browser_speech(socket, text))}
-    end
+    {event, payload} = VoiceSpeech.push(socket.assigns.voice, text, kind: :confirm)
+    {:noreply, push_event(socket, event, payload)}
   end
 
   # A finished utterance from the hands-free microphone (or the typed chat
@@ -1216,7 +1209,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("voice_announce", %{"speak_events" => value}, socket) do
-    :ok = Settings.put(@speak_events_key, if(value == "true", do: "", else: "0"))
+    :ok = Voice.put_narrate(value == "true")
 
     {:noreply,
      assign(socket, voice: %{socket.assigns.voice | speak_events: ElevenLabs.speak_events?()})}
@@ -1234,7 +1227,7 @@ defmodule AgentBoardWeb.BoardLive do
       :ok ->
         lang = Voice.language()
         socket = assign(socket, voice: %{socket.assigns.voice | language: lang})
-        {:noreply, say(socket, Phrases.language_switched(lang))}
+        {:noreply, say(socket, Phrases.language_switched(lang), kind: :confirm)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, "Idioma não suportado")}
@@ -1266,6 +1259,18 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("voice_earcons", %{"earcons" => value}, socket),
     do: {:noreply, save_voice_pref(socket, Voice.put_earcons(value == "true"))}
+
+  @impl true
+  def handle_event("voice_input", %{"input" => value}, socket),
+    do: {:noreply, save_voice_pref(socket, Voice.put_input(value))}
+
+  @impl true
+  def handle_event("voice_engine", %{"engine" => value}, socket),
+    do: {:noreply, save_voice_pref(socket, Voice.put_engine(value))}
+
+  @impl true
+  def handle_event("voice_replies", %{"replies" => value}, socket),
+    do: {:noreply, save_voice_pref(socket, Voice.put_replies(value))}
 
   # A browser error the owner saw (microphone, playback, transcription):
   # it reaches the log and the live feed instead of staying in one tab.
@@ -1361,7 +1366,10 @@ defmodule AgentBoardWeb.BoardLive do
       style: Voice.style(),
       pause: Voice.pause(),
       pause_ms: Voice.pause_ms(),
-      earcons: Voice.earcons?()
+      earcons: Voice.earcons?(),
+      input: Voice.input(),
+      engine: Voice.engine(),
+      replies: Voice.replies()
     }
   end
 
@@ -1372,7 +1380,7 @@ defmodule AgentBoardWeb.BoardLive do
       voice:
         Map.merge(
           socket.assigns.voice,
-          Map.take(fresh, [:speed, :style, :pause, :pause_ms, :earcons])
+          Map.take(fresh, [:speed, :style, :pause, :pause_ms, :earcons, :input, :engine, :replies])
         )
     )
   end
@@ -1405,55 +1413,51 @@ defmodule AgentBoardWeb.BoardLive do
         socket
 
       text ->
+        # A call for attention in the utterance makes it a call (the paid
+        # voice in the mixed engine); otherwise it is narration.
+        attention? =
+          voice.attention and
+            Announcer.board_changes(
+              old_board,
+              socket.assigns.board,
+              old_sync,
+              socket.assigns.sync_event,
+              language: voice.language,
+              events: false,
+              needs: {old_needs, socket.assigns.work.needs}
+            ) != []
+
         socket
         |> assign(voice_turn: socket.assigns.voice_turn + length(texts))
-        |> say(text, fallback: voice.attention)
+        |> say(text, kind: if(attention?, do: :call, else: :narration))
     end
   end
 
-  # Speaks through the agent's ElevenLabs voice when the key is configured
-  # and the automatic speech is on; a repeated utterance within a short
-  # window is skipped, so a burst never doubles the audio.
-  # A confirmation or an answer: spoken only while "narrate" is on.
-  defp speak(%{assigns: %{voice: %{speak_events: true}}} = socket, text), do: say(socket, text)
+  # A confirmation or an answer: spoken only while the narration is on.
+  defp speak(%{assigns: %{voice: %{speak_events: true}}} = socket, text),
+    do: say(socket, text, kind: :narration)
+
   defp speak(socket, _text), do: socket
 
-  # Speaks in the agent's voice, deduped for a short window. Without an
-  # ElevenLabs key nothing is said, unless `fallback: true` asks for the
-  # browser's voice (the calls for attention must still reach the owner).
-  defp say(socket, text, opts \\ [])
+  # Speaks with the owner's engine (VoiceSpeech decides ElevenLabs or the
+  # free browser voice), deduped for a short window so a burst never doubles.
+  defp say(socket, text, opts)
 
   defp say(socket, text, opts) when is_binary(text) and text != "" do
     now = System.monotonic_time(:millisecond)
-    voice = socket.assigns.voice
 
-    cond do
-      socket.assigns.spoken_text == text and now - socket.assigns.spoken_at < 30_000 ->
-        socket
+    if socket.assigns.spoken_text == text and now - socket.assigns.spoken_at < 30_000 do
+      socket
+    else
+      {event, payload} = VoiceSpeech.push(socket.assigns.voice, text, opts)
 
-      voice.configured ->
-        socket
-        |> assign(spoken_text: text, spoken_at: now)
-        |> push_event("voice_play", %{url: speech_url(text, voice.id)})
-
-      Keyword.get(opts, :fallback, false) ->
-        socket
-        |> assign(spoken_text: text, spoken_at: now)
-        |> push_event("speak", browser_speech(socket, text))
-
-      true ->
-        socket
+      socket
+      |> assign(spoken_text: text, spoken_at: now)
+      |> push_event(event, payload)
     end
   end
 
   defp say(socket, _text, _opts), do: socket
-
-  defp browser_speech(socket, text),
-    do: %{
-      text: VoiceSpeech.text(text),
-      lang: socket.assigns.voice.language,
-      rate: socket.assigns.voice.speed
-    }
 
   defp voice_reason(:not_configured), do: "sem chave de API"
   defp voice_reason(:auth_expired), do: "a chave foi recusada"
@@ -1668,9 +1672,31 @@ defmodule AgentBoardWeb.BoardLive do
           phx-hook="VoiceCommand"
           data-configured={to_string(@voice.configured)}
           data-pause-ms={@voice.pause_ms}
+          data-input={@voice.input}
           data-earcons={to_string(@voice.earcons)}
           hidden
         />
+
+        <div
+          id="voice-wispr"
+          phx-hook="VoiceWispr"
+          phx-update="ignore"
+          class="voice-wispr"
+          role="dialog"
+          aria-label="Fale com o Wispr"
+          hidden
+        >
+          <label for="voice-wispr-text" class="voice-wispr-label">Fale com o Wispr</label>
+          <input
+            id="voice-wispr-text"
+            type="text"
+            autocomplete="off"
+            placeholder="Segure a tecla do Wispr e fale…"
+          />
+          <span class="voice-wispr-hint">
+            Envio sozinho quando o texto chegar · Enter envia · Esc fecha
+          </span>
+        </div>
 
         <div :if={@toast} class="ab-toast" role="status">
           <span>{@toast.text}</span>

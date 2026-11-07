@@ -322,7 +322,7 @@ defmodule AgentBoard.ElevenLabs do
   end
 
   @doc "Whether board events are spoken automatically (the settings default is on)."
-  def speak_events?, do: AgentBoard.Settings.get("elevenlabs_speak_events") != "0"
+  def speak_events?, do: AgentBoard.Voice.narrate?()
 
   defp voice_list do
     case cached_voices() do

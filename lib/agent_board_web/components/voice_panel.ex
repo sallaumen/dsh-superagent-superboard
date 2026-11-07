@@ -43,6 +43,62 @@ defmodule AgentBoardWeb.Components.VoicePanel do
       data-lang={@voice.language}
     >
       <div class="voice-fields">
+        <form
+          id="voice-input-form"
+          phx-change="voice_input"
+          phx-auto-recover="ignore"
+          class="voice-field"
+        >
+          <label for="voice-input" class="voice-field-label">
+            Sua voz para o agente
+            <span class="voice-source-note">· espaço duas vezes abre a entrada</span>
+          </label>
+          <div class="settings-actions">
+            <select id="voice-input" name="input" class="voice-select">
+              <option :for={{id, name} <- inputs()} value={id} selected={id == @voice.input}>
+                {name}
+              </option>
+            </select>
+          </div>
+        </form>
+
+        <form
+          id="voice-engine-form"
+          phx-change="voice_engine"
+          phx-auto-recover="ignore"
+          class="voice-field"
+        >
+          <label for="voice-engine" class="voice-field-label">
+            Voz do agente
+            <span :if={!@voice.configured} class="voice-source-note">
+              · sem chave ElevenLabs, sempre a do navegador
+            </span>
+          </label>
+          <div class="settings-actions">
+            <select id="voice-engine" name="engine" class="voice-select">
+              <option :for={{id, name} <- engines()} value={id} selected={id == @voice.engine}>
+                {name}
+              </option>
+            </select>
+          </div>
+        </form>
+
+        <form
+          id="voice-replies-form"
+          phx-change="voice_replies"
+          phx-auto-recover="ignore"
+          class="voice-field"
+        >
+          <label for="voice-replies" class="voice-field-label">Respostas faladas</label>
+          <div class="settings-actions">
+            <select id="voice-replies" name="replies" class="voice-select">
+              <option :for={{id, name} <- replies()} value={id} selected={id == @voice.replies}>
+                {name}
+              </option>
+            </select>
+          </div>
+        </form>
+
         <div class="voice-field">
           <label for="voice-language" class="voice-field-label">Idioma da voz</label>
           <form
@@ -168,7 +224,6 @@ defmodule AgentBoardWeb.Components.VoicePanel do
             </label>
           </form>
           <form
-            :if={@voice.configured}
             id="voice-announce-form"
             phx-change="voice_announce"
             phx-auto-recover="ignore"
@@ -200,7 +255,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
       </div>
 
       <p :if={!@voice.configured} class="voice-note">
-        Sem chave, os chamados usam a voz do navegador. Para a voz do agente, defina
+        Sem chave, o agente fala com a voz do navegador (grátis). Para a voz da ElevenLabs, defina
         <code class="text-base-content">ELEVENLABS_API_KEY</code>
         no <code class="text-base-content">.env.local</code>
         e reinicie o board.
@@ -336,6 +391,25 @@ defmodule AgentBoardWeb.Components.VoicePanel do
       :erlang.float_to_binary(speed * 1.0, decimals: 2)
       |> String.replace(".", ",")
       |> Kernel.<>("×")
+
+  defp inputs,
+    do: [
+      {"wispr", "WisprFlow (digita no board, sem custo)"},
+      {"microphone", "Microfone do board (transcrição ElevenLabs, paga)"}
+    ]
+
+  defp engines,
+    do: [
+      {"browser", "Navegador (grátis)"},
+      {"mixed", "Misto: ElevenLabs só nos chamados"},
+      {"elevenlabs", "ElevenLabs em tudo (pago)"}
+    ]
+
+  defp replies,
+    do: [
+      {"short", "Curtas: falo a primeira frase, o resto fica escrito"},
+      {"full", "Completas"}
+    ]
 
   defp styles,
     do: [{"steady", "Estável"}, {"natural", "Natural"}, {"expressive", "Expressiva"}]

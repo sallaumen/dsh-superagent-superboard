@@ -44,7 +44,7 @@ defmodule AgentBoardWeb.VoiceControllerTest do
              "tts_model" => "eleven_flash_v2_5",
              "tts_source" => "default",
              "stt_model" => "scribe_v2",
-             "speak_events" => true,
+             "speak_events" => false,
              "daily_char_cap" => 20_000,
              "usage" => %{"tts_characters" => 0, "cache_hits" => 0, "stt_seconds" => +0.0}
            } = json_response(get(conn, "/api/voice/status"), 200)
@@ -130,12 +130,12 @@ defmodule AgentBoardWeb.VoiceControllerTest do
     assert %{"speak_events" => false} =
              json_response(put(conn, "/api/voice/settings", %{"speak_events" => false}), 200)
 
-    assert AgentBoard.Settings.get("elevenlabs_speak_events") == "0"
+    assert AgentBoard.Settings.get("voice_narrate") == nil
 
     assert %{"speak_events" => true} =
              json_response(put(conn, "/api/voice/settings", %{"speak_events" => true}), 200)
 
-    assert AgentBoard.Settings.get("elevenlabs_speak_events") == nil
+    assert AgentBoard.Settings.get("voice_narrate") == "1"
   end
 
   test "PUT /api/voice/settings rejects a huge or unknown value", %{conn: conn} do

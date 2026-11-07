@@ -209,6 +209,15 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   Speed (`voice_speed`), intonation (`voice_style` → stability), pause
   (`voice_pause`) and microphone sounds (`voice_earcons`) are settings. The conversation never reaches the coding
   agent except through the board actions a button would take.
+- **Cost defaults** (owner's decision, 2026-11-07): the owner's speech comes
+  from WisprFlow typing into the board (`voice_input` = `wispr`, the
+  `VoiceWispr` hook sends a dictated text once it settles); the board's own
+  recorder and ElevenLabs Scribe are the opt-in `microphone` input. Every
+  utterance is routed by `AgentBoardWeb.VoiceSpeech.push/3`: the free browser
+  voice by default (`voice_engine` = `browser`), ElevenLabs only for calls in
+  `mixed` or for everything in `elevenlabs`, and never without a key or past
+  the day's cap. Free replies speak their first sentence (`voice_replies` =
+  `short`); narration (`voice_narrate`) is off by default.
 - **Voice asks** are a write and always confirmed: the conversation's
   `ask_task` action becomes a proposal naming the task and the question,
   and only the spoken yes posts it (`Board.ask/3`, a comment with

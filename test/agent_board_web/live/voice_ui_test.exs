@@ -30,6 +30,8 @@ defmodule AgentBoardWeb.VoiceUITest do
     previous = Application.get_env(:agent_board, :elevenlabs_api_key)
     Application.put_env(:agent_board, :elevenlabs_api_key, "test-key")
     on_exit(fn -> Application.put_env(:agent_board, :elevenlabs_api_key, previous) end)
+    # These tests cover the paid voice; the default engine is the browser's.
+    :ok = Settings.put("voice_engine", "elevenlabs")
   end
 
   defp spoken(url),
@@ -94,7 +96,8 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(
       view,
       "voice_play",
-      %{url: "/api/voice/stream?text=Voz+escolhida.&voice=abc"}
+      %{url: "/api/voice/stream?text=Voz+escolhida.&voice=abc"},
+      1_000
     )
   end
 
@@ -178,7 +181,8 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(
       view,
       "voice_play",
-      %{url: "/api/voice/stream?text=All+clear&voice=JBFqnCBsd6RMkjVDRZzb"}
+      %{url: "/api/voice/stream?text=All+clear&voice=JBFqnCBsd6RMkjVDRZzb"},
+      1_000
     )
   end
 
@@ -192,7 +196,8 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(
       view,
       "voice_play",
-      %{url: "/api/voice/stream?text=Hello+agent&voice=JBFqnCBsd6RMkjVDRZzb"}
+      %{url: "/api/voice/stream?text=Hello+agent&voice=JBFqnCBsd6RMkjVDRZzb"},
+      1_000
     )
   end
 
@@ -232,6 +237,8 @@ defmodule AgentBoardWeb.VoiceUITest do
 
   test "an agent state change is spoken", %{conn: conn} do
     with_key()
+    # Narration (task moves, answers) is off by default; this test turns it on.
+    :ok = Settings.put("voice_narrate", "1")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "queued")
@@ -242,7 +249,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     send(view.pid, :board_updated)
 
-    assert_push_event(view, "voice_play", %{url: url})
+    assert_push_event(view, "voice_play", %{url: url}, 1_000)
 
     assert spoken(url) in Enum.map(
              0..2,
@@ -252,7 +259,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
   test "no announcement when the toggle is off", %{conn: conn} do
     with_key()
-    :ok = Settings.put("elevenlabs_speak_events", "0")
+    :ok = Settings.put("voice_narrate", "")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "queued")
@@ -270,15 +277,17 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element("#voice-announce-form") |> render_change(%{"speak_events" => "false"})
-    assert Settings.get("elevenlabs_speak_events") == "0"
-
     view |> element("#voice-announce-form") |> render_change(%{"speak_events" => "true"})
-    assert Settings.get("elevenlabs_speak_events") == nil
+    assert Settings.get("voice_narrate") == "1"
+
+    view |> element("#voice-announce-form") |> render_change(%{"speak_events" => "false"})
+    assert Settings.get("voice_narrate") == nil
   end
 
   test "the agent's answer is spoken back", %{conn: conn} do
     with_key()
+    # Narration (task moves, answers) is off by default; this test turns it on.
+    :ok = Settings.put("voice_narrate", "1")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "queued")
@@ -295,7 +304,8 @@ defmodule AgentBoardWeb.VoiceUITest do
       %{
         url:
           "/api/voice/stream?text=All+good.+The+sync+is+clean+and+nothing+is+blocked.&voice=JBFqnCBsd6RMkjVDRZzb"
-      }
+      },
+      1_000
     )
   end
 
@@ -310,7 +320,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
     send(view.pid, :board_updated)
 
-    assert_push_event(view, "voice_play", %{url: url})
+    assert_push_event(view, "voice_play", %{url: url}, 1_000)
     text = url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query() |> Map.fetch!("text")
 
     assert text in Enum.map(
@@ -321,7 +331,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
   test "the attention call still speaks when narration is off", %{conn: conn} do
     with_key()
-    :ok = Settings.put("elevenlabs_speak_events", "0")
+    :ok = Settings.put("voice_narrate", "")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "running")
@@ -331,7 +341,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "question"}))
     send(view.pid, :board_updated)
 
-    assert_push_event(view, "voice_play", %{url: "/api/voice/stream?text=" <> _})
+    assert_push_event(view, "voice_play", %{url: "/api/voice/stream?text=" <> _}, 1_000)
   end
 
   test "without a key the attention call uses the browser voice in the chosen language",
@@ -346,14 +356,14 @@ defmodule AgentBoardWeb.VoiceUITest do
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "ready"}))
     send(view.pid, :board_updated)
 
-    assert_push_event(view, "speak", %{text: text, lang: "en-US"})
+    assert_push_event(view, "speak", %{text: text, lang: "en-US"}, 1_000)
     assert text =~ "Live task"
   end
 
   test "attention off keeps the owner's calls silent", %{conn: conn} do
     with_key()
     :ok = Settings.put("voice_attention", "0")
-    :ok = Settings.put("elevenlabs_speak_events", "0")
+    :ok = Settings.put("voice_narrate", "")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "running")
@@ -376,10 +386,15 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert Settings.get("voice_language") == "en-US"
     assert render(view) =~ ~s(data-lang="en-US")
 
-    assert_push_event(view, "voice_play", %{
-      url:
-        "/api/voice/stream?text=Done.+From+now+on+I%27ll+speak+English.&voice=JBFqnCBsd6RMkjVDRZzb"
-    })
+    assert_push_event(
+      view,
+      "voice_play",
+      %{
+        url:
+          "/api/voice/stream?text=Done.+From+now+on+I%27ll+speak+English.&voice=JBFqnCBsd6RMkjVDRZzb"
+      },
+      1_000
+    )
   end
 
   test "an unknown language is refused", %{conn: conn} do
@@ -458,7 +473,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
     send(view.pid, :board_updated)
 
-    assert_push_event(view, "speak", %{text: text, rate: 0.9})
+    assert_push_event(view, "speak", %{text: text, rate: 0.9}, 1_000)
     assert text =~ "Ver arena rogue 7"
     refute text =~ "**"
   end
@@ -513,5 +528,34 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert render(view) =~ "nova tentativa em 300 ms (HTTP 503)"
     assert has_element?(view, "#voice-activity[open]")
     assert render(view) =~ "1 re-tentativa"
+  end
+
+  test "the input, engine and replies controls save and reach the browser", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/")
+    assert html =~ ~s(data-input="wispr")
+    assert has_element?(view, "#voice-wispr[phx-hook=VoiceWispr] #voice-wispr-text")
+
+    view |> element("#voice-input-form") |> render_change(%{"input" => "microphone"})
+    assert render(view) =~ ~s(data-input="microphone")
+
+    view |> element("#voice-engine-form") |> render_change(%{"engine" => "mixed"})
+    assert Settings.get("voice_engine") == "mixed"
+
+    view |> element("#voice-replies-form") |> render_change(%{"replies" => "full"})
+    assert Settings.get("voice_replies") == "full"
+  end
+
+  test "with the default engine the board speaks with the free browser voice", %{conn: conn} do
+    with_key()
+    :ok = Settings.put("voice_engine", "browser")
+    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    task = voice_task(repo, "Live task", "running")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
+    send(view.pid, :board_updated)
+
+    assert_push_event(view, "speak", %{text: text}, 1_000)
+    assert text =~ "Live task"
   end
 end

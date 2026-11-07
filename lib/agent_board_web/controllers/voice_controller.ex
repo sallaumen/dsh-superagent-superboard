@@ -18,7 +18,6 @@ defmodule AgentBoardWeb.VoiceController do
 
   @voice_key "elevenlabs_voice_id"
   @tts_model_key "elevenlabs_tts_model"
-  @speak_events_key "elevenlabs_speak_events"
   # A dictated task title is seconds of audio, not a podcast: the cap keeps a
   # stray upload from reaching ElevenLabs. Overridable for tests.
   @max_audio_bytes 10_000_000
@@ -127,11 +126,9 @@ defmodule AgentBoardWeb.VoiceController do
 
   # "0" in the settings disables the automatic speech; anything else (or
   # nothing stored) leaves the default on.
-  defp put_speak_events(%{"speak_events" => value}) do
-    if value in [true, "true", "1"],
-      do: Settings.put(@speak_events_key, ""),
-      else: Settings.put(@speak_events_key, "0")
-  end
+  # The narration of the rest of the board; off unless asked (it costs voice).
+  defp put_speak_events(%{"speak_events" => value}),
+    do: Voice.put_narrate(value in [true, "true", "1"])
 
   defp put_speak_events(_params), do: :ok
 
