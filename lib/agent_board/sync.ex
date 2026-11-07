@@ -13,7 +13,7 @@ defmodule AgentBoard.Sync do
   """
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AgentState, AutoRetry, Board, GitHub, Repo}
+  alias AgentBoard.{AgentState, Attribution, AutoRetry, Board, GitHub, Repo}
   alias AgentBoard.Board.{Commit, PullRequest, Repository, Review, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
@@ -315,7 +315,9 @@ defmodule AgentBoard.Sync do
       checks_state: checks_state,
       checks_failed: checks_failed,
       checks_changed_at: checks_changed_at,
-      head_sha: get_in(pull, ["head", "sha"])
+      head_sha: get_in(pull, ["head", "sha"]),
+      head_ref: head_ref(pull, repository),
+      closes_issues: Attribution.closing_numbers(pull["body"], repository.owner, repository.name)
     })
     |> Repo.insert(
       on_conflict:
@@ -330,6 +332,8 @@ defmodule AgentBoard.Sync do
            :checks_failed,
            :checks_changed_at,
            :head_sha,
+           :head_ref,
+           :closes_issues,
            :merged_at,
            :updated_at
          ]},
@@ -345,6 +349,25 @@ defmodule AgentBoard.Sync do
         })
 
         {:error, changeset}
+    end
+  end
+
+  # A fork's branch does not exist in this repository: a session on a branch
+  # of the same name here did not open that PR. GitHub sends `head.repo`
+  # null for a deleted fork, so null is a fork too; a pull with no `repo`
+  # key at all (an older payload) keeps its ref.
+  defp head_ref(pull, repository) do
+    own = String.downcase("#{repository.owner}/#{repository.name}")
+
+    case get_in(pull, ["head", "repo"]) do
+      %{"full_name" => full_name} when is_binary(full_name) ->
+        if String.downcase(full_name) == own, do: get_in(pull, ["head", "ref"])
+
+      nil ->
+        if Map.has_key?(pull["head"] || %{}, "repo"), do: nil, else: get_in(pull, ["head", "ref"])
+
+      _ ->
+        nil
     end
   end
 
