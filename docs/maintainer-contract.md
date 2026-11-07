@@ -22,6 +22,7 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.ExecutorUsage` | what the executor spent on a task, read from the harness transcripts; tokens measured, cost estimated |
 | `AgentBoard.Attribution` | which task a session or a PR worked for: exact, `pr-link`, branch, repository or outside; pure |
+| `AgentBoard.Usage.ClaudeCode` | what Claude Code spent, read from its transcripts (`~/.claude/projects`); one count per `message.id` across files, numbers and named metadata only (`Usage.Fields`) |
 | `AgentBoard.Intake` | a free-text request -> refined spec -> tasks |
 | `AgentBoard.Settings` | board-wide settings, one row per key (the voice picks) |
 | `AgentBoard.Voice` | the spoken summary and the voice settings (language, volume, attention) |
