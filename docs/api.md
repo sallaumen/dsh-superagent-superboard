@@ -66,7 +66,7 @@ Corpo: `{"action": "stop"}`. O valor de `action` também pode ser `"archive"` ou
 
 ### GET /api/voice/status
 
-- `200` — `{"configured": true|false, "status": "logged_in"|"not_configured", "voice_id": "...", "voice_source": "environment"|"saved"|"default", "tts_model": "...", "tts_source": "environment"|"saved"|"default", "stt_model": "...", "speak_events": true|false, "language": "pt-BR"|"en-US", "volume": 0..100, "attention": true|false}`. Nunca expõe a chave. Os campos `*_source` dizem de onde vem cada escolha: a variável de ambiente, a escolha salva na UI ou o padrão; `speak_events` narra o resto do board (ligada por padrão); `attention` são os chamados quando uma tarefa precisa do dono (pergunta, bloqueio, revisão; ligados por padrão); `language` é o idioma de tudo que o agente fala e `volume` o volume da reprodução.
+- `200` — `{"configured": true|false, "status": "logged_in"|"not_configured", "voice_id": "...", "voice_source": "environment"|"saved"|"default", "tts_model": "...", "tts_source": "environment"|"saved"|"default", "stt_model": "...", "speak_events": true|false, "language": "pt-BR"|"en-US", "volume": 0..100, "attention": true|false, "speed": 0.8..1.2, "style": "steady"|"natural"|"expressive", "pause": "short"|"normal"|"long"}`. Nunca expõe a chave. Os campos `*_source` dizem de onde vem cada escolha: a variável de ambiente, a escolha salva na UI ou o padrão; `speak_events` narra o resto do board (ligada por padrão); `attention` são os chamados quando uma tarefa precisa do dono (pergunta, bloqueio, revisão; ligados por padrão); `language` é o idioma de tudo que o agente fala, `volume` o volume da reprodução, `speed` a velocidade da fala, `style` a entonação (estabilidade 0,7 / 0,5 / 0,3 na ElevenLabs) e `pause` quanto silêncio encerra uma fala do dono (0,8 / 1,2 / 1,8 s).
 
 ### GET /api/voice/voices
 
@@ -75,10 +75,10 @@ Corpo: `{"action": "stop"}`. O valor de `action` também pode ser `"archive"` ou
 
 ### PUT /api/voice/settings
 
-Corpo: qualquer combinação de `{"voice_id": "..."}`, `{"tts_model": "..."}`, `{"speak_events": true|false}`, `{"attention": true|false}`, `{"language": "pt-BR"|"en-US"}` e `{"volume": 0..100}`. `voice_id` vazio ou em branco limpa a escolha (volta ao padrão); `tts_model` precisa ser um dos modelos oferecidos (`eleven_flash_v2_5`, `eleven_v4`, `eleven_multilingual_v2`); `speak_events` liga/desliga a fala automática do board.
+Corpo: qualquer combinação de `{"voice_id": "..."}`, `{"tts_model": "..."}`, `{"speak_events": true|false}`, `{"attention": true|false}`, `{"language": "pt-BR"|"en-US"}`, `{"volume": 0..100}`, `{"speed": 0.8..1.2}`, `{"style": "steady"|"natural"|"expressive"}` e `{"pause": "short"|"normal"|"long"}`. `voice_id` vazio ou em branco limpa a escolha (volta ao padrão); `tts_model` precisa ser um dos modelos oferecidos (`eleven_flash_v2_5`, `eleven_v4`, `eleven_multilingual_v2`); `speak_events` liga/desliga a fala automática do board.
 
 - `200` — `{"voice_id": "...", "voice_source": "saved"|"default", "tts_model": "...", "tts_source": "saved"|"default"}`. As escolhas persistem na tabela `settings` e valem na hora; `ELEVENLABS_VOICE_ID` / `ELEVENLABS_TTS_MODEL` no ambiente continuam com prioridade.
-- `400` — `{"error": "a valid voice id is required"}` para id maior que 64 caracteres; `{"error": "an offered TTS model is required"}` para modelo fora do catálogo; `{"error": "an offered voice language is required"}` e `{"error": "the volume must be 0 to 100"}` para idioma ou volume fora da oferta. As chaves são gravadas na ordem do corpo; uma recusada não desfaz as anteriores.
+- `400` — `{"error": "a valid voice id is required"}` para id maior que 64 caracteres; `{"error": "an offered TTS model is required"}` para modelo fora do catálogo; `{"error": "an offered voice language is required"}` e `{"error": "the volume must be 0 to 100"}`, `{"error": "the speed must be 0.8 to 1.2"}`, `{"error": "the style must be steady, natural or expressive"}` e `{"error": "the pause must be short, normal or long"}` para valores fora da oferta. As chaves são gravadas na ordem do corpo; uma recusada não desfaz as anteriores.
 
 ### GET/POST /api/voice/speech
 
@@ -89,6 +89,12 @@ Parâmetro: `text` (query no GET, corpo JSON `{"text": "..."}` no POST); `voice`
 - `401` — `{"error": "ElevenLabs rejected the key"}`.
 - `429` — `{"error": "ElevenLabs usage limit reached"}`.
 - `503` — `{"error": "voice not configured"}` sem chave (`ELEVENLABS_API_KEY`).
+
+O texto falado usa a velocidade e a entonação salvas. Um texto curto (até 300 caracteres) já falado com a mesma voz, modelo, idioma e ajustes sai do cache em memória (`SpeechCache`, 150 entradas, uma semana) sem nova cobrança.
+
+### GET /api/voice/stream
+
+Os mesmos parâmetros, validações e erros de `GET /api/voice/speech`, mas o áudio é enviado em pedaços enquanto a ElevenLabs gera (`/v1/text-to-speech/{voz}/stream`): o primeiro som chega em ~0,4 s contra 0,6–1,1 s do arquivo inteiro. Um erro antes do primeiro byte volta como JSON; um erro no meio encerra o stream. Uma resposta do cache vem inteira, com `content-length` e o header `x-voice-cache: hit`. É o caminho que o board usa para tocar a voz do agente.
 
 ### POST /api/voice/transcribe
 

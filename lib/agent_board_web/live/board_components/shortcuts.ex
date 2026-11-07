@@ -16,8 +16,12 @@ defmodule AgentBoardWeb.BoardComponents.Shortcuts do
         <dd>Fechar painel ou camada</dd>
         <dt><.kbd key="N" /></dt>
         <dd>Novo pedido</dd>
+        <dt><.kbd key="Espaço" /><.kbd key="Espaço" /></dt>
+        <dd>Conversar com o agente: fale e pare, ele envia sozinho</dd>
+        <dt><.kbd key="Esc" /></dt>
+        <dd>Cancelar a fala ou a resposta em andamento</dd>
         <dt><.kbd key="V" /></dt>
-        <dd>Ditar por voz</dd>
+        <dd>Ditar um pedido no composer</dd>
         <dt><.kbd key="1" />–<.kbd key="4" /></dt>
         <dd>Trocar aba do painel</dd>
         <dt><.kbd key="?" /></dt>

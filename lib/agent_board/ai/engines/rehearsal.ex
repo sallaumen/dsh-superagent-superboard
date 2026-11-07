@@ -52,6 +52,9 @@ defmodule AgentBoard.AI.Engines.Rehearsal do
       "reply" => "Modo de ensaio: esta resposta não veio de um modelo.",
       "action" => "reply",
       "request" => "",
+      "title" => "",
+      "details" => [],
+      "question" => "",
       "task_number" => 0,
       "repository" => ""
     },

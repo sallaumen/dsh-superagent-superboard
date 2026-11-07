@@ -12,17 +12,6 @@ defmodule AgentBoard.Conversation.AgentTest do
 
   @stub AgentBoard.Conversation.AgentTest.Stub
 
-  @ready %{
-    "goal" => "Mostrar o volume da voz no cabeçalho",
-    "constraints" => ["sem mudar o layout"],
-    "non_goals" => [],
-    "risks" => [],
-    "open_questions" => [],
-    "assumptions" => [],
-    "ready" => true,
-    "language" => "pt"
-  }
-
   setup do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
@@ -61,6 +50,9 @@ defmodule AgentBoard.Conversation.AgentTest do
           "reply" => "",
           "action" => action,
           "request" => "",
+          "title" => "",
+          "details" => [],
+          "question" => "",
           "task_number" => 0,
           "repository" => ""
         },
@@ -144,17 +136,18 @@ defmodule AgentBoard.Conversation.AgentTest do
 
   test "a request for work is refined, proposed, and created once on a spoken yes", %{repo: repo} do
     counter = github_issues()
+    test_pid = self()
 
-    script(fn
-      %{name: :voice_agent} ->
-        agent_answer("create_task", %{
-          "reply" => "Claro.",
-          "request" => "mostrar o volume da voz no cabeçalho",
-          "repository" => "arena rogue"
-        })
+    script(fn %{name: name} ->
+      send(test_pid, {:called, name})
 
-      %{name: :refine_request} ->
-        Scripted.answer(@ready)
+      agent_answer("create_task", %{
+        "reply" => "Claro.",
+        "request" => "mostrar o volume da voz no cabeçalho",
+        "title" => "Mostrar o volume da voz no cabeçalho",
+        "details" => ["o volume aparece em porcentagem", "sem mudar o layout"],
+        "repository" => "arena rogue"
+      })
     end)
 
     proposed =
@@ -167,6 +160,9 @@ defmodule AgentBoard.Conversation.AgentTest do
 
     assert proposed.reply =~ "Posso criar?"
     assert %Turn{proposal: %{"kind" => "create_task"}} = Conversation.pending_proposal()
+    # One model call refines it: no second, slower refine call.
+    assert_received {:called, :voice_agent}
+    refute_received {:called, :refine_request}
 
     created = turn("Sim, pode.", repo)
     assert created.reply == "Pronto. A tarefa 42 entrou na fila do arena-rogue."
@@ -174,7 +170,8 @@ defmodule AgentBoard.Conversation.AgentTest do
 
     task = Repo.get_by!(Task, repository_id: repo.id, number: 42)
     assert task.title == "Mostrar o volume da voz no cabeçalho"
-    assert task.body =~ "sem mudar o layout"
+    assert task.body =~ "**Critérios de aceite**"
+    assert task.body =~ "- sem mudar o layout"
     assert task.body =~ "Pedido por voz"
 
     # A second yes has nothing waiting: it goes to the model, nothing is created.
@@ -226,16 +223,11 @@ defmodule AgentBoard.Conversation.AgentTest do
   end
 
   test "an unclear request becomes a question, not a proposal", %{repo: repo} do
-    script(fn
-      %{name: :voice_agent} ->
-        agent_answer("create_task", %{"request" => "melhora o placar"})
-
-      %{name: :refine_request} ->
-        Scripted.answer(%{
-          @ready
-          | "ready" => false,
-            "open_questions" => ["Qual placar, o da partida ou o geral?"]
-        })
+    script(fn %{name: :voice_agent} ->
+      agent_answer("create_task", %{
+        "request" => "melhora o placar",
+        "question" => "Qual placar, o da partida ou o geral?"
+      })
     end)
 
     result = turn("melhora o placar", repo)

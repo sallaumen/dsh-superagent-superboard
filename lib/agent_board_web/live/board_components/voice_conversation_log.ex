@@ -37,6 +37,9 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
         <li :for={turn <- Enum.reverse(@turns)} class="voice-chat-turn" data-role={turn.role}>
           <span class="voice-chat-who">{if turn.role == "owner", do: "Você", else: "Agente"}</span>
           <p>{turn.text}</p>
+          <span :if={turn.role == "agent" && turn.duration_ms} class="voice-chat-time">
+            pensou em {seconds(turn.duration_ms)}
+          </span>
         </li>
       </ol>
       <p :if={@thinking} class="voice-chat-thinking" role="status">O agente está pensando…</p>
@@ -54,4 +57,10 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
     </section>
     """
   end
+
+  defp seconds(ms),
+    do:
+      :erlang.float_to_binary(ms / 1000, decimals: 1)
+      |> String.replace(".", ",")
+      |> Kernel.<>(" s")
 end

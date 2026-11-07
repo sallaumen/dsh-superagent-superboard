@@ -170,7 +170,14 @@ in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md
   model call is `:voice_agent`, the summary `:summarize_conversation`.
   **Writes wait for a spoken yes**: create, stop and archive become a
   proposal (`proposal_status`), settled once by a conditional update; yes
-  and no are recognized locally. The conversation never reaches the coding
+  and no are recognized locally. `:voice_agent` refines a request itself
+  (title, acceptance criteria, or one question): no second model call.
+- **Playback** goes through `/api/voice/stream` (ElevenLabs streaming) and
+  `AgentBoard.ElevenLabs.SpeechCache` (short texts, keyed by every input
+  that changes the audio, bounded, off in tests). Every spoken text passes
+  `AgentBoard.Voice.Speakable.clean/1` (via `AgentBoardWeb.VoiceSpeech`).
+  Speed (`voice_speed`), intonation (`voice_style` → stability), pause
+  (`voice_pause`) and microphone sounds (`voice_earcons`) are settings. The conversation never reaches the coding
   agent except through the board actions a button would take.
 - **Voice asks** are a write and always confirmed: a draft that ends in a
   question mark (or starts with "perguntar"/"ask") and matches no read-only

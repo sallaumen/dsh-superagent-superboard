@@ -97,6 +97,9 @@ defmodule AgentBoardWeb.VoiceConversation do
     socket |> cancel() |> assign(:voice_turns, [])
   end
 
+  @doc "The owner pressed Escape while the agent was thinking: drop the turn quietly."
+  def cancel_turn(socket), do: cancel(socket)
+
   defp cancel(%{assigns: %{chat_turn: %{ref: ref}}} = socket),
     do: socket |> cancel_async({:voice_turn, ref}) |> assign(:chat_turn, nil)
 
@@ -143,7 +146,12 @@ defmodule AgentBoardWeb.VoiceConversation do
         text: text
       })
     else
-      push_event(socket, "speak", %{text: text, lang: voice.language, listen: listen})
+      push_event(socket, "speak", %{
+        text: VoiceSpeech.text(text),
+        lang: voice.language,
+        rate: voice.speed,
+        listen: listen
+      })
     end
   end
 

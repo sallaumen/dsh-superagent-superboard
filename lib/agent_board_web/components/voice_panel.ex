@@ -9,8 +9,10 @@ defmodule AgentBoardWeb.Components.VoicePanel do
   this file without touching `BoardLive` or `SettingsMenu`. The contract is
   the assigns (`voice`, a map with `id`, `source`, `configured`, `voices`,
   `loading`, `pick`, `model`, `model_source`, `models`, `speak_events`,
-  `attention`, `language`, `languages`, `volume`; and `repo`) and the
-  events: `voice_language`, `voice_volume`, `voice_attention`,
+  `attention`, `language`, `languages`, `volume`, `speed`, `style`,
+  `pause`, `earcons`; and `repo`) and the events: `voice_language`,
+  `voice_volume`, `voice_speed`, `voice_style`, `voice_pause`,
+  `voice_earcons`, `voice_attention`,
   `voice_announce`, `voice_browse`, `voice_pick`, `voice_preview`,
   `voice_save`, `voice_reset`, `voice_model` and `voice_try`.
 
@@ -69,6 +71,62 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           />
         </form>
 
+        <form id="voice-speed-form" phx-change="voice_speed" class="voice-field">
+          <label for="voice-speed" class="voice-field-label">
+            Velocidade <output for="voice-speed">{speed_label(@voice.speed)}</output>
+          </label>
+          <input
+            id="voice-speed"
+            type="range"
+            name="speed"
+            min="0.8"
+            max="1.2"
+            step="0.05"
+            value={@voice.speed}
+            phx-debounce="250"
+            aria-valuetext={speed_label(@voice.speed)}
+            class="voice-volume"
+          />
+        </form>
+
+        <form
+          :if={@voice.configured}
+          id="voice-style-form"
+          phx-change="voice_style"
+          class="voice-field"
+        >
+          <label for="voice-style" class="voice-field-label">Entonação</label>
+          <div class="settings-actions">
+            <select id="voice-style" name="style" class="voice-select">
+              <option
+                :for={{id, name} <- styles()}
+                value={id}
+                selected={id == @voice.style}
+              >
+                {name}
+              </option>
+            </select>
+          </div>
+        </form>
+
+        <form id="voice-pause-form" phx-change="voice_pause" class="voice-field">
+          <label for="voice-pause" class="voice-field-label">
+            Pausa para enviar
+            <span class="voice-source-note">· quanto silêncio encerra a sua fala</span>
+          </label>
+          <div class="settings-actions">
+            <select id="voice-pause" name="pause" class="voice-select">
+              <option
+                :for={{id, name} <- pauses()}
+                value={id}
+                selected={id == @voice.pause}
+              >
+                {name}
+              </option>
+            </select>
+          </div>
+        </form>
+
         <fieldset class="voice-field">
           <legend class="voice-field-label">Quando falar</legend>
           <form id="voice-attention-form" phx-change="voice_attention">
@@ -93,6 +151,18 @@ defmodule AgentBoardWeb.Components.VoicePanel do
                 value="true"
                 checked={@voice.speak_events}
               /> Narrar o resto: início de tarefa, fila, sincronização e confirmações
+            </label>
+          </form>
+          <form id="voice-earcons-form" phx-change="voice_earcons">
+            <input type="hidden" name="earcons" value="false" />
+            <label class="voice-toggle">
+              <input
+                id="voice-earcons"
+                type="checkbox"
+                name="earcons"
+                value="true"
+                checked={@voice.earcons}
+              /> Som curto ao abrir e fechar o microfone
             </label>
           </form>
         </fieldset>
@@ -219,6 +289,18 @@ defmodule AgentBoardWeb.Components.VoicePanel do
     </div>
     """
   end
+
+  defp speed_label(speed),
+    do:
+      :erlang.float_to_binary(speed * 1.0, decimals: 2)
+      |> String.replace(".", ",")
+      |> Kernel.<>("×")
+
+  defp styles,
+    do: [{"steady", "Estável"}, {"natural", "Natural"}, {"expressive", "Expressiva"}]
+
+  defp pauses,
+    do: [{"short", "Curta · 0,8 s"}, {"normal", "Normal · 1,2 s"}, {"long", "Longa · 1,8 s"}]
 
   defp source_label(:environment), do: "definida no .env.local"
   defp source_label(:saved), do: "escolhida aqui"

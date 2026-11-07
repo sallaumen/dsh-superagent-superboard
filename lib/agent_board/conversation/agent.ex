@@ -12,14 +12,15 @@ defmodule AgentBoard.Conversation.Agent do
        snapshot; the answer names one action.
     3. Reads (status, open a task, switch project) happen at once. Writes
        (create, stop or archive a task) become a **proposal** the owner
-       confirms by voice; a request for new work is first refined
-       (`AgentBoard.Intake.refine/1`), and an unclear one becomes a question.
+       confirms by voice; a request for new work is refined in the same
+       call (title and acceptance criteria), and an unclear one becomes a
+       question.
 
   The coding agent is never involved: a created task is a GitHub issue the
   agent picks up on its own, exactly like the composer's.
   """
 
-  alias AgentBoard.{AI, Board, Conversation, Intake, Repo, Titles}
+  alias AgentBoard.{AI, Board, Conversation, Repo, Titles}
   alias AgentBoard.Board.{Repository, Task}
   alias AgentBoard.Conversation.Turn
   alias AgentBoard.Voice.Phrases
@@ -60,6 +61,7 @@ defmodule AgentBoard.Conversation.Agent do
   """
   @spec respond(String.t(), context()) :: outcome()
   def respond(text, ctx) do
+    started = System.monotonic_time(:millisecond)
     lang = ctx.language
     pending = Conversation.pending_proposal()
 
@@ -70,7 +72,7 @@ defmodule AgentBoard.Conversation.Agent do
         :none -> think(text, pending, ctx)
       end
 
-    record(outcome, ctx)
+    record(outcome, ctx, System.monotonic_time(:millisecond) - started)
     outcome
   end
 
@@ -107,7 +109,8 @@ defmodule AgentBoard.Conversation.Agent do
       board: snapshot(ctx)
     }
 
-    case AI.call(:voice_agent, inputs) do
+    # Compact JSON, without the default's indentation.
+    case AI.call(:voice_agent, %{prompt: "Inputs:\n" <> Jason.encode!(inputs)}) do
       {:ok, %{json: %{"action" => action} = json}} -> act(action, json, pending, ctx)
       {:ok, _result} -> say(Phrases.not_understood(ctx.language), "error")
       {:error, reason} -> say(Phrases.ai_failed(ctx.language, reason), "error")
@@ -161,9 +164,12 @@ defmodule AgentBoard.Conversation.Agent do
 
   # ---- proposals ------------------------------------------------------------
 
+  # The model refines the request in the same call that understood it: a
+  # second refine call cost 5-7 s of silence before "Posso criar?".
   defp propose_task(%{"request" => request} = json, ctx) do
     lang = ctx.language
     repo = match_repository(ctx.repos, json["repository"]) || ctx.repo
+    question = String.trim(json["question"] || "")
 
     cond do
       String.trim(request || "") == "" ->
@@ -172,23 +178,22 @@ defmodule AgentBoard.Conversation.Agent do
       is_nil(repo) ->
         listen(say(Phrases.which_project(lang), "create_task"))
 
+      question != "" ->
+        listen(say(Phrases.clarify(lang, question), "create_task"))
+
       true ->
-        case Intake.refine(request) do
-          {:ok, %{"ready" => false, "open_questions" => [question | _]}} ->
-            listen(say(Phrases.clarify(lang, question), "create_task"))
+        title = title(json["title"], request)
 
-          {:ok, spec} ->
-            proposal(
-              task_proposal(repo, request, spec, lang),
-              Phrases.propose_task(lang, slug(repo), title(spec, request))
-            )
-
-          {:error, _reason} ->
-            proposal(
-              task_proposal(repo, request, %{}, lang),
-              Phrases.propose_task(lang, slug(repo), title(%{}, request))
-            )
-        end
+        proposal(
+          %{
+            "kind" => "create_task",
+            "repository_id" => repo.id,
+            "repository" => slug(repo),
+            "title" => title,
+            "body" => body(json["details"], request, lang)
+          },
+          Phrases.propose_task(lang, slug(repo), title)
+        )
     end
   end
 
@@ -227,42 +232,27 @@ defmodule AgentBoard.Conversation.Agent do
     }
   end
 
-  defp task_proposal(repo, request, spec, lang) do
-    title = title(spec, request)
-
-    %{
-      "kind" => "create_task",
-      "repository_id" => repo.id,
-      "repository" => slug(repo),
-      "title" => title,
-      "body" => body(spec, request, lang)
-    }
+  defp title(title, request) do
+    case String.trim(title || "") do
+      "" -> Titles.from_request(request)
+      title -> Titles.from_request(title)
+    end
   end
 
-  defp title(%{"goal" => goal}, _request) when is_binary(goal) and goal != "",
-    do: Titles.from_request(goal)
-
-  defp title(_spec, request), do: Titles.from_request(request)
-
-  defp body(spec, request, lang) do
+  defp body(details, request, lang) do
     labels = Phrases.issue_labels(lang)
+    details = Enum.filter(List.wrap(details), &(is_binary(&1) and String.trim(&1) != ""))
 
     [
-      spec["goal"],
-      section(labels.constraints, spec["constraints"]),
-      section(labels.assumptions, spec["assumptions"]),
-      section(labels.risks, spec["risks"]),
-      section(labels.open_questions, spec["open_questions"]),
+      section(labels.acceptance, details),
       "> #{labels.spoken}: \"#{String.trim(request)}\""
     ]
-    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.reject(&is_nil/1)
     |> Enum.join("\n\n")
   end
 
-  defp section(_label, items) when items in [nil, []], do: nil
-
-  defp section(label, items) when is_list(items),
-    do: "**#{label}**\n" <> Enum.map_join(items, "\n", &"- #{&1}")
+  defp section(_label, []), do: nil
+  defp section(label, items), do: "**#{label}**\n" <> Enum.map_join(items, "\n", &"- #{&1}")
 
   # ---- confirmation ---------------------------------------------------------
 
@@ -388,11 +378,12 @@ defmodule AgentBoard.Conversation.Agent do
   defp reply(%{"reply" => text}, _ctx) when is_binary(text) and text != "", do: text
   defp reply(_json, ctx), do: Phrases.not_understood(ctx.language)
 
-  defp record(outcome, ctx) do
+  defp record(outcome, ctx, duration_ms) do
     Conversation.record("agent", outcome.reply,
       repository_id: ctx.repo && ctx.repo.id,
       action: outcome.action,
-      proposal: outcome.proposal
+      proposal: outcome.proposal,
+      duration_ms: duration_ms
     )
   end
 

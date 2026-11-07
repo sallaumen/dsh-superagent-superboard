@@ -9,6 +9,13 @@ defmodule AgentBoard.Voice do
     * `voice_language` - `pt-BR` (default) or `en-US`
     * `voice_volume` - 0..100 (default 100)
     * `voice_attention` - `"0"` silences the calls for attention
+    * `voice_speed` - the speaking rate, 0.8..1.2 (default 1.0)
+    * `voice_style` - the intonation: `steady`, `natural` (default) or
+      `expressive`, an ElevenLabs stability of 0.7, 0.5 or 0.3
+    * `voice_pause` - how long a silence ends a spoken turn: `short`,
+      `normal` (default) or `long`
+    * `voice_earcons` - `"0"` silences the sounds that mark the microphone
+      opening and closing
   """
 
   alias AgentBoard.Settings
@@ -18,6 +25,11 @@ defmodule AgentBoard.Voice do
   @volume_key "voice_volume"
   @attention_key "voice_attention"
   @default_volume 100
+  @speed_key "voice_speed"
+  @style_key "voice_style"
+  @pause_key "voice_pause"
+  @styles %{"steady" => 0.7, "natural" => 0.5, "expressive" => 0.3}
+  @pauses %{"short" => 800, "normal" => 1200, "long" => 1800}
   @summary_order [:question, :blocked, :ready, :running, :queued, :merged]
 
   @doc "The language the agent speaks (a saved pick, or the default)."
@@ -65,6 +77,78 @@ defmodule AgentBoard.Voice do
   end
 
   defp parse_volume(_value), do: :error
+
+  @doc "The speaking rate, 0.8..1.2."
+  @spec speed() :: float()
+  def speed do
+    case parse_speed(Settings.get(@speed_key)) do
+      {:ok, n} -> n
+      :error -> 1.0
+    end
+  end
+
+  @doc "Saves the speaking rate; outside 0.8..1.2 is refused."
+  def put_speed(value) do
+    case parse_speed(value) do
+      {:ok, n} -> Settings.put(@speed_key, :erlang.float_to_binary(n, decimals: 2))
+      :error -> {:error, :invalid_speed}
+    end
+  end
+
+  defp parse_speed(n) when is_number(n) and n >= 0.8 and n <= 1.2,
+    do: {:ok, Float.round(n * 1.0, 2)}
+
+  defp parse_speed(value) when is_binary(value) do
+    case Float.parse(String.trim(value)) do
+      {n, ""} -> parse_speed(n)
+      _ -> :error
+    end
+  end
+
+  defp parse_speed(_value), do: :error
+
+  @doc "The intonation preset: `steady`, `natural` or `expressive`."
+  def style do
+    style = Settings.get(@style_key)
+    if Map.has_key?(@styles, style), do: style, else: "natural"
+  end
+
+  @doc "The ElevenLabs stability of the intonation preset."
+  def stability, do: Map.fetch!(@styles, style())
+
+  @doc "Saves the intonation preset."
+  def put_style(style) when is_binary(style) do
+    if Map.has_key?(@styles, style),
+      do: Settings.put(@style_key, style),
+      else: {:error, :invalid_style}
+  end
+
+  def put_style(_style), do: {:error, :invalid_style}
+
+  @doc "The pause preset that ends a spoken turn."
+  def pause do
+    pause = Settings.get(@pause_key)
+    if Map.has_key?(@pauses, pause), do: pause, else: "normal"
+  end
+
+  @doc "The silence, in milliseconds, that ends a spoken turn."
+  def pause_ms, do: Map.fetch!(@pauses, pause())
+
+  @doc "Saves the pause preset."
+  def put_pause(pause) when is_binary(pause) do
+    if Map.has_key?(@pauses, pause),
+      do: Settings.put(@pause_key, pause),
+      else: {:error, :invalid_pause}
+  end
+
+  def put_pause(_pause), do: {:error, :invalid_pause}
+
+  @doc "Whether a soft sound marks the microphone opening and closing (default on)."
+  def earcons?, do: Settings.get("voice_earcons") != "0"
+
+  @doc "Turns the microphone sounds on or off."
+  def put_earcons(on?) when is_boolean(on?),
+    do: Settings.put("voice_earcons", if(on?, do: "", else: "0"))
 
   @doc "Whether the agent calls the owner when a task needs them (default on)."
   def attention?, do: Settings.get(@attention_key) != "0"

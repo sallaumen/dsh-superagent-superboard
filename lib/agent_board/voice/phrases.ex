@@ -334,23 +334,9 @@ defmodule AgentBoard.Voice.Phrases do
   def too_slow(_lang), do: "Demorei demais e parei. Pode me pedir de novo."
 
   @doc "The section headings of an issue body written from a spoken request."
-  def issue_labels("en-US"),
-    do: %{
-      constraints: "Constraints",
-      assumptions: "Assumptions",
-      risks: "Risks",
-      open_questions: "Open questions",
-      spoken: "Spoken request"
-    }
+  def issue_labels("en-US"), do: %{acceptance: "Acceptance criteria", spoken: "Spoken request"}
 
-  def issue_labels(_lang),
-    do: %{
-      constraints: "Restrições",
-      assumptions: "Premissas",
-      risks: "Riscos",
-      open_questions: "Perguntas em aberto",
-      spoken: "Pedido por voz"
-    }
+  def issue_labels(_lang), do: %{acceptance: "Critérios de aceite", spoken: "Pedido por voz"}
 
   defp repo_name(slug), do: slug |> to_string() |> String.split("/") |> List.last()
 

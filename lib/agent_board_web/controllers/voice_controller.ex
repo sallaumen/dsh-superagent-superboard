@@ -11,6 +11,7 @@ defmodule AgentBoardWeb.VoiceController do
   use AgentBoardWeb, :controller
 
   alias AgentBoard.ElevenLabs
+  alias AgentBoard.ElevenLabs.SpeechCache
   alias AgentBoard.Settings
   alias AgentBoard.Voice
   alias AgentBoard.Voice.Phrases
@@ -60,6 +61,9 @@ defmodule AgentBoardWeb.VoiceController do
          :ok <- put_speak_events(params),
          :ok <- put_pref(params, "language", &Voice.put_language/1),
          :ok <- put_pref(params, "volume", &Voice.put_volume/1),
+         :ok <- put_pref(params, "speed", &Voice.put_speed/1),
+         :ok <- put_pref(params, "style", &Voice.put_style/1),
+         :ok <- put_pref(params, "pause", &Voice.put_pause/1),
          :ok <- put_pref(params, "attention", &Voice.put_attention(&1 in [true, "true", "1"])) do
       json(
         conn,
@@ -80,7 +84,14 @@ defmodule AgentBoardWeb.VoiceController do
   end
 
   defp voice_prefs do
-    %{language: Voice.language(), volume: Voice.volume(), attention: Voice.attention?()}
+    %{
+      language: Voice.language(),
+      volume: Voice.volume(),
+      attention: Voice.attention?(),
+      speed: Voice.speed(),
+      style: Voice.style(),
+      pause: Voice.pause()
+    }
   end
 
   # Key by key, like the voice and the model: a refused value answers 400
@@ -128,13 +139,85 @@ defmodule AgentBoardWeb.VoiceController do
   @doc "POST /api/voice/speech -- the spoken audio (mp3)."
   def speech_post(conn, params), do: speak(conn, params)
 
+  @doc """
+  GET /api/voice/stream?text=... -- the spoken audio, streamed as it is
+  generated (the browser starts playing in about half a second instead of
+  waiting for the whole file). A text already spoken with the same voice and
+  settings comes from `SpeechCache` at once. A failure before the first byte
+  is a JSON error like `speech/2`; one in the middle ends the stream.
+  """
+  def stream(conn, params) do
+    case speech_params(params) do
+      {:ok, text, voice} -> stream_cached(conn, text, speech_opts(voice))
+      {:error, reason} -> voice_error(conn, reason)
+    end
+  end
+
+  defp stream_cached(conn, text, opts) do
+    key = SpeechCache.key(text, opts)
+
+    case SpeechCache.get(key) do
+      {:ok, audio} ->
+        conn
+        |> put_resp_content_type("audio/mpeg", nil)
+        |> put_resp_header("x-voice-cache", "hit")
+        |> send_resp(200, audio)
+
+      :miss ->
+        stream_fresh(conn, text, opts, key)
+    end
+  end
+
+  # The conn and the audio so far live in this request process's dictionary
+  # while Req calls back with each chunk; both are read back right after.
+  defp stream_fresh(conn, text, opts, key) do
+    Process.put(:voice_stream, {conn, []})
+
+    on_chunk = fn data ->
+      {conn, audio} = Process.get(:voice_stream)
+
+      conn =
+        if conn.state == :chunked,
+          do: conn,
+          else: conn |> put_resp_content_type("audio/mpeg", nil) |> send_chunked(200)
+
+      case chunk(conn, data) do
+        {:ok, conn} ->
+          Process.put(:voice_stream, {conn, [audio | data]})
+          :ok
+
+        {:error, _closed} ->
+          Process.put(:voice_stream, {conn, :abandoned})
+          :halt
+      end
+    end
+
+    result = ElevenLabs.speech_stream(text, opts, on_chunk)
+    {conn, audio} = Process.delete(:voice_stream)
+
+    cond do
+      conn.state == :chunked ->
+        if result == :ok and is_list(audio),
+          do: SpeechCache.put(key, text, IO.iodata_to_binary(audio))
+
+        conn
+
+      match?({:error, _}, result) ->
+        {:error, reason} = result
+        voice_error(conn, reason)
+
+      true ->
+        voice_error(conn, :empty_audio)
+    end
+  end
+
   # The endpoint only ever answers mp3 (the fixed default output format), so
   # the content type is a literal, never derived from the request.
   defp speak(conn, params) do
     with {:ok, text, voice} <- speech_params(params),
          {:ok, audio} <- generate(text, voice) do
       conn
-      |> put_resp_content_type("audio/mpeg")
+      |> put_resp_content_type("audio/mpeg", nil)
       |> send_resp(200, audio)
     else
       {:error, reason} -> voice_error(conn, reason)
@@ -157,13 +240,26 @@ defmodule AgentBoardWeb.VoiceController do
   defp speech_params(_params), do: {:error, :missing_text}
 
   defp generate(text, voice) do
-    opts = [language: Phrases.tts_code(Voice.language())]
-    opts = if voice, do: [{:voice, voice} | opts], else: opts
+    opts = speech_opts(voice)
+    key = SpeechCache.key(text, opts)
 
-    case ElevenLabs.speech(text, opts) do
-      {:ok, %{audio: audio}} -> {:ok, audio}
-      {:error, reason} -> {:error, reason}
+    with :miss <- SpeechCache.get(key),
+         {:ok, %{audio: audio}} <- ElevenLabs.speech(text, opts) do
+      SpeechCache.put(key, text, audio)
+      {:ok, audio}
     end
+  end
+
+  # Every input that changes the audio is explicit here, so the cache key
+  # covers the voice, model and language even when they are defaults.
+  defp speech_opts(voice) do
+    [
+      voice: voice || ElevenLabs.voice_id(),
+      model: ElevenLabs.tts_model(),
+      language: Phrases.tts_code(Voice.language()),
+      speed: Voice.speed(),
+      stability: Voice.stability()
+    ]
   end
 
   @doc "POST /api/voice/transcribe -- the audio body transcribed (JSON)."
@@ -191,6 +287,7 @@ defmodule AgentBoardWeb.VoiceController do
 
   defp status_and_message(:not_configured), do: {503, "voice not configured"}
   defp status_and_message(:missing_text), do: {400, "a text is required"}
+  defp status_and_message(:empty_audio), do: {502, "ElevenLabs returned no audio"}
   defp status_and_message(:text_too_long), do: {400, "the text is too long for one request"}
   defp status_and_message(:missing_audio), do: {400, "an audio body is required"}
   defp status_and_message(:audio_too_large), do: {413, "the audio is too large"}
@@ -198,6 +295,12 @@ defmodule AgentBoardWeb.VoiceController do
   defp status_and_message(:invalid_model), do: {400, "an offered TTS model is required"}
   defp status_and_message(:invalid_language), do: {400, "an offered voice language is required"}
   defp status_and_message(:invalid_volume), do: {400, "the volume must be 0 to 100"}
+  defp status_and_message(:invalid_speed), do: {400, "the speed must be 0.8 to 1.2"}
+
+  defp status_and_message(:invalid_style),
+    do: {400, "the style must be steady, natural or expressive"}
+
+  defp status_and_message(:invalid_pause), do: {400, "the pause must be short, normal or long"}
   defp status_and_message(:auth_expired), do: {401, "ElevenLabs rejected the key"}
   defp status_and_message(:usage_limit), do: {429, "ElevenLabs usage limit reached"}
   defp status_and_message({:http, status}), do: {502, "ElevenLabs HTTP #{status}"}

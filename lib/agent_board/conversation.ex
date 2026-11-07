@@ -35,7 +35,8 @@ defmodule AgentBoard.Conversation do
       repository_id: opts[:repository_id],
       action: opts[:action],
       proposal: opts[:proposal],
-      proposal_status: if(opts[:proposal], do: "proposed")
+      proposal_status: if(opts[:proposal], do: "proposed"),
+      duration_ms: opts[:duration_ms]
     })
     |> Repo.insert()
   end

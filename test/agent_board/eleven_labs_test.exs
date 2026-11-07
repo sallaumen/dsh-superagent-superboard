@@ -199,6 +199,23 @@ defmodule AgentBoard.ElevenLabsTest do
     assert {:ok, _} = ElevenLabs.speech("oi", language: "pt", model: "eleven_v4")
   end
 
+  test "speech sends the speed only when asked for" do
+    Req.Test.stub(@stub, fn conn ->
+      assert conn.body_params["voice_settings"]["speed"] == 1.1
+      assert conn.body_params["voice_settings"]["stability"] == 0.3
+      Plug.Conn.put_resp_content_type(conn, "audio/mpeg") |> Plug.Conn.send_resp(200, <<1>>)
+    end)
+
+    assert {:ok, _} = ElevenLabs.speech("oi", speed: 1.1, stability: 0.3)
+
+    Req.Test.stub(@stub, fn conn ->
+      refute Map.has_key?(conn.body_params["voice_settings"], "speed")
+      Plug.Conn.put_resp_content_type(conn, "audio/mpeg") |> Plug.Conn.send_resp(200, <<1>>)
+    end)
+
+    assert {:ok, _} = ElevenLabs.speech("oi")
+  end
+
   test "speech maps the paid failures to reasons" do
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 401, "unauthorized") end)
     assert {:error, :auth_expired} = ElevenLabs.speech("hi")

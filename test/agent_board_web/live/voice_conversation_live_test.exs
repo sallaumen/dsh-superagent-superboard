@@ -46,6 +46,9 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
       "reply" => text,
       "action" => action,
       "request" => "",
+      "title" => "",
+      "details" => [],
+      "question" => "",
       "task_number" => 0,
       "repository" => ""
     })
@@ -96,6 +99,9 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
         "reply" => "",
         "action" => "stop_task",
         "request" => "",
+        "title" => "",
+        "details" => [],
+        "question" => "",
         "task_number" => task.number,
         "repository" => ""
       })
@@ -124,7 +130,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
     script(fn %{name: :voice_agent, prompt: prompt} ->
       # The memory carries the first utterance too: match the utterance field.
-      if prompt =~ ~s("utterance": "primeira pergunta") do
+      if prompt =~ ~r/"utterance":\s*"primeira pergunta"/ do
         send(test_pid, :first_started)
         Process.sleep(300)
         reply("Resposta velha.")
@@ -197,5 +203,33 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
     assert_push_event(view, "voice_play", %{url: _url})
     assert [%{role: "owner"}, %{role: "agent", action: "command"}] = Conversation.recent()
+  end
+
+  test "Escape while the agent thinks drops the turn without a reply", %{conn: conn} do
+    test_pid = self()
+
+    script(fn %{name: :voice_agent} ->
+      send(test_pid, :thinking)
+      Process.sleep(300)
+      reply("Tarde demais.")
+    end)
+
+    view = board(conn)
+    render_hook(view, "voice_turn", %{"text" => "oi"})
+    assert_receive :thinking, 1_000
+    render_hook(view, "voice_cancel_turn", %{})
+    Process.sleep(400)
+
+    refute_push_event(view, "voice_play", %{url: _}, 100)
+  end
+
+  test "the history shows how long the agent took", %{conn: conn} do
+    script(fn %{name: :voice_agent} -> reply("Pode deixar.") end)
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=voice")
+
+    view |> element("#voice-chat-form") |> render_submit(%{"text" => "oi"})
+    render_async(view)
+
+    assert has_element?(view, "#voice-chat-turns [data-role=agent] .voice-chat-time", "pensou em")
   end
 end

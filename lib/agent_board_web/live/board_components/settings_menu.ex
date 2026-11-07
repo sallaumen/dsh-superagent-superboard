@@ -58,7 +58,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               </button>
             </div>
             <p class="text-xs leading-relaxed text-base-content/75">
-              No board, pressione Espaço duas vezes para gravar um comando. A gravação nunca envia por você.
+              No board, aperte Espaço duas vezes, fale e pare: o agente responde em voz. Criar, parar ou arquivar sempre espera o seu “sim”.
             </p>
           </div>
         </details>
