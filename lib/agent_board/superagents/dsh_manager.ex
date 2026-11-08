@@ -44,14 +44,27 @@ defmodule AgentBoard.Superagents.DshManager do
   @impl true
   def scale(%Superagent{} = superagent, workers) when is_integer(workers) and workers > 0 do
     with {:ok, 200, settings} <- get(superagent, "/settings"),
-         %{"value" => value, "revision" => revision} <- get_in(settings, ["blocks", "executor"]),
-         value = Map.put(value, "maxWorkers", workers),
+         {:ok, value, revision} <- executor_block(settings),
          {:ok, 200, _body} <-
-           put(superagent, "/settings/executor", %{"value" => value, "revision" => revision}) do
+           put(superagent, "/settings/executor", %{
+             "value" => Map.put(value, "maxWorkers", workers),
+             "revision" => revision
+           }) do
       :ok
     else
-      {:ok, status, _body} -> {:error, {:http, status}}
       {:error, reason} -> {:error, reason}
+      {:ok, status, _body} -> {:error, {:http, status}}
+      _other -> {:error, :malformed}
+    end
+  end
+
+  defp executor_block(settings) do
+    case get_in(settings, ["blocks", "executor"]) do
+      %{"value" => value, "revision" => revision} when is_map(value) ->
+        {:ok, value, revision}
+
+      _ ->
+        {:error, :malformed}
     end
   end
 
@@ -67,7 +80,7 @@ defmodule AgentBoard.Superagents.DshManager do
   end
 
   defp observation(body) do
-    health = body["health"] || %{}
+    health = Map.get(body, "health") || %{}
     setup = body["setup"]
     load = body["load"] || %{}
     paused = body["paused"] == true
@@ -85,11 +98,13 @@ defmodule AgentBoard.Superagents.DshManager do
     end
   end
 
-  defp health_errors(health) do
+  defp health_errors(health) when is_map(health) do
     health
     |> Enum.filter(fn {_name, entry} -> entry["state"] == "error" end)
     |> Enum.map(fn {name, entry} -> "#{name}: #{entry["detail"]}" end)
   end
+
+  defp health_errors(_health), do: []
 
   defp runtime_observation(health, load, paused) do
     case {paused, get_in(health, ["runtime", "state"])} do

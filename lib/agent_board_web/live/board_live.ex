@@ -1195,13 +1195,10 @@ defmodule AgentBoardWeb.BoardLive do
     name = if action == "pause", do: :pause_superagent, else: :resume_superagent
     superagent = Superagents.get(id) |> Repo.preload(:repository)
 
-    case Actions.run(name, %{superagent: superagent}, ui()) do
-      {:ok, text} ->
-        {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:info, text)}
-
-      {:error, text} ->
-        {:noreply, put_flash(socket, :error, text)}
-    end
+    {:noreply,
+     start_async(socket, {:superagent_command, superagent.id}, fn ->
+       Actions.run(name, %{superagent: superagent}, ui())
+     end)}
   end
 
   def handle_event("superagent_scale", %{"id" => id, "delta" => delta}, socket) do
@@ -1209,10 +1206,11 @@ defmodule AgentBoardWeb.BoardLive do
 
     with {delta, ""} <- Integer.parse(delta),
          workers = max(1, min(32, superagent.max_workers + delta)),
-         true <- workers != superagent.max_workers,
-         {:ok, text} <-
-           Actions.run(:scale_superagent, %{superagent: superagent, workers: workers}, ui()) do
-      {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:info, text)}
+         true <- workers != superagent.max_workers do
+      {:noreply,
+       start_async(socket, {:superagent_scale, superagent.id}, fn ->
+         Actions.run(:scale_superagent, %{superagent: superagent, workers: workers}, ui())
+       end)}
     else
       false -> {:noreply, socket}
       _ -> {:noreply, put_flash(socket, :error, "Não foi possível mudar o limite de sessões.")}
@@ -1803,6 +1801,27 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply, socket}
   end
+
+  @impl true
+  def handle_async({:superagent_command, _id}, {:ok, {:ok, text}}, socket) do
+    {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:info, text)}
+  end
+
+  def handle_async({:superagent_command, _id}, {:ok, {:error, text}}, socket),
+    do: {:noreply, put_flash(socket, :error, text)}
+
+  def handle_async({:superagent_command, _id}, {:exit, _reason}, socket),
+    do: {:noreply, put_flash(socket, :error, "A ação do superagent não terminou.")}
+
+  def handle_async({:superagent_scale, _id}, {:ok, {:ok, text}}, socket) do
+    {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:info, text)}
+  end
+
+  def handle_async({:superagent_scale, _id}, {:ok, {:error, text}}, socket),
+    do: {:noreply, put_flash(socket, :error, text)}
+
+  def handle_async({:superagent_scale, _id}, {:exit, _reason}, socket),
+    do: {:noreply, put_flash(socket, :error, "Não foi possível mudar o limite de sessões.")}
 
   @impl true
   def handle_async({:voice_turn, ref}, outcome, socket),
