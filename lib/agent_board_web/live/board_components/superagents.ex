@@ -9,6 +9,7 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
   attr :superagents, :list, required: true
   attr :repos, :list, required: true
   attr :provision_preview, :any, default: nil
+  attr :provisioning, :boolean, default: false
   attr :tz_offset, :integer, default: 0
 
   def superagents(assigns) do
@@ -129,19 +130,24 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
         </article>
       </div>
 
-      <details class="ab-superagent-add">
+      <details class="ab-superagent-add" open={@provision_preview != nil}>
         <summary>Adicionar projeto</summary>
 
-        <p :if={@repos == []} class="ab-meta">
-          Adicione um repositório em Configurações antes de provisionar o DeepSeek.
+        <p :if={available_repos(@repos, @superagents) == []} class="ab-meta">
+          Todos os repositórios acompanhados já têm um superagent.
+          Adicione outro repositório em Configurações para provisionar.
         </p>
 
-        <form :if={@repos != []} phx-submit="provision_review" class="ab-superagent-add__form">
+        <form
+          :if={available_repos(@repos, @superagents) != []}
+          phx-submit="provision_review"
+          class="ab-superagent-add__form"
+        >
           <label>
             <span>Repositório</span>
             <select name="repository_id" required>
               <option value="">Escolha o repositório</option>
-              <option :for={repo <- @repos} value={repo.id}>
+              <option :for={repo <- available_repos(@repos, @superagents)} value={repo.id}>
                 {repo.owner}/{repo.name}
               </option>
             </select>
@@ -174,8 +180,9 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
               type="button"
               class="ab-btn ab-btn--sm ab-btn--primary"
               phx-click="provision_confirm"
+              disabled={@provisioning}
             >
-              Criar projeto
+              {if @provisioning, do: "Criando…", else: "Criar projeto"}
             </button>
             <button
               type="button"
@@ -189,6 +196,11 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
       </details>
     </section>
     """
+  end
+
+  defp available_repos(repos, superagents) do
+    taken = MapSet.new(superagents, & &1.repository_id)
+    Enum.reject(repos, &MapSet.member?(taken, &1.id))
   end
 
   defp remote_action(superagent)
