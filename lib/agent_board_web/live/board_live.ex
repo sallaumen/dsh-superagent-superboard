@@ -1199,6 +1199,7 @@ defmodule AgentBoardWeb.BoardLive do
            Repo.get(AgentBoard.Board.Repository, repository_id),
          %AgentBoard.Superagents.Superagent{} = source <- Superagents.get(source_id),
          path when is_binary(path) and path != "" <- String.trim(params["path"] || ""),
+         path = Path.expand(path),
          {workers, ""} <- Integer.parse(params["workers"] || "3") do
       params = %{repository: repository, source: source, path: path, workers: workers}
 

@@ -16,7 +16,7 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
     <section id="superagents-panel" class="ab-superagents">
       <header class="ab-superagents__head">
         <div>
-          <h2>Superagents DeepSeek</h2>
+          <h2>Superagentes DeepSeek</h2>
           <p class="ab-meta">
             Um agente por projeto. O board observa o processo; não o inicia como filho.
           </p>

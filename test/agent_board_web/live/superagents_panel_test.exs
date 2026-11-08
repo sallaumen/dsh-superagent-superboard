@@ -31,7 +31,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     {:ok, _view, html} = live(conn, "/?repo=fixture/panel&panel=superagents")
 
-    assert html =~ "Superagents DeepSeek"
+    assert html =~ "Superagentes DeepSeek"
     assert html =~ "fixture/panel"
     assert html =~ "superagent-panel"
     assert html =~ "erro"
