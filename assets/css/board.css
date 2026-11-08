@@ -788,6 +788,28 @@ body { margin: 0; background: var(--paper); }
   #sec-needs { grid-area: needs; }
   #sec-queue { grid-area: queue; }
   #sec-log { grid-area: log; }
+
+  /* An idle board has nothing to show in Agora, Precisa de você or Fila:
+     the three one-line empty states share one compact row and the merge
+     history takes the width below, in two columns of day groups. */
+  .ab-cols[data-idle="true"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      "now needs queue"
+      "log log log";
+    gap: 24px 48px;
+  }
+
+  .ab-board:not([data-inspector="open"]) .ab-cols[data-idle="true"] #sec-log .ab-week {
+    max-width: 26rem;
+  }
+
+  .ab-board:not([data-inspector="open"]) .ab-cols[data-idle="true"] #sec-log .ab-log {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 48px;
+    align-items: start;
+  }
 }
 @container board (min-width: 2000px) and (max-width: 2600px) {
   .ab-board[data-inspector="open"] .ab-main { max-width: 100%; }

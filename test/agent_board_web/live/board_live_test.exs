@@ -106,6 +106,22 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, ".ab-beacon[data-state=live]")
   end
 
+  test "the stale banner and the beacon speak the owner's clock, not UTC", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "clock")
+    Board.log_event(repo.id, "sync", "fixture/clock", %{"errors" => 0})
+    Board.log_event(repo.id, "sync_error", "fixture/clock", %{"reason" => "offline"})
+    at = Board.sync_snapshot(repo).last_success.inserted_at
+    expected = AgentBoard.Time.local_time(at, 180)
+
+    {:ok, view, _html} =
+      conn
+      |> put_connect_params(%{"board_tz_offset" => 180})
+      |> live(~p"/?repo=fixture/clock")
+
+    assert has_element?(view, ".ab-frozen", "Mostrando o que sabíamos às #{expected}")
+    assert has_element?(view, ".ab-beacon[data-state=offline]", "dados de #{expected}")
+  end
+
   test "a transcript outside the composer is a conversation turn, never a draft", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
@@ -998,6 +1014,36 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     assert html =~ "ab-cols"
     assert html =~ "ab-col"
+  end
+
+  test "an idle board marks the columns so the history takes the width", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "idle")
+
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: 1,
+      title: "Merged pull",
+      state: "merged",
+      merged_at: DateTime.utc_now()
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/idle")
+    assert has_element?(view, ".ab-cols[data-idle=true]")
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 2,
+      title: "Queued work",
+      state: "queued"
+    })
+    |> Repo.insert!()
+
+    send(view.pid, :board_updated)
+    assert has_element?(view, ".ab-cols[data-idle=false]")
   end
 
   test "the board renders the tracked repository", %{conn: conn} do
