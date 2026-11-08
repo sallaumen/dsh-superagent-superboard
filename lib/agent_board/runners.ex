@@ -203,7 +203,7 @@ defmodule AgentBoard.Runners do
     text = execution.error || ""
 
     cond do
-      text =~ ~r/budget|or[çc]amento|max_budget/i ->
+      text =~ ~r/error_max_budget|max_budget_usd|budget_usd|teto de or[çc]amento/i ->
         %{
           kind: :budget,
           executor: execution.executor,
@@ -211,7 +211,7 @@ defmodule AgentBoard.Runners do
         }
 
       text =~
-          ~r/quota|rate limit|usage limit|credit|401|402|403|429|login|auth|sign in|not logged/i ->
+          ~r/quota|rate limit|usage limit|401|402|403|429|login|not logged|unauthorized|authentication/i ->
         %{
           kind: :switch,
           executor: other,
