@@ -81,6 +81,29 @@ defmodule AgentBoard.CreateRequestTest do
     assert objective.merged == 0
   end
 
+  test "a claim already in progress is not a second issue", %{repo: repo} do
+    Req.Test.stub(@stub, fn _conn -> flunk("GitHub must not be called") end)
+
+    key = Board.request_key(repo, "single", ["Em andamento"])
+    body = "Em andamento\n\n@sallaumen-agent"
+
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      kind: "issue",
+      title: "Em andamento",
+      body: body,
+      state: "draft",
+      request_key: key
+    })
+    |> Repo.insert!()
+
+    assert {:error, :in_progress} =
+             Board.create_request(repo, %{title: "Em andamento", body: body, key: key}, client())
+
+    assert Repo.aggregate(Task, :count) == 1
+  end
+
   # Answers every issue creation and sends the test the JSON GitHub received.
   defp capture_issues do
     test = self()

@@ -6,7 +6,7 @@ defmodule AgentBoard.Board.Task do
   @derive {Jason.Encoder,
            only: [:id, :kind, :number, :title, :state, :url, :author, :stopped, :archived]}
 
-  @states ~w(queued running retrying question ready blocked done closed stopped archived)
+  @states ~w(draft queued running retrying question ready blocked done closed stopped archived)
 
   # The split's classification (the `:propose_tasks` call): where the work
   # lands and how big it is. The registry's schema reads these lists, so

@@ -283,6 +283,7 @@ defmodule AgentBoard.Board do
   """
   def create_task(repository, title, body, client, opts \\ []) do
     executor = Keyword.get(opts, :executor)
+    claim = Keyword.get(opts, :claim)
     body = if executor, do: Executors.issue_body(body, executor), else: body
     labels = if executor, do: [Executors.label(executor)], else: []
 
@@ -295,8 +296,7 @@ defmodule AgentBoard.Board do
              body,
              labels
            ) do
-      %Task{}
-      |> Task.changeset(%{
+      attrs = %{
         repository_id: repository.id,
         kind: "issue",
         number: issue["number"],
@@ -311,8 +311,16 @@ defmodule AgentBoard.Board do
         work_type: Keyword.get(opts, :work_type),
         size: Keyword.get(opts, :size),
         executor: executor
-      })
-      |> Repo.insert(on_conflict: :nothing)
+      }
+
+      target = claim || %Task{}
+
+      result =
+        if claim,
+          do: target |> Task.changeset(attrs) |> Repo.update(),
+          else: target |> Task.changeset(attrs) |> Repo.insert(on_conflict: :nothing)
+
+      result
       |> tap(&record_routing(&1, repository, executor, Keyword.get(opts, :routing)))
       |> tap(fn
         {:ok, %Task{id: id}} when is_integer(id) -> broadcast(repository.id)
@@ -398,8 +406,50 @@ defmodule AgentBoard.Board do
     request = %{request | body: body}
 
     case existing_request(repository, key, title, body) do
+      %Task{number: nil} -> {:error, :in_progress}
       %Task{} = task -> {:ok, task, :existing}
-      nil -> create_new_request(repository, request, client)
+      nil -> claim_and_create(repository, request, client)
+    end
+  end
+
+  # The claim is the unique key row, inserted before the GitHub call: two
+  # doors that submit the same words both reach the database, and only one
+  # gets to open an issue. A failed issue call deletes the claim.
+  defp claim_and_create(repository, request, client) do
+    case claim_request(repository, request) do
+      {:ok, claim} -> create_new_request(repository, request, client, claim)
+      {:existing, %Task{number: nil}} -> {:error, :in_progress}
+      {:existing, %Task{} = task} -> {:ok, task, :existing}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp claim_request(repository, %{title: title, body: body, key: key} = request) do
+    attrs = %{
+      repository_id: repository.id,
+      kind: "issue",
+      title: title,
+      body: body,
+      state: "draft",
+      request_key: key,
+      executor: Map.get(request, :executor),
+      origin_task_id: Map.get(request, :origin_task_id),
+      work_type: Map.get(request, :work_type),
+      size: Map.get(request, :size)
+    }
+
+    case %Task{} |> Task.changeset(attrs) |> Repo.insert() do
+      {:ok, claim} ->
+        {:ok, claim}
+
+      {:error, _changeset} ->
+        case Repo.one(
+               from t in Task,
+                 where: t.repository_id == ^repository.id and t.request_key == ^key
+             ) do
+          %Task{} = existing -> {:existing, existing}
+          nil -> {:error, :conflict}
+        end
     end
   end
 
@@ -457,7 +507,12 @@ defmodule AgentBoard.Board do
 
   defp with_routing(request, _repository), do: request
 
-  defp create_new_request(repository, %{title: title, body: body, key: key} = request, client) do
+  defp create_new_request(
+         repository,
+         %{title: title, body: body, key: key} = request,
+         client,
+         claim
+       ) do
     request = with_routing(request, repository)
 
     created =
@@ -467,17 +522,30 @@ defmodule AgentBoard.Board do
         work_type: Map.get(request, :work_type),
         size: Map.get(request, :size),
         executor: Map.get(request, :executor),
-        routing: Map.get(request, :routing)
+        routing: Map.get(request, :routing),
+        claim: claim
       )
 
     case created do
       # The unique key (or the issue number) raced with another write: the
       # first one won, and it is the receipt if it carries these words.
-      {:ok, %Task{id: nil}} -> raced_request(repository, key, title, body)
-      {:ok, task} -> {:ok, task, :created}
-      {:error, reason} -> {:error, reason}
+      {:ok, %Task{id: nil}} ->
+        raced_request(repository, key, title, body)
+
+      {:ok, task} ->
+        {:ok, task, :created}
+
+      {:error, reason} ->
+        delete_claim(claim)
+        {:error, reason}
     end
   end
+
+  defp delete_claim(%Task{id: id, state: "draft"}) when is_integer(id) do
+    Repo.delete_all(from t in Task, where: t.id == ^id and t.state == "draft")
+  end
+
+  defp delete_claim(_claim), do: :ok
 
   defp raced_request(repository, key, title, body) do
     case existing_request(repository, key, title, body) do
