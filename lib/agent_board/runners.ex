@@ -197,12 +197,19 @@ defmodule AgentBoard.Runners do
   The board only proposes; nothing starts without a new confirmation.
   """
   @spec fallback(Execution.t() | nil) ::
-          %{kind: :retry | :switch, executor: String.t(), reason: String.t()} | :none
+          %{kind: :retry | :switch | :budget, executor: String.t(), reason: String.t()} | :none
   def fallback(%Execution{status: "failed"} = execution) do
     other = if execution.executor == "claude", do: "codex", else: "claude"
     text = execution.error || ""
 
     cond do
+      text =~ ~r/budget|or[çc]amento|max_budget/i ->
+        %{
+          kind: :budget,
+          executor: execution.executor,
+          reason: "A última execução parou no teto de orçamento (#{short(text)})."
+        }
+
       text =~
           ~r/quota|rate limit|usage limit|credit|401|402|403|429|login|auth|sign in|not logged/i ->
         %{

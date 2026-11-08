@@ -187,6 +187,12 @@ defmodule AgentBoard.RunnersTest do
       error: "429 quota exhausted"
     }
 
+    budget = %AgentBoard.Runners.Execution{
+      status: "failed",
+      executor: "claude",
+      error: "error_max_budget_usd"
+    }
+
     network = %AgentBoard.Runners.Execution{
       status: "failed",
       executor: "claude",
@@ -203,6 +209,7 @@ defmodule AgentBoard.RunnersTest do
     assert reason =~ "cota ou login"
 
     assert %{kind: :retry, executor: "claude"} = Runners.fallback(network)
+    assert %{kind: :budget, executor: "claude"} = Runners.fallback(budget)
     assert Runners.fallback(content) == :none
     assert Runners.fallback(nil) == :none
   end

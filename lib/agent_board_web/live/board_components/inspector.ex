@@ -103,7 +103,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           </div>
 
           <.live_component
-            :if={not @dispatch_active and not @dispatch_paused and @dispatch_fallback != :none}
+            :if={
+              not @dispatch_active and not @dispatch_paused and
+                fallback_kind(@dispatch_fallback) not in [:none, :budget]
+            }
             module={AgentAction}
             id={"dispatch-#{@task.id}"}
             mode={:dispatch}
@@ -125,6 +128,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <p :if={@dispatch_fallback == :none} class="ab-meta ab-fail__system">
             A última execução falhou por conteúdo (teste, bloqueio ou pergunta):
             o board não troca de executor sozinho. Confira o resultado em Execuções.
+          </p>
+          <p :if={fallback_kind(@dispatch_fallback) == :budget} class="ab-meta ab-fail__system">
+            Ajuste o teto por tarefa em Configurações antes de tentar de novo;
+            o board não inicia outra execução sozinho.
           </p>
 
           <p class="ab-meta">
