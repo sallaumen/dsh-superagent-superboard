@@ -408,7 +408,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         Nenhuma chamada de IA registrada para esta tarefa.
       </div>
 
-      <div :if={@calls != []} class="ab-table-wrap">
+      <div
+        :if={@calls != []}
+        class="ab-table-wrap"
+        tabindex="0"
+        role="region"
+        aria-label="Chamadas de IA"
+      >
         <table class="ab-table">
           <thead>
             <tr>

@@ -848,7 +848,11 @@ defmodule AgentBoard.Board do
   GitHub PR URL. The board never guesses by title.
   """
   def task_pull_request(%Task{} = task, comments) do
-    repository = Repo.get(Repository, task.repository_id)
+    repository =
+      case task.repository do
+        %Repository{} = repository -> repository
+        _ -> Repo.get(Repository, task.repository_id)
+      end
 
     number =
       Enum.find_value(Enum.reverse(comments), &pull_number(&1.body)) || pull_number(task.body)
@@ -1048,7 +1052,7 @@ defmodule AgentBoard.Board do
       |> Map.new(&{&1.repository_id, &1})
 
     ready_by_repository =
-      Repo.all(from t in Task, where: t.state == "ready")
+      Repo.all(from t in Task, where: t.state == "ready", preload: [:repository])
       |> then(fn ready ->
         resolved = resolved_task_ids(ready)
 

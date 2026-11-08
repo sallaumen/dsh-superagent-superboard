@@ -446,7 +446,7 @@ defmodule AgentBoard.BoardOverviewTest do
   test "a ready task linked to a merged PR no longer waits for a person" do
     {:ok, repo} = Board.add_repository("fixture", "resolved")
     linked = insert_task(repo, 2, "ready")
-    _open = insert_task(repo, 3, "ready")
+    open = insert_task(repo, 3, "ready")
     pull = insert_merged(repo, 42, "success")
 
     %Comment{}
@@ -467,7 +467,7 @@ defmodule AgentBoard.BoardOverviewTest do
 
     assert Board.reconcile_resolved_tasks(repo) == 1
     assert Repo.get(Task, linked.id).state == "done"
-    assert Repo.get(Task, _open.id).state == "ready"
+    assert Repo.get(Task, open.id).state == "ready"
     assert Board.repo_overview()[repo.id].you == 1
   end
 

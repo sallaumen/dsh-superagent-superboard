@@ -517,8 +517,13 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  defp with_runner_running(today) do
+    running = Runners.running_items()
+    Map.update(today, :running, running, &(&1 ++ running))
+  end
+
   defp load(socket, nil) do
-    today = Board.today()
+    today = Board.today() |> with_runner_running()
 
     socket
     |> assign(
@@ -555,7 +560,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp read_board(socket, repo) do
-    today = Board.today()
+    today = Board.today() |> with_runner_running()
     spend = Report.today(socket.assigns.tz_offset)
 
     # load/2 runs again on every reload: subscribing twice would deliver every
@@ -1128,7 +1133,18 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("inspector_tab", %{"tab" => tab}, socket) do
     tab = if tab in ~w(conversa atividade chamadas execucoes pr), do: tab, else: "conversa"
-    {:noreply, socket |> assign(:inspector_tab, tab) |> load_inspector()}
+    socket = socket |> assign(:inspector_tab, tab) |> load_inspector()
+
+    case socket.assigns.conversation do
+      %Task{} = task ->
+        {:noreply,
+         push_patch(socket,
+           to: BoardNavigation.path(socket.assigns.repo, "conversation", task.id, tab)
+         )}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("executor_days", %{"days" => days}, socket) do

@@ -50,7 +50,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
           <article
             id={dom_id(need)}
             class="ab-need"
-            aria-selected={to_string(not is_nil(@selected) and @selected == need[:id])}
+            aria-current={to_string(not is_nil(@selected) and @selected == need[:id])}
             data-task={need[:id]}
             tabindex={if need[:id], do: "0"}
             role={if need[:id], do: "button"}

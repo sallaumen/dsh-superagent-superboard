@@ -14,6 +14,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
       id={@id}
       phx-hook="BoardMenu"
       data-board-menu
+      open={@settings_panel}
       class="board-settings"
       data-update-ready={to_string(@version.state == :behind)}
     >
