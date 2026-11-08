@@ -1,5 +1,10 @@
 # Setting the agent up on another machine
 
+Starting from zero — installing DeepSeek Harness, learning Creator Mode,
+putting the first Super-Agent on a repository — is the
+[learning path](learning-path.md); this document is the precise, machine-by-machine
+reference once the pieces exist.
+
 The agent needs four things: Node + DeepSeek Harness, a profile, a GitHub
 identity for the bot, and a repository it is allowed to touch.
 
