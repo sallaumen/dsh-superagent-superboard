@@ -111,6 +111,7 @@ defmodule AgentBoard.RunnersTest do
     assert {:error, :quota_reserved} = Runners.check(task, "codex")
     :ok = Settings.put("dispatch_reserve_percent", "0")
     assert {:ok, %{timeout_seconds: 1800}} = Runners.check(task, "codex")
+    assert {:ok, %{timeout_seconds: 7200}} = Runners.check(task, "claude")
   end
 
   test "the confirmed action is the only door, and it records the decision", %{task: task} do
