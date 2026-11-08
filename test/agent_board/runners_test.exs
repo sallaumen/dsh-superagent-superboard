@@ -134,6 +134,47 @@ defmodule AgentBoard.RunnersTest do
              hd(AgentBoard.Actions.recent(1))
   end
 
+  test "fallback classifies quota, network and content without starting anything" do
+    claude = %AgentBoard.Runners.Execution{
+      status: "failed",
+      executor: "claude",
+      error: "429 quota exhausted"
+    }
+
+    network = %AgentBoard.Runners.Execution{
+      status: "failed",
+      executor: "claude",
+      error: "dial tcp: connection refused"
+    }
+
+    content = %AgentBoard.Runners.Execution{
+      status: "failed",
+      executor: "claude",
+      error: "2 testes falharam"
+    }
+
+    assert %{kind: :switch, executor: "codex", reason: reason} = Runners.fallback(claude)
+    assert reason =~ "cota ou login"
+
+    assert %{kind: :retry, executor: "claude"} = Runners.fallback(network)
+    assert Runners.fallback(content) == :none
+    assert Runners.fallback(nil) == :none
+  end
+
+  test "a confirmed switch changes the task's executor before it starts", %{task: task} do
+    test_pid = self()
+
+    assert {:ok, execution} =
+             Runners.dispatch(task, "codex",
+               allow_switch: true,
+               ceiling_usd: nil,
+               launcher: launcher(test_pid)
+             )
+
+    assert execution.executor == "codex"
+    assert Repo.get!(Task, task.id).executor == "codex"
+  end
+
   test "tick reads the runner's status and result", %{task: task} do
     test_pid = self()
     {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher(test_pid))

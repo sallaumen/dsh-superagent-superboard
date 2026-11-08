@@ -272,6 +272,18 @@ defmodule AgentBoard.Actions do
     repo_name = if repo, do: "#{repo.owner}/#{repo.name}", else: "o repositório da tarefa"
     ceiling = params[:ceiling_usd]
 
+    fallback_text =
+      cond do
+        params[:fallback] ->
+          " O último executor falhou (#{params[:reason]}); esta é a troca confirmada."
+
+        params[:retry] ->
+          " A última execução falhou (#{params[:reason]}); esta é uma nova tentativa confirmada."
+
+        true ->
+          ""
+      end
+
     ceiling_text =
       if is_number(ceiling) do
         amount =
@@ -284,6 +296,7 @@ defmodule AgentBoard.Actions do
 
     "Despachar a tarefa ##{task.number}, #{q(short(task.title))}, para o " <>
       "#{Executors.name(executor)} em #{repo_name}?" <>
+      fallback_text <>
       ceiling_text <>
       " Nada começa sem esta confirmação."
   end
@@ -469,7 +482,7 @@ defmodule AgentBoard.Actions do
 
   defp execute(:dispatch_task, %{task: task, executor: executor} = params) do
     opts =
-      [ceiling_usd: params[:ceiling_usd]]
+      [ceiling_usd: params[:ceiling_usd], allow_switch: params[:fallback]]
       |> then(fn opts ->
         if params[:launcher], do: Keyword.put(opts, :launcher, params.launcher), else: opts
       end)

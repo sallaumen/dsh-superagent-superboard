@@ -623,6 +623,13 @@ numbers are settings rows.
   their currencies: the runner row says nothing about US$ by itself.
 - **A runner that cannot start fails the row**, never silently: the run
   directory keeps the error and the next tick records it.
+- **A failure is classified, never retried by the board** (`Runners.fallback/1`):
+  a transient network/timeout failure proposes the same executor; an
+  availability failure (quota, rate limit, login) proposes the other one with
+  the reason and the cost; a content failure (tests, block, question) is
+  `:none` and goes to the owner. A retry or a switch is a **new confirmed
+  `dispatch_task`**: the phrase names the previous failure, the switch updates
+  `tasks.executor` and the execution row records the new executor.
 - The tests: `runners_test.exs` (dispatch, one per task, pause, budget,
   quota, tick, the action), `runners_script_test.exs` (the real shell script
   against a fake CLI and a real worktree), `dispatch_test.exs` (the sentence,

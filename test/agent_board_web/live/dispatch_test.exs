@@ -86,6 +86,39 @@ defmodule AgentBoardWeb.DispatchTest do
     assert Runners.active_for_task?(task.id)
   end
 
+  test "a failed execution proposes the other executor, with the reason", %{
+    conn: conn,
+    task: task
+  } do
+    now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+
+    Repo.insert!(%AgentBoard.Runners.Execution{
+      task_id: task.id,
+      repository_id: task.repository_id,
+      executor: "claude",
+      status: "failed",
+      run_dir: "/tmp/dispatch-failed",
+      error: "429 quota exhausted",
+      started_at: now,
+      finished_at: now
+    })
+
+    {:ok, view, _html} =
+      live(conn, "/?repo=fixture/dispatch&panel=conversation&task=#{task.id}")
+
+    assert has_element?(view, "#task-dispatch", "Mandar para o Codex")
+    view |> element("#dispatch-#{task.id}-trigger") |> render_click()
+
+    assert has_element?(view, "#dispatch-#{task.id}-q", "O último executor falhou")
+
+    view |> element("#dispatch-#{task.id}-confirm") |> render_click()
+    assert_receive {:launched, _run_dir}, 1_000
+    Process.sleep(100)
+    _ = render(view)
+
+    assert Repo.get!(Task, task.id).executor == "codex"
+  end
+
   test "the global pause stops a new dispatch and is visible on the board", %{
     conn: conn,
     task: task
