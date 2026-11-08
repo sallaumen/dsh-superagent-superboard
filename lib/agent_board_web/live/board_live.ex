@@ -26,6 +26,7 @@ defmodule AgentBoardWeb.BoardLive do
     Repo,
     Runners,
     Settings,
+    Superagents,
     Time,
     Titles,
     Voice,
@@ -98,6 +99,7 @@ defmodule AgentBoardWeb.BoardLive do
         today: %{repos: %{}, needs: [], running: []},
         today_spend: nil,
         objectives: [],
+        superagents: [],
         resume: resume,
         events: [],
         sync_event: nil,
@@ -168,11 +170,13 @@ defmodule AgentBoardWeb.BoardLive do
     if connected?(socket), do: Settings.subscribe()
     if connected?(socket), do: DailySummary.subscribe()
     if connected?(socket), do: Board.subscribe_today()
+    if connected?(socket), do: Superagents.subscribe()
 
     # handle_params/3 always follows mount and loads the board: loading here
     # too read everything twice on every page and every connection.
     {:ok,
      socket
+     |> assign(:superagents, Superagents.list())
      |> VoiceConversation.mount()
      |> assign(:opening_repo, repo)
      |> show_daily_summary()}
@@ -812,6 +816,10 @@ defmodule AgentBoardWeb.BoardLive do
     else
       {:noreply, socket}
     end
+  end
+
+  def handle_info(:superagents_changed, socket) do
+    {:noreply, assign(socket, :superagents, Superagents.list())}
   end
 
   def handle_info(:board_updated, socket) do
@@ -2460,6 +2468,18 @@ defmodule AgentBoardWeb.BoardLive do
             id="ai"
             ai_calls={@ai_calls}
             ai_status={@ai_status}
+          />
+        </BoardComponents.Panel.shell>
+
+        <BoardComponents.Panel.shell
+          name="superagents"
+          title="Superagentes"
+          active={@panel == "superagents"}
+          flash={@flash}
+        >
+          <BoardComponents.Superagents.superagents
+            superagents={@superagents}
+            tz_offset={@tz_offset}
           />
         </BoardComponents.Panel.shell>
 

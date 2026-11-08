@@ -3,7 +3,7 @@ defmodule AgentBoard.SuperagentsTest do
   use AgentBoard.DataCase, async: false
 
   alias AgentBoard.{Board, Superagents}
-  alias AgentBoard.Superagents.Superagent
+  alias AgentBoard.Superagents.{FakeManager, Superagent}
 
   setup do
     {:ok, repo} = Board.add_repository("fixture", "superagent")
@@ -82,6 +82,31 @@ defmodule AgentBoard.SuperagentsTest do
 
     assert {:error, changeset} = Superagents.create(Map.put(base, :max_workers, 0))
     assert changeset.errors[:max_workers]
+  end
+
+  test "tick records the manager observation", %{repo: repo} do
+    {:ok, _pid} = FakeManager.start()
+
+    on_exit(fn ->
+      case Process.whereis(FakeManager) do
+        nil -> :ok
+        pid -> Agent.stop(pid)
+      end
+    end)
+
+    {:ok, superagent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "superagent-fixture",
+        port: 3194,
+        state_dir: "/tmp/fixture-superagent-5"
+      })
+
+    FakeManager.put(superagent.id, %{state: "ready", detail: nil})
+    Superagents.tick(FakeManager)
+
+    assert Repo.get!(Superagent, superagent.id).observed_state == "ready"
+    assert [%{action: "observe", to_state: "ready"}] = Superagents.events(superagent)
   end
 
   test "AgentState uses the registered state paths", %{repo: repo} do
