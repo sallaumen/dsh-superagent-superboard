@@ -604,9 +604,11 @@ in Configurações → Despacho local.
   executor is the task's (`tasks.executor`); the global pause
   (`dispatch_paused`) is off; the task has no `starting`/`running` row (a
   partial unique index enforces it); the Claude Code month is under the cap
-  and priced (an unpriced row refuses rather than pretending the budget is
-  zero); the Codex weekly quota, when read, is outside the reserve. The
-  ceiling the owner saw is the one the action passes to the runner.
+  **when a cap is set** (`0` disables the monthly gate; only the per-task
+  ceiling applies) and priced (an unpriced row refuses rather than pretending
+  the budget is zero); the Codex weekly quota, when read, is outside the
+  reserve. The ceiling the owner saw is the one the action passes to the
+  runner.
 - **A board restart does not kill the execution**: the runner is a tmux
   session, not a child. On boot `Runners.Ticker` reads every `starting`/`running`
   row and finishes it from the status files; `runners_test.exs` covers a tick

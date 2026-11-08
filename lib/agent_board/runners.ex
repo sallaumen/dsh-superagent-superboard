@@ -129,15 +129,22 @@ defmodule AgentBoard.Runners do
     cap = monthly_usd()
     ceiling = Keyword.get(opts, :ceiling_usd, task_usd())
 
-    case claude_month_usd() do
-      {:ok, spent} when spent >= cap ->
-        {:error, :monthly_budget}
+    # 0 means no monthly gate: only the per-task ceiling applies. The owner
+    # asked for that after the subscription-smoke history made the old 300
+    # cap a permanent block.
+    if cap <= 0 do
+      {:ok, %{ceiling_usd: ceiling, timeout_seconds: @claude_timeout_seconds}}
+    else
+      case claude_month_usd() do
+        {:ok, spent} when spent >= cap ->
+          {:error, :monthly_budget}
 
-      {:ok, _spent} ->
-        {:ok, %{ceiling_usd: ceiling, timeout_seconds: @claude_timeout_seconds}}
+        {:ok, _spent} ->
+          {:ok, %{ceiling_usd: ceiling, timeout_seconds: @claude_timeout_seconds}}
 
-      {:error, reason} ->
-        {:error, reason}
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 

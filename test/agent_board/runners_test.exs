@@ -123,13 +123,13 @@ defmodule AgentBoard.RunnersTest do
     assert {:error, :runner_missing} = Runners.check(task, "claude")
   end
 
-  test "pause, monthly cap and the Codex reserve stop a new execution", %{task: task} do
+  test "pause, the optional monthly cap and the Codex reserve stop a new execution", %{task: task} do
     :ok = Settings.put("dispatch_paused", "true")
     assert {:error, :paused} = Runners.check(task, "claude")
     :ok = Settings.put("dispatch_paused", "false")
 
     :ok = Settings.put("dispatch_monthly_usd", "0")
-    assert {:error, :monthly_budget} = Runners.check(task, "claude")
+    assert {:ok, %{timeout_seconds: 7200}} = Runners.check(task, "claude")
     :ok = Settings.put("dispatch_monthly_usd", "300")
 
     Repo.insert_all("usage_limits", [
