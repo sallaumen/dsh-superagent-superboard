@@ -643,6 +643,10 @@ in Configurações → Despacho local.
   confirmation, the pause switch, and every dispatch in the Execuções tab
   with its session and result. The Executores panel and the ledger keep
   their currencies: the runner row says nothing about US$ by itself.
+- **The runner never reads stdin**: both CLIs run with `</dev/null`; the
+  prompt is the file/argument. The real Codex smoke (2026-11-08) printed
+  "Reading additional input from stdin" when its stdin was a pipe, so the
+  redirect is required and `runners_script_test.exs` covers it.
 - **A missing executor binary refuses before starting** (`:runner_missing`);
   Configurações shows the two paths and whether they exist on this Mac.
 - **A runner that cannot start fails the row**, never silently: the run
