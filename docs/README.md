@@ -68,6 +68,7 @@ alternativas e estado. ADR novo: adicione a linha lá — o índice é a fonte �
 |---|---|
 | [research/alfred.md](research/alfred.md) | Plano de produto (07/11/2026): o Alfred comparado com a nossa plataforma, o roteamento entre executores e o roteiro por fases. As decisões D1–D5 saíram daqui para o [ADR 0004](decisions/0004-o-board-despacha-para-executores-locais.md); as regras entregues estão no [contrato](maintainer-contract.md#dispatch-despacho-local) |
 | [research/symphony.md](research/symphony.md) | Pesquisa (06/11/2026): o openai/symphony com dados de saúde, comparação e ideias. As ideias da frente paralela já foram entregues (ver [ADR 0003](decisions/0003-ciclo-de-vida-do-agente.md) e o contrato) |
+| [research/superagents.md](research/superagents.md) | Proposta de arquitetura (08/11/2026): gerir um `dsh-superagent` por projeto a partir do board — provisionamento, ciclo de vida, modelo de dados, UI, multi-dono e fases |
 | [research/superagents.md](research/superagents.md) | Plano (08/11/2026) para o board provisionar, observar, ligar/desligar e escalar superagents DeepSeek por projeto, com isolamento por dono e o roteiro de implementação |
 
 ## Planos históricos
