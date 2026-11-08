@@ -245,6 +245,14 @@ Esforço: **P** ≤ meio dia · **M** 1–2 dias · **G** > 2 dias. Valor: o que
 
 ## 5. Plano da próxima frente paralela
 
+> **Estado (2026-11-08):** os cinco pontos foram entregues — prompts versionados
+> ([`prompts/`](../agent/prompts/communication.md) + `scripts/agent/prompts.sh`,
+> ver [setup §8](../agent/setup.md#8-merge-policy)), workpad
+> ([contrato](../maintainer-contract.md#workpad)),
+> [ADR 0003](../decisions/0003-ciclo-de-vida-do-agente.md),
+> `scripts/agent/cleanup.sh` ([how-it-works](../agent/how-it-works.md)) e o
+> stall visível ([contrato — Silence](../maintainer-contract.md#silence-sem-sinal)).
+
 Cinco pontos, cada um do tamanho de uma issue/PR, independentes entre si e da sessão irmã (métricas por hora). Nenhum altera o `dsh-superagent`; dois alteram prompts pela API, três alteram este repositório.
 
 1. **Política versionada e script de sync (ideia 1).** Criar `docs/agent/prompts/` com as três seções e `scripts/agent/prompts.sh` (`get` grava os arquivos; `diff` compara com a API; `put` envia com `baseRevision` lido do `get`). Atualizar `docs/agent/setup.md` §8 e a tabela de scripts no `AGENTS.md`. Pronto quando `prompts.sh diff` sai limpo contra a revisão ativa e o texto literal da Delivery requirements está em git. Gate: `mix format --check-formatted` e `shellcheck` nos scripts.
