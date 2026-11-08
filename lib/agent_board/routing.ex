@@ -152,7 +152,7 @@ defmodule AgentBoard.Routing do
       case Enum.drop_while(candidates, &(&1 != executor)) do
         [^executor, next | _] ->
           [
-            "Sem histórico de tarefas parecidas, o #{Executors.name(executor)} vem antes do #{Executors.name(next)} na ordem fixa."
+            "O #{Executors.name(executor)} vem antes do #{Executors.name(next)} na ordem fixa."
           ]
 
         _ ->

@@ -22,7 +22,8 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
     # Always due: the board's own clock decides the day.
     :ok = DailySummary.put_settings(%{"at" => "00:00"})
     spend = fn _since, _until -> %{status: :none, reason: nil} end
-    {:generated, entry} = DailySummary.tick(spend: spend)
+    usage = fn _since, _until -> %{} end
+    {:generated, entry} = DailySummary.tick(spend: spend, usage: usage)
     entry
   end
 
@@ -150,6 +151,55 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
     assert html =~ "DeepSeek <b>≈ US$ 1,23</b>"
     assert html =~ "Claude Code <b>desconhecido</b>"
     assert html =~ "Codex <b>desconhecido</b>"
+    refute html =~ "Total"
+  end
+
+  test "the list price and the weekly quota are shown as their own values", %{conn: conn} do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    Repo.insert!(%Entry{
+      local_date: today(),
+      generated_at: now,
+      window_start: DateTime.add(now, -86_400),
+      window_end: now,
+      spoken_at: now,
+      content: %{
+        "merged" => %{"count" => 0, "items" => []},
+        "needs" => %{"blocked" => 0, "waiting" => 0, "items" => []},
+        "sync_errors" => 0,
+        "retries" => %{"sent" => 0, "tasks" => 0, "not_accepted" => 0},
+        "spend" => [
+          %{"executor" => "deepseek", "status" => "none"},
+          %{
+            "executor" => "claude",
+            "status" => "measured",
+            "currency" => "USD",
+            "reference" => "list",
+            "quota" => "unknown",
+            "micros" => 3_000_000,
+            "complete" => true,
+            "requests" => 12,
+            "models" => ["claude-opus-5-5"]
+          },
+          %{
+            "executor" => "codex",
+            "status" => "measured",
+            "currency" => "quota",
+            "percent" => 90.0,
+            "window_minutes" => 10_080,
+            "resets_at" => "2026-11-11T13:46:01Z",
+            "requests" => 3
+          }
+        ]
+      }
+    })
+
+    {:ok, view, _html} = live(conn, @path)
+    html = view |> element("#daily-summary") |> render()
+
+    assert html =~ "Claude Code <b>≈ US$ 3,00 (lista)</b>"
+    assert html =~ "Codex <b>90% da cota semanal</b>"
+    assert html =~ "Preço de lista do Claude Max"
     refute html =~ "Total"
   end
 

@@ -16,8 +16,10 @@ defmodule AgentBoard.DailySummary.Facts do
     * `"retries"`: `%{"sent", "tasks", "not_accepted"}`, the automatic
       retries the board asked for in the window (`agent_retries`);
     * `"spend"`: one line per executor, never summed: DeepSeek from the
-      harness transcripts (US$, estimated), Claude Code and Codex
-      `"unknown"` until the usage ledger exists (F1.3).
+      harness transcripts (US$, estimated), Claude Code from the usage ledger
+      (US$ at the Max subscription's list price, a reference and not a bill;
+      its quota is unknown) and Codex from the ledger plus its newest weekly
+      quota reading (percentage of the window, no US$).
   """
 
   import Ecto.Query, warn: false
@@ -25,6 +27,7 @@ defmodule AgentBoard.DailySummary.Facts do
   alias AgentBoard.AutoRetry.Attempt
   alias AgentBoard.{Board, ExecutorUsage, Repo}
   alias AgentBoard.Board.{Event, PullRequest, Repository, Task}
+  alias AgentBoard.Usage.Report
 
   @merged_items 5
   @need_items 3
@@ -32,18 +35,25 @@ defmodule AgentBoard.DailySummary.Facts do
   @doc """
   The facts for the window. `:spend` is the DeepSeek reader, a function of
   `(since, until)` returning an `ExecutorUsage` reading (default
-  `ExecutorUsage.window/2`).
+  `ExecutorUsage.window/2`); `:usage` reads the ledger's spend for Claude Code
+  and Codex (default `Report.spend_window/2`).
   """
   @spec collect(DateTime.t(), DateTime.t(), keyword()) :: map()
   def collect(since, until, opts \\ []) do
     reader = Keyword.get(opts, :spend, &ExecutorUsage.window/2)
+    usage_reader = Keyword.get(opts, :usage, &Report.spend_window/2)
+    usage = usage_reader.(since, until)
 
     %{
       "merged" => merged(since, until),
       "needs" => needs(),
       "sync_errors" => sync_errors(since, until),
       "retries" => retries(since, until),
-      "spend" => [deepseek(reader.(since, until)), unknown("claude"), unknown("codex")]
+      "spend" => [
+        deepseek(reader.(since, until)),
+        claude(Map.get(usage, "claude_code")),
+        codex(Map.get(usage, "codex"))
+      ]
     }
   end
 
@@ -162,6 +172,72 @@ defmodule AgentBoard.DailySummary.Facts do
       "status" => "unknown",
       "reason" => to_string(Map.get(reading, :reason) || "unreadable")
     }
+
+  # Claude Code's US$ is the list price of the Max subscription: estimated
+  # from the ledger's tokens, a reference and never the bill. The real quota
+  # is not in the files, so it stays unknown.
+  defp claude(%{status: :measured, requests: 0}),
+    do: %{"executor" => "claude", "status" => "none"}
+
+  defp claude(%{status: :measured, cost: %{micros: micros, complete?: complete?}} = reading) do
+    %{
+      "executor" => "claude",
+      "status" => "measured",
+      "currency" => "USD",
+      "reference" => "list",
+      "quota" => "unknown",
+      "micros" => micros,
+      "complete" => complete?,
+      "requests" => reading.requests,
+      "models" => reading.models
+    }
+  end
+
+  defp claude(%{status: :measured}),
+    do: %{"executor" => "claude", "status" => "unknown", "reason" => "no_price"}
+
+  defp claude(%{status: :none}), do: %{"executor" => "claude", "status" => "none"}
+  defp claude(nil), do: unknown("claude")
+
+  defp claude(reading) do
+    %{
+      "executor" => "claude",
+      "status" => "unknown",
+      "reason" => to_string(Map.get(reading, :reason) || "unreadable")
+    }
+  end
+
+  # Codex spends the weekly window, not a currency: the line is the share
+  # used and when it resets. Without a quota reading it is unknown.
+  defp codex(%{quota: %{used_percent: percent, window_minutes: window} = quota} = reading)
+       when is_number(percent) do
+    %{
+      "executor" => "codex",
+      "status" => "measured",
+      "currency" => "quota",
+      "percent" => percent,
+      "window_minutes" => window,
+      "resets_at" => quota.resets_at && DateTime.to_iso8601(quota.resets_at),
+      "requests" => Map.get(reading, :requests, 0)
+    }
+  end
+
+  defp codex(%{status: :unknown} = reading) do
+    %{
+      "executor" => "codex",
+      "status" => "unknown",
+      "reason" => to_string(Map.get(reading, :reason) || "no_quota")
+    }
+  end
+
+  defp codex(%{quota: nil}),
+    do: %{"executor" => "codex", "status" => "unknown", "reason" => "no_quota"}
+
+  defp codex(%{status: :none}), do: %{"executor" => "codex", "status" => "none"}
+  defp codex(nil), do: unknown("codex")
+
+  defp codex(_reading),
+    do: %{"executor" => "codex", "status" => "unknown", "reason" => "no_quota"}
 
   defp unknown(executor),
     do: %{"executor" => executor, "status" => "unknown", "reason" => "no_source"}

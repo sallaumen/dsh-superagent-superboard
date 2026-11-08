@@ -131,22 +131,49 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
 
   defp label(line), do: Map.get(@labels, line["executor"], line["executor"])
 
+  defp spend_text(%{"status" => "measured", "currency" => "quota"} = line) do
+    "#{percent(line["percent"])}% da cota semanal"
+  end
+
   defp spend_text(%{"status" => "measured", "micros" => micros} = line) when is_integer(micros) do
     cond do
-      micros < 5_000 -> "< US$ 0,01"
-      line["complete"] == false -> "≥ #{dollars(micros)}"
-      true -> "≈ #{dollars(micros)}"
+      micros < 5_000 -> "menos de US$ 0,01" <> list_mark(line)
+      line["complete"] == false -> "≥ #{dollars(micros)}" <> list_mark(line)
+      true -> "≈ #{dollars(micros)}" <> list_mark(line)
     end
   end
 
   defp spend_text(%{"status" => "none"}), do: "não rodou"
   defp spend_text(_line), do: "desconhecido"
 
+  defp list_mark(%{"reference" => "list"}), do: " (lista)"
+  defp list_mark(_line), do: ""
+
+  defp percent(value) when is_float(value),
+    do: value |> :erlang.float_to_binary(decimals: 0) |> String.replace(".", ",")
+
+  defp percent(value), do: to_string(value)
+
+  defp spend_title(%{"status" => "measured", "currency" => "quota"} = line) do
+    "Cota semanal do plano ChatGPT: #{percent(line["percent"])}% usada." <>
+      if(line["resets_at"],
+        do: " Renova em #{line["resets_at"]}.",
+        else: " Sem hora de renovação na leitura."
+      ) <>
+      " Não há valor em dólar para o Codex."
+  end
+
   defp spend_title(%{"status" => "measured"} = line) do
     requests = line["requests"]
     models = Enum.join(line["models"] || [], ", ")
 
-    "Estimado pelo preço de tabela" <>
+    prefix =
+      if line["reference"] == "list",
+        do:
+          "Preço de lista do Claude Max; é uma referência, não a fatura, e a cota real é desconhecida",
+        else: "Estimado pelo preço de tabela"
+
+    prefix <>
       if(is_integer(requests), do: ", #{requests} chamadas", else: "") <>
       if(models != "", do: " (#{models})", else: "") <>
       if(line["complete"] == false,
@@ -159,6 +186,9 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
 
   defp spend_title(%{"reason" => "no_source"}),
     do: "Sem fonte de uso: o board ainda não lê este executor"
+
+  defp spend_title(%{"reason" => "no_quota"}),
+    do: "Sem leitura da cota semanal do Codex"
 
   defp spend_title(%{"reason" => "zstd_missing"}),
     do: "Sem o zstd no PATH, as transcrições não podem ser lidas"

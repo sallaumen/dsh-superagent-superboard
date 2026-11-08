@@ -21,11 +21,15 @@ defmodule AgentBoard.DailySummaryTest do
   end
 
   defp spend(_since, _until), do: %{status: :none, reason: nil}
+  defp usage(_since, _until), do: %{}
 
   defp tick(iso, opts \\ []),
     do:
       DailySummary.tick(
-        Keyword.merge([now: utc(iso), utc_offset: @offset, spend: &spend/2], opts)
+        Keyword.merge(
+          [now: utc(iso), utc_offset: @offset, spend: &spend/2, usage: &usage/2],
+          opts
+        )
       )
 
   defp entries, do: Repo.all(from e in Entry, order_by: e.local_date)
@@ -240,6 +244,68 @@ defmodule AgentBoard.DailySummaryTest do
 
       assert claude == %{"executor" => "claude", "status" => "unknown", "reason" => "no_source"}
       assert codex == %{"executor" => "codex", "status" => "unknown", "reason" => "no_source"}
+    end
+
+    test "the ledger gives Claude its list price and Codex its weekly quota" do
+      usage = fn _since, _until ->
+        %{
+          "claude_code" => %{
+            source: "claude_code",
+            status: :measured,
+            requests: 30,
+            models: ["claude-opus-5-5"],
+            cost: %{micros: 2_000_000, complete?: true, currency: :usd}
+          },
+          "codex" => %{
+            source: "codex",
+            status: :none,
+            requests: 0,
+            quota: %{
+              used_percent: 90.0,
+              window_minutes: 10_080,
+              resets_at: utc("2026-11-11T13:46:01Z"),
+              observed_at: utc("2026-11-06T13:59:58Z")
+            }
+          }
+        }
+      end
+
+      {:generated, entry} = tick("2026-11-07T11:00:00Z", usage: usage)
+
+      assert [deepseek, claude, codex] = entry.content["spend"]
+      assert deepseek["executor"] == "deepseek"
+
+      assert claude == %{
+               "executor" => "claude",
+               "status" => "measured",
+               "currency" => "USD",
+               "reference" => "list",
+               "quota" => "unknown",
+               "micros" => 2_000_000,
+               "complete" => true,
+               "requests" => 30,
+               "models" => ["claude-opus-5-5"]
+             }
+
+      assert codex == %{
+               "executor" => "codex",
+               "status" => "measured",
+               "currency" => "quota",
+               "percent" => 90.0,
+               "window_minutes" => 10_080,
+               "resets_at" => "2026-11-11T13:46:01Z",
+               "requests" => 0
+             }
+    end
+
+    test "a Codex ledger without a weekly quota is unknown, never zero" do
+      usage = fn _since, _until ->
+        %{"codex" => %{source: "codex", status: :none, requests: 0, quota: nil}}
+      end
+
+      {:generated, entry} = tick("2026-11-07T11:00:00Z", usage: usage)
+      assert Enum.at(entry.content["spend"], 2)["status"] == "unknown"
+      assert Enum.at(entry.content["spend"], 2)["reason"] == "no_quota"
     end
 
     test "the spending reader gets the window" do
