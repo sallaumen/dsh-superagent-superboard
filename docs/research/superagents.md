@@ -1,11 +1,11 @@
 # Superagents por projeto: plano de gestão no board
 
-**Estado:** fases 1–4 implementadas (registro, status/ticker/painel, ações de
-ligar/parar/pausar/retomar/escalar e provisionamento pelo board com
-`DshProvisioner`/`FakeProvisioner`). A fase 5 (remoção/arquivamento e boot
-completo) continua como proposta. O provisionamento real ainda não foi
-exercitado contra um repositório novo neste ambiente; o caminho está coberto
-pelo fake e pelo gate.
+**Estado:** fases 1–5 implementadas: registro, status/ticker/painel, ações de
+ligar/parar/pausar/retomar/escalar, provisionamento real pelo board, remoção
+com arquivamento e reconciliação de boot sem LaunchAgents por profile. O
+provisionamento real foi exercitado com um repositório temporário (agente
+ready, repo/config/workers corretos) e o repo foi arquivado depois. A
+revisão e os gates estão no histórico dos PRs.
 **Data:** 2026-11-08.
 **Escopo:** transformar a configuração manual de um `dsh-superagent`
 (profile, banco SQLite, porta, processo e keepalive) em um recurso do board,
