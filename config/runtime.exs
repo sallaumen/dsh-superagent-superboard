@@ -165,3 +165,8 @@ if config_env() == :prod do
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
 end
+
+# Local executor paths: the Mac's CLI installation moves with the package
+# manager; an explicit env wins over the compiled default.
+if bin = System.get_env("CLAUDE_BIN"), do: config(:agent_board, :claude_bin, bin)
+if bin = System.get_env("CODEX_BIN"), do: config(:agent_board, :codex_bin, bin)
