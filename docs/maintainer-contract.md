@@ -134,6 +134,7 @@ each door; a yellow or green action runs on the click and is recorded as
 | `auto_retry_ticket` | red | the same request, asked by the board after a transient failure | System: the standing authorization ("Automatic retry"), `auto_retry` only |
 | `dispatch_task` | red | starts Claude Code or Codex in a worktree; spends the owner's subscription | UI: `AgentAction` "Despachar" in two steps, with the sentence, executor, task, repository and ceiling; voice/API: `428` then `confirm` |
 | `stop_execution` | red | kills the active tmux session, records `stopped` and leaves the task blocked | UI: `AgentAction` "Parar execução" in two steps; voice/API: `428` then `confirm` |
+| `provision_superagent` | red | creates the profile, port, state and setup of a new DeepSeek project | UI: the Superagentes panel's "Adicionar projeto", preview then confirm |
 | `start_superagent` | red | starts the DeepSeek superagent of one project | UI: `AgentAction` "Ligar" in the Superagentes panel, two steps |
 | `stop_superagent` | red | stops that superagent; in-flight work is interrupted | UI: `AgentAction` "Parar", two steps |
 | `pause_superagent` / `resume_superagent` | yellow | pauses/resumes new work without killing the process | UI: one click |
@@ -719,6 +720,13 @@ that watches one GitHub repository and picks the issues whose body mentions
   (`~/.dsh/state/superagent*/orchestrator.sqlite`); tickets are merged by
   repository, so the DeepSeek lane shows both. `AgentState.paths/0` also
   accepts an explicit `:state_dbs` list.
+- **A new project is provisioned from the panel.** The form picks an existing
+  repository, a ready source profile, the local checkout and the initial
+  workers. The red `provision_superagent` action reserves the row, copies the
+  source profile/port/state (standard DSH location), starts the manager and
+  copies source/executor/policy/prompts through the DSH API; a failure keeps
+  the row in `error` with the reason and rolls the half-project back.
+  `DshProvisioner` is the real adapter; `FakeProvisioner` covers the tests.
 - **The board has a Superagentes panel.** It lists one card per registered
   project (repository, profile, port, workers, desired/observed state, last
   read and error) and exposes **Ligar**, **Parar**, **Pausar**, **Retomar**

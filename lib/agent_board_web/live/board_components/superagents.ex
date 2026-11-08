@@ -7,6 +7,8 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
   alias AgentBoardWeb.BoardComponents.AgentAction
 
   attr :superagents, :list, required: true
+  attr :repos, :list, required: true
+  attr :provision_preview, :any, default: nil
   attr :tz_offset, :integer, default: 0
 
   def superagents(assigns) do
@@ -126,6 +128,65 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
           </div>
         </article>
       </div>
+
+      <details class="ab-superagent-add">
+        <summary>Adicionar projeto</summary>
+
+        <p :if={@repos == []} class="ab-meta">
+          Adicione um repositório em Configurações antes de provisionar o DeepSeek.
+        </p>
+
+        <form :if={@repos != []} phx-submit="provision_review" class="ab-superagent-add__form">
+          <label>
+            <span>Repositório</span>
+            <select name="repository_id" required>
+              <option value="">Escolha o repositório</option>
+              <option :for={repo <- @repos} value={repo.id}>
+                {repo.owner}/{repo.name}
+              </option>
+            </select>
+          </label>
+          <label>
+            <span>Origem (profile que já funciona)</span>
+            <select name="source_id" required>
+              <option value="">Escolha o profile de origem</option>
+              <option :for={source <- @superagents} value={source.id}>
+                {source.profile} · {source.repository &&
+                  "#{source.repository.owner}/#{source.repository.name}"}
+              </option>
+            </select>
+          </label>
+          <label>
+            <span>Checkout local</span>
+            <input name="path" required placeholder="~/projects/nome-do-projeto" />
+          </label>
+          <label>
+            <span>Workers iniciais</span>
+            <input name="workers" type="number" min="1" max="32" step="1" value="3" required />
+          </label>
+          <button type="submit" class="ab-btn ab-btn--sm ab-btn--primary">Revisar</button>
+        </form>
+
+        <div :if={@provision_preview} class="ab-superagent-add__preview">
+          <p>{@provision_preview.phrase}</p>
+          <div class="ab-act__buttons">
+            <button
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--primary"
+              phx-click="provision_confirm"
+            >
+              Criar projeto
+            </button>
+            <button
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="provision_cancel"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </details>
     </section>
     """
   end

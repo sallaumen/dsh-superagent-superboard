@@ -100,6 +100,7 @@ defmodule AgentBoardWeb.BoardLive do
         today_spend: nil,
         objectives: [],
         superagents: [],
+        provision_preview: nil,
         resume: resume,
         events: [],
         sync_event: nil,
@@ -1191,6 +1192,45 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, BoardNavigation.open_panel(socket, panel)}
   end
 
+  def handle_event("provision_review", params, socket) do
+    with {repository_id, ""} <- Integer.parse(params["repository_id"] || ""),
+         {source_id, ""} <- Integer.parse(params["source_id"] || ""),
+         %AgentBoard.Board.Repository{} = repository <-
+           Repo.get(AgentBoard.Board.Repository, repository_id),
+         %AgentBoard.Superagents.Superagent{} = source <- Superagents.get(source_id),
+         path when is_binary(path) and path != "" <- String.trim(params["path"] || ""),
+         {workers, ""} <- Integer.parse(params["workers"] || "3") do
+      params = %{repository: repository, source: source, path: path, workers: workers}
+
+      {:noreply,
+       assign(socket, :provision_preview, %{
+         params: params,
+         phrase: Actions.phrase(:provision_superagent, params)
+       })}
+    else
+      _ ->
+        {:noreply, put_flash(socket, :error, "Confira repositório, origem, caminho e workers.")}
+    end
+  end
+
+  def handle_event("provision_cancel", _params, socket),
+    do: {:noreply, assign(socket, :provision_preview, nil)}
+
+  def handle_event(
+        "provision_confirm",
+        _params,
+        %{assigns: %{provision_preview: %{params: params, phrase: phrase}}} = socket
+      ) do
+    {:noreply,
+     socket
+     |> assign(:provision_preview, nil)
+     |> start_async(:provision, fn ->
+       Actions.run(:provision_superagent, params, ui(), confirm: phrase)
+     end)}
+  end
+
+  def handle_event("provision_confirm", _params, socket), do: {:noreply, socket}
+
   def handle_event("superagent_command", %{"id" => id, "action" => action}, socket) do
     name = if action == "pause", do: :pause_superagent, else: :resume_superagent
     superagent = Superagents.get(id) |> Repo.preload(:repository)
@@ -1801,6 +1841,16 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply, socket}
   end
+
+  def handle_async(:provision, {:ok, {:ok, text}}, socket) do
+    {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:info, text)}
+  end
+
+  def handle_async(:provision, {:ok, {:error, text}}, socket),
+    do: {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:error, text)}
+
+  def handle_async(:provision, {:exit, _reason}, socket),
+    do: {:noreply, put_flash(socket, :error, "O provisionamento não terminou.")}
 
   @impl true
   def handle_async({:superagent_command, _id}, {:ok, {:ok, text}}, socket) do
@@ -2526,6 +2576,8 @@ defmodule AgentBoardWeb.BoardLive do
         >
           <BoardComponents.Superagents.superagents
             superagents={@superagents}
+            repos={@repos}
+            provision_preview={@provision_preview}
             tz_offset={@tz_offset}
           />
         </BoardComponents.Panel.shell>
