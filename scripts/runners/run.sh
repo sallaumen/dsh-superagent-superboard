@@ -20,12 +20,12 @@ TIMEOUT_BIN="$(command -v timeout || echo /opt/homebrew/bin/timeout)"
 status() { printf '%s\n' "$1" > "$RUN_DIR/status"; }
 fail() {
   printf '%s\n' "$1" > "$RUN_DIR/error"
-  status failed
+  status "failed"
   exit 1
 }
 
 mkdir -p "$RUN_DIR"
-status starting
+status "starting"
 
 # A fresh worktree from origin/main keeps the board's checkout untouched.
 git -C "$REPO_DIR" fetch origin main --quiet || fail "git fetch falhou"
@@ -35,7 +35,7 @@ git -C "$REPO_DIR" worktree add -b "$BRANCH" "$WORKTREE" origin/main >/dev/null 
 cd "$WORKTREE" || fail "worktree inacessível"
 
 printf '%s\n' "$RUN_ID" > "$RUN_DIR/session_id"
-status running
+status "running"
 
 if [ "$EXECUTOR" = "claude" ]; then
   timeout_args=(--max-budget-usd "$BUDGET_USD")
@@ -60,7 +60,7 @@ if [ "$EXECUTOR" = "claude" ]; then
     jq -r '.result // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/result" || true
     [ -s "$RUN_DIR/result" ] || printf 'Execução concluída.\n' > "$RUN_DIR/result"
     jq -r '.total_cost_usd // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/cost_usd" || true
-    status done
+    status "done"
   else
     jq -r '.total_cost_usd // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/cost_usd" || true
 
@@ -71,7 +71,7 @@ if [ "$EXECUTOR" = "claude" ]; then
       tail -c 4000 "$RUN_DIR/stderr" > "$RUN_DIR/error" 2>/dev/null || true
       [ -s "$RUN_DIR/error" ] || printf '%s\n' "${detail:-O Claude Code saiu com $rc.}" > "$RUN_DIR/error"
     fi
-    status failed
+    status "failed"
   fi
 else
   "$TIMEOUT_BIN" "$TIMEOUT_SECONDS" "$CODEX_BIN" \
@@ -92,7 +92,7 @@ else
   if [ "$rc" -eq 0 ] && [ -z "$codex_error" ]; then
     [ -s "$RUN_DIR/last.txt" ] && cp "$RUN_DIR/last.txt" "$RUN_DIR/result" \
       || printf 'Execução concluída.\n' > "$RUN_DIR/result"
-    status done
+    status "done"
   else
     if [ -n "$codex_error" ]; then
       printf '%s\n' "$codex_error" > "$RUN_DIR/error"
@@ -100,6 +100,6 @@ else
       tail -c 4000 "$RUN_DIR/stderr" > "$RUN_DIR/error" 2>/dev/null || true
       [ -s "$RUN_DIR/error" ] || printf 'O Codex saiu com %s.\n' "$rc" > "$RUN_DIR/error"
     fi
-    status failed
+    status "failed"
   fi
 fi

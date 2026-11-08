@@ -3,6 +3,7 @@
 PROFILE="${DSH_SUPERAGENT_PROFILE:-superagent}"
 STATE_DIR="${SUPERAGENT_STATE_DIR:-$HOME/.dsh/state/$PROFILE}"
 API="${SUPERAGENT_API:-http://127.0.0.1:${DSH_SUPERAGENT_PORT:-3082}/orchestrator/api}"
+# shellcheck disable=SC2034  # read by the scripts that source this file
 DB="$STATE_DIR/orchestrator.sqlite"
 # The prototype checkout: its scripts/dsh-superagent starts, stops and checks
 # the orchestrator (keepalive.sh).
