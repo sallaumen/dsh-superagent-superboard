@@ -12,7 +12,19 @@ defmodule AgentBoard.RunnersTest do
     File.mkdir_p!(Path.join(root, "runs"))
 
     previous = Application.get_env(:agent_board, :runner_root)
+
+    previous_bins =
+      Map.new([:claude_bin, :codex_bin], &{&1, Application.get_env(:agent_board, &1)})
+
     Application.put_env(:agent_board, :runner_root, Path.join(root, "runs"))
+
+    # The check only asks whether the path exists; the launcher is fake, so
+    # any executable file is enough and the suite stays portable.
+    fake_bin = Path.join(root, "fake-bin")
+    File.write!(fake_bin, "#!/bin/sh\nexit 0\n")
+    File.chmod!(fake_bin, 0o755)
+    Application.put_env(:agent_board, :claude_bin, fake_bin)
+    Application.put_env(:agent_board, :codex_bin, fake_bin)
 
     on_exit(fn ->
       File.rm_rf!(root)
@@ -20,6 +32,12 @@ defmodule AgentBoard.RunnersTest do
       if previous,
         do: Application.put_env(:agent_board, :runner_root, previous),
         else: Application.delete_env(:agent_board, :runner_root)
+
+      for {key, value} <- previous_bins do
+        if value,
+          do: Application.put_env(:agent_board, key, value),
+          else: Application.delete_env(:agent_board, key)
+      end
     end)
 
     {:ok, repository} = Board.add_repository("fixture", "arena")
