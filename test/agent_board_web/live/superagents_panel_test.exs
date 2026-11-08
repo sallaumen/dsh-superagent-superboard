@@ -64,12 +64,16 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     |> element("#superagents-panel button[phx-value-action='pause']")
     |> render_click()
 
+    Process.sleep(100)
+    _ = render(view)
     assert Repo.get!(Superagent, superagent.id).desired_state == "paused"
 
     view
     |> element("#superagents-panel button[phx-value-delta='1']")
     |> render_click()
 
+    Process.sleep(100)
+    _ = render(view)
     assert Repo.get!(Superagent, superagent.id).max_workers == superagent.max_workers + 1
   end
 
