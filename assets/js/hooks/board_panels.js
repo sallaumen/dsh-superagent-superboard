@@ -66,7 +66,18 @@ export const BoardPanels = {
     if (openingInspector) {
       this.el.querySelector('#conversation .ab-insp__bar button')?.focus({preventScroll: true})
     }
+    this.syncInert()
     window.dispatchEvent(new Event('board:voice-context'))
+  },
+  // The phone's inspector covers the board like a dialog; keep the board
+  // behind it out of the tab order and the accessibility tree.
+  syncInert() {
+    const inspector = document.querySelector('#conversation')
+    const work = document.querySelector('#board-work')
+    if (!work) return
+    const overlay = inspector && getComputedStyle(inspector).position === 'absolute'
+    if (overlay) work.setAttribute('inert', '')
+    else work.removeAttribute('inert')
   },
   scheduleFocusRestore() {
     cancelAnimationFrame(this.restoreFrame)

@@ -46,6 +46,21 @@ defmodule AgentBoard.ExecutorUsageTest do
       assert usage.subagent? == false
     end
 
+    test "a session that switched models is unpriced, not priced at the last one" do
+      lines = [
+        session_line("worker-mixed", 0),
+        ~s({"type":"model/selection","seq":1,"data":{"provider":"deepseek-account","model":"deepseek-flash"}}),
+        assistant_line("m1", 100, 10, 0),
+        ~s({"type":"model/selection","seq":3,"data":{"provider":"deepseek-account","model":"unlisted-model"}}),
+        assistant_line("m2", 100, 10, 0)
+      ]
+
+      usage = ExecutorUsage.parse(Enum.join(lines, "\n"))
+
+      assert usage.model == nil
+      assert ExecutorUsage.cost([usage]) == nil
+    end
+
     test "a delegated session is a subagent" do
       usage = ExecutorUsage.parse(session_line("9d07fa0a", 1))
       assert usage.subagent? == true
