@@ -4,3 +4,5 @@ Request the reviews that the matched rules, the assignment, these prompts or rep
 Commit author: every commit must be authored as `Lucas Tavano <lucas.c.tavano@gmail.com>` — set git `user.name` to `Lucas Tavano` and `user.email` to `lucas.c.tavano@gmail.com`.
 
 A terminal, CLI, library, configuration or backend change does not need screenshots; include a short text transcript only when it helps the reviewer.
+
+If the repository pins elixir-agent-kit, run `mix deps.get` before reading its practice index or running its gates: it only fetches the pinned dependencies, it never compiles the project. Do not build or test code the change does not touch.

@@ -49,6 +49,13 @@ An upgrade PR also updates the pinned kit URLs in `docs/`, `README.md` and
 `PIPELINES.md` (`git grep elixir-agent-kit/blob/v`); the generated index is the
 only file that may link into `deps/`, because it does not exist in a fresh clone.
 
+Consumers need no manual step beyond `mix deps.get` after a version bump: the
+board's service refreshes deps on every start (README, "Run as a service"), a
+fresh executor worktree fetches the new pin on its bootstrap, and an existing
+worktree is stopped loudly by the gate's lock check, with the instruction to
+run `mix deps.get` (it fetches only; it never compiles). Compilation happens
+only when a gate runs.
+
 ## Disposition of the original library
 
 The complete original collection remains recoverable at commit
