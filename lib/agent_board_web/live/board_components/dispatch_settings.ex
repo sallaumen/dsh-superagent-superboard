@@ -100,6 +100,13 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
         Cota semanal do Codex agora: {percent(@snapshot.quota.used_percent)}% usada.
       </p>
 
+      <p class="ab-meta">
+        Claude Code: <code>{Runners.claude_bin()}</code>
+        {if File.exists?(Runners.claude_bin()), do: "encontrado", else: "não encontrado"} ·
+        Codex: <code>{Runners.codex_bin()}</code>
+        {if File.exists?(Runners.codex_bin()), do: "encontrado", else: "não encontrado"}
+      </p>
+
       <p :if={@error} class="settings-error" role="alert">{@error}</p>
       <p :if={@saved} class="settings-saved" role="status">Tetos salvos.</p>
 

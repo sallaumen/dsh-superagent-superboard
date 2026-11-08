@@ -625,6 +625,8 @@ in Configurações → Despacho local.
   confirmation, the pause switch, and every dispatch in the Execuções tab
   with its session and result. The Executores panel and the ledger keep
   their currencies: the runner row says nothing about US$ by itself.
+- **A missing executor binary refuses before starting** (`:runner_missing`);
+  Configurações shows the two paths and whether they exist on this Mac.
 - **A runner that cannot start fails the row**, never silently: the run
   directory keeps the error and the next tick records it.
 - **A failure is classified, never retried by the board** (`Runners.fallback/1`):
