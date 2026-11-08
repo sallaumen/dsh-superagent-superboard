@@ -224,4 +224,4 @@ their recorded originals; never delete ownership state to bypass a conflict.
 Reusable improvements go to the kit; local rules remain here. The former
 Portuguese collection is retired as an editable source. See
 [ownership and migration](docs/agent/practices.md) for the full disposition.
-For other projects, use the [AI installation/migration prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v0.7.0/docs/INSTALL_WITH_AI.md).
+For other projects, use the [AI installation/migration prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v0.8.0/docs/INSTALL_WITH_AI.md).
