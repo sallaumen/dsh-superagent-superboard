@@ -1015,9 +1015,20 @@ body { margin: 0; background: var(--paper); }
 .ab-today__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ab-today__note { max-width: 72ch; }
 @media (max-width: 39.999rem) {
-  .ab-today__item { grid-template-columns: minmax(0, 1fr) auto; }
-  .ab-today__repo { grid-column: 1 / -1; }
-  .ab-today__title { white-space: normal; overflow: visible; }
+  .ab-today__item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "repo repo"
+      "num title"
+      "state age";
+    gap: var(--space-2) var(--space-3);
+    align-items: center;
+  }
+  .ab-today__repo { grid-area: repo; }
+  .ab-today__num { grid-area: num; }
+  .ab-today__title { grid-area: title; white-space: normal; overflow: visible; }
+  .ab-today__state { grid-area: state; justify-self: start; }
+  .ab-today__age { grid-area: age; justify-self: end; }
 }
 
 /* ---------- execuções de uma tarefa ---------- */
