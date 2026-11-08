@@ -53,6 +53,35 @@ defmodule AgentBoard.RunnersScriptTest do
     assert File.dir?(Path.join(run, "worktree"))
   end
 
+  test "claude: a JSON error is written as the execution error", %{
+    root: root,
+    repo: repo,
+    run: run
+  } do
+    fake = fake_claude_fail(root)
+
+    env = %{
+      "RUN_DIR" => run,
+      "RUN_ID" => "33333333-3333-4333-8333-333333333333",
+      "EXECUTOR" => "claude",
+      "REPO_SLUG" => "fixture/repo",
+      "REPO_DIR" => repo,
+      "TASK_NUMBER" => "44",
+      "MODEL" => "claude-test",
+      "BUDGET_USD" => "5",
+      "TIMEOUT_SECONDS" => "20",
+      "BRANCH" => "agent/test-fail",
+      "WORKTREE" => Path.join(run, "worktree"),
+      "PROMPT_FILE" => Path.join(run, "prompt.md"),
+      "CLAUDE_BIN" => fake,
+      "CODEX_BIN" => fake
+    }
+
+    {_, 0} = System.cmd("/bin/bash", [@script], env: env, stderr_to_stdout: true)
+    assert File.read!(Path.join(run, "status")) == "failed\n"
+    assert File.read!(Path.join(run, "error")) =~ "Teto de orçamento"
+  end
+
   test "codex: thread id, status and result", %{root: root, repo: repo, run: run} do
     fake = fake_codex(root)
     worktree = Path.join(run, "worktree")
@@ -87,6 +116,19 @@ defmodule AgentBoard.RunnersScriptTest do
     #!/bin/bash
     echo "work" > work.txt
     printf '{"result": "fake claude ok", "session_id": "s"}\\n'
+    """)
+
+    File.chmod!(path, 0o755)
+    path
+  end
+
+  defp fake_claude_fail(root) do
+    path = Path.join(root, "fake-claude-fail")
+
+    File.write!(path, """
+    #!/bin/bash
+    printf '{"is_error": true, "subtype": "error_max_budget_usd"}\n'
+    exit 1
     """)
 
     File.chmod!(path, 0o755)

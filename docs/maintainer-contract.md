@@ -628,7 +628,9 @@ in Configurações → Despacho local.
 - **A missing executor binary refuses before starting** (`:runner_missing`);
   Configurações shows the two paths and whether they exist on this Mac.
 - **A runner that cannot start fails the row**, never silently: the run
-  directory keeps the error and the next tick records it.
+  directory keeps the error and the next tick records it. A Claude Code
+  `is_error`/`error_max_budget_usd` answer is kept as the execution error,
+  not as an empty stderr.
 - **A failure is classified, never retried by the board** (`Runners.fallback/1`):
   a transient network/timeout failure proposes the same executor; an
   availability failure (quota, rate limit, login) proposes the other one with

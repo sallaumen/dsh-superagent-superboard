@@ -53,13 +53,21 @@ if [ "$EXECUTOR" = "claude" ]; then
     > "$RUN_DIR/claude.json" 2> "$RUN_DIR/stderr"
   rc=$?
 
-  if [ "$rc" -eq 0 ]; then
+  is_error="$(jq -r '.is_error // false' "$RUN_DIR/claude.json" 2>/dev/null || echo false)"
+  subtype="$(jq -r '.subtype // empty' "$RUN_DIR/claude.json" 2>/dev/null || true)"
+
+  if [ "$rc" -eq 0 ] && [ "$is_error" != "true" ]; then
     jq -r '.result // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/result" || true
     [ -s "$RUN_DIR/result" ] || printf 'Execução concluída.\n' > "$RUN_DIR/result"
     status done
   else
-    tail -c 4000 "$RUN_DIR/stderr" > "$RUN_DIR/error" 2>/dev/null || true
-    [ -s "$RUN_DIR/error" ] || printf 'O Claude Code saiu com %s.\n' "$rc" > "$RUN_DIR/error"
+    if [ "$subtype" = "error_max_budget_usd" ]; then
+      printf 'Teto de orçamento da tarefa atingido; a execução parou antes do resultado.\n' > "$RUN_DIR/error"
+    else
+      detail="$(jq -r '.error // .subtype // empty' "$RUN_DIR/claude.json" 2>/dev/null || true)"
+      tail -c 4000 "$RUN_DIR/stderr" > "$RUN_DIR/error" 2>/dev/null || true
+      [ -s "$RUN_DIR/error" ] || printf '%s\n' "${detail:-O Claude Code saiu com $rc.}" > "$RUN_DIR/error"
+    fi
     status failed
   fi
 else
