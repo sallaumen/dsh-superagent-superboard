@@ -42,6 +42,7 @@ expõe a API JSON e despacha executores locais.
 
 | Arquivo | O que é |
 |---|---|
+| [agent/learning-path.md](agent/learning-path.md) | Tutorial do zero: instalar o Harness, Creator Mode, primeiro Super-Agent num repositório e segurança — destilado do guia de referência do dono |
 | [agent/how-it-works.md](agent/how-it-works.md) | O agente (`dsh-superagent`): o loop, as tabelas, os quatro desfechos e o que o board adiciona |
 | [agent/setup.md](agent/setup.md) | Instalar o agente em outra máquina: identidade do bot, perfil, LaunchAgent, política de merge |
 | [agent/collaboration.md](agent/collaboration.md) | Dois agentes escrevendo em `main`: as duas regras que evitam acidentes e o loop de PR |
