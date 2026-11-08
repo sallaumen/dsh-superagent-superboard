@@ -2,7 +2,7 @@ defmodule AgentBoard.CreateRequestTest do
   @moduledoc "A board request is created once: the key is the receipt."
   use AgentBoard.DataCase, async: false
 
-  alias AgentBoard.{Board, Repo, Routing}
+  alias AgentBoard.{Actions, Board, Repo, Routing}
   alias AgentBoard.Board.Task
   alias AgentBoard.Routing.Decision
 
@@ -43,6 +43,42 @@ defmodule AgentBoard.CreateRequestTest do
     assert Agent.get(counter, & &1) == 1
     assert Repo.aggregate(Task, :count) == 1
     assert Repo.get(Task, first.id).request_key == key
+  end
+
+  test "a split with more than one task creates one objective", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+    count_issues(counter)
+
+    requests = [
+      %{
+        title: "Placar",
+        body: "Placar\n\n@sallaumen-agent",
+        key: Board.request_key(repo, "split", ["Placar"])
+      },
+      %{
+        title: "Mapa",
+        body: "Mapa\n\n@sallaumen-agent",
+        key: Board.request_key(repo, "split", ["Mapa"])
+      }
+    ]
+
+    params = %{
+      repository: repo,
+      requests: requests,
+      client: client(),
+      objective: %{title: "Jogo", done_criterion: "As duas telas mescladas."}
+    }
+
+    phrase = Actions.phrase(:create_tasks, params)
+
+    assert {:ok, results} =
+             Actions.run(:create_tasks, params, Actions.owner(:ui), confirm: phrase)
+
+    assert length(results) == 2
+    assert [objective] = Board.objectives(repo)
+    assert objective.title == "Jogo"
+    assert objective.total == 2
+    assert objective.merged == 0
   end
 
   # Answers every issue creation and sends the test the JSON GitHub received.

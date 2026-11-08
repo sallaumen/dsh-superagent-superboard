@@ -5,7 +5,7 @@ defmodule AgentBoard.Board do
   """
   import Ecto.Query, warn: false
 
-  alias AgentBoard.Board.{Comment, Event, PullRequest, Repository, Review, Task}
+  alias AgentBoard.Board.{Comment, Event, Objective, PullRequest, Repository, Review, Task}
   alias AgentBoard.{Executors, Repo, Routing, Sync, Workpad}
   alias AgentBoard.Routing.Decision
   alias AgentBoard.Sync.Freshness
@@ -1066,6 +1066,63 @@ defmodule AgentBoard.Board do
   defp today_time(%NaiveDateTime{} = at), do: DateTime.from_naive!(at, "Etc/UTC")
   defp today_time(%DateTime{} = at), do: at
   defp today_time(_at), do: nil
+
+  @doc """
+  Creates an objective from a split and attaches the tasks that were created
+  for it. Only a group of two or more tasks becomes an objective.
+  """
+  @spec create_objective(Repository.t(), map(), [integer()]) ::
+          {:ok, Objective.t()} | {:error, term()}
+  def create_objective(repository, %{title: title, done_criterion: criterion}, task_ids) do
+    task_ids = Enum.uniq(task_ids)
+
+    if length(task_ids) < 2 do
+      {:error, :not_a_group}
+    else
+      case %Objective{}
+           |> Objective.changeset(%{
+             repository_id: repository.id,
+             title: title,
+             done_criterion: criterion
+           })
+           |> Repo.insert() do
+        {:ok, objective} ->
+          Repo.update_all(from(t in Task, where: t.id in ^task_ids),
+            set: [objective_id: objective.id]
+          )
+
+          broadcast(repository.id)
+          {:ok, objective}
+
+        {:error, changeset} ->
+          {:error, changeset}
+      end
+    end
+  end
+
+  @doc "The repository's objectives with their task progress, newest first."
+  @spec objectives(Repository.t()) :: [map()]
+  def objectives(repository) do
+    Repo.all(
+      from o in Objective,
+        where: o.repository_id == ^repository.id,
+        order_by: [desc: o.id],
+        preload: [:tasks]
+    )
+    |> Enum.map(fn objective ->
+      total = length(objective.tasks)
+      merged = Enum.count(objective.tasks, &(&1.state == "done"))
+
+      %{
+        id: objective.id,
+        title: objective.title,
+        done_criterion: objective.done_criterion,
+        total: total,
+        merged: merged,
+        done?: total > 0 and merged == total
+      }
+    end)
+  end
 
   @doc """
   How many observed changes happened after a point in time. Used by the
