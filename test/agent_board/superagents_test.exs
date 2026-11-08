@@ -159,6 +159,9 @@ defmodule AgentBoard.SuperagentsTest do
     Superagents.reconcile(FakeManager)
     assert Repo.get!(Superagent, unreachable.id).observed_state == "starting"
 
+    {:ok, _} = Superagents.observe(Repo.get!(Superagent, unreachable.id), %{state: "ready"})
+    assert Repo.get!(Superagent, unreachable.id).last_error == nil
+
     Superagents.set_desired(Repo.get!(Superagent, superagent.id), "stopped")
     FakeManager.put(superagent.id, %{state: "ready"})
     Superagents.reconcile(FakeManager)

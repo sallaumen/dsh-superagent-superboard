@@ -169,7 +169,12 @@ defmodule AgentBoard.Superagents do
       last_error: observation[:last_error] || if(state == "error", do: detail)
     }
 
-    case superagent |> Superagent.changeset(attrs) |> Repo.update() do
+    changeset =
+      superagent
+      |> Superagent.changeset(attrs)
+      |> Ecto.Changeset.force_change(:last_error, attrs.last_error)
+
+    case Repo.update(changeset) do
       {:ok, updated} ->
         maybe_observed_event(updated, superagent, state, detail)
         {:ok, updated}
