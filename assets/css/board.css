@@ -1108,3 +1108,11 @@ body { margin: 0; background: var(--paper); }
 .settings-error { margin: 0; color: var(--halt); font-size: 12.5px; }
 .settings-saved { margin: 0; color: var(--agent); font-size: 12.5px; }
 @media (max-width: 39.999rem) { .dispatch-settings__grid { grid-template-columns: 1fr; } }
+
+/* the settings menu is normally an absolute dropdown in the rail; inside the
+   Configurações panel it is inline so the dialog can scroll it */
+.board-dialog .board-settings { display: block; position: static; }
+.board-dialog .board-settings-body {
+  position: static; width: auto; max-height: none; margin-top: var(--space-2);
+  padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent;
+}
