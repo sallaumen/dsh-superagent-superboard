@@ -404,34 +404,34 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         <span :if={@executions == []}>Nenhuma execução desta tarefa no livro de uso.</span>
       </p>
 
-      <div :if={@executions != []} class="ab-table-wrap">
-        <table class="ab-table">
-          <thead>
-            <tr>
-              <th>Executor</th>
-              <th>Modelo</th>
-              <th>Início</th>
-              <th>Fim</th>
-              <th class="r">Requisições</th>
-              <th class="r">Entrada</th>
-              <th class="r">Saída</th>
-              <th class="r">Custo</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr :for={execution <- @executions}>
-              <td>{executor_label(execution.source)}</td>
-              <td>{models(execution.models)}</td>
-              <td>{Time.local_time(execution.first_at, @offset)}</td>
-              <td>{Time.local_time(execution.last_at, @offset)}</td>
-              <td class="r">{execution.requests}</td>
-              <td class="r">{tokens(execution.input_tokens)}</td>
-              <td class="r">{tokens(execution.output_tokens)}</td>
-              <td class="r">{execution_cost(execution)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <ol :if={@executions != []} class="ab-exec-list">
+        <li :for={execution <- @executions} class="ab-exec-row">
+          <div class="ab-exec-row__head">
+            <span class="ab-exec-row__name">{executor_label(execution.source)}</span>
+            <span class="ab-meta">{models(execution.models)}</span>
+            <span class="ab-data-sm ab-faint">
+              {Time.local_time(execution.first_at, @offset)}–{Time.local_time(
+                execution.last_at,
+                @offset
+              )}
+            </span>
+          </div>
+          <dl class="ab-exec-row__facts">
+            <div>
+              <dt>Requisições</dt><dd>{execution.requests}</dd>
+            </div>
+            <div>
+              <dt>Entrada</dt><dd>{tokens(execution.input_tokens)}</dd>
+            </div>
+            <div>
+              <dt>Saída</dt><dd>{tokens(execution.output_tokens)}</dd>
+            </div>
+            <div>
+              <dt>Custo</dt><dd>{execution_cost(execution)}</dd>
+            </div>
+          </dl>
+        </li>
+      </ol>
 
       <p :if={@executions != []} class="ab-meta">
         Tokens medidos. O custo é estimado na moeda de cada executor; "lista"

@@ -11,6 +11,8 @@ defmodule AgentBoardWeb.BoardNavigation do
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
 
+  def today_path, do: "/?view=hoje"
+
   def path(repo, panel, task_id \\ nil, tab \\ nil)
 
   def path(nil, "voice", _task_id, _tab), do: "/?panel=voice"
@@ -25,20 +27,27 @@ defmodule AgentBoardWeb.BoardNavigation do
   # The voice panel is where a spoken question is reviewed: opening it must
   # not forget the task the owner was reading, or the ask has no target.
   def apply_params(socket, %{"panel" => "voice"}) do
-    assign(socket, panel: "voice")
+    assign(socket, panel: "voice", view: nil)
   end
 
   def apply_params(socket, %{"panel" => "conversation", "task" => id} = params) do
     case task(socket.assigns.repo, id) do
       nil ->
-        assign(socket, panel: nil, conversation: nil, comments: [], inspector_tab: "conversa")
+        assign(socket,
+          panel: nil,
+          conversation: nil,
+          comments: [],
+          inspector_tab: "conversa",
+          view: nil
+        )
 
       task ->
         assign(socket,
           panel: "conversation",
           conversation: task,
           comments: Board.comments(task),
-          inspector_tab: tab_param(params["tab"]) || default_tab(task)
+          inspector_tab: tab_param(params["tab"]) || default_tab(task),
+          view: nil
         )
     end
   end
@@ -53,7 +62,15 @@ defmodule AgentBoardWeb.BoardNavigation do
         true -> nil
       end
 
-    assign(socket, panel: panel, conversation: nil, comments: [], inspector_tab: "conversa")
+    view = if params["view"] == "hoje", do: "hoje", else: nil
+
+    assign(socket,
+      panel: panel,
+      conversation: nil,
+      comments: [],
+      inspector_tab: "conversa",
+      view: view
+    )
   end
 
   defp default_tab(%Task{state: "running"}), do: "atividade"

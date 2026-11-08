@@ -150,6 +150,6 @@ defmodule AgentBoardWeb.ExecutorsTest do
     assert panel =~ "lista"
     assert panel =~ "DeepSeek"
     # The Codex thread has no branch that closes a task: it is not guessed.
-    refute has_element?(view, "#inspector-panel-execucoes tbody td", "Codex")
+    refute has_element?(view, "#inspector-panel-execucoes .ab-exec-row__name", "Codex")
   end
 end

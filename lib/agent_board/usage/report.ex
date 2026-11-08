@@ -341,6 +341,37 @@ defmodule AgentBoard.Usage.Report do
   end
 
   @doc """
+  Today's spending in each executor's own currency, for the "Hoje" view.
+
+  "Today" is the owner's day: `offset` is minutes east of UTC (the browser's
+  zone). The ledger's days are UTC, so the window is the local day's two UTC
+  instants; the newest weekly Codex quota comes with it. A source with no row
+  says "não rodou", never zero. `:now` is for tests.
+  """
+  @spec today(integer(), keyword()) :: %{day: Date.t(), by_source: map(), quota: map() | nil}
+  def today(offset \\ 0, opts \\ []) when is_integer(offset) do
+    now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
+    local = DateTime.add(now, offset * 60, :second)
+    day = DateTime.to_date(local)
+    since = local_day_start(day, offset)
+    until = DateTime.add(since, 86_400, :second)
+    lines = spend_window(since, until)
+
+    %{
+      day: day,
+      by_source:
+        Map.new(lines, fn {source, line} -> {source, Map.put(line, :source, source)} end),
+      quota: Costs.codex_weekly(Ledger.limits())
+    }
+  end
+
+  defp local_day_start(day, offset) do
+    day
+    |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+    |> DateTime.add(-offset * 60, :second)
+  end
+
+  @doc """
   The median cost of an execution of each executor in the last 30 days, in
   the executor's own currency. `:unknown` when there is no priced history;
   Codex has no US$ and always answers `:unknown`.

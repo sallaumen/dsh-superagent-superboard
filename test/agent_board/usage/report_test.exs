@@ -195,12 +195,66 @@ defmodule AgentBoard.Usage.ReportTest do
     assert claude.executions == 3
   end
 
+  test "today is the owner's local day, not the UTC midnight" do
+    at = fn iso -> DateTime.from_iso8601(iso) |> elem(1) end
+
+    for {id, time} <- [
+          {"m1", "2026-11-07T23:00:00Z"},
+          {"m2", "2026-11-08T02:00:00Z"},
+          {"m3", "2026-11-07T02:00:00Z"}
+        ] do
+      moment = at.(time)
+
+      Repo.insert_all("usage_messages", [
+        %{
+          source: "claude_code",
+          message_id: id,
+          execution_id: "s-#{id}",
+          at: moment,
+          day: DateTime.to_date(moment),
+          cwd: "/tmp/arena",
+          git_branch: nil,
+          model: "claude-opus-5-5",
+          input_tokens: 1_000_000,
+          output_tokens: 1_000_000,
+          cache_read_tokens: 0,
+          cache_write_tokens: 0
+        }
+      ])
+    end
+
+    today = Report.today(-180, now: at.("2026-11-08T00:30:00Z"))
+
+    assert today.day == ~D[2026-11-07]
+    assert %{cost: %{micros: micros}} = today.by_source["claude_code"]
+    assert micros == 2 * 32_300_000
+  end
+
   test "a source that never wrote a row is unknown, not zero" do
     since = DateTime.new!(~D[2026-11-06], ~T[00:00:00], "Etc/UTC")
     until = DateTime.new!(~D[2026-11-08], ~T[00:00:00], "Etc/UTC")
 
     assert %{status: :unknown, reason: :no_source} =
              Report.spend_window(since, until)["claude_code"]
+  end
+
+  test "the weekly Codex quota is the newest wide window, not the first" do
+    old = %{
+      source: "codex",
+      primary_used_percent: 0.0,
+      primary_window_minutes: 10_080,
+      observed_at: DateTime.new!(~D[2026-09-10], ~T[05:58:10], "Etc/UTC")
+    }
+
+    new = %{
+      source: "codex",
+      primary_used_percent: 90.0,
+      primary_window_minutes: 10_080,
+      observed_at: DateTime.new!(~D[2026-11-06], ~T[13:59:58], "Etc/UTC")
+    }
+
+    assert %{used_percent: 90.0} = Costs.codex_weekly([old, new])
+    assert %{used_percent: 90.0} = Costs.codex_weekly([new, old])
   end
 
   test "the cost module never invents a price" do

@@ -173,7 +173,10 @@ defmodule AgentBoard.Usage.Costs do
     |> Enum.filter(&(&1[:source] == "codex"))
     |> Enum.flat_map(&windows/1)
     |> Enum.filter(&(&1.window_minutes >= 10_080))
-    |> Enum.max_by(&{&1.window_minutes, &1.observed_at}, fn -> nil end)
+    |> Enum.max_by(
+      &{&1.window_minutes, DateTime.to_unix(&1.observed_at, :microsecond)},
+      fn -> nil end
+    )
   end
 
   defp windows(limit) do

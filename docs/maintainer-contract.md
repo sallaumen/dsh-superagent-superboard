@@ -197,6 +197,13 @@ that already worked).
   tab changes only the panel. Every read is the `[:agent_board, :board,
   :load]` telemetry span, on the dashboard as `agent_board.board.load`
   (`board_load_test.exs`).
+- The **Hoje** view reads every repository in the same board load
+  (`Board.today/0` and `Usage.Report.today/0`), never in a render. Because it
+  shows all repositories, `Board.broadcast/1` also emits
+  `{:today_updated, repository_id}` on the `board_today` topic; the view
+  reloads on the other repository's change, and the current repository's
+  change already arrives as `:board_updated`. A board on a repository does
+  not listen to that topic for work it does not show.
 
 ## Silence (Sem sinal)
 
@@ -786,6 +793,31 @@ slept is never recovered; this routine asks a question instead.
   `daily_summary_live_test.exs` (two boards, silent until a tab asks,
   spoken once, dismissed everywhere, the stored facts, the settings fold)
   and `test/assets/daily_summary_voice_test.mjs` (who may ask).
+
+## Today (Hoje)
+
+The Alfred's "Hoje" (docs/research/alfred.md, 3.4 and F2.1): what needs the
+owner in every repository, one list, repository on each item.
+
+- **The list** comes from `Board.today/0`: every task in `blocked`, `question`
+  or `ready` (a ready task whose PR already merged is done, as on the board)
+  and every `running` task, with the repository, number, title, state, URL and
+  the time of the last state change. Stopped and archived tasks are left out.
+  The same call returns `repo_overview/0` for the rail.
+- **The spending of the day** is `Usage.Report.today/1`: the owner's local
+  day (the browser's `tz_offset`, its two UTC instants) per source, plus the
+  newest weekly Codex quota. The ledger stores UTC days; the view does not
+  show tomorrow's UTC date to an owner west of UTC. Each executor keeps its
+  own currency; a source with no row is "não rodou", a missing reading is
+  "desconhecido".
+- **It is a view, not a repository**: `/?view=hoje` in the rail; clicking an
+  item opens the task in its own repository (and loads that repository). The
+  data is read with the board, not per render, and follows the Real-time
+  rule above.
+- The tests: `today_test.exs` (both repositories, resolved ready, the rail
+  summary) and the LiveView `today_test.exs` (the one list, the three
+  currencies, the click that changes repository, another repository's
+  broadcast).
 
 ## The request (composer)
 
