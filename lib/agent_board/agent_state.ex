@@ -23,6 +23,31 @@ defmodule AgentBoard.AgentState do
       if(File.exists?(@local_default), do: @local_default, else: @prod_default)
   end
 
+  @doc """
+  The ticket databases the board reads: an explicit `:state_dbs` list, the
+  single `:state_db`, or every local superagent profile (the two agents each
+  have their own state directory), falling back to the production path.
+  """
+  @spec paths() :: [String.t()]
+  def paths do
+    case Application.get_env(:agent_board, :state_dbs) do
+      [_ | _] = paths -> paths
+      _ -> configured_paths()
+    end
+  end
+
+  defp configured_paths do
+    case Application.get_env(:agent_board, :state_db) do
+      nil -> local_or_production_paths()
+      path -> [path]
+    end
+  end
+
+  defp local_or_production_paths do
+    local = Path.wildcard(Path.expand("~/.dsh/state/superagent*/orchestrator.sqlite"))
+    if local == [], do: [@prod_default], else: local
+  end
+
   @doc "Every ticket, normalized for the board. A read failure reads as no tickets."
   @spec tickets() :: [map()]
   def tickets do
@@ -35,16 +60,27 @@ defmodule AgentBoard.AgentState do
   @doc "The normalized tickets and the read outcome, for the freshness snapshot."
   @spec read_normalized() :: {:ok, [map()]} | {:error, term()}
   def read_normalized do
-    case read() do
-      {:ok, values} -> {:ok, values |> Enum.flat_map(&decode/1) |> Enum.map(&normalize/1)}
-      {:error, reason} -> {:error, reason}
+    results = Enum.map(paths(), &read_path/1)
+
+    case Enum.filter(results, &match?({:ok, _}, &1)) do
+      [] ->
+        {:error, results |> Enum.map(&elem(&1, 1)) |> List.first()}
+
+      successes ->
+        {:ok,
+         successes
+         |> Enum.flat_map(fn {:ok, values} -> values end)
+         |> Enum.flat_map(&decode/1)
+         |> Enum.map(&normalize/1)}
     end
   end
 
   @doc "The raw JSON values in the ticket table."
   @spec read() :: {:ok, [String.t()]} | {:error, term()}
-  def read do
-    with {:ok, conn} <- Exqlite.Sqlite3.open(path()) do
+  def read, do: read_path(path())
+
+  defp read_path(path) do
+    with {:ok, conn} <- Exqlite.Sqlite3.open(path) do
       try do
         with {:ok, stmt} <- Exqlite.Sqlite3.prepare(conn, "SELECT value FROM ticket"),
              {:ok, rows} <- read_rows(conn, stmt, []) do
@@ -66,7 +102,8 @@ defmodule AgentBoard.AgentState do
   """
   @spec heartbeat_at() :: DateTime.t() | nil
   def heartbeat_at do
-    [path() <> "-wal", path()]
+    paths()
+    |> Enum.flat_map(fn path -> [path <> "-wal", path] end)
     |> Enum.flat_map(fn file ->
       case File.stat(file, time: :posix) do
         {:ok, %File.Stat{mtime: mtime}} -> [mtime]

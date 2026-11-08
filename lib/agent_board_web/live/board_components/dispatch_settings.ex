@@ -15,7 +15,8 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
     "dispatch_codex_timeout_minutes",
     "dispatch_reserve_percent",
     "dispatch_claude_model",
-    "dispatch_codex_model"
+    "dispatch_codex_model",
+    "dsh_repositories"
   ]
 
   @impl true
@@ -94,6 +95,14 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
           <span>Modelo do Codex</span>
           <input name="codex_model" value={Runners.codex_model()} required />
         </label>
+        <label>
+          <span>Repositórios do DeepSeek (separados por vírgula)</span>
+          <input
+            name="dsh_repositories"
+            value={Enum.join(@snapshot.dsh_repositories, ", ")}
+            placeholder="sallaumen/arena-rogue, sallaumen/o_colmex"
+          />
+        </label>
       </div>
 
       <p :if={@snapshot.quota} class="ab-meta">
@@ -150,7 +159,8 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
          "dispatch_codex_timeout_minutes" => Integer.to_string(timeout),
          "dispatch_reserve_percent" => Integer.to_string(reserve),
          "dispatch_claude_model" => claude,
-         "dispatch_codex_model" => codex
+         "dispatch_codex_model" => codex,
+         "dsh_repositories" => String.trim(params["dsh_repositories"] || "")
        }}
     else
       {:error, message} -> {:error, message}

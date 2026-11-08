@@ -131,6 +131,47 @@ defmodule AgentBoard.AgentStateTest do
     assert AgentState.same_repository?(legacy, %{owner: "sallaumen", name: "o_colmex"})
   end
 
+  test "two superagent state files are merged by repository" do
+    first =
+      Path.join(
+        System.tmp_dir!(),
+        "agent-state-first-#{System.unique_integer([:positive])}.sqlite"
+      )
+
+    second =
+      Path.join(
+        System.tmp_dir!(),
+        "agent-state-second-#{System.unique_integer([:positive])}.sqlite"
+      )
+
+    previous = Application.get_env(:agent_board, :state_dbs)
+
+    for {path, repo, number} <- [{first, "arena-rogue", 71}, {second, "o_colmex", 72}] do
+      {:ok, db} = Exqlite.Sqlite3.open(path)
+      :ok = Exqlite.Sqlite3.execute(db, "create table ticket (value text)")
+
+      ticket =
+        @sample
+        |> Map.put("channels", [
+          %{"address" => %{"url" => "https://github.com/sallaumen/#{repo}/issues/#{number}"}}
+        ])
+
+      insert(db, ticket)
+      Exqlite.Sqlite3.close(db)
+    end
+
+    Application.put_env(:agent_board, :state_dbs, [first, second])
+    on_exit(fn -> Application.put_env(:agent_board, :state_dbs, previous) end)
+
+    snapshot = AgentState.snapshot()
+    assert snapshot.ok
+
+    assert snapshot.tickets |> Enum.map(& &1["repository"]) |> Enum.sort() == [
+             "sallaumen/arena-rogue",
+             "sallaumen/o_colmex"
+           ]
+  end
+
   test "a missing database is an error, not an empty agent" do
     Application.put_env(:agent_board, :state_db, "/does/not/exist.sqlite")
 

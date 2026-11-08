@@ -666,6 +666,33 @@ in Configurações → Despacho local.
   script against a fake CLI and a real worktree), `dispatch_test.exs` (the
   sentence, the confirmed start, stop, the pause on the board).
 
+## DeepSeek and the superagents
+
+DeepSeek is the board's default executor (`Executors.default/0`), and its
+work does not go through `Runners`: it is a separate `dsh-superagent` process
+that watches one GitHub repository and picks the issues whose body mentions
+`sallaumen-agent`. Claude Code and Codex are the opt-in local runners.
+
+- **One superagent per repository.** The primary profile (`superagent`, port
+  3082) watches `sallaumen/arena-rogue`; the `superagent-colmex` profile
+  (port 3083, state `~/.dsh/state/superagent-colmex`) watches
+  `sallaumen/o_colmex`. Each has its own LaunchAgent
+  (`ops/com.dsh.superagent*.plist`) running `scripts/agent/keepalive.sh`, and
+  the second profile is set through `DSH_SUPERAGENT_PROFILE`,
+  `DSH_SUPERAGENT_PORT` and `SUPERAGENT_STATE_DIR`.
+- **The board reads every local superagent state database**
+  (`~/.dsh/state/superagent*/orchestrator.sqlite`); tickets are merged by
+  repository, so the DeepSeek lane shows both. `AgentState.paths/0` also
+  accepts an explicit `:state_dbs` list.
+- **The routing list is a setting.** `dsh_repositories`
+  (Configurações → Despacho local, comma-separated) names the repositories
+  the DeepSeek agents watch; the router only suggests DeepSeek for those. The
+  primary orchestrator's repository is always included. A task for any other
+  repository is ruled out with the reason and falls to Claude/Codex.
+- **Creating a dsh task is the dispatch**: the board opens the issue with the
+  mention and the superagent picks it up. There is no per-task process to
+  start, stop or budget; the `/state` read is the availability signal.
+
 ## Routing (mode "sugerir")
 
 `AgentBoard.Routing.suggest/2` is pure: rules in the plan's order

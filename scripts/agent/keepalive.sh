@@ -22,6 +22,7 @@ set -u
 . "$(dirname "$0")/_common.sh"
 
 MANAGER="$DSH_SUPERAGENT_HOME/scripts/dsh-superagent"
+PROFILE="${DSH_SUPERAGENT_PROFILE:-superagent}"
 LOG="${DSH_SUPERAGENT_KEEPALIVE_LOG:-$HOME/Library/Logs/dsh-superagent-keepalive.log}"
 LOG_MAX_BYTES="${DSH_SUPERAGENT_KEEPALIVE_LOG_MAX_BYTES:-1048576}"
 
@@ -37,7 +38,7 @@ if [ ! -f "$MANAGER" ]; then
   exit 1
 fi
 
-STATUS=$(python3 "$MANAGER" status 2>&1)
+STATUS=$(python3 "$MANAGER" --profile "$PROFILE" status 2>&1)
 CODE=$?
 [ "$CODE" -eq 0 ] && exit 0
 
@@ -55,7 +56,7 @@ case "$CODE" in
 esac
 
 log "status $CODE: starting"
-OUT=$(python3 "$MANAGER" start --respect-stop 2>&1)
+OUT=$(python3 "$MANAGER" --profile "$PROFILE" start --respect-stop 2>&1)
 CODE=$?
 printf '%s\n' "$OUT" | grep -v '^[[:space:]]*$' | sed 's/^/  /' >>"$LOG"
 log "start exited $CODE"

@@ -154,7 +154,8 @@ defmodule AgentBoardWeb.DispatchTest do
       "codex_timeout_minutes" => "15",
       "reserve_percent" => "25",
       "claude_model" => "claude-test",
-      "codex_model" => "codex-test"
+      "codex_model" => "codex-test",
+      "dsh_repositories" => "sallaumen/arena-rogue, sallaumen/o_colmex"
     })
     |> render_submit()
 
@@ -164,6 +165,7 @@ defmodule AgentBoardWeb.DispatchTest do
     assert Settings.get("dispatch_reserve_percent") == "25"
     assert Settings.get("dispatch_claude_model") == "claude-test"
     assert Settings.get("dispatch_codex_model") == "codex-test"
+    assert Settings.get("dsh_repositories") == "sallaumen/arena-rogue, sallaumen/o_colmex"
 
     view
     |> form("#dispatch-settings-form-dispatch-settings", %{
