@@ -1,9 +1,9 @@
-defmodule AgentBoard.Sync.FreshnessTest do
+defmodule AgentBoard.FreshnessTest do
   @moduledoc "The board's one truth: live only when every source answered within its cadence."
   use ExUnit.Case, async: true
 
   alias AgentBoard.Board.Event
-  alias AgentBoard.Sync.Freshness
+  alias AgentBoard.Freshness
 
   @now ~U[2026-11-06 12:00:00Z]
 

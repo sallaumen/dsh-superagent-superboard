@@ -70,6 +70,18 @@ defmodule AgentBoard.Workpad do
 
   def parse(_other), do: nil
 
+  @doc """
+  Whether a text asks the person something: a real question mark, not a mood.
+
+  The fallback for an agent comment that is not a workpad (the sections are
+  the strong signal). The runner's hidden marker is not part of the message,
+  so callers strip it before asking; a question mark inside a code block is
+  still a question mark, as it was before the workpad.
+  """
+  @spec question?(term()) :: boolean()
+  def question?(text) when is_binary(text), do: String.contains?(text, "?")
+  def question?(_text), do: false
+
   # One pass over the lines: a `###` line opens a section, everything else
   # (including `###` inside a fenced block) belongs to the open one, and the
   # text before the first heading is dropped.

@@ -23,7 +23,6 @@ defmodule AgentBoardWeb.BoardLive do
     LocalCI,
     Metrics,
     Orchestrator,
-    Repo,
     Runners,
     Settings,
     Superagents,
@@ -34,10 +33,10 @@ defmodule AgentBoardWeb.BoardLive do
   }
 
   alias AgentBoard.Board.Task
+  alias AgentBoard.Freshness
   alias AgentBoard.Metrics.Observations
   alias AgentBoard.Routing.Signals
   alias AgentBoard.Runners.Execution
-  alias AgentBoard.Sync.Freshness
   alias AgentBoard.System.Version
   alias AgentBoard.Usage.Report
   alias AgentBoard.Voice.{Activity, Phrases}
@@ -521,7 +520,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp refresh_inspector_after_act(socket, task_id) do
     case socket.assigns.conversation do
       %Task{id: ^task_id} ->
-        task = Repo.get(Task, task_id) |> Repo.preload(:repository)
+        task = Board.task(task_id)
 
         socket
         |> assign(conversation: task, comments: Board.comments(task))
@@ -851,15 +850,12 @@ defmodule AgentBoardWeb.BoardLive do
   defp refresh_conversation(%{assigns: %{conversation: nil}} = socket), do: socket
 
   defp refresh_conversation(socket) do
-    case Repo.get(Task, socket.assigns.conversation.id) do
+    case Board.task(socket.assigns.conversation.id) do
       nil ->
         assign(socket, conversation: nil, comments: [])
 
       task ->
-        assign(socket,
-          conversation: Repo.preload(task, :repository),
-          comments: Board.comments(task)
-        )
+        assign(socket, conversation: task, comments: Board.comments(task))
     end
   end
 
@@ -1017,15 +1013,12 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_event("open_any", %{"id" => id}, socket) do
-    case Repo.get(Task, id) do
-      %Task{} = task ->
-        task = Repo.preload(task, :repository)
-
-        {:noreply,
-         push_patch(socket, to: BoardNavigation.path(task.repository, "conversation", task.id))}
-
-      _ ->
-        {:noreply, socket}
+    with {task_id, ""} <- Integer.parse(to_string(id)),
+         %Task{} = task <- Board.task(task_id) do
+      {:noreply,
+       push_patch(socket, to: BoardNavigation.path(task.repository, "conversation", task.id))}
+    else
+      _ -> {:noreply, socket}
     end
   end
 
@@ -1117,7 +1110,7 @@ defmodule AgentBoardWeb.BoardLive do
 
     task =
       repo &&
-        Repo.get_by(Task, id: task_id, repository_id: repo.id) |> Repo.preload(:repository)
+        Board.task_of(repo, task_id)
 
     # Stop is red: it runs only with the sentence its confirmation showed.
     result =
@@ -1147,8 +1140,8 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_event("stop_execution", %{"id" => id, "confirm" => confirm}, socket) do
     with {execution_id, _} <- Integer.parse(id),
-         %Execution{} = execution <- Repo.get(Execution, execution_id),
-         %Task{} = task <- Repo.get(Task, execution.task_id) |> Repo.preload(:repository) do
+         %Execution{} = execution <- Runners.get_execution(execution_id),
+         %Task{} = task <- Board.task(execution.task_id) do
       case Actions.run(:stop_execution, %{execution: execution, task: task}, ui(),
              confirm: confirm
            ) do
@@ -1205,7 +1198,7 @@ defmodule AgentBoardWeb.BoardLive do
     with {repository_id, ""} <- Integer.parse(params["repository_id"] || ""),
          {source_id, ""} <- Integer.parse(params["source_id"] || ""),
          %AgentBoard.Board.Repository{} = repository <-
-           Repo.get(AgentBoard.Board.Repository, repository_id),
+           Board.repository(repository_id),
          %AgentBoard.Superagents.Superagent{} = source <- Superagents.get(source_id),
          path when is_binary(path) and path != "" <- String.trim(params["path"] || ""),
          path = Path.expand(path),
@@ -1243,7 +1236,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_event("superagent_command", %{"id" => id, "action" => action}, socket) do
     name = if action == "pause", do: :pause_superagent, else: :resume_superagent
-    superagent = Superagents.get(id) |> Repo.preload(:repository)
+    superagent = Superagents.get(id)
 
     {:noreply,
      start_async(socket, {:superagent_command, superagent.id}, fn ->
@@ -1252,7 +1245,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_event("superagent_scale", %{"id" => id, "delta" => delta}, socket) do
-    superagent = Superagents.get(id) |> Repo.preload(:repository)
+    superagent = Superagents.get(id)
 
     with {delta, ""} <- Integer.parse(delta),
          workers = max(1, min(32, superagent.max_workers + delta)),
@@ -1324,7 +1317,7 @@ defmodule AgentBoardWeb.BoardLive do
 
             {:noreply,
              assign(socket,
-               conversation: Repo.get(Task, task.id) |> Repo.preload(:repository),
+               conversation: Board.task(task.id),
                comments: Board.comments(task)
              )
              |> load_inspector()

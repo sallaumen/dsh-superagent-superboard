@@ -10,10 +10,8 @@ defmodule AgentBoardWeb.BoardController do
   """
   use AgentBoardWeb, :controller
 
-  import Ecto.Query, warn: false
-
-  alias AgentBoard.{Actions, Board, Executors, Repo}
-  alias AgentBoard.Board.{Repository, Task}
+  alias AgentBoard.{Actions, Board, Executors}
+  alias AgentBoard.Board.Task
 
   # The task actions the API accepts, mapped explicitly (never to_atom).
   @task_actions %{"stop" => :stop_task, "archive" => :archive_task, "resume" => :resume_task}
@@ -50,8 +48,7 @@ defmodule AgentBoardWeb.BoardController do
 
   def create_task(conn, %{"repo" => slug, "title" => title} = params) do
     with [owner, name] <- String.split(slug, "/", parts: 2),
-         repo when not is_nil(repo) <-
-           Repo.one(from r in Repository, where: r.owner == ^owner and r.name == ^name),
+         repo when not is_nil(repo) <- Board.find_repository(owner, name),
          true <- String.trim(title) != "",
          true <- params["executor"] in [nil, "" | Executors.all()] do
       text = String.trim(params["body"] || "") <> "\n\n@sallaumen-agent"
@@ -81,7 +78,11 @@ defmodule AgentBoardWeb.BoardController do
   end
 
   def act(conn, %{"id" => id, "action" => action} = params) do
-    task = Repo.get(Task, id) |> Repo.preload(:repository)
+    task =
+      case Integer.parse(to_string(id)) do
+        {task_id, ""} -> Board.task(task_id)
+        _ -> nil
+      end
 
     result =
       case {Map.get(@task_actions, action), task} do

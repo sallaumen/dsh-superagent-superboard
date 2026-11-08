@@ -1,7 +1,8 @@
 defmodule AgentBoard.WriteBoundaryTest do
   @moduledoc """
-  The web layer reads and calls actions; it never writes the store or starts a
-  runner directly. The registry's red actions are the only door.
+  The web layer reads through the contexts and calls actions; it never writes
+  the store, starts a runner or builds an Ecto query directly. The registry's
+  red actions are the only door.
   """
   use ExUnit.Case, async: true
 
@@ -15,6 +16,21 @@ defmodule AgentBoard.WriteBoundaryTest do
     {~r/\bRunners\.dispatch\(/, "runner dispatch"},
     {~r/\bSettings\.put\(/, "settings write"}
   ]
+
+  test "the web layer reads through the contexts, not Repo" do
+    assert @web_files != [], "the scan found no web files; check the path"
+
+    offenders =
+      for path <- @web_files,
+          line <- File.stream!(path),
+          Regex.match?(~r/\bRepo\./, line) do
+        "#{path}: #{String.trim(line)}"
+      end
+
+    assert offenders == [],
+           "the web layer reads through Board/Runners/Superagents, not Repo:\n" <>
+             Enum.join(offenders, "\n")
+  end
 
   test "the web layer has no direct write or dispatch" do
     assert @web_files != [], "the scan found no web files; check the path"

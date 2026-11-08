@@ -17,7 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   """
   use AgentBoardWeb, :live_component
 
-  alias AgentBoard.{Actions, Repo}
+  alias AgentBoard.{Actions, Board}
   alias AgentBoard.Board.{Repository, Task}
   alias Phoenix.LiveView.JS
 
@@ -217,7 +217,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
        do: %{superagent: assigns.superagent}
 
   defp repository(%Task{repository: %Repository{} = repository}), do: repository
-  defp repository(%Task{repository_id: id}) when is_integer(id), do: Repo.get(Repository, id)
+  defp repository(%Task{repository_id: id}) when is_integer(id), do: Board.repository(id)
   defp repository(_task), do: nil
 
   defp tone(:halt), do: "ab-btn--halt"

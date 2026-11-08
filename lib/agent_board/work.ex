@@ -9,7 +9,7 @@ defmodule AgentBoard.Work do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AgentBlock, AgentSignal, Board, Repo, Sync, Time, Titles, Workpad}
+  alias AgentBoard.{AgentBlock, AgentSignal, Board, Repo, Time, Titles, Workpad}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   @queue_limit 8
@@ -184,7 +184,7 @@ defmodule AgentBoard.Work do
       question ->
         "**O agente perguntou:** " <> excerpt(question)
 
-      is_binary(summary) and AgentBoard.Sync.question?(summary) ->
+      is_binary(summary) and Workpad.question?(summary) ->
         "**O agente perguntou:** " <> excerpt(summary)
 
       true ->
@@ -277,7 +277,7 @@ defmodule AgentBoard.Work do
   defp comment_question(body) do
     case Workpad.parse(body) do
       %{question: question} -> question
-      nil -> if Sync.question?(body), do: body
+      nil -> if Workpad.question?(body), do: body
     end
   end
 
