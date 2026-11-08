@@ -8,7 +8,7 @@ defmodule AgentBoard.Superagents do
   import Ecto.Query, warn: false
 
   alias AgentBoard.Repo
-  alias AgentBoard.Superagents.{Superagent, SuperagentEvent}
+  alias AgentBoard.Superagents.{Manager, Superagent, SuperagentEvent}
 
   @topic "superagents"
 
@@ -112,6 +112,30 @@ defmodule AgentBoard.Superagents do
       event(updated, "observe", before.observed_state, state, "system", detail)
       broadcast()
     end
+  end
+
+  @doc """
+  Read every registered superagent through the manager and record the
+  observed state. Runs in the ticker, never in a LiveView callback.
+  """
+  def tick(manager \\ Manager.impl()) do
+    list()
+    |> Task.async_stream(
+      fn superagent -> {superagent, manager.status(superagent)} end,
+      timeout: 6_000,
+      max_concurrency: 4,
+      on_timeout: :kill_task
+    )
+    |> Enum.each(fn
+      {:ok, {superagent, {:ok, observation}}} ->
+        observe(superagent, observation)
+
+      {:ok, {superagent, {:error, reason}}} ->
+        observe(superagent, %{state: "error", detail: inspect(reason)})
+
+      {:exit, _reason} ->
+        :ok
+    end)
   end
 
   @doc "Record one lifecycle event."

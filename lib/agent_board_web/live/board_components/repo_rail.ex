@@ -102,6 +102,15 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
 
       <div class="ab-rail__foot">
         <button
+          id="open-superagents"
+          type="button"
+          class="ab-btn ab-btn--quiet ab-btn--sm"
+          phx-click="show_panel"
+          phx-value-panel="superagents"
+        >
+          <.ico name="grip" /><span>Superagentes</span>
+        </button>
+        <button
           id="open-shortcuts"
           type="button"
           class="ab-btn ab-btn--quiet ab-btn--sm"

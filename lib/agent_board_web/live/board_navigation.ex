@@ -6,7 +6,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
 
-  @panels ~w(activity intake ai conversation voice history composer shortcuts executors settings)
+  @panels ~w(activity intake ai conversation voice history composer shortcuts executors settings superagents)
 
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
@@ -95,7 +95,8 @@ defmodule AgentBoardWeb.BoardNavigation do
              "composer",
              "shortcuts",
              "executors",
-             "settings"
+             "settings",
+             "superagents"
            ] do
     if socket.assigns.repo,
       do: push_patch(socket, to: path(socket.assigns.repo, panel)),

@@ -1,0 +1,93 @@
+defmodule AgentBoardWeb.BoardComponents.Superagents do
+  @moduledoc "The DeepSeek superagents registered on this board, one per project."
+  use AgentBoardWeb, :html
+
+  import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1]
+
+  attr :superagents, :list, required: true
+  attr :tz_offset, :integer, default: 0
+
+  def superagents(assigns) do
+    ~H"""
+    <section id="superagents-panel" class="ab-superagents">
+      <header class="ab-superagents__head">
+        <div>
+          <h2>Superagents DeepSeek</h2>
+          <p class="ab-meta">
+            Um agente por projeto. O board observa o processo; não o inicia como filho.
+          </p>
+        </div>
+        <span class="ab-tag ab-tag--agent">{length(@superagents)}</span>
+      </header>
+
+      <p :if={@superagents == []} class="ab-empty ab-superagents__empty">
+        Nenhum superagent registrado. As fases seguintes adicionam projetos por aqui.
+      </p>
+
+      <div :if={@superagents != []} class="ab-superagents__list">
+        <article :for={superagent <- @superagents} class="ab-superagent">
+          <div class="ab-superagent__top">
+            <div class="ab-superagent__name">
+              <span class="ab-label">Projeto</span>
+              <strong>
+                {if superagent.repository,
+                  do: "#{superagent.repository.owner}/#{superagent.repository.name}",
+                  else: "repositório removido"}
+              </strong>
+            </div>
+            <span class={["ab-tag", state_class(superagent.observed_state)]}>
+              {state_label(superagent.observed_state)}
+            </span>
+          </div>
+
+          <dl class="ab-superagent__facts">
+            <div>
+              <dt>Profile</dt><dd>{superagent.profile}</dd>
+            </div>
+            <div>
+              <dt>Porta</dt><dd>{superagent.port}</dd>
+            </div>
+            <div>
+              <dt>Workers</dt><dd>{superagent.max_workers}</dd>
+            </div>
+            <div>
+              <dt>Desejado</dt><dd>{desired_label(superagent.desired_state)}</dd>
+            </div>
+            <div class="ab-superagent__wide">
+              <dt>State dir</dt><dd class="ab-superagent__path">{superagent.state_dir}</dd>
+            </div>
+            <div class="ab-superagent__wide">
+              <dt>Última leitura</dt>
+              <dd>{observed_at(superagent.observed_at, @tz_offset)}</dd>
+            </div>
+          </dl>
+
+          <p :if={superagent.last_error} class="ab-superagent__error" role="status">
+            <.ico name="warning" /> {superagent.last_error}
+          </p>
+        </article>
+      </div>
+    </section>
+    """
+  end
+
+  defp state_label("ready"), do: "ligado"
+  defp state_label("starting"), do: "iniciando"
+  defp state_label("paused"), do: "pausado"
+  defp state_label("stopped"), do: "parado"
+  defp state_label("error"), do: "erro"
+  defp state_label(_), do: "sem leitura"
+
+  defp state_class("ready"), do: "ab-tag--agent"
+  defp state_class("paused"), do: "ab-tag--stale"
+  defp state_class("error"), do: "ab-tag--halt"
+  defp state_class(_), do: "ab-tag--quiet"
+
+  defp desired_label("running"), do: "ligar"
+  defp desired_label("paused"), do: "pausar"
+  defp desired_label("stopped"), do: "parar"
+  defp desired_label(value), do: value
+
+  defp observed_at(nil, _offset), do: "nunca"
+  defp observed_at(%DateTime{} = at, offset), do: AgentBoard.Time.local_time(at, offset)
+end
