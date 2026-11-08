@@ -27,6 +27,7 @@ defmodule AgentBoard.Superagents.Ticker do
 
     try do
       Superagents.tick()
+      Superagents.reconcile()
     rescue
       exception -> Logger.warning("superagent tick failed: #{Exception.message(exception)}")
     end

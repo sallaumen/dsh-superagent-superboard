@@ -201,6 +201,30 @@ defmodule AgentBoard.Superagents do
     end)
   end
 
+  @doc """
+  Reconcile the desired state after a board restart: start a stopped agent
+  whose owner wants it running, stop a running agent whose owner stopped it,
+  and pause a ready one whose owner paused it. An error is left for a person,
+  not restarted in a loop.
+  """
+  def reconcile(manager \\ Manager.impl()) do
+    Enum.each(list(), fn superagent ->
+      case {superagent.desired_state, superagent.observed_state} do
+        {"running", state} when state in ["stopped", "unknown"] ->
+          start(superagent, manager)
+
+        {"stopped", state} when state in ["ready", "paused", "starting"] ->
+          stop(superagent, manager)
+
+        {"paused", "ready"} ->
+          pause(superagent, true, manager)
+
+        _ ->
+          :ok
+      end
+    end)
+  end
+
   @doc "Record one lifecycle event."
   def event(%Superagent{} = superagent, action, from, to, actor, detail \\ nil) do
     %SuperagentEvent{}
