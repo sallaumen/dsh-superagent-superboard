@@ -852,18 +852,29 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#ask-agent textarea[name=body]")
   end
 
-  test "switching repos stops listening to the old one", %{conn: conn} do
+  test "switching repos moves the subscription to the new repository", %{conn: conn} do
     {:ok, colmex} = Board.add_repository("sallaumen", "o_colmex")
-    {:ok, _arena} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, arena} = Board.add_repository("sallaumen", "arena-rogue")
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/o_colmex")
+
+    old_topic = "board:#{colmex.id}"
+    new_topic = "board:#{arena.id}"
+
+    assert subscribed?(view.pid, old_topic)
 
     view
     |> element("#repo-select")
     |> render_change(%{"repo" => "sallaumen/arena-rogue"})
 
-    Board.broadcast(colmex.id)
-    refute_receive :board_updated, 100
+    refute subscribed?(view.pid, old_topic)
+    assert subscribed?(view.pid, new_topic)
+  end
+
+  defp subscribed?(pid, topic) do
+    AgentBoard.PubSub
+    |> Registry.lookup(topic)
+    |> Enum.any?(fn {subscriber, _meta} -> subscriber == pid end)
   end
 
   test "selecting a repository updates the url", %{conn: conn} do
