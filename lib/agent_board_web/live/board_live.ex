@@ -357,6 +357,14 @@ defmodule AgentBoardWeb.BoardLive do
     )
   end
 
+  # Nothing running, nothing waiting on the owner, queue empty: the wide
+  # layout collapses the lanes into one compact row and gives the merge
+  # history the rest of the width.
+  defp idle_board?(work) do
+    work.running == [] and work.retrying == [] and work.needs == [] and
+      work.queue.items == []
+  end
+
   defp load_inspector(socket) do
     case socket.assigns.conversation do
       nil ->
@@ -2266,7 +2274,7 @@ defmodule AgentBoardWeb.BoardLive do
                 <span class="ab-top__owner">{@repo.owner}/</span>
                 <h1>{@repo.name}</h1>
               </div>
-              <.beacon freshness={@freshness} />
+              <.beacon freshness={@freshness} tz_offset={@tz_offset} />
               <span class="ab-top__spacer"></span>
               <div id="board-tools" class="ab-top__actions" aria-label="Ações do board">
                 <button
@@ -2333,7 +2341,11 @@ defmodule AgentBoardWeb.BoardLive do
               tz_offset={@tz_offset}
             />
 
-            <.frozen_banner :if={@repo && @view != "hoje"} freshness={@freshness} />
+            <.frozen_banner
+              :if={@repo && @view != "hoje"}
+              freshness={@freshness}
+              tz_offset={@tz_offset}
+            />
 
             <div :if={@repo && @view != "hoje" && empty?(@board)} class="ab-empty">
               <h2>
@@ -2367,7 +2379,11 @@ defmodule AgentBoardWeb.BoardLive do
               tz_offset={@tz_offset}
             />
 
-            <div :if={@repo && @view != "hoje" && not empty?(@board)} class="ab-cols">
+            <div
+              :if={@repo && @view != "hoje" && not empty?(@board)}
+              class="ab-cols"
+              data-idle={to_string(idle_board?(@work))}
+            >
               <div class="ab-col">
                 <.now_lane
                   running={@work.running}

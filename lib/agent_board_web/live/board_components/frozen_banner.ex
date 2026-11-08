@@ -6,13 +6,14 @@ defmodule AgentBoardWeb.BoardComponents.FrozenBanner do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
   attr :freshness, :map, required: true
+  attr :tz_offset, :integer, default: 0
 
   def frozen_banner(assigns) do
     ~H"""
     <div :if={@freshness.frozen?} class="ab-frozen" role="status">
       <.glyph kind={:stale} />
       <span :if={@freshness.at}>
-        <strong>Mostrando o que sabíamos às {time(@freshness.at)}.</strong>
+        <strong>Mostrando o que sabíamos às {time(@freshness.at, @tz_offset)}.</strong>
         Tempos e contagens estão parados; o agente pode ter avançado.
       </span>
       <span :if={is_nil(@freshness.at)}>
@@ -29,7 +30,7 @@ defmodule AgentBoardWeb.BoardComponents.FrozenBanner do
       <.glyph kind={:stale} />
       <span :if={@freshness.at}>
         <strong>Reconectando.</strong>
-        Mostrando o que sabíamos às {time(@freshness.at)}; os tempos estão parados.
+        Mostrando o que sabíamos às {time(@freshness.at, @tz_offset)}; os tempos estão parados.
       </span>
       <span :if={is_nil(@freshness.at)}>
         <strong>Reconectando.</strong> Mostrando os últimos dados salvos; os tempos estão parados.
@@ -42,6 +43,6 @@ defmodule AgentBoardWeb.BoardComponents.FrozenBanner do
     """
   end
 
-  defp time(nil), do: "—"
-  defp time(%DateTime{} = at), do: Calendar.strftime(at, "%H:%M")
+  defp time(nil, _offset), do: "—"
+  defp time(%DateTime{} = at, offset), do: AgentBoard.Time.local_time(at, offset)
 end

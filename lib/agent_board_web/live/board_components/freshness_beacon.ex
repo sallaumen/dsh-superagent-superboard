@@ -5,9 +5,12 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeacon do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1, status_mark: 1]
 
   attr :freshness, :map, required: true
+  attr :tz_offset, :integer, default: 0
 
   def beacon(assigns) do
-    assigns = assign(assigns, :age_text, age_text(assigns.freshness))
+    assigns =
+      assigns
+      |> assign(:age_text, age_text(assigns.freshness, assigns.tz_offset))
 
     ~H"""
     <details id="sync-status" class="ab-sync">
@@ -27,7 +30,7 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeacon do
         <span class="ab-beacon__reconnect">
           <i class="ab-spin" aria-hidden="true"></i>
           <b>Reconectando</b>
-          <span class="ab-beacon__age">dados de {time(@freshness.at)}</span>
+          <span class="ab-beacon__age">dados de {time(@freshness.at, @tz_offset)}</span>
         </span>
       </summary>
 
@@ -57,22 +60,27 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeacon do
   defp label(:offline), do: "Sem conexão"
   defp label(:unknown), do: "Sem dados ainda"
 
-  defp age_text(%{state: :live, age_sec: sec}) when is_integer(sec), do: "há #{short(sec)}"
-  defp age_text(%{state: :live}), do: "agora"
+  defp age_text(%{state: :live, age_sec: sec}, _offset) when is_integer(sec),
+    do: "há #{short(sec)}"
 
-  defp age_text(%{state: state, at: nil}) when state in [:delayed, :offline],
+  defp age_text(%{state: :live}, _offset), do: "agora"
+
+  defp age_text(%{state: state, at: nil}, _offset) when state in [:delayed, :offline],
     do: "dados de horário desconhecido"
 
-  defp age_text(%{state: state} = freshness) when state in [:delayed, :offline] do
-    "dados de #{time(freshness.at)} · #{ago(freshness.age_sec)}"
+  defp age_text(%{state: state} = freshness, offset) when state in [:delayed, :offline] do
+    "dados de #{time(freshness.at, offset)} · #{ago(freshness.age_sec)}"
   end
 
-  defp age_text(%{state: :reconnecting, at: nil}), do: "dados de horário desconhecido"
-  defp age_text(%{state: :reconnecting} = freshness), do: "dados de #{time(freshness.at)}"
-  defp age_text(_freshness), do: "aguardando 1ª sincronia"
+  defp age_text(%{state: :reconnecting, at: nil}, _offset), do: "dados de horário desconhecido"
 
-  defp time(nil), do: "—"
-  defp time(%DateTime{} = at), do: Calendar.strftime(at, "%H:%M")
+  defp age_text(%{state: :reconnecting} = freshness, offset),
+    do: "dados de #{time(freshness.at, offset)}"
+
+  defp age_text(_freshness, _offset), do: "aguardando 1ª sincronia"
+
+  defp time(nil, _offset), do: "—"
+  defp time(%DateTime{} = at, offset), do: AgentBoard.Time.local_time(at, offset)
 
   defp short(nil), do: "agora"
   defp short(sec) when sec < 60, do: "#{sec} s"
