@@ -101,6 +101,7 @@ defmodule AgentBoardWeb.BoardLive do
         objectives: [],
         superagents: [],
         provision_preview: nil,
+        provisioning: false,
         resume: resume,
         events: [],
         sync_event: nil,
@@ -1224,7 +1225,7 @@ defmodule AgentBoardWeb.BoardLive do
       ) do
     {:noreply,
      socket
-     |> assign(:provision_preview, nil)
+     |> assign(provision_preview: nil, provisioning: true)
      |> start_async(:provision, fn ->
        Actions.run(:provision_superagent, params, ui(), confirm: phrase)
      end)}
@@ -1844,14 +1845,25 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_async(:provision, {:ok, {:ok, text}}, socket) do
-    {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:info, text)}
+    {:noreply,
+     socket
+     |> assign(superagents: Superagents.list(), provisioning: false)
+     |> put_flash(:info, text)}
   end
 
-  def handle_async(:provision, {:ok, {:error, text}}, socket),
-    do: {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:error, text)}
+  def handle_async(:provision, {:ok, {:error, text}}, socket) do
+    {:noreply,
+     socket
+     |> assign(superagents: Superagents.list(), provisioning: false)
+     |> put_flash(:error, text)}
+  end
 
-  def handle_async(:provision, {:exit, _reason}, socket),
-    do: {:noreply, put_flash(socket, :error, "O provisionamento não terminou.")}
+  def handle_async(:provision, {:exit, _reason}, socket) do
+    {:noreply,
+     socket
+     |> assign(provisioning: false)
+     |> put_flash(:error, "O provisionamento não terminou.")}
+  end
 
   @impl true
   def handle_async({:superagent_command, _id}, {:ok, {:ok, text}}, socket) do
@@ -2579,6 +2591,7 @@ defmodule AgentBoardWeb.BoardLive do
             superagents={@superagents}
             repos={@repos}
             provision_preview={@provision_preview}
+            provisioning={@provisioning}
             tz_offset={@tz_offset}
           />
         </BoardComponents.Panel.shell>

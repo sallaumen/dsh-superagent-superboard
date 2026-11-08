@@ -104,44 +104,50 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     exception -> {:error, exception}
   end
 
-  defp wait_api(superagent, attempts), do: wait(superagent, attempts, &(&1.status == 200))
-
-  defp wait_ready(superagent, attempts) do
-    wait(superagent, attempts, fn
-      %{status: 200, body: body} ->
-        setup = body["setup"]
-        health = body["health"] || %{}
-
-        (is_nil(setup) or is_nil(setup["detail"])) and
-          get_in(health, ["runtime", "state"]) == "ready"
-
-      _ ->
-        false
-    end)
-  end
-
-  defp wait(superagent, attempts, fun) do
+  defp wait_api(superagent, attempts) do
     Enum.reduce_while(1..attempts, {:error, :timeout}, fn _attempt, _acc ->
-      case check(superagent, fun) do
-        :ok -> {:halt, :ok}
-        :cont -> {:cont, {:error, :timeout}}
+      case get(superagent, "/state") do
+        {:ok, 200, _body} ->
+          {:halt, :ok}
+
+        _ ->
+          Process.sleep(1_000)
+          {:cont, {:error, :timeout}}
       end
     end)
   end
 
-  defp check(superagent, fun) do
-    case get(superagent, "/state") do
-      {:ok, 200, body} ->
-        if fun.(%{status: 200, body: body}) do
-          :ok
-        else
-          Process.sleep(1_000)
-          :cont
-        end
+  defp wait_ready(superagent, attempts) do
+    Enum.reduce_while(1..attempts, {:error, :timeout}, fn _attempt, _acc ->
+      case ready_result(superagent) do
+        :ok ->
+          {:halt, :ok}
 
-      _ ->
-        Process.sleep(1_000)
-        :cont
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+
+        :wait ->
+          Process.sleep(1_000)
+          {:cont, {:error, :timeout}}
+      end
+    end)
+  end
+
+  defp ready_result(superagent) do
+    case get(superagent, "/state") do
+      {:ok, 200, body} -> ready_state(body)
+      _ -> :wait
+    end
+  end
+
+  defp ready_state(body) do
+    setup = body["setup"]
+    health = body["health"] || %{}
+
+    cond do
+      is_map(setup) and setup["detail"] -> {:error, {:setup, setup["detail"]}}
+      get_in(health, ["runtime", "state"]) == "ready" -> :ok
+      true -> :wait
     end
   end
 
