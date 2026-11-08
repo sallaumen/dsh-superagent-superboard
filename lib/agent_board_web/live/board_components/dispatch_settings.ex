@@ -43,7 +43,7 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
     >
       <div class="dispatch-settings__grid">
         <label>
-          <span>Orçamento mensal (US$)</span>
+          <span>Orçamento mensal (US$; 0 = sem teto)</span>
           <input
             name="monthly_usd"
             type="number"
