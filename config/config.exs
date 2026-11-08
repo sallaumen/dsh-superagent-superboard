@@ -70,6 +70,11 @@ config :agent_board, Oban,
   # (the board then shows "sync failed" until the hour resets).
   plugins: [
     Oban.Plugins.Pruner,
+    # A restart (launchctl kickstart -k) leaves the running job `executing`
+    # for good; Oban starts no Lifeline unless asked. 30 minutes is far above
+    # the longest normal run (a full usage read, 3-4 min; a sync, seconds):
+    # Lifeline judges by time alone and must never take a live job.
+    {Oban.Lifeline, rescue_after: {30, :minutes}},
     {Oban.Plugins.Cron,
      crontab: [
        {"*/5 * * * *", AgentBoard.Sync.Worker},

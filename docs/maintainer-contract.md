@@ -652,6 +652,8 @@ read and cache write tokens, with the first and last time.
   entries (observed 2026-11-07): an estimate, never the bill. Codex has no
   US$ and is read as the share of its weekly window.
 - Days are UTC, like the AI budget and the ElevenLabs ledger.
+- A run a restart interrupts is discarded, not repeated; the next run picks
+  up the files it did not commit ("Jobs a restart interrupts").
 - **No conversation text is read or stored.** The readers keep numbers and
   named metadata only (`Usage.Fields`); the `threads` query names its
   columns and never reads `title`, `preview`, `name` or
@@ -910,6 +912,37 @@ The sync is isolated **per item**, not per repository:
 Every branch returns `:ok` or logs; nothing swallows an error silently and
 nothing takes the whole sync down for one bad item. Each branch has a test in
 `sync_repo_test.exs`.
+
+## Jobs a restart interrupts
+
+A restart of the service (`launchctl kickstart -k`, a crash) kills the
+running job and leaves its row `executing`: nothing will acknowledge it, and
+Oban 2.24 starts no rescuer unless configured. On 2026-11-07 the dev
+database held 24 such `Sync.Worker` rows, each from a different boot.
+
+- **`Oban.Lifeline` runs with `rescue_after: {30, :minutes}`**
+  (`config/config.exs`). Once a minute, on the leader, a job `executing` for
+  longer goes back to `available` while it has attempts left, else to
+  `discarded`.
+- **`rescue_after` stays far above the longest normal run**: a full usage
+  read takes 3–4 minutes, a sync seconds. Lifeline judges by time alone, so
+  a shorter value would hand a live job to a second run. A new job that can
+  run longer raises it first. A rescued live run could not overwrite the
+  newer one anyway: Oban acknowledges a job only while its `attempted_at`
+  still matches.
+- **A rescued sync costs no GitHub call.** It comes back `available`
+  (`max_attempts: 3`) with its original `scheduled_at`; `Sync.Worker`
+  cancels a job scheduled more than one cron period (five minutes) ago as
+  superseded, since the cron has enqueued a newer one. A retry or a snooze
+  that woke is scheduled seconds before it runs and syncs.
+- **A rescued usage run is discarded, never run again** (`max_attempts:
+  1`). Nothing is lost: the ledger commits each file, or Codex thread, with
+  its `usage_files` state in one transaction, so the next run reads the
+  interrupted file again.
+- The tests: `job_rescue_test.exs` (the board's `rescue_after` through the
+  engine call Lifeline makes: a sync back and cancelled, a usage run
+  discarded, a run past the longest one left alone, the config valid with
+  its plugins) and `sync_worker_test.exs` (superseded without a request).
 
 ## Boundaries
 
