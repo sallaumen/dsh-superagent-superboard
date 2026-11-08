@@ -1,5 +1,11 @@
 # Plano: a voz do agente falando com o dono
 
+> **Registro histórico:** plano de 6 de novembro de 2026, anterior à
+> implementação. Os itens marcados "(escolhido)" já foram entregues; as regras
+> vigentes estão em [maintainer-contract.md](maintainer-contract.md#the-voice) e o
+> uso atual em [voice-conversation.md](voice-conversation.md). Os itens adiados
+> (B6, B7, U6) seguem adiados.
+
 Workflow do kit: `notifications` (o que é falado, quando, quantas vezes e por
 que se repete). Data: 2026-11-06.
 
