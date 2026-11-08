@@ -442,6 +442,81 @@ defmodule AgentBoard.Runners do
     exception -> {:error, exception}
   end
 
+  @doc """
+  Stops one active execution at the owner's confirmed request: kills its tmux
+  session and records `stopped` with the partial cost. If the runner already
+  wrote done/failed, the tick's observation wins and nothing is killed.
+  """
+  @spec stop(Execution.t()) :: {:ok, Execution.t()} | {:error, term()}
+  def stop(%Execution{status: status}) when status not in @active, do: {:error, :not_running}
+
+  def stop(%Execution{} = execution) do
+    case read(execution.run_dir, "status") do
+      status when status in ["done", "failed"] ->
+        observe(execution)
+        {:error, :already_finished}
+
+      _ ->
+        session = "ab-" <> Path.basename(execution.run_dir)
+
+        case kill_session(session) do
+          :ok ->
+            stop_row(execution)
+
+          {:error, output} ->
+            after_failed_kill(execution, output)
+        end
+    end
+  end
+
+  # The session may have finished between the read and the kill.
+  defp after_failed_kill(execution, output) do
+    if read(execution.run_dir, "status") in ["done", "failed"] do
+      observe(execution)
+      {:error, :already_finished}
+    else
+      {:error, {:stop_failed, String.trim(output)}}
+    end
+  end
+
+  # The function injection keeps the test from needing a real tmux; the
+  # production call keeps a literal path so Sobelow can see the command.
+  defp kill_session(session) do
+    case Application.get_env(:agent_board, :tmux_killer) do
+      fun when is_function(fun, 1) -> fun.(session)
+      _ -> run_tmux(session)
+    end
+  end
+
+  defp run_tmux(session) do
+    case System.cmd(
+           "/opt/homebrew/bin/tmux",
+           ["kill-session", "-t", session],
+           stderr_to_stdout: true
+         ) do
+      {_, 0} -> :ok
+      {output, _} -> {:error, output}
+    end
+  rescue
+    exception -> {:error, Exception.message(exception)}
+  end
+
+  defp stop_row(execution) do
+    case save(execution, %{
+           status: "stopped",
+           error: "Parada pelo dono.",
+           cost_micros: read_micros(execution.run_dir, "cost_usd"),
+           finished_at: DateTime.utc_now()
+         }) do
+      {:ok, execution} ->
+        put_task_state(execution.task_id, "blocked")
+        {:ok, execution}
+
+      other ->
+        other
+    end
+  end
+
   # ---- observation ------------------------------------------------------------
 
   @doc "Reads the status files of active executions and records what changed."

@@ -103,6 +103,19 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           </div>
 
           <.live_component
+            :if={@dispatch_active and active_execution(@runner_executions)}
+            module={AgentAction}
+            id={"stop-execution-#{@task.id}"}
+            mode={:stop_execution}
+            tone={:halt}
+            task={@task}
+            execution={active_execution(@runner_executions)}
+            label="Parar execução"
+            confirm_label="Parar execução"
+            busy_label="Parando…"
+          />
+
+          <.live_component
             :if={
               not @dispatch_active and not @dispatch_paused and
                 fallback_kind(@dispatch_fallback) not in [:none, :budget]
@@ -560,6 +573,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       </p>
     </div>
     """
+  end
+
+  defp active_execution(executions) do
+    Enum.find(executions, &(&1.status in ["starting", "running"]))
   end
 
   defp fallback_kind(%{kind: kind}), do: kind

@@ -18,6 +18,9 @@ defmodule AgentBoardWeb.DispatchTest do
     previous_bins =
       Map.new([:claude_bin, :codex_bin], &{&1, Application.get_env(:agent_board, &1)})
 
+    previous_tmux = Application.get_env(:agent_board, :tmux_killer)
+    Application.put_env(:agent_board, :tmux_killer, fn _session -> :ok end)
+
     test_pid = self()
     fake_bin = Path.join(root, "fake-bin")
     File.write!(fake_bin, "#!/bin/sh\nexit 0\n")
@@ -45,6 +48,10 @@ defmodule AgentBoardWeb.DispatchTest do
           do: Application.put_env(:agent_board, key, value),
           else: Application.delete_env(:agent_board, key)
       end
+
+      if previous_tmux,
+        do: Application.put_env(:agent_board, :tmux_killer, previous_tmux),
+        else: Application.delete_env(:agent_board, :tmux_killer)
 
       Application.delete_env(:agent_board, :runner_launcher)
     end)
@@ -171,6 +178,30 @@ defmodule AgentBoardWeb.DispatchTest do
 
     assert Settings.get("dispatch_reserve_percent") == "25"
     assert has_element?(view, "#dispatch-settings-form-dispatch-settings [role=alert]")
+  end
+
+  test "the owner can stop the active execution from the inspector", %{
+    conn: conn,
+    task: task
+  } do
+    {:ok, view, _html} =
+      live(conn, "/?repo=fixture/dispatch&panel=conversation&task=#{task.id}")
+
+    view |> element("#dispatch-#{task.id}-trigger") |> render_click()
+    view |> element("#dispatch-#{task.id}-confirm") |> render_click()
+    assert_receive {:launched, _run_dir}, 1_000
+    Process.sleep(100)
+    _ = render(view)
+
+    view |> element("#stop-execution-#{task.id}-trigger") |> render_click()
+    assert has_element?(view, "#stop-execution-#{task.id}-q", "Parar a execução")
+    view |> element("#stop-execution-#{task.id}-confirm") |> render_click()
+    Process.sleep(100)
+    _ = render(view)
+
+    execution = Repo.one!(AgentBoard.Runners.Execution)
+    assert execution.status == "stopped"
+    assert Repo.get!(Task, task.id).state == "blocked"
   end
 
   test "the global pause stops a new dispatch and is visible on the board", %{

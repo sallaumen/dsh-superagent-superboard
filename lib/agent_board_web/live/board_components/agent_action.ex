@@ -40,6 +40,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:fallback, fn -> false end)
      |> assign_new(:retry, fn -> false end)
      |> assign_new(:reason, fn -> nil end)
+     |> assign_new(:execution, fn -> nil end)
      |> then(&assign(&1, :question, Actions.phrase(action(&1.assigns), params(&1.assigns))))}
   end
 
@@ -63,6 +64,19 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
         <p id={"#{@id}-q"} class="ab-act__question">{@question}</p>
         <div class="ab-act__buttons">
           <button
+            :if={@mode == :stop_execution}
+            id={"#{@id}-confirm"}
+            type="button"
+            class={["ab-btn ab-btn--sm", tone(@tone)]}
+            phx-click="stop_execution"
+            phx-value-id={@execution.id}
+            phx-value-confirm={@question}
+            phx-disable-with={@busy_label}
+            phx-mounted={JS.focus()}
+          >
+            {@confirm_label}
+          </button>
+          <button
             :if={@mode == :stop}
             id={"#{@id}-confirm"}
             type="button"
@@ -77,7 +91,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
             {@confirm_label}
           </button>
           <button
-            :if={@mode != :stop}
+            :if={@mode not in [:stop, :stop_execution]}
             id={"#{@id}-confirm"}
             type="button"
             class={["ab-btn ab-btn--sm", tone(@tone)]}
@@ -165,6 +179,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   defp action(%{mode: :retry}), do: :retry_ticket
   defp action(%{mode: :restart}), do: :start_agent
   defp action(%{mode: :dispatch}), do: :dispatch_task
+  defp action(%{mode: :stop_execution}), do: :stop_execution
   defp action(%{mode: :stop}), do: :stop_task
 
   defp params(%{mode: :retry} = assigns),
@@ -189,6 +204,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   end
 
   defp params(%{mode: :stop, task: task}), do: %{task: task}
+
+  defp params(%{mode: :stop_execution} = assigns),
+    do: %{execution: assigns.execution, task: assigns.task}
 
   defp repository(%Task{repository: %Repository{} = repository}), do: repository
   defp repository(%Task{repository_id: id}) when is_integer(id), do: Repo.get(Repository, id)
