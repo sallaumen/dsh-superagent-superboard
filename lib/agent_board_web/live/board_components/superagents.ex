@@ -84,6 +84,17 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
               busy_label="Aplicando…"
             />
 
+            <.live_component
+              module={AgentAction}
+              id={"superagent-remove-#{superagent.id}"}
+              mode={:remove_superagent}
+              tone={:halt}
+              superagent={superagent}
+              label="Remover"
+              confirm_label="Remover"
+              busy_label="Removendo…"
+            />
+
             <button
               :if={superagent.observed_state == "ready"}
               type="button"

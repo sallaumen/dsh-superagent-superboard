@@ -86,6 +86,7 @@ defmodule AgentBoard.Actions do
     :dispatch_task,
     :stop_execution,
     :provision_superagent,
+    :remove_superagent,
     :start_superagent,
     :stop_superagent,
     :pause_superagent,
@@ -169,6 +170,9 @@ defmodule AgentBoard.Actions do
 
   defp spec(:provision_superagent),
     do: %{risk: :red, does: "cria profile, porta, state e setup de um superagent novo"}
+
+  defp spec(:remove_superagent),
+    do: %{risk: :red, does: "para o superagent e arquiva profile/state; o projeto sai do board"}
 
   defp spec(:start_superagent),
     do: %{risk: :red, does: "inicia o superagent DeepSeek de um projeto"}
@@ -327,6 +331,16 @@ defmodule AgentBoard.Actions do
     do:
       "Provisionar o DeepSeek para #{repo_name(repo)} a partir de #{source.profile}? O board " <>
         "cria profile, porta e state, e usa o checkout #{short(path)}."
+
+  def phrase(:remove_superagent, %{superagent: superagent}, "en-US"),
+    do:
+      "Remove DeepSeek from #{project(superagent)}? The agent stops and its profile/state " <>
+        "are archived; nothing is deleted."
+
+  def phrase(:remove_superagent, %{superagent: superagent}, _lang),
+    do:
+      "Remover o DeepSeek de #{project(superagent)}? O agente para e o profile/state vão " <>
+        "para o arquivo; nada é apagado."
 
   def phrase(:archive_task, %{task: task}, "en-US"),
     do:
@@ -620,6 +634,13 @@ defmodule AgentBoard.Actions do
     end
   end
 
+  defp execute(:remove_superagent, %{superagent: superagent}) do
+    case Superagents.remove(superagent) do
+      {:ok, archive} -> {:ok, "Superagent removido; profile/state arquivados em #{archive}."}
+      {:error, reason} -> {:error, "Não foi possível remover: #{describe(reason)}"}
+    end
+  end
+
   defp execute(:start_superagent, %{superagent: superagent}) do
     case Superagents.start(superagent) do
       {:ok, _} -> {:ok, "Superagent iniciado. O status atualiza na próxima leitura."}
@@ -808,6 +829,11 @@ defmodule AgentBoard.Actions do
     do: profile
 
   defp subject(:provision_superagent, %{repository: repo}), do: "#{repo.owner}/#{repo.name}"
+
+  defp subject(:remove_superagent, %{
+         superagent: %AgentBoard.Superagents.Superagent{profile: profile}
+       }),
+       do: profile
 
   defp subject(:create_tasks, %{repository: repo, requests: requests}),
     do: "#{repo.owner}/#{repo.name} (#{length(requests)})"

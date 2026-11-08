@@ -183,6 +183,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   defp action(%{mode: :stop_execution}), do: :stop_execution
   defp action(%{mode: :start_superagent}), do: :start_superagent
   defp action(%{mode: :stop_superagent}), do: :stop_superagent
+  defp action(%{mode: :remove_superagent}), do: :remove_superagent
   defp action(%{mode: :stop}), do: :stop_task
 
   defp params(%{mode: :retry} = assigns),
@@ -211,8 +212,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   defp params(%{mode: :stop_execution} = assigns),
     do: %{execution: assigns.execution, task: assigns.task}
 
-  defp params(%{mode: mode} = assigns) when mode in [:start_superagent, :stop_superagent],
-    do: %{superagent: assigns.superagent}
+  defp params(%{mode: mode} = assigns)
+       when mode in [:start_superagent, :stop_superagent, :remove_superagent],
+       do: %{superagent: assigns.superagent}
 
   defp repository(%Task{repository: %Repository{} = repository}), do: repository
   defp repository(%Task{repository_id: id}) when is_integer(id), do: Repo.get(Repository, id)

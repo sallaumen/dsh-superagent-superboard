@@ -11,6 +11,7 @@ defmodule AgentBoard.Superagents do
   alias AgentBoard.Superagents.{Manager, Provisioner, Superagent, SuperagentEvent}
 
   @dsh_state Path.expand("~/.dsh/state")
+  @archive_root Path.expand("~/.agent_board/archived-superagents")
 
   @topic "superagents"
 
@@ -283,21 +284,106 @@ defmodule AgentBoard.Superagents do
   not restarted in a loop.
   """
   def reconcile(manager \\ Manager.impl()) do
-    Enum.each(list(), fn superagent ->
-      case {superagent.desired_state, superagent.observed_state} do
-        {"running", state} when state in ["stopped", "unknown"] ->
-          start(superagent, manager)
+    Enum.each(list(), &reconcile_one(&1, manager))
+  end
 
-        {"stopped", state} when state in ["ready", "paused", "starting"] ->
-          stop(superagent, manager)
+  defp reconcile_one(superagent, manager) do
+    case {superagent.desired_state, superagent.observed_state} do
+      {"running", state} when state in ["stopped", "unknown"] ->
+        start(superagent, manager)
 
-        {"paused", "ready"} ->
-          pause(superagent, true, manager)
+      {"running", "error"} ->
+        if unreachable?(superagent.last_error), do: start(superagent, manager), else: :ok
 
-        _ ->
-          :ok
-      end
-    end)
+      {"stopped", state} when state in ["ready", "paused", "starting"] ->
+        stop(superagent, manager)
+
+      {"paused", "ready"} ->
+        pause(superagent, true, manager)
+
+      _ ->
+        :ok
+    end
+  end
+
+  @doc """
+  Stop an agent, move its profile and state to the archive root and remove the
+  row. Nothing is deleted: the archive keeps the profile/state for recovery.
+  """
+  def remove(%Superagent{} = superagent, manager \\ Manager.impl()) do
+    with :ok <- stop_running(superagent, manager),
+         {:ok, archive} <- archive_dirs(superagent),
+         {:ok, _} <- Repo.delete(superagent) do
+      broadcast()
+      {:ok, archive}
+    end
+  end
+
+  defp stop_running(superagent, manager) do
+    case manager.status(superagent) do
+      {:ok, %{state: state}} when state in ["ready", "paused", "starting"] ->
+        manager.stop(superagent)
+
+      {:ok, _} ->
+        manager.stop(superagent)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp archive_dirs(superagent) do
+    root = Application.get_env(:agent_board, :superagent_archive_root, @archive_root)
+    stamp = DateTime.utc_now() |> DateTime.to_unix()
+    target = Path.join(root, "#{superagent.profile}-#{stamp}")
+    System.cmd("/bin/mkdir", ["-p", target])
+
+    with :ok <- move(profile_dir(superagent.profile), Path.join(target, "profile")),
+         :ok <- copy(superagent.state_dir, Path.join(target, "state")) do
+      {:ok, target}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp profile_dir(profile), do: Path.expand("~/.dsh/profiles/#{profile}")
+
+  defp copy(source, target) do
+    case :file.read_file_info(source) do
+      {:ok, _} ->
+        case System.cmd("/bin/cp", ["-R", source, target], stderr_to_stdout: true) do
+          {_output, 0} -> :ok
+          {output, _code} -> {:error, {String.slice(output, 0, 200), source, target}}
+        end
+
+      {:error, :enoent} ->
+        :ok
+
+      {:error, reason} ->
+        {:error, {reason, source}}
+    end
+  end
+
+  defp move(source, target) do
+    case :file.read_file_info(source) do
+      {:ok, _} ->
+        case :file.rename(source, target) do
+          :ok -> :ok
+          {:error, reason} -> {:error, {reason, source, target}}
+        end
+
+      {:error, :enoent} ->
+        :ok
+
+      {:error, reason} ->
+        {:error, {reason, source}}
+    end
+  end
+
+  defp unreachable?(nil), do: false
+
+  defp unreachable?(error) do
+    String.contains?(to_string(error), ["econnrefused", "unreachable", "TransportError"])
   end
 
   @doc "Record one lifecycle event."

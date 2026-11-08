@@ -32,6 +32,7 @@ defmodule AgentBoard.ActionsTest do
     :dispatch_task,
     :stop_execution,
     :provision_superagent,
+    :remove_superagent,
     :start_superagent,
     :stop_superagent,
     :pause_superagent,
@@ -190,7 +191,7 @@ defmodule AgentBoard.ActionsTest do
 
         %{repository: target, source: source, path: "/tmp/checkout", workers: 2}
 
-      name when name in [:start_superagent, :stop_superagent] ->
+      name when name in [:start_superagent, :stop_superagent, :remove_superagent] ->
         %{superagent: superagent!(repo, name)}
 
       :start_agent ->
@@ -246,7 +247,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 13
+      assert length(reds) == 14
 
       for name <- reds do
         params = red_params(name, context)
@@ -260,7 +261,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 13
+      assert Repo.aggregate(Task, :count, :id) == 14
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -457,6 +458,51 @@ defmodule AgentBoard.ActionsTest do
       assert superagent = Superagents.get_by_repository(target)
       assert superagent.max_workers == 2
       assert %Decision{action: "provision_superagent", outcome: "ok"} = last()
+    end
+
+    test "remove_superagent archives the row and its state", _context do
+      {:ok, pid} = FakeManager.start()
+      root = Path.join(System.tmp_dir!(), "archive-actions-#{System.unique_integer([:positive])}")
+      state = Path.join(root, "state")
+      File.mkdir_p!(state)
+      previous = Application.get_env(:agent_board, :superagent_manager)
+      previous_root = Application.get_env(:agent_board, :superagent_archive_root)
+      Application.put_env(:agent_board, :superagent_manager, FakeManager)
+      Application.put_env(:agent_board, :superagent_archive_root, Path.join(root, "archive"))
+
+      on_exit(fn ->
+        if previous,
+          do: Application.put_env(:agent_board, :superagent_manager, previous),
+          else: Application.delete_env(:agent_board, :superagent_manager)
+
+        if previous_root,
+          do: Application.put_env(:agent_board, :superagent_archive_root, previous_root),
+          else: Application.delete_env(:agent_board, :superagent_archive_root)
+
+        if Process.alive?(pid), do: Agent.stop(pid)
+        File.rm_rf!(root)
+      end)
+
+      {:ok, source_repo} = Board.add_repository("fixture", "remove-source")
+
+      {:ok, superagent} =
+        Superagents.create(%{
+          repository_id: source_repo.id,
+          profile: "superagent-remove-action",
+          port: 3392,
+          state_dir: state
+        })
+
+      FakeManager.put(superagent.id, %{state: "ready"})
+      phrase = Actions.phrase(:remove_superagent, %{superagent: superagent})
+
+      assert {:ok, text} =
+               Actions.run(:remove_superagent, %{superagent: superagent}, Actions.owner(:ui),
+                 confirm: phrase
+               )
+
+      assert text =~ "arquivados"
+      refute Superagents.get_by_repository(source_repo)
     end
 
     test "superagent start, stop, pause, resume and scale are actions", %{repo: repo} do

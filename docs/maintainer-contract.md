@@ -138,6 +138,7 @@ each door; a yellow or green action runs on the click and is recorded as
 | `start_superagent` | red | starts the DeepSeek superagent of one project | UI: `AgentAction` "Ligar" in the Superagentes panel, two steps |
 | `stop_superagent` | red | stops that superagent; in-flight work is interrupted | UI: `AgentAction` "Parar", two steps |
 | `pause_superagent` / `resume_superagent` | yellow | pauses/resumes new work without killing the process | UI: one click |
+| `remove_superagent` | red | stops the agent, archives profile/state and removes the project from the board | UI: `AgentAction` "Remover", two steps |
 | `scale_superagent` | yellow | changes `maxWorkers` through the DSH settings API | UI: −/+ on the project card |
 | `start_agent` | red | runs `dsh-superagent start` on this machine; clears a stop made on purpose | UI: `AgentAction` "Religar o agente" |
 | `set_max_workers` | yellow | `PUT settings/executor` with the new ceiling (− and + undo it) | UI: one click on the Paralelismo tile |
@@ -727,6 +728,14 @@ that watches one GitHub repository and picks the issues whose body mentions
   copies source/executor/policy/prompts through the DSH API; a failure keeps
   the row in `error` with the reason and rolls the half-project back.
   `DshProvisioner` is the real adapter; `FakeProvisioner` covers the tests.
+- **Removal preserves the state.** `remove_superagent` stops the process and
+  copies the state (and moves the profile) under
+  `~/.agent_board/archived-superagents/<profile>-<unix>`; the row leaves the
+  board, so the repository can be provisioned again. Nothing is deleted.
+- **The board owns the boot.** The ticker reconciles `desired=running` rows
+  after a board restart: a process that is stopped/unknown, or an
+  `econnrefused` error, is started again. Per-profile LaunchAgents are no
+  longer required; the board LaunchAgent is the single boot entry.
 - **The board has a Superagentes panel.** It lists one card per registered
   project (repository, profile, port, workers, desired/observed state, last
   read and error) and exposes **Ligar**, **Parar**, **Pausar**, **Retomar**
