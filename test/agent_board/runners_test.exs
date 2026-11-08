@@ -73,6 +73,19 @@ defmodule AgentBoard.RunnersTest do
              Runners.dispatch(task, "claude", launcher: launcher(test_pid))
   end
 
+  test "a missing executor binary refuses before starting", %{task: task} do
+    previous = Application.get_env(:agent_board, :claude_bin)
+    Application.put_env(:agent_board, :claude_bin, "/definitely/not/claude")
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:agent_board, :claude_bin, previous),
+        else: Application.delete_env(:agent_board, :claude_bin)
+    end)
+
+    assert {:error, :runner_missing} = Runners.check(task, "claude")
+  end
+
   test "pause, monthly cap and the Codex reserve stop a new execution", %{task: task} do
     :ok = Settings.put("dispatch_paused", "true")
     assert {:error, :paused} = Runners.check(task, "claude")

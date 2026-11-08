@@ -117,6 +117,7 @@ defmodule AgentBoard.Runners do
       paused?() -> {:error, :paused}
       active_for_task?(task.id) -> {:error, :already_running}
       executor not in ["claude", "codex"] -> {:error, :unknown_executor}
+      not File.exists?(binary(executor)) -> {:error, :runner_missing}
       true -> budget(executor, opts)
     end
   end
@@ -542,6 +543,11 @@ defmodule AgentBoard.Runners do
   def claude_bin, do: Application.get_env(:agent_board, :claude_bin, @claude_default_bin)
 
   def codex_bin, do: Application.get_env(:agent_board, :codex_bin, @codex_default_bin)
+
+  @doc "The CLI path the executor uses."
+  def binary("claude"), do: claude_bin()
+  def binary("codex"), do: codex_bin()
+  def binary(_executor), do: ""
 
   defp setting_float(key, default) do
     case Float.parse(Settings.get(key) || "") do
