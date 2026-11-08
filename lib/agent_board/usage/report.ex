@@ -49,9 +49,9 @@ defmodule AgentBoard.Usage.Report do
           exact: boolean()
         }
 
-  @doc "The first day of the default window (30 days back, UTC)."
+  @doc "The first day of a window of `days` UTC dates, today included."
   @spec since(integer()) :: Date.t()
-  def since(days \\ @default_days), do: Date.add(Date.utc_today(), -days)
+  def since(days \\ @default_days), do: Date.add(Date.utc_today(), -(days - 1))
 
   @doc "The ledger rows from `since` (a UTC date) on, oldest first."
   @spec rows(Date.t(), Date.t() | nil) :: [map()]
@@ -146,6 +146,172 @@ defmodule AgentBoard.Usage.Report do
     |> executions(opts)
     |> Enum.filter(&(&1.task_id == task_id))
     |> Enum.sort_by(& &1.last_at, {:desc, DateTime})
+  end
+
+  @doc """
+  One summary per executor for the panel: sessions, tasks, direct sessions by
+  repository, sessions outside the board, tokens, the cost in the executor's
+  own currency, and how many of its tasks merged and how long that took.
+  """
+  @spec executors(Date.t(), keyword()) :: [map()]
+  def executors(since, opts \\ []) do
+    executions = executions(since, opts)
+    tasks = task_refs(executions)
+    merged = merged_by_task(tasks)
+    quota = Costs.codex_weekly(Ledger.limits())
+
+    @source_order
+    |> Enum.sort_by(fn {_source, rank} -> rank end)
+    |> Enum.map(fn {source, _rank} ->
+      mine = Enum.filter(executions, &(&1.source == source))
+      summary(source, mine, tasks, merged, quota)
+    end)
+  end
+
+  defp summary(source, executions, tasks, merged, quota) do
+    task_ids = executions |> Enum.map(& &1.task_id) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    merged_tasks = Enum.filter(task_ids, &Map.has_key?(merged, &1))
+    hours = Enum.map(merged_tasks, &Map.fetch!(merged, &1))
+
+    cost =
+      case Enum.filter(executions, & &1.cost) do
+        [] ->
+          nil
+
+        priced ->
+          %{
+            micros: Enum.sum(Enum.map(priced, & &1.cost.micros)),
+            complete?: Enum.all?(priced, & &1.cost.complete?),
+            unknown: length(executions) - length(priced)
+          }
+      end
+
+    %{
+      source: source,
+      executions: length(executions),
+      tasks:
+        task_ids
+        |> Enum.map(&Map.get(tasks, &1))
+        |> Enum.reject(&is_nil/1)
+        |> Enum.sort_by(& &1.number, :desc)
+        |> Enum.take(8),
+      tasks_count: length(task_ids),
+      direct: frequency(executions, &direct_repository/1),
+      outside: frequency(executions, fn execution -> execution.outside end),
+      unknown: Enum.count(executions, &(&1.attribution == :unknown)),
+      requests: sum(executions, :requests),
+      input_tokens: sum(executions, :input_tokens),
+      output_tokens: sum(executions, :output_tokens),
+      cache_read_tokens: sum(executions, :cache_read_tokens),
+      cache_write_tokens: sum(executions, :cache_write_tokens),
+      models: executions |> Enum.flat_map(& &1.models) |> Enum.uniq() |> Enum.sort(),
+      cost: cost,
+      quota: if(source == "codex", do: quota),
+      merged: %{
+        tasks: length(task_ids),
+        merged: length(merged_tasks),
+        rate: if(task_ids == [], do: nil, else: length(merged_tasks) / length(task_ids)),
+        median_hours: median(hours)
+      }
+    }
+  end
+
+  defp task_refs(executions) do
+    ids = executions |> Enum.map(& &1.task_id) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    if ids == [] do
+      %{}
+    else
+      Repo.all(
+        from t in "tasks",
+          where: t.id in type(^ids, {:array, :integer}),
+          select: %{
+            id: t.id,
+            number: t.number,
+            title: t.title,
+            state: t.state,
+            repository_id: t.repository_id,
+            inserted_at: t.inserted_at
+          }
+      )
+      |> Map.new(&{&1.id, &1})
+    end
+  end
+
+  # The earliest merged PR that closes each task's issue, per task id, in
+  # hours from the task's creation.
+  defp merged_by_task(tasks) do
+    list = Map.values(tasks)
+
+    pulls =
+      if list == [] do
+        []
+      else
+        repo_ids = list |> Enum.map(& &1.repository_id) |> Enum.uniq()
+
+        Repo.all(
+          from p in "pull_requests",
+            where: p.repository_id in ^repo_ids and not is_nil(p.merged_at),
+            order_by: [asc: p.merged_at],
+            select: %{
+              repository_id: p.repository_id,
+              merged_at: type(p.merged_at, :utc_datetime),
+              closes_issues: p.closes_issues
+            }
+        )
+      end
+
+    list
+    |> Enum.flat_map(fn task ->
+      case merged_hours(task, pulls) do
+        nil -> []
+        hours -> [{task.id, hours}]
+      end
+    end)
+    |> Map.new()
+  end
+
+  defp merged_hours(task, pulls) do
+    pulls
+    |> Enum.filter(
+      &(&1.repository_id == task.repository_id and task.number in (&1.closes_issues || []))
+    )
+    |> Enum.map(& &1.merged_at)
+    |> Enum.min(fn -> nil end)
+    |> case do
+      nil -> nil
+      at -> seconds_between(at, task.inserted_at) / 3600
+    end
+  end
+
+  defp seconds_between(a, b),
+    do: NaiveDateTime.diff(to_naive(a), to_naive(b), :second)
+
+  defp to_naive(%DateTime{} = at), do: DateTime.to_naive(at)
+  defp to_naive(%NaiveDateTime{} = at), do: at
+
+  defp direct_repository(%{attribution: {:repository, _id}, repository: name}), do: name
+  defp direct_repository(_execution), do: nil
+
+  defp frequency(executions, fun) do
+    executions
+    |> Enum.map(fun)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.frequencies()
+    |> Enum.sort_by(fn {name, count} -> {-count, name} end)
+  end
+
+  defp median([]), do: nil
+
+  defp median(values) do
+    sorted = Enum.sort(values)
+    middle = div(length(sorted), 2)
+
+    if rem(length(sorted), 2) == 0 do
+      (Enum.at(sorted, middle - 1) + Enum.at(sorted, middle)) / 2
+    else
+      Enum.at(sorted, middle)
+    end
   end
 
   @doc """

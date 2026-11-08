@@ -676,11 +676,24 @@ read and cache write tokens, with the first and last time.
   two continuations forked (1.2 M and 5.0 M more). Forcing the 5,969 files
   untouched for two hours to be read again changed none of their 5,843
   rows.
+- **The screens read `AgentBoard.Usage.Report`**, never the ledger tables.
+  The `Executores` panel (7 or 30 days) shows, per executor, sessions, tasks,
+  requests/tokens, the cost in its own currency, the direct sessions per
+  repository, the ones outside the board, the merged-task rate and the median
+  time to merge. The inspector's `Execuções` tab lists one task's executions,
+  attributed by `AgentBoard.Attribution` (the session's cwd and branch, and a
+  live harness ticket's folder for the exact rule). The panel reads once when
+  it opens or when the window changes; the tab reads when it opens and reuses
+  the reading while the task stays open, so a board render adds no query.
+  Every value says **medido**, **estimado** or **desconhecido**; "fora do
+  board" carries no task.
 - The tests: `ledger_test.exs` (the reader's groups, no change on a second
   read, a grown and a rewritten transcript, a copy that never counts twice,
   Codex days against `tokens_used`, the newest quota, the harness through
   `ExecutorUsage`, an unreadable file, one row per source and day),
-  `claude_code_test.exs` and `codex_test.exs`.
+  `claude_code_test.exs`, `codex_test.exs` and `report_test.exs` (the three
+  currencies, the minimum and the unknown, the median, the window, the
+  executor summary), and `executors_test.exs` (the panel and the tab).
 
 ## Attribution
 

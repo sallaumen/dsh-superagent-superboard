@@ -6,7 +6,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
 
-  @panels ~w(activity intake ai conversation voice history composer shortcuts)
+  @panels ~w(activity intake ai conversation voice history composer shortcuts executors)
 
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
@@ -59,7 +59,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   defp default_tab(%Task{state: "running"}), do: "atividade"
   defp default_tab(_task), do: "conversa"
 
-  defp tab_param(tab) when tab in ~w(conversa atividade chamadas pr), do: tab
+  defp tab_param(tab) when tab in ~w(conversa atividade chamadas execucoes pr), do: tab
   defp tab_param(_tab), do: nil
 
   def open_task(socket, id, tab \\ nil) do
@@ -70,7 +70,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   end
 
   def open_panel(socket, panel)
-      when panel in ["activity", "intake", "ai", "history", "composer", "shortcuts"] do
+      when panel in ["activity", "intake", "ai", "history", "composer", "shortcuts", "executors"] do
     if socket.assigns.repo,
       do: push_patch(socket, to: path(socket.assigns.repo, panel)),
       else: socket

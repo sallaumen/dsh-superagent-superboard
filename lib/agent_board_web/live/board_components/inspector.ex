@@ -15,6 +15,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :tab, :string, required: true
   attr :activity, :list, required: true
   attr :calls, :list, required: true
+  attr :executions, :list, default: []
   attr :usage, :map, default: nil
   attr :pr, :any, default: nil
   attr :ci, :map, default: nil
@@ -29,6 +30,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       {"conversa", "Conversa", length(assigns.comments)},
       {"atividade", "Atividade", length(assigns.activity)},
       {"chamadas", "Chamadas de IA", length(assigns.calls)},
+      {"execucoes", "Execuções", length(assigns.executions)},
       {"pr", "PR", nil}
     ]
 
@@ -145,6 +147,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             <.activity_tab activity={@activity} offset={@tz_offset} />
           <% "chamadas" -> %>
             <.calls_tab calls={@calls} totals={@totals} usage={@usage} offset={@tz_offset} />
+          <% "execucoes" -> %>
+            <.executions_tab executions={@executions} task={@task} pr={@pr} offset={@tz_offset} />
           <% "pr" -> %>
             <.pr_tab pr={@pr} ci={@ci} offset={@tz_offset} />
           <% _ -> %>
@@ -385,6 +389,94 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       <.executor_usage usage={@usage} />
     </div>
     """
+  end
+
+  attr :executions, :list, required: true
+  attr :task, :any, required: true
+  attr :pr, :any, default: nil
+  attr :offset, :integer, default: 0
+
+  defp executions_tab(assigns) do
+    ~H"""
+    <div>
+      <p class="ab-meta">
+        Resultado da tarefa: <b>{task_result(@task, @pr)}</b>.
+        <span :if={@executions == []}>Nenhuma execução desta tarefa no livro de uso.</span>
+      </p>
+
+      <div :if={@executions != []} class="ab-table-wrap">
+        <table class="ab-table">
+          <thead>
+            <tr>
+              <th>Executor</th>
+              <th>Modelo</th>
+              <th>Início</th>
+              <th>Fim</th>
+              <th class="r">Requisições</th>
+              <th class="r">Entrada</th>
+              <th class="r">Saída</th>
+              <th class="r">Custo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={execution <- @executions}>
+              <td>{executor_label(execution.source)}</td>
+              <td>{models(execution.models)}</td>
+              <td>{Time.local_time(execution.first_at, @offset)}</td>
+              <td>{Time.local_time(execution.last_at, @offset)}</td>
+              <td class="r">{execution.requests}</td>
+              <td class="r">{tokens(execution.input_tokens)}</td>
+              <td class="r">{tokens(execution.output_tokens)}</td>
+              <td class="r">{execution_cost(execution)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p :if={@executions != []} class="ab-meta">
+        Tokens medidos. O custo é estimado na moeda de cada executor; "lista"
+        é o preço de referência do Claude Max, não a fatura. O Codex não tem US$:
+        a cota semanal fica no painel Executores. Uma sessão sem branch de PR
+        nem vínculo direto não aparece como tarefa, e o livro não guarda o
+        resultado de cada sessão.
+      </p>
+    </div>
+    """
+  end
+
+  defp executor_label("dsh"), do: "DeepSeek"
+  defp executor_label("claude_code"), do: "Claude Code"
+  defp executor_label("codex"), do: "Codex"
+  defp executor_label(source), do: source
+
+  defp execution_cost(%{source: "codex"}), do: "desconhecido"
+  defp execution_cost(%{cost: nil}), do: "desconhecido"
+
+  defp execution_cost(%{source: "claude_code", cost: %{micros: micros, complete?: true}}),
+    do: "≈ #{cost(micros)} lista"
+
+  defp execution_cost(%{source: "claude_code", cost: %{micros: micros}}),
+    do: "≥ #{cost(micros)} lista"
+
+  defp execution_cost(%{cost: %{micros: micros, complete?: true}}), do: "≈ #{cost(micros)}"
+  defp execution_cost(%{cost: %{micros: micros}}), do: "≥ #{cost(micros)}"
+
+  @task_results %{
+    "done" => "mesclado",
+    "blocked" => "bloqueado",
+    "question" => "pergunta",
+    "ready" => "para revisar",
+    "running" => "em andamento",
+    "retrying" => "tentando de novo",
+    "queued" => "na fila",
+    "stopped" => "parado",
+    "archived" => "arquivado",
+    "closed" => "fechado sem merge"
+  }
+
+  defp task_result(task, pr) do
+    word = Map.get(@task_results, task.state, "desconhecido")
+    if pr, do: "#{word}, PR ##{pr.number}", else: word
   end
 
   attr :usage, :map, default: nil
