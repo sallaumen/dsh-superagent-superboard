@@ -1122,3 +1122,4 @@ body { margin: 0; background: var(--paper); }
 .board-dialog .board-settings-body { width: 100%; max-width: 100%; right: auto; left: auto; }
 .dispatch-settings__grid { min-width: 0; }
 .dispatch-settings input { width: 100%; box-sizing: border-box; }
+.dispatch-settings .ab-meta, .dispatch-settings code { overflow-wrap: anywhere; word-break: break-word; }
