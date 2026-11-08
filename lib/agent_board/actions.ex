@@ -58,6 +58,7 @@ defmodule AgentBoard.Actions do
     Executors,
     Orchestrator,
     Repo,
+    Runners,
     Settings,
     Voice
   }
@@ -81,6 +82,7 @@ defmodule AgentBoard.Actions do
     :resume_task,
     :retry_ticket,
     :auto_retry_ticket,
+    :dispatch_task,
     :start_agent,
     :set_max_workers,
     :add_repository,
@@ -148,6 +150,12 @@ defmodule AgentBoard.Actions do
       }
     }
 
+  defp spec(:dispatch_task),
+    do: %{
+      risk: :red,
+      does: "inicia o Claude Code ou o Codex num worktree e gasta a assinatura do dono"
+    }
+
   defp spec(:start_agent),
     do: %{risk: :red, does: "liga o orquestrador nesta máquina e desfaz um stop de propósito"}
 
@@ -157,7 +165,10 @@ defmodule AgentBoard.Actions do
   defp spec(:add_repository), do: %{risk: :yellow, does: "passa a acompanhar um repositório"}
 
   defp spec(:change_setting),
-    do: %{risk: :yellow, does: "muda uma preferência do board (a voz, o resumo do dia)"}
+    do: %{
+      risk: :yellow,
+      does: "muda uma preferência do board (a voz, o resumo do dia, o despacho)"
+    }
 
   defp spec(:dismiss_summary), do: %{risk: :yellow, does: "tira o resumo do dia da tela"}
 
@@ -255,6 +266,27 @@ defmodule AgentBoard.Actions do
     do:
       "Nova tentativa automática do ticket #{id} (#{params[:attempt] || "?"} de #{@max_retries}) " <>
         "depois de uma falha de rede ou do provedor."
+
+  def phrase(:dispatch_task, %{task: task, executor: executor} = params, _lang) do
+    repo = params[:repository] || task.repository
+    repo_name = if repo, do: "#{repo.owner}/#{repo.name}", else: "o repositório da tarefa"
+    ceiling = params[:ceiling_usd]
+
+    ceiling_text =
+      if is_number(ceiling) do
+        amount =
+          :erlang.float_to_binary(ceiling / 1, decimals: 2) |> String.replace(".", ",")
+
+        " O board abre um worktree e a execução gasta até US$ #{amount} da assinatura."
+      else
+        " O board abre um worktree e a execução gasta a assinatura."
+      end
+
+    "Despachar a tarefa ##{task.number}, #{q(short(task.title))}, para o " <>
+      "#{Executors.name(executor)} em #{repo_name}?" <>
+      ceiling_text <>
+      " Nada começa sem esta confirmação."
+  end
 
   def phrase(:start_agent, _params, _lang),
     do: "Religar o agente nesta máquina? Se você o parou de propósito, isso desfaz o stop."
@@ -435,6 +467,24 @@ defmodule AgentBoard.Actions do
   defp execute(:auto_retry_ticket, %{ticket_id: ticket_id} = params),
     do: Orchestrator.retry(orchestrator(params), ticket_id)
 
+  defp execute(:dispatch_task, %{task: task, executor: executor} = params) do
+    opts =
+      [ceiling_usd: params[:ceiling_usd]]
+      |> then(fn opts ->
+        if params[:launcher], do: Keyword.put(opts, :launcher, params.launcher), else: opts
+      end)
+
+    case Runners.dispatch(task, executor, opts) do
+      {:ok, execution} ->
+        {:ok,
+         "Despacho iniciado no #{Executors.name(executor)} " <>
+           "(sessão #{execution.session_id || execution.id}). O progresso aparece em Execuções."}
+
+      {:error, reason} ->
+        {:error, dispatch_error(reason)}
+    end
+  end
+
   defp execute(:start_agent, params), do: AgentControl.start_agent(Map.get(params, :opts, []))
 
   defp execute(:set_max_workers, %{max: max} = params),
@@ -454,6 +504,14 @@ defmodule AgentBoard.Actions do
 
   defp execute(:change_setting, %{setting: "daily_summary", value: form}),
     do: DailySummary.put_settings(form)
+
+  # The dispatch switches and limits are board-wide settings, written through
+  # the same action as the voice ones.
+  defp execute(:change_setting, %{setting: setting, value: value})
+       when setting in ~w(dispatch_paused dispatch_monthly_usd dispatch_task_usd
+                          dispatch_codex_timeout_minutes dispatch_reserve_percent
+                          dispatch_claude_model dispatch_codex_model),
+       do: Settings.put(setting, value)
 
   defp execute(:change_setting, %{setting: setting, value: value}) do
     case Map.fetch(@settings, setting) do
@@ -519,6 +577,27 @@ defmodule AgentBoard.Actions do
   defp outcome(_name, {:ok, _, _}), do: {"ok", nil}
   defp outcome(_name, {:error, reason}), do: {"error", describe(reason)}
   defp outcome(_name, other), do: {"error", describe(other)}
+
+  defp dispatch_error(:paused), do: "o despacho está pausado"
+  defp dispatch_error(:already_running), do: "esta tarefa já tem uma execução em andamento"
+
+  defp dispatch_error(:monthly_budget),
+    do: "o gasto do mês já chegou ao teto do Claude Code"
+
+  defp dispatch_error(:budget_unknown),
+    do: "o gasto do mês tem um modelo sem preço; o teto não pode ser conferido"
+
+  defp dispatch_error(:quota_reserved),
+    do: "a cota semanal do Codex está dentro da reserva do dono"
+
+  defp dispatch_error(:task_closed), do: "a tarefa já terminou ou está parada"
+
+  defp dispatch_error(:executor_mismatch),
+    do: "a tarefa é de outro executor; escolha o executor na tarefa antes de despachar"
+
+  defp dispatch_error(:repo_missing), do: "o checkout local do repositório não existe"
+  defp dispatch_error(:no_repository), do: "a tarefa não tem repositório"
+  defp dispatch_error(reason), do: describe(reason)
 
   defp describe(%{__exception__: true} = exception), do: Exception.message(exception)
   defp describe(text) when is_binary(text), do: text

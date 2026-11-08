@@ -463,6 +463,12 @@ defmodule AgentBoard.Sync do
   end
 
   defp apply_ticket(repository, by_number, ticket) do
+    if AgentState.same_repository?(ticket, repository) do
+      apply_ticket_numbers(repository, by_number, ticket)
+    end
+  end
+
+  defp apply_ticket_numbers(repository, by_number, ticket) do
     Enum.each(ticket["numbers"], fn number ->
       case ticket_state(ticket,
              workpad: fn -> Board.agent_workpad(repository.id, number) end,

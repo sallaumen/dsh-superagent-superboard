@@ -1,14 +1,13 @@
 # ADR 0004 — O board despacha para executores locais
 
-- **Decisão proposta:** o board pode despachar uma tarefa para o Claude Code
-  ou o Codex locais por uma **ação confirmada** do registro de ações, com
+- **Decisão:** o board pode despachar uma tarefa para o Claude Code ou o
+  Codex locais por uma **ação confirmada** do registro de ações, com
   orçamento e cota checados antes de iniciar, um processo que não é filho do
   board e uma linha por execução. O board continua observando; ele não fala
-  com o modelo nem controla a máquina. Nenhum runner é implementado neste
-  PR.
-- **Estado:** proposta. Depende de D1, D2, D3 e D5, respondidas pelo dono.
-  Até lá o board só sugere e registra a escolha (F2.4); Claude Code e Codex
-  continuam sendo abertos à mão.
+  com o modelo nem controla a máquina.
+- **Estado:** **aceita em 2026-11-08 pelo dono**. D1, D2, D3 e D5 foram
+  respondidas (abaixo) e a Fase 3 está implementada em `AgentBoard.Runners`;
+  o ADR registra a fronteira e o contrato em "Dispatch (despacho local)".
 - **Escopo:** as regras da seção 3.6 de
   [`docs/research/alfred.md`](../research/alfred.md); não altera o contrato
   nesta entrega.
@@ -88,31 +87,22 @@ Estas são as regras da seção 3.6 do plano, em forma de contrato.
 9. **Nada disso sai do localhost.** A API do board não ganha autenticação
    neste ADR; o despacho é acionado pelo dono na máquina dele.
 
-## Perguntas em aberto (o dono decide)
+## Decisões do dono (2026-11-08)
 
-Estas são as decisões que travam a fase 3. Nenhuma delas muda as fases 1 e 2,
-que já estão no ar.
+| # | Decisão | Resposta |
+|---|---|---|
+| **D1** | O board pode iniciar Claude Code e Codex locais por uma ação confirmada? | **Sim.** A ação vermelha `dispatch_task`, com a frase e o teto, é a única porta. |
+| **D2** | Orçamento mensal, teto por tarefa e reserva das assinaturas | **US$ 300/mês, US$ 5 por tarefa no Claude Code, 30 minutos no Codex e 50 % da cota semanal reservada**, todos configuráveis em Configurações (`dispatch_*`); nenhum valor é somado entre executores. |
+| **D3** | Os termos das assinaturas cobrem execução headless para uso pessoal? | **Sim, para uso pessoal**, confirmado pelo dono; nenhuma credencial nova é criada. |
+| **D5** | Quem abre e mescla os PRs? | **A conta do dono**, com o `gh` já autenticado e a mesma política de entrega do DSH; o token do bot não entra no runner. |
 
-| # | Pergunta | Por que trava | O que muda se a resposta for "não" |
-|---|---|---|---|
-| **D1** | O board pode iniciar Claude Code e Codex locais por uma ação confirmada (a fronteira deste ADR)? | Sem isso não existe runner; é a autorização da escrita que gasta | Fases 1, 2 e 4.2–4.4 continuam valendo com o despacho manual; a fase 3 inteira fica de fora |
-| **D2** | Qual é o orçamento mensal, o teto por tarefa de cada executor e quanto da cota das assinaturas fica reservado para o uso direto do dono? | O roteador e o runner checam antes de iniciar; sem números não há como recusar nem avisar | O board pode sugerir e registrar, mas o runner não é ligado; ou liga sem teto, com o risco de consumir a assinatura |
-| **D3** | Os termos das assinaturas cobrem execução headless (`claude -p`, `codex exec`) despachada pelo board, para uso pessoal? | É a diferença entre automação pessoal e uso proibido; nenhuma credencial nova resolve isso | O despacho fica manual e o board só observa as execuções abertas pelo dono |
-| **D5** | Quem abre e mescla os PRs de Claude e Codex: o bot `sallaumen-agent` ou a conta do dono? E vale a mesma política de merge do DSH? | O runner precisa de um `gh` autenticado com escrita; o autor do PR muda a atribuição e a revisão | Se for a conta do dono, o runner usa o login já presente; se for o bot, o token dele entra no ambiente do runner |
-
-Perguntas menores, que podem ser respondidas depois de D1–D3 e D5:
-
-- Como ler a cota da assinatura do Claude sem abrir o app? Sem isso o Claude
-  entra no roteador com disponibilidade desconhecida (já é o comportamento
-  atual).
-- O workpad e o gate local do runner são lidos do mesmo `docs/agent/prompts/`
-  do DSH ou precisam de uma variante por executor?
-- Qual é o tempo máximo de uma execução antes de o board a considerar
-  silenciosa e pedir decisão?
-
-D4 (quais repositórios entram no board) já foi respondida: só
+D4 (quais repositórios entram no board) já estava respondida: só
 `sallaumen/arena-rogue` e `sallaumen/o_colmex`; uso em outros repositórios
 aparece como "fora do board", sem tarefa.
+
+Perguntas menores que ficam para a operação: ler a cota do Claude sem abrir
+o app (hoje desconhecida), o tempo máximo de uma execução antes do aviso de
+silêncio e a variante do prompt por executor.
 
 ## Alternativas
 
@@ -129,25 +119,22 @@ aparece como "fora do board", sem tarefa.
 A proposta mantém o board no papel que ele já tem: o centro de controle que
 **observa** e **pede**, nunca o processo que executa. O runner é um detalhe
 trocável; o contrato é o registro de ações, o orçamento antes do gasto e uma
-linha por execução. Se o dono aceitar D1–D3 e D5, a implementação entra em
-PRs separados, na ordem do plano:
+linha por execução. O dono aceitou D1–D3 e D5 em 2026-11-08; a
+implementação entrou em PRs separados, na ordem do plano:
 
-1. F3.1 — runner do Claude Code, worktree, `--session-id`, resultado e
-   observação;
-2. F3.2 — runner do Codex, `codex exec --json` e captura da thread;
-3. F3.3 — pausar despacho e uma execução por tarefa;
-4. F3.4 — objetivo com critério de pronto;
-5. F3.5 — fallback e retentativa sem gasto duplicado.
-
-Se qualquer resposta for "não", o ADR continua válido como registro do que
-foi recusado; a fase 3 não começa. As fases 1 e 2 não dependem dele.
+F3.1 (runner do Claude Code, worktree, `--session-id`, resultado e
+observação), F3.2 (runner do Codex, `codex exec --json` e captura da thread)
+e F3.3 (pausa global e uma execução por tarefa) estão implementados e
+testados. F3.4 (objetivo com critério de pronto) e F3.5 (fallback e
+retentativa sem gasto duplicado) continuam como trabalho separado.
 
 ## Riscos e limites
 
-- **Termos das assinaturas:** o risco maior não é técnico; D3 é a pergunta
-  que pode encerrar a fase 3.
+- **Termos das assinaturas:** o risco maior não é técnico; D3 foi confirmada
+  pelo dono para uso pessoal, e o despacho continua local, sem produto.
 - **Cota compartilhada:** uma execução despachada consome a mesma cota que o
-  dono usa à mão; D2 precisa dizer quanto fica reservado.
+  dono usa à mão; D2 decidiu reservar 50 % da janela semanal do Codex, e o
+  Claude Code tem teto por tarefa e por mês.
 - **Processo sobrevivente:** o runner precisa de um lugar que sobreviva ao
   board e ao logout; tmux ou launchd, nunca um `Port`.
 - **Máquina do dono:** o runner roda com as permissões que o DSH já usa
@@ -160,11 +147,12 @@ foi recusado; a fase 3 não começa. As fases 1 e 2 não dependem dele.
 
 ## Implantação e revisão
 
-Este PR: o ADR e a linha no índice. Nenhum runner, nenhuma migração, nenhuma
-mudança de contrato. Revisar quando:
+A primeira entrega foi o ADR e a linha no índice; a implementação veio em
+PRs separados (`AgentBoard.Runners`, o script `scripts/runners/run.sh`, a
+ação `dispatch_task`, a pausa e a observação) e a seção "Dispatch (despacho
+local)" do contrato. Revisar quando:
 
-- o dono responder D1, D2, D3 e D5 — o ADR passa a "aceito" e a seção nova
-  do contrato é escrita antes do primeiro runner;
+- o dono quiser mudar os tetos, a reserva ou o modelo padrão;
 - o Claude Code ou o Codex mudarem o formato de `--json`/`cost-state` (o
   leitor do livro de uso já cobre o que existe hoje);
 - a cota da assinatura puder ser lida sem abrir o app — o roteador deixa de

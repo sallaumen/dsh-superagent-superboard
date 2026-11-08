@@ -114,6 +114,36 @@ defmodule AgentBoard.AgentState do
     |> Enum.max(DateTime, fn -> nil end)
   end
 
+  @doc """
+  The repository a ticket names in its channel URLs, or nil for a ticket
+  without one. Two board repositories can share an issue number; the URL is
+  the identity.
+  """
+  @spec repository(map()) :: String.t() | nil
+  def repository(ticket), do: ticket["repository"]
+
+  defp repository_from(urls) do
+    Enum.find_value(urls, fn url ->
+      case Regex.run(~r{^https://github\.com/([^/]+)/([^/]+)/(?:issues|pull|discussions)/}, url) do
+        [_, owner, name] -> "#{owner}/#{name}"
+        _ -> nil
+      end
+    end)
+  end
+
+  @doc """
+  Whether a ticket belongs to this repository. A ticket with no URL keeps the
+  old number-only behavior; a ticket that names another repository is not
+  overlaid on this one.
+  """
+  @spec same_repository?(map(), map()) :: boolean()
+  def same_repository?(ticket, repository) do
+    case ticket["repository"] do
+      nil -> true
+      name -> String.downcase(name) == String.downcase("#{repository.owner}/#{repository.name}")
+    end
+  end
+
   @doc "The numbers a ticket maps to, from its mandate and channels."
   @spec ticket_numbers(map()) :: [integer()]
   def ticket_numbers(ticket) do
@@ -133,6 +163,12 @@ defmodule AgentBoard.AgentState do
   @spec normalize(map()) :: map()
   def normalize(ticket) do
     numbers = ticket_numbers(ticket)
+
+    channel_urls =
+      (ticket["channels"] || [])
+      |> Enum.map(&get_in(&1, ["address", "url"]))
+      |> Enum.filter(&is_binary/1)
+
     last = List.last(ticket["assignments"] || []) || %{}
     report = last["report"] || %{}
     ended = ticket["ended"] || %{}
@@ -154,10 +190,8 @@ defmodule AgentBoard.AgentState do
       "archived" => ticket["archived"] || false,
       "execution" => ticket["execution"] || %{},
       "title" => ticket["title"],
-      "channel_urls" =>
-        (ticket["channels"] || [])
-        |> Enum.map(&get_in(&1, ["address", "url"]))
-        |> Enum.filter(&is_binary/1),
+      "channel_urls" => channel_urls,
+      "repository" => repository_from(channel_urls),
       "own_threads" => own_threads(ticket, numbers),
       "reports" => reports(ticket),
       "assignments" => assignments(ticket)

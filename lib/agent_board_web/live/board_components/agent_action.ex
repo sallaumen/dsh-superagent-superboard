@@ -8,6 +8,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
 
     * `:retry` - "Tentar de novo" / "Tentar agora" (`:retry_ticket`)
     * `:restart` - "Religar o agente" (`:start_agent`)
+    * `:dispatch` - "Despachar" para o Claude Code ou o Codex (`:dispatch_task`)
     * `:stop` - "Parar" (`:stop_task`): only the confirmation lives here;
       the confirmed click is BoardLive's `act` event, carrying the sentence.
 
@@ -16,7 +17,8 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   """
   use AgentBoardWeb, :live_component
 
-  alias AgentBoard.Actions
+  alias AgentBoard.{Actions, Repo}
+  alias AgentBoard.Board.{Repository, Task}
   alias Phoenix.LiveView.JS
 
   @impl true
@@ -33,6 +35,8 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:repository_id, fn -> nil end)
      |> assign_new(:number, fn -> nil end)
      |> assign_new(:task, fn -> nil end)
+     |> assign_new(:executor, fn -> nil end)
+     |> assign_new(:ceiling_usd, fn -> nil end)
      |> then(&assign(&1, :question, Actions.phrase(action(&1.assigns), params(&1.assigns))))}
   end
 
@@ -157,6 +161,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
 
   defp action(%{mode: :retry}), do: :retry_ticket
   defp action(%{mode: :restart}), do: :start_agent
+  defp action(%{mode: :dispatch}), do: :dispatch_task
   defp action(%{mode: :stop}), do: :stop_task
 
   defp params(%{mode: :retry} = assigns),
@@ -167,7 +172,21 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     }
 
   defp params(%{mode: :restart}), do: %{}
+
+  defp params(%{mode: :dispatch} = assigns) do
+    %{
+      task: assigns.task,
+      executor: assigns.executor,
+      ceiling_usd: assigns.ceiling_usd,
+      repository: repository(assigns.task)
+    }
+  end
+
   defp params(%{mode: :stop, task: task}), do: %{task: task}
+
+  defp repository(%Task{repository: %Repository{} = repository}), do: repository
+  defp repository(%Task{repository_id: id}) when is_integer(id), do: Repo.get(Repository, id)
+  defp repository(_task), do: nil
 
   defp tone(:halt), do: "ab-btn--halt"
   defp tone(:primary), do: "ab-btn--primary"

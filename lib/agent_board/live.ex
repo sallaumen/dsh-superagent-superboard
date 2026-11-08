@@ -9,7 +9,7 @@ defmodule AgentBoard.Live do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Board, Sync}
+  alias AgentBoard.{AgentState, Board, Sync}
   alias AgentBoard.Board.{Repository, Task}
   alias AgentBoard.Repo
 
@@ -62,7 +62,9 @@ defmodule AgentBoard.Live do
   end
 
   defp overlay_tasks(repo, tickets) do
-    for ticket <- tickets, raw <- ticket["numbers"] || [] do
+    for ticket <- tickets,
+        AgentState.same_repository?(ticket, repo),
+        raw <- ticket["numbers"] || [] do
       overlay_ticket(repo, ticket, if(is_binary(raw), do: String.to_integer(raw), else: raw))
     end
 

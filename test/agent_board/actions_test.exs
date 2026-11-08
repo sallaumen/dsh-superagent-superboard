@@ -26,6 +26,7 @@ defmodule AgentBoard.ActionsTest do
     :resume_task,
     :retry_ticket,
     :auto_retry_ticket,
+    :dispatch_task,
     :start_agent,
     :set_max_workers,
     :add_repository,
@@ -94,19 +95,48 @@ defmodule AgentBoard.ActionsTest do
       key: Board.request_key(repo, "t", [title])
     }
 
+  defp dispatch_params(task, repo) do
+    %{
+      task: task,
+      executor: "claude",
+      ceiling_usd: 5.0,
+      repository: repo,
+      launcher: fn _run_dir -> flunk("the runner must not start") end
+    }
+  end
+
   # A params map per red action, for the refusals below.
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp red_params(name, %{repo: repo, github: github, orchestrator: orchestrator}) do
     task = task!(repo, 100 + Enum.find_index(@tested, &(&1 == name)))
 
     case name do
-      :create_tasks -> %{repository: repo, requests: [request(repo, "Algo")], client: github}
-      :ask_task -> %{task: task, question: "E aí?", client: github}
-      :stop_task -> %{task: task, client: github}
-      :undo_created_task -> %{task: task, client: github}
-      :retry_ticket -> %{ticket_id: "t1", number: 1, client: orchestrator}
-      :auto_retry_ticket -> %{ticket_id: "t1", attempt: 1, client: orchestrator}
-      :start_agent -> %{opts: [starter: fn -> flunk("the agent must not start") end]}
-      :forget_conversation -> %{}
+      :create_tasks ->
+        %{repository: repo, requests: [request(repo, "Algo")], client: github}
+
+      :ask_task ->
+        %{task: task, question: "E aí?", client: github}
+
+      :stop_task ->
+        %{task: task, client: github}
+
+      :undo_created_task ->
+        %{task: task, client: github}
+
+      :retry_ticket ->
+        %{ticket_id: "t1", number: 1, client: orchestrator}
+
+      :auto_retry_ticket ->
+        %{ticket_id: "t1", attempt: 1, client: orchestrator}
+
+      :dispatch_task ->
+        dispatch_params(task, repo)
+
+      :start_agent ->
+        %{opts: [starter: fn -> flunk("the agent must not start") end]}
+
+      :forget_conversation ->
+        %{}
     end
   end
 
@@ -155,7 +185,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 8
+      assert length(reds) == 9
 
       for name <- reds do
         params = red_params(name, context)
@@ -169,7 +199,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 8
+      assert Repo.aggregate(Task, :count, :id) == 9
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -494,6 +524,7 @@ defmodule AgentBoard.ActionsTest do
       # AgentControl.retry is the owner's retry, itself reachable only from here.
       {~r/\bOrchestrator\.(retry|set_max_workers)\(/, ["lib/agent_board/agent_control.ex"]},
       {~r/\bAgentControl\.(retry|start_agent)\(/, []},
+      {~r/\bRunners\.dispatch\(/, []},
       {~r/\b(Voice\.put_\w+|ElevenLabs\.save_voice)\(/, []},
       {~r/\bSettings\.put\(/,
        [

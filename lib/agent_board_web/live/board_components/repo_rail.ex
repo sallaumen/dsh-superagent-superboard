@@ -15,6 +15,8 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
   attr :version, :map, default: nil
   attr :busy, :boolean, default: false
   attr :voice, :map, default: nil
+  attr :dispatch_paused, :boolean, default: false
+  attr :show_settings, :boolean, default: true
 
   @impl true
   def render(assigns) do
@@ -119,12 +121,14 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           <.ico name="mic" /><span>Conversa por voz</span>
         </button>
         <.live_component
+          :if={@show_settings}
           module={AgentBoardWeb.BoardComponents.SettingsMenu}
           id="board-settings"
           repo={@repo}
           version={@version}
           busy={@busy}
           voice={@voice}
+          dispatch_paused={@dispatch_paused}
         />
       </div>
     </nav>

@@ -1057,3 +1057,29 @@ body { margin: 0; background: var(--paper); }
   .ab-tab { padding: 8px 6px; font-size: 12px; gap: 4px; }
   .ab-tab .ab-num { display: none; }
 }
+
+/* ---------- despacho local ---------- */
+.ab-insp__dispatch {
+  display: grid; gap: var(--space-2);
+  padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.ab-insp__dispatch-head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.ab-insp__dispatch .ab-meta { margin: 0; }
+.ab-runner-list { display: grid; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--line); }
+.ab-runner-row {
+  display: grid; gap: var(--space-1);
+  padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.ab-runner-row__head { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.ab-runner-row__head .ab-meta { margin-left: auto; }
+.ab-runner-row__error { margin: 0; color: var(--halt); font-size: 12.5px; line-height: 18px; white-space: pre-wrap; }
+.ab-runner-row__result { margin: 0; font-size: 12.5px; line-height: 18px; white-space: pre-wrap; }
+
+/* the inspector head can grow with a long title or a failure block; on a
+   phone it scrolls instead of pushing the tabs and the reply box off-screen */
+@media (max-width: 39.999rem) {
+  .ab-insp__head { overflow-y: auto; max-height: 55dvh; }
+  .ab-tab:focus-visible { outline-offset: -2px; }
+}

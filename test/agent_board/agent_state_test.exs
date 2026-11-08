@@ -110,6 +110,27 @@ defmodule AgentBoard.AgentStateTest do
     assert length(snapshot.tickets) == 1
   end
 
+  test "a ticket names its repository, and two repositories can share a number" do
+    ticket =
+      AgentState.normalize(%{
+        "id" => "t1",
+        "channels" => [
+          %{"address" => %{"url" => "https://github.com/sallaumen/arena-rogue/issues/12"}}
+        ],
+        "assignments" => [],
+        "mandate" => %{"basis" => %{"scope" => %{"number" => 12}}}
+      })
+
+    assert ticket["repository"] == "sallaumen/arena-rogue"
+
+    assert AgentState.same_repository?(ticket, %{owner: "sallaumen", name: "arena-rogue"})
+    refute AgentState.same_repository?(ticket, %{owner: "sallaumen", name: "o_colmex"})
+
+    legacy = AgentState.normalize(%{"assignments" => [], "channels" => []})
+    assert legacy["repository"] == nil
+    assert AgentState.same_repository?(legacy, %{owner: "sallaumen", name: "o_colmex"})
+  end
+
   test "a missing database is an error, not an empty agent" do
     Application.put_env(:agent_board, :state_db, "/does/not/exist.sqlite")
 

@@ -16,6 +16,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :activity, :list, required: true
   attr :calls, :list, required: true
   attr :executions, :list, default: []
+  attr :runner_executions, :list, default: []
+  attr :dispatch_paused, :boolean, default: false
+  attr :dispatch_active, :boolean, default: false
+  attr :dispatch_ceiling, :float, default: 5.0
   attr :usage, :map, default: nil
   attr :pr, :any, default: nil
   attr :ci, :map, default: nil
@@ -30,7 +34,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       {"conversa", "Conversa", length(assigns.comments)},
       {"atividade", "Atividade", length(assigns.activity)},
       {"chamadas", "Chamadas de IA", length(assigns.calls)},
-      {"execucoes", "Execuções", length(assigns.executions)},
+      {"execucoes", "Execuções", length(assigns.executions) + length(assigns.runner_executions)},
       {"pr", "PR", nil}
     ]
 
@@ -74,7 +78,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             para o {AgentBoard.Executors.name(@task.executor)}
           </span>
           <span :if={@pr} class="ab-meta">PR #{@pr.number}</span>
-          <span :if={@calls != []} class="ab-meta">{length(@calls)} chamadas</span>
+          <span :if={@calls != []} class="ab-meta">
+            {length(@calls)} {if length(@calls) == 1, do: "chamada", else: "chamadas"}
+          </span>
           <a
             :if={@task.url}
             href={@task.url}
@@ -87,6 +93,43 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         </div>
 
         <.failure_block :if={@failure} failure={@failure} task={@task} offset={@tz_offset} />
+
+        <div :if={dispatchable?(@task)} class="ab-insp__dispatch" id="task-dispatch">
+          <div class="ab-insp__dispatch-head">
+            <span class="ab-label">Despacho local</span>
+            <span :if={@dispatch_active} class="ab-tag ab-tag--agent">execução em andamento</span>
+            <span :if={@dispatch_paused} class="ab-tag ab-tag--stale">despacho pausado</span>
+          </div>
+
+          <.live_component
+            :if={not @dispatch_active and not @dispatch_paused}
+            module={AgentAction}
+            id={"dispatch-#{@task.id}"}
+            mode={:dispatch}
+            tone={:primary}
+            task={@task}
+            executor={@task.executor}
+            ceiling_usd={@dispatch_ceiling}
+            label={"Despachar para o #{AgentBoard.Executors.name(@task.executor)}"}
+            confirm_label="Despachar"
+            busy_label="Iniciando o runner…"
+          />
+
+          <p class="ab-meta">
+            O Claude Code ou o Codex roda num worktree fora do board, com teto de {money(
+              @dispatch_ceiling
+            )} por tarefa. A sessão e o resultado aparecem
+            em Execuções; nada começa sem a confirmação.
+          </p>
+
+          <button
+            type="button"
+            class="ab-btn ab-btn--sm ab-btn--quiet"
+            phx-click="toggle_dispatch"
+          >
+            {if @dispatch_paused, do: "Retomar despacho", else: "Pausar despacho"}
+          </button>
+        </div>
 
         <div class="ab-insp__actions">
           <button
@@ -148,7 +191,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <% "chamadas" -> %>
             <.calls_tab calls={@calls} totals={@totals} usage={@usage} offset={@tz_offset} />
           <% "execucoes" -> %>
-            <.executions_tab executions={@executions} task={@task} pr={@pr} offset={@tz_offset} />
+            <.executions_tab
+              executions={@executions}
+              runner_executions={@runner_executions}
+              task={@task}
+              pr={@pr}
+              offset={@tz_offset}
+            />
           <% "pr" -> %>
             <.pr_tab pr={@pr} ci={@ci} offset={@tz_offset} />
           <% _ -> %>
@@ -347,39 +396,41 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         Nenhuma chamada de IA registrada para esta tarefa.
       </div>
 
-      <table :if={@calls != []} class="ab-table">
-        <thead>
-          <tr>
-            <th>Hora</th>
-            <th>Modelo</th>
-            <th class="r">Entrada</th>
-            <th class="r">Saída</th>
-            <th class="r">Tempo</th>
-            <th class="r">Custo</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr :for={call <- Enum.reverse(@calls)}>
-            <td>{Time.local_time(call.inserted_at, @offset)}</td>
-            <td>{call.model || "desconhecido"}</td>
-            <td class="r">{tokens(call.input_tokens)}</td>
-            <td class="r">{tokens(call.output_tokens)}</td>
-            <td class="r">{duration(call.duration_ms)}</td>
-            <td class="r">{cost(call.cost_micros)}</td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="2">
-              {length(@calls)} {if length(@calls) == 1, do: "chamada", else: "chamadas"}
-            </td>
-            <td class="r">{tokens(@totals.input)}</td>
-            <td class="r">{tokens(@totals.output)}</td>
-            <td class="r">{duration(@totals.duration)}</td>
-            <td class="r">{total_cost(@totals)}</td>
-          </tr>
-        </tfoot>
-      </table>
+      <div :if={@calls != []} class="ab-table-wrap">
+        <table class="ab-table">
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Modelo</th>
+              <th class="r">Entrada</th>
+              <th class="r">Saída</th>
+              <th class="r">Tempo</th>
+              <th class="r">Custo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={call <- Enum.reverse(@calls)}>
+              <td>{Time.local_time(call.inserted_at, @offset)}</td>
+              <td>{call.model || "desconhecido"}</td>
+              <td class="r">{tokens(call.input_tokens)}</td>
+              <td class="r">{tokens(call.output_tokens)}</td>
+              <td class="r">{duration(call.duration_ms)}</td>
+              <td class="r">{cost(call.cost_micros)}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2">
+                {length(@calls)} {if length(@calls) == 1, do: "chamada", else: "chamadas"}
+              </td>
+              <td class="r">{tokens(@totals.input)}</td>
+              <td class="r">{tokens(@totals.output)}</td>
+              <td class="r">{duration(@totals.duration)}</td>
+              <td class="r">{total_cost(@totals)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
 
       <p :if={@calls != []} class="ab-meta">
         Chamadas feitas pelo board.
@@ -392,6 +443,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   end
 
   attr :executions, :list, required: true
+  attr :runner_executions, :list, default: []
   attr :task, :any, required: true
   attr :pr, :any, default: nil
   attr :offset, :integer, default: 0
@@ -401,8 +453,42 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     <div>
       <p class="ab-meta">
         Resultado da tarefa: <b>{task_result(@task, @pr)}</b>.
-        <span :if={@executions == []}>Nenhuma execução desta tarefa no livro de uso.</span>
+        <span :if={@executions == [] and @runner_executions == []}>
+          Nenhuma execução desta tarefa no livro de uso.
+        </span>
       </p>
+
+      <section
+        :if={@runner_executions != []}
+        class="ab-runner-list"
+        aria-labelledby="runner-list-title"
+      >
+        <h3 id="runner-list-title" class="ab-label">Despachos do board</h3>
+        <article
+          :for={execution <- @runner_executions}
+          class="ab-runner-row"
+          id={"runner-#{execution.id}"}
+        >
+          <header class="ab-runner-row__head">
+            <b>{executor_label(execution.executor)}</b>
+            <span class={["ab-tag", runner_tag(execution.status)]}>
+              {runner_status(execution.status)}
+            </span>
+            <span class="ab-meta">
+              {runner_time(execution.started_at, @offset)}–{runner_time(
+                execution.finished_at,
+                @offset
+              )}
+            </span>
+          </header>
+          <p class="ab-meta">
+            <span :if={execution.session_id}>sessão {execution.session_id} · </span>
+            branch {execution.branch || "—"}
+          </p>
+          <p :if={execution.error} class="ab-runner-row__error">{execution.error}</p>
+          <p :if={execution.result} class="ab-runner-row__result">{execution.result}</p>
+        </article>
+      </section>
 
       <ol :if={@executions != []} class="ab-exec-list">
         <li :for={execution <- @executions} class="ab-exec-row">
@@ -442,6 +528,39 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       </p>
     </div>
     """
+  end
+
+  defp dispatchable?(task) do
+    task.executor in ["claude", "codex"] and
+      task.state not in ["done", "closed", "stopped", "archived"] and
+      not (task.stopped or task.archived)
+  end
+
+  defp runner_status("starting"), do: "iniciando"
+  defp runner_status("running"), do: "rodando"
+  defp runner_status("done"), do: "concluído"
+  defp runner_status("failed"), do: "falhou"
+  defp runner_status("stopped"), do: "parado"
+  defp runner_status(status), do: status
+
+  defp runner_tag("done"), do: "ab-tag--agent"
+  defp runner_tag("failed"), do: "ab-tag--halt"
+  defp runner_tag("running"), do: "ab-tag--you"
+  defp runner_tag("stopped"), do: "ab-tag--stale"
+  defp runner_tag(_status), do: ""
+
+  defp runner_time(nil, _offset), do: "—"
+
+  defp runner_time(%NaiveDateTime{} = at, offset),
+    do: Time.local_time(DateTime.from_naive!(at, "Etc/UTC"), offset)
+
+  defp runner_time(%DateTime{} = at, offset), do: Time.local_time(at, offset)
+
+  defp money(nil), do: "—"
+
+  defp money(usd) when is_number(usd) do
+    amount = :erlang.float_to_binary(usd / 1, decimals: 2) |> String.replace(".", ",")
+    "US$ " <> amount
   end
 
   defp executor_label("dsh"), do: "DeepSeek"
