@@ -123,10 +123,11 @@ linha por execução. O dono aceitou D1–D3 e D5 em 2026-11-08; a
 implementação entrou em PRs separados, na ordem do plano:
 
 F3.1 (runner do Claude Code, worktree, `--session-id`, resultado e
-observação), F3.2 (runner do Codex, `codex exec --json` e captura da thread)
-e F3.3 (pausa global e uma execução por tarefa) estão implementados e
-testados. F3.4 (objetivo com critério de pronto) e F3.5 (fallback e
-retentativa sem gasto duplicado) continuam como trabalho separado.
+observação), F3.2 (runner do Codex, `codex exec --json` e captura da thread),
+F3.3 (pausa global e uma execução por tarefa) e F3.5 (classificação da falha,
+retentativa e troca de executor só com uma nova confirmação) estão
+implementados e testados. F3.4 (objetivo com critério de pronto) continua
+como trabalho separado.
 
 ## Riscos e limites
 

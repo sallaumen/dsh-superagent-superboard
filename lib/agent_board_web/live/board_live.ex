@@ -120,6 +120,7 @@ defmodule AgentBoardWeb.BoardLive do
         inspector_dispatch_paused: false,
         inspector_dispatch_active: false,
         inspector_dispatch_ceiling: 5.0,
+        inspector_dispatch_fallback: nil,
         inspector_usage: nil,
         inspector_pr: nil,
         inspector_ci: nil,
@@ -360,6 +361,7 @@ defmodule AgentBoardWeb.BoardLive do
           inspector_dispatch_paused: false,
           inspector_dispatch_active: false,
           inspector_dispatch_ceiling: 5.0,
+          inspector_dispatch_fallback: nil,
           inspector_usage: nil,
           inspector_pr: nil,
           inspector_ci: nil,
@@ -385,6 +387,11 @@ defmodule AgentBoardWeb.BoardLive do
           inspector_dispatch_active:
             Enum.any?(runner_executions, &(&1.status in ["starting", "running"])),
           inspector_dispatch_ceiling: Runners.task_ceiling_usd(task.executor),
+          inspector_dispatch_fallback:
+            case List.first(runner_executions) do
+              nil -> nil
+              execution -> Runners.fallback(execution)
+            end,
           inspector_usage: executor_usage(socket, task),
           inspector_pr: pr,
           inspector_ci: ci,
@@ -2208,6 +2215,7 @@ defmodule AgentBoardWeb.BoardLive do
             dispatch_paused={@inspector_dispatch_paused}
             dispatch_active={@inspector_dispatch_active}
             dispatch_ceiling={@inspector_dispatch_ceiling}
+            dispatch_fallback={@inspector_dispatch_fallback}
             usage={@inspector_usage}
             pr={@inspector_pr}
             ci={@inspector_ci}

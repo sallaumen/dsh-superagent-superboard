@@ -37,6 +37,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:task, fn -> nil end)
      |> assign_new(:executor, fn -> nil end)
      |> assign_new(:ceiling_usd, fn -> nil end)
+     |> assign_new(:fallback, fn -> false end)
+     |> assign_new(:retry, fn -> false end)
+     |> assign_new(:reason, fn -> nil end)
      |> then(&assign(&1, :question, Actions.phrase(action(&1.assigns), params(&1.assigns))))}
   end
 
@@ -178,6 +181,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
       task: assigns.task,
       executor: assigns.executor,
       ceiling_usd: assigns.ceiling_usd,
+      fallback: assigns.fallback,
+      retry: assigns.retry,
+      reason: assigns.reason,
       repository: repository(assigns.task)
     }
   end

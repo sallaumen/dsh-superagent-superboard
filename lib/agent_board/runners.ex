@@ -18,6 +18,7 @@ defmodule AgentBoard.Runners do
   require Logger
 
   alias AgentBoard.{Board, Repo, Settings}
+  alias AgentBoard.Board.Task
   alias AgentBoard.Runners.Execution
   alias AgentBoard.Usage.{Costs, Ledger, Report}
 
@@ -143,20 +144,64 @@ defmodule AgentBoard.Runners do
   # ---- dispatch ---------------------------------------------------------------
 
   @doc """
+  What to do after a failed execution (docs/research/alfred.md, 3.5):
+
+    * `:retry` — a transient failure before spending; the same executor.
+    * `:switch` — availability (quota, login, credit); the other executor.
+    * `:none` — a content failure (tests, block, question): the owner decides.
+
+  The board only proposes; nothing starts without a new confirmation.
+  """
+  @spec fallback(Execution.t() | nil) ::
+          %{kind: :retry | :switch, executor: String.t(), reason: String.t()} | :none
+  def fallback(%Execution{status: "failed"} = execution) do
+    other = if execution.executor == "claude", do: "codex", else: "claude"
+    text = execution.error || ""
+
+    cond do
+      text =~
+          ~r/quota|rate limit|usage limit|credit|401|402|403|429|login|auth|sign in|not logged/i ->
+        %{
+          kind: :switch,
+          executor: other,
+          reason: "A última execução parou por cota ou login (#{short(text)})."
+        }
+
+      text =~ ~r/timeout|timed out|transport|network|dns|resolve|connection|temporar|5\d\d/i ->
+        %{
+          kind: :retry,
+          executor: execution.executor,
+          reason: "A última execução falhou por rede ou tempo (#{short(text)})."
+        }
+
+      true ->
+        :none
+    end
+  end
+
+  def fallback(_execution), do: :none
+
+  defp short(text) do
+    text |> to_string() |> String.split("\n") |> hd() |> String.slice(0, 160)
+  end
+
+  @doc """
   Starts one execution. The caller is the confirmed `:dispatch_task` action;
   this function still re-checks every gate because a runner that is already
-  active must not be started twice.
+  active must not be started twice. `allow_switch: true` is the confirmed
+  fallback to the other executor.
   """
   def dispatch(task, executor, opts \\ []) do
     task = Repo.preload(task, :repository)
 
-    with :ok <- executor_allowed(task, executor),
+    with :ok <- executor_allowed(task, executor, opts),
          {:ok, plan} <- check(task, executor, opts),
          {:ok, repository} <- repository(task),
          :ok <- ensure_repo(repository),
          {:ok, execution} <- insert(task, repository, executor, plan) do
       case launch(execution, task, repository, plan, opts) do
         :ok ->
+          switch_task(task, executor)
           {:ok, execution}
 
         {:error, reason} ->
@@ -166,10 +211,24 @@ defmodule AgentBoard.Runners do
     end
   end
 
-  defp executor_allowed(%{executor: executor}, executor) when executor in ["claude", "codex"],
-    do: :ok
+  defp executor_allowed(%{executor: executor}, executor, _opts)
+       when executor in ["claude", "codex"],
+       do: :ok
 
-  defp executor_allowed(_task, _executor), do: {:error, :executor_mismatch}
+  defp executor_allowed(_task, executor, opts)
+       when executor in ["claude", "codex"] and is_list(opts),
+       do: if(Keyword.get(opts, :allow_switch), do: :ok, else: {:error, :executor_mismatch})
+
+  defp executor_allowed(_task, _executor, _opts), do: {:error, :executor_mismatch}
+
+  defp switch_task(%Task{executor: executor}, executor), do: :ok
+
+  defp switch_task(task, executor) do
+    case task |> Task.changeset(%{executor: executor}) |> Repo.update() do
+      {:ok, _task} -> Board.broadcast(task.repository_id)
+      _ -> :ok
+    end
+  end
 
   defp repository(%{repository: %{} = repository}), do: {:ok, repository}
   defp repository(_task), do: {:error, :no_repository}

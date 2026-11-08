@@ -20,6 +20,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :dispatch_paused, :boolean, default: false
   attr :dispatch_active, :boolean, default: false
   attr :dispatch_ceiling, :float, default: 5.0
+  attr :dispatch_fallback, :any, default: nil
   attr :usage, :map, default: nil
   attr :pr, :any, default: nil
   attr :ci, :map, default: nil
@@ -102,18 +103,29 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           </div>
 
           <.live_component
-            :if={not @dispatch_active and not @dispatch_paused}
+            :if={not @dispatch_active and not @dispatch_paused and @dispatch_fallback != :none}
             module={AgentAction}
             id={"dispatch-#{@task.id}"}
             mode={:dispatch}
             tone={:primary}
             task={@task}
-            executor={@task.executor}
+            executor={dispatch_executor(@task, @dispatch_fallback)}
             ceiling_usd={@dispatch_ceiling}
-            label={"Despachar para o #{AgentBoard.Executors.name(@task.executor)}"}
+            fallback={fallback_kind(@dispatch_fallback) == :switch}
+            retry={fallback_kind(@dispatch_fallback) == :retry}
+            reason={fallback_reason(@dispatch_fallback)}
+            label={dispatch_label(@task, @dispatch_fallback)}
             confirm_label="Despachar"
             busy_label="Iniciando o runner…"
           />
+
+          <p :if={fallback_reason(@dispatch_fallback)} class="ab-meta">
+            {fallback_reason(@dispatch_fallback)}
+          </p>
+          <p :if={@dispatch_fallback == :none} class="ab-meta ab-fail__system">
+            A última execução falhou por conteúdo (teste, bloqueio ou pergunta):
+            o board não troca de executor sozinho. Confira o resultado em Execuções.
+          </p>
 
           <p class="ab-meta">
             O Claude Code ou o Codex roda num worktree fora do board, com teto de {money(
@@ -529,6 +541,24 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     </div>
     """
   end
+
+  defp fallback_kind(%{kind: kind}), do: kind
+  defp fallback_kind(_fallback), do: nil
+
+  defp fallback_reason(%{reason: reason}), do: reason
+  defp fallback_reason(_fallback), do: nil
+
+  defp dispatch_executor(_task, %{executor: executor}), do: executor
+  defp dispatch_executor(task, _fallback), do: task.executor
+
+  defp dispatch_label(_task, %{kind: :switch, executor: executor}),
+    do: "Mandar para o #{AgentBoard.Executors.name(executor)}"
+
+  defp dispatch_label(_task, %{kind: :retry, executor: executor}),
+    do: "Tentar de novo no #{AgentBoard.Executors.name(executor)}"
+
+  defp dispatch_label(task, _fallback),
+    do: "Despachar para o #{AgentBoard.Executors.name(task.executor)}"
 
   defp dispatchable?(task) do
     task.executor in ["claude", "codex"] and
