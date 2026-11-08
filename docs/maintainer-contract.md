@@ -884,6 +884,26 @@ owner in every repository, one list, repository on each item.
   currencies, the click that changes repository, another repository's
   broadcast).
 
+## Objectives (Objetivo)
+
+F3.4 of the Alfred plan: a group of tasks with one done criterion, progress
+computed from the tasks, never a second project manager.
+
+- **When it exists.** A composer split that creates **more than one task**
+  creates one `objectives` row and attaches the created tasks (`tasks.objective_id`);
+  a single task, the API and the voice create no objective. The title is the
+  first line of the request and the default criterion is "Todas as tarefas
+  mescladas.", both stored, not recomputed.
+- **Progress** is `merged` tasks (state `done`) over `total` attached tasks;
+  the board shows the title, the criterion and "x de y tarefas mescladas"
+  with a progress bar. The objective has no state of its own: it exists only
+  as the criterion and the tasks.
+- **It does not replace the board's lanes.** Attaching or finishing a task is
+  the same write and the same sync; no separate status is written.
+- The tests: `objectives_test.exs` (the criterion, progress, one task is not a
+  group), `create_request_test.exs` (a split creates one objective) and
+  `objectives_live_test.exs` (the board shows the progress).
+
 ## The request (composer)
 
 The composer is a view of one lifecycle that `BoardLive` owns; the durable

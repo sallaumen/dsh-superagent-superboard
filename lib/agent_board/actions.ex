@@ -459,7 +459,10 @@ defmodule AgentBoard.Actions do
 
   defp execute(:create_tasks, %{repository: repo, requests: requests} = params) do
     client = github(params)
-    {:ok, Enum.map(requests, &{&1, Board.create_request(repo, &1, client)})}
+    results = Enum.map(requests, &{&1, Board.create_request(repo, &1, client)})
+
+    maybe_objective(repo, params[:objective], results)
+    {:ok, results}
   end
 
   defp execute(:ask_task, %{task: task, question: question} = params),
@@ -577,6 +580,24 @@ defmodule AgentBoard.Actions do
     |> Ecto.Changeset.change(outcome: outcome, detail: detail && String.slice(detail, 0, 500))
     |> Repo.update!()
   end
+
+  defp maybe_objective(repo, %{title: title, done_criterion: criterion}, results) do
+    task_ids =
+      for {_request, {:ok, %Task{id: id}, _outcome}} <- results, is_integer(id), do: id
+
+    case Board.create_objective(repo, %{title: title, done_criterion: criterion}, task_ids) do
+      {:ok, _objective} ->
+        :ok
+
+      {:error, :not_a_group} ->
+        :ok
+
+      {:error, reason} ->
+        Board.log_event(repo.id, "objective_error", title, %{"reason" => inspect(reason)})
+    end
+  end
+
+  defp maybe_objective(_repo, _objective, _results), do: :ok
 
   defp outcome(:create_tasks, {:ok, results}) do
     case Enum.count(results, &match?({_request, {:error, _}}, &1)) do

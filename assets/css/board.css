@@ -1083,3 +1083,15 @@ body { margin: 0; background: var(--paper); }
   .ab-insp__head { overflow-y: auto; max-height: 55dvh; }
   .ab-tab:focus-visible { outline-offset: -2px; }
 }
+
+/* ---------- objetivos (F3.4) ---------- */
+.ab-objectives { display: grid; gap: var(--space-2); margin-bottom: var(--space-3); }
+.ab-objective {
+  display: grid; gap: var(--space-1);
+  padding: var(--space-3) var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.ab-objective__head { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.ab-objective__head .ab-tag { margin-left: auto; }
+.ab-objective__bar { height: 5px; border-radius: var(--radius-pill); background: var(--paper-sunk); overflow: hidden; }
+.ab-objective__bar span { display: block; height: 100%; background: var(--agent); }

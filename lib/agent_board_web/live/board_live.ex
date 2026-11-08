@@ -96,6 +96,7 @@ defmodule AgentBoardWeb.BoardLive do
         board: empty(),
         today: %{repos: %{}, needs: [], running: []},
         today_spend: nil,
+        objectives: [],
         resume: resume,
         events: [],
         sync_event: nil,
@@ -535,6 +536,7 @@ defmodule AgentBoardWeb.BoardLive do
       repo_overview: today.repos,
       today: today,
       today_spend: Report.today(socket.assigns.tz_offset),
+      objectives: [],
       agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
       work: empty_work(),
       digest: nil,
@@ -635,6 +637,7 @@ defmodule AgentBoardWeb.BoardLive do
           repo_overview: today.repos,
           today: today,
           today_spend: spend,
+          objectives: Board.objectives(repo),
           agent_snapshot: agent,
           work: work,
           digest: work.digest,
@@ -656,6 +659,7 @@ defmodule AgentBoardWeb.BoardLive do
           repo_overview: today.repos,
           today: today,
           today_spend: spend,
+          objectives: [],
           agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
           work: empty_work(),
           flow: nil,
@@ -2131,6 +2135,35 @@ defmodule AgentBoardWeb.BoardLive do
               </div>
             </header>
 
+            <section
+              :if={@repo && @view != "hoje" && @objectives != []}
+              id="objectives"
+              class="ab-objectives"
+              aria-label="Objetivos"
+            >
+              <article :for={objective <- @objectives} class="ab-objective">
+                <div class="ab-objective__head">
+                  <span class="ab-label">Objetivo</span>
+                  <b>{objective.title}</b>
+                  <span :if={objective.done?} class="ab-tag ab-tag--agent">concluído</span>
+                </div>
+                <p class="ab-meta">
+                  {objective.merged} de {objective.total} tarefas mescladas ·
+                  critério: {objective.done_criterion}
+                </p>
+                <div
+                  class="ab-objective__bar"
+                  role="progressbar"
+                  aria-valuenow={objective.merged}
+                  aria-valuemin="0"
+                  aria-valuemax={objective.total}
+                  aria-label={"Progresso do objetivo #{objective.title}"}
+                >
+                  <span style={"width: #{progress(objective)}%"}></span>
+                </div>
+              </article>
+            </section>
+
             <.summary :if={@repo && @view != "hoje"} digest={@digest} />
 
             <.daily_summary
@@ -2709,7 +2742,19 @@ defmodule AgentBoardWeb.BoardLive do
     repo = socket.assigns.repo
     client = GitHub.client()
     job = composer_job(:enqueue, requests, length(requests))
-    action = %{repository: repo, requests: requests, client: client}
+
+    action =
+      %{repository: repo, requests: requests, client: client}
+      |> then(fn action ->
+        if socket.assigns.composer_split and length(requests) > 1 do
+          Map.put(action, :objective, %{
+            title: objective_title(socket.assigns.composer_text),
+            done_criterion: "Todas as tarefas mescladas."
+          })
+        else
+          action
+        end
+      end)
 
     {:noreply,
      socket
@@ -2725,6 +2770,22 @@ defmodule AgentBoardWeb.BoardLive do
          {:error, {refusal, _phrase}} -> {:enqueue_refused, requests, refusal}
        end
      end)}
+  end
+
+  defp progress(%{total: total}) when total in [0, nil], do: 0
+  defp progress(%{merged: merged, total: total}), do: round(merged * 100 / total)
+
+  defp objective_title(text) do
+    text
+    |> to_string()
+    |> String.split("\n", parts: 2)
+    |> hd()
+    |> String.trim()
+    |> String.slice(0, 120)
+    |> case do
+      "" -> "Objetivo do pedido"
+      title -> title
+    end
   end
 
   defp composer_job(kind, payload, total) do

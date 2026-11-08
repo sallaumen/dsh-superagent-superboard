@@ -39,6 +39,7 @@ defmodule AgentBoard.Board.Task do
 
     belongs_to :repository, AgentBoard.Board.Repository
     belongs_to :origin_task, AgentBoard.Board.Task
+    belongs_to :objective, AgentBoard.Board.Objective
     has_many :comments, AgentBoard.Board.Comment
 
     timestamps(type: :utc_datetime)
@@ -64,7 +65,8 @@ defmodule AgentBoard.Board.Task do
       :request_key,
       :work_type,
       :size,
-      :executor
+      :executor,
+      :objective_id
     ])
     |> validate_required([:title, :repository_id])
     |> validate_inclusion(:state, @states)
