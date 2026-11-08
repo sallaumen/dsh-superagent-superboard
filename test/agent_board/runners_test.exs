@@ -204,6 +204,7 @@ defmodule AgentBoard.RunnersTest do
     assert execution.status == "done"
     assert execution.session_id == "session-1"
     assert execution.result == "PR #9 mesclado"
+    assert Repo.get!(Task, task.id).state == "ready"
     refute Runners.active_for_task?(task.id)
   end
 
@@ -220,5 +221,6 @@ defmodule AgentBoard.RunnersTest do
     execution = Repo.get!(AgentBoard.Runners.Execution, execution.id)
     assert execution.status == "failed"
     assert execution.error == "claude: sem login"
+    assert Repo.get!(Task, task.id).state == "blocked"
   end
 end

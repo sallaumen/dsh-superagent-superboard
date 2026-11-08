@@ -606,6 +606,10 @@ in Configurações → Despacho local.
   and priced (an unpriced row refuses rather than pretending the budget is
   zero); the Codex weekly quota, when read, is outside the reserve. The
   ceiling the owner saw is the one the action passes to the runner.
+- **The lane follows the execution**: starting puts the task in `running`
+  (Agora), a finished execution puts it in `ready` (Para revisar), and a
+  failure puts it in `blocked` (Precisa de você) until a new confirmed
+  dispatch; a task already done, closed, stopped or archived is never moved.
 - **One execution, one row** in `runner_executions`: task, repository,
   executor, status (`starting`, `running`, `done`, `failed`, `stopped`),
   session id (the Claude `--session-id` or the Codex `thread_id`), worktree,

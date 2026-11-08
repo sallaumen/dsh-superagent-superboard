@@ -237,6 +237,7 @@ defmodule AgentBoard.Runners do
       case launch(execution, task, repository, plan, opts) do
         :ok ->
           switch_task(task, executor)
+          mark_running(task)
           {:ok, execution}
 
         {:error, reason} ->
@@ -454,13 +455,44 @@ defmodule AgentBoard.Runners do
     result = read(execution.run_dir, "result")
     error = error || read(execution.run_dir, "error")
 
-    save(execution, %{
-      status: status,
-      session_id: session || execution.session_id,
-      result: result,
-      error: error,
-      finished_at: DateTime.utc_now()
-    })
+    case save(execution, %{
+           status: status,
+           session_id: session || execution.session_id,
+           result: result,
+           error: error,
+           finished_at: DateTime.utc_now()
+         }) do
+      {:ok, execution} ->
+        mark_finished(execution)
+        {:ok, execution}
+
+      other ->
+        other
+    end
+  end
+
+  # A local execution is an overlay on the lane, like the runner's ticket:
+  # starting it puts the task in Agora; a finished one goes to review; a
+  # failure goes to the owner as blocked until a new confirmed dispatch.
+  defp mark_running(task), do: put_task_state(task.id, "running")
+
+  defp mark_finished(%Execution{status: "done", task_id: id}), do: put_task_state(id, "ready")
+  defp mark_finished(%Execution{status: "failed", task_id: id}), do: put_task_state(id, "blocked")
+  defp mark_finished(_execution), do: :ok
+
+  defp put_task_state(id, state) do
+    case Repo.get(Task, id) do
+      %Task{state: current} = task
+      when current not in ["done", "closed", "stopped", "archived"] ->
+        task
+        |> Task.changeset(%{state: state, state_changed_at: DateTime.utc_now()})
+        |> Repo.update()
+
+        Board.broadcast(task.repository_id)
+
+      _ ->
+        :ok
+    end
   end
 
   defp stale?(execution) do
