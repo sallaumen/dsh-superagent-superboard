@@ -36,8 +36,8 @@ run_backend() {
   require_mix
   require "Postgres não responde em 127.0.0.1:5434 (user/password \"board\")" \
     pg_isready -h 127.0.0.1 -p 5434 -q
-  MIX_ENV=test mix gate
-  MIX_ENV=test mix sobelow --exit
+  MIX_ENV="test" mix gate
+  MIX_ENV="test" mix sobelow --exit
 }
 
 run_frontend() {
@@ -45,9 +45,9 @@ run_frontend() {
   echo "== frontend: check_assets -> assets.setup -> build -> deploy (MIX_ENV=dev) =="
   require_mix
   bash scripts/check_assets.sh
-  MIX_ENV=dev mix assets.setup
-  MIX_ENV=dev mix assets.build
-  MIX_ENV=dev mix assets.deploy
+  MIX_ENV="dev" mix assets.setup
+  MIX_ENV="dev" mix assets.build
+  MIX_ENV="dev" mix assets.deploy
 }
 
 run_library() {
@@ -61,11 +61,11 @@ run_release() {
   CURRENT="release"
   echo "== release: assets (dev) + compile/digest/release (prod) =="
   require_mix
-  MIX_ENV=dev mix assets.setup
-  MIX_ENV=dev mix assets.build
-  MIX_ENV=prod mix compile --warnings-as-errors
-  MIX_ENV=prod mix phx.digest
-  MIX_ENV=prod mix release --overwrite
+  MIX_ENV="dev" mix assets.setup
+  MIX_ENV="dev" mix assets.build
+  MIX_ENV="prod" mix compile --warnings-as-errors
+  MIX_ENV="prod" mix phx.digest
+  MIX_ENV="prod" mix release --overwrite
 }
 
 case "${1:-all}" in
