@@ -8,15 +8,10 @@ defmodule AgentBoardWeb.BoardComponents.Markup do
   def markup(assigns) do
     assigns = assign(assigns, :parts, parts(assigns.text))
 
-    ~H"""
-    <span class={@class}>
-      <%= for part <- @parts do %>
-        <strong :if={part.kind == :strong}>{part.text}</strong>
-        <code :if={part.kind == :code}>{part.text}</code>
-        <span :if={part.kind == :text}>{part.text}</span>
-      <% end %>
-    </span>
-    """
+    ~H"<span class={@class}><strong :for={part <- @parts} :if={part.kind == :strong}>{part.text}</strong><code
+  :for={part <- @parts}
+  :if={part.kind == :code}
+>{part.text}</code><span :for={part <- @parts} :if={part.kind == :text}>{part.text}</span></span>"
   end
 
   @doc "Split `**strong**` and `` `code` `` into escaped text parts; no HTML is accepted."

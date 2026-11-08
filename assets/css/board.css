@@ -248,7 +248,7 @@ body { margin: 0; background: var(--paper); }
 .ab-row:hover .ab-row__grip, .ab-row:focus-visible .ab-row__grip { opacity: 1; }
 
 .ab-filter { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; }
-.ab-chip { height: 26px; padding: 0 10px; border-radius: var(--radius-pill); border: 1px solid var(--line); background: transparent; font-size: 12.5px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.ab-chip { height: 26px; padding: 0 10px; border-radius: var(--radius-pill); border: 1px solid var(--line); background: transparent; font-size: 12.5px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .ab-chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .ab-chip .ab-num { font-size: 11.5px; color: inherit; opacity: .8; }
 
@@ -351,7 +351,8 @@ body { margin: 0; background: var(--paper); }
   background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-layer); overflow: hidden;
 }
-.ab-compose__head { display: flex; align-items: center; gap: 8px; padding: 12px 16px 0; }
+.ab-compose__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px 0; }
+.ab-compose__head .ab-btn { min-width: 32px; min-height: 32px; }
 .ab-compose__head .ab-top__spacer { flex: 1; }
 .ab-compose textarea {
   display: block; width: 100%; border: 0; resize: none; background: transparent; padding: 12px 16px; min-height: 96px;
@@ -416,12 +417,25 @@ body { margin: 0; background: var(--paper); }
   .ab-board[data-inspector="open"] .ab-insp { position: absolute; right: 0; top: 0; bottom: 0; width: min(440px, 100%); box-shadow: var(--shadow-layer); z-index: 4; }
 }
 @container board (max-width: 900px) {
-  .ab-board, .ab-board[data-inspector="open"] { grid-template-columns: 64px minmax(0, 1fr); }
-  .ab-rail { padding: 16px 8px; align-items: center; }
-  .ab-rail h3, .ab-repo__name, .ab-rail__foot .ab-meta span:last-child, .ab-brand span { display: none; }
-  .ab-repo { grid-template-columns: 1fr; justify-items: center; }
+  /* The rail stops working as a column here: its labels and footer buttons no
+     longer fit. Switch to the native mobilebar instead of a clipped 64px rail. */
+  .ab-board, .ab-board[data-inspector="open"] { grid-template-columns: minmax(0, 1fr); }
+  .ab-rail { display: none; }
+  .ab-mobilebar { display: flex; }
+  .ab-mobilebar .ab-repo__name { display: block; }
+  .ab-mobilebar .ab-repo { min-height: 44px; padding: 10px 12px; }
+  .ab-mobilebar .ab-btn { min-height: 44px; justify-content: flex-start; }
+  .ab-mobilebar > summary { min-height: 44px; }
+  .ab-btn--sm { min-height: 40px; }
+  .ab-flow__step { min-width: 32px; min-height: 32px; }
+  .ab-beacon { min-height: 40px; }
+  .dispatch-settings input { height: 40px; }
+  .ab-compose__head { flex-wrap: nowrap; }
+  .ab-compose__head .ab-kbd, .ab-compose__head .ab-top__spacer { display: none; }
+  .ab-compose__head .ab-btn { min-width: 40px; min-height: 40px; margin-left: auto; }
+  .ab-compose__head .ab-chip { min-width: 0; flex: 0 1 auto; }
   .ab-main { padding: 20px 24px 48px; }
-  .ab-toast { left: 88px; }
+  .ab-toast { left: 24px; right: 24px; }
 }
 /* phone */
 @container board (max-width: 640px) {
@@ -442,11 +456,12 @@ body { margin: 0; background: var(--paper); }
   .ab-row { grid-template-columns: 22px 12px minmax(0, 1fr); }
   .ab-row__side { display: none; }
   .ab-board[data-inspector="open"] .ab-insp { position: absolute; inset: 0; width: 100%; border-left: 0; border-radius: 0; }
-  .ab-toast { left: 16px; right: 16px; bottom: 16px; }
   .ab-mobilebar { display: flex; }
   .ab-insp__bar .ab-kbd { display: none; }
-  .ab-tabs { overflow-x: auto; scrollbar-width: none; }
-  .ab-tab { white-space: nowrap; }
+  .ab-top__actions .ab-btn { min-height: 40px; }
+  .ab-btn--sm { min-height: 40px; }
+  .ab-flow__step { min-width: 32px; min-height: 32px; }
+  .ab-toast { left: 16px; right: 16px; bottom: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -540,6 +555,8 @@ body { margin: 0; background: var(--paper); }
 #board-page[data-connection="down"] .ab-beacon { border-color: var(--stale); background: var(--stale-wash); }
 #board-page[data-connection="down"] .ab-beacon b { color: var(--stale); }
 #reconnect-banner { display: none; }
+body.board-panel-open .ab-toast,
+#board-page .ab-board[data-inspector="open"] .ab-toast { display: none; }
 #board-page[data-connection="down"] #reconnect-banner { display: flex; }
 #board-page[data-connection="down"] .ab-g--run.is-live { background: transparent; border: 1.5px solid var(--stale); background: repeating-linear-gradient(135deg, var(--stale) 0 1.5px, transparent 1.5px 3.5px); }
 
@@ -626,7 +643,6 @@ body { margin: 0; background: var(--paper); }
 }
 
 /* ---------- inspector: the task stays on the board ---------- */
-
 .ab-insp__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
 .ab-insp__foot .ab-compose { border-radius: var(--radius-md); box-shadow: none; }
 .ab-compose--inline textarea { min-height: 56px; }
@@ -640,6 +656,10 @@ body { margin: 0; background: var(--paper); }
 .ab-insp .ab-insp__body { min-height: 0; }
 .ab-insp .ab-insp__foot { flex: none; }
 .ab-tl__txt a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
+
+/* Keep the native dialog centered even in the brief non-modal state before
+   BoardPanels calls showModal() on a direct URL. */
+dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max-content; }
 
 /* ---------- composer layer ---------- */
 
@@ -1072,9 +1092,9 @@ body { margin: 0; background: var(--paper); }
 }
 
 /* the inspector's tabs never cut a label on a phone */
-.ab-tabs { overflow-x: auto; scrollbar-width: none; }
+.ab-tabs { flex-wrap: wrap; overflow: visible; row-gap: 2px; }
 .ab-tabs::-webkit-scrollbar { display: none; }
-.ab-tab { flex: none; }
+.ab-tab { flex: none; white-space: nowrap; }
 @media (max-width: 39.999rem) {
   .ab-tab { padding: 8px 6px; font-size: 12px; gap: 4px; }
   .ab-tab .ab-num { display: none; }
@@ -1185,3 +1205,9 @@ body { margin: 0; background: var(--paper); }
 .ab-superagent-add__preview { display: grid; gap: var(--space-2); margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--line); }
 .ab-superagent-add__preview p { margin: 0; font-size: 13px; }
 @media (max-width: 39.999rem) { .ab-superagent-add__form { grid-template-columns: 1fr; } }
+
+/* Later than the desktop dispatch rule; phone/tablet fields need a thumb-sized target. */
+@container board (max-width: 900px) {
+  .dispatch-settings input { height: 40px; }
+  .ab-tab { min-height: 40px; min-width: 44px; }
+}
