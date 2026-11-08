@@ -5,7 +5,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
   import Phoenix.LiveViewTest
 
   alias AgentBoard.{Board, Repo, Superagents}
-  alias AgentBoard.Superagents.{FakeManager, Superagent}
+  alias AgentBoard.Superagents.{FakeManager, FakeProvisioner, Superagent}
 
   defp superagent!(repo, attrs) do
     {:ok, superagent} =
@@ -75,6 +75,48 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     Process.sleep(100)
     _ = render(view)
     assert Repo.get!(Superagent, superagent.id).max_workers == superagent.max_workers + 1
+  end
+
+  test "the add-project form previews and confirms a new project", %{conn: conn} do
+    {:ok, source_repo} = Board.add_repository("fixture", "source-panel")
+    {:ok, target} = Board.add_repository("fixture", "target-panel")
+
+    {:ok, source} =
+      Superagents.create(%{
+        repository_id: source_repo.id,
+        profile: "superagent-source-panel",
+        port: 3190,
+        state_dir: "/tmp/source-panel"
+      })
+
+    previous = Application.get_env(:agent_board, :superagent_provisioner)
+    Application.put_env(:agent_board, :superagent_provisioner, FakeProvisioner)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:agent_board, :superagent_provisioner, previous),
+        else: Application.delete_env(:agent_board, :superagent_provisioner)
+    end)
+
+    {:ok, view, _html} = live(conn, "/?repo=fixture/target-panel&panel=superagents")
+
+    view
+    |> form(".ab-superagent-add__form", %{
+      "repository_id" => target.id,
+      "source_id" => source.id,
+      "path" => "/tmp/target-checkout",
+      "workers" => "2"
+    })
+    |> render_submit()
+
+    assert has_element?(view, ".ab-superagent-add__preview", "Provisionar o DeepSeek")
+
+    view |> element(".ab-superagent-add__preview button", "Criar projeto") |> render_click()
+    Process.sleep(150)
+    _ = render(view)
+
+    assert superagent = Superagents.get_by_repository(target)
+    assert superagent.max_workers == 2
   end
 
   test "an empty board says no superagent is registered", %{conn: conn} do

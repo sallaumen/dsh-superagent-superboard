@@ -1153,3 +1153,13 @@ body { margin: 0; background: var(--paper); }
 .ab-superagent__workers { display: inline-flex; align-items: center; gap: var(--space-1); margin-left: auto; color: var(--ink-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .ab-superagent__workers .ab-btn { min-width: 2rem; justify-content: center; }
 @media (max-width: 39.999rem) { .ab-superagent__workers { margin-left: 0; width: 100%; justify-content: flex-end; } }
+.ab-superagent-add { border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); padding: var(--space-3) var(--space-4); }
+.ab-superagent-add summary { cursor: pointer; font-weight: 600; }
+.ab-superagent-add__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+.ab-superagent-add__form label { display: grid; gap: var(--space-1); color: var(--ink-muted); font-size: 12px; }
+.ab-superagent-add__form input,
+.ab-superagent-add__form select { height: 34px; padding: 0 var(--space-2); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 12px; }
+.ab-superagent-add__form button { align-self: end; justify-self: start; }
+.ab-superagent-add__preview { display: grid; gap: var(--space-2); margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--line); }
+.ab-superagent-add__preview p { margin: 0; font-size: 13px; }
+@media (max-width: 39.999rem) { .ab-superagent-add__form { grid-template-columns: 1fr; } }

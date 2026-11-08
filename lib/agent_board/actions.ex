@@ -85,6 +85,7 @@ defmodule AgentBoard.Actions do
     :auto_retry_ticket,
     :dispatch_task,
     :stop_execution,
+    :provision_superagent,
     :start_superagent,
     :stop_superagent,
     :pause_superagent,
@@ -165,6 +166,9 @@ defmodule AgentBoard.Actions do
 
   defp spec(:stop_execution),
     do: %{risk: :red, does: "encerra o processo de uma execução local e deixa a tarefa bloqueada"}
+
+  defp spec(:provision_superagent),
+    do: %{risk: :red, does: "cria profile, porta, state e setup de um superagent novo"}
 
   defp spec(:start_superagent),
     do: %{risk: :red, does: "inicia o superagent DeepSeek de um projeto"}
@@ -313,6 +317,16 @@ defmodule AgentBoard.Actions do
   def phrase(:scale_superagent, %{superagent: superagent, workers: workers}, _lang),
     do:
       "Mudar o limite de sessões de #{project(superagent)} de #{superagent.max_workers} para #{workers}?"
+
+  def phrase(:provision_superagent, %{repository: repo, source: source, path: path}, "en-US"),
+    do:
+      "Provision DeepSeek for #{repo_name(repo)} from #{source.profile}? The board creates " <>
+        "a profile, port and state, and uses the checkout #{short(path)}."
+
+  def phrase(:provision_superagent, %{repository: repo, source: source, path: path}, _lang),
+    do:
+      "Provisionar o DeepSeek para #{repo_name(repo)} a partir de #{source.profile}? O board " <>
+        "cria profile, porta e state, e usa o checkout #{short(path)}."
 
   def phrase(:archive_task, %{task: task}, "en-US"),
     do:
@@ -589,6 +603,23 @@ defmodule AgentBoard.Actions do
     end
   end
 
+  defp execute(
+         :provision_superagent,
+         %{repository: repository, source: source, path: path} = params
+       ) do
+    case Superagents.provision(repository, source, %{
+           path: path,
+           workers: Map.get(params, :workers, 3)
+         }) do
+      {:ok, superagent} ->
+        {:ok,
+         "Superagent #{superagent.profile} reservado na porta #{superagent.port}; o status atualiza no ticker."}
+
+      {:error, reason} ->
+        {:error, "Não foi possível provisionar: #{describe(reason)}"}
+    end
+  end
+
   defp execute(:start_superagent, %{superagent: superagent}) do
     case Superagents.start(superagent) do
       {:ok, _} -> {:ok, "Superagent iniciado. O status atualiza na próxima leitura."}
@@ -776,6 +807,8 @@ defmodule AgentBoard.Actions do
   defp subject(_name, %{superagent: %AgentBoard.Superagents.Superagent{profile: profile}}),
     do: profile
 
+  defp subject(:provision_superagent, %{repository: repo}), do: "#{repo.owner}/#{repo.name}"
+
   defp subject(:create_tasks, %{repository: repo, requests: requests}),
     do: "#{repo.owner}/#{repo.name} (#{length(requests)})"
 
@@ -791,6 +824,7 @@ defmodule AgentBoard.Actions do
   defp subject(_name, _params), do: nil
 
   defp repository_id(%{superagent: %AgentBoard.Superagents.Superagent{repository_id: id}}), do: id
+  defp repository_id(%{repository: %Repository{id: id}}), do: id
   defp repository_id(%{task: %Task{repository_id: id}}), do: id
   defp repository_id(%{repository: %Repository{id: id}}), do: id
   defp repository_id(%{repository_id: id}) when is_integer(id), do: id

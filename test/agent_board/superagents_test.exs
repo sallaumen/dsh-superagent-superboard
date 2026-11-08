@@ -3,7 +3,7 @@ defmodule AgentBoard.SuperagentsTest do
   use AgentBoard.DataCase, async: false
 
   alias AgentBoard.{Board, Superagents}
-  alias AgentBoard.Superagents.{FakeManager, Superagent}
+  alias AgentBoard.Superagents.{FakeManager, FakeProvisioner, Superagent}
 
   setup do
     {:ok, repo} = Board.add_repository("fixture", "superagent")
@@ -89,8 +89,17 @@ defmodule AgentBoard.SuperagentsTest do
 
     on_exit(fn ->
       case Process.whereis(FakeManager) do
-        nil -> :ok
-        pid -> Agent.stop(pid)
+        nil ->
+          :ok
+
+        pid ->
+          if Process.alive?(pid),
+            do:
+              (try do
+                 Agent.stop(pid)
+               catch
+                 :exit, _ -> :ok
+               end)
       end
     end)
 
@@ -114,8 +123,17 @@ defmodule AgentBoard.SuperagentsTest do
 
     on_exit(fn ->
       case Process.whereis(FakeManager) do
-        nil -> :ok
-        pid -> Agent.stop(pid)
+        nil ->
+          :ok
+
+        pid ->
+          if Process.alive?(pid),
+            do:
+              (try do
+                 Agent.stop(pid)
+               catch
+                 :exit, _ -> :ok
+               end)
       end
     end)
 
@@ -137,6 +155,34 @@ defmodule AgentBoard.SuperagentsTest do
     FakeManager.put(superagent.id, %{state: "ready"})
     Superagents.reconcile(FakeManager)
     assert Repo.get!(Superagent, superagent.id).observed_state == "stopped"
+  end
+
+  test "provision reserves one row and asks the provisioner", %{repo: repo} do
+    {:ok, source_repo} = Board.add_repository("fixture", "source")
+
+    {:ok, source} =
+      Superagents.create(%{
+        repository_id: source_repo.id,
+        profile: "superagent-source",
+        port: 3192,
+        state_dir: "/tmp/source-superagent"
+      })
+
+    assert {:ok, superagent} =
+             Superagents.provision(
+               repo,
+               source,
+               %{path: "/tmp/checkout", workers: 2},
+               FakeProvisioner
+             )
+
+    assert superagent.profile =~ "superagent-superagent"
+    assert superagent.port in 3090..3199
+    assert superagent.max_workers == 2
+    assert Repo.get!(Superagent, superagent.id).observed_state == "starting"
+
+    assert {:error, :already_registered} =
+             Superagents.provision(repo, source, %{path: "/tmp/checkout"}, FakeProvisioner)
   end
 
   test "AgentState uses the registered state paths", %{repo: repo} do

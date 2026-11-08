@@ -8,7 +8,9 @@ defmodule AgentBoard.Superagents do
   import Ecto.Query, warn: false
 
   alias AgentBoard.Repo
-  alias AgentBoard.Superagents.{Manager, Superagent, SuperagentEvent}
+  alias AgentBoard.Superagents.{Manager, Provisioner, Superagent, SuperagentEvent}
+
+  @dsh_state Path.expand("~/.dsh/state")
 
   @topic "superagents"
 
@@ -35,6 +37,79 @@ defmodule AgentBoard.Superagents do
   @doc "The explicit SQLite state files, in registration order."
   def state_paths do
     Repo.all(from s in Superagent, order_by: [asc: s.id], select: s.state_dir)
+  end
+
+  @doc """
+  Reserve one row and ask the provisioner to create the external profile,
+  port, state and setup. A failure keeps the row in `error` with the reason so
+  the owner sees what happened instead of a silent half-project.
+  """
+  def provision(repository, source, attrs, provisioner \\ Provisioner.impl()) do
+    with nil <- get_by_repository(repository),
+         {:ok, profile} <- next_profile(repository),
+         {:ok, port} <- free_port(),
+         state_dir = Path.join(@dsh_state, profile),
+         {:ok, superagent} <-
+           create(%{
+             repository_id: repository.id,
+             profile: profile,
+             port: port,
+             state_dir: state_dir,
+             desired_state: "running",
+             observed_state: "starting",
+             max_workers: Map.get(attrs, :workers, 3),
+             created_by: Map.get(attrs, :actor, "owner")
+           }) do
+      case provisioner.provision(superagent, source, attrs) do
+        {:ok, _} ->
+          event(superagent, "provision", nil, "starting", "owner", profile)
+          {:ok, superagent}
+
+        {:error, reason} ->
+          event(superagent, "provision", "starting", "error", "owner", inspect(reason))
+          observe(superagent, %{state: "error", detail: inspect(reason)})
+          {:error, reason}
+      end
+    else
+      %Superagent{} -> {:error, :already_registered}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp next_profile(repository) do
+    base =
+      repository.name
+      |> String.downcase()
+      |> String.replace(~r/[^a-z0-9]+/, "-")
+      |> String.trim("-")
+
+    base = if base == "", do: "project-#{repository.id}", else: base
+    candidate = "superagent-" <> String.slice(base, 0, 40)
+
+    if Repo.exists?(from s in Superagent, where: s.profile == ^candidate) do
+      {:ok, candidate <> "-" <> Integer.to_string(System.unique_integer([:positive]))}
+    else
+      {:ok, candidate}
+    end
+  end
+
+  defp free_port do
+    used = Repo.all(from s in Superagent, select: s.port)
+
+    Enum.find_value(3090..3199, {:error, :no_port}, fn port ->
+      if port in used or port_open?(port), do: nil, else: {:ok, port}
+    end)
+  end
+
+  defp port_open?(port) do
+    case :gen_tcp.connect(~c"127.0.0.1", port, [:binary], 100) do
+      {:ok, socket} ->
+        :gen_tcp.close(socket)
+        true
+
+      _ ->
+        false
+    end
   end
 
   @doc "Create a superagent row. Provisioning adds the external profile later."

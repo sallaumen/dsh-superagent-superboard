@@ -14,7 +14,7 @@ defmodule AgentBoard.ActionsTest do
   alias AgentBoard.Board.{Comment, Task}
   alias AgentBoard.Runners.Execution
   alias AgentBoard.Superagents
-  alias AgentBoard.Superagents.FakeManager
+  alias AgentBoard.Superagents.{FakeManager, FakeProvisioner}
 
   @github AgentBoard.ActionsTest.GitHub
   @orchestrator AgentBoard.ActionsTest.Orchestrator
@@ -31,6 +31,7 @@ defmodule AgentBoard.ActionsTest do
     :auto_retry_ticket,
     :dispatch_task,
     :stop_execution,
+    :provision_superagent,
     :start_superagent,
     :stop_superagent,
     :pause_superagent,
@@ -175,6 +176,20 @@ defmodule AgentBoard.ActionsTest do
             })
         }
 
+      :provision_superagent ->
+        {:ok, target} = Board.add_repository("fixture", "provision-target")
+        {:ok, source_repo} = Board.add_repository("fixture", "provision-source")
+
+        {:ok, source} =
+          Superagents.create(%{
+            repository_id: source_repo.id,
+            profile: "superagent-provision-source",
+            port: 3390,
+            state_dir: "/tmp/provision-source"
+          })
+
+        %{repository: target, source: source, path: "/tmp/checkout", workers: 2}
+
       name when name in [:start_superagent, :stop_superagent] ->
         %{superagent: superagent!(repo, name)}
 
@@ -231,7 +246,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 12
+      assert length(reds) == 13
 
       for name <- reds do
         params = red_params(name, context)
@@ -245,7 +260,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 12
+      assert Repo.aggregate(Task, :count, :id) == 13
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -409,6 +424,39 @@ defmodule AgentBoard.ActionsTest do
       assert Repo.get!(Execution, execution.id).status == "stopped"
       assert Repo.get!(Task, task.id).state == "blocked"
       assert %Decision{action: "stop_execution", outcome: "ok"} = last()
+    end
+
+    test "provision_superagent creates the row after the confirmation", _context do
+      {:ok, target} = Board.add_repository("fixture", "provision-action")
+      {:ok, source_repo} = Board.add_repository("fixture", "provision-action-source")
+
+      {:ok, source} =
+        Superagents.create(%{
+          repository_id: source_repo.id,
+          profile: "superagent-provision-action-source",
+          port: 3391,
+          state_dir: "/tmp/provision-action-source"
+        })
+
+      previous = Application.get_env(:agent_board, :superagent_provisioner)
+      Application.put_env(:agent_board, :superagent_provisioner, FakeProvisioner)
+
+      on_exit(fn ->
+        if previous,
+          do: Application.put_env(:agent_board, :superagent_provisioner, previous),
+          else: Application.delete_env(:agent_board, :superagent_provisioner)
+      end)
+
+      params = %{repository: target, source: source, path: "/tmp/checkout", workers: 2}
+      phrase = Actions.phrase(:provision_superagent, params)
+
+      assert {:ok, text} =
+               Actions.run(:provision_superagent, params, Actions.owner(:ui), confirm: phrase)
+
+      assert text =~ "reservado"
+      assert superagent = Superagents.get_by_repository(target)
+      assert superagent.max_workers == 2
+      assert %Decision{action: "provision_superagent", outcome: "ok"} = last()
     end
 
     test "superagent start, stop, pause, resume and scale are actions", %{repo: repo} do
