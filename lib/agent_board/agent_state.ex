@@ -1,4 +1,6 @@
 defmodule AgentBoard.AgentState do
+  alias AgentBoard.Superagents
+
   @moduledoc """
   The runner's state, read-only: the tickets, the heartbeat and the paths.
 
@@ -38,9 +40,18 @@ defmodule AgentBoard.AgentState do
 
   defp configured_paths do
     case Application.get_env(:agent_board, :state_db) do
-      nil -> local_or_production_paths()
+      nil -> registered_or_fallback_paths()
       path -> [path]
     end
+  end
+
+  defp registered_or_fallback_paths do
+    case Superagents.state_paths() do
+      [] -> local_or_production_paths()
+      paths -> paths
+    end
+  rescue
+    _exception -> local_or_production_paths()
   end
 
   defp local_or_production_paths do
