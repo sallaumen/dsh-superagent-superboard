@@ -4,6 +4,8 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
 
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1]
 
+  alias AgentBoardWeb.BoardComponents.AgentAction
+
   attr :superagents, :list, required: true
   attr :tz_offset, :integer, default: 0
 
@@ -65,11 +67,77 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
           <p :if={superagent.last_error} class="ab-superagent__error" role="status">
             <.ico name="warning" /> {superagent.last_error}
           </p>
+
+          <div class="ab-superagent__controls">
+            <.live_component
+              :if={remote_action(superagent)}
+              module={AgentAction}
+              id={"superagent-#{remote_action(superagent)}-#{superagent.id}"}
+              mode={remote_action(superagent)}
+              tone={if remote_action(superagent) == :stop_superagent, do: :halt, else: :primary}
+              superagent={superagent}
+              label={remote_label(superagent)}
+              confirm_label={remote_label(superagent)}
+              busy_label="Aplicando…"
+            />
+
+            <button
+              :if={superagent.observed_state == "ready"}
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="superagent_command"
+              phx-value-id={superagent.id}
+              phx-value-action="pause"
+            >
+              Pausar
+            </button>
+            <button
+              :if={superagent.observed_state == "paused"}
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="superagent_command"
+              phx-value-id={superagent.id}
+              phx-value-action="resume"
+            >
+              Retomar
+            </button>
+
+            <span class="ab-superagent__workers">
+              <button
+                type="button"
+                class="ab-btn ab-btn--sm ab-btn--quiet"
+                aria-label="Menos uma sessão"
+                phx-click="superagent_scale"
+                phx-value-id={superagent.id}
+                phx-value-delta="-1"
+                disabled={superagent.max_workers <= 1}
+              >−</button>
+              <span>{superagent.max_workers} sessões</span>
+              <button
+                type="button"
+                class="ab-btn ab-btn--sm ab-btn--quiet"
+                aria-label="Mais uma sessão"
+                phx-click="superagent_scale"
+                phx-value-id={superagent.id}
+                phx-value-delta="1"
+                disabled={superagent.max_workers >= 32}
+              >+</button>
+            </span>
+          </div>
         </article>
       </div>
     </section>
     """
   end
+
+  defp remote_action(superagent)
+       when superagent.observed_state in ["stopped", "unknown", "error"],
+       do: :start_superagent
+
+  defp remote_action(_superagent), do: :stop_superagent
+
+  defp remote_label(superagent),
+    do: if(remote_action(superagent) == :start_superagent, do: "Ligar", else: "Parar")
 
   defp state_label("ready"), do: "ligado"
   defp state_label("starting"), do: "iniciando"

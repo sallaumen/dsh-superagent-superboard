@@ -13,6 +13,8 @@ defmodule AgentBoard.ActionsTest do
   alias AgentBoard.Actions.Decision
   alias AgentBoard.Board.{Comment, Task}
   alias AgentBoard.Runners.Execution
+  alias AgentBoard.Superagents
+  alias AgentBoard.Superagents.FakeManager
 
   @github AgentBoard.ActionsTest.GitHub
   @orchestrator AgentBoard.ActionsTest.Orchestrator
@@ -29,6 +31,11 @@ defmodule AgentBoard.ActionsTest do
     :auto_retry_ticket,
     :dispatch_task,
     :stop_execution,
+    :start_superagent,
+    :stop_superagent,
+    :pause_superagent,
+    :resume_superagent,
+    :scale_superagent,
     :start_agent,
     :set_max_workers,
     :add_repository,
@@ -107,6 +114,26 @@ defmodule AgentBoard.ActionsTest do
     }
   end
 
+  defp superagent!(repo, name) do
+    case Superagents.get_by_repository(repo) do
+      nil ->
+        index = Enum.find_index(@tested, &(&1 == name)) || 0
+
+        {:ok, superagent} =
+          Superagents.create(%{
+            repository_id: repo.id,
+            profile: "superagent-actions-#{name}",
+            port: 3300 + index,
+            state_dir: "/tmp/actions-superagent-#{name}"
+          })
+
+        superagent
+
+      superagent ->
+        Repo.preload(superagent, :repository)
+    end
+  end
+
   # A params map per red action, for the refusals below.
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp red_params(name, %{repo: repo, github: github, orchestrator: orchestrator}) do
@@ -147,6 +174,9 @@ defmodule AgentBoard.ActionsTest do
               started_at: DateTime.utc_now() |> DateTime.truncate(:microsecond)
             })
         }
+
+      name when name in [:start_superagent, :stop_superagent] ->
+        %{superagent: superagent!(repo, name)}
 
       :start_agent ->
         %{opts: [starter: fn -> flunk("the agent must not start") end]}
@@ -201,7 +231,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 10
+      assert length(reds) == 12
 
       for name <- reds do
         params = red_params(name, context)
@@ -215,7 +245,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 10
+      assert Repo.aggregate(Task, :count, :id) == 12
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -379,6 +409,53 @@ defmodule AgentBoard.ActionsTest do
       assert Repo.get!(Execution, execution.id).status == "stopped"
       assert Repo.get!(Task, task.id).state == "blocked"
       assert %Decision{action: "stop_execution", outcome: "ok"} = last()
+    end
+
+    test "superagent start, stop, pause, resume and scale are actions", %{repo: repo} do
+      {:ok, pid} = FakeManager.start()
+      previous = Application.get_env(:agent_board, :superagent_manager)
+      Application.put_env(:agent_board, :superagent_manager, FakeManager)
+
+      on_exit(fn ->
+        if previous,
+          do: Application.put_env(:agent_board, :superagent_manager, previous),
+          else: Application.delete_env(:agent_board, :superagent_manager)
+
+        if Process.alive?(pid), do: Agent.stop(pid)
+      end)
+
+      superagent = superagent!(repo, :start_superagent)
+
+      assert {:ok, _} =
+               Actions.run(:start_superagent, %{superagent: superagent}, Actions.owner(:ui),
+                 confirm: Actions.phrase(:start_superagent, %{superagent: superagent})
+               )
+
+      assert Repo.get!(Superagents.Superagent, superagent.id).desired_state == "running"
+
+      assert {:ok, _} =
+               Actions.run(:pause_superagent, %{superagent: superagent}, Actions.owner(:ui))
+
+      assert Repo.get!(Superagents.Superagent, superagent.id).desired_state == "paused"
+
+      assert {:ok, _} =
+               Actions.run(:resume_superagent, %{superagent: superagent}, Actions.owner(:ui))
+
+      assert {:ok, _} =
+               Actions.run(
+                 :scale_superagent,
+                 %{superagent: superagent, workers: 5},
+                 Actions.owner(:ui)
+               )
+
+      assert Repo.get!(Superagents.Superagent, superagent.id).max_workers == 5
+
+      assert {:ok, _} =
+               Actions.run(:stop_superagent, %{superagent: superagent}, Actions.owner(:ui),
+                 confirm: Actions.phrase(:stop_superagent, %{superagent: superagent})
+               )
+
+      assert Repo.get!(Superagents.Superagent, superagent.id).desired_state == "stopped"
     end
 
     test "stop_task closes the issue after the confirmation", %{repo: repo} = c do

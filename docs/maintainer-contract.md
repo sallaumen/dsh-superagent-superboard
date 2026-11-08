@@ -134,6 +134,10 @@ each door; a yellow or green action runs on the click and is recorded as
 | `auto_retry_ticket` | red | the same request, asked by the board after a transient failure | System: the standing authorization ("Automatic retry"), `auto_retry` only |
 | `dispatch_task` | red | starts Claude Code or Codex in a worktree; spends the owner's subscription | UI: `AgentAction` "Despachar" in two steps, with the sentence, executor, task, repository and ceiling; voice/API: `428` then `confirm` |
 | `stop_execution` | red | kills the active tmux session, records `stopped` and leaves the task blocked | UI: `AgentAction` "Parar execução" in two steps; voice/API: `428` then `confirm` |
+| `start_superagent` | red | starts the DeepSeek superagent of one project | UI: `AgentAction` "Ligar" in the Superagentes panel, two steps |
+| `stop_superagent` | red | stops that superagent; in-flight work is interrupted | UI: `AgentAction` "Parar", two steps |
+| `pause_superagent` / `resume_superagent` | yellow | pauses/resumes new work without killing the process | UI: one click |
+| `scale_superagent` | yellow | changes `maxWorkers` through the DSH settings API | UI: −/+ on the project card |
 | `start_agent` | red | runs `dsh-superagent start` on this machine; clears a stop made on purpose | UI: `AgentAction` "Religar o agente" |
 | `set_max_workers` | yellow | `PUT settings/executor` with the new ceiling (− and + undo it) | UI: one click on the Paralelismo tile |
 | `add_repository` | yellow | tracks a repository | UI: settings menu. API: direct |
@@ -702,6 +706,12 @@ that watches one GitHub repository and picks the issues whose body mentions
   (`~/.dsh/state/superagent*/orchestrator.sqlite`); tickets are merged by
   repository, so the DeepSeek lane shows both. `AgentState.paths/0` also
   accepts an explicit `:state_dbs` list.
+- **The board has a Superagentes panel.** It lists one card per registered
+  project (repository, profile, port, workers, desired/observed state, last
+  read and error) and exposes **Ligar**, **Parar**, **Pausar**, **Retomar**
+  and the worker ceiling. The ticker reads the manager API every 30 s; the
+  actions are `start_superagent`, `stop_superagent`, `pause_superagent`,
+  `resume_superagent` and `scale_superagent`.
 - **The routing list is a setting.** `dsh_repositories`
   (Configurações → Despacho local, comma-separated) names the repositories
   the DeepSeek agents watch; the router only suggests DeepSeek for those. The
