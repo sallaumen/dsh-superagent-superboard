@@ -17,7 +17,7 @@ defmodule AgentBoard.Runners do
   import Ecto.Query, warn: false
   require Logger
 
-  alias AgentBoard.{Board, Repo, Settings}
+  alias AgentBoard.{Board, Executors, Repo, Settings}
   alias AgentBoard.Board.Task
   alias AgentBoard.Runners.Execution
   alias AgentBoard.Usage.{Costs, Ledger, Report}
@@ -65,6 +65,41 @@ defmodule AgentBoard.Runners do
   def for_task(task_id) do
     Repo.all(from e in Execution, where: e.task_id == ^task_id, order_by: [desc: e.id])
   end
+
+  @doc """
+  The starting/running executions as items for the Hoje view: the task, the
+  repository and the executor, so "o que roda e onde" includes Claude Code
+  and Codex, not only the harness.
+  """
+  @spec running_items() :: [map()]
+  def running_items do
+    Repo.all(
+      from e in Execution,
+        where: e.status in ^@active,
+        order_by: [asc: e.started_at, asc: e.id],
+        preload: [:task, :repository]
+    )
+    |> Enum.filter(&(&1.task && &1.repository))
+    |> Enum.map(fn execution ->
+      %{
+        id: execution.task.id,
+        number: execution.task.number,
+        title: execution.task.title,
+        state: "running",
+        url: execution.task.url,
+        repository_id: execution.repository_id,
+        repo: "#{execution.repository.owner}/#{execution.repository.name}",
+        at: to_datetime(execution.started_at || execution.inserted_at),
+        executor: execution.executor,
+        executor_name: Executors.name(execution.executor),
+        runner: true
+      }
+    end)
+  end
+
+  defp to_datetime(%DateTime{} = at), do: at
+  defp to_datetime(%NaiveDateTime{} = at), do: DateTime.from_naive!(at, "Etc/UTC")
+  defp to_datetime(_at), do: nil
 
   @doc "Whether the task already has an execution starting or running."
   def active_for_task?(task_id) do

@@ -98,7 +98,9 @@ defmodule AgentBoardWeb.BoardComponents.Today do
               <span class="ab-today__repo">{item.repo}</span>
               <span class="ab-today__num">#{item.number}</span>
               <span class="ab-today__title">{item.title}</span>
-              <span class="ab-tag ab-tag--agent ab-today__state">{state_label(item.state)}</span>
+              <span class="ab-tag ab-tag--agent ab-today__state">
+                {item[:executor_name] || state_label(item.state)}
+              </span>
               <span class="ab-meta ab-today__age">{ago(item.at, @now)}</span>
             </button>
           </li>

@@ -134,6 +134,20 @@ defmodule AgentBoard.RunnersTest do
              hd(AgentBoard.Actions.recent(1))
   end
 
+  test "running executions appear in the Today list with their executor", %{task: task} do
+    test_pid = self()
+    {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher(test_pid))
+    assert_received {:launched, _run_dir}
+
+    assert [item] = Runners.running_items()
+    assert item.id == task.id
+    assert item.repo == "fixture/arena"
+    assert item.executor == "claude"
+    assert item.executor_name == "Claude Code"
+    refute is_nil(item.at)
+    assert execution.status == "starting"
+  end
+
   test "fallback classifies quota, network and content without starting anything" do
     claude = %AgentBoard.Runners.Execution{
       status: "failed",

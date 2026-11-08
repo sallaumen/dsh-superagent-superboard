@@ -118,6 +118,34 @@ defmodule AgentBoardWeb.TodayTest do
     assert needs =~ "Revisar o colmex"
   end
 
+  test "uma execução local de runner aparece no Rodando agora", %{conn: conn, colmex: colmex} do
+    task =
+      Task.changeset(%Task{}, %{
+        repository_id: colmex.id,
+        kind: "issue",
+        number: 77,
+        title: "Rodando no Codex",
+        state: "queued",
+        executor: "codex"
+      })
+      |> Repo.insert!()
+
+    Repo.insert!(%AgentBoard.Runners.Execution{
+      task_id: task.id,
+      repository_id: colmex.id,
+      executor: "codex",
+      status: "running",
+      run_dir: "/tmp/today-runner",
+      started_at: DateTime.utc_now() |> DateTime.truncate(:microsecond)
+    })
+
+    {:ok, view, _html} = live(conn, @path)
+
+    assert has_element?(view, "#today-running", "Rodando no Codex")
+    assert has_element?(view, "#today-running", "Codex")
+    assert has_element?(view, "#today-running", "fixture/colmex")
+  end
+
   test "o gasto do dia mostra as três moedas, sem somar", %{conn: conn} do
     {:ok, view, _html} = live(conn, @path)
 
