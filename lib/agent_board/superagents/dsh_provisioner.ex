@@ -39,7 +39,9 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     from = profile_dir(source.profile)
     to = profile_dir(superagent.profile)
 
-    with true <- File.dir?(from) || {:error, :source_profile_missing},
+    with true <- (is_binary(from) and is_binary(to)) || {:error, :invalid_profile},
+         true <- inside_state?(superagent.state_dir) || {:error, :invalid_state_dir},
+         true <- File.dir?(from) || {:error, :source_profile_missing},
          false <- File.exists?(to) || {:error, :profile_exists},
          :ok <- copy_tree(from, to),
          :ok <- rewrite_patch(to, superagent) do
