@@ -102,12 +102,18 @@ defmodule AgentBoard.Routing do
   end
 
   defp out_reason("dsh", task, dsh) do
-    watched = dsh[:repository]
+    watched = dsh[:repositories] || List.wrap(dsh[:repository])
+    wanted = String.downcase(to_string(task.repository))
 
     cond do
-      is_binary(watched) and
-          String.downcase(watched) != String.downcase(to_string(task.repository)) ->
-        "o DeepSeek só atende o #{watched}."
+      watched != [] and not Enum.any?(watched, &(String.downcase(to_string(&1)) == wanted)) ->
+        subject =
+          case watched do
+            [one] -> "o #{one}"
+            many -> Enum.join(many, ", ")
+          end
+
+        "o DeepSeek só atende #{subject}."
 
       dsh[:state] == :paused ->
         "o DeepSeek está pausado."

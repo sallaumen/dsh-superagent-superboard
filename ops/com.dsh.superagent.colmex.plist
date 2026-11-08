@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The second DeepSeek superagent, watching o_colmex. Same keepalive as
+	     the primary agent, with its own profile, port and state directory.
+	     Install and remove: docs/agent/setup.md, section 4. -->
+	<key>Label</key>
+	<string>com.dsh.superagent.colmex</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/sh</string>
+		<string>/Users/tavano/src/agent_board/scripts/agent/keepalive.sh</string>
+	</array>
+
+	<key>WorkingDirectory</key>
+	<string>/Users/tavano</string>
+
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>/Users/tavano/.local/bin:/Users/tavano/.asdf/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<key>LANG</key>
+		<string>en_US.UTF-8</string>
+		<key>DSH_SUPERAGENT_HOME</key>
+		<string>/Users/tavano/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype</string>
+		<key>DSH_SUPERAGENT_PROFILE</key>
+		<string>superagent-colmex</string>
+		<key>DSH_SUPERAGENT_PORT</key>
+		<string>3083</string>
+		<key>SUPERAGENT_STATE_DIR</key>
+		<string>/Users/tavano/.dsh/state/superagent-colmex</string>
+		<key>DSH_SUPERAGENT_KEEPALIVE_LOG</key>
+		<string>/Users/tavano/Library/Logs/dsh-superagent-colmex-keepalive.log</string>
+	</dict>
+
+	<key>RunAtLoad</key>
+	<true/>
+
+	<key>StartInterval</key>
+	<integer>300</integer>
+
+	<key>AbandonProcessGroup</key>
+	<true/>
+
+	<key>StandardOutPath</key>
+	<string>/Users/tavano/Library/Logs/dsh-superagent-colmex-keepalive.log</string>
+
+	<key>StandardErrorPath</key>
+	<string>/Users/tavano/Library/Logs/dsh-superagent-colmex-keepalive.log</string>
+</dict>
+</plist>

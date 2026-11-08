@@ -1,7 +1,8 @@
 #!/bin/sh
 # Shared config for the agent scripts. The API needs this exact header.
-STATE_DIR="${SUPERAGENT_STATE_DIR:-$HOME/.dsh/state/superagent}"
-API="${SUPERAGENT_API:-http://127.0.0.1:3082/orchestrator/api}"
+PROFILE="${DSH_SUPERAGENT_PROFILE:-superagent}"
+STATE_DIR="${SUPERAGENT_STATE_DIR:-$HOME/.dsh/state/$PROFILE}"
+API="${SUPERAGENT_API:-http://127.0.0.1:${DSH_SUPERAGENT_PORT:-3082}/orchestrator/api}"
 DB="$STATE_DIR/orchestrator.sqlite"
 # The prototype checkout: its scripts/dsh-superagent starts, stops and checks
 # the orchestrator (keepalive.sh).

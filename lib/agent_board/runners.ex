@@ -177,6 +177,7 @@ defmodule AgentBoard.Runners do
     %{
       paused: paused?(),
       monthly_usd: monthly_usd(),
+      dsh_repositories: dsh_repositories(),
       spent_usd: elem(claude_month_usd(), 1),
       task_usd: task_usd(),
       codex_timeout_minutes: codex_timeout_minutes(),
@@ -645,6 +646,15 @@ defmodule AgentBoard.Runners do
       :runner_script,
       Path.expand("scripts/runners/run.sh", File.cwd!())
     )
+  end
+
+  @doc "The repositories the DeepSeek superagents watch."
+  def dsh_repositories do
+    Settings.get("dsh_repositories")
+    |> to_string()
+    |> String.split(~r/[,\n]/, trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
   end
 
   def claude_bin, do: Application.get_env(:agent_board, :claude_bin, @claude_default_bin)

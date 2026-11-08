@@ -42,6 +42,15 @@ defmodule AgentBoard.RoutingTest do
     assert [%{executor: "codex"}] = suggestion.alternatives
   end
 
+  test "a runner that watches both repositories serves both" do
+    signals =
+      put_in(@ready, ["dsh", :repositories], ["sallaumen/arena-rogue", "sallaumen/o_colmex"])
+
+    suggestion = Routing.suggest(task("sallaumen/o_colmex"), signals)
+    assert suggestion.executor == "dsh"
+    assert suggestion.ruled_out == []
+  end
+
   test "an unreadable runner stays the board's default, and says why" do
     signals = Map.put(@ready, "dsh", %{repository: nil, state: {:unavailable, "sem resposta"}})
 

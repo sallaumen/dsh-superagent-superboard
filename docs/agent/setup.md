@@ -113,6 +113,39 @@ orchestrator's own output is in the newest
 `<prototype>/.artifacts/dsh-superagent-superagent-*.log` and in
 `scripts/agent/logs.sh`.
 
+### A second repository (optional)
+
+One superagent watches one repository. To have DeepSeek on `o_colmex` while
+the primary keeps `arena-rogue`, create a second profile and state:
+
+```sh
+cp -R ~/.dsh/profiles/superagent ~/.dsh/profiles/superagent-colmex
+# edit cordis.patch.yml: webserver port 3083, stateDir
+# ~/.dsh/state/superagent-colmex
+mkdir -p ~/.dsh/state/superagent-colmex
+cd <prototype>
+python3 scripts/dsh-superagent --profile superagent-colmex \
+  --url http://127.0.0.1:3083 start
+```
+
+In the new panel at `http://127.0.0.1:3083`, set the GitHub repository to
+`owner/second-repo`, the agent CLI to the same `gh-agent`, the executor
+directory/prepare command to the second clone, and the policy allowed list.
+The bot account needs write access to that repository (invite it, then accept
+the invitation as the bot).
+
+Install the second keepalive and tell the board the routing list:
+
+```sh
+cp ops/com.dsh.superagent.colmex.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dsh.superagent.colmex.plist
+# Configurações → Despacho local → Repositórios do DeepSeek:
+# sallaumen/arena-rogue, sallaumen/o_colmex
+```
+
+`AgentState` reads both `~/.dsh/state/superagent*/orchestrator.sqlite` files,
+so the board shows both DeepSeek lanes without a restart of the agents.
+
 ## 5. Verify it is configured and alive
 
 ```sh
