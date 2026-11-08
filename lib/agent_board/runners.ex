@@ -25,6 +25,9 @@ defmodule AgentBoard.Runners do
   @active ~w(starting running)
   @claude_default_model "claude-opus-5-5"
   @codex_default_model "gpt-6-sol"
+  # The Claude Code run is stopped by --max-budget-usd; this is only the
+  # watchdog so a hung process does not stay "running" forever.
+  @claude_timeout_seconds 7_200
   @claude_default_bin "/Users/tavano/.asdf/installs/nodejs/22.15.1/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/claude"
   @codex_default_bin "/opt/homebrew/bin/codex"
 
@@ -127,9 +130,14 @@ defmodule AgentBoard.Runners do
     ceiling = Keyword.get(opts, :ceiling_usd, task_usd())
 
     case claude_month_usd() do
-      {:ok, spent} when spent >= cap -> {:error, :monthly_budget}
-      {:ok, _spent} -> {:ok, %{ceiling_usd: ceiling, timeout_seconds: nil}}
-      {:error, reason} -> {:error, reason}
+      {:ok, spent} when spent >= cap ->
+        {:error, :monthly_budget}
+
+      {:ok, _spent} ->
+        {:ok, %{ceiling_usd: ceiling, timeout_seconds: @claude_timeout_seconds}}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
