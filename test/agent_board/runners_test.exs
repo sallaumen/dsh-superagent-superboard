@@ -256,6 +256,33 @@ defmodule AgentBoard.RunnersTest do
     refute Runners.active_for_task?(task.id)
   end
 
+  test "a tick from a new boot observes an execution it did not start", %{task: task} do
+    run_dir = Path.join(System.tmp_dir!(), "runner-restart-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(run_dir)
+    File.write!(Path.join(run_dir, "status"), "done")
+    File.write!(Path.join(run_dir, "session_id"), "old-session")
+    File.write!(Path.join(run_dir, "result"), "resultado do boot anterior")
+    File.write!(Path.join(run_dir, "cost_usd"), "0.02")
+
+    execution =
+      Repo.insert!(%AgentBoard.Runners.Execution{
+        task_id: task.id,
+        repository_id: task.repository_id,
+        executor: "claude",
+        status: "running",
+        session_id: "old-session",
+        run_dir: run_dir,
+        started_at: DateTime.utc_now() |> DateTime.truncate(:microsecond)
+      })
+
+    Runners.tick()
+
+    execution = Repo.get!(AgentBoard.Runners.Execution, execution.id)
+    assert execution.status == "done"
+    assert execution.result == "resultado do boot anterior"
+    assert Repo.get!(Task, task.id).state == "ready"
+  end
+
   test "a runner that never writes a status is failed by the watchdog", %{task: task} do
     launcher = fn _run_dir -> :ok end
     {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher)

@@ -606,6 +606,11 @@ in Configurações → Despacho local.
   and priced (an unpriced row refuses rather than pretending the budget is
   zero); the Codex weekly quota, when read, is outside the reserve. The
   ceiling the owner saw is the one the action passes to the runner.
+- **A board restart does not kill the execution**: the runner is a tmux
+  session, not a child. On boot `Runners.Ticker` reads every `starting`/`running`
+  row and finishes it from the status files; `runners_test.exs` covers a tick
+  from a new boot and the manual E2E killed port 4200 mid-run and saw the new
+  boot mark the task ready.
 - **The lane follows the execution**: starting puts the task in `running`
   (Agora), a finished execution puts it in `ready` (Para revisar), and a
   failure puts it in `blocked` (Precisa de você) until a new confirmed
