@@ -119,6 +119,44 @@ defmodule AgentBoardWeb.DispatchTest do
     assert Repo.get!(Task, task.id).executor == "codex"
   end
 
+  test "the settings panel saves the dispatch numbers and rejects an invalid reserve", %{
+    conn: conn
+  } do
+    {:ok, view, _html} = live(conn, "/?repo=fixture/dispatch&panel=settings")
+
+    view
+    |> form("#dispatch-settings-form-dispatch-settings", %{
+      "monthly_usd" => "100",
+      "task_usd" => "2.50",
+      "codex_timeout_minutes" => "15",
+      "reserve_percent" => "25",
+      "claude_model" => "claude-test",
+      "codex_model" => "codex-test"
+    })
+    |> render_submit()
+
+    assert Settings.get("dispatch_monthly_usd") == "100.00"
+    assert Settings.get("dispatch_task_usd") == "2.50"
+    assert Settings.get("dispatch_codex_timeout_minutes") == "15"
+    assert Settings.get("dispatch_reserve_percent") == "25"
+    assert Settings.get("dispatch_claude_model") == "claude-test"
+    assert Settings.get("dispatch_codex_model") == "codex-test"
+
+    view
+    |> form("#dispatch-settings-form-dispatch-settings", %{
+      "monthly_usd" => "100",
+      "task_usd" => "2.50",
+      "codex_timeout_minutes" => "15",
+      "reserve_percent" => "150",
+      "claude_model" => "claude-test",
+      "codex_model" => "codex-test"
+    })
+    |> render_submit()
+
+    assert Settings.get("dispatch_reserve_percent") == "25"
+    assert has_element?(view, "#dispatch-settings-form-dispatch-settings [role=alert]")
+  end
+
   test "the global pause stops a new dispatch and is visible on the board", %{
     conn: conn,
     task: task

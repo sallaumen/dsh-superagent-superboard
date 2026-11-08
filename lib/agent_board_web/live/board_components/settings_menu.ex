@@ -5,6 +5,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
   attr :dispatch_paused, :boolean, default: false
+  attr :settings_panel, :boolean, default: false
 
   @impl true
   def render(assigns) do
@@ -73,6 +74,12 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               do: "Pausado: o que já roda continua e nenhuma execução nova começa.",
               else: "Ligado: Claude Code e Codex podem ser despachados por uma ação confirmada."}
           </p>
+
+          <.live_component
+            :if={@settings_panel}
+            module={AgentBoardWeb.BoardComponents.DispatchSettings}
+            id="dispatch-settings"
+          />
         </section>
 
         <details id="settings-voice-section" class="settings-fold">

@@ -2045,6 +2045,7 @@ defmodule AgentBoardWeb.BoardLive do
             voice={@voice}
             dispatch_paused={@dispatch_paused}
             show_settings={@panel != "settings"}
+            settings_panel={@panel == "settings"}
           />
 
           <main id="board-work" class="ab-main">
@@ -2435,6 +2436,7 @@ defmodule AgentBoardWeb.BoardLive do
             busy={@busy}
             voice={@voice}
             dispatch_paused={@dispatch_paused}
+            settings_panel={true}
           />
         </BoardComponents.Panel.shell>
 
