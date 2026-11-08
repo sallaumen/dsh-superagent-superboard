@@ -2,6 +2,7 @@ defmodule AgentBoard.Usage.ReportTest do
   @moduledoc "The usage ledger as numbers: per execution, per day, and in each executor's own currency."
   use AgentBoard.DataCase, async: true
 
+  alias AgentBoard.Board.{PullRequest, Task}
   alias AgentBoard.Usage.{Costs, Report}
 
   defp ledger(source, execution, day, attrs \\ %{}) do
@@ -136,6 +137,62 @@ defmodule AgentBoard.Usage.ReportTest do
              spend["codex"]
 
     assert %{status: :none} = spend["dsh"]
+  end
+
+  test "an executor summary counts tasks, direct sessions and the merge" do
+    day = Date.utc_today()
+    {:ok, repo} = AgentBoard.Board.add_repository("fixture", "panel")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{repository_id: repo.id, kind: "issue", number: 12, title: "Mapa"})
+      |> Repo.insert!()
+
+    Repo.update_all(
+      from(t in Task, where: t.id == ^task.id),
+      set: [inserted_at: DateTime.add(DateTime.utc_now(), -10 * 3600, :second)]
+    )
+
+    %PullRequest{}
+    |> PullRequest.changeset(%{
+      repository_id: repo.id,
+      number: 3,
+      title: "Mapa",
+      state: "merged",
+      merged_at: DateTime.utc_now() |> DateTime.truncate(:second),
+      closes_issues: [12],
+      head_ref: "feat/x"
+    })
+    |> Repo.insert!()
+
+    ledger("claude_code", "session-1", day, %{
+      model: "claude-opus-5-5",
+      cwd: "/tmp/panel",
+      git_branch: "feat/x"
+    })
+
+    ledger("claude_code", "session-2", day, %{
+      model: "claude-opus-5-5",
+      cwd: "/tmp/panel",
+      git_branch: "HEAD"
+    })
+
+    ledger("claude_code", "session-3", day, %{
+      model: "claude-opus-5-5",
+      cwd: "/tmp/forrozin-page",
+      git_branch: "main"
+    })
+
+    claude = Enum.find(Report.executors(day), &(&1.source == "claude_code"))
+
+    assert claude.tasks_count == 1
+    assert [%{number: 12}] = claude.tasks
+    assert claude.merged.merged == 1
+    assert claude.merged.rate == 1.0
+    assert_in_delta claude.merged.median_hours, 10.0, 0.1
+    assert claude.direct == [{"fixture/panel", 1}]
+    assert claude.outside == [{"forrozin-page", 1}]
+    assert claude.executions == 3
   end
 
   test "a source that never wrote a row is unknown, not zero" do

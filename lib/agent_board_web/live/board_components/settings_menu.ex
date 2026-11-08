@@ -42,6 +42,15 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               aria-haspopup="dialog"
               aria-controls="panel-ai"
             ><.icon name="hero-cpu-chip" class="size-4" />Chamadas de IA</button>
+            <button
+              id="open-executors"
+              type="button"
+              phx-click="show_panel"
+              phx-value-panel="executors"
+              data-panel-trigger
+              aria-haspopup="dialog"
+              aria-controls="panel-executors"
+            ><.icon name="hero-bolt" class="size-4" />Executores</button>
           </div>
         </section>
 

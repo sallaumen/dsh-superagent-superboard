@@ -36,11 +36,13 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Routing.Signals
   alias AgentBoard.Sync.Freshness
   alias AgentBoard.System.Version
+  alias AgentBoard.Usage.Report
   alias AgentBoard.Voice.{Activity, Phrases}
 
   import AgentBoardWeb.BoardComponents.Composer, only: [composer: 1]
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
   import AgentBoardWeb.BoardComponents.DailySummary, only: [daily_summary: 1]
+  import AgentBoardWeb.BoardComponents.Executors, only: [executors: 1]
   import AgentBoardWeb.BoardComponents.FreshnessBeacon, only: [beacon: 1]
   import AgentBoardWeb.BoardComponents.FrozenBanner, only: [frozen_banner: 1]
   import AgentBoardWeb.BoardComponents.Inspector, only: [inspector: 1]
@@ -106,6 +108,8 @@ defmodule AgentBoardWeb.BoardLive do
         inspector_tab: "conversa",
         inspector_activity: [],
         inspector_calls: [],
+        inspector_executions: [],
+        inspector_executions_for: nil,
         inspector_usage: nil,
         inspector_pr: nil,
         inspector_ci: nil,
@@ -123,6 +127,9 @@ defmodule AgentBoardWeb.BoardLive do
         composer_answers: "",
         composer_routing: nil,
         composer_routing_for: nil,
+        executor_days: 7,
+        executor_report: nil,
+        executor_report_for: nil,
         composer_executor: nil,
         composer_executor_touched: false,
         ai_calls: [],
@@ -335,6 +342,8 @@ defmodule AgentBoardWeb.BoardLive do
         assign(socket,
           inspector_activity: [],
           inspector_calls: [],
+          inspector_executions: [],
+          inspector_executions_for: nil,
           inspector_usage: nil,
           inspector_pr: nil,
           inspector_ci: nil,
@@ -346,9 +355,14 @@ defmodule AgentBoardWeb.BoardLive do
 
         ci = pr && Map.get(socket.assigns.local_ci, pr.number)
 
+        executions = inspector_executions(socket, task)
+
         assign(socket,
           inspector_activity: Board.task_activity(task, pr),
           inspector_calls: AI.recent_for_task(task.id),
+          inspector_executions: executions,
+          inspector_executions_for:
+            if(socket.assigns.inspector_tab == "execucoes", do: task.id, else: nil),
           inspector_usage: executor_usage(socket, task),
           inspector_pr: pr,
           inspector_ci: ci,
@@ -413,6 +427,27 @@ defmodule AgentBoardWeb.BoardLive do
   defp limit_reason({:refused, message}) when is_binary(message), do: message
   defp limit_reason({:http, status}), do: "HTTP #{status}"
   defp limit_reason(_reason), do: "resposta inesperada"
+
+  # The ledger is read when the Execuções tab opens and reused while the
+  # task and the tab stay the same: a board update does not query it again.
+  defp inspector_executions(socket, task) do
+    if socket.assigns.inspector_tab == "execucoes" do
+      if socket.assigns[:inspector_executions_for] == task.id do
+        socket.assigns[:inspector_executions] || []
+      else
+        Report.by_task(task.id, tickets: task_tickets(socket, task))
+      end
+    else
+      []
+    end
+  end
+
+  defp task_tickets(socket, task) do
+    case socket.assigns[:agent_snapshot] do
+      %{tickets: tickets} -> Enum.filter(tickets, &(task.number in (&1["numbers"] || [])))
+      _ -> []
+    end
+  end
 
   # The executor's transcripts are read only while the task is open, and an
   # unchanged reading is reused, so a board update does not decompress them.
@@ -737,6 +772,7 @@ defmodule AgentBoardWeb.BoardLive do
       socket
       |> BoardNavigation.apply_params(params)
       |> load_inspector()
+      |> load_panel()
       |> load_composer_routing()
 
     {:noreply, socket}
@@ -960,8 +996,13 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("inspector_tab", %{"tab" => tab}, socket) do
-    tab = if tab in ~w(conversa atividade chamadas pr), do: tab, else: "conversa"
-    {:noreply, assign(socket, :inspector_tab, tab)}
+    tab = if tab in ~w(conversa atividade chamadas execucoes pr), do: tab, else: "conversa"
+    {:noreply, socket |> assign(:inspector_tab, tab) |> load_inspector()}
+  end
+
+  def handle_event("executor_days", %{"days" => days}, socket) do
+    days = if days in ["7", "30"], do: String.to_integer(days), else: 7
+    {:noreply, load_executors(socket, days)}
   end
 
   @impl true
@@ -2011,6 +2052,7 @@ defmodule AgentBoardWeb.BoardLive do
             tab={@inspector_tab}
             activity={@inspector_activity}
             calls={@inspector_calls}
+            executions={@inspector_executions}
             usage={@inspector_usage}
             pr={@inspector_pr}
             ci={@inspector_ci}
@@ -2183,6 +2225,15 @@ defmodule AgentBoardWeb.BoardLive do
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
+          name="executors"
+          title="Executores"
+          active={@panel == "executors"}
+          flash={@flash}
+        >
+          <.executors report={@executor_report} days={@executor_days} />
+        </BoardComponents.Panel.shell>
+
+        <BoardComponents.Panel.shell
           name="voice"
           title="Conversa por voz"
           active={@panel == "voice"}
@@ -2326,6 +2377,32 @@ defmodule AgentBoardWeb.BoardLive do
   # The router reads the runner once per opening of the composer in a
   # repository, never per render: a runner that does not answer costs the
   # orchestrator's timeouts in the background, not in the form.
+  defp load_panel(%{assigns: %{panel: "executors"}} = socket) do
+    if socket.assigns.executor_report_for == socket.assigns.executor_days,
+      do: socket,
+      else: load_executors(socket, socket.assigns.executor_days)
+  end
+
+  defp load_panel(socket), do: socket
+
+  defp load_executors(socket, days) do
+    since = Report.since(days)
+
+    report = %{
+      executors: Report.executors(since, tickets: all_tickets(socket)),
+      daily: Report.daily(since)
+    }
+
+    assign(socket, executor_days: days, executor_report: report, executor_report_for: days)
+  end
+
+  defp all_tickets(socket) do
+    case socket.assigns[:agent_snapshot] do
+      %{tickets: tickets} -> tickets
+      _ -> []
+    end
+  end
+
   defp load_composer_routing(%{assigns: %{panel: "composer", repo: %{id: id}}} = socket) do
     if connected?(socket) and socket.assigns.composer_routing_for != id do
       socket
