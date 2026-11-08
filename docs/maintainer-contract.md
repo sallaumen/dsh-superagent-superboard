@@ -618,6 +618,11 @@ in Configurações → Despacho local.
   nothing is killed; otherwise it kills the `ab-<uuid>` tmux session, records
   `stopped` with the partial cost and blocks the task. A failed kill keeps
   the row active rather than pretending the process ended.
+- **Finished runs are cleanable.** `scripts/runners/cleanup.sh [--apply]
+  [--force] [--days=N]` lists `done`/`failed`/`stopped` run directories older
+  than 7 days and removes the worktree first (only if clean unless `--force`)
+  and then the run directory; active/unknown runs are never touched. The
+  default is a dry-run. `runners_cleanup_test.exs` covers dry-run and apply.
 - **The lane follows the execution**: starting puts the task in `running`
   (Agora), a finished execution puts it in `ready` (Para revisar), and a
   failure puts it in `blocked` (Precisa de você) until a new confirmed
