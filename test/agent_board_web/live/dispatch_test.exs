@@ -82,8 +82,9 @@ defmodule AgentBoardWeb.DispatchTest do
     Process.sleep(100)
     _ = render(view)
 
-    assert has_element?(view, "#dispatch-#{task.id}", "Despacho iniciado")
+    assert has_element?(view, "#task-dispatch", "execução em andamento")
     assert Runners.active_for_task?(task.id)
+    assert Repo.get!(Task, task.id).state == "running"
   end
 
   test "a failed execution proposes the other executor, with the reason", %{

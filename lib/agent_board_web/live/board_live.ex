@@ -519,7 +519,8 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp with_runner_running(today) do
     running = Runners.running_items()
-    Map.update(today, :running, running, &(&1 ++ running))
+    merged = (running ++ today.running) |> Enum.uniq_by(& &1.id)
+    Map.put(today, :running, merged)
   end
 
   defp load(socket, nil) do
