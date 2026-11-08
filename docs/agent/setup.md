@@ -202,7 +202,9 @@ only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
 The host has no merge logic. Whether the agent merges is prompt text: the
 **Delivery requirements** team section. The three team sections --
 Communication, Ticket scope and Delivery requirements -- are versioned in
-[`prompts/`](prompts/) as the literal text the orchestrator holds, next to
+[`prompts/communication.md`](prompts/communication.md),
+[`prompts/scope.md`](prompts/scope.md) and
+[`prompts/delivery.md`](prompts/delivery.md) as the literal text the orchestrator holds, next to
 `revision`, the revision they were read from, and move through
 `scripts/agent/prompts.sh`:
 

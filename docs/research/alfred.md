@@ -184,6 +184,12 @@ Uma tarefa nunca tem duas execuções ao mesmo tempo.
 
 ### 3.6 A fronteira nova: o board despachando
 
+> **Estado (2026-11-08):** esta fronteira virou o
+> [ADR 0004](../decisions/0004-o-board-despacha-para-executores-locais.md)
+> (D1, D2, D3 e D5 decididas) e F3.1–F3.3 e F3.5 estão implementadas — ver
+> [contrato — Dispatch](../maintainer-contract.md#dispatch-despacho-local).
+> F3.4 segue como trabalho separado.
+
 Hoje o board lê o agente e escreve no runner por dois caminhos de API (contrato, "Boundaries"). Iniciar o Claude Code ou o Codex é uma escrita nova, que gasta, e pede um ADR antes do código, com estas regras propostas:
 
 - **O processo não é filho do board.** O serviço reinicia a cada atualização (`launchctl kickstart`), e um processo aberto por `Port` corre o risco de morrer junto (inferência, não testado). O board pede ao runner, um script com a sessão num tmux ou num job do launchd, como o `dsh-superagent` já roda, e depois só observa: o arquivo de resultado, a transcrição, o worktree e o PR.
@@ -272,6 +278,10 @@ Esforço: **P** ≤ meio dia · **M** 1–2 dias · **G** > 2 dias. Cada item é
 - **Não usar o Claude Agent SDK com o login da assinatura** num produto: o caminho pessoal é o `claude -p` com o login do próprio dono (D3).
 
 ## 6. Perguntas em aberto
+
+> **Atualização de 2026-11-08:** D1, D2, D3 e D5 foram respondidas no
+> [ADR 0004](../decisions/0004-o-board-despacha-para-executores-locais.md).
+> As perguntas 6–8 seguem em aberto.
 
 1. O board pode iniciar Claude Code e Codex nesta máquina (D1)? Se não, as fases 1, 2 e 4.2–4.4 ainda valem, e o despacho fica manual.
 2. Qual é o orçamento mensal da plataforma e o teto por tarefa de cada executor (D2)? Quanto da cota das assinaturas fica reservado para o uso direto do dono?

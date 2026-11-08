@@ -584,7 +584,7 @@ sync found or a task created before the choice existed.
 Fase 3 of the Alfred plan (`docs/research/alfred.md`, 3.6 and F3.1–F3.3):
 `AgentBoard.Runners` starts Claude Code (`claude -p`) or Codex
 (`codex exec`). The decision is the owner's, recorded in
-[ADR 0004](../decisions/0004-o-board-despacha-para-executores-locais.md):
+[ADR 0004](decisions/0004-o-board-despacha-para-executores-locais.md):
 the owner's `gh` account, US$ 300/month, US$ 5 per Claude Code task, 30
 minutes for Codex and 50 % of the Codex weekly window reserved; all are
 settings (`dispatch_*`); both the global pause and the numbers have a form
