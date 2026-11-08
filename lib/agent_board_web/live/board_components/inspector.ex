@@ -580,9 +580,11 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp dispatch_label(task, _fallback),
     do: "Despachar para o #{AgentBoard.Executors.name(task.executor)}"
 
+  # A dispatch belongs to a task that can still run: queued, blocked after a
+  # failure, or already running. A task waiting for review or finished has
+  # its result in Execuções, not another dispatch button.
   defp dispatchable?(task) do
-    task.executor in ["claude", "codex"] and
-      task.state not in ["done", "closed", "stopped", "archived"] and
+    task.executor in ["claude", "codex"] and task.state in ["queued", "blocked", "running"] and
       not (task.stopped or task.archived)
   end
 
