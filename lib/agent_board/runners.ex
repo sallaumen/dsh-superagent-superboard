@@ -230,7 +230,9 @@ defmodule AgentBoard.Runners do
     end
   end
 
-  def fallback(_execution), do: :none
+  # No failed execution (nil, running, done) has no proposal; `:none` is the
+  # content failure, where the owner decides.
+  def fallback(_execution), do: nil
 
   defp short(text) do
     text |> to_string() |> String.split("\n") |> hd() |> String.slice(0, 160)

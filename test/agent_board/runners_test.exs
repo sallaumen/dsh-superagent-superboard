@@ -211,7 +211,7 @@ defmodule AgentBoard.RunnersTest do
     assert %{kind: :retry, executor: "claude"} = Runners.fallback(network)
     assert %{kind: :budget, executor: "claude"} = Runners.fallback(budget)
     assert Runners.fallback(content) == :none
-    assert Runners.fallback(nil) == :none
+    assert Runners.fallback(nil) == nil
   end
 
   test "a confirmed switch changes the task's executor before it starts", %{task: task} do
