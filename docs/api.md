@@ -41,6 +41,24 @@ frase que confirma a ação, com os valores reais; a chamada só age quando repe
 pedido com essa frase em `confirm`. As duas respostas ficam registradas como
 decisões (`action_decisions`), recusada e confirmada, `via: api`.
 
+```mermaid
+sequenceDiagram
+    participant C as Cliente
+    participant B as BoardController
+    participant A as AgentBoard.Actions
+    participant G as GitHub
+    C->>B: POST /api/tasks (sem confirm)
+    B->>A: run/4 sem confirmação
+    A-->>B: {:error, {:unconfirmed, frase}} · decisão "refused"
+    B-->>C: 428 {"error": "confirmation_required", "confirm": frase}
+    C->>B: POST /api/tasks (com confirm: frase)
+    B->>A: run/4 com a frase
+    A->>G: abre a issue
+    G-->>A: ok
+    A-->>B: {:ok, task}
+    B-->>C: 201 {id, number, url, outcome}
+```
+
 - `428` — `{"error": "confirmation_required", "confirm": "<frase>"}`: nada rodou;
   repita o pedido com `"confirm": "<frase>"`.
 - `428` — `{"error": "confirmation_mismatch", "confirm": "<frase atual>"}`: a frase

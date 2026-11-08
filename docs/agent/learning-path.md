@@ -27,6 +27,17 @@ de aprendizado, com os atalhos e os prompts que valem copiar.
 - **Grátis e aberto (MIT).** A única coisa que você paga é o modelo que ele
   usa.
 
+```mermaid
+flowchart LR
+    H["Você<br/>issue ou comentário<br/>com a menção do agente"] --> R["Roteador<br/>a única parte que fala com você"]
+    R --> W1["Worker 1<br/>sessão e pasta próprias"]
+    R --> W2["Worker 2<br/>sessão e pasta próprias"]
+    R --> W3["Worker 3<br/>sessão e pasta próprias"]
+    W1 --> P1["PR na thread"]
+    W2 --> P2["PR na thread"]
+    W3 --> P3["PR na thread"]
+```
+
 Este repositório é exatamente esse desenho: o [agente](how-it-works.md) é o
 `dsh-superagent` (roteador + workers em sessões próprias), e o board é o
 espelho e a mesa de operação — o mesmo sistema em uma figura está no

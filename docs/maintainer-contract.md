@@ -102,6 +102,22 @@ in a prompt, and it is the prerequisite of any dispatch that spends money.
   `Actions`, a test in `actions_test.exs`, and, when red, a confirmation on
   every door that offers it.
 
+```mermaid
+flowchart LR
+    A["Toda escrita<br/>(UI · voz · API · sistema)"] --> G["AgentBoard.Actions.run/4"]
+    G --> R{Risco declarado}
+    R -- verde / amarela --> E["Executa · decisão `automatic`"]
+    R -- vermelha --> C{Confirmação<br/>frase ou palavras do dono}
+    C -- ausente ou de outros valores --> X["Recusa `{:unconfirmed, frase}`<br/>decisão `refused`"]
+    C -- confirmada --> S["Decisão gravada **antes** do efeito<br/>(`ok`/`error` depois)"]
+    S --> E
+```
+
+A exceção única é a autorização permanente escrita neste contrato (a
+retentativa automática de falha transitória, ator `auto_retry`): ela dispensa
+a pergunta, mas segue gravando a decisão como `automatic` com a evidência
+`standing`.
+
 The inventory (2026-11-07). "Confirma" says where the confirmation lives on
 each door; a yellow or green action runs on the click and is recorded as
 `automatic`.

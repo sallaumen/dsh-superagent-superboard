@@ -149,6 +149,22 @@ porque não tem volta.
 | pensando → expirada | `{:voice_turn_timeout, ref}` (45 s) | — |
 | proposta → confirmada/cancelada/expirada | `Conversation.settle/2`, condicional, uma vez; expira em 10 min | `proposal_status` |
 
+```mermaid
+stateDiagram-v2
+    [*] --> ouvindo
+    ouvindo --> enviada: silêncio encerra (hook VoiceCommand)
+    enviada --> pensando: VoiceConversation.start/2, chave ref
+    pensando --> respondida: finish/3, só o ref atual
+    pensando --> superada: uma fala nova cancela a anterior
+    pensando --> expirada: 45 s
+    respondida --> proposta: a fala pediu uma escrita
+    proposta --> confirmada: "sim" (settle, uma vez)
+    proposta --> cancelada: "não"
+    proposta --> expirada: 10 min
+    confirmada --> [*]
+    cancelada --> [*]
+```
+
 Um "sim" repetido (evento duplicado, duas abas) não cria duas issues: só quem
 move a proposta de `proposed` executa, e `Board.create_request/3` ainda
 deduplica pela chave.
