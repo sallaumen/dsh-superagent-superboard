@@ -92,7 +92,7 @@ Estas são as regras da seção 3.6 do plano, em forma de contrato.
 | # | Decisão | Resposta |
 |---|---|---|
 | **D1** | O board pode iniciar Claude Code e Codex locais por uma ação confirmada? | **Sim.** A ação vermelha `dispatch_task`, com a frase e o teto, é a única porta. |
-| **D2** | Orçamento mensal, teto por tarefa e reserva das assinaturas | **US$ 300/mês, US$ 5 por tarefa no Claude Code, 30 minutos no Codex e 50 % da cota semanal reservada**, todos configuráveis nas settings `dispatch_*`; nenhum valor é somado entre executores. |
+| **D2** | Orçamento mensal, teto por tarefa e reserva das assinaturas | **US$ 300/mês, US$ 5 por tarefa no Claude Code, 30 minutos no Codex e 50 % da cota semanal reservada**, todos configuráveis no formulário de Configurações → Despacho local (`dispatch_*`); nenhum valor é somado entre executores. |
 | **D3** | Os termos das assinaturas cobrem execução headless para uso pessoal? | **Sim, para uso pessoal**, confirmado pelo dono; nenhuma credencial nova é criada. |
 | **D5** | Quem abre e mescla os PRs? | **A conta do dono**, com o `gh` já autenticado e a mesma política de entrega do DSH; o token do bot não entra no runner. |
 

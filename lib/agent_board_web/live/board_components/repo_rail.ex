@@ -17,6 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
   attr :voice, :map, default: nil
   attr :dispatch_paused, :boolean, default: false
   attr :show_settings, :boolean, default: true
+  attr :settings_panel, :boolean, default: false
 
   @impl true
   def render(assigns) do
@@ -129,6 +130,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           busy={@busy}
           voice={@voice}
           dispatch_paused={@dispatch_paused}
+          settings_panel={@settings_panel}
         />
       </div>
     </nav>
