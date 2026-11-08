@@ -7,27 +7,15 @@ agent keeps working.
 
 ## The loop
 
-```
-GitHub comment mentioning @sallaumen-agent
-        │
-        ▼
-  1. TRIGGER     the event, with its author and text
-        │
-        ▼
-  2. THREAD      github:<issue number> -- the conversation it belongs to
-        │
-        ▼
-  3. DECISION    is this work? for whom? with what strength of mandate?
-        │
-        ▼
-  4. TICKET      the unit of work: mandate + channels + assignments
-        │
-        ▼
-  5. EXECUTOR    a worker on deepseek-flash, in an isolated worktree:
-                 branch -> implement -> gates -> open PR -> write a report
-        │
-        ▼
-  6. OUTBOX      the reply posted back on the issue
+```mermaid
+flowchart TB
+    C["GitHub comment mentioning @sallaumen-agent"] --> S1
+    S1["1 · TRIGGER<br/>the event, with its author and text"] --> S2
+    S2["2 · THREAD<br/>github:&lt;issue number&gt; — the conversation it belongs to"] --> S3
+    S3["3 · DECISION<br/>is this work? for whom? with what strength of mandate?"] --> S4
+    S4["4 · TICKET<br/>the unit of work: mandate + channels + assignments"] --> S5
+    S5["5 · EXECUTOR<br/>a worker on deepseek-flash, in an isolated worktree:<br/>branch → implement → gates → open PR → write a report"] --> S6
+    S6["6 · OUTBOX<br/>the reply posted back on the issue"]
 ```
 
 ## The pieces, and where each lives
