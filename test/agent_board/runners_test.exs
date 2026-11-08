@@ -16,6 +16,9 @@ defmodule AgentBoard.RunnersTest do
     previous_bins =
       Map.new([:claude_bin, :codex_bin], &{&1, Application.get_env(:agent_board, &1)})
 
+    previous_tmux = Application.get_env(:agent_board, :tmux_killer)
+    Application.put_env(:agent_board, :tmux_killer, fn _session -> :ok end)
+
     Application.put_env(:agent_board, :runner_root, Path.join(root, "runs"))
 
     # The check only asks whether the path exists; the launcher is fake, so
@@ -38,6 +41,10 @@ defmodule AgentBoard.RunnersTest do
           do: Application.put_env(:agent_board, key, value),
           else: Application.delete_env(:agent_board, key)
       end
+
+      if previous_tmux,
+        do: Application.put_env(:agent_board, :tmux_killer, previous_tmux),
+        else: Application.delete_env(:agent_board, :tmux_killer)
     end)
 
     {:ok, repository} = Board.add_repository("fixture", "arena")
@@ -266,6 +273,29 @@ defmodule AgentBoard.RunnersTest do
     assert execution.cost_micros == 210_000
     assert Repo.get!(Task, task.id).state == "ready"
     refute Runners.active_for_task?(task.id)
+  end
+
+  test "the owner can stop an active execution", %{task: task} do
+    {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher(self()))
+
+    assert {:ok, stopped} = Runners.stop(execution)
+    assert stopped.status == "stopped"
+    assert stopped.error =~ "Parada pelo dono"
+    assert Repo.get!(Task, task.id).state == "blocked"
+    assert {:error, :not_running} = Runners.stop(stopped)
+  end
+
+  test "stopping after the runner finished keeps the result", %{task: task} do
+    {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher(self()))
+    File.write!(Path.join(execution.run_dir, "status"), "done")
+    File.write!(Path.join(execution.run_dir, "result"), "resultado pronto")
+
+    assert {:error, :already_finished} = Runners.stop(execution)
+
+    execution = Repo.get!(AgentBoard.Runners.Execution, execution.id)
+    assert execution.status == "done"
+    assert execution.result == "resultado pronto"
+    assert Repo.get!(Task, task.id).state == "ready"
   end
 
   test "a tick from a new boot observes an execution it did not start", %{task: task} do

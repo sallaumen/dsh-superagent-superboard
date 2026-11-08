@@ -83,6 +83,7 @@ defmodule AgentBoard.Actions do
     :retry_ticket,
     :auto_retry_ticket,
     :dispatch_task,
+    :stop_execution,
     :start_agent,
     :set_max_workers,
     :add_repository,
@@ -155,6 +156,9 @@ defmodule AgentBoard.Actions do
       risk: :red,
       does: "inicia o Claude Code ou o Codex num worktree e gasta a assinatura do dono"
     }
+
+  defp spec(:stop_execution),
+    do: %{risk: :red, does: "encerra o processo de uma execução local e deixa a tarefa bloqueada"}
 
   defp spec(:start_agent),
     do: %{risk: :red, does: "liga o orquestrador nesta máquina e desfaz um stop de propósito"}
@@ -241,6 +245,16 @@ defmodule AgentBoard.Actions do
     do:
       "Desfazer a tarefa ##{task.number}, #{q(short(task.title))}? " <>
         "O board fecha a issue que acabou de abrir."
+
+  def phrase(:stop_execution, %{task: task, execution: execution}, "en-US"),
+    do:
+      "Stop the #{executor_name(execution.executor)} execution on task ##{task.number}? " <>
+        "The process is killed and the partial result stays in Execuções."
+
+  def phrase(:stop_execution, %{task: task, execution: execution}, _lang),
+    do:
+      "Parar a execução do #{executor_name(execution.executor)} na tarefa ##{task.number}? " <>
+        "O processo é encerrado e o resultado parcial fica em Execuções."
 
   def phrase(:archive_task, %{task: task}, "en-US"),
     do:
@@ -501,6 +515,22 @@ defmodule AgentBoard.Actions do
     end
   end
 
+  defp execute(:stop_execution, %{execution: execution}) do
+    case Runners.stop(execution) do
+      {:ok, _execution} ->
+        {:ok, "Execução parada. A tarefa ficou bloqueada para você decidir."}
+
+      {:error, :already_finished} ->
+        {:error, "A execução já terminou; veja o resultado em Execuções."}
+
+      {:error, :not_running} ->
+        {:error, "Essa execução não está mais ativa."}
+
+      {:error, reason} ->
+        {:error, "Não foi possível parar a execução: #{describe(reason)}"}
+    end
+  end
+
   defp execute(:start_agent, params), do: AgentControl.start_agent(Map.get(params, :opts, []))
 
   defp execute(:set_max_workers, %{max: max} = params),
@@ -636,6 +666,8 @@ defmodule AgentBoard.Actions do
   defp dispatch_error(:repo_missing), do: "o checkout local do repositório não existe"
   defp dispatch_error(:no_repository), do: "a tarefa não tem repositório"
   defp dispatch_error(reason), do: describe(reason)
+
+  defp executor_name(executor), do: Executors.name(executor)
 
   defp describe(%{__exception__: true} = exception), do: Exception.message(exception)
   defp describe(text) when is_binary(text), do: text

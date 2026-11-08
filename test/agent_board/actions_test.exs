@@ -12,6 +12,7 @@ defmodule AgentBoard.ActionsTest do
   alias AgentBoard.{Actions, Board, Conversation, Orchestrator, Repo, Settings, Voice}
   alias AgentBoard.Actions.Decision
   alias AgentBoard.Board.{Comment, Task}
+  alias AgentBoard.Runners.Execution
 
   @github AgentBoard.ActionsTest.GitHub
   @orchestrator AgentBoard.ActionsTest.Orchestrator
@@ -27,6 +28,7 @@ defmodule AgentBoard.ActionsTest do
     :retry_ticket,
     :auto_retry_ticket,
     :dispatch_task,
+    :stop_execution,
     :start_agent,
     :set_max_workers,
     :add_repository,
@@ -132,6 +134,20 @@ defmodule AgentBoard.ActionsTest do
       :dispatch_task ->
         dispatch_params(task, repo)
 
+      :stop_execution ->
+        %{
+          task: task,
+          execution:
+            Repo.insert!(%Execution{
+              task_id: task.id,
+              repository_id: repo.id,
+              executor: "claude",
+              status: "running",
+              run_dir: Path.join(System.tmp_dir!(), "actions-stop-#{task.id}"),
+              started_at: DateTime.utc_now() |> DateTime.truncate(:microsecond)
+            })
+        }
+
       :start_agent ->
         %{opts: [starter: fn -> flunk("the agent must not start") end]}
 
@@ -185,7 +201,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 9
+      assert length(reds) == 10
 
       for name <- reds do
         params = red_params(name, context)
@@ -199,7 +215,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 9
+      assert Repo.aggregate(Task, :count, :id) == 10
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -331,6 +347,38 @@ defmodule AgentBoard.ActionsTest do
 
       assert %Comment{github_id: 77} = Repo.get_by!(Comment, task_id: task.id)
       assert %Decision{action: "ask_task", decision: "confirmed", outcome: "ok"} = last()
+    end
+
+    test "stop_execution stops the active row after the confirmation", %{repo: repo} do
+      task = task!(repo, 23)
+      run_dir = Path.join(System.tmp_dir!(), "actions-stop-ok-#{task.id}")
+      File.mkdir_p!(run_dir)
+      File.write!(Path.join(run_dir, "status"), "running")
+
+      execution =
+        Repo.insert!(%Execution{
+          task_id: task.id,
+          repository_id: repo.id,
+          executor: "claude",
+          status: "running",
+          run_dir: run_dir,
+          started_at: DateTime.utc_now() |> DateTime.truncate(:microsecond)
+        })
+
+      previous = Application.get_env(:agent_board, :tmux_killer)
+      Application.put_env(:agent_board, :tmux_killer, fn _session -> :ok end)
+      on_exit(fn -> Application.put_env(:agent_board, :tmux_killer, previous) end)
+
+      params = %{task: task, execution: execution}
+      phrase = Actions.phrase(:stop_execution, params)
+
+      assert {:ok, text} =
+               Actions.run(:stop_execution, params, Actions.owner(:ui), confirm: phrase)
+
+      assert text =~ "Execução parada"
+      assert Repo.get!(Execution, execution.id).status == "stopped"
+      assert Repo.get!(Task, task.id).state == "blocked"
+      assert %Decision{action: "stop_execution", outcome: "ok"} = last()
     end
 
     test "stop_task closes the issue after the confirmation", %{repo: repo} = c do

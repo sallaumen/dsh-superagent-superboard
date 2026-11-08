@@ -35,6 +35,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Board.Task
   alias AgentBoard.Metrics.Observations
   alias AgentBoard.Routing.Signals
+  alias AgentBoard.Runners.Execution
   alias AgentBoard.Sync.Freshness
   alias AgentBoard.System.Version
   alias AgentBoard.Usage.Report
@@ -1123,6 +1124,30 @@ defmodule AgentBoardWeb.BoardLive do
 
       _ ->
         {:noreply, put_flash(socket, :error, "Could not update the task")}
+    end
+  end
+
+  def handle_event("stop_execution", %{"id" => id, "confirm" => confirm}, socket) do
+    with {execution_id, _} <- Integer.parse(id),
+         %Execution{} = execution <- Repo.get(Execution, execution_id),
+         %Task{} = task <- Repo.get(Task, execution.task_id) |> Repo.preload(:repository) do
+      case Actions.run(:stop_execution, %{execution: execution, task: task}, ui(),
+             confirm: confirm
+           ) do
+        {:ok, _} ->
+          {:noreply,
+           socket
+           |> refresh_inspector_after_act(task.id)
+           |> put_flash(:info, "Execução parada; a tarefa ficou bloqueada para você decidir.")}
+
+        {:error, {refusal, _phrase}} when refusal in [:unconfirmed, :phrase_changed] ->
+          {:noreply, put_flash(socket, :error, @refused_text)}
+
+        {:error, text} ->
+          {:noreply, put_flash(socket, :error, text)}
+      end
+    else
+      _ -> {:noreply, put_flash(socket, :error, "Execução não encontrada.")}
     end
   end
 

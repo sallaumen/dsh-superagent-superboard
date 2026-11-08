@@ -117,6 +117,7 @@ each door; a yellow or green action runs on the click and is recorded as
 | `retry_ticket` | red | `POST tickets/<id>/retry` asked by the owner; the executor spends tokens | UI: `AgentAction` "Tentar de novo" / "Tentar agora" |
 | `auto_retry_ticket` | red | the same request, asked by the board after a transient failure | System: the standing authorization ("Automatic retry"), `auto_retry` only |
 | `dispatch_task` | red | starts Claude Code or Codex in a worktree; spends the owner's subscription | UI: `AgentAction` "Despachar" in two steps, with the sentence, executor, task, repository and ceiling; voice/API: `428` then `confirm` |
+| `stop_execution` | red | kills the active tmux session, records `stopped` and leaves the task blocked | UI: `AgentAction` "Parar execução" in two steps; voice/API: `428` then `confirm` |
 | `start_agent` | red | runs `dsh-superagent start` on this machine; clears a stop made on purpose | UI: `AgentAction` "Religar o agente" |
 | `set_max_workers` | yellow | `PUT settings/executor` with the new ceiling (− and + undo it) | UI: one click on the Paralelismo tile |
 | `add_repository` | yellow | tracks a repository | UI: settings menu. API: direct |
@@ -611,6 +612,12 @@ in Configurações → Despacho local.
   row and finishes it from the status files; `runners_test.exs` covers a tick
   from a new boot and the manual E2E killed port 4200 mid-run and saw the new
   boot mark the task ready.
+- **A run can be stopped by the owner.** `stop_execution` is red and names the
+  task and executor. `Runners.stop/1` reads the status file first: if the
+  runner already wrote `done`/`failed`, the tick's observation wins and
+  nothing is killed; otherwise it kills the `ab-<uuid>` tmux session, records
+  `stopped` with the partial cost and blocks the task. A failed kill keeps
+  the row active rather than pretending the process ended.
 - **The lane follows the execution**: starting puts the task in `running`
   (Agora), a finished execution puts it in `ready` (Para revisar), and a
   failure puts it in `blocked` (Precisa de você) until a new confirmed
@@ -646,9 +653,9 @@ in Configurações → Despacho local.
   `dispatch_task`**: the phrase names the previous failure, the switch updates
   `tasks.executor` and the execution row records the new executor.
 - The tests: `runners_test.exs` (dispatch, one per task, pause, budget,
-  quota, tick, the action), `runners_script_test.exs` (the real shell script
-  against a fake CLI and a real worktree), `dispatch_test.exs` (the sentence,
-  the confirmed start, the pause on the board).
+  quota, tick, stop, the action), `runners_script_test.exs` (the real shell
+  script against a fake CLI and a real worktree), `dispatch_test.exs` (the
+  sentence, the confirmed start, stop, the pause on the board).
 
 ## Routing (mode "sugerir")
 
