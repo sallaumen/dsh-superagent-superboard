@@ -13,7 +13,17 @@ defmodule AgentBoard.Sync do
   """
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AgentState, Attribution, AutoRetry, Board, GitHub, Repo, Workpad}
+  alias AgentBoard.{
+    AgentState,
+    Attribution,
+    AutoRetry,
+    Board,
+    GitHub,
+    Repo,
+    TicketOverlay,
+    Workpad
+  }
+
   alias AgentBoard.Board.{Commit, PullRequest, Repository, Review, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
@@ -485,27 +495,7 @@ defmodule AgentBoard.Sync do
 
   defp apply_overlay(repository, issue, number, overlay, started_at) do
     if issue && not (issue["state"] == "closed" and overlay != "done") do
-      base =
-        from(t in Task,
-          where:
-            t.repository_id == ^repository.id and t.number == ^number and
-              not t.stopped and not t.archived
-        )
-
-      now = DateTime.utc_now()
-
-      Repo.update_all(from(t in base, where: t.state != ^overlay),
-        set: [state: overlay, state_changed_at: now, updated_at: now]
-      )
-
-      if started_at do
-        Repo.update_all(
-          from(t in base,
-            where: is_nil(t.started_at) or t.started_at < ^started_at
-          ),
-          set: [started_at: started_at]
-        )
-      end
+      TicketOverlay.apply(repository, number, overlay, started_at, include_finished: true)
     end
   end
 
