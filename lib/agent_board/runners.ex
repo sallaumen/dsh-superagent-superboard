@@ -470,12 +470,14 @@ defmodule AgentBoard.Runners do
   defp finish(execution, status, session, error \\ nil) do
     result = read(execution.run_dir, "result")
     error = error || read(execution.run_dir, "error")
+    cost = read_micros(execution.run_dir, "cost_usd")
 
     case save(execution, %{
            status: status,
            session_id: session || execution.session_id,
            result: result,
            error: error,
+           cost_micros: cost,
            finished_at: DateTime.utc_now()
          }) do
       {:ok, execution} ->
@@ -531,6 +533,19 @@ defmodule AgentBoard.Runners do
 
   defp fail(execution, error),
     do: save(execution, %{status: "failed", error: error, finished_at: DateTime.utc_now()})
+
+  defp read_micros(run_dir, file) do
+    case read(run_dir, file) do
+      nil ->
+        nil
+
+      text ->
+        case Float.parse(text) do
+          {usd, _} when usd >= 0 -> round(usd * 1_000_000)
+          _ -> nil
+        end
+    end
+  end
 
   defp read(run_dir, file) do
     path = Path.join(run_dir, file)

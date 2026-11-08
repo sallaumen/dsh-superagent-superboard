@@ -18,6 +18,7 @@ defmodule AgentBoard.Runners.Execution do
     field :branch, :string
     field :model, :string
     field :ceiling_micros, :integer
+    field :cost_micros, :integer
     field :timeout_seconds, :integer
     field :result, :string
     field :error, :string
@@ -45,6 +46,7 @@ defmodule AgentBoard.Runners.Execution do
       :branch,
       :model,
       :ceiling_micros,
+      :cost_micros,
       :timeout_seconds,
       :result,
       :error,
