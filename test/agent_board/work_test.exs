@@ -419,7 +419,7 @@ defmodule AgentBoard.WorkTest do
 
     assert log.total == 2
     assert List.last(log.days).n == 1
-    assert Enum.find(log.days, &(&1.date == Date.add(Date.utc_today(), -1))).n == 1
+    assert Enum.find(log.days, &(&1.date == Date.add(DateTime.to_date(today), -1))).n == 1
     assert Enum.map(log.groups, & &1.label) == ["Hoje", "Ontem, 5 nov"]
     assert hd(log.groups).items |> hd() |> Map.fetch!(:ci) == "pass"
 

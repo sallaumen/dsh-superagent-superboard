@@ -105,7 +105,7 @@ defmodule AgentBoard.CreateRequestTest do
   test "the router's suggestion and the owner's choice are one row per created task",
        %{repo: repo} do
     capture_issues()
-    signals = Routing.Signals.read(fn -> {:error, :unreachable} end)
+    signals = Routing.Signals.read(fn -> {:error, :unreachable} end, fn -> %{} end)
 
     suggestion =
       Routing.suggest(%{repository: "sallaumen/arena-rogue", work_type: "ui"}, signals)

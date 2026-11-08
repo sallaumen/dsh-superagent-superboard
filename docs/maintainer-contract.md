@@ -576,11 +576,15 @@ dispatch.
 | hard restriction | the runner's `setup.accounts.repository` (`Orchestrator.dispatch_state/1`) | the DeepSeek runner is out in any other repository the board read; when the orchestrator does not answer the repository is unknown and the runner stays the default, as before the router (a mention waits for it to come back, and does nothing where it does not watch), with the reason said |
 | explicit choice | the owner named an executor | decides, unless the restriction rules it out; then the reason says so |
 | availability | the runner paused | out (the owner paused it); Claude Code and Codex have no reader yet: `:unknown`, which never rules them out and never counts as available |
-| budget, kind and size, history | the usage ledger (F1.3), not built yet | nothing; kind and size are stored for when it exists |
+| budget, kind and size, history | the usage ledger (F1.3) | the expected cost (`Usage.Report.expected_costs/0`); the other signals do not order yet |
 | order | — | the runner first (the only executor the board dispatches), then `Executors.all/0` |
 
-- **The expected cost is unknown until the usage ledger exists**, stored
-  and shown as unknown, never zero.
+- **The expected cost is the median cost of a recent execution of that
+  executor**, in the executor's own currency (`AgentBoard.Usage.Report`):
+  estimated US$ for the harness, the Max subscription's list price as a
+  reference for Claude Code, and `:unknown` for Codex, which has no US$.
+  With no priced history it is `:unknown`, shown as "desconhecido", never
+  zero.
 - **Every task the board creates for an executor has one row** in
   `routing_decisions`: suggested (nil when nobody could take it), chosen,
   mode, reasons in Portuguese, alternatives, the snapshot of the signals
@@ -633,7 +637,8 @@ read and cache write tokens, with the first and last time.
   again; the other files go on. Without `zstd` on the PATH the zstd files
   fail with `:zstd_missing`. A transcript that disappears (Claude Code
   deletes old sessions) keeps its rows: the ledger is history.
-- **Tokens are measured; there is no cost here.** Each source has its own
+- **Tokens are measured and stored; the cost is computed when read**
+  (`AgentBoard.Usage.Costs`, `Usage.Report`). Each source has its own
   currency and the ledger never adds two sources together (`daily/1` keeps
   one row per source and day): the harness spends DeepSeek balance (US$
   estimated from `AI.Providers`, "Executor usage" above), Claude Code runs
@@ -642,7 +647,10 @@ read and cache write tokens, with the first and last time.
   unknown and never zero), and Codex on the ChatGPT plan (only the share of
   the weekly window: `usage_limits`, the newest `rate_limits` per limit,
   `limits/0`). Input excludes the cache in all three so the counts line up;
-  output includes reasoning in Codex and thinking in Claude Code.
+  output includes reasoning in Codex and thinking in Claude Code. Claude
+  Code's US$ uses a list-price table per model read from its own `cost-state`
+  entries (observed 2026-11-07): an estimate, never the bill. Codex has no
+  US$ and is read as the share of its weekly window.
 - Days are UTC, like the AI budget and the ElevenLabs ledger.
 - **No conversation text is read or stored.** The readers keep numbers and
   named metadata only (`Usage.Fields`); the `threads` query names its
@@ -728,9 +736,13 @@ slept is never recovered; this routine asks a question instead.
   own currency, never summed**: DeepSeek from the harness transcripts
   (`ExecutorUsage.window/2`: every session changed since the window start,
   the orchestrator's included, counting the messages whose `time` falls in
-  the window; US$, estimated, `≥` when a price or a file was missing), and
-  Claude Code and Codex `"unknown"` until the usage ledger (F1.3) is wired.
-  A source the board cannot read is `desconhecido`, never zero.
+  the window; US$, estimated, `≥` when a price or a file was missing), Claude
+  Code from the usage ledger in US$ at the Max subscription's list price
+  (`"reference": "list"`, a reference and not a bill; its real quota stays
+  `"quota": "unknown"`), and Codex as the share of the weekly window
+  (`usage_limits`, `"currency": "quota"`), with no US$ anywhere. A source the
+  board cannot read, and a Codex line without a quota reading, is
+  `desconhecido`, never zero.
 - **On the board** it is a discreet block under the digest, today's only,
   that arrives with `{:daily_summary, :generated, id}` on the
   `"daily_summary"` topic and leaves on every board when one dismisses it
