@@ -1,4 +1,4 @@
-# agent-board
+# dsh-supergent-superboard
 
 O board do trabalho do agente, em Elixir: **Ecto** para os dados, **Oban**
 para o sync durável, **LiveView** para a UI em tempo real e **Req** para o
