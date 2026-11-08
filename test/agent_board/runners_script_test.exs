@@ -167,6 +167,61 @@ defmodule AgentBoard.RunnersScriptTest do
     assert File.read!(Path.join(run, "error")) =~ "quota exhausted"
   end
 
+  test "the runner does not read a prompt from stdin", %{root: root, repo: repo, run: run} do
+    fake = fake_codex_stdin(root)
+    worktree = Path.join(run, "worktree")
+
+    env = %{
+      "RUN_DIR" => run,
+      "RUN_ID" => "55555555-5555-4555-8555-555555555555",
+      "EXECUTOR" => "codex",
+      "REPO_SLUG" => "fixture/repo",
+      "REPO_DIR" => repo,
+      "TASK_NUMBER" => "46",
+      "MODEL" => "gpt-test",
+      "BUDGET_USD" => "",
+      "TIMEOUT_SECONDS" => "20",
+      "BRANCH" => "agent/test-stdin",
+      "WORKTREE" => worktree,
+      "PROMPT_FILE" => Path.join(run, "prompt.md"),
+      "CLAUDE_BIN" => fake,
+      "CODEX_BIN" => fake
+    }
+
+    # Give run.sh a stdin with data; it must be discarded before the CLI.
+    assert {_, 0} =
+             System.cmd(
+               "/bin/bash",
+               ["-c", "printf 'unexpected\\n' | exec /bin/bash \"$1\"", "bash", @script],
+               env: env,
+               stderr_to_stdout: true
+             )
+
+    assert File.read!(Path.join(run, "status")) == "done\n"
+    assert File.read!(Path.join(run, "session_id")) == "thread-stdin\n"
+  end
+
+  defp fake_codex_stdin(root) do
+    path = Path.join(root, "fake-codex-stdin")
+
+    File.write!(path, """
+    #!/bin/bash
+    if IFS= read -r line; then
+      printf 'stdin had: %s\\n' "$line" >&2
+      exit 1
+    fi
+
+    while [ "$#" -gt 0 ]; do
+      if [ "$1" = "-o" ]; then out="$2"; shift 2; else shift; fi
+    done
+    printf '{"type":"thread.started","thread_id":"thread-stdin"}\\n'
+    printf 'ok\\n' > "$out"
+    """)
+
+    File.chmod!(path, 0o755)
+    path
+  end
+
   defp fake_codex_fail(root) do
     path = Path.join(root, "fake-codex-fail")
 

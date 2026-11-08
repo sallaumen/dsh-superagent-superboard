@@ -50,7 +50,7 @@ if [ "$EXECUTOR" = "claude" ]; then
     --permission-mode bypassPermissions \
     --model "$MODEL" \
     "${timeout_args[@]}" \
-    > "$RUN_DIR/claude.json" 2> "$RUN_DIR/stderr"
+    </dev/null > "$RUN_DIR/claude.json" 2> "$RUN_DIR/stderr"
   rc=$?
 
   is_error="$(jq -r '.is_error // false' "$RUN_DIR/claude.json" 2>/dev/null || echo false)"
@@ -81,7 +81,7 @@ else
     -C "$WORKTREE" \
     -o "$RUN_DIR/last.txt" \
     "$(cat "$PROMPT_FILE")" \
-    > "$RUN_DIR/codex.jsonl" 2> "$RUN_DIR/stderr"
+    </dev/null > "$RUN_DIR/codex.jsonl" 2> "$RUN_DIR/stderr"
   rc=$?
 
   thread_id="$(jq -r 'select(.type == "thread.started") | .thread_id' "$RUN_DIR/codex.jsonl" 2>/dev/null | head -1 || true)"
