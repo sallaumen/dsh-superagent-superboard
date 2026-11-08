@@ -1118,3 +1118,7 @@ body { margin: 0; background: var(--paper); }
 }
 .board-dialog .board-settings > summary,
 .board-dialog .board-settings-body > h2 { display: none; }
+.board-dialog .board-settings { width: 100%; max-width: 100%; justify-self: stretch; }
+.board-dialog .board-settings-body { width: 100%; max-width: 100%; right: auto; left: auto; }
+.dispatch-settings__grid { min-width: 0; }
+.dispatch-settings input { width: 100%; box-sizing: border-box; }
