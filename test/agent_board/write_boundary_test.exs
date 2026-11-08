@@ -5,7 +5,7 @@ defmodule AgentBoard.WriteBoundaryTest do
   """
   use ExUnit.Case, async: true
 
-  @web_files Path.wildcard("lib/agent_board_web/**/*.ex")
+  @web_files Path.wildcard(Path.expand("../../lib/agent_board_web/**/*.ex", __DIR__))
 
   @patterns [
     {~r/\bRepo\.(insert|insert!|update|update!|delete|delete!|insert_all|update_all|delete_all)\(/,
@@ -17,6 +17,8 @@ defmodule AgentBoard.WriteBoundaryTest do
   ]
 
   test "the web layer has no direct write or dispatch" do
+    assert @web_files != [], "the scan found no web files; check the path"
+
     offenders =
       for path <- @web_files,
           line <- File.stream!(path),
