@@ -873,6 +873,13 @@ slept is never recovered; this routine asks a question instead.
 
 ## Today (Hoje)
 
+`Board.repo_overview/0` reads every repository for the cross-repo view. Its
+ready tasks are filtered through **one** linked-PR query for the whole page
+(`resolved_task_ids/1`), not one per task; the query-count test
+(`repo_overview_query_test.exs`) fixes the budget. `counts` and the newest
+sync per repository are separate bounded reads, and the repository list is
+one more.
+
 The Alfred's "Hoje" (docs/research/alfred.md, 3.4 and F2.1): what needs the
 owner in every repository, one list, repository on each item.
 

@@ -98,14 +98,47 @@ defmodule AgentBoard.Board do
       Repo.all(from c in Comment, where: c.task_id in ^ids)
       |> Enum.group_by(& &1.task_id)
 
+    # One read for every linked PR, not one per task: the overview filters
+    # all ready tasks at once and the query count stays bounded.
+    pulls = linked_pulls(tasks, comments_by_task)
+
     tasks
     |> Enum.filter(fn task ->
-      case task_pull_request(task, Map.get(comments_by_task, task.id, [])) do
+      number = linked_number(task, Map.get(comments_by_task, task.id, []))
+
+      case Map.get(pulls, {task.repository_id, number}) do
         %PullRequest{state: state} when state in ["merged", "closed"] -> true
         _ -> false
       end
     end)
     |> MapSet.new(& &1.id)
+  end
+
+  defp linked_pulls(tasks, comments_by_task) do
+    candidates =
+      tasks
+      |> Enum.map(fn task ->
+        {task.repository_id, linked_number(task, Map.get(comments_by_task, task.id, []))}
+      end)
+      |> Enum.filter(fn {_repository_id, number} -> is_integer(number) end)
+      |> Enum.uniq()
+
+    if candidates == [] do
+      %{}
+    else
+      repository_ids = Enum.map(candidates, &elem(&1, 0)) |> Enum.uniq()
+      numbers = Enum.map(candidates, &elem(&1, 1)) |> Enum.uniq()
+
+      Repo.all(
+        from p in PullRequest,
+          where: p.repository_id in ^repository_ids and p.number in ^numbers
+      )
+      |> Map.new(&{{&1.repository_id, &1.number}, &1})
+    end
+  end
+
+  defp linked_number(task, comments) do
+    Enum.find_value(Enum.reverse(comments), &pull_number(&1.body)) || pull_number(task.body)
   end
 
   @doc """
