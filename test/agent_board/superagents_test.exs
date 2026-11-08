@@ -109,6 +109,36 @@ defmodule AgentBoard.SuperagentsTest do
     assert [%{action: "observe", to_state: "ready"}] = Superagents.events(superagent)
   end
 
+  test "reconcile starts a stopped desired-running agent and stops a stopped one", %{repo: repo} do
+    {:ok, _pid} = FakeManager.start()
+
+    on_exit(fn ->
+      case Process.whereis(FakeManager) do
+        nil -> :ok
+        pid -> Agent.stop(pid)
+      end
+    end)
+
+    {:ok, superagent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "superagent-fixture",
+        port: 3193,
+        state_dir: "/tmp/fixture-superagent-6"
+      })
+
+    {:ok, superagent} = Superagents.set_desired(superagent, "running")
+    {:ok, superagent} = Superagents.observe(superagent, %{state: "stopped"})
+
+    Superagents.reconcile(FakeManager)
+    assert Repo.get!(Superagent, superagent.id).observed_state == "starting"
+
+    Superagents.set_desired(Repo.get!(Superagent, superagent.id), "stopped")
+    FakeManager.put(superagent.id, %{state: "ready"})
+    Superagents.reconcile(FakeManager)
+    assert Repo.get!(Superagent, superagent.id).observed_state == "stopped"
+  end
+
   test "AgentState uses the registered state paths", %{repo: repo} do
     {:ok, _} =
       Superagents.create(%{
