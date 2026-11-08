@@ -41,6 +41,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:retry, fn -> false end)
      |> assign_new(:reason, fn -> nil end)
      |> assign_new(:execution, fn -> nil end)
+     |> assign_new(:superagent, fn -> nil end)
      |> then(&assign(&1, :question, Actions.phrase(action(&1.assigns), params(&1.assigns))))}
   end
 
@@ -180,6 +181,8 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   defp action(%{mode: :restart}), do: :start_agent
   defp action(%{mode: :dispatch}), do: :dispatch_task
   defp action(%{mode: :stop_execution}), do: :stop_execution
+  defp action(%{mode: :start_superagent}), do: :start_superagent
+  defp action(%{mode: :stop_superagent}), do: :stop_superagent
   defp action(%{mode: :stop}), do: :stop_task
 
   defp params(%{mode: :retry} = assigns),
@@ -207,6 +210,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
 
   defp params(%{mode: :stop_execution} = assigns),
     do: %{execution: assigns.execution, task: assigns.task}
+
+  defp params(%{mode: mode} = assigns) when mode in [:start_superagent, :stop_superagent],
+    do: %{superagent: assigns.superagent}
 
   defp repository(%Task{repository: %Repository{} = repository}), do: repository
   defp repository(%Task{repository_id: id}) when is_integer(id), do: Repo.get(Repository, id)

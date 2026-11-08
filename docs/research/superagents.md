@@ -1,6 +1,8 @@
 # Superagents por projeto: plano de gestão no board
 
-**Estado:** proposta de arquitetura, sem código de produção nesta entrega.
+**Estado:** fases 1–3 implementadas (registro, status/ticker/painel e
+ações de ligar/parar/pausar/retomar/escalar); provisionamento automático
+(fase 4) ainda é proposta. O plano abaixo é o contrato das fases seguintes.
 **Data:** 2026-11-08.
 **Escopo:** transformar a configuração manual de um `dsh-superagent`
 (profile, banco SQLite, porta, processo e keepalive) em um recurso do board,

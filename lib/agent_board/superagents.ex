@@ -114,6 +114,69 @@ defmodule AgentBoard.Superagents do
     end
   end
 
+  @doc "Start the external process and mark the desired state running."
+  def start(%Superagent{} = superagent, manager \\ Manager.impl()) do
+    case manager.start(superagent) do
+      :ok ->
+        set_desired(superagent, "running")
+        observe(superagent, %{state: "starting", detail: nil})
+        {:ok, superagent}
+
+      {:error, reason} ->
+        failed(superagent, "start", reason)
+    end
+  end
+
+  @doc "Stop the external process."
+  def stop(%Superagent{} = superagent, manager \\ Manager.impl()) do
+    case manager.stop(superagent) do
+      :ok ->
+        set_desired(superagent, "stopped")
+        observe(superagent, %{state: "stopped", detail: nil})
+        {:ok, superagent}
+
+      {:error, reason} ->
+        failed(superagent, "stop", reason)
+    end
+  end
+
+  @doc "Pause or resume new work without killing the process."
+  def pause(%Superagent{} = superagent, paused, manager \\ Manager.impl()) do
+    case manager.pause(superagent, paused) do
+      :ok ->
+        set_desired(superagent, if(paused, do: "paused", else: "running"))
+
+        observe(superagent, %{
+          state: if(paused, do: "paused", else: "starting"),
+          detail: nil
+        })
+
+        {:ok, superagent}
+
+      {:error, reason} ->
+        failed(superagent, if(paused, do: "pause", else: "resume"), reason)
+    end
+  end
+
+  @doc "Change the worker ceiling through the manager."
+  def scale(%Superagent{} = superagent, workers, manager \\ Manager.impl()) do
+    with true <- is_integer(workers) and workers > 0 and workers <= 32,
+         :ok <- manager.scale(superagent, workers) do
+      set_max_workers(superagent, workers)
+      {:ok, superagent}
+    else
+      false -> {:error, :invalid_workers}
+      {:error, reason} -> failed(superagent, "scale", reason)
+    end
+  end
+
+  defp failed(superagent, action, reason) do
+    detail = inspect(reason)
+    event(superagent, action, superagent.observed_state, "error", "owner", detail)
+    observe(superagent, %{state: "error", detail: detail})
+    {:error, reason}
+  end
+
   @doc """
   Read every registered superagent through the manager and record the
   observed state. Runs in the ticker, never in a LiveView callback.

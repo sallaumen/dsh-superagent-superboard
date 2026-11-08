@@ -1191,6 +1191,34 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, BoardNavigation.open_panel(socket, panel)}
   end
 
+  def handle_event("superagent_command", %{"id" => id, "action" => action}, socket) do
+    name = if action == "pause", do: :pause_superagent, else: :resume_superagent
+    superagent = Superagents.get(id) |> Repo.preload(:repository)
+
+    case Actions.run(name, %{superagent: superagent}, ui()) do
+      {:ok, text} ->
+        {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:info, text)}
+
+      {:error, text} ->
+        {:noreply, put_flash(socket, :error, text)}
+    end
+  end
+
+  def handle_event("superagent_scale", %{"id" => id, "delta" => delta}, socket) do
+    superagent = Superagents.get(id) |> Repo.preload(:repository)
+
+    with {delta, ""} <- Integer.parse(delta),
+         workers = max(1, min(32, superagent.max_workers + delta)),
+         true <- workers != superagent.max_workers,
+         {:ok, text} <-
+           Actions.run(:scale_superagent, %{superagent: superagent, workers: workers}, ui()) do
+      {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:info, text)}
+    else
+      false -> {:noreply, socket}
+      _ -> {:noreply, put_flash(socket, :error, "Não foi possível mudar o limite de sessões.")}
+    end
+  end
+
   @impl true
   def handle_event("dismiss_panel", _params, socket) do
     {:noreply, push_patch(socket, to: BoardNavigation.path(socket.assigns.repo), replace: true)}

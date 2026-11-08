@@ -60,6 +60,7 @@ defmodule AgentBoard.Actions do
     Repo,
     Runners,
     Settings,
+    Superagents,
     Voice
   }
 
@@ -84,6 +85,11 @@ defmodule AgentBoard.Actions do
     :auto_retry_ticket,
     :dispatch_task,
     :stop_execution,
+    :start_superagent,
+    :stop_superagent,
+    :pause_superagent,
+    :resume_superagent,
+    :scale_superagent,
     :start_agent,
     :set_max_workers,
     :add_repository,
@@ -159,6 +165,21 @@ defmodule AgentBoard.Actions do
 
   defp spec(:stop_execution),
     do: %{risk: :red, does: "encerra o processo de uma execução local e deixa a tarefa bloqueada"}
+
+  defp spec(:start_superagent),
+    do: %{risk: :red, does: "inicia o superagent DeepSeek de um projeto"}
+
+  defp spec(:stop_superagent),
+    do: %{risk: :red, does: "para o superagent DeepSeek de um projeto"}
+
+  defp spec(:pause_superagent),
+    do: %{risk: :yellow, does: "pausa novas tarefas do superagent sem matar o processo"}
+
+  defp spec(:resume_superagent),
+    do: %{risk: :yellow, does: "retoma novas tarefas do superagent"}
+
+  defp spec(:scale_superagent),
+    do: %{risk: :yellow, does: "muda o limite de sessões simultâneas do superagent"}
 
   defp spec(:start_agent),
     do: %{risk: :red, does: "liga o orquestrador nesta máquina e desfaz um stop de propósito"}
@@ -255,6 +276,43 @@ defmodule AgentBoard.Actions do
     do:
       "Parar a execução do #{executor_name(execution.executor)} na tarefa ##{task.number}? " <>
         "O processo é encerrado e o resultado parcial fica em Execuções."
+
+  def phrase(:start_superagent, %{superagent: superagent}, "en-US"),
+    do:
+      "Start DeepSeek on #{project(superagent)}? The superagent #{superagent.profile} " <>
+        "listens on port #{superagent.port} and starts taking issues."
+
+  def phrase(:start_superagent, %{superagent: superagent}, _lang),
+    do:
+      "Ligar o DeepSeek em #{project(superagent)}? O superagent #{superagent.profile} " <>
+        "fica na porta #{superagent.port} e começa a pegar issues."
+
+  def phrase(:stop_superagent, %{superagent: superagent}, "en-US"),
+    do:
+      "Stop DeepSeek on #{project(superagent)}? In-flight work is interrupted; the state is kept."
+
+  def phrase(:stop_superagent, %{superagent: superagent}, _lang),
+    do:
+      "Parar o DeepSeek em #{project(superagent)}? O trabalho em andamento é interrompido e o estado fica guardado."
+
+  def phrase(:pause_superagent, %{superagent: superagent}, "en-US"),
+    do: "Pause new work on #{project(superagent)}? The process stays alive."
+
+  def phrase(:pause_superagent, %{superagent: superagent}, _lang),
+    do: "Pausar novas tarefas em #{project(superagent)}? O processo continua vivo."
+
+  def phrase(:resume_superagent, %{superagent: superagent}, "en-US"),
+    do: "Resume new work on #{project(superagent)}?"
+
+  def phrase(:resume_superagent, %{superagent: superagent}, _lang),
+    do: "Retomar novas tarefas em #{project(superagent)}?"
+
+  def phrase(:scale_superagent, %{superagent: superagent, workers: workers}, "en-US"),
+    do: "Change #{project(superagent)} from #{superagent.max_workers} to #{workers} workers?"
+
+  def phrase(:scale_superagent, %{superagent: superagent, workers: workers}, _lang),
+    do:
+      "Mudar o limite de sessões de #{project(superagent)} de #{superagent.max_workers} para #{workers}?"
 
   def phrase(:archive_task, %{task: task}, "en-US"),
     do:
@@ -531,6 +589,41 @@ defmodule AgentBoard.Actions do
     end
   end
 
+  defp execute(:start_superagent, %{superagent: superagent}) do
+    case Superagents.start(superagent) do
+      {:ok, _} -> {:ok, "Superagent iniciado. O status atualiza na próxima leitura."}
+      {:error, reason} -> {:error, "Não foi possível iniciar: #{describe(reason)}"}
+    end
+  end
+
+  defp execute(:stop_superagent, %{superagent: superagent}) do
+    case Superagents.stop(superagent) do
+      {:ok, _} -> {:ok, "Superagent parado."}
+      {:error, reason} -> {:error, "Não foi possível parar: #{describe(reason)}"}
+    end
+  end
+
+  defp execute(:pause_superagent, %{superagent: superagent}) do
+    case Superagents.pause(superagent, true) do
+      {:ok, _} -> {:ok, "Superagent pausado."}
+      {:error, reason} -> {:error, "Não foi possível pausar: #{describe(reason)}"}
+    end
+  end
+
+  defp execute(:resume_superagent, %{superagent: superagent}) do
+    case Superagents.pause(superagent, false) do
+      {:ok, _} -> {:ok, "Superagent retomado."}
+      {:error, reason} -> {:error, "Não foi possível retomar: #{describe(reason)}"}
+    end
+  end
+
+  defp execute(:scale_superagent, %{superagent: superagent, workers: workers}) do
+    case Superagents.scale(superagent, workers) do
+      {:ok, _} -> {:ok, "Limite de sessões atualizado."}
+      {:error, reason} -> {:error, "Não foi possível mudar o limite: #{describe(reason)}"}
+    end
+  end
+
   defp execute(:start_agent, params), do: AgentControl.start_agent(Map.get(params, :opts, []))
 
   defp execute(:set_max_workers, %{max: max} = params),
@@ -669,10 +762,19 @@ defmodule AgentBoard.Actions do
 
   defp executor_name(executor), do: Executors.name(executor)
 
+  defp project(%AgentBoard.Superagents.Superagent{repository: %Repository{} = repo}),
+    do: "#{repo.owner}/#{repo.name}"
+
+  defp project(%AgentBoard.Superagents.Superagent{} = superagent),
+    do: "projeto #{superagent.repository_id}"
+
   defp describe(%{__exception__: true} = exception), do: Exception.message(exception)
   defp describe(text) when is_binary(text), do: text
   defp describe(%Ecto.Changeset{errors: errors}), do: inspect(errors)
   defp describe(other), do: inspect(other)
+
+  defp subject(_name, %{superagent: %AgentBoard.Superagents.Superagent{profile: profile}}),
+    do: profile
 
   defp subject(:create_tasks, %{repository: repo, requests: requests}),
     do: "#{repo.owner}/#{repo.name} (#{length(requests)})"
@@ -688,6 +790,7 @@ defmodule AgentBoard.Actions do
   defp subject(:dismiss_summary, %{id: id}), do: "daily_summary #{id}"
   defp subject(_name, _params), do: nil
 
+  defp repository_id(%{superagent: %AgentBoard.Superagents.Superagent{repository_id: id}}), do: id
   defp repository_id(%{task: %Task{repository_id: id}}), do: id
   defp repository_id(%{repository: %Repository{id: id}}), do: id
   defp repository_id(%{repository_id: id}) when is_integer(id), do: id
