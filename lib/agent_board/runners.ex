@@ -54,6 +54,10 @@ defmodule AgentBoard.Runners do
       |> Path.join(repository.name)
   end
 
+  @doc "One dispatch by the board's id, or nil when the row is gone."
+  @spec get_execution(integer()) :: Execution.t() | nil
+  def get_execution(id) when is_integer(id), do: Repo.get(Execution, id)
+
   @doc "The latest execution of a task, or nil."
   def latest_for_task(task_id) do
     Repo.one(

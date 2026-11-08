@@ -13,7 +13,7 @@ defmodule AgentBoard.Sync do
   """
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AgentState, Attribution, AutoRetry, Board, GitHub, Repo}
+  alias AgentBoard.{AgentState, Attribution, AutoRetry, Board, GitHub, Repo, Workpad}
   alias AgentBoard.Board.{Commit, PullRequest, Repository, Review, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
@@ -562,15 +562,11 @@ defmodule AgentBoard.Sync do
     summary = ticket["report_summary"] || ""
 
     cond do
-      question?(summary) or asked?(opts) -> "question"
+      Workpad.question?(summary) or asked?(opts) -> "question"
       (ticket["own_threads"] || []) != [] or pr_for_review?(summary) -> "ready"
       true -> "blocked"
     end
   end
-
-  @doc "Whether a text asks something: a real question mark, not a mood."
-  def question?(text) when is_binary(text), do: String.contains?(text, "?")
-  def question?(_text), do: false
 
   defp pr_for_review?(summary), do: summary =~ @pr_mention and summary =~ @review_word
 

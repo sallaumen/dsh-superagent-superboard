@@ -1,4 +1,4 @@
-defmodule AgentBoard.Sync.Freshness do
+defmodule AgentBoard.Freshness do
   @moduledoc """
   How fresh the board is, from the sources that actually answered.
 

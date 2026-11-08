@@ -6,9 +6,8 @@ defmodule AgentBoard.Board do
   import Ecto.Query, warn: false
 
   alias AgentBoard.Board.{Comment, Event, Objective, PullRequest, Repository, Review, Task}
-  alias AgentBoard.{Executors, Repo, Routing, Sync, Workpad}
+  alias AgentBoard.{Executors, Freshness, Repo, Routing, Workpad}
   alias AgentBoard.Routing.Decision
-  alias AgentBoard.Sync.Freshness
 
   @merged_page_size 50
   @task_page_size 50
@@ -231,11 +230,41 @@ defmodule AgentBoard.Board do
 
   def repository_by_slug(slug) do
     case String.split(slug, "/", parts: 2) do
-      [owner, name] ->
-        Repo.one(from r in Repository, where: r.owner == ^owner and r.name == ^name)
+      [owner, name] -> find_repository(owner, name)
+      _ -> nil
+    end
+  end
 
-      _ ->
-        nil
+  @doc "The tracked repository with this owner and name, or nil."
+  @spec find_repository(String.t(), String.t()) :: Repository.t() | nil
+  def find_repository(owner, name) when is_binary(owner) and is_binary(name) do
+    Repo.one(from r in Repository, where: r.owner == ^owner and r.name == ^name)
+  end
+
+  @doc "One tracked repository by the board's id, or nil."
+  @spec repository(integer()) :: Repository.t() | nil
+  def repository(id) when is_integer(id), do: Repo.get(Repository, id)
+
+  @doc """
+  A saved task by the board's id, with its repository loaded.
+
+  This is the id the board generates, not the issue number (`find_task/2`).
+  nil when the row is gone.
+  """
+  @spec task(integer()) :: Task.t() | nil
+  def task(id) when is_integer(id) do
+    case Repo.get(Task, id) do
+      nil -> nil
+      task -> Repo.preload(task, :repository)
+    end
+  end
+
+  @doc "A saved task of one repository by id, with its repository loaded."
+  @spec task_of(Repository.t(), integer()) :: Task.t() | nil
+  def task_of(%Repository{id: repository_id}, id) when is_integer(id) do
+    case Repo.get_by(Task, id: id, repository_id: repository_id) do
+      nil -> nil
+      task -> Repo.preload(task, :repository)
     end
   end
 
@@ -823,7 +852,7 @@ defmodule AgentBoard.Board do
   defp comment_asks?(body) do
     body
     |> String.replace(~r/<!--.*?-->/s, "")
-    |> Sync.question?()
+    |> Workpad.question?()
   end
 
   @doc """

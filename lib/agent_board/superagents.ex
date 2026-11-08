@@ -23,8 +23,8 @@ defmodule AgentBoard.Superagents do
     Repo.all(from s in Superagent, order_by: [asc: s.id], preload: [:repository])
   end
 
-  @doc "One superagent by id."
-  def get(id), do: Repo.get(Superagent, id)
+  @doc "One superagent by id, with its repository."
+  def get(id), do: Repo.get(Superagent, id) |> Repo.preload(:repository)
 
   @doc "The superagent for a repository, or nil."
   def get_by_repository(nil), do: nil

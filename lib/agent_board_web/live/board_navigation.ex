@@ -3,7 +3,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   import Phoenix.Component, only: [assign: 2]
   import Phoenix.LiveView, only: [push_patch: 2]
 
-  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.Board
   alias AgentBoard.Board.Task
 
   @panels ~w(activity intake ai conversation voice history composer shortcuts executors settings superagents)
@@ -110,10 +110,8 @@ defmodule AgentBoardWeb.BoardNavigation do
   defp task(nil, _id), do: nil
 
   defp task(repo, id) do
-    with {number, ""} <- Integer.parse(to_string(id)),
-         %Task{repository_id: repo_id} = task <- Repo.get(Task, number),
-         task = Repo.preload(task, :repository),
-         true <- repo_id == repo.id do
+    with {task_id, ""} <- Integer.parse(to_string(id)),
+         %Task{} = task <- Board.task_of(repo, task_id) do
       task
     else
       _ -> nil
