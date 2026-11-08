@@ -70,8 +70,10 @@ defmodule AgentBoardWeb.BoardComponents.Today do
               <span class="ab-today__repo">{item.repo}</span>
               <span class="ab-today__num">#{item.number}</span>
               <span class="ab-today__title">{item.title}</span>
-              <span class={["ab-tag", tag_class(item.state)]}>{state_label(item.state)}</span>
-              <span class="ab-meta">{ago(item.at, @now)}</span>
+              <span class={["ab-tag", "ab-today__state", tag_class(item.state)]}>
+                {state_label(item.state)}
+              </span>
+              <span class="ab-meta ab-today__age">{ago(item.at, @now)}</span>
             </button>
           </li>
         </ol>
@@ -96,8 +98,8 @@ defmodule AgentBoardWeb.BoardComponents.Today do
               <span class="ab-today__repo">{item.repo}</span>
               <span class="ab-today__num">#{item.number}</span>
               <span class="ab-today__title">{item.title}</span>
-              <span class="ab-tag ab-tag--agent">{state_label(item.state)}</span>
-              <span class="ab-meta">{ago(item.at, @now)}</span>
+              <span class="ab-tag ab-tag--agent ab-today__state">{state_label(item.state)}</span>
+              <span class="ab-meta ab-today__age">{ago(item.at, @now)}</span>
             </button>
           </li>
         </ol>
