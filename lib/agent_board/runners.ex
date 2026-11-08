@@ -120,7 +120,7 @@ defmodule AgentBoard.Runners do
       paused?() -> {:error, :paused}
       active_for_task?(task.id) -> {:error, :already_running}
       executor not in ["claude", "codex"] -> {:error, :unknown_executor}
-      not File.exists?(binary(executor)) -> {:error, :runner_missing}
+      not executable?(binary(executor)) -> {:error, :runner_missing}
       true -> budget(executor, opts)
     end
   end
@@ -575,6 +575,18 @@ defmodule AgentBoard.Runners do
   def claude_bin, do: Application.get_env(:agent_board, :claude_bin, @claude_default_bin)
 
   def codex_bin, do: Application.get_env(:agent_board, :codex_bin, @codex_default_bin)
+
+  defp executable?(path) when is_binary(path) do
+    case File.stat(path) do
+      {:ok, %{type: :regular, mode: mode}} -> Bitwise.band(mode, 0o111) != 0
+      _ -> false
+    end
+  end
+
+  defp executable?(_path), do: false
+
+  @doc "Whether the executor's CLI exists and can be executed."
+  def ready?(executor), do: executable?(binary(executor))
 
   @doc "The CLI path the executor uses."
   def binary("claude"), do: claude_bin()

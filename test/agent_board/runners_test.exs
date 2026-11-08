@@ -91,6 +91,18 @@ defmodule AgentBoard.RunnersTest do
              Runners.dispatch(task, "claude", launcher: launcher(test_pid))
   end
 
+  test "a non-executable executor binary refuses before starting", %{task: task, root: root} do
+    previous = Application.get_env(:agent_board, :claude_bin)
+    path = Path.join(root, "not-executable")
+    File.write!(path, "#!/bin/sh\nexit 0\n")
+    File.chmod!(path, 0o644)
+    Application.put_env(:agent_board, :claude_bin, path)
+
+    on_exit(fn -> Application.put_env(:agent_board, :claude_bin, previous) end)
+
+    assert {:error, :runner_missing} = Runners.check(task, "claude")
+  end
+
   test "a missing executor binary refuses before starting", %{task: task} do
     previous = Application.get_env(:agent_board, :claude_bin)
     Application.put_env(:agent_board, :claude_bin, "/definitely/not/claude")

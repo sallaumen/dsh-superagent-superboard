@@ -102,9 +102,9 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
 
       <p class="ab-meta">
         Claude Code: <code>{Runners.claude_bin()}</code>
-        {if File.exists?(Runners.claude_bin()), do: "encontrado", else: "não encontrado"} ·
+        {if Runners.ready?("claude"), do: "pronto", else: "não encontrado ou sem permissão"} ·
         Codex: <code>{Runners.codex_bin()}</code>
-        {if File.exists?(Runners.codex_bin()), do: "encontrado", else: "não encontrado"}
+        {if Runners.ready?("codex"), do: "pronto", else: "não encontrado ou sem permissão"}
       </p>
 
       <p :if={@error} class="settings-error" role="alert">{@error}</p>

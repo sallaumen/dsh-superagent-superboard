@@ -630,7 +630,8 @@ defmodule AgentBoard.Actions do
     do: "a tarefa é de outro executor; escolha o executor na tarefa antes de despachar"
 
   defp dispatch_error(:runner_missing),
-    do: "o binário do executor não existe neste Mac; confira o caminho em Configurações"
+    do:
+      "o binário do executor não existe ou não é executável neste Mac; confira o caminho em Configurações"
 
   defp dispatch_error(:repo_missing), do: "o checkout local do repositório não existe"
   defp dispatch_error(:no_repository), do: "a tarefa não tem repositório"
