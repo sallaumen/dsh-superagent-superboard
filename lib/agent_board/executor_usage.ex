@@ -146,13 +146,28 @@ defmodule AgentBoard.ExecutorUsage do
     messages = Enum.filter(transcript.messages, &in_window?(&1, Keyword.get(opts, :window)))
     sum = fn key -> messages |> Enum.map(&Map.fetch!(&1, key)) |> Enum.sum() end
 
+    models =
+      messages
+      |> Enum.map(& &1.model)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    # A session that switched models cannot be priced as one of them: the
+    # cost becomes unknown instead of silently using the last selection.
+    model =
+      case models do
+        [] -> transcript.model
+        [one] -> one
+        _many -> nil
+      end
+
     %{
       requests: length(messages),
       input: sum.(:input),
       output: sum.(:output),
       cache_read: sum.(:cache_read),
       cache_write: sum.(:cache_write),
-      model: transcript.model,
+      model: model,
       subagent?: transcript.subagent?
     }
   end

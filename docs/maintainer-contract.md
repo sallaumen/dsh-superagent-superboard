@@ -709,8 +709,9 @@ read and cache write tokens, with the first and last time.
   unknown and never zero), and Codex on the ChatGPT plan (only the share of
   the weekly window: `usage_limits`, the newest `rate_limits` per limit,
   `limits/0`). Input excludes the cache in all three so the counts line up;
-  output includes reasoning in Codex and thinking in Claude Code. Claude
-  Code's US$ uses a list-price table per model read from its own `cost-state`
+  output includes reasoning in Codex and thinking in Claude Code. A session
+  that switched models is unpriced (unknown), never priced at its last
+  selection. Claude Code's US$ uses a list-price table per model read from its own `cost-state`
   entries (observed 2026-11-07): an estimate, never the bill. Codex has no
   US$ and is read as the share of its weekly window.
 - Days are UTC, like the AI budget and the ElevenLabs ledger.
