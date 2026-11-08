@@ -59,7 +59,8 @@ remove_run() {
 
 for dir in "$ROOT"/*; do
   [ -d "$dir" ] || continue
-  [ "$(stat -f %m "$dir" 2>/dev/null || stat -c %Y "$dir" 2>/dev/null || echo "$now")" -lt $((now - DAYS * 86400)) ] || continue
+  mtime="$(stat -c %Y "$dir" 2>/dev/null || stat -f %m "$dir" 2>/dev/null || echo "$now")"
+  [ "$mtime" -lt $((now - DAYS * 86400)) ] || continue
   status="$(cat "$dir/status" 2>/dev/null || true)"
   case "$status" in
     done|failed|stopped) remove_run "$dir" "$dir/worktree" ;;
