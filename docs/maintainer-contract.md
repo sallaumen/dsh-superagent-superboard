@@ -634,8 +634,9 @@ in Configurações → Despacho local.
 - **A failure is classified, never retried by the board** (`Runners.fallback/1`):
   a transient network/timeout failure proposes the same executor; an
   availability failure (quota, rate limit, login) proposes the other one with
-  the reason and the cost; a content failure (tests, block, question) is
-  `:none` and goes to the owner. A retry or a switch is a **new confirmed
+  the reason and the cost; a budget-ceiling failure (`error_max_budget_usd`)
+  is `:budget` and asks the owner to raise the ceiling (no automatic retry);
+  a content failure (tests, block, question) is `:none` and goes to the owner. A retry or a switch is a **new confirmed
   `dispatch_task`**: the phrase names the previous failure, the switch updates
   `tasks.executor` and the execution row records the new executor.
 - The tests: `runners_test.exs` (dispatch, one per task, pause, budget,
