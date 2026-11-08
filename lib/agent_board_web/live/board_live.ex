@@ -2217,7 +2217,7 @@ defmodule AgentBoardWeb.BoardLive do
           />
 
           <main id="board-work" class="ab-main">
-            <details :if={@repo} class="ab-mobilebar">
+            <details :if={@repo} id="mobile-nav" data-board-menu class="ab-mobilebar">
               <summary><.ico name="menu" />Repositórios</summary>
               <div class="ab-mobilebar__list">
                 <button
@@ -2241,6 +2241,40 @@ defmodule AgentBoardWeb.BoardLive do
                 </button>
 
                 <button
+                  id="mobile-panel-superagents"
+                  type="button"
+                  class="ab-btn ab-btn--quiet ab-btn--sm"
+                  phx-click="show_panel"
+                  phx-value-panel="superagents"
+                  data-panel-trigger
+                  aria-haspopup="dialog"
+                  aria-controls="panel-superagents"
+                >
+                  <.ico name="grip" />Superagentes
+                </button>
+                <button
+                  id="mobile-panel-shortcuts"
+                  type="button"
+                  class="ab-btn ab-btn--quiet ab-btn--sm"
+                  phx-click="show_panel"
+                  phx-value-panel="shortcuts"
+                  data-panel-trigger
+                  aria-haspopup="dialog"
+                  aria-controls="panel-shortcuts"
+                >
+                  <.ico name="keys" />Atalhos
+                </button>
+                <button
+                  id="mobile-panel-voice"
+                  type="button"
+                  class="ab-btn ab-btn--quiet ab-btn--sm"
+                  phx-click="show_panel"
+                  phx-value-panel="voice"
+                >
+                  <.ico name="mic" />Conversa por voz
+                </button>
+                <button
+                  id="mobile-panel-settings"
                   type="button"
                   class="ab-btn ab-btn--quiet ab-btn--sm"
                   phx-click="show_panel"
