@@ -205,12 +205,19 @@ defmodule AgentBoard.RunnersTest do
       error: "2 testes falharam"
     }
 
+    author = %AgentBoard.Runners.Execution{
+      status: "failed",
+      executor: "claude",
+      error: "author missing in the issue"
+    }
+
     assert %{kind: :switch, executor: "codex", reason: reason} = Runners.fallback(claude)
     assert reason =~ "cota ou login"
 
     assert %{kind: :retry, executor: "claude"} = Runners.fallback(network)
     assert %{kind: :budget, executor: "claude"} = Runners.fallback(budget)
     assert Runners.fallback(content) == :none
+    assert Runners.fallback(author) == :none
     assert Runners.fallback(nil) == nil
   end
 
