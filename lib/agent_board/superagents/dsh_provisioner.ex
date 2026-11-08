@@ -13,7 +13,7 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     with :ok <- validate(attrs),
          :ok <- copy_profile(superagent, source),
          :ok <- start(superagent),
-         :ok <- wait_api(superagent, 30),
+         :ok <- wait_api(superagent, 60),
          :ok <- configure(superagent, source, attrs),
          :ok <- wait_ready(superagent, 60) do
       {:ok,
@@ -42,7 +42,7 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     with true <- (is_binary(from) and is_binary(to)) || {:error, :invalid_profile},
          true <- inside_state?(superagent.state_dir) || {:error, :invalid_state_dir},
          true <- File.dir?(from) || {:error, :source_profile_missing},
-         false <- File.exists?(to) || {:error, :profile_exists},
+         true <- not File.exists?(to) || {:error, :profile_exists},
          :ok <- copy_tree(from, to),
          :ok <- rewrite_patch(to, superagent) do
       :filelib.ensure_dir(Path.join(superagent.state_dir, "work"))
@@ -97,8 +97,21 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     ]
 
     case System.cmd("python3", args, stderr_to_stdout: true) do
-      {_output, 0} -> :ok
-      {output, code} -> {:error, {:manager, code, String.slice(output, 0, 500)}}
+      {output, 0} ->
+        _ = output
+        :ok
+
+      {output, _code} when byte_size(output) > 0 ->
+        # The manager treats a slow first boot as a failed start but leaves the
+        # process running; the API check below is the real readiness gate.
+        if String.contains?(output, "Startup health check timed out") do
+          :ok
+        else
+          {:error, {:manager, 1, String.slice(output, 0, 500)}}
+        end
+
+      {output, code} ->
+        {:error, {:manager, code, String.slice(output, 0, 500)}}
     end
   rescue
     exception -> {:error, exception}
@@ -156,8 +169,8 @@ defmodule AgentBoard.Superagents.DshProvisioner do
          {:ok, 200, new_settings} <- get(superagent, "/settings"),
          {:ok, 200, source_prompts} <- get(source, "/prompts"),
          {:ok, 200, new_prompts} <- get(superagent, "/prompts"),
-         {:ok, _} <- put_source(superagent, source_settings, new_settings),
-         :ok <- wait_api(superagent, 30),
+         :ok <- put_source(superagent, source_settings, new_settings),
+         :ok <- wait_api(superagent, 60),
          {:ok, 200, after_source} <- get(superagent, "/settings"),
          :ok <- put_executor(superagent, source_settings, after_source, attrs),
          :ok <- put_policy(superagent, source_settings, after_source),
@@ -175,15 +188,16 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     current = source_block(new_settings)
 
     if is_map(source) and is_map(current) do
-      config = source["config"] || %{}
+      config = get_in(source, ["value", "config"]) || source["config"] || %{}
       config = Map.put(config, "repository", repository(superagent))
-      config = Map.put(config, "enabled", true)
       config = Map.put(config, "observeIssues", true)
 
-      put(superagent, "/settings/source:github", %{
-        "value" => Map.put(current, "config", config),
-        "revision" => current["revision"] || 0
-      })
+      ok(
+        put(superagent, "/settings/source:github", %{
+          "value" => Map.put(current["value"] || %{}, "config", config),
+          "revision" => current["revision"] || 0
+        })
+      )
     else
       {:error, :source_block_missing}
     end
@@ -201,10 +215,12 @@ defmodule AgentBoard.Superagents.DshProvisioner do
       |> Map.put("prepare", prepare(attrs.path))
 
     if source && current do
-      put(superagent, "/settings/executor", %{
-        "value" => value,
-        "revision" => current["revision"] || 0
-      })
+      ok(
+        put(superagent, "/settings/executor", %{
+          "value" => value,
+          "revision" => current["revision"] || 0
+        })
+      )
     else
       {:error, :executor_block_missing}
     end
@@ -215,10 +231,12 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     current = get_in(new_settings, ["blocks", "policy"])
 
     if source && current do
-      put(superagent, "/settings/policy", %{
-        "value" => source["value"],
-        "revision" => current["revision"] || 0
-      })
+      ok(
+        put(superagent, "/settings/policy", %{
+          "value" => source["value"],
+          "revision" => current["revision"] || 0
+        })
+      )
     else
       {:error, :policy_block_missing}
     end
@@ -229,9 +247,13 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     base = get_in(new_prompts, ["current", "revision"]) || 0
 
     if is_map(config),
-      do: put(superagent, "/prompts", %{"config" => config, "baseRevision" => base}),
+      do: ok(put(superagent, "/prompts", %{"config" => config, "baseRevision" => base})),
       else: {:error, :prompts_missing}
   end
+
+  defp ok({:ok, 200, _body}), do: :ok
+  defp ok({:ok, status, _body}), do: {:error, {:http, status}}
+  defp ok({:error, reason}), do: {:error, reason}
 
   defp source_block(settings) do
     (settings["sources"] || [])
@@ -265,28 +287,10 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   end
 
   defp copy_tree(from, to) do
-    case :file.read_file_info(from) do
-      {:ok, %{type: :directory}} -> copy_directory(from, to)
-      {:ok, _file} -> :file.copy(from, to)
-      {:error, reason} -> {:error, reason}
+    case System.cmd("/bin/cp", ["-R", from, to], stderr_to_stdout: true) do
+      {_output, 0} -> :ok
+      {output, _code} -> {:error, {:copy, String.slice(output, 0, 300)}}
     end
-  end
-
-  defp copy_directory(from, to) do
-    :filelib.ensure_dir(to)
-
-    with {:ok, entries} <- :file.list_dir(from) do
-      copy_entries(entries, from, to)
-    end
-  end
-
-  defp copy_entries(entries, from, to) do
-    Enum.reduce_while(entries, :ok, fn entry, :ok ->
-      case copy_tree(Path.join(from, entry), Path.join(to, entry)) do
-        :ok -> {:cont, :ok}
-        {:error, reason} -> {:halt, {:error, reason}}
-      end
-    end)
   end
 
   defp remove_tree(path) do
@@ -323,8 +327,16 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     opts = if body, do: Keyword.put(opts, :json, body), else: opts
 
     case Req.request([method: method] ++ opts) do
-      {:ok, %{status: status, body: body}} -> {:ok, status, body}
-      {:error, exception} -> {:error, exception}
+      {:ok, %{status: status, body: body}} when status >= 400 ->
+        require Logger
+        Logger.warning("provision #{method} #{path} -> #{status} #{inspect(body)}")
+        {:ok, status, body}
+
+      {:ok, %{status: status, body: body}} ->
+        {:ok, status, body}
+
+      {:error, exception} ->
+        {:error, exception}
     end
   end
 
