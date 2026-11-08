@@ -1,8 +1,11 @@
 # Superagents por projeto: plano de gestão no board
 
-**Estado:** fases 1–3 implementadas (registro, status/ticker/painel e
-ações de ligar/parar/pausar/retomar/escalar); provisionamento automático
-(fase 4) ainda é proposta. O plano abaixo é o contrato das fases seguintes.
+**Estado:** fases 1–4 implementadas (registro, status/ticker/painel, ações de
+ligar/parar/pausar/retomar/escalar e provisionamento pelo board com
+`DshProvisioner`/`FakeProvisioner`). A fase 5 (remoção/arquivamento e boot
+completo) continua como proposta. O provisionamento real ainda não foi
+exercitado contra um repositório novo neste ambiente; o caminho está coberto
+pelo fake e pelo gate.
 **Data:** 2026-11-08.
 **Escopo:** transformar a configuração manual de um `dsh-superagent`
 (profile, banco SQLite, porta, processo e keepalive) em um recurso do board,
