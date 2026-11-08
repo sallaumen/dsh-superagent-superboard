@@ -27,7 +27,12 @@ defmodule AgentBoard.Superagents.Ticker do
 
     try do
       Superagents.tick()
-      Superagents.reconcile()
+
+      # Starting/stopping an agent can wait on the external manager for up to
+      # a minute; never block the ticker (and the next status read) on it.
+      Task.Supervisor.start_child(AgentBoard.Superagents.TaskSupervisor, fn ->
+        Superagents.reconcile()
+      end)
     rescue
       exception -> Logger.warning("superagent tick failed: #{Exception.message(exception)}")
     end
