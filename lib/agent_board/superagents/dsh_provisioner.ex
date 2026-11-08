@@ -153,12 +153,16 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
+  defp setup_detail(%{"problem" => %{"detail" => detail}}) when is_binary(detail), do: detail
+  defp setup_detail(%{"detail" => detail}) when is_binary(detail), do: detail
+  defp setup_detail(_setup), do: nil
+
   defp ready_state(body) do
     setup = body["setup"]
     health = body["health"] || %{}
 
     cond do
-      is_map(setup) and setup["detail"] -> {:error, {:setup, setup["detail"]}}
+      setup_detail(setup) -> {:error, {:setup, setup_detail(setup)}}
       get_in(health, ["runtime", "state"]) == "ready" -> :ok
       true -> :wait
     end

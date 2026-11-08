@@ -87,8 +87,8 @@ defmodule AgentBoard.Superagents.DshManager do
     errors = health_errors(health)
 
     cond do
-      is_map(setup) and setup["detail"] ->
-        %{state: "error", detail: setup["detail"], load: load, paused: paused, setup: setup}
+      setup_detail(setup) ->
+        %{state: "error", detail: setup_detail(setup), load: load, paused: paused, setup: setup}
 
       errors != [] ->
         %{state: "error", detail: Enum.join(errors, "; "), load: load, paused: paused}
@@ -105,6 +105,10 @@ defmodule AgentBoard.Superagents.DshManager do
   end
 
   defp health_errors(_health), do: []
+
+  defp setup_detail(%{"problem" => %{"detail" => detail}}) when is_binary(detail), do: detail
+  defp setup_detail(%{"detail" => detail}) when is_binary(detail), do: detail
+  defp setup_detail(_setup), do: nil
 
   defp runtime_observation(health, load, paused) do
     case {paused, get_in(health, ["runtime", "state"])} do
