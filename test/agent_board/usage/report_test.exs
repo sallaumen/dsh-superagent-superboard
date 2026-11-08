@@ -223,7 +223,7 @@ defmodule AgentBoard.Usage.ReportTest do
       ])
     end
 
-    today = Report.today(-180, now: at.("2026-11-08T00:30:00Z"))
+    today = Report.today(180, now: at.("2026-11-08T00:30:00Z"))
 
     assert today.day == ~D[2026-11-07]
     assert %{cost: %{micros: micros}} = today.by_source["claude_code"]

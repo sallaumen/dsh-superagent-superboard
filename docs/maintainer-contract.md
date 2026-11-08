@@ -805,8 +805,9 @@ owner in every repository, one list, repository on each item.
   the time of the last state change. Stopped and archived tasks are left out.
   The same call returns `repo_overview/0` for the rail.
 - **The spending of the day** is `Usage.Report.today/1`: the owner's local
-  day (the browser's `tz_offset`, its two UTC instants) per source, plus the
-  newest weekly Codex quota. The ledger stores UTC days; the view does not
+  day (the browser's `tz_offset`, in minutes west of UTC like
+  `Time.local/2`, its two UTC instants) per source, plus the newest weekly
+  Codex quota. The ledger stores UTC days; the view does not
   show tomorrow's UTC date to an owner west of UTC. Each executor keeps its
   own currency; a source with no row is "não rodou", a missing reading is
   "desconhecido".
