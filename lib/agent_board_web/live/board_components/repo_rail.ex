@@ -7,6 +7,15 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
   import Controls, only: [ico: 1, kbd: 1]
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
+  attr :view, :string, default: nil
+  attr :repos, :list, default: []
+  attr :repo, :any, default: nil
+  attr :overview, :map, default: %{}
+  attr :live, :boolean, default: false
+  attr :version, :map, default: nil
+  attr :busy, :boolean, default: false
+  attr :voice, :map, default: nil
+
   @impl true
   def render(assigns) do
     owner = owner(assigns.repo, assigns.repos)
@@ -24,6 +33,22 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
       </div>
 
       <h3 class="ab-label">{@owner}</h3>
+
+      <button
+        type="button"
+        class="ab-repo ab-repo--today"
+        aria-current={to_string(@view == "hoje")}
+        phx-click="select"
+        phx-value-view="hoje"
+        title="Hoje, nos dois repositórios"
+      >
+        <span class="ab-repo__name">Hoje</span>
+        <span class="ab-repo__marks">
+          <span :if={waiting(@overview) > 0} class="ab-repo__n ab-repo__n--you">
+            <.glyph kind={:review} />{waiting(@overview)}
+          </span>
+        </span>
+      </button>
 
       <button
         :for={repo <- @repos}
@@ -110,6 +135,13 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
     do: repos |> List.wrap() |> List.first() |> then(&(&1 && &1.owner)) || ""
 
   defp owner(repo, _repos), do: repo.owner
+
+  defp waiting(overview) do
+    overview
+    |> Map.values()
+    |> Enum.map(&((&1[:you] || 0) + (&1[:halt] || 0)))
+    |> Enum.sum()
+  end
 
   defp old?(repo, overview) do
     case Map.get(overview, repo.id) do

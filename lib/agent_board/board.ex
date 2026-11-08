@@ -13,6 +13,9 @@ defmodule AgentBoard.Board do
   @merged_page_size 50
   @task_page_size 50
   @task_states [:running, :retrying, :question, :ready, :blocked, :queued]
+  @today_topic "board_today"
+  @today_states ~w(blocked question ready running)
+  @need_rank %{"blocked" => 0, "question" => 1, "ready" => 2}
 
   def merged_page_size, do: @merged_page_size
   def task_page_size, do: @task_page_size
@@ -30,9 +33,15 @@ defmodule AgentBoard.Board do
     Phoenix.PubSub.subscribe(AgentBoard.PubSub, "board:#{repository_id}")
   end
 
+  @doc "Subscribe to the cross-repository today view."
+  def subscribe_today do
+    Phoenix.PubSub.subscribe(AgentBoard.PubSub, @today_topic)
+  end
+
   @doc "Tell the subscribers of a repository that the board changed."
   def broadcast(repository_id) do
     Phoenix.PubSub.broadcast(AgentBoard.PubSub, "board:#{repository_id}", :board_updated)
+    Phoenix.PubSub.broadcast(AgentBoard.PubSub, @today_topic, {:today_updated, repository_id})
   end
 
   @doc "Track a repository. It is a no-op if it already exists."
@@ -981,6 +990,59 @@ defmodule AgentBoard.Board do
        }}
     end)
   end
+
+  @doc """
+  What needs the owner and what runs, in every repository at once, plus the
+  rail's per-repository summary. One read for the "Hoje" view
+  (`docs/research/alfred.md`, F2.1): the same load, no query per render.
+  """
+  @spec today() :: %{repos: map(), needs: [map()], running: [map()]}
+  def today do
+    tasks =
+      Repo.all(
+        from t in Task,
+          join: r in Repository,
+          on: r.id == t.repository_id,
+          where: t.state in ^@today_states and t.stopped == false and t.archived == false,
+          order_by: [asc: t.state_changed_at, asc: t.id],
+          preload: [repository: r]
+      )
+
+    resolved = tasks |> Enum.filter(&(&1.state == "ready")) |> resolved_task_ids()
+
+    needs =
+      tasks
+      |> Enum.filter(
+        &(&1.state in ["blocked", "question", "ready"] and
+            not MapSet.member?(resolved, &1.id))
+      )
+      |> Enum.sort_by(&{Map.get(@need_rank, &1.state, 9), &1.state_changed_at || &1.updated_at})
+
+    running = Enum.filter(tasks, &(&1.state == "running"))
+
+    %{
+      repos: repo_overview(),
+      needs: Enum.map(needs, &today_item/1),
+      running: Enum.map(running, &today_item/1)
+    }
+  end
+
+  defp today_item(task) do
+    %{
+      id: task.id,
+      number: task.number,
+      title: task.title,
+      state: task.state,
+      url: task.url,
+      repository_id: task.repository_id,
+      repo: "#{task.repository.owner}/#{task.repository.name}",
+      at: today_time(task.state_changed_at || task.updated_at)
+    }
+  end
+
+  defp today_time(%NaiveDateTime{} = at), do: DateTime.from_naive!(at, "Etc/UTC")
+  defp today_time(%DateTime{} = at), do: at
+  defp today_time(_at), do: nil
 
   @doc """
   How many observed changes happened after a point in time. Used by the

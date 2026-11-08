@@ -30,7 +30,7 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
     <section id="executors" class="ab-executors" aria-labelledby="executors-title">
       <header class="ab-executors__head">
         <div>
-          <h2 id="executors-title" class="ab-label">Executores</h2>
+          <p id="executors-title" class="ab-label">Últimos {@days} dias</p>
           <p class="ab-meta">
             Tokens medidos. Cada executor na sua moeda, nunca somados.
           </p>
@@ -233,5 +233,10 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
     "US$ #{div(cents, 100)},#{cents |> rem(100) |> Integer.to_string() |> String.pad_leading(2, "0")}"
   end
 
-  defp names(list), do: Enum.map_join(list, ", ", fn {name, count} -> "#{name} (#{count})" end)
+  defp names(list) do
+    shown = Enum.take(list, 4)
+    more = length(list) - length(shown)
+    text = Enum.map_join(shown, ", ", fn {name, count} -> "#{name} (#{count})" end)
+    if more > 0, do: text <> " e mais #{more}", else: text
+  end
 end

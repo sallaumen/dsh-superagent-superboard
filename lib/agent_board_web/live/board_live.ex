@@ -52,6 +52,7 @@ defmodule AgentBoardWeb.BoardLive do
   import AgentBoardWeb.BoardComponents.QueueList, only: [queue_list: 1]
   import AgentBoardWeb.BoardComponents.Shortcuts, only: [shortcuts: 1]
   import AgentBoardWeb.BoardComponents.Summary, only: [summary: 1]
+  import AgentBoardWeb.BoardComponents.Today, only: [today_view: 1]
   import AgentBoardWeb.BoardComponents.Throughput, only: [throughput: 1]
 
   alias AgentBoardWeb.{
@@ -89,7 +90,10 @@ defmodule AgentBoardWeb.BoardLive do
         queue_limit: 8,
         queue_filter: :all,
         repo: nil,
+        view: nil,
         board: empty(),
+        today: %{repos: %{}, needs: [], running: []},
+        today_spend: nil,
         resume: resume,
         events: [],
         sync_event: nil,
@@ -154,6 +158,7 @@ defmodule AgentBoardWeb.BoardLive do
     # or by a spoken command reaches this socket (handle_info setting_changed).
     if connected?(socket), do: Settings.subscribe()
     if connected?(socket), do: DailySummary.subscribe()
+    if connected?(socket), do: Board.subscribe_today()
 
     # handle_params/3 always follows mount and loads the board: loading here
     # too read everything twice on every page and every connection.
@@ -477,8 +482,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp load(socket, nil) do
-    socket =
-      socket
+    today = Board.today()
 
     socket
     |> assign(
@@ -493,7 +497,9 @@ defmodule AgentBoardWeb.BoardLive do
       inspector_pr: nil,
       sync_snapshot: %{last_attempt: nil, last_success: nil},
       freshness: unknown_freshness(),
-      repo_overview: Board.repo_overview(),
+      repo_overview: today.repos,
+      today: today,
+      today_spend: Report.today(socket.assigns.tz_offset),
       agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
       work: empty_work(),
       digest: nil,
@@ -512,6 +518,9 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp read_board(socket, repo) do
+    today = Board.today()
+    spend = Report.today(socket.assigns.tz_offset)
+
     # load/2 runs again on every reload: subscribing twice would deliver every
     # broadcast twice (and keep listening to the old repo).
     if connected?(socket) and socket.assigns.repo != repo do
@@ -588,7 +597,9 @@ defmodule AgentBoardWeb.BoardLive do
           sync_event: snapshot.last_attempt,
           sync_snapshot: snapshot,
           freshness: freshness,
-          repo_overview: Board.repo_overview(),
+          repo_overview: today.repos,
+          today: today,
+          today_spend: spend,
           agent_snapshot: agent,
           work: work,
           digest: work.digest,
@@ -607,7 +618,9 @@ defmodule AgentBoardWeb.BoardLive do
           sync_event: nil,
           sync_snapshot: %{last_attempt: nil, last_success: nil},
           freshness: unknown_freshness(),
-          repo_overview: Board.repo_overview(),
+          repo_overview: today.repos,
+          today: today,
+          today_spend: spend,
           agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
           work: empty_work(),
           flow: nil,
@@ -726,6 +739,18 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, put_flash(socket, :info, text)}
   end
 
+  # The "Hoje" view listens to every repository. A change in the repository
+  # already on screen arrives as :board_updated; this one is the other one.
+  def handle_info({:today_updated, repository_id}, socket) do
+    current = socket.assigns.repo && socket.assigns.repo.id
+
+    if socket.assigns.view == "hoje" and current != repository_id do
+      {:noreply, load(socket, socket.assigns.repo)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info(:board_updated, socket) do
     old_board = socket.assigns.board
     old_sync = socket.assigns.sync_event
@@ -766,7 +791,9 @@ defmodule AgentBoardWeb.BoardLive do
     # A patch inside the same repository (opening a task, a panel, a tab)
     # changes only the panel: the board is already loaded and every change
     # to it arrives as :board_updated.
-    socket = if showing?(socket, repo), do: socket, else: load(socket, repo)
+    previous_view = socket.assigns.view
+    was_showing = showing?(socket, repo)
+    socket = if was_showing, do: socket, else: load(socket, repo)
 
     socket =
       socket
@@ -774,6 +801,13 @@ defmodule AgentBoardWeb.BoardLive do
       |> load_inspector()
       |> load_panel()
       |> load_composer_routing()
+
+    # Entering "Hoje" from an already loaded repository reads the other
+    # repository too; the load is the same one the board already does.
+    socket =
+      if was_showing and previous_view != "hoje" and socket.assigns.view == "hoje",
+        do: load(socket, repo),
+        else: socket
 
     {:noreply, socket}
   end
@@ -876,6 +910,23 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("select", %{"view" => "hoje"}, socket) do
+    {:noreply, push_patch(socket, to: BoardNavigation.today_path())}
+  end
+
+  def handle_event("open_any", %{"id" => id}, socket) do
+    case Repo.get(Task, id) do
+      %Task{} = task ->
+        task = Repo.preload(task, :repository)
+
+        {:noreply,
+         push_patch(socket, to: BoardNavigation.path(task.repository, "conversation", task.id))}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("select", %{"repo" => slug}, socket) do
     current = socket.assigns.repo
 
@@ -1906,6 +1957,7 @@ defmodule AgentBoardWeb.BoardLive do
             id="repo-rail"
             repos={@repos}
             repo={@repo}
+            view={@view}
             overview={@repo_overview}
             live={@freshness.live?}
             version={@version}
@@ -1917,6 +1969,15 @@ defmodule AgentBoardWeb.BoardLive do
             <details :if={@repo} class="ab-mobilebar">
               <summary><.ico name="menu" />Repositórios</summary>
               <div class="ab-mobilebar__list">
+                <button
+                  type="button"
+                  class="ab-repo"
+                  aria-current={to_string(@view == "hoje")}
+                  phx-click="select"
+                  phx-value-view="hoje"
+                >
+                  <span class="ab-repo__name">Hoje</span>
+                </button>
                 <button
                   :for={r <- @repos}
                   type="button"
@@ -1938,7 +1999,14 @@ defmodule AgentBoardWeb.BoardLive do
               </p>
             </div>
 
-            <header :if={@repo} class="ab-top">
+            <.today_view
+              :if={@view == "hoje"}
+              today={@today}
+              spend={@today_spend}
+              offset={@tz_offset}
+            />
+
+            <header :if={@repo && @view != "hoje"} class="ab-top">
               <div class="ab-top__repo">
                 <span class="ab-top__owner">{@repo.owner}/</span>
                 <h1>{@repo.name}</h1>
@@ -1973,17 +2041,17 @@ defmodule AgentBoardWeb.BoardLive do
               </div>
             </header>
 
-            <.summary :if={@repo} digest={@digest} />
+            <.summary :if={@repo && @view != "hoje"} digest={@digest} />
 
             <.daily_summary
-              :if={@repo && @daily_summary}
+              :if={@repo && @view != "hoje" && @daily_summary}
               entry={@daily_summary}
               tz_offset={@tz_offset}
             />
 
-            <.frozen_banner :if={@repo} freshness={@freshness} />
+            <.frozen_banner :if={@repo && @view != "hoje"} freshness={@freshness} />
 
-            <div :if={@repo && empty?(@board)} class="ab-empty">
+            <div :if={@repo && @view != "hoje" && empty?(@board)} class="ab-empty">
               <h2>
                 {if @sync_snapshot.last_success,
                   do: "Nada aconteceu aqui ainda.",
@@ -2010,12 +2078,12 @@ defmodule AgentBoardWeb.BoardLive do
             </div>
 
             <.throughput
-              :if={@repo && @flow && not empty?(@board)}
+              :if={@repo && @view != "hoje" && @flow && not empty?(@board)}
               flow={@flow}
               tz_offset={@tz_offset}
             />
 
-            <div :if={@repo && not empty?(@board)} class="ab-cols">
+            <div :if={@repo && @view != "hoje" && not empty?(@board)} class="ab-cols">
               <div class="ab-col">
                 <.now_lane
                   running={@work.running}
