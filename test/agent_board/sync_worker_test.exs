@@ -44,8 +44,31 @@ defmodule AgentBoard.Sync.WorkerTest do
       end
     end)
 
-    assert Worker.perform(%Oban.Job{args: %{}}) == :ok
+    # Waited less than one cron period (a retry, a snooze that woke): it runs.
+    waited = DateTime.add(DateTime.utc_now(), -4 * 60, :second)
+
+    assert Worker.perform(%Oban.Job{args: %{}, scheduled_at: waited}) == :ok
     assert Repo.one(from t in Task, where: t.number == 7) != nil
     assert Enum.any?(Board.events(repo), &(&1.kind == "sync"))
+  end
+
+  test "perform/1 cancels a sync scheduled before the last cron run, without calling GitHub",
+       _ctx do
+    Req.Test.set_req_test_to_shared(%{})
+    on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
+
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    Application.put_env(:agent_board, :github_client, fn -> client() end)
+    on_exit(fn -> Application.delete_env(:agent_board, :github_client) end)
+
+    Req.Test.stub(@stub, fn conn -> flunk("superseded sync called #{conn.request_path}") end)
+
+    # What Oban.Lifeline hands back after a restart: the original schedule.
+    orphaned = DateTime.add(DateTime.utc_now(), -31 * 60, :second)
+
+    assert {:cancel, reason} = Worker.perform(%Oban.Job{args: %{}, scheduled_at: orphaned})
+    assert reason =~ "superseded"
+    refute Enum.any?(Board.events(repo), &(&1.kind == "sync"))
   end
 end
