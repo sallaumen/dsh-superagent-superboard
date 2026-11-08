@@ -923,7 +923,11 @@ records are the `ai_calls` rows (the split) and the tasks with their
 - **A request is created once.** `Board.request_key/3` hashes the repository,
   the kind of submit and the words; `Board.create_request/3` answers
   `{:ok, task, :existing}` for a task with that key or a queued task with the
-  same title and body, and opens no second issue. A retry after a partial
+  same title and body, and opens no second issue. The row is **claimed
+  before the GitHub call** (state `draft`, the unique key): two doors that
+  submit the same words both reach the database, one opens the issue, the
+  other answers `{:error, :in_progress}`. A failed issue call deletes the
+  claim; the sync never sees a draft in a lane. A retry after a partial
   split creates only what is missing.
 - **The receipt names what happened**: number and link for each task that
   entered, "já estava na fila" for a repeat, the reason for each failure, and
