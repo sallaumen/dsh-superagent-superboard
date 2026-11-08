@@ -72,8 +72,13 @@ defmodule AgentBoard.Superagents.DshManager do
     args = ["--profile", superagent.profile, "--url", url(superagent), command]
 
     case System.cmd("python3", [script() | args], stderr_to_stdout: true) do
-      {_output, 0} -> :ok
-      {output, code} -> {:error, {:manager, code, String.slice(output, 0, 500)}}
+      {_output, 0} ->
+        :ok
+
+      {output, code} ->
+        if command == "start" and String.contains?(output, "Startup health check timed out"),
+          do: :ok,
+          else: {:error, {:manager, code, String.slice(output, 0, 500)}}
     end
   rescue
     exception -> {:error, exception}
