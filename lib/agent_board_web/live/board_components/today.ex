@@ -24,9 +24,10 @@ defmodule AgentBoardWeb.BoardComponents.Today do
   attr :today, :map, required: true
   attr :spend, :map, default: nil
   attr :offset, :integer, default: 0
+  attr :now, :any, default: nil
 
   def today_view(assigns) do
-    now = DateTime.utc_now()
+    now = assigns.now || DateTime.utc_now()
 
     assigns =
       assigns
@@ -178,7 +179,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
   defp title("dsh", _spend), do: "Estimado em US$ pela tabela do board."
 
   defp date_label(now, offset) do
-    at = DateTime.add(now, offset * 60, :second)
+    at = DateTime.add(now, -offset * 60, :second)
     "#{weekday(at)} #{at.day} de #{month(at)}"
   end
 

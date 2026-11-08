@@ -6,6 +6,7 @@ defmodule AgentBoardWeb.TodayTest do
 
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
+  alias AgentBoardWeb.BoardComponents.Today
 
   @path "/?view=hoje"
 
@@ -86,6 +87,21 @@ defmodule AgentBoardWeb.TodayTest do
         cache_write_tokens: 0
       }
     ])
+  end
+
+  test "the Hoje date is the owner's day, west of UTC" do
+    now = ~U[2026-11-08 00:30:00Z]
+
+    html =
+      render_component(&Today.today_view/1, %{
+        today: %{needs: [], running: []},
+        spend: nil,
+        offset: 180,
+        now: now
+      })
+
+    assert html =~ "sábado 7 de novembro"
+    refute html =~ "domingo 8 de novembro"
   end
 
   test "o que precisa do dono aparece numa lista só, com o repositório em cada item",

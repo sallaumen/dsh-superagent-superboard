@@ -116,7 +116,7 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
         </div>
         <article :for={day <- @days_data} class="ab-exec-day">
           <header>
-            <h4>{Time.day_label(day.date, Date.utc_today())}</h4>
+            <h4>{day_label(day.date)}</h4>
             <span class="ab-data-sm ab-faint">{day.date}</span>
           </header>
           <dl class="ab-exec-day__rows">
@@ -145,6 +145,8 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
   end
 
   defp label(source), do: Map.get(@labels, source, source)
+
+  defp day_label(date), do: Time.day_label(date, Date.utc_today()) <> " (UTC)"
 
   defp tag(%{source: source} = executor) do
     cond do
