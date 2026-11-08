@@ -499,6 +499,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             <span class={["ab-tag", runner_tag(execution.status)]}>
               {runner_status(execution.status)}
             </span>
+            <span
+              :if={execution.cost_micros}
+              class="ab-meta"
+              title="Preço de lista informado pela CLI; não é a fatura"
+            >
+              ≈ {money(execution.cost_micros / 1_000_000)} lista
+            </span>
             <span class="ab-meta">
               {runner_time(execution.started_at, @offset)}–{runner_time(
                 execution.finished_at,

@@ -50,6 +50,7 @@ defmodule AgentBoard.RunnersScriptTest do
     assert File.read!(Path.join(run, "status")) == "done\n"
     assert File.read!(Path.join(run, "result")) =~ "fake claude ok"
     assert File.read!(Path.join(run, "session_id")) =~ "11111111"
+    assert File.read!(Path.join(run, "cost_usd")) == "0.21\n"
     assert File.dir?(Path.join(run, "worktree"))
   end
 
@@ -115,7 +116,7 @@ defmodule AgentBoard.RunnersScriptTest do
     File.write!(path, """
     #!/bin/bash
     echo "work" > work.txt
-    printf '{"result": "fake claude ok", "session_id": "s"}\\n'
+    printf '{"result": "fake claude ok", "session_id": "s", "total_cost_usd": 0.21}\\n'
     """)
 
     File.chmod!(path, 0o755)

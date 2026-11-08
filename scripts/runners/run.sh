@@ -59,8 +59,11 @@ if [ "$EXECUTOR" = "claude" ]; then
   if [ "$rc" -eq 0 ] && [ "$is_error" != "true" ]; then
     jq -r '.result // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/result" || true
     [ -s "$RUN_DIR/result" ] || printf 'Execução concluída.\n' > "$RUN_DIR/result"
+    jq -r '.total_cost_usd // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/cost_usd" || true
     status done
   else
+    jq -r '.total_cost_usd // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/cost_usd" || true
+
     if [ "$subtype" = "error_max_budget_usd" ]; then
       printf 'Teto de orçamento da tarefa atingido; a execução parou antes do resultado.\n' > "$RUN_DIR/error"
     else

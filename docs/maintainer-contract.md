@@ -613,7 +613,8 @@ in Configurações → Despacho local.
 - **One execution, one row** in `runner_executions`: task, repository,
   executor, status (`starting`, `running`, `done`, `failed`, `stopped`),
   session id (the Claude `--session-id` or the Codex `thread_id`), worktree,
-  branch, model, ceiling, result and error. A later dispatch is a new row and
+  branch, model, ceiling, result, error and the CLI's own `total_cost_usd`
+  (a list-price reference, not a bill; the ledger keeps its estimate). A later dispatch is a new row and
   a new decision; nothing retries a paid execution by itself.
 - **The delivery contract is the same for the three.** The prompt tells the
   runner to read the repository's AGENTS.md, work only in the worktree, run

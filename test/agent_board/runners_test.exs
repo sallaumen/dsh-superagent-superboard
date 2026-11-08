@@ -236,6 +236,7 @@ defmodule AgentBoard.RunnersTest do
     File.write!(Path.join(run_dir, "status"), "done")
     File.write!(Path.join(run_dir, "session_id"), "session-1")
     File.write!(Path.join(run_dir, "result"), "PR #9 mesclado")
+    File.write!(Path.join(run_dir, "cost_usd"), "0.21")
 
     assert :ok = Runners.tick()
 
@@ -243,6 +244,7 @@ defmodule AgentBoard.RunnersTest do
     assert execution.status == "done"
     assert execution.session_id == "session-1"
     assert execution.result == "PR #9 mesclado"
+    assert execution.cost_micros == 210_000
     assert Repo.get!(Task, task.id).state == "ready"
     refute Runners.active_for_task?(task.id)
   end
