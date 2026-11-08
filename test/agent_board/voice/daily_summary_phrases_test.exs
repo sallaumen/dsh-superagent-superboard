@@ -106,6 +106,36 @@ defmodule AgentBoard.Voice.DailySummaryPhrasesTest do
              "O gasto do DeepSeek é desconhecido."
   end
 
+  test "the list price is said as a reference, and Codex as a share of the weekly quota" do
+    spend = [
+      %{"executor" => "deepseek", "status" => "none"},
+      %{
+        "executor" => "claude",
+        "status" => "measured",
+        "currency" => "USD",
+        "reference" => "list",
+        "micros" => 3_000_000,
+        "complete" => true
+      },
+      %{
+        "executor" => "codex",
+        "status" => "measured",
+        "currency" => "quota",
+        "percent" => 90.0
+      }
+    ]
+
+    text = Phrases.daily_summary("pt-BR", content(%{"spend" => spend}))
+
+    assert text =~ "O Claude gastou cerca de 3,00 dólares a preço de lista, que não é a fatura."
+    assert text =~ "O Codex está em 90% da cota semanal."
+
+    english = Phrases.daily_summary("en-US", content(%{"spend" => spend}))
+
+    assert english =~ "Claude spent about 3.00 dollars at list price, which is not the bill."
+    assert english =~ "Codex is at 90% of the weekly quota."
+  end
+
   test "a measured Claude or Codex line is said in its own terms once a source exists" do
     spend = [
       %{"executor" => "deepseek", "status" => "none"},

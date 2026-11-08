@@ -629,15 +629,11 @@ defmodule AgentBoardWeb.BoardLive do
   defp resume_limit(_, minimum), do: minimum
 
   @impl true
-  def handle_info({:answer, task_id, text}, socket) do
+  def handle_info({:answer, task_id, result}, socket) do
     current = socket.assigns.conversation && socket.assigns.conversation.id
 
     if current == task_id do
-      {:noreply,
-       socket
-       |> put_flash(:info, text)
-       |> refresh_ai()
-       |> speak(Announcer.speakable_answer(text))}
+      {:noreply, answer_arrived(socket, result)}
     else
       {:noreply, socket}
     end
@@ -1777,6 +1773,24 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp speech_url(text, voice_id), do: VoiceSpeech.url(text, voice_id)
 
+  # A question that reached GitHub is a success even when the model cannot
+  # answer it: the failure is shown as an error and never overwrites the
+  # "Question sent" confirmation.
+  defp answer_arrived(socket, text) when is_binary(text), do: answer_arrived(socket, {:ok, text})
+
+  defp answer_arrived(socket, {:ok, text}) do
+    socket
+    |> put_flash(:info, text)
+    |> refresh_ai()
+    |> speak(Announcer.speakable_answer(text))
+  end
+
+  defp answer_arrived(socket, {:error, text}) do
+    socket
+    |> put_flash(:error, text)
+    |> refresh_ai()
+  end
+
   defp answer(task, question) do
     case AI.call(
            :answer_question,
@@ -1788,10 +1802,10 @@ defmodule AgentBoardWeb.BoardLive do
            },
            task_id: task.id
          ) do
-      {:ok, %{json: %{"answer" => text}}} -> text
-      {:ok, _} -> "The model answered, but not with text."
-      {:error, :not_configured} -> "The AI is not configured."
-      {:error, reason} -> "The AI did not answer: #{inspect(reason)}"
+      {:ok, %{json: %{"answer" => text}}} -> {:ok, text}
+      {:ok, _} -> {:ok, "The model answered, but not with text."}
+      {:error, :not_configured} -> {:error, "The AI is not configured."}
+      {:error, reason} -> {:error, "The AI did not answer: #{inspect(reason)}"}
     end
   end
 

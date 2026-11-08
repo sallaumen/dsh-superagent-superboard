@@ -100,13 +100,24 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
   defp suggestion_head(%{executor: nil}), do: "Sem sugestão."
   defp suggestion_head(%{executor: executor}), do: "Sugestão: #{Executors.name(executor)}."
 
-  @doc "The expected cost in the executor's own currency; unknown until the usage ledger exists."
-  def cost_label(:unknown), do: "desconhecido (ainda não há histórico de uso)"
+  @doc """
+  The expected cost in the executor's own currency. The Claude Code US$ is
+  the list price of the Max subscription, a reference and not a bill; an
+  executor with no history is unknown, never zero.
+  """
+  def cost_label(:unknown), do: "desconhecido (sem histórico de uso)"
 
-  def cost_label(%{micros: micros, complete?: complete?}) when is_integer(micros) do
-    dollars = :erlang.float_to_binary(micros / 1_000_000, decimals: 2)
-    if complete?, do: "US$ #{dollars}", else: "≥ US$ #{dollars}"
+  def cost_label(%{micros: micros, reference: :list} = cost) when is_integer(micros) do
+    amount(cost) <> " a preço de lista (referência, não é fatura)"
   end
 
+  def cost_label(%{micros: micros} = cost) when is_integer(micros), do: amount(cost)
+
   def cost_label(_other), do: "desconhecido"
+
+  defp amount(%{micros: micros, complete?: false}),
+    do: "≥ US$ #{:erlang.float_to_binary(micros / 1_000_000, decimals: 2)}"
+
+  defp amount(%{micros: micros}),
+    do: "≈ US$ #{:erlang.float_to_binary(micros / 1_000_000, decimals: 2)}"
 end

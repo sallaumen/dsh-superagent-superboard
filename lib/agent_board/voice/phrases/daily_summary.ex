@@ -92,24 +92,47 @@ defmodule AgentBoard.Voice.Phrases.DailySummary do
 
   defp executor(lang, %{"status" => "measured", "micros" => micros} = line)
        when is_integer(micros) do
-    spent(lang, name(line), cents(micros), line["complete"] != false)
+    spent(lang, name(line), cents(micros), line["complete"] != false, line["reference"])
   end
+
+  defp executor(lang, %{"status" => "measured", "currency" => "quota"} = line),
+    do: quota(lang, name(line), line["percent"])
 
   defp executor("en-US", %{"status" => "none"} = line), do: "#{name(line)} did not run."
   defp executor(_lang, %{"status" => "none"} = line), do: "O #{name(line)} não rodou."
   defp executor("en-US", line), do: "#{name(line)}'s spending is unknown."
   defp executor(_lang, line), do: "O gasto do #{name(line)} é desconhecido."
 
-  defp spent("en-US", name, 0, _complete), do: "#{name} spent less than a cent."
+  defp spent("en-US", name, 0, _complete, _reference), do: "#{name} spent less than a cent."
 
-  defp spent("en-US", name, cents, complete),
+  defp spent("en-US", name, cents, complete, "list"),
+    do:
+      "#{name} spent #{if complete, do: "about", else: "at least"} #{dollars("en-US", cents)} " <>
+        "at list price, which is not the bill."
+
+  defp spent("en-US", name, cents, complete, _reference),
     do: "#{name} spent #{if complete, do: "about", else: "at least"} #{dollars("en-US", cents)}."
 
-  defp spent(_lang, name, 0, _complete), do: "O #{name} gastou menos de um centavo de dólar."
+  defp spent(_lang, name, 0, _complete, _reference),
+    do: "O #{name} gastou menos de um centavo de dólar."
 
-  defp spent(lang, name, cents, complete),
+  defp spent(_lang, name, cents, complete, "list"),
+    do:
+      "O #{name} gastou #{if complete, do: "cerca de", else: "pelo menos"} " <>
+        "#{dollars("pt-BR", cents)} a preço de lista, que não é a fatura."
+
+  defp spent(lang, name, cents, complete, _reference),
     do:
       "O #{name} gastou #{if complete, do: "cerca de", else: "pelo menos"} #{dollars(lang, cents)}."
+
+  defp quota("en-US", name, percent) when is_number(percent),
+    do: "#{name} is at #{round(percent)}% of the weekly quota."
+
+  defp quota(_lang, name, percent) when is_number(percent),
+    do: "O #{name} está em #{round(percent)}% da cota semanal."
+
+  defp quota("en-US", name, _percent), do: "#{name}'s weekly quota is unknown."
+  defp quota(_lang, name, _percent), do: "A cota semanal do #{name} é desconhecida."
 
   defp unmeasured(_lang, []), do: nil
 
