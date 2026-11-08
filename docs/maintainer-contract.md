@@ -616,6 +616,19 @@ in Configurações → Despacho local.
   The runner creates a worktree from `origin/main`, runs the CLI, and writes
   `status`, `session_id`, `result` and `error`. `Runners.Ticker` reads those
   files every 15 s; the board never waits on the process.
+
+```mermaid
+flowchart LR
+    A["`dispatch/3`<br/>ação vermelha confirmada"] --> D["diretório de run<br/>`~/.agent_board/runs/&lt;uuid&gt;`<br/>prompt + launch.sh"]
+    D --> T["`scripts/runners/run.sh`<br/>em tmux (nohup de reserva)"]
+    T --> W["worktree a partir de<br/>`origin/main`"]
+    W --> C["CLI: `claude -p` / `codex exec`<br/>(stdin fechado)"]
+    C --> S["arquivos de status<br/>`status · session_id · result · error`"]
+    S --> K["`Runners.Ticker`<br/>lê a cada 15 s"]
+    K --> B["board: raia + Execuções"]
+    K -->|"Parar execução (vermelha)"| X["mata a sessão tmux `ab-&lt;uuid&gt;`<br/>registra `stopped`"]
+```
+
 - **The dispatch is the red action `dispatch_task`.** Its sentence names the
   task, the executor, the repository and the ceiling; the table of actions
   above is the inventory. The effect re-checks every gate, so a forged or
@@ -872,6 +885,19 @@ issue URL of the same repository, in the order named).
 | branch | the session's branch is the `head_ref` of a PR in the same repository that closes a task's issue (`HEAD` is not a branch) | `{:task, id, :branch}` |
 | repository | the remote, a `pr-link` or the project folder names one board repository | `{:repository, id}` |
 | outside | none of the above | `{:outside, folder}`, or `:unknown` with no folder |
+
+```mermaid
+flowchart TB
+    S["sessão do executor<br/>ou PR"] --> R1{"exact<br/>a sessão carrega o id da tarefa?"}
+    R1 -- sim --> T1["`{:task, id, :exact}`"]
+    R1 -- não --> R2{"pr-link<br/>um `pr-link` nomeia PR<br/>que fecha a issue da tarefa?"}
+    R2 -- sim --> T2["`{:task, id, :pr_link}`"]
+    R2 -- não --> R3{"branch<br/>a branch é o `head_ref` de um PR<br/>que fecha a issue da tarefa?"}
+    R3 -- sim --> T3["`{:task, id, :branch}`"]
+    R3 -- não --> R4{"repository<br/>remote, `pr-link` ou pasta<br/>nomeiam um repositório do board?"}
+    R4 -- sim --> T4["`{:repository, id}`"]
+    R4 -- não --> T5["`{:outside, folder}`<br/>ou `:unknown` sem pasta"]
+```
 
 - **A PR without `Closes #n` has no task.** The board never guesses by
   title, branch name or the conversation: a session is metadata the reader
@@ -1138,6 +1164,19 @@ The sync is isolated **per item**, not per repository:
 | a task's comments fail | `comment_error` | continues |
 | the commit read fails | `commit_error` | continues, without a `commits` count in the `sync` event |
 | the repository itself fails | `sync_error` | returns `{:error, exception}` and Oban retries |
+
+```mermaid
+flowchart TB
+    S["sync de um repositório"] --> I["issue"]
+    S --> P["pull + reviews/checks"]
+    S --> C["comentários da tarefa"]
+    S --> M["commits"]
+    I -- "falha de validação" --> E1["evento `issue_error`<br/>continua"]
+    P -- "falha de reviews/checks" --> E2["evento `pull_error`<br/>continua"]
+    C -- "falha" --> E3["evento `comment_error`<br/>continua"]
+    M -- "falha de leitura" --> E4["evento `commit_error`<br/>continua, sem a contagem"]
+    S -- "o repositório inteiro falha" --> R["`sync_error`<br/>retorna `{:error, exception}`<br/>Oban tenta de novo"]
+```
 
 Every branch returns `:ok` or logs; nothing swallows an error silently and
 nothing takes the whole sync down for one bad item. Each branch has a test in
