@@ -24,8 +24,8 @@ fail() {
   exit 1
 }
 
-status starting
 mkdir -p "$RUN_DIR"
+status starting
 
 # A fresh worktree from origin/main keeps the board's checkout untouched.
 git -C "$REPO_DIR" fetch origin main --quiet || fail "git fetch falhou"
@@ -87,13 +87,19 @@ else
   thread_id="$(jq -r 'select(.type == "thread.started") | .thread_id' "$RUN_DIR/codex.jsonl" 2>/dev/null | head -1 || true)"
   [ -n "$thread_id" ] && printf '%s\n' "$thread_id" > "$RUN_DIR/session_id"
 
-  if [ "$rc" -eq 0 ]; then
+  codex_error="$(jq -r 'select(.type == "error" or .type == "turn.failed") | (.message // .error.message // .error // empty)' "$RUN_DIR/codex.jsonl" 2>/dev/null | tail -1 || true)"
+
+  if [ "$rc" -eq 0 ] && [ -z "$codex_error" ]; then
     [ -s "$RUN_DIR/last.txt" ] && cp "$RUN_DIR/last.txt" "$RUN_DIR/result" \
       || printf 'Execução concluída.\n' > "$RUN_DIR/result"
     status done
   else
-    tail -c 4000 "$RUN_DIR/stderr" > "$RUN_DIR/error" 2>/dev/null || true
-    [ -s "$RUN_DIR/error" ] || printf 'O Codex saiu com %s.\n' "$rc" > "$RUN_DIR/error"
+    if [ -n "$codex_error" ]; then
+      printf '%s\n' "$codex_error" > "$RUN_DIR/error"
+    else
+      tail -c 4000 "$RUN_DIR/stderr" > "$RUN_DIR/error" 2>/dev/null || true
+      [ -s "$RUN_DIR/error" ] || printf 'O Codex saiu com %s.\n' "$rc" > "$RUN_DIR/error"
+    fi
     status failed
   fi
 fi

@@ -136,6 +136,54 @@ defmodule AgentBoard.RunnersScriptTest do
     path
   end
 
+  test "codex: a JSON error event is the execution error even on exit 0", %{
+    root: root,
+    repo: repo,
+    run: run
+  } do
+    fake = fake_codex_fail(root)
+    worktree = Path.join(run, "worktree")
+
+    env = %{
+      "RUN_DIR" => run,
+      "RUN_ID" => "44444444-4444-4444-8444-444444444444",
+      "EXECUTOR" => "codex",
+      "REPO_SLUG" => "fixture/repo",
+      "REPO_DIR" => repo,
+      "TASK_NUMBER" => "45",
+      "MODEL" => "gpt-test",
+      "BUDGET_USD" => "",
+      "TIMEOUT_SECONDS" => "20",
+      "BRANCH" => "agent/test-codex-fail",
+      "WORKTREE" => worktree,
+      "PROMPT_FILE" => Path.join(run, "prompt.md"),
+      "CLAUDE_BIN" => fake,
+      "CODEX_BIN" => fake
+    }
+
+    assert {_, 0} = System.cmd("/bin/bash", [@script], env: env, stderr_to_stdout: true)
+    assert File.read!(Path.join(run, "status")) == "failed\n"
+    assert File.read!(Path.join(run, "session_id")) == "thread-9\n"
+    assert File.read!(Path.join(run, "error")) =~ "quota exhausted"
+  end
+
+  defp fake_codex_fail(root) do
+    path = Path.join(root, "fake-codex-fail")
+
+    File.write!(path, """
+    #!/bin/bash
+    while [ "$#" -gt 0 ]; do
+      if [ "$1" = "-o" ]; then out="$2"; shift 2; else shift; fi
+    done
+    printf '{"type":"thread.started","thread_id":"thread-9"}\n'
+    printf '{"type":"error","message":"quota exhausted"}\n'
+    exit 0
+    """)
+
+    File.chmod!(path, 0o755)
+    path
+  end
+
   defp fake_codex(root) do
     path = Path.join(root, "fake-codex")
 
