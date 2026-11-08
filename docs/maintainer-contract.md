@@ -700,14 +700,17 @@ read and cache write tokens, with the first and last time.
 | `dsh` | `~/.dsh/sessions/*/*/session.v4.jsonl.zstd` (`:dsh_sessions_dir`) | `ExecutorUsage.read_transcript/1` | one row per `data.message.id` (else `seq`) per session in `usage_messages` |
 
 - **Only changed files are read.** `usage_files` keeps each path's size and
-  mtime. A Claude Code transcript that only grew is read from the end of its
+  mtime; a new run reads the files oldest by creation/rename (`ctime`), so a
+  moved copy is read after the original even when its mtime is older. A Claude Code transcript that only grew is read from the end of its
   last complete line, when the 4 KB before that point still hash the same;
   otherwise from the start. A Codex thread is read whole when any of its
   files changed. Files are read oldest first, so a session's original is
   stored before a later copy.
 - **Reading the same files again changes no row.** A ledger row is written
   only when its numbers change, and a message only when a count grows
-  (`ledger_test.exs` forces every file to be read again and compares).
+  (`ledger_test.exs` forces every file to be read again and compares). Two
+  boards refreshing the same database insert with `on_conflict: :nothing`:
+  the row the other one wrote first is not an error.
 - **A file that cannot be read is not a gap filled with zero**: its reason
   stays in `usage_files.error`, it is logged, and the next run tries it
   again; the other files go on. Without `zstd` on the PATH the zstd files
