@@ -68,7 +68,7 @@ defmodule AgentBoard.Usage.Ledger do
     changed
     |> units(listed)
     |> Enum.sort_by(fn unit ->
-      {unit.files |> Enum.map(& &1.mtime) |> Enum.max(), hd(unit.files).path}
+      {unit.files |> Enum.map(& &1.ctime) |> Enum.min(), hd(unit.files).path}
     end)
     |> Enum.reduce(%{read: 0, failed: 0, rows: 0}, fn unit, summary ->
       files = length(unit.files)
@@ -163,8 +163,8 @@ defmodule AgentBoard.Usage.Ledger do
 
   defp stat(source, path) do
     case File.stat(path, time: :posix) do
-      {:ok, %{type: :regular, size: size, mtime: mtime}} ->
-        [%{source: source, path: path, size: size, mtime: mtime}]
+      {:ok, %{type: :regular, size: size, mtime: mtime, ctime: ctime}} ->
+        [%{source: source, path: path, size: size, mtime: mtime, ctime: ctime}]
 
       _ ->
         []
@@ -562,7 +562,9 @@ defmodule AgentBoard.Usage.Ledger do
 
     deletes = for {k, old} <- stored, not Map.has_key?(wanted, k), do: old.id
 
-    if inserts != [], do: Repo.insert_all("usage_ledger", inserts)
+    # Two boards may refresh the same database; a row the other one wrote
+    # first is not an error.
+    if inserts != [], do: Repo.insert_all("usage_ledger", inserts, on_conflict: :nothing)
 
     if deletes != [],
       do:
@@ -624,7 +626,7 @@ defmodule AgentBoard.Usage.Ledger do
 
     cond do
       stored == nil ->
-        Repo.insert_all("usage_limits", [row])
+        Repo.insert_all("usage_limits", [row], on_conflict: :nothing)
 
       DateTime.compare(limits.observed_at, stored.observed_at) == :gt ->
         Repo.update_all(from(l in "usage_limits", where: l.id == ^stored.id),
