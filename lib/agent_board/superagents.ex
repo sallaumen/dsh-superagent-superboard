@@ -333,7 +333,7 @@ defmodule AgentBoard.Superagents do
         manager.stop(superagent)
 
       {:error, reason} ->
-        {:error, reason}
+        if unreachable?(reason), do: :ok, else: {:error, reason}
     end
   end
 
@@ -388,7 +388,7 @@ defmodule AgentBoard.Superagents do
   defp unreachable?(nil), do: false
 
   defp unreachable?(error) do
-    String.contains?(to_string(error), ["econnrefused", "unreachable", "TransportError"])
+    String.contains?(inspect(error), ["econnrefused", "unreachable", "TransportError"])
   end
 
   @doc "Record one lifecycle event."
