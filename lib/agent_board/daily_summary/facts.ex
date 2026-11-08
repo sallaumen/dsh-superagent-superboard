@@ -146,6 +146,12 @@ defmodule AgentBoard.DailySummary.Facts do
   # The harness transcripts: tokens measured, cost estimated in US$ from the
   # board's price table. A reading with no request in the window means the
   # executor did not run; an unreadable file makes the cost a minimum.
+  # A window whose only transcripts were unreadable is unknown, not "did
+  # not run": a missing file is not an empty day.
+  defp deepseek(%{status: :measured, requests: 0, unreadable: unreadable})
+       when is_integer(unreadable) and unreadable > 0,
+       do: %{"executor" => "deepseek", "status" => "unknown", "reason" => "unreadable"}
+
   defp deepseek(%{status: :measured, requests: 0}),
     do: %{"executor" => "deepseek", "status" => "none"}
 

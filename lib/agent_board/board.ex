@@ -44,15 +44,28 @@ defmodule AgentBoard.Board do
     Phoenix.PubSub.broadcast(AgentBoard.PubSub, @today_topic, {:today_updated, repository_id})
   end
 
-  @doc "Track a repository. It is a no-op if it already exists."
+  @doc "Tracks a repository; every open board refreshes its list."
   def add_repository(owner, name) do
-    %Repository{}
-    |> Repository.changeset(%{owner: owner, name: name})
-    |> Repo.insert(on_conflict: :nothing, conflict_target: [:owner, :name])
+    result =
+      %Repository{}
+      |> Repository.changeset(%{owner: owner, name: name})
+      |> Repo.insert(on_conflict: :nothing, conflict_target: [:owner, :name])
+
+    if match?({:ok, _}, result), do: broadcast_repos()
+    result
   end
 
   @doc "Delete a repository and everything scoped to it."
-  def delete_repository(id), do: Repo.delete_all(from r in Repository, where: r.id == ^id)
+  def delete_repository(id) do
+    result = Repo.delete_all(from r in Repository, where: r.id == ^id)
+    broadcast_repos()
+    result
+  end
+
+  @doc "Tells every open board that the repository list changed."
+  def broadcast_repos do
+    Phoenix.PubSub.broadcast(AgentBoard.PubSub, @today_topic, :repos_changed)
+  end
 
   @doc "The board for a repository (the slug) or the first one."
   def board(slug, merged_limit \\ @merged_page_size, task_limits \\ %{})
@@ -301,7 +314,10 @@ defmodule AgentBoard.Board do
       })
       |> Repo.insert(on_conflict: :nothing)
       |> tap(&record_routing(&1, repository, executor, Keyword.get(opts, :routing)))
-      |> tap(fn _ -> broadcast(repository.id) end)
+      |> tap(fn
+        {:ok, %Task{id: id}} when is_integer(id) -> broadcast(repository.id)
+        _ -> :ok
+      end)
     end
   rescue
     exception ->
@@ -514,9 +530,15 @@ defmodule AgentBoard.Board do
 
   defp update_state(task, attrs) do
     attrs = Map.put_new(attrs, :state_changed_at, DateTime.utc_now())
-    result = task |> Task.changeset(attrs) |> Repo.update()
-    broadcast(task.repository_id)
-    result
+
+    case task |> Task.changeset(attrs) |> Repo.update() do
+      {:ok, task} = result ->
+        broadcast(task.repository_id)
+        result
+
+      other ->
+        other
+    end
   end
 
   @doc "The conversation of a task: its comments, oldest first."
@@ -946,14 +968,15 @@ defmodule AgentBoard.Board do
         Map.update(acc, repository_id, %{state => count}, &Map.put(&1, state, count))
       end)
 
+    # The newest sync (or error) of each repository, without a global limit:
+    # a repository whose last sync is old still reads its own event.
     syncs =
       Repo.all(
         from e in Event,
           where: e.kind in ["sync", "sync_error"],
-          order_by: [desc: e.inserted_at, desc: e.id],
-          limit: 200
+          distinct: e.repository_id,
+          order_by: [asc: e.repository_id, desc: e.inserted_at, desc: e.id]
       )
-      |> Enum.uniq_by(& &1.repository_id)
       |> Map.new(&{&1.repository_id, &1})
 
     ready_by_repository =

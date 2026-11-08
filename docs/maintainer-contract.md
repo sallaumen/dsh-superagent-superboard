@@ -116,6 +116,7 @@ each door; a yellow or green action runs on the click and is recorded as
 | `resume_task` | yellow | puts the task back in the board's queue (does not reopen the issue) | UI: one click. API: direct |
 | `retry_ticket` | red | `POST tickets/<id>/retry` asked by the owner; the executor spends tokens | UI: `AgentAction` "Tentar de novo" / "Tentar agora" |
 | `auto_retry_ticket` | red | the same request, asked by the board after a transient failure | System: the standing authorization ("Automatic retry"), `auto_retry` only |
+| `dispatch_task` | red | starts Claude Code or Codex in a worktree; spends the owner's subscription | UI: `AgentAction` "Despachar" in two steps, with the sentence, executor, task, repository and ceiling; voice/API: `428` then `confirm` |
 | `start_agent` | red | runs `dsh-superagent start` on this machine; clears a stop made on purpose | UI: `AgentAction` "Religar o agente" |
 | `set_max_workers` | yellow | `PUT settings/executor` with the new ceiling (− and + undo it) | UI: one click on the Paralelismo tile |
 | `add_repository` | yellow | tracks a repository | UI: settings menu. API: direct |
@@ -197,6 +198,9 @@ that already worked).
   tab changes only the panel. Every read is the `[:agent_board, :board,
   :load]` telemetry span, on the dashboard as `agent_board.board.load`
   (`board_load_test.exs`).
+- The **runner** writes its status in a run directory; `Runners.Ticker`
+  reads it and calls `Board.broadcast/1` on the task's repository, so the
+  inspector and the Execuções tab follow without a reload.
 - The **Hoje** view reads every repository in the same board load
   (`Board.today/0` and `Usage.Report.today/0`), never in a render. Because it
   shows all repositories, `Board.broadcast/1` also emits
@@ -543,8 +547,10 @@ sync found or a task created before the choice existed.
   mention inside the text loses its `@` (`Executors.issue_body/2`). Every
   board issue for an executor carries the label `executor:<name>`, which
   GitHub creates on first use.
-- **Choosing Claude Code or Codex records the choice; nothing starts them**
-  (decisions D1 to D5 are open, `docs/research/alfred.md`).
+- **Choosing Claude Code or Codex records the choice; the owner dispatches it
+  from the task inspector** with a confirmed action (see "Dispatch" below).
+  D1, D2, D3 and D5 were decided by the owner on 2026-11-08
+  (`docs/decisions/0004-o-board-despacha-para-executores-locais.md`).
 - **Where the choice is made.** The composer shows the three executors as
   one radio group (`ExecutorPicker`) with the router's suggestion checked,
   its reasons and the expected cost; the person's pick is the request's
@@ -571,6 +577,55 @@ sync found or a task created before the choice existed.
   `listedUnaddressed: ignore` for issues, which belongs to the owner.
 - The tests: `executors_test.exs` and `create_request_test.exs` (the body
   and the label GitHub receives, the stored executor, a repeat).
+
+## Dispatch (despacho local)
+
+Fase 3 of the Alfred plan (`docs/research/alfred.md`, 3.6 and F3.1–F3.3):
+`AgentBoard.Runners` starts Claude Code (`claude -p`) or Codex
+(`codex exec`). The decision is the owner's, recorded in
+[ADR 0004](../decisions/0004-o-board-despacha-para-executores-locais.md):
+the owner's `gh` account, US$ 300/month, US$ 5 per Claude Code task, 30
+minutes for Codex and 50 % of the Codex weekly window reserved; all are
+settings (`dispatch_*`) and can be changed in Configurações.
+
+- **The process is not a child of the board.** `dispatch/3` writes a run
+  directory (`~/.agent_board/runs/<uuid>`), a prompt and a `launch.sh`, and
+  starts `scripts/runners/run.sh` in a `tmux` session (a `nohup` fallback).
+  The runner creates a worktree from `origin/main`, runs the CLI, and writes
+  `status`, `session_id`, `result` and `error`. `Runners.Ticker` reads those
+  files every 15 s; the board never waits on the process.
+- **The dispatch is the red action `dispatch_task`.** Its sentence names the
+  task, the executor, the repository and the ceiling; the table of actions
+  above is the inventory. The effect re-checks every gate, so a forged or
+  stale event cannot start a runner.
+- **The gates, in this order:** the task is not closed/stopped/archived; the
+  executor is the task's (`tasks.executor`); the global pause
+  (`dispatch_paused`) is off; the task has no `starting`/`running` row (a
+  partial unique index enforces it); the Claude Code month is under the cap
+  and priced (an unpriced row refuses rather than pretending the budget is
+  zero); the Codex weekly quota, when read, is outside the reserve. The
+  ceiling the owner saw is the one the action passes to the runner.
+- **One execution, one row** in `runner_executions`: task, repository,
+  executor, status (`starting`, `running`, `done`, `failed`, `stopped`),
+  session id (the Claude `--session-id` or the Codex `thread_id`), worktree,
+  branch, model, ceiling, result and error. A later dispatch is a new row and
+  a new decision; nothing retries a paid execution by itself.
+- **The delivery contract is the same for the three.** The prompt tells the
+  runner to read the repository's AGENTS.md, work only in the worktree, run
+  `scripts/ci-local.sh all` on the head, open the PR with `Closes #n` and
+  merge it with the owner's `gh` after the gate. The sync then reads the PR,
+  the ledger reads the transcript and the board shows both.
+- **The inspector** shows the dispatch block for a task whose executor is
+  Claude Code or Codex (not for `dsh`, not for a finished task), the
+  confirmation, the pause switch, and every dispatch in the Execuções tab
+  with its session and result. The Executores panel and the ledger keep
+  their currencies: the runner row says nothing about US$ by itself.
+- **A runner that cannot start fails the row**, never silently: the run
+  directory keeps the error and the next tick records it.
+- The tests: `runners_test.exs` (dispatch, one per task, pause, budget,
+  quota, tick, the action), `runners_script_test.exs` (the real shell script
+  against a fake CLI and a real worktree), `dispatch_test.exs` (the sentence,
+  the confirmed start, the pause on the board).
 
 ## Routing (mode "sugerir")
 

@@ -6,7 +6,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
 
-  @panels ~w(activity intake ai conversation voice history composer shortcuts executors)
+  @panels ~w(activity intake ai conversation voice history composer shortcuts executors settings)
 
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
@@ -87,7 +87,16 @@ defmodule AgentBoardWeb.BoardNavigation do
   end
 
   def open_panel(socket, panel)
-      when panel in ["activity", "intake", "ai", "history", "composer", "shortcuts", "executors"] do
+      when panel in [
+             "activity",
+             "intake",
+             "ai",
+             "history",
+             "composer",
+             "shortcuts",
+             "executors",
+             "settings"
+           ] do
     if socket.assigns.repo,
       do: push_patch(socket, to: path(socket.assigns.repo, panel)),
       else: socket
@@ -102,6 +111,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   defp task(repo, id) do
     with {number, ""} <- Integer.parse(to_string(id)),
          %Task{repository_id: repo_id} = task <- Repo.get(Task, number),
+         task = Repo.preload(task, :repository),
          true <- repo_id == repo.id do
       task
     else

@@ -1,0 +1,88 @@
+#!/bin/bash
+# One local execution, started by AgentBoard.Runners in its own tmux session.
+# The board never waits on this process: it observes status, session_id,
+# result and error in $RUN_DIR.
+set -u
+
+RUN_DIR="${RUN_DIR:?}"
+EXECUTOR="${EXECUTOR:?}"
+REPO_DIR="${REPO_DIR:?}"
+BRANCH="${BRANCH:?}"
+WORKTREE="${WORKTREE:?}"
+PROMPT_FILE="${PROMPT_FILE:?}"
+MODEL="${MODEL:-}"
+BUDGET_USD="${BUDGET_USD:-}"
+TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-7200}"
+CLAUDE_BIN="${CLAUDE_BIN:-claude}"
+CODEX_BIN="${CODEX_BIN:-codex}"
+TIMEOUT_BIN="$(command -v timeout || echo /opt/homebrew/bin/timeout)"
+
+status() { printf '%s\n' "$1" > "$RUN_DIR/status"; }
+fail() {
+  printf '%s\n' "$1" > "$RUN_DIR/error"
+  status failed
+  exit 1
+}
+
+status starting
+mkdir -p "$RUN_DIR"
+
+# A fresh worktree from origin/main keeps the board's checkout untouched.
+git -C "$REPO_DIR" fetch origin main --quiet || fail "git fetch falhou"
+git -C "$REPO_DIR" worktree add -b "$BRANCH" "$WORKTREE" origin/main >/dev/null 2>&1 \
+  || fail "git worktree add falhou para $BRANCH"
+
+cd "$WORKTREE" || fail "worktree inacessível"
+
+printf '%s\n' "$RUN_ID" > "$RUN_DIR/session_id"
+status running
+
+if [ "$EXECUTOR" = "claude" ]; then
+  timeout_args=(--max-budget-usd "$BUDGET_USD")
+  # A blank ceiling would make the CLI reject the argument; the board always
+  # sets one for Claude, but be defensive.
+  [ -n "$BUDGET_USD" ] || timeout_args=()
+
+  "$TIMEOUT_BIN" "$TIMEOUT_SECONDS" "$CLAUDE_BIN" \
+    -p "$(cat "$PROMPT_FILE")" \
+    --session-id "$RUN_ID" \
+    --output-format json \
+    --permission-mode bypassPermissions \
+    --model "$MODEL" \
+    "${timeout_args[@]}" \
+    > "$RUN_DIR/claude.json" 2> "$RUN_DIR/stderr"
+  rc=$?
+
+  if [ "$rc" -eq 0 ]; then
+    jq -r '.result // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/result" || true
+    [ -s "$RUN_DIR/result" ] || printf 'Execução concluída.\n' > "$RUN_DIR/result"
+    status done
+  else
+    tail -c 4000 "$RUN_DIR/stderr" > "$RUN_DIR/error" 2>/dev/null || true
+    [ -s "$RUN_DIR/error" ] || printf 'O Claude Code saiu com %s.\n' "$rc" > "$RUN_DIR/error"
+    status failed
+  fi
+else
+  "$TIMEOUT_BIN" "$TIMEOUT_SECONDS" "$CODEX_BIN" \
+    exec --json \
+    -m "$MODEL" \
+    -s workspace-write \
+    -C "$WORKTREE" \
+    -o "$RUN_DIR/last.txt" \
+    "$(cat "$PROMPT_FILE")" \
+    > "$RUN_DIR/codex.jsonl" 2> "$RUN_DIR/stderr"
+  rc=$?
+
+  thread_id="$(jq -r 'select(.type == "thread.started") | .thread_id' "$RUN_DIR/codex.jsonl" 2>/dev/null | head -1 || true)"
+  [ -n "$thread_id" ] && printf '%s\n' "$thread_id" > "$RUN_DIR/session_id"
+
+  if [ "$rc" -eq 0 ]; then
+    [ -s "$RUN_DIR/last.txt" ] && cp "$RUN_DIR/last.txt" "$RUN_DIR/result" \
+      || printf 'Execução concluída.\n' > "$RUN_DIR/result"
+    status done
+  else
+    tail -c 4000 "$RUN_DIR/stderr" > "$RUN_DIR/error" 2>/dev/null || true
+    [ -s "$RUN_DIR/error" ] || printf 'O Codex saiu com %s.\n' "$rc" > "$RUN_DIR/error"
+    status failed
+  fi
+fi

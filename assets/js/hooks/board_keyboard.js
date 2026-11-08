@@ -35,6 +35,10 @@ export const BoardKeyboard = {
     }
 
     if (event.key === "Enter" && current) {
+      // A link or a button inside the card owns its own Enter; only the card
+      // itself opens the task.
+      const action = target?.closest?.("a, button")
+      if (action && action !== current) return
       event.preventDefault()
       current.click()
       return

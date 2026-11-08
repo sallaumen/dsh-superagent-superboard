@@ -54,6 +54,9 @@ config :agent_board, auto_retry_interval: 3_600_000
 # own clock.
 config :agent_board, daily_summary_interval: 3_600_000
 
+# The runner ticker reads status files; the suite calls Runners.tick/0 itself.
+config :agent_board, runner_tick_interval: 3_600_000
+
 # The voices cache would leak between tests through the persistent term;
 # the client goes to the stub every time.
 config :agent_board, voice_voices_ttl: 0

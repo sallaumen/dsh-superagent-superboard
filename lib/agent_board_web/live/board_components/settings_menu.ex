@@ -4,6 +4,8 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
+  attr :dispatch_paused, :boolean, default: false
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -54,6 +56,25 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           </div>
         </section>
 
+        <section :if={@repo} class="settings-shortcuts" aria-labelledby="settings-dispatch">
+          <h3 id="settings-dispatch">Despacho local</h3>
+          <div class="settings-actions">
+            <button
+              id="toggle-dispatch"
+              type="button"
+              phx-click="toggle_dispatch"
+            >
+              <.icon name={if @dispatch_paused, do: "hero-play", else: "hero-pause"} class="size-4" />
+              {if @dispatch_paused, do: "Retomar despacho", else: "Pausar despacho"}
+            </button>
+          </div>
+          <p class="text-xs leading-relaxed text-base-content/75">
+            {if @dispatch_paused,
+              do: "Pausado: o que já roda continua e nenhuma execução nova começa.",
+              else: "Ligado: Claude Code e Codex podem ser despachados por uma ação confirmada."}
+          </p>
+        </section>
+
         <details id="settings-voice-section" class="settings-fold">
           <summary>
             <span class="settings-fold-label">Voz <small>Fala e retorno</small></span>
@@ -67,7 +88,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               </button>
             </div>
             <p class="text-xs leading-relaxed text-base-content/75">
-              No board, aperte Espaço duas vezes, fale e pare: o agente responde em voz. Criar, parar ou arquivar sempre espera o seu “sim”.
+              No board, aperte Espaço duas vezes, fale e pare: o agente responde em voz. Criar e parar esperam o seu “sim”; arquivar é um clique e Retomar desfaz.
             </p>
           </div>
         </details>

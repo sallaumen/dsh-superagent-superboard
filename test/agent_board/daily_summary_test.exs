@@ -308,6 +308,20 @@ defmodule AgentBoard.DailySummaryTest do
       assert Enum.at(entry.content["spend"], 2)["reason"] == "no_quota"
     end
 
+    test "an unreadable transcript is unknown, not a day without work" do
+      unreadable = fn _since, _until ->
+        %{status: :measured, requests: 0, unreadable: 1, cost: nil, models: []}
+      end
+
+      {:generated, entry} = tick("2026-11-07T11:00:00Z", spend: unreadable)
+
+      assert hd(entry.content["spend"]) == %{
+               "executor" => "deepseek",
+               "status" => "unknown",
+               "reason" => "unreadable"
+             }
+    end
+
     test "the spending reader gets the window" do
       test_pid = self()
 

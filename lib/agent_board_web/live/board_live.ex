@@ -24,6 +24,7 @@ defmodule AgentBoardWeb.BoardLive do
     Metrics,
     Orchestrator,
     Repo,
+    Runners,
     Settings,
     Time,
     Titles,
@@ -91,6 +92,7 @@ defmodule AgentBoardWeb.BoardLive do
         queue_filter: :all,
         repo: nil,
         view: nil,
+        dispatch_paused: false,
         board: empty(),
         today: %{repos: %{}, needs: [], running: []},
         today_spend: nil,
@@ -114,6 +116,10 @@ defmodule AgentBoardWeb.BoardLive do
         inspector_calls: [],
         inspector_executions: [],
         inspector_executions_for: nil,
+        inspector_runner_executions: [],
+        inspector_dispatch_paused: false,
+        inspector_dispatch_active: false,
+        inspector_dispatch_ceiling: 5.0,
         inspector_usage: nil,
         inspector_pr: nil,
         inspector_ci: nil,
@@ -217,7 +223,7 @@ defmodule AgentBoardWeb.BoardLive do
     tz_offset = socket.assigns.tz_offset
     last_visit = socket.assigns.last_visit
     frozen_at = if freshness.frozen?, do: freshness.at, else: nil
-    run = run_context(agent, board, now, frozen_at)
+    run = run_context(repo, agent, board, now, frozen_at)
     agent_up = agent_status(orchestrator)
 
     %{
@@ -272,8 +278,8 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The silences are read once per render, with the real clock: the ticket
   # database is local and live even when GitHub is frozen.
-  defp run_context(agent, board, now, frozen_at) do
-    tickets = tickets_by_number(agent.tickets)
+  defp run_context(repo, agent, board, now, frozen_at) do
+    tickets = tickets_by_number(agent.tickets, repo)
 
     %{
       tickets: tickets,
@@ -301,8 +307,9 @@ defmodule AgentBoardWeb.BoardLive do
     }
   end
 
-  defp tickets_by_number(tickets) do
+  defp tickets_by_number(tickets, repo) do
     for ticket <- tickets,
+        AgentState.same_repository?(ticket, repo),
         number <- ticket["numbers"] || [],
         into: %{},
         do: {number, ticket}
@@ -349,6 +356,10 @@ defmodule AgentBoardWeb.BoardLive do
           inspector_calls: [],
           inspector_executions: [],
           inspector_executions_for: nil,
+          inspector_runner_executions: [],
+          inspector_dispatch_paused: false,
+          inspector_dispatch_active: false,
+          inspector_dispatch_ceiling: 5.0,
           inspector_usage: nil,
           inspector_pr: nil,
           inspector_ci: nil,
@@ -361,6 +372,7 @@ defmodule AgentBoardWeb.BoardLive do
         ci = pr && Map.get(socket.assigns.local_ci, pr.number)
 
         executions = inspector_executions(socket, task)
+        runner_executions = Runners.for_task(task.id)
 
         assign(socket,
           inspector_activity: Board.task_activity(task, pr),
@@ -368,6 +380,11 @@ defmodule AgentBoardWeb.BoardLive do
           inspector_executions: executions,
           inspector_executions_for:
             if(socket.assigns.inspector_tab == "execucoes", do: task.id, else: nil),
+          inspector_runner_executions: runner_executions,
+          inspector_dispatch_paused: Runners.paused?(),
+          inspector_dispatch_active:
+            Enum.any?(runner_executions, &(&1.status in ["starting", "running"])),
+          inspector_dispatch_ceiling: Runners.task_ceiling_usd(task.executor),
           inspector_usage: executor_usage(socket, task),
           inspector_pr: pr,
           inspector_ci: ci,
@@ -384,7 +401,10 @@ defmodule AgentBoardWeb.BoardLive do
       socket.assigns
       |> Map.get(:agent_snapshot, %{tickets: []})
       |> Map.get(:tickets, [])
-      |> Enum.find(&(task.number in (&1["numbers"] || [])))
+      |> Enum.find(fn ticket ->
+        task.number in (ticket["numbers"] || []) and
+          AgentState.same_repository?(ticket, socket.assigns.repo)
+      end)
 
     AgentBlock.explain(ticket,
       tz_offset: socket.assigns.tz_offset,
@@ -448,9 +468,17 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp task_tickets(socket, task) do
+    repo = socket.assigns[:repo]
+
     case socket.assigns[:agent_snapshot] do
-      %{tickets: tickets} -> Enum.filter(tickets, &(task.number in (&1["numbers"] || [])))
-      _ -> []
+      %{tickets: tickets} ->
+        Enum.filter(tickets, fn ticket ->
+          task.number in (ticket["numbers"] || []) and
+            (repo == nil or AgentState.same_repository?(ticket, repo))
+        end)
+
+      _ ->
+        []
     end
   end
 
@@ -723,6 +751,23 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_info({:daily_summary, _event, _id}, socket),
     do: {:noreply, show_daily_summary(socket)}
 
+  def handle_info(:repos_changed, socket) do
+    repos = Board.list_repositories()
+
+    if Enum.map(repos, & &1.id) == Enum.map(socket.assigns.repos, & &1.id) do
+      {:noreply, socket}
+    else
+      {:noreply, socket |> assign(:repos, repos) |> load(socket.assigns.repo)}
+    end
+  end
+
+  def handle_info({:setting_changed, "dispatch_paused"}, socket) do
+    {:noreply,
+     socket
+     |> assign(:dispatch_paused, Runners.paused?())
+     |> load_inspector()}
+  end
+
   # A setting changed somewhere (another tab, the API, a spoken command):
   # this board's voice follows at once, keeping the list it already loaded.
   def handle_info({:setting_changed, _key}, socket),
@@ -771,8 +816,14 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp refresh_conversation(socket) do
     case Repo.get(Task, socket.assigns.conversation.id) do
-      nil -> assign(socket, conversation: nil, comments: [])
-      task -> assign(socket, conversation: task, comments: Board.comments(task))
+      nil ->
+        assign(socket, conversation: nil, comments: [])
+
+      task ->
+        assign(socket,
+          conversation: Repo.preload(task, :repository),
+          comments: Board.comments(task)
+        )
     end
   end
 
@@ -910,6 +961,21 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("toggle_dispatch", _params, socket) do
+    value = if Runners.paused?(), do: "false", else: "true"
+
+    case Actions.run(:change_setting, %{setting: "dispatch_paused", value: value}, ui()) do
+      :ok ->
+        {:noreply,
+         socket
+         |> assign(:dispatch_paused, Runners.paused?())
+         |> load_inspector()}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_event("select", %{"view" => "hoje"}, socket) do
     {:noreply, push_patch(socket, to: BoardNavigation.today_path())}
   end
@@ -1011,7 +1077,11 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("act", %{"id" => id, "action" => action} = params, socket) do
     {task_id, _} = Integer.parse(id)
-    task = Repo.get(Task, task_id) |> Repo.preload(:repository)
+    repo = socket.assigns.repo
+
+    task =
+      repo &&
+        Repo.get_by(Task, id: task_id, repository_id: repo.id) |> Repo.preload(:repository)
 
     # Stop is red: it runs only with the sentence its confirmation showed.
     result =
@@ -1030,7 +1100,6 @@ defmodule AgentBoardWeb.BoardLive do
       {:ok, _} ->
         {:noreply,
          socket
-         |> load(socket.assigns.repo)
          |> refresh_inspector_after_act(task_id)
          |> put_flash(:info, "Task updated")
          |> speak(Voice.task_summary(task.title, action, socket.assigns.voice.language))}
@@ -1963,6 +2032,8 @@ defmodule AgentBoardWeb.BoardLive do
             version={@version}
             busy={@busy}
             voice={@voice}
+            dispatch_paused={@dispatch_paused}
+            show_settings={@panel != "settings"}
           />
 
           <main id="board-work" class="ab-main">
@@ -1987,6 +2058,18 @@ defmodule AgentBoardWeb.BoardLive do
                   phx-value-repo={"#{r.owner}/#{r.name}"}
                 >
                   <span class="ab-repo__name">{r.owner}/{r.name}</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="ab-btn ab-btn--quiet ab-btn--sm"
+                  phx-click="show_panel"
+                  phx-value-panel="settings"
+                  data-panel-trigger
+                  aria-haspopup="dialog"
+                  aria-controls="panel-settings"
+                >
+                  <.ico name="cog" />Configurações
                 </button>
               </div>
             </details>
@@ -2121,6 +2204,10 @@ defmodule AgentBoardWeb.BoardLive do
             activity={@inspector_activity}
             calls={@inspector_calls}
             executions={@inspector_executions}
+            runner_executions={@inspector_runner_executions}
+            dispatch_paused={@inspector_dispatch_paused}
+            dispatch_active={@inspector_dispatch_active}
+            dispatch_ceiling={@inspector_dispatch_ceiling}
             usage={@inspector_usage}
             pr={@inspector_pr}
             ci={@inspector_ci}
@@ -2289,6 +2376,24 @@ defmodule AgentBoardWeb.BoardLive do
             id="ai"
             ai_calls={@ai_calls}
             ai_status={@ai_status}
+          />
+        </BoardComponents.Panel.shell>
+
+        <BoardComponents.Panel.shell
+          name="settings"
+          title="Configurações"
+          active={@panel == "settings"}
+          flash={@flash}
+        >
+          <.live_component
+            :if={@panel == "settings"}
+            module={BoardComponents.SettingsMenu}
+            id="board-settings-panel"
+            repo={@repo}
+            version={@version}
+            busy={@busy}
+            voice={@voice}
+            dispatch_paused={@dispatch_paused}
           />
         </BoardComponents.Panel.shell>
 

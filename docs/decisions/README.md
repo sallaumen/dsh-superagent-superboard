@@ -9,4 +9,4 @@ do template [decision](https://github.com/sallaumen/elixir-agent-kit/blob/v0.8.0
 | [0001](0001-pipelines-separados.md) | Pipelines separados por tecnologia + caminho misto de release | Implementada |
 | [0002](0002-ci-indisponivel.md) | CI indisponível: pipeline local é o gate suficiente | Implementada |
 | [0003](0003-ciclo-de-vida-do-agente.md) | Ciclo de vida do agente em quatro situações de borda: o que o DSH faz e o que o board mostra | Proposta |
-| [0004](0004-o-board-despacha-para-executores-locais.md) | O board despacha para executores locais: as regras da seção 3.6 e D1, D2, D3 e D5 em aberto | Proposta |
+| [0004](0004-o-board-despacha-para-executores-locais.md) | O board despacha para executores locais: as regras da seção 3.6, com D1, D2, D3 e D5 decididas | Aceita |
