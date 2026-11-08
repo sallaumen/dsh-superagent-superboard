@@ -151,9 +151,9 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
   defp state_class("error"), do: "ab-tag--halt"
   defp state_class(_), do: "ab-tag--quiet"
 
-  defp desired_label("running"), do: "ligar"
-  defp desired_label("paused"), do: "pausar"
-  defp desired_label("stopped"), do: "parar"
+  defp desired_label("running"), do: "ligado"
+  defp desired_label("paused"), do: "pausado"
+  defp desired_label("stopped"), do: "parado"
   defp desired_label(value), do: value
 
   defp observed_at(nil, _offset), do: "nunca"
