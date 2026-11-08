@@ -191,6 +191,16 @@ only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
   through the harness's per-worktree bootstrap when it has one, otherwise as
   the first step of the assignment. Until then the index is a dead link and
   the instruction block tells the agent to report the missing setup.
+- **When the kit tag moves** (the repository's `mix.exs` pins a newer
+  version), nothing manual is needed beyond `mix deps.get`: a fresh worktree
+  already fetches the new pin; an existing worktree fails its next
+  `mix gate`/`mix precommit` with the lock-mismatch error, whose message says
+  to run `mix deps.get` — run it and continue. `mix deps.get` only fetches
+  and checks out the pinned dependencies; **it never compiles the project**.
+  Compilation happens only in the gates the delivery prompt requires
+  (`mix precommit` on the head), so do not build or test code the assignment
+  does not touch. `mix agent_kit.check` (part of the gate) verifies that the
+  index matches the loaded dependency.
 - Treat a `ready` report as evidence only for what it names. A report that
   names no practice file read means the kit was not loaded; a model name
   establishes nothing. The kit's
