@@ -222,6 +222,22 @@ defmodule AgentBoard.RunnersTest do
     refute Runners.active_for_task?(task.id)
   end
 
+  test "a runner that never writes a status is failed by the watchdog", %{task: task} do
+    launcher = fn _run_dir -> :ok end
+    {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher)
+
+    Repo.update_all(
+      from(e in AgentBoard.Runners.Execution, where: e.id == ^execution.id),
+      set: [started_at: DateTime.add(DateTime.utc_now(), -10_000, :second)]
+    )
+
+    Runners.tick()
+
+    execution = Repo.get!(AgentBoard.Runners.Execution, execution.id)
+    assert execution.status == "failed"
+    assert execution.error =~ "não escreveu o estado a tempo"
+  end
+
   test "a runner that fails records the error", %{task: task} do
     test_pid = self()
     {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher(test_pid))
