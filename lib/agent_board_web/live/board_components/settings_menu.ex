@@ -6,7 +6,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
-  alias AgentBoardWeb.BoardComponents.Settings.{Execution, Projects}
+  alias AgentBoardWeb.BoardComponents.Settings.{Activity, Execution, Projects}
   alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
@@ -25,6 +25,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :tickets, :list, default: []
   attr :ai_calls, :list, default: []
   attr :ai_status, :any, default: :unknown
+  attr :events, :list, default: []
   attr :codex_quota, :map, default: nil
   attr :provisioning, :boolean, default: false
   attr :tz_offset, :integer, default: 0
@@ -263,7 +264,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
         <section
           hidden={@section != "system"}
-          class="settings-pane"
+          class="settings-pane settings-pane--system"
           aria-labelledby="settings-system-title"
         >
           <h3 id="settings-system-title">{gettext("System")}</h3>
@@ -271,68 +272,64 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
             {gettext("The board version, how it appears in this browser and what it recorded.")}
           </p>
 
-          <section class="settings-subpane" aria-labelledby="settings-version-title">
-            <h4 id="settings-version-title">{gettext("Version")}</h4>
-            <p class="settings-pane__intro">
-              {gettext("Check the board version and available updates.")}
-            </p>
-            <SystemPanel.version_panel version={@version} busy={@busy} progress={@progress} />
+          <SystemPanel.version_panel version={@version} busy={@busy} progress={@progress} />
+
+          <section class="settings-subpane" aria-labelledby="settings-browser-title">
+            <h4 id="settings-browser-title">{gettext("In this browser")}</h4>
+            <div class="settings-browser">
+              <div class="settings-browser__field">
+                <h5>{gettext("Theme")}</h5>
+                <Layouts.theme_toggle />
+              </div>
+              <div class="settings-browser__field">
+                <h5>{gettext("Board language")}</h5>
+                <.form
+                  for={%{}}
+                  action={~p"/language"}
+                  method="post"
+                  id="board-language-form"
+                  class="settings-segmented"
+                  role="group"
+                  aria-label={gettext("Board language")}
+                >
+                  <input type="hidden" name="return_to" value={@return_to} />
+                  <button
+                    type="submit"
+                    name="locale"
+                    value="en"
+                    class="settings-segment"
+                    aria-pressed={to_string(@board_locale == "en")}
+                  >English</button>
+                  <button
+                    type="submit"
+                    name="locale"
+                    value="pt-BR"
+                    class="settings-segment"
+                    aria-pressed={to_string(@board_locale == "pt-BR")}
+                  >Português (Brasil)</button>
+                </.form>
+                <p class="settings-pane__note">
+                  {gettext("The voice language is in")}
+                  <button
+                    type="button"
+                    class="settings-link"
+                    phx-click="select_section"
+                    phx-value-section="voice"
+                    phx-target={@myself}
+                  >{gettext("Voice and summary")}</button>.
+                </p>
+              </div>
+            </div>
           </section>
 
-          <section class="settings-subpane" aria-labelledby="settings-appearance-title">
-            <h4 id="settings-appearance-title">{gettext("Appearance")}</h4>
-            <p class="settings-pane__intro">{gettext("Choose the theme for this browser.")}</p>
-            <Layouts.theme_toggle />
-          </section>
-
-          <section class="settings-subpane" aria-labelledby="settings-language-title">
-            <h4 id="settings-language-title">{gettext("Language")}</h4>
-            <p class="settings-pane__intro">
-              {gettext(
-                "Choose the language used by this browser. Voice language is set separately under Voice."
-              )}
-            </p>
-            <.form
-              for={%{}}
-              action={~p"/language"}
-              method="post"
-              id="board-language-form"
-              class="settings-actions"
-              role="group"
-              aria-label={gettext("Board language")}
-            >
-              <input type="hidden" name="return_to" value={@return_to} />
-              <button
-                type="submit"
-                name="locale"
-                value="en"
-                aria-pressed={to_string(@board_locale == "en")}
-              >English</button>
-              <button
-                type="submit"
-                name="locale"
-                value="pt-BR"
-                aria-pressed={to_string(@board_locale == "pt-BR")}
-              >Português (Brasil)</button>
-            </.form>
-          </section>
-
-          <section :if={@repo} class="settings-subpane" aria-labelledby="settings-activity-title">
-            <h4 id="settings-activity-title">{gettext("Activity")}</h4>
-            <p class="settings-pane__intro">
-              {gettext("The last 20 events the board recorded for this project.")}
-            </p>
-            <button
-              id="open-activity"
-              type="button"
-              class="ab-btn ab-btn--sm"
-              phx-click="show_panel"
-              phx-value-panel="activity"
-              data-panel-trigger
-              aria-haspopup="dialog"
-              aria-controls="panel-activity"
-            >{gettext("Open activity")}</button>
-          </section>
+          <.live_component
+            :if={@repo}
+            module={Activity}
+            id="settings-activity"
+            events={@events}
+            repo={@repo}
+            tz_offset={@tz_offset}
+          />
         </section>
       </div>
     </div>

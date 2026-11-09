@@ -1,5 +1,5 @@
 defmodule AgentBoardWeb.Components.SystemPanelTest do
-  @moduledoc "The manual update explains the restart before it happens."
+  @moduledoc "The version card's states and buttons, without a network read."
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest
@@ -11,40 +11,64 @@ defmodule AgentBoardWeb.Components.SystemPanelTest do
     :ok
   end
 
-  test "a behind checkout warns that the restart is manual" do
-    html =
-      render_component(&SystemPanel.version_panel/1, %{
-        version: %{
-          state: :behind,
-          behind: 1,
-          served: "abc1234",
-          available: "def5678",
-          dirty: false
-        }
-      })
+  defp card(version), do: render_component(&SystemPanel.version_panel/1, %{version: version})
 
+  test "a board behind main lists the commits and offers update and restart" do
+    version = %{
+      state: :behind,
+      served: "a7adfab",
+      available: "a9aef67",
+      behind: 1,
+      dirty: false,
+      commits: [%{sha: "a9aef67", title: "Call the agent on a split's tasks (#467)", pr: 467}]
+    }
+
+    html = card(version)
+
+    assert html =~ "Tem versão nova na main"
+    assert html =~ "a9aef67"
+    assert html =~ "Call the agent"
+    assert html =~ "#467"
+    assert html =~ "Só reiniciar"
     assert html =~ "Atualizar e reiniciar"
-    assert html =~ "version-restart-warning"
-    assert html =~ "é manual"
-    assert html =~ "agentes em execução podem ser"
-    assert html =~ ~s(aria-describedby="version-restart-warning")
+    assert html =~ "Atualizar reinicia o board"
+    assert html =~ "Nada atualiza sozinho"
+    refute html =~ "Reiniciar para aplicar"
   end
 
-  test "a downloaded checkout asks for a restart instead of another update" do
+  test "a downloaded checkout asks for the restart, not the update" do
+    version = %{
+      state: :restart,
+      served: "a7adfab",
+      available: "a9aef67",
+      behind: 0,
+      dirty: false,
+      commits: [%{sha: "a9aef67", title: "Call the agent", pr: 467}]
+    }
+
+    html = card(version)
+
+    assert html =~ "Código novo baixado; reinício pendente"
+    assert html =~ "Reiniciar para aplicar"
+    refute html =~ "Atualizar e reiniciar"
+  end
+
+  test "an up-to-date board only offers a restart" do
     html =
-      render_component(&SystemPanel.version_panel/1, %{
-        version: %{
-          state: :restart,
-          behind: 0,
-          served: "abc1234",
-          available: "def5678",
-          dirty: false
-        }
+      card(%{
+        state: :up_to_date,
+        served: "a7adfab",
+        available: "a7adfab",
+        behind: 0,
+        dirty: false,
+        commits: []
       })
 
-    assert html =~ "Reiniciar para aplicar"
-    assert html =~ "O código novo já está no checkout"
+    assert html =~ "Em dia com a main"
+    assert html =~ "Só reiniciar"
     refute html =~ "Atualizar e reiniciar"
+    refute html =~ "Atualizar reinicia o board"
+    refute html =~ "Tem versão nova"
   end
 
   test "the staged pipeline renders its steps" do
@@ -55,7 +79,8 @@ defmodule AgentBoardWeb.Components.SystemPanelTest do
           behind: 1,
           served: "abc1234",
           available: "def5678",
-          dirty: false
+          dirty: false,
+          commits: []
         },
         busy: true,
         progress: [
@@ -69,21 +94,5 @@ defmodule AgentBoardWeb.Components.SystemPanelTest do
     assert html =~ "Compilando o build novo"
     assert html =~ ~s(data-state="done")
     assert html =~ ~s(data-state="running")
-  end
-
-  test "an up-to-date checkout has no update or warning" do
-    html =
-      render_component(&SystemPanel.version_panel/1, %{
-        version: %{
-          state: :up_to_date,
-          behind: 0,
-          served: "abc1234",
-          available: "abc1234",
-          dirty: false
-        }
-      })
-
-    refute html =~ "version-restart-warning"
-    refute html =~ "Atualizar e reiniciar"
   end
 end

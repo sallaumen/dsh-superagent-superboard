@@ -3526,20 +3526,6 @@ defmodule AgentBoardWeb.BoardLive do
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
-          name="activity"
-          title={gettext("Activity")}
-          active={@panel == "activity"}
-          flash={@flash}
-        >
-          <.live_component
-            :if={@repo}
-            module={BoardComponents.Activity}
-            id="activity"
-            events={@events}
-          />
-        </BoardComponents.Panel.shell>
-
-        <BoardComponents.Panel.shell
           name="intake"
           title={gettext("Split request")}
           active={@panel == "intake"}
@@ -3581,6 +3567,7 @@ defmodule AgentBoardWeb.BoardLive do
             tickets={@agent_snapshot.tickets}
             ai_calls={@ai_calls}
             ai_status={@ai_status}
+            events={@events}
             provisioning={@provisioning}
             tz_offset={@tz_offset}
             project_pending={@project_pending}

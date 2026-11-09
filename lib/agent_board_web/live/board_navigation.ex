@@ -6,7 +6,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.Board
   alias AgentBoard.Board.Task
 
-  @panels ~w(activity intake conversation voice history composer shortcuts settings logs)
+  @panels ~w(intake conversation voice history composer shortcuts settings logs)
 
   # The rail shows these on a board with no repository: Settings is where the
   # first one is added, and the others do not depend on one.
@@ -128,7 +128,6 @@ defmodule AgentBoardWeb.BoardNavigation do
 
   def open_panel(socket, panel)
       when panel in [
-             "activity",
              "intake",
              "history",
              "composer"
