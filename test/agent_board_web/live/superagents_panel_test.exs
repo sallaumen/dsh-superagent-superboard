@@ -1,5 +1,5 @@
 defmodule AgentBoardWeb.SuperagentsPanelTest do
-  @moduledoc "The read-only superagents panel: one card per project, state and last error."
+  @moduledoc "The superagents panel: project status, controls and provisioning."
   use AgentBoardWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
@@ -24,18 +24,38 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     superagent
   end
 
-  test "renders a card with status, port, workers and error", %{conn: conn} do
+  test "renders one title with project status, details and error", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "panel")
     superagent = superagent!(repo, %{observed_state: "error", last_error: "github: sem acesso"})
     {:ok, _} = Superagents.observe(superagent, %{state: "error", detail: "github: sem acesso"})
 
-    {:ok, _view, html} = live(conn, "/?repo=fixture/panel&panel=superagents")
+    {:ok, view, html} = live(conn, "/?repo=fixture/panel&panel=superagents")
 
     assert html =~ "Superagentes DeepSeek"
     assert html =~ "fixture/panel"
     assert html =~ "superagent-panel"
     assert html =~ "erro"
     assert html =~ "github: sem acesso"
+    assert has_element?(view, "#panel-superagents h2#panel-title-superagents")
+    refute has_element?(view, "#superagents-panel h2")
+    assert has_element?(view, "#superagents-panel .ab-superagent-table__details")
+  end
+
+  test "summarizes a long GitHub limit error and keeps its diagnostic", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "rate-limited-panel")
+    superagent = superagent!(repo, %{observed_state: "error"})
+
+    detail =
+      "github: 3 consecutive failed polls; last: API rate limit exceeded for user ID 123. " <>
+        String.duplicate("Request details. ", 12)
+
+    {:ok, _} = Superagents.observe(superagent, %{state: "error", detail: detail})
+
+    {:ok, view, _html} = live(conn, "/?repo=fixture/rate-limited-panel&panel=superagents")
+
+    assert has_element?(view, ".ab-superagents__errors", "O GitHub atingiu o limite de consultas")
+    assert has_element?(view, ".ab-superagents__errors details", "Detalhes técnicos")
+    assert has_element?(view, ".ab-superagents__errors code", "rate limit exceeded")
   end
 
   test "a ready project can be paused and scaled", %{conn: conn} do
@@ -127,10 +147,22 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     {:ok, view, _html} = live(conn, "/?repo=fixture/pool-one&panel=superagents")
 
-    assert has_element?(view, "#superagents-panel .ab-superagents__title", "6 agentes")
+    assert has_element?(
+             view,
+             "#superagents-panel .ab-superagents__summary",
+             "6 agentes configurados"
+           )
+
     assert has_element?(view, "#superagent-#{first.id} .ab-superagent__workers", "2")
     assert has_element?(view, "#superagent-#{second.id} .ab-superagent__workers", "4")
-    assert has_element?(view, "#superagent-#{first.id} .ab-agent-stack i.is-on", "")
+    refute has_element?(view, "#superagents-panel a[href='#superagent-add']")
+
+    assert has_element?(
+             view,
+             "#superagents-panel .ab-superagents__complete",
+             "Todos os repositórios"
+           )
+
     assert Repo.get!(Superagent, first.id).max_workers == 2
     assert Repo.get!(Superagent, second.id).max_workers == 4
   end
@@ -139,6 +171,6 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     {:ok, _repo} = Board.add_repository("fixture", "empty-panel")
     {:ok, _view, html} = live(conn, "/?repo=fixture/empty-panel&panel=superagents")
 
-    assert html =~ "Nenhum superagent registrado"
+    assert html =~ "Nenhum superagente registrado"
   end
 end

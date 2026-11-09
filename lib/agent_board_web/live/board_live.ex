@@ -3011,7 +3011,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="superagents"
-          title="Superagentes"
+          title="Superagentes DeepSeek"
           active={@panel == "superagents"}
           flash={@flash}
         >

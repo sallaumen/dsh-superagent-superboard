@@ -16,39 +16,50 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
   def superagents(assigns) do
     total_agents = Enum.sum(Enum.map(assigns.superagents, & &1.max_workers))
     ready = Enum.count(assigns.superagents, &(&1.observed_state == "ready"))
+    has_errors = Enum.any?(assigns.superagents, &(&1.observed_state == "error"))
     available = available_repos(assigns.repos, assigns.superagents)
 
     assigns =
       assigns
       |> assign(:total_agents, total_agents)
       |> assign(:ready_agents, ready)
+      |> assign(:has_errors, has_errors)
       |> assign(:available_repos, available)
 
     ~H"""
     <section id="superagents-panel" class="ab-superagents">
       <header class="ab-superagents__head">
         <div>
-          <div class="ab-superagents__title">
-            <h2>Superagentes DeepSeek</h2>
-            <span class="ab-tag">{length(@superagents)} projetos</span>
-            <span
-              class="ab-tag ab-tag--agent"
-              title="Soma dos limites de agentes configurados em cada projeto"
-            >{@total_agents} agentes</span>
+          <div :if={@superagents != []} class="ab-superagents__summary">
+            <span>{length(@superagents)} {if length(@superagents) == 1,
+              do: "projeto",
+              else: "projetos"}</span>
+            <span class={[
+              "ab-superagents__summary-state",
+              @has_errors && "is-error",
+              @ready_agents == length(@superagents) && "is-all-ready"
+            ]}>
+              {@ready_agents}/{length(@superagents)} {if length(@superagents) == 1,
+                do: "ligado",
+                else: "ligados"}
+            </span>
+            <span title="Soma dos limites de agentes configurados em cada projeto">
+              {@total_agents} {if @total_agents == 1,
+                do: "agente configurado",
+                else: "agentes configurados"}
+            </span>
           </div>
-          <p class="ab-meta">
-            Cada projeto tem a própria pilha de agentes. <b>{@total_agents}</b>
-            configurados no total, {@ready_agents} projetos ligados; o board observa os processos
-            e não os inicia como filhos.
+          <p :if={@superagents != []} class="ab-meta">
+            Cada projeto tem seu próprio limite de agentes.
           </p>
         </div>
-        <a href="#superagent-add" class="ab-btn ab-btn--sm ab-btn--primary">
+        <a :if={@available_repos != []} href="#superagent-add" class="ab-btn ab-btn--primary">
           <.ico name="plus" />Adicionar projeto
         </a>
       </header>
 
       <p :if={@superagents == []} class="ab-empty ab-superagents__empty">
-        Nenhum superagent registrado. Use “Adicionar projeto” abaixo para criar o primeiro.
+        Nenhum superagente registrado. Adicione um repositório para começar.
       </p>
 
       <div :if={@superagents != []} class="ab-table-wrap ab-superagents__table-wrap">
@@ -72,9 +83,12 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
                     do: "#{superagent.repository.owner}/#{superagent.repository.name}",
                     else: "repositório removido"}
                 </b>
-                <code class="ab-superagent-table__path">{superagent.state_dir}</code>
+                <details class="ab-superagent-table__details">
+                  <summary>Pasta de estado</summary>
+                  <code class="ab-superagent-table__path">{superagent.state_dir}</code>
+                </details>
               </td>
-              <td data-label="Estado">
+              <td class="ab-superagent-table__state" data-label="Estado">
                 <span class={["ab-status", state_status(superagent.observed_state)]}>
                   <.glyph kind={state_glyph(superagent.observed_state)} />
                   {state_label(superagent.observed_state)}
@@ -82,9 +96,6 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
                 <span class="ab-meta">{state_line(superagent)}</span>
               </td>
               <td class="ab-superagent-table__agents" data-label="Agentes">
-                <span class="ab-agent-stack" aria-hidden="true">
-                  <i :for={slot <- 1..32} class={slot <= superagent.max_workers && "is-on"}></i>
-                </span>
                 <span class="ab-superagent__workers">
                   <button
                     type="button"
@@ -109,11 +120,11 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
                   >+</button>
                 </span>
               </td>
-              <td data-label="Profile · porta">
+              <td class="ab-superagent-table__profile" data-label="Profile · porta">
                 <code>{superagent.profile}</code>
                 <span class="ab-data-sm ab-faint">{superagent.port}</span>
               </td>
-              <td data-label="Última leitura">
+              <td class="ab-superagent-table__read" data-label="Última leitura">
                 <span class="ab-data-sm">{observed_at(superagent.observed_at, @tz_offset)}</span>
                 <span class="ab-meta">{observed_age(superagent.observed_at)}</span>
               </td>
@@ -178,44 +189,41 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
         </table>
       </div>
 
-      <p
+      <div
         :if={@superagents != [] and Enum.any?(@superagents, & &1.last_error)}
         class="ab-superagents__errors"
         role="status"
       >
         <.ico name="warning" />
         <span :for={superagent <- @superagents} :if={superagent.last_error}>
-          <b>{superagent.repository && superagent.repository.name}:</b> {superagent.last_error}
+          <b>{superagent.repository && superagent.repository.name}:</b>
+          {error_summary(superagent.last_error)}
+          <details :if={error_details?(superagent.last_error)}>
+            <summary>Detalhes técnicos</summary>
+            <code>{superagent.last_error}</code>
+          </details>
         </span>
-      </p>
+      </div>
 
-      <p :if={@superagents != []} class="ab-superagents__note">
-        O contador de agentes é por projeto. Para tirar um projeto do board, use <b>⋯ → Arquivar projeto</b>: o processo para e o profile/state ficam em <code>~/.agent_board/archived-superagents</code>; nada é apagado.
-      </p>
+      <div :if={@superagents != [] and @available_repos == []} class="ab-superagents__complete">
+        <span>Todos os repositórios acompanhados já têm um superagente.</span>
+        <button type="button" class="ab-btn" phx-click="show_panel" phx-value-panel="settings">
+          Adicionar repositório nas Configurações
+        </button>
+      </div>
 
-      <section id="superagent-add" class="ab-superagent-add" aria-labelledby="superagent-add-title">
+      <section
+        :if={@available_repos != []}
+        id="superagent-add"
+        class="ab-superagent-add"
+        aria-labelledby="superagent-add-title"
+      >
         <h3 id="superagent-add-title">Adicionar projeto</h3>
         <p class="ab-meta">
-          Escolha um repositório já acompanhado e um profile de origem que já funciona.
-          O board cria o profile, reserva a porta, copia o estado e inicia o processo com
-          a sua própria pilha de agentes.
+          Escolha um repositório acompanhado, um profile de origem e o checkout local.
+          Você revisará os dados antes de iniciar o agente.
         </p>
-
-        <div :if={@available_repos == []} class="ab-superagent-add__empty">
-          <p class="ab-meta">
-            Todos os repositórios acompanhados já têm um superagent.
-            Adicione outro repositório em Configurações → Repositórios.
-          </p>
-          <button
-            type="button"
-            class="ab-btn ab-btn--sm"
-            phx-click="show_panel"
-            phx-value-panel="settings"
-          >Abrir Configurações</button>
-        </div>
-
         <form
-          :if={@available_repos != []}
           phx-submit="provision_review"
           class="ab-superagent-add__form"
         >
@@ -280,6 +288,21 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
 
   defp repo_name(%{repository: %{owner: owner, name: name}}), do: "#{owner}/#{name}"
   defp repo_name(_superagent), do: "este projeto"
+
+  defp error_summary(error) do
+    cond do
+      String.contains?(String.downcase(error), "rate limit exceeded") ->
+        "O GitHub atingiu o limite de consultas. Aguarde a cota renovar e confira novamente."
+
+      String.length(error) > 160 ->
+        "O agente relatou uma falha. Abra os detalhes técnicos para ver a causa."
+
+      true ->
+        error
+    end
+  end
+
+  defp error_details?(error), do: error_summary(error) != error
 
   defp available_repos(repos, superagents) do
     taken = MapSet.new(superagents, & &1.repository_id)
