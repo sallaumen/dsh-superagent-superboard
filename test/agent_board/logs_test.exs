@@ -239,4 +239,33 @@ defmodule AgentBoard.LogsTest do
     assert Logs.sources([%{profile: "../../etc/passwd"}]) == [board]
     assert Logs.superagent_log_path("../escape") == nil
   end
+
+  test "a line the service wrote in Latin-1 is read as text, never as invalid UTF-8" do
+    # launchd starts the board without a locale, so the BEAM wrote its log in
+    # Latin-1: this byte sequence crashed every socket that opened the sheet.
+    message = <<"voice status=error a voz n", 0xE3, "o foi gerada">>
+    continuation = <<"em 16", 0xB5, "s">>
+    text = "2026-11-09 09:58:47.886 [error] " <> message <> "\n" <> continuation <> "\n"
+
+    assert [entry] = Logs.parse(board_source("/tmp/board.log"), text)
+    assert entry.message == "voice status=error a voz não foi gerada"
+    assert entry.lines == ["em 16µs"]
+    assert String.valid?(entry.at)
+    assert Jason.encode!(%{message: entry.message, lines: entry.lines})
+  end
+
+  test "a keepalive line that is not UTF-8 is read as text" do
+    text = <<"2026-11-09T09:00:00-0300 start exited 1: n", 0xE3, "o subiu\n">>
+
+    assert [entry] = Logs.parse(superagent_source(), text)
+    assert entry.level == :error
+    assert entry.message == "start exited 1: não subiu"
+  end
+
+  test "valid UTF-8 is left exactly as it was" do
+    text = "2026-11-09 09:00:00.000 [warning] ação — não mudou 🌼\n"
+
+    assert [%Entry{message: "ação — não mudou 🌼"}] =
+             Logs.parse(board_source("/tmp/board.log"), text)
+  end
 end

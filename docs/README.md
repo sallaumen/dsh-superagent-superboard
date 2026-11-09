@@ -78,6 +78,7 @@ alternatives and status. New ADR: add the row there — the index is the single 
 | [research/alfred.md](research/alfred.md) | Product plan (07/11/2026): Alfred compared with our platform, the routing between executors, and the phased roadmap. Decisions D1–D5 moved from here to [ADR 0004](decisions/0004-o-board-despacha-para-executores-locais.md); the delivered rules are in the [contract](maintainer-contract.md#dispatch-local-dispatch) |
 | [research/symphony.md](research/symphony.md) | Research (06/11/2026): openai/symphony with health data, comparison, and ideas. The parallel-front ideas were already delivered (see [ADR 0003](decisions/0003-ciclo-de-vida-do-agente.md) and the contract) |
 | [research/superagents.md](research/superagents.md) | Plan (08/11/2026) for the board to provision, observe, start/stop, and scale DeepSeek superagents per project, with per-owner isolation and the implementation roadmap |
+| [research/bug-audit-2026-11-09.md](research/bug-audit-2026-11-09.md) | Audit (09/11/2026): the board's connection errors and other bugs found in the running app, each with its evidence, cause, fix, and validation state. |
 
 ## Historical plans
 

@@ -380,9 +380,23 @@ defmodule AgentBoard.Logs do
 
   defp parse_board(source, text) do
     text
-    |> String.split("\n", trim: true)
+    |> lines()
     |> Enum.reduce({[], false}, &board_line(&1, &2, source))
     |> finish()
+  end
+
+  defp lines(text) do
+    text
+    |> String.split("\n", trim: true)
+    |> Enum.map(&to_text/1)
+  end
+
+  # A log is bytes, and the panel's entries go to the browser as JSON, which
+  # only carries UTF-8: one bad byte took every socket with the sheet open
+  # down, on each reconnect. A BEAM started without a locale (launchd) writes
+  # Latin-1, so that is how a line that is not UTF-8 is read.
+  defp to_text(line) do
+    if String.valid?(line), do: line, else: :unicode.characters_to_binary(line, :latin1)
   end
 
   defp board_line(line, {entries, open?}, source) do
@@ -409,7 +423,7 @@ defmodule AgentBoard.Logs do
 
   defp parse_keepalive(source, text) do
     text
-    |> String.split("\n", trim: true)
+    |> lines()
     |> Enum.reduce({[], false}, &keepalive_line(&1, &2, source))
     |> finish()
   end

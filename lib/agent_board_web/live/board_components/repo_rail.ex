@@ -55,7 +55,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
         :for={repo <- @repos}
         type="button"
         class="ab-repo"
-        aria-current={to_string(@repo && @repo.id == repo.id)}
+        aria-current={to_string(@view != "hoje" && @repo && @repo.id == repo.id)}
         phx-click="select"
         phx-value-repo={"#{repo.owner}/#{repo.name}"}
         title={"#{repo.owner}/#{repo.name}"}

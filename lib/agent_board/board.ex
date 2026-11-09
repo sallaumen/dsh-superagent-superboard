@@ -253,12 +253,36 @@ defmodule AgentBoard.Board do
   defp first_repository,
     do: Repo.one(from r in Repository, where: r.active, order_by: r.id, limit: 1)
 
-  def repository_by_slug(slug) do
-    case String.split(slug, "/", parts: 2) do
-      [owner, name] -> find_repository(owner, name)
-      _ -> nil
+  def repository_by_slug(slug) when is_binary(slug) do
+    with false <- String.contains?(slug, <<0>>),
+         [owner, name] <- String.split(slug, "/", parts: 2) do
+      find_repository(owner, name)
+    else
+      _no_slug -> nil
     end
   end
+
+  # A query string can carry a map or a list where a slug was expected, and
+  # Postgres refuses a NUL byte instead of finding nothing.
+  def repository_by_slug(_slug), do: nil
+
+  @max_id 9_223_372_036_854_775_807
+
+  @doc """
+  An id that came from outside (a URL, an API path) as an integer the database
+  can look up, or nil. Past bigint, Postgrex raises instead of finding nothing.
+  """
+  @spec parse_id(term()) :: pos_integer() | nil
+  def parse_id(value) when is_integer(value) and value > 0 and value <= @max_id, do: value
+
+  def parse_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {id, ""} -> parse_id(id)
+      _other -> nil
+    end
+  end
+
+  def parse_id(_value), do: nil
 
   @doc "The tracked repository with this owner and name, or nil."
   @spec find_repository(String.t(), String.t()) :: Repository.t() | nil

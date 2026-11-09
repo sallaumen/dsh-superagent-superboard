@@ -222,4 +222,18 @@ defmodule AgentBoardWeb.TodayTest do
 
     assert has_element?(view, "#today-needs", "Nova do colmex")
   end
+
+  test "the project the board last showed leaves Hoje when it is clicked", %{
+    conn: conn,
+    arena: arena
+  } do
+    {:ok, view, _html} = live(conn, "/?repo=fixture/arena")
+    render_patch(view, @path)
+    assert has_element?(view, ~s(.ab-repo[aria-current="false"][phx-value-repo="fixture/arena"]))
+
+    view |> element(~s(.ab-repo[phx-value-repo="fixture/arena"])) |> render_click()
+
+    assert_patch(view, "/?repo=#{URI.encode_www_form("#{arena.owner}/#{arena.name}")}")
+    assert has_element?(view, ~s(.ab-repo[aria-current="true"][phx-value-repo="fixture/arena"]))
+  end
 end
