@@ -7,9 +7,18 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
   attr :messages, :list, default: []
   attr :alerts, :list, default: []
   attr :seen, :map, default: %{}
+  attr :filter, :string, default: "all"
 
   def hub(assigns) do
-    assigns = assign(assigns, :unread, Enum.count(assigns.messages, &unread?(&1, assigns.seen)))
+    unread_messages = Enum.filter(assigns.messages, &unread?(&1, assigns.seen))
+
+    assigns =
+      assigns
+      |> assign(:unread, length(unread_messages))
+      |> assign(
+        :visible_messages,
+        if(assigns.filter == "unread", do: unread_messages, else: assigns.messages)
+      )
 
     ~H"""
     <div class="ab-message-hub" aria-label="Mensagens e notificações">
@@ -24,28 +33,64 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
             <div>
               <strong>Mensagens</strong><p>Respostas da Yasme por tarefa</p>
             </div>
-            <span :if={@unread > 0} class="ab-hub-menu__new">{@unread} novas</span>
+            <span
+              class={["ab-hub-menu__new", @unread == 0 && "is-clear"]}
+              role="status"
+              aria-live="polite"
+            >
+              {unread_text(@unread)}
+            </span>
           </header>
+          <div :if={@messages != []} class="ab-hub-menu__tools">
+            <div class="ab-hub-menu__filters" role="group" aria-label="Filtrar mensagens">
+              <button
+                type="button"
+                phx-click="filter_inbox"
+                phx-value-filter="all"
+                aria-pressed={to_string(@filter == "all")}
+              >Todas</button>
+              <button
+                type="button"
+                phx-click="filter_inbox"
+                phx-value-filter="unread"
+                aria-pressed={to_string(@filter == "unread")}
+              >Não lidas</button>
+            </div>
+            <button
+              type="button"
+              class="ab-hub-menu__mark-all"
+              phx-click="mark_messages_seen"
+              phx-disable-with="Marcando…"
+              disabled={@unread == 0}
+            >
+              Marcar todas como vistas
+            </button>
+          </div>
           <p :if={@messages == []} class="ab-hub-menu__empty">
             Nenhuma resposta registrada. As conversas aparecerão aqui quando a Yasme responder.
           </p>
-          <ol :if={@messages != []} class="ab-hub-menu__list">
-            <li :for={item <- @messages}>
+          <p :if={@messages != [] and @visible_messages == []} class="ab-hub-menu__empty">
+            Você está em dia. Novas respostas aparecerão aqui.
+          </p>
+          <ol :if={@visible_messages != []} class="ab-hub-menu__list">
+            <li :for={item <- @visible_messages}>
               <button
                 type="button"
                 class={["ab-hub-item", unread?(item, @seen) && "is-unread"]}
                 phx-click="open_inbox_task"
                 phx-value-id={item.task_id}
                 data-board-menu-link
-                aria-label={"Abrir conversa da tarefa ##{item.number} em #{item.repo}"}
+                aria-label={message_item_label(item, @seen)}
               >
                 <span class="ab-hub-item__meta">
-                  <span>{item.repo}</span>
+                  <span class="ab-hub-item__project" title={item.repo}>{item.repo}</span>
                   <time
+                    class="ab-hub-item__time"
                     datetime={DateTime.to_iso8601(item.at)}
                     title={Calendar.strftime(item.at, "%d/%m/%Y %H:%M UTC")}
                   >
-                    Resposta · {age(item.at)}
+                    <span :if={unread?(item, @seen)} class="ab-hub-item__new">Nova · </span>
+                    {age(item.at)}
                   </time>
                 </span>
                 <strong>#{item.number} · {item.title}</strong>
@@ -54,7 +99,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
               </button>
             </li>
           </ol>
-          <p class="ab-hub-menu__foot">A lista se atualiza quando uma resposta chega ao board.</p>
+          <p class="ab-hub-menu__foot">Até 30 conversas recentes · atualização automática.</p>
         </div>
       </details>
 
@@ -102,6 +147,15 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
 
   defp unread?(item, seen),
     do: item.version != Map.get(seen, Integer.to_string(item.task_id))
+
+  defp message_item_label(item, seen) do
+    prefix = if unread?(item, seen), do: "Nova resposta. ", else: ""
+    "#{prefix}Abrir conversa da tarefa ##{item.number} em #{item.repo}"
+  end
+
+  defp unread_text(0), do: "Tudo visto"
+  defp unread_text(1), do: "1 nova"
+  defp unread_text(n), do: "#{n} novas"
 
   defp count(n) when n > 99, do: "99+"
   defp count(n), do: n

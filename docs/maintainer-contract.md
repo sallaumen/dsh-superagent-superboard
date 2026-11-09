@@ -254,7 +254,10 @@ that already worked).
   five-minute sync remains the fallback, including without a token.
 - The top-right message window reads the newest agent reply per task from the
   board's comments and uses a browser-local read version. Editing a workpad
-  therefore marks that conversation new again. The separate bell counts active
+  therefore marks that conversation new again. “Marcar todas como vistas” saves
+  the versions of the conversations currently in its 30-item window; the unread
+  filter follows that same browser-local state. This action does not change
+  comments or task status. The separate bell counts active
   blocked, question and review tasks across projects; it is a pending-work
   count, not an unread count. Both lists follow the board's PubSub broadcasts.
 - Never poll the database from the browser; push.
