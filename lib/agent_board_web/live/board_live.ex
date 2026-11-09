@@ -40,7 +40,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Routing
   alias AgentBoard.Routing.Signals
   alias AgentBoard.Runners.Execution
-  alias AgentBoard.System.{Updater, Version}
+  alias AgentBoard.System.{UpdateRun, Version}
   alias AgentBoard.Usage.{Harness, Report}
   alias AgentBoard.Voice.{Activity, Phrases}
 
@@ -185,8 +185,10 @@ defmodule AgentBoardWeb.BoardLive do
         ai_calls: [],
         ai_status: AI.status(),
         version: Version.status(),
-        busy: false,
-        update_progress: [],
+        # A page opened during an update joins it, the fast-forward's own
+        # reload included.
+        busy: UpdateRun.running?(),
+        update_progress: update_in_progress(),
         voice: current_voice(),
         spoken_text: nil,
         spoken_at: 0,
@@ -203,10 +205,7 @@ defmodule AgentBoardWeb.BoardLive do
 
     # The voice settings are board-wide: a change in another tab, by the API
     # or by a spoken command reaches this socket (handle_info setting_changed).
-    if connected?(socket), do: Settings.subscribe()
-    if connected?(socket), do: DailySummary.subscribe()
-    if connected?(socket), do: Board.subscribe_today()
-    if connected?(socket), do: Superagents.subscribe()
+    if connected?(socket), do: subscribe_board_wide()
 
     socket = maybe_check_version(socket)
 
@@ -218,6 +217,20 @@ defmodule AgentBoardWeb.BoardLive do
      |> VoiceConversation.mount()
      |> assign(:opening_repo, repo)
      |> show_daily_summary()}
+  end
+
+  defp subscribe_board_wide do
+    Settings.subscribe()
+    DailySummary.subscribe()
+    Board.subscribe_today()
+    Superagents.subscribe()
+    UpdateRun.subscribe()
+  end
+
+  # A page opened during an update joins it, the fast-forward's own reload
+  # included.
+  defp update_in_progress do
+    if UpdateRun.running?(), do: [update_step(:fetch, :running)], else: []
   end
 
   defp empty do
@@ -899,7 +912,36 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_info({:update_step, id, state}, socket) do
     {:noreply,
      assign(socket,
+       busy: true,
        update_progress: push_update_step(socket.assigns.update_progress, id, state)
+     )}
+  end
+
+  def handle_info({:update_finished, {:ok, sha}}, socket) do
+    {:noreply,
+     socket
+     |> assign(
+       update_progress: push_update_step(socket.assigns.update_progress, :restart, :running)
+     )
+     |> push_event("restart", %{})
+     |> put_flash(:info, gettext("Updated to %{sha}; restarting the server…", sha: sha))}
+  end
+
+  def handle_info({:update_finished, {:error, reason}}, socket) do
+    progress =
+      Enum.map(socket.assigns.update_progress, fn step ->
+        if step.state == :running, do: %{step | state: :error}, else: step
+      end)
+
+    {:noreply,
+     socket
+     |> assign(busy: false, update_progress: progress)
+     |> put_flash(
+       :error,
+       gettext(
+         "The update stopped midway; the board still runs the old code and nothing was restarted. %{reason}",
+         reason: inspect(reason)
+       )
      )}
   end
 
@@ -1028,8 +1070,6 @@ defmodule AgentBoardWeb.BoardLive do
   # The header badge should know about a moved main on a fresh page, not
   # only after someone opens Settings. This is a fetch, never an update;
   # the same check repeats once every five minutes while the page is open.
-  defp updater, do: Application.get_env(:agent_board, :updater, Updater)
-
   defp maybe_check_version(socket) do
     if connected?(socket) and Application.get_env(:agent_board, :version_check_on_mount, true) do
       Process.send_after(self(), :version_check, @version_check_interval)
@@ -1790,53 +1830,8 @@ defmodule AgentBoardWeb.BoardLive do
     if socket.assigns.busy do
       {:noreply, socket}
     else
-      parent = self()
-
-      socket =
-        assign(socket,
-          busy: true,
-          update_progress: [update_step(:fetch, :running)]
-        )
-
-      {:noreply,
-       start_async(socket, :update_flow, fn ->
-         config_mtimes = updater().freeze_config_files()
-
-         step = fn id, fun ->
-           send(parent, {:update_step, id, :running})
-
-           try do
-             result = fun.()
-             send(parent, {:update_step, id, if(result == :ok, do: :done, else: :error)})
-             result
-           rescue
-             exception ->
-               send(parent, {:update_step, id, :error})
-               reraise exception, __STACKTRACE__
-           end
-         end
-
-         with {:ok, sha} <-
-                step.(:fetch, fn ->
-                  result = Actions.run(:update_board, %{}, ui())
-                  updater().restore_config_files(config_mtimes)
-                  result
-                end),
-              :ok <-
-                step.(:deps, fn ->
-                  result = updater().prepare()
-                  updater().restore_config_files(config_mtimes)
-                  result
-                end),
-              :ok <- step.(:compile, fn -> updater().prepare_build() end),
-              :ok <- step.(:assets, fn -> updater().prepare_assets() end),
-              :ok <- step.(:migrate, fn -> updater().migrate() end),
-              :ok <- step.(:ready, fn -> updater().mark_ready() end) do
-           {:ok, sha}
-         else
-           error -> {:error, error}
-         end
-       end)}
+      {:ok, _pid} = UpdateRun.start(ui())
+      {:noreply, assign(socket, busy: true, update_progress: [update_step(:fetch, :running)])}
     end
   end
 
@@ -2431,51 +2426,6 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_async({:unblock_ai, _id}, _outcome, socket), do: {:noreply, socket}
-
-  def handle_async(:update_flow, {:ok, {:ok, sha}}, socket) do
-    socket =
-      socket
-      |> assign(
-        update_progress: push_update_step(socket.assigns.update_progress, :restart, :running)
-      )
-      |> push_event("restart", %{})
-      |> put_flash(:info, gettext("Updated to %{sha}; restarting the server…", sha: sha))
-
-    Actions.run(:restart_board, %{}, ui())
-    {:noreply, socket}
-  end
-
-  def handle_async(:update_flow, {:ok, {:error, reason}}, socket) do
-    progress =
-      socket.assigns.update_progress
-      |> Enum.map(fn step ->
-        if step.state == :running, do: %{step | state: :error}, else: step
-      end)
-
-    {:noreply,
-     socket
-     |> assign(busy: false, update_progress: progress)
-     |> put_flash(
-       :error,
-       gettext(
-         "The update stopped midway; the board still runs the old code and nothing was restarted. %{reason}",
-         reason: inspect(reason)
-       )
-     )}
-  end
-
-  def handle_async(:update_flow, {:exit, reason}, socket) do
-    progress =
-      socket.assigns.update_progress
-      |> Enum.map(fn step ->
-        if step.state == :running, do: %{step | state: :error}, else: step
-      end)
-
-    {:noreply,
-     socket
-     |> assign(busy: false, update_progress: progress)
-     |> put_flash(:error, gettext("The update failed: %{reason}", reason: inspect(reason)))}
-  end
 
   def handle_async(:version_check, {:ok, {:ok, _sha}}, socket) do
     {:noreply, assign(socket, version: Version.status())}

@@ -174,16 +174,18 @@ defmodule AgentBoard.System.Updater do
 
   # The boot promotion, in shell so launchd's service.sh and the detached
   # restart script share it without starting a second mix process.
+  # The staged build lands where Mix looks for this environment's build. It
+  # lives inside `_build`, so moving all of `_build` aside would strand it.
   defp promote_lines do
     """
     if [ -f #{@marker} ]; then
       next_build="$(cat #{@marker})"
       if [ -d "$next_build" ]; then
         rm -rf #{@previous_build}
-        [ -d _build ] && mv _build #{@previous_build}
-        mv "$next_build" _build
-        rm -f #{@marker}
+        [ -d "_build/${MIX_ENV:-dev}" ] && mv "_build/${MIX_ENV:-dev}" #{@previous_build}
+        mv "$next_build" "_build/${MIX_ENV:-dev}"
       fi
+      rm -f #{@marker}
     fi
     """
   end
