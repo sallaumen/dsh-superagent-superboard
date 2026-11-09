@@ -587,8 +587,11 @@ defmodule AgentBoardWeb.VoiceUITest do
 
   test "the input, engine and replies controls save and reach the browser", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/")
-    assert html =~ ~s(data-input="wispr")
+    assert html =~ ~s(data-input="text")
     assert has_element?(view, "#voice-wispr[phx-hook=VoiceWispr] #voice-wispr-text")
+
+    view |> element("#voice-input-form") |> render_change(%{"input" => "wispr"})
+    assert render(view) =~ ~s(data-input="wispr")
 
     view |> element("#voice-input-form") |> render_change(%{"input" => "microphone"})
     assert render(view) =~ ~s(data-input="microphone")
@@ -598,6 +601,17 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     view |> element("#voice-replies-form") |> render_change(%{"replies" => "full"})
     assert Settings.get("voice_replies") == "full"
+  end
+
+  test "the voice panel offers writing when text is the selected input", %{conn: conn} do
+    :ok = Settings.put("voice_input", "text")
+    {:ok, view, _html} = live(conn, ~p"/?panel=voice")
+
+    assert has_element?(view, "#panel-voice .ab-voice-talk button", "Escrever")
+    assert has_element?(view, "#panel-voice .ab-voice-talk .ab-meta", "Escreva no campo acima")
+
+    view |> element("#voice-input-form") |> render_change(%{"input" => "microphone"})
+    assert has_element?(view, "#panel-voice .ab-voice-talk button", "Falar")
   end
 
   test "with the default engine the board speaks with the free browser voice", %{conn: conn} do

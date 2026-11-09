@@ -27,28 +27,66 @@ defmodule AgentBoard.Unblock do
   @spec context([map()]) :: context() | nil
   def context(comments) when is_list(comments) do
     comments
-    |> Enum.map(fn comment ->
-      body = Map.get(comment, :body) || Map.get(comment, "body")
-      {Workpad.parse(body), Map.get(comment, :inserted_at) || Map.get(comment, "inserted_at")}
-    end)
-    |> Enum.filter(fn
-      {%{question: question, blockage: blockage}, _at} ->
-        is_binary(question) or is_binary(blockage)
-
-      _other ->
-        false
-    end)
-    |> Enum.max_by(fn {_workpad, at} -> at || ~U[1970-01-01 00:00:00Z] end, fn -> nil end)
-    |> case do
-      nil ->
-        nil
-
-      {workpad, at} ->
-        %{question: workpad.question, blockage: workpad.blockage, comment_at: at}
-    end
+    |> Enum.map(&workpad_entry/1)
+    |> Enum.filter(&actionable_workpad?/1)
+    |> Enum.max_by(&workpad_order/1, fn -> nil end)
+    |> pending_context(comments)
   end
 
   def context(_comments), do: nil
+
+  defp workpad_entry(comment) do
+    {Workpad.parse(value(comment, :body)), value(comment, :inserted_at), value(comment, :id)}
+  end
+
+  defp actionable_workpad?({%{question: question, blockage: blockage}, _at, _id}),
+    do: is_binary(question) or is_binary(blockage)
+
+  defp actionable_workpad?(_entry), do: false
+
+  defp workpad_order({_workpad, at, id}),
+    do: {at || ~U[1970-01-01 00:00:00Z], id || 0}
+
+  defp pending_context(nil, _comments), do: nil
+
+  defp pending_context({workpad, at, id}, comments) do
+    if answered_after?(comments, at, id),
+      do: nil,
+      else: %{question: workpad.question, blockage: workpad.blockage, comment_at: at}
+  end
+
+  # The workpad remains in the issue history after the owner replies. Only a
+  # later reply directed to the agent resolves this prompt; a newer workpad
+  # can ask for another decision and make it visible again.
+  defp answered_after?(comments, workpad_at, workpad_id) do
+    Enum.any?(comments, &answer_to_agent_after?(&1, workpad_at, workpad_id))
+  end
+
+  defp answer_to_agent_after?(comment, workpad_at, workpad_id),
+    do:
+      reply_to_agent?(comment) and
+        comment_after?(value(comment, :inserted_at), value(comment, :id), workpad_at, workpad_id)
+
+  defp reply_to_agent?(comment) do
+    body = value(comment, :body)
+
+    value(comment, :kind) == "user" and is_binary(body) and
+      String.contains?(body, "@sallaumen-agent")
+  end
+
+  defp comment_after?(%DateTime{}, _id, nil, _workpad_id), do: true
+
+  defp comment_after?(%DateTime{} = at, id, %DateTime{} = workpad_at, workpad_id) do
+    case DateTime.compare(at, workpad_at) do
+      :gt -> true
+      :eq -> is_integer(id) and is_integer(workpad_id) and id > workpad_id
+      :lt -> false
+    end
+  end
+
+  defp comment_after?(_at, _id, _workpad_at, _workpad_id), do: false
+
+  defp value(comment, key), do: Map.get(comment, key) || Map.get(comment, Atom.to_string(key))
 
   @doc "A short, editable title for the prerequisite issue."
   @spec blocker_title(Task.t(), context()) :: String.t()

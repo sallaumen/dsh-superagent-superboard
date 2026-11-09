@@ -172,18 +172,26 @@ export const VoiceCommand = {
     }
   },
   async start({followup = false} = {}) {
-    // WisprFlow is the default input: the board opens a field and the owner's
-    // Wispr types into it. No microphone here, no paid transcription.
-    if (this.el.dataset.input !== "microphone") {
+    if (this.el.dataset.input === "text") {
+      // A typed turn uses a field that is already on screen. Never open a
+      // separate dictation window just because the voice shortcut was pressed.
+      const field = ["#panel-conversation[open] #ask-body", "#panel-voice[open] #voice-chat-text",
+        "#panel-composer[open] #composer-text", "#ask-body"]
+        .map(selector => document.querySelector(selector))
+        .find(input => input && !input.disabled && input.getClientRects().length)
+      field?.focus()
+      return
+    }
+    if (this.el.dataset.input === "wispr") {
       const composer = document.querySelector("#panel-composer[open] #composer-text")
       if (composer) {
         composer.focus()
-        voiceState("complete", "Fale com o Wispr", "O texto entra no pedido.", source)
       } else {
         window.dispatchEvent(new CustomEvent("board:voice-wispr-open", {detail: {followup}}))
       }
       return
     }
+    if (this.el.dataset.input !== "microphone") return
     if (this.el.dataset.configured !== "true") {
       voiceState("error", "Transcrição indisponível", "Configure a chave ElevenLabs ou escreva no painel de voz.", source)
       return
