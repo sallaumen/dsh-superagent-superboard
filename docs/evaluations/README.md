@@ -1,16 +1,17 @@
-# Avaliações do board — evidência
+# Board evaluations — evidence
 
-Rodadas da [campanha de avaliação](../board-ai-evaluation.md), cada uma com o
-relatório lido por humanos e o ledger JSONL completo (perguntas, snapshots
-fictícios, respostas, verificações e linhas de `ai_calls`).
+Rounds of the [evaluation campaign](../board-ai-evaluation.md), each with the
+report read by humans and the full JSONL ledger (questions, fictional snapshots,
+answers, checks and `ai_calls` rows).
 
-> **Registro histórico.** Os números medem o modelo local e o corpus da rodada;
-> não são nota do agente de programação nem dos provedores de produção.
+> **Historical record.** The numbers measure the local model and the corpus of
+> that round; they are not a grade for the coding agent or for the production
+> providers.
 
-| Rodada | Modelo | Resultado | Ledger |
+| Round | Model | Result | Ledger |
 |---|---|---|---|
-| [2026-11-05 — avaliação local](2026-11-05-board-ai-local.md) | `qwen3.5:9b` local (Ollama) | 13 casos, 16/26 na rubrica de revisão humana | [JSONL](2026-11-05-board-ai-local.jsonl) |
-| [2026-11-06 — títulos externos fora das perguntas agregadas](2026-11-06-board-ai-aggregate.md) | `qwen3.5:9b` local (Ollama) | 13 casos; proteção de título hostil aplicada antes do modelo | [JSONL](2026-11-06-board-ai-aggregate.jsonl) |
+| [2026-11-05 — local evaluation](2026-11-05-board-ai-local.md) | `qwen3.5:9b` local (Ollama) | 13 cases, 16/26 on the human review rubric | [JSONL](2026-11-05-board-ai-local.jsonl) |
+| [2026-11-06 — external titles out of the aggregate questions](2026-11-06-board-ai-aggregate.md) | `qwen3.5:9b` local (Ollama) | 13 cases; hostile-title protection applied before the model | [JSONL](2026-11-06-board-ai-aggregate.jsonl) |
 
-Nenhuma rodada criou tarefa, mensagem ou comentário real: banco de teste
-dedicado e vazio, engine local, sem retry.
+No round created a real task, message or comment: dedicated empty test database,
+local engine, no retry.

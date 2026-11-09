@@ -15,7 +15,7 @@ The board for the agent's work, in Elixir. Read this before changing code.
   decide and prove it.
 - Follow [CONTRIBUTING.md](CONTRIBUTING.md) for branches, commits and PRs.
 - Follow [PIPELINES.md](PIPELINES.md) for required checks and command effects.
-  Its [CI-unavailable procedure](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner)
+  Its [CI-unavailable procedure](PIPELINES.md#if-ci-cannot-run-no-token-billing-or-runner)
   is binding when GitHub Actions cannot run.
 - Use the [local configuration instructions](README.md#local-secrets) when
   running the app or a worktree; never commit local secrets.

@@ -1,28 +1,28 @@
-# ADR 0002 — CI indisponível: o pipeline local é o gate suficiente
+# ADR 0002 — CI unavailable: the local pipeline is the sufficient gate
 
-- **Decisão:** adotar validação local com evidência como gate suficiente quando a CI estiver indisponível por bloqueio externo. O procedimento vigente está em [PIPELINES.md](../../PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
-- **Estado:** implementada.
+- **Decision:** adopt local validation with evidence as a sufficient gate when CI is unavailable due to an external block. The current procedure is in [PIPELINES.md](../../PIPELINES.md#if-ci-cannot-run-no-token-billing-or-runner).
+- **Status:** implemented.
 
-## Problema e contexto
+## Problem and context
 
-Os runners da conta ficaram bloqueados por pendência de cobrança (jobs falham em segundos com zero steps; annotation "payments have failed / spending limit"). Esperar pela CI travaria todas as entregas por uma condição de conta fora do repositório; re-disparar runs não muda o resultado e consome cota.
+The account's runners were blocked by a billing issue (jobs fail within seconds with zero steps; annotation "payments have failed / spending limit"). Waiting for CI would block all deliveries because of an account condition outside the repository; re-triggering runs does not change the result and consumes quota.
 
-## Alternativas
+## Alternatives
 
-| Alternativa | Benefício | Custo ou risco |
+| Alternative | Benefit | Cost or risk |
 |---|---|---|
-| Bloquear entregas até a CI voltar | Máxima confiança remota | Entregas paradas por tempo indefinido |
-| Ignorar validação quando a CI não roda | Velocidade | Regressões sem nenhum gate |
-| Gate local com evidência + re-verificação posterior (escolhida) | Entrega contínua com gate real | A verificação externa fica adiada |
+| Block deliveries until CI returns | Maximum remote confidence | Deliveries stalled indefinitely |
+| Skip validation when CI does not run | Speed | Regressions with no gate at all |
+| Local gate with evidence + later re-verification (chosen) | Continuous delivery with a real gate | External verification is deferred |
 
-## Escolha e consequência
+## Choice and consequence
 
-O gate continua obrigatório, mas sua execução remota pode ser adiada por um
-bloqueio de conta. [PIPELINES.md](../../PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner)
-mantém o diagnóstico e o procedimento; AGENTS.md, CONTRIBUTING.md e o template
-de PR apontam para ele. A biblioteca reutilizável mantém o princípio geral no
-[contrato comum](https://github.com/sallaumen/elixir-agent-kit/blob/v0.8.0/priv/library/CONTRACT.md#validate-the-changed-risk).
+The gate remains mandatory, but its remote execution can be deferred by an
+account block. [PIPELINES.md](../../PIPELINES.md#if-ci-cannot-run-no-token-billing-or-runner)
+keeps the diagnosis and the procedure; AGENTS.md, CONTRIBUTING.md and the PR
+template point to it. The reusable library keeps the general principle in the
+[common contract](https://github.com/sallaumen/elixir-agent-kit/blob/v0.8.0/priv/library/CONTRACT.md#validate-the-changed-risk).
 
-## Implantação e revisão
+## Rollout and review
 
-PRs #19 (dispatch manual e cancelamento de runs obsoletos), #37 (regra), #39 (template), #42 (contrato comum), #44 (CONTRIBUTING). Reconsiderar quando a conta tiver runners estáveis: a regra continua valendo para qualquer bloqueio equivalente, não apenas billing.
+PRs #19 (manual dispatch and cancellation of obsolete runs), #37 (rule), #39 (template), #42 (common contract), #44 (CONTRIBUTING). Reconsider when the account has stable runners: the rule still applies to any equivalent block, not just billing.

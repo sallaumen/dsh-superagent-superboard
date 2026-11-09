@@ -1,58 +1,58 @@
-# Auditoria: ações e feedback
+# Audit: actions and feedback
 
-> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
-> descrevem as revisões identificadas neste documento, não o produto atual.
-> Consulte o [índice e a sequência da auditoria](README.md).
+> **Historical record — November 5, 2026.** Counts, captures and states
+> describe the revisions identified in this document, not the current product.
+> See the [audit index and sequence](README.md).
 
-Base `67029d2` (#161). Fechamento da auditoria em 05/11/2026.
+Baseline `67029d2` (#161). Audit close on 2026-11-05.
 
-| Severidade | Região | Evidência antes | Correção |
+| Severity | Region | Evidence before | Fix |
 |---|---|---|---|
-| P1 | Create / flash | `board_live.ex` no baseline, linhas 133–135: resultado de `Board.create_task` descartado antes de anunciar “Task created”. [Fixture antes](baseline-fixture.png) também mostra o mesmo erro duas vezes. | Tratar sucesso/erro; erro aparece uma vez no flash compartilhado, com orientação. Testes com GitHub simulado cobrem 422 e sucesso. [Depois](actions-after-fixture.png). |
-| P1 | Conversa / troca de repo | `load/2` carregava um repo novo sem limpar `conversation`, `comments` ou `intake`; `handle_info` não recarregava comentários da conversa. | Limpar o contexto na troca e atualizar a conversa em broadcasts. [Open depois](actions-conversation.png), [outro repo vazio](actions-empty.png). |
-| P2 | Split / IA indisponível | [Antes](layout-after-1366.png): Split habilitado com `not_configured`; sem feedback próprio de carregamento. | Desabilitar com explicação, anunciar “Splitting…” durante submit, atualizar a lista de chamadas ao concluir. [Depois](actions-after.png). |
-| P2 | AI panel | `AI.recent/1` é global; `logged_in` só verifica configuração; rehearsal também dizia logged_in. Lista vazia não explicada. | Mostrar “all repositories”, janela recente, vazio explícito, “configured · connection not verified” e “rehearsal · local fixtures”. Sem alegação de autenticação validada. |
-| P2 | Speak / Dictate | `assets/js/app.js` retornava silenciosamente quando a API não existia. “Speak” na conversa falava o board, não a conversa. | Região de feedback e rótulo “Speak board status”; erros/indisponibilidade anunciados. [Speak](actions-speak.png), [API ausente](actions-speech-unavailable.png). |
-| P2 | Stop / Archive | `board_live.ex` tinha botões sem estado em trânsito nem explicação do efeito. | `Stopping…`/`Archiving…`, bloqueio em trânsito e title explicando fechar issue versus ocultar no board. Sem acioná-los em tarefas reais. |
+| P1 | Create / flash | `board_live.ex` in the baseline, lines 133–135: the result of `Board.create_task` discarded before announcing “Task created”. [Fixture before](baseline-fixture.png) also shows the same error twice. | Handle success/error; the error appears once in the shared flash, with guidance. Tests with simulated GitHub cover 422 and success. [After](actions-after-fixture.png). |
+| P1 | Conversation / repo switch | `load/2` loaded a new repo without clearing `conversation`, `comments` or `intake`; `handle_info` did not reload the conversation comments. | Clear the context on switch and update the conversation on broadcasts. [Open after](actions-conversation.png), [another empty repo](actions-empty.png). |
+| P2 | Split / AI unavailable | [Before](layout-after-1366.png): Split enabled with `not_configured`; no loading feedback of its own. | Disable with an explanation, announce “Splitting…” during submit, update the call list on completion. [After](actions-after.png). |
+| P2 | AI panel | `AI.recent/1` is global; `logged_in` only checks configuration; rehearsal also said logged_in. Empty list not explained. | Show “all repositories”, recent window, explicit empty, “configured · connection not verified” and “rehearsal · local fixtures”. No claim of validated authentication. |
+| P2 | Speak / Dictate | `assets/js/app.js` returned silently when the API did not exist. “Speak” in the conversation spoke the board, not the conversation. | Feedback region and the label “Speak board status”; errors/unavailability announced. [Speak](actions-speak.png), [API missing](actions-speech-unavailable.png). |
+| P2 | Stop / Archive | `board_live.ex` had buttons with no in-transit state and no explanation of the effect. | `Stopping…`/`Archiving…`, blocking while in transit and a title explaining closing the issue versus hiding it on the board. Not triggered on real tasks. |
 
-Verificação interativa extra: servidor temporário `MIX_ENV=test` em `localhost:4005`,
-com fixtures em uma única transação Ecto Sandbox (rollback no encerramento).
-Open pelo teclado focou `conversation-title`; Close devolveu foco ao Open original;
-trocar repositório removeu a conversa. Nenhuma criação, Stop, Archive ou envio de
-mensagem foi acionado no navegador. Speak foi capturado por um substituto silencioso
-da API de áudio; texto recebido: “1 running and 1 blocked”. Microfone não foi aberto.
-Uma tentativa inicial pelo host 127.0.0.1 foi rejeitada pelo check_origin do ambiente
-de testes; usar localhost resolveu. Não houve mudança da proteção de origem.
+Extra interactive verification: temporary `MIX_ENV=test` server on `localhost:4005`,
+with fixtures in a single Ecto Sandbox transaction (rollback on shutdown).
+Open by keyboard focused `conversation-title`; Close returned focus to the original Open;
+switching repository removed the conversation. No creation, Stop, Archive or message send
+was triggered in the browser. Speak was captured by a silent substitute for the audio API;
+text received: “1 running and 1 blocked”. The microphone was not opened.
+An initial attempt through the 127.0.0.1 host was rejected by the test environment's
+check_origin; using localhost solved it. There was no change to the origin protection.
 
-Gate final: `scripts/ci-local.sh all` verde, incluindo `MIX_ENV=test mix gate`
-(158 testes, zero falhas), `scripts/check_assets.sh`, `mix assets.build`, assets.deploy,
-validador e 20 testes da biblioteca. CI bloqueada por billing conforme informado;
-a evidência local é suficiente segundo PIPELINES.md. Nenhum PR foi mesclado.
+Final gate: `scripts/ci-local.sh all` green, including `MIX_ENV=test mix gate`
+(158 tests, zero failures), `scripts/check_assets.sh`, `mix assets.build`, assets.deploy,
+validator and 20 library tests. CI blocked by billing as reported;
+the local evidence is sufficient per PIPELINES.md. No PR was merged.
 
-## Matriz final de cobertura
+## Final coverage matrix
 
-| Área | Resultado | Evidência / limite |
+| Area | Result | Evidence / limit |
 |---|---|---|
-| 1366×768, claro e escuro | Verificado | [claro](final-light-1366.png), [escuro](final-dark-1366.png); sem overflow, conexão ativa |
-| 3440×1440, claro e escuro | Verificado | [claro](final-light-3440.png), [escuro](final-dark-3440.png); sem overflow |
-| 375×812 extra | Verificado | [claro](final-light-375.png), [escuro](final-dark-375.png); scrollWidth=375 |
-| Tema / persistência / sistema / teclado | Verificado | PR #154; alternância real, reload, prefers-color-scheme e foco |
-| Contraste | Amostras corrigidas | [medidas](final-contrast.txt): primary 5,38/5,36; textos semânticos sobre base100 entre 5,99 e 7,38 no claro, 6,19 e 7,11 no escuro. Não equivale a certificação integral WCAG. |
-| Conexão / reconexão / sync_error | Verificado | PR #161; disconnect/connect + Activity; zero erros no console do app |
-| Empty / sem repo / sem comentários | Verificado | Empty e sem comentários no navegador de testes; sem repo coberto por LiveViewTest |
-| Flash sucesso/erro | Verificado em testes | Create com respostas simuladas; erro visual por fixture renderizada |
-| Loading de ações mutáveis | Verificado por código | phx-disable-with e bloqueio do LiveView; sem submissão real nem chamada paga |
-| Split resultado / lista AI | Verificado em testes | Req.Test simula as duas chamadas, exibe proposta e atualiza o histórico; nenhuma tarefa real criada |
-| Open / Close / troca repo | Verificado no navegador | Fixtures transacionais; foco, retorno e remoção de contexto |
-| Stop / Archive | Código e testes existentes | Board.stop_task/2 e archive_task/1; não executados no navegador |
-| Speak | Verificado sem reprodução | Evento real do LiveView recebido por API substituta; som real não avaliado |
-| Dictate | Indisponibilidade verificada | Feedback com APIs ausentes; reconhecimento real e permissões de microfone não avaliados |
-| Leitor de tela | Não executado | Árvore acessível, nomes, aria-live e teclado inspecionados; nenhum leitor assistivo real usado |
+| 1366×768, light and dark | Verified | [light](final-light-1366.png), [dark](final-dark-1366.png); no overflow, active connection |
+| 3440×1440, light and dark | Verified | [light](final-light-3440.png), [dark](final-dark-3440.png); no overflow |
+| 375×812 extra | Verified | [light](final-light-375.png), [dark](final-dark-375.png); scrollWidth=375 |
+| Theme / persistence / system / keyboard | Verified | PR #154; real toggle, reload, prefers-color-scheme and focus |
+| Contrast | Samples fixed | [measurements](final-contrast.txt): primary 5.38/5.36; semantic text over base100 between 5.99 and 7.38 in light, 6.19 and 7.11 in dark. Not equivalent to full WCAG certification. |
+| Connection / reconnection / sync_error | Verified | PR #161; disconnect/connect + Activity; zero errors in the app console |
+| Empty / no repo / no comments | Verified | Empty and no comments in the test browser; no-repo covered by LiveViewTest |
+| Flash success/error | Verified in tests | Create with simulated responses; visual error by rendered fixture |
+| Loading of mutating actions | Verified by code | phx-disable-with and LiveView blocking; no real submission and no paid call |
+| Split result / AI list | Verified in tests | Req.Test simulates both calls, shows the proposal and updates the history; no real task created |
+| Open / Close / repo switch | Verified in the browser | Transactional fixtures; focus, return and context removal |
+| Stop / Archive | Existing code and tests | Board.stop_task/2 and archive_task/1; not executed in the browser |
+| Speak | Verified without playback | Real LiveView event received by a substitute API; real sound not evaluated |
+| Dictate | Unavailability verified | Feedback with missing APIs; real recognition and microphone permissions not evaluated |
+| Screen reader | Not run | Accessibility tree, names, aria-live and keyboard inspected; no real assistive reader used |
 
-Limite operacional: o sync local de `sallaumen/o_colmex` continua recebendo GitHub HTTP
-404. A auditoria corrigiu a sinalização e preservou os dados salvos; não alterou
-credenciais/permissões nem tentou corrigir acesso ao repositório.
+Operational limit: the local sync of `sallaumen/o_colmex` keeps receiving GitHub HTTP
+404. The audit fixed the signalling and preserved the saved data; it did not change
+credentials/permissions nor try to fix repository access.
 
-Os navegadores e servidores temporários da auditoria foram encerrados; o servidor
-pré-existente na porta 4002 foi preservado. Capturas identificadas como fixture são
-sintéticas, sem dados persistidos ou chamadas externas.
+The audit's browsers and temporary servers were closed; the pre-existing server
+on port 4002 was preserved. Captures identified as fixture are synthetic, with no
+persisted data or external calls.

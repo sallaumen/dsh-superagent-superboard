@@ -1,37 +1,37 @@
-# Auditoria do Agent board — 05/11/2026
+# Agent board audit — 2026-11-05
 
-> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
-> descrevem as revisões identificadas neste documento, não o produto atual.
-> Consulte o [índice e a sequência da auditoria](05-merge-review.md).
+> **Historical record — November 5, 2026.** Counts, captures and states describe
+> the revisions identified in this document, not the current product.
+> See the [audit index and sequence](05-merge-review.md).
 
-Base original `52113d4`; entrega em quatro PRs encadeados.
-A [revisão para integração](05-merge-review.md) registra os gates atualizados,
-a resolução de conflito e a compatibilidade com as mudanças posteriores do main.
-Interações com dados reais somente leitura. Auditoria via WebKit headless,
-1366×768 e 3440×1440 em light/dark; 375×812 adicional.
+Original baseline `52113d4`; delivered in four chained PRs.
+The [review for integration](05-merge-review.md) records the updated gates,
+the conflict resolution and the compatibility with later changes on main.
+Interactions with real data were read-only. Audit via headless WebKit,
+1366×768 and 3440×1440 in light/dark; 375×812 additional.
 
-| Parte | Motivo | Relatório com achados e capturas | Gate local |
+| Part | Reason | Report with findings and captures | Local gate |
 |---|---|---|---|
-| #154 | Tema, tokens, contraste e foco | [01-theme](01-theme.md) | 151 testes Elixir + assets + biblioteca |
-| #158 | Densidade, títulos, Activity e responsividade | [02-layout](02-layout.md) | 151 testes Elixir + assets + biblioteca |
-| #161 | Saúde, reconexão e contagens verdadeiras | [03-health](03-health.md) | 154 testes Elixir + assets + biblioteca |
-| #164 | Sucesso/erro, contexto de conversa, AI e voz | [04-actions](04-actions.md) | 158 testes Elixir + assets + biblioteca |
+| #154 | Theme, tokens, contrast and focus | [01-theme](01-theme.md) | 151 Elixir tests + assets + library |
+| #158 | Density, titles, Activity and responsiveness | [02-layout](02-layout.md) | 151 Elixir tests + assets + library |
+| #161 | Health, reconnection and truthful counts | [03-health](03-health.md) | 154 Elixir tests + assets + library |
+| #164 | Success/error, conversation context, AI and voice | [04-actions](04-actions.md) | 158 Elixir tests + assets + library |
 
-Todos passaram `scripts/ci-local.sh all`: `mix gate`, `scripts/check_assets.sh`,
-`mix assets.build`, assets.deploy, validador e 20 testes da biblioteca.
-CI bloqueada por billing conforme informado. Reexecutar workflow_dispatch após
-liberação; não foi necessário esperar ou redisparar CI.
+All passed `scripts/ci-local.sh all`: `mix gate`, `scripts/check_assets.sh`,
+`mix assets.build`, assets.deploy, validator and 20 library tests.
+CI blocked by billing as reported. Rerun workflow_dispatch after release; there was
+no need to wait for or re-trigger CI.
 
-Antes: [desktop](baseline-light-1366.png), [ultrawide](baseline-light-3440.png),
-[mobile](baseline-mobile-ai.png). Depois: [desktop claro](final-light-1366.png),
-[desktop escuro](final-dark-1366.png), [ultrawide](final-dark-3440.png).
+Before: [desktop](baseline-light-1366.png), [ultrawide](baseline-light-3440.png),
+[mobile](baseline-mobile-ai.png). After: [light desktop](final-light-1366.png),
+[dark desktop](final-dark-1366.png), [ultrawide](final-dark-3440.png).
 
-A [matriz final](04-actions.md#matriz-final-de-cobertura) distingue interação real,
-fixtures, testes e limites (áudio/microfone reais, leitor de tela e operações mutáveis).
-O HTTP 404 do sync local continua como problema de acesso externo; a sinalização foi
-corrigida. Servidor preexistente de outro checkout em 4002 preservado, auditoria em
-4003 e fixtures em 4004/localhost:4005. Sessões próprias encerradas; zero repositórios
-`fixture` persistidos após rollback no banco de teste.
+The [final matrix](04-actions.md#final-coverage-matrix) distinguishes real interaction,
+fixtures, tests and limits (real audio/microphone, screen reader and mutating operations).
+The HTTP 404 from the local sync remains an external access problem; the signalling was
+fixed. Pre-existing server from another checkout on 4002 preserved, audit on
+4003 and fixtures on 4004/localhost:4005. Own sessions closed; zero `fixture` repositories
+persisted after the rollback in the test database.
 
-Revisão posterior: [comandos de voz somente leitura](voice-read-commands/README.md)
-registra capturas pareadas e o fluxo de navegador do PR #223.
+Later review: [read-only voice commands](voice-read-commands/README.md)
+records paired captures and the browser flow of PR #223.

@@ -1,27 +1,27 @@
-# ADR 0001 — Pipelines separados por tecnologia, com um caminho misto de release
+# ADR 0001 — Separate pipelines by technology, with a mixed release path
 
-- **Decisão:** substituir o job único de CI por pipelines separados — backend, frontend e biblioteca de capacidades — e um job misto de release. A distribuição vigente dos checks está em [PIPELINES.md](../../PIPELINES.md).
-- **Estado:** implementada.
+- **Decision:** replace the single CI job with separate pipelines — backend, frontend and capability library — plus a mixed release job. The current distribution of checks is in [PIPELINES.md](../../PIPELINES.md).
+- **Status:** implemented.
 
-## Problema e contexto
+## Problem and context
 
-A CI era um job único (`gates`) que misturava formatação, credo e testes sem cobrir o frontend (nenhum build de assets era exercitado) nem a biblioteca de capacidades. Uma falha não dizia qual lado quebrou; mudar CSS reprocessava o backend; e o desenvolvedor não tinha um comando local equivalente à CI.
+CI was a single job (`gates`) that mixed formatting, credo and tests without covering the frontend (no asset build was exercised) or the capability library. A failure did not say which side broke; changing CSS reprocessed the backend; and the developer had no local command equivalent to CI.
 
-## Alternativas
+## Alternatives
 
-| Alternativa | Benefício | Custo ou risco |
+| Alternative | Benefit | Cost or risk |
 |---|---|---|
-| Manter job único | Simplicidade | Falha não atribuível; frontend/biblioteca sem cobertura; local × CI divergem |
-| Pipelines separados + release misto (escolhida) | Falha atribuível, ciclos independentes, paridade local×CI | Mais jobs para manter |
-| Pipeline misto para tudo | Menos arquivos | Perde a atribuição de falha; custo de contexto maior |
+| Keep a single job | Simplicity | Failure not attributable; frontend/library uncovered; local × CI diverge |
+| Separate pipelines + mixed release (chosen) | Attributable failure, independent cycles, local×CI parity | More jobs to maintain |
+| Mixed pipeline for everything | Fewer files | Loses failure attribution; higher context cost |
 
-## Escolha e consequência
+## Choice and consequence
 
-Os pipelines permitem atribuir falhas à tecnologia correspondente e executar
-checks específicos durante a iteração. O release exercita a integração entre
-assets e aplicação de produção. A matriz operacional, os ambientes e a relação
-entre comandos locais e jobs são mantidos em [PIPELINES.md](../../PIPELINES.md).
+The pipelines let failures be attributed to the corresponding technology and let
+specific checks run during iteration. The release exercises the integration between
+assets and the production application. The operational matrix, the environments and the relationship
+between local commands and jobs are kept in [PIPELINES.md](../../PIPELINES.md).
 
-## Implantação e revisão
+## Rollout and review
 
-PRs #13, #14, #15, #16, #17, #18, #21, #38, #40. Reconsiderar se uma stack nova tornar a separação artificial (ex.: testes E2E que exigem os dois lados — eles pertencem ao job misto, não aos separados).
+PRs #13, #14, #15, #16, #17, #18, #21, #38, #40. Reconsider if a new stack makes the separation artificial (e.g. E2E tests that require both sides — they belong in the mixed job, not the separate ones).

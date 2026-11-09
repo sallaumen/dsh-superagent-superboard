@@ -1,147 +1,148 @@
-# API JSON
+# JSON API
 
-O board expõe endpoints HTTP em `/api`. As respostas explícitas do
-[controller](../lib/agent_board_web/controllers/board_controller.ex) são JSON;
-os erros tratados têm um campo `error` com uma mensagem. A interface LiveView
-chama o contexto Board diretamente. Os exemplos de entrada abaixo são
-ilustrativos: use um repositório e uma tarefa reais ao executar uma requisição.
+The board exposes HTTP endpoints at `/api`. The explicit responses of the
+[controller](../lib/agent_board_web/controllers/board_controller.ex) are JSON;
+handled errors have an `error` field with a message. The LiveView interface calls
+the Board context directly. The request examples below are illustrative: use a
+real repository and a real task when running a request.
 
-| Método | Rota | O que faz |
+| Method | Route | What it does |
 |---|---|---|
-| GET | `/api/board?repo=<owner>/<name>` | Estado do board do repositório rastreado |
-| GET | `/api/repos` | Lista de repositórios rastreados |
-| POST | `/api/repos` | Rastreia um repositório novo |
-| POST | `/api/tasks` | Cria uma tarefa (issue no GitHub que menciona o agente) |
-| PATCH | `/api/tasks/:id` | Ação sobre uma tarefa: `stop`, `archive` ou `resume` |
+| GET | `/api/board?repo=<owner>/<name>` | Board state of the tracked repository |
+| GET | `/api/repos` | List of tracked repositories |
+| POST | `/api/repos` | Tracks a new repository |
+| POST | `/api/tasks` | Creates a task (a GitHub issue that mentions the agent) |
+| PATCH | `/api/tasks/:id` | Action on a task: `stop`, `archive` or `resume` |
 
 ## GET /api/board
 
-Parâmetro de query obrigatório: `repo` no formato `owner/name`.
+Required query parameter: `repo` in the `owner/name` format.
 
-- `200` — o board do repositório (colunas de tarefas por estado).
-- `404` — `{"error": "repository not tracked"}` quando o repositório não está rastreado.
+- `200` — the repository board (task columns by state).
+- `404` — `{"error": "repository not tracked"}` when the repository is not tracked.
 
 ## GET /api/repos
 
-- `200` — lista de repositórios rastreados.
+- `200` — list of tracked repositories.
 
 ## POST /api/repos
 
-Corpo ilustrativo: `{"owner": "example", "name": "project"}`.
+Illustrative body: `{"owner": "example", "name": "project"}`.
 
-- `201` — objeto com `id` (inteiro), `owner` e `name` (strings) do repositório criado.
-- `400` — `{"error": "invalid"}` quando a criação não é válida.
+- `201` — object with `id` (integer), `owner` and `name` (strings) of the created repository.
+- `400` — `{"error": "invalid"}` when the creation is not valid.
 
-## Confirmação das ações vermelhas
+## Confirming red actions
 
-Toda escrita da API passa pelo registro de ações (`AgentBoard.Actions`, contrato,
-"Board actions"). Criar uma tarefa e parar uma tarefa são **vermelhas**: abrem ou
-fecham uma issue no GitHub. A primeira chamada não faz nada e responde `428` com a
-frase que confirma a ação, com os valores reais; a chamada só age quando repete o
-pedido com essa frase em `confirm`. As duas respostas ficam registradas como
-decisões (`action_decisions`), recusada e confirmada, `via: api`.
+Every API write goes through the action registry (`AgentBoard.Actions`,
+contract, "Board actions"). Creating a task and stopping a task are **red**: they
+open or close a GitHub issue. The first call does nothing and answers `428` with
+the sentence that confirms the action, with the real values; the call only acts
+when it repeats the request with that sentence in `confirm`. Both responses are
+recorded as decisions (`action_decisions`), refused and confirmed, `via: api`.
 
 ```mermaid
 sequenceDiagram
-    participant C as Cliente
+    participant C as Client
     participant B as BoardController
     participant A as AgentBoard.Actions
     participant G as GitHub
-    C->>B: POST /api/tasks (sem confirm)
-    B->>A: run/4 sem confirmação
-    A-->>B: {:error, {:unconfirmed, frase}} · decisão "refused"
-    B-->>C: 428 {"error": "confirmation_required", "confirm": frase}
-    C->>B: POST /api/tasks (com confirm: frase)
-    B->>A: run/4 com a frase
-    A->>G: abre a issue
+    C->>B: POST /api/tasks (no confirm)
+    B->>A: run/4 without confirmation
+    A-->>B: {:error, {:unconfirmed, phrase}} · decision "refused"
+    B-->>C: 428 {"error": "confirmation_required", "confirm": phrase}
+    C->>B: POST /api/tasks (with confirm: phrase)
+    B->>A: run/4 with the sentence
+    A->>G: opens the issue
     G-->>A: ok
     A-->>B: {:ok, task}
     B-->>C: 201 {id, number, url, outcome}
 ```
 
-- `428` — `{"error": "confirmation_required", "confirm": "<frase>"}`: nada rodou;
-  repita o pedido com `"confirm": "<frase>"`.
-- `428` — `{"error": "confirmation_mismatch", "confirm": "<frase atual>"}`: a frase
-  enviada é de outros valores (outro título, a tarefa mudou de nome); nada rodou.
+- `428` — `{"error": "confirmation_required", "confirm": "<phrase>"}`: nothing ran;
+  repeat the request with `"confirm": "<phrase>"`.
+- `428` — `{"error": "confirmation_mismatch", "confirm": "<current phrase>"}`: the
+  sentence sent belongs to other values (another title, the task was renamed);
+  nothing ran.
 
 ## POST /api/tasks
 
-Corpo ilustrativo: `{"repo": "example/project", "title": "Corrigir link da documentação"}`; `body` opcional (detalhes da issue); `confirm` com a frase da resposta `428`.
+Illustrative body: `{"repo": "example/project", "title": "Corrigir link da documentação"}`; optional `body` (issue details); `confirm` with the sentence from the `428` response.
 
-- `201` — objeto com `id` (inteiro local), `number` (inteiro da issue), `url` (string) e `outcome: "created"`. A issue menciona o agente automaticamente.
-- `200` — o mesmo objeto com `outcome: "existing"` quando o mesmo título e corpo já tinham entrado (a chave do pedido, `Board.request_key/3`): nenhuma issue nova.
-- `428` — sem `confirm`, ou com a frase de outros valores (acima).
-- `400` — `{"error": "a repository and a title are required"}` quando o repositório não está rastreado, o slug é inválido ou o título é vazio; com o motivo quando o GitHub recusa.
-- Efeito real: abre uma issue no GitHub do repositório rastreado.
+- `201` — object with `id` (local integer), `number` (issue integer), `url` (string) and `outcome: "created"`. The issue mentions the agent automatically.
+- `200` — the same object with `outcome: "existing"` when the same title and body had already come in (the request key, `Board.request_key/3`): no new issue.
+- `428` — without `confirm`, or with the sentence for other values (above).
+- `400` — `{"error": "a repository and a title are required"}` when the repository is not tracked, the slug is invalid or the title is empty; with the reason when GitHub refuses.
+- Real effect: opens an issue in the GitHub repository that is tracked.
 
 ## PATCH /api/tasks/:id
 
-Corpo: `{"action": "stop"}`. O valor de `action` também pode ser `"archive"` ou `"resume"`; envie uma ação por requisição. `stop` é vermelha e pede `confirm`; `archive` e `resume` são amarelas e agem direto.
+Body: `{"action": "stop"}`. The value of `action` can also be `"archive"` or `"resume"`; send one action per request. `stop` is red and asks for `confirm`; `archive` and `resume` are yellow and act directly.
 
 - `200` — `{"ok": true}`.
-- `428` — `stop` sem `confirm`, ou com a frase de outros valores.
-- `404` — `{"error": "task not found"}` para tarefa inexistente, ação desconhecida ou falha do GitHub ao fechar a issue.
-- Efeitos reais: `stop` fecha a issue e marca a flag de parada; `archive` arquiva a tarefa; `resume` limpa as flags de parada/arquivamento e volta a tarefa para `queued` localmente. Não reabre a issue no GitHub (ver [Board.resume_task/1](../lib/agent_board/board.ex)).
+- `428` — `stop` without `confirm`, or with the sentence for other values.
+- `404` — `{"error": "task not found"}` for a missing task, an unknown action or a GitHub failure when closing the issue.
+- Real effects: `stop` closes the issue and sets the stop flag; `archive` archives the task; `resume` clears the stop/archive flags and puts the task back in `queued` locally. It does not reopen the issue on GitHub (see [Board.resume_task/1](../lib/agent_board/board.ex)).
 
-## Contrato e limites
+## Contract and limits
 
-- O pipeline `:api` aceita apenas JSON — **não há autenticação**; a API é destinada ao próprio board e aos testes. Qualquer uso exposto exigiria um plug de auth antes.
-- O cliente GitHub é injetável via `Application.get_env(:agent_board, :github_client)`, o que permite testar os endpoints sem rede (ver `test/agent_board_web/controllers/board_controller_test.exs`).
-- O formato dos erros tratados acima não garante um contrato JSON para qualquer exceção. O cliente GitHub pode levantar uma exceção, que o contexto converte em erro; os endpoints ainda podem falhar ao consumir esse resultado. Não presuma que toda falha de rede corresponde ao status de validação documentado.
+- The `:api` pipeline accepts JSON only — **there is no authentication**; the API is meant for the board itself and the tests. Any exposed use would need an auth plug first.
+- The GitHub client is injectable via `Application.get_env(:agent_board, :github_client)`, which allows testing the endpoints without the network (see `test/agent_board_web/controllers/board_controller_test.exs`).
+- The format of the handled errors above does not guarantee a JSON contract for any exception. The GitHub client may raise an exception, which the context converts into an error; the endpoints may still fail while consuming that result. Do not assume every network failure maps to the documented validation status.
 
 ## Voice (ElevenLabs)
 
-| Método | Rota | O que faz |
+| Method | Route | What it does |
 |---|---|---|
-| GET | `/api/voice/status` | O que está configurado (sem a chave) |
-| GET | `/api/voice/voices` | As vozes da conta, para o seletor |
-| PUT | `/api/voice/settings` | Salva voz, modelo, idioma, volume e quando falar (vazio limpa a voz) |
-| GET/POST | `/api/voice/speech?text=...` | O áudio falado (mp3) |
-| POST | `/api/voice/transcribe` | O corpo de áudio transcrito (JSON) |
+| GET | `/api/voice/status` | What is configured (without the key) |
+| GET | `/api/voice/voices` | The account's voices, for the picker |
+| PUT | `/api/voice/settings` | Saves voice, model, language, volume and when to speak (empty clears the voice) |
+| GET/POST | `/api/voice/speech?text=...` | The spoken audio (mp3) |
+| POST | `/api/voice/transcribe` | The transcribed audio body (JSON) |
 
 ### GET /api/voice/status
 
-- `200` — `{"configured": true|false, "status": "logged_in"|"not_configured", "voice_id": "...", "voice_source": "environment"|"saved"|"default", "tts_model": "...", "tts_source": "environment"|"saved"|"default", "stt_model": "...", "speak_events": true|false, "language": "pt-BR"|"en-US", "volume": 0..100, "attention": true|false, "speed": 0.8..1.2, "style": "steady"|"natural"|"expressive", "pause": "short"|"normal"|"long", "usage": {"day": "2026-11-07", "tts_characters": 3420, "tts_requests": 41, "cache_hits": 18, "stt_seconds": 72.0, "stt_requests": 9}, "daily_char_cap": 20000}`. Nunca expõe a chave. Os campos `*_source` dizem de onde vem cada escolha: a variável de ambiente, a escolha salva na UI ou o padrão; `speak_events` narra o resto do board (ligada por padrão); `attention` são os chamados quando uma tarefa precisa do dono (pergunta, bloqueio, revisão; ligados por padrão); `language` é o idioma de tudo que o agente fala, `volume` o volume da reprodução, `speed` a velocidade da fala, `style` a entonação (estabilidade 0,7 / 0,5 / 0,3 na ElevenLabs) e `pause` quanto silêncio encerra uma fala do dono (0,8 / 1,2 / 1,8 s). `usage` é o gasto de hoje na ElevenLabs (dia UTC, `AgentBoard.ElevenLabs.Usage`): caracteres de TTS cobrados (o header `x-character-count`, ou o tamanho do texto sem ele), pedidos de TTS pagos, falas servidas do cache (custo zero), segundos de áudio transcritos (`audio_duration_secs`) e transcrições. `daily_char_cap` é o teto diário de caracteres (`ELEVENLABS_DAILY_CHAR_CAP`, padrão 20000, `0` = sem teto); atingi-lo não muda nada sozinho, só registra um evento em "Bastidores da voz".
+- `200` — `{"configured": true|false, "status": "logged_in"|"not_configured", "voice_id": "...", "voice_source": "environment"|"saved"|"default", "tts_model": "...", "tts_source": "environment"|"saved"|"default", "stt_model": "...", "speak_events": true|false, "language": "pt-BR"|"en-US", "volume": 0..100, "attention": true|false, "speed": 0.8..1.2, "style": "steady"|"natural"|"expressive", "pause": "short"|"normal"|"long", "usage": {"day": "2026-11-07", "tts_characters": 3420, "tts_requests": 41, "cache_hits": 18, "stt_seconds": 72.0, "stt_requests": 9}, "daily_char_cap": 20000}`. It never exposes the key. The `*_source` fields say where each choice comes from: the environment variable, the choice saved in the UI or the default; `speak_events` narrates the rest of the board (on by default); `attention` are the calls when a task needs the owner (question, block, review; on by default); `language` is the language of everything the agent speaks, `volume` the playback volume, `speed` the speech rate, `style` the intonation (stability 0.7 / 0.5 / 0.3 on ElevenLabs) and `pause` how much silence ends an owner's turn (0.8 / 1.2 / 1.8 s). `usage` is today's spend on ElevenLabs (UTC day, `AgentBoard.ElevenLabs.Usage`): TTS characters billed (the `x-character-count` header, or the text length without it), paid TTS requests, turns served from the cache (zero cost), seconds of audio transcribed (`audio_duration_secs`) and transcriptions. `daily_char_cap` is the daily character ceiling (`ELEVENLABS_DAILY_CHAR_CAP`, default 20000, `0` = no ceiling); reaching it changes nothing by itself, it only records an event in "Bastidores da voz".
 
 ### GET /api/voice/voices
 
-- `200` — `{"voices": [{"id": "...", "name": "..."}]}` — as vozes da conta.
-- Erros seguem o mesmo mapa do speech (401/429/502/503).
+- `200` — `{"voices": [{"id": "...", "name": "..."}]}` — the account's voices.
+- Errors follow the same error mapping as speech (401/429/502/503).
 
 ### PUT /api/voice/settings
 
-Corpo: qualquer combinação de `{"voice_id": "..."}`, `{"tts_model": "..."}`, `{"speak_events": true|false}`, `{"attention": true|false}`, `{"language": "pt-BR"|"en-US"}`, `{"volume": 0..100}`, `{"speed": 0.8..1.2}`, `{"style": "steady"|"natural"|"expressive"}` e `{"pause": "short"|"normal"|"long"}`. `voice_id` vazio ou em branco limpa a escolha (volta ao padrão); `tts_model` precisa ser um dos modelos oferecidos (`eleven_flash_v2_5`, `eleven_v4`, `eleven_multilingual_v2`); `speak_events` liga/desliga a fala automática do board.
+Body: any combination of `{"voice_id": "..."}`, `{"tts_model": "..."}`, `{"speak_events": true|false}`, `{"attention": true|false}`, `{"language": "pt-BR"|"en-US"}`, `{"volume": 0..100}`, `{"speed": 0.8..1.2}`, `{"style": "steady"|"natural"|"expressive"}` and `{"pause": "short"|"normal"|"long"}`. An empty or blank `voice_id` clears the choice (back to the default); `tts_model` must be one of the offered models (`eleven_flash_v2_5`, `eleven_v4`, `eleven_multilingual_v2`); `speak_events` turns the board's automatic speech on and off.
 
-- `200` — `{"voice_id": "...", "voice_source": "saved"|"default", "tts_model": "...", "tts_source": "saved"|"default"}`. As escolhas persistem na tabela `settings` e valem na hora; `ELEVENLABS_VOICE_ID` / `ELEVENLABS_TTS_MODEL` no ambiente continuam com prioridade.
-- `400` — `{"error": "a valid voice id is required"}` para id maior que 64 caracteres; `{"error": "an offered TTS model is required"}` para modelo fora do catálogo; `{"error": "an offered voice language is required"}` e `{"error": "the volume must be 0 to 100"}`, `{"error": "the speed must be 0.8 to 1.2"}`, `{"error": "the style must be steady, natural or expressive"}` e `{"error": "the pause must be short, normal or long"}` para valores fora da oferta. As chaves são gravadas na ordem do corpo; uma recusada não desfaz as anteriores.
+- `200` — `{"voice_id": "...", "voice_source": "saved"|"default", "tts_model": "...", "tts_source": "saved"|"default"}`. The choices persist in the `settings` table and apply immediately; `ELEVENLABS_VOICE_ID` / `ELEVENLABS_TTS_MODEL` in the environment still take precedence.
+- `400` — `{"error": "a valid voice id is required"}` for an id longer than 64 characters; `{"error": "an offered TTS model is required"}` for a model outside the catalog; `{"error": "an offered voice language is required"}` and `{"error": "the volume must be 0 to 100"}`, `{"error": "the speed must be 0.8 to 1.2"}`, `{"error": "the style must be steady, natural or expressive"}` and `{"error": "the pause must be short, normal or long"}` for values outside the offer. The keys are written in body order; one refused does not undo the previous ones.
 
 ### GET/POST /api/voice/speech
 
-Parâmetro: `text` (query no GET, corpo JSON `{"text": "..."}` no POST); `voice` opcional escolhe a voz na requisição (o seletor da UI usa isso para o preview). A síntese pede `optimize_streaming_latency=3` para o primeiro byte chegar rápido. Com o Flash v2.5 a síntese manda `language_code` do idioma da voz (`pt`/`en`), para o texto ser lido e normalizado nesse idioma.
+Parameter: `text` (query on GET, JSON body `{"text": "..."}` on POST); optional `voice` selects the voice for the request (the UI picker uses this for the preview). Synthesis asks for `optimize_streaming_latency=3` so the first byte arrives fast. With Flash v2.5, synthesis sends the `language_code` of the voice language (`pt`/`en`), so the text is read and normalized in that language.
 
-- `200` — os bytes de áudio em `audio/mpeg` (mp3 44.1kHz 128kbps).
-- `400` — `{"error": "a text is required"}` sem texto; `{"error": "the text is too long for one request"}` acima de 5000 caracteres; `{"error": "a valid voice id is required"}` para um `voice` que não tem forma de id.
+- `200` — the audio bytes in `audio/mpeg` (mp3 44.1kHz 128kbps).
+- `400` — `{"error": "a text is required"}` without text; `{"error": "the text is too long for one request"}` above 5000 characters; `{"error": "a valid voice id is required"}` for a `voice` that does not look like an id.
 - `401` — `{"error": "ElevenLabs rejected the key"}`.
 - `429` — `{"error": "ElevenLabs usage limit reached"}`.
-- `503` — `{"error": "voice not configured"}` sem chave (`ELEVENLABS_API_KEY`).
+- `503` — `{"error": "voice not configured"}` without a key (`ELEVENLABS_API_KEY`).
 
-O texto falado usa a velocidade e a entonação salvas. Um texto curto (até 300 caracteres) já falado com a mesma voz, modelo, idioma e ajustes sai do cache sem nova cobrança: em memória (`SpeechCache`, 150 entradas, uma semana) e na tabela `voice_speech_cache` (1000 linhas, 30 dias desde o último uso), que sobrevive a um restart.
+The spoken text uses the saved speed and intonation. A short text (up to 300 characters) already spoken with the same voice, model, language and adjustments comes from the cache without a new charge: in memory (`SpeechCache`, 150 entries, one week) and in the `voice_speech_cache` table (1000 rows, 30 days since the last use), which survives a restart.
 
 ### GET /api/voice/stream
 
-Os mesmos parâmetros, validações e erros de `GET /api/voice/speech`, mas o áudio é enviado em pedaços enquanto a ElevenLabs gera (`/v1/text-to-speech/{voz}/stream`): o primeiro som chega em ~0,4 s contra 0,6–1,1 s do arquivo inteiro. Um erro antes do primeiro byte volta como JSON; um erro no meio encerra o stream. Uma resposta do cache vem inteira, com `content-length` e o header `x-voice-cache: hit`. É o caminho que o board usa para tocar a voz do agente.
+The same parameters, validations and errors as `GET /api/voice/speech`, but the audio is sent in chunks while ElevenLabs generates it (`/v1/text-to-speech/{voz}/stream`): the first sound arrives in ~0.4 s against 0.6–1.1 s for the whole file. An error before the first byte returns as JSON; an error in the middle ends the stream. A cache response comes whole, with `content-length` and the header `x-voice-cache: hit`. It is the path the board uses to play the agent's voice.
 
 ### POST /api/voice/transcribe
 
-Corpo: os bytes de áudio crus (content-type `audio/*`); query opcional: `language` (código ISO 639, ex.: `pt`) e `filename`.
+Body: the raw audio bytes (content-type `audio/*`); optional query: `language` (ISO 639 code, e.g. `pt`) and `filename`.
 
-- `200` — `{"text": "...", "language_code": "...", "language_probability": <0-1>, "audio_duration_secs": <segundos>}`.
-- `400` — `{"error": "an audio body is required"}` sem corpo.
-- `413` — `{"error": "the audio is too large"}` acima do limite (10MB por padrão, configurável via `:voice_audio_max_bytes`).
-- Erros da ElevenLabs seguem o mesmo mapa do speech (401/429/502/503).
+- `200` — `{"text": "...", "language_code": "...", "language_probability": <0-1>, "audio_duration_secs": <seconds>}`.
+- `400` — `{"error": "an audio body is required"}` without a body.
+- `413` — `{"error": "the audio is too large"}` above the limit (10MB by default, configurable via `:voice_audio_max_bytes`).
+- ElevenLabs errors follow the same error mapping as speech (401/429/502/503).
 
-### Contrato
+### Contract
 
-- O cliente ElevenLabs é injetável via `Application.get_env(:agent_board, :elevenlabs_client)`; os testes usam `Req.Test` sem rede (ver `test/agent_board_web/controllers/voice_controller_test.exs`).
-- A chave nunca sai do servidor: estes endpoints respondem com áudio ou transcrição, não com a chave.
-- Falhas da ElevenLabs não viram corpo de resposta: o cliente retorna `{:error, reason}` (`:not_configured`, `:auth_expired`, `:usage_limit`, `{:http, status}`), nunca levanta.
+- The ElevenLabs client is injectable via `Application.get_env(:agent_board, :elevenlabs_client)`; the tests use `Req.Test` without the network (see `test/agent_board_web/controllers/voice_controller_test.exs`).
+- The key never leaves the server: these endpoints answer with audio or a transcript, not with the key.
+- ElevenLabs failures do not become a response body: the client returns `{:error, reason}` (`:not_configured`, `:auth_expired`, `:usage_limit`, `{:http, status}`), and never raises.

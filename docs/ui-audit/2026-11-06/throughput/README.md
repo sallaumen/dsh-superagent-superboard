@@ -1,10 +1,10 @@
-# Vazão por hora — 2026-11-06
+# Throughput per hour — 2026-11-06
 
 The board gained a throughput strip under the digest: eight tiles that count
 what the board recorded for the repository, per hour, so the owner can watch
 the rates of one agent and then of several in parallel. The sources, windows
 and known limits of every tile are in
-[docs/maintainer-contract.md](../../../maintainer-contract.md#throughput-vazão);
+[docs/maintainer-contract.md](../../../maintainer-contract.md#throughput);
 the motion decision (one 600 ms tint on a value that changed, nothing on a
 broadcast that changed nothing) is in [docs/ui-motion.md](../../../ui-motion.md).
 
@@ -28,16 +28,17 @@ Observed in the browser, not inferred from the screenshots:
 
 - The accessibility tree names every value: each sparkline is an `img` whose
   label lists the 24 hourly counts, oldest first; each bar has its clock span
-  as a tooltip; the delta chip reads "+3 em relação à hora anterior"; the cycle
-  tile is a table with a caption and row and column headers.
+  as a tooltip; the delta chip reads "+3 em relação à hora anterior" ("+3 against
+  the previous hour"); the cycle tile is a table with a caption and row and
+  column headers.
 - With `prefers-reduced-motion: reduce` the computed `animation-name` of a
   value carrying `.is-changed` is `none`; with `no-preference` it is
   `ab-flow-change`, 0.6 s, `cubic-bezier(0.2, 0, 0.38, 0.9)`.
 - Console: zero errors at every width. The one warning (`#board-connection`
   hook overwrites `handleEvent`) predates this change.
 - Before the first commit read, the commits tile showed `?` with "ainda sem
-  leitura dos commits"; after one sync it showed the count. The orchestrator
-  answered `0 de 3` with `0 esperando`.
+  leitura dos commits" ("still no commit read yet"); after one sync it showed the count.
+  The orchestrator answered `0 de 3` with `0 esperando` ("0 of 3", "0 waiting").
 
 ## Not observed
 

@@ -1,23 +1,23 @@
-# Auditoria: saúde e verdade dos dados
+# Audit: health and data truthfulness
 
-> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
-> descrevem as revisões identificadas neste documento, não o produto atual.
-> Consulte o [índice e a sequência da auditoria](README.md).
+> **Historical record — November 5, 2026.** Counts, captures and states
+> describe the revisions identified in this document, not the current product.
+> See the [audit index and sequence](README.md).
 
-Base `7883316` (#158). Dados reais somente lidos; nenhuma escrita em tarefas.
+Baseline `7883316` (#158). Real data was only read; no writes to tasks.
 
-| Severidade | Região | Evidência antes | Correção |
+| Severity | Region | Evidence before | Fix |
 |---|---|---|---|
-| P1 | Saúde do sync | [Antes](layout-after-1366.png): “no sync yet” apesar de `sync_error` recorrente. `last_sync/1` procurava apenas `sync` na janela dos 20 eventos. | Consulta dedicada ao último `sync`/`sync_error`; falhas prevalecem sobre sucesso anterior, identificam dados salvos e abrem Activity. Datas com dia e UTC explícito. |
-| P1 | Reconexão | [Antes](baseline-disconnected.png): “live” continuava após disconnect. | Estado atualizado pelos eventos de conexão do cliente, sem depender de um novo render do servidor. |
-| P2 | Merged / Speak | `Board.board_for/1` limita merges a 30; a UI parecia mostrar total. `Voice.summary/2` ignorava `blocked` e chamava um board só bloqueado de calm. | “latest N” no contador, “recent merges” na fala, bloqueios incluídos. |
+| P1 | Sync health | [Before](layout-after-1366.png): “no sync yet” despite a recurring `sync_error`. `last_sync/1` looked only for `sync` in the 20-event window. | Dedicated query for the last `sync`/`sync_error`; failures prevail over a previous success, identify the saved data and open Activity. Dates with day and explicit UTC. |
+| P1 | Reconnection | [Before](baseline-disconnected.png): “live” continued after the disconnect. | State updated by the client connection events, without depending on a new server render. |
+| P2 | Merged / Speak | `Board.board_for/1` limits merges to 30; the UI looked like it showed the total. `Voice.summary/2` ignored `blocked` and called an only-blocked board calm. | “latest N” in the counter, “recent merges” in the speech, blocks included. |
 
-Depois: [saúde](health-after.png), [atividade aberta pelo status](health-activity.png),
-[desconectado](health-disconnected.png). WebKit confirmou `live → reconnecting → live`
-via disconnect/connect do LiveSocket. Dados e chamadas de rede não foram alterados.
-Zero erros de console.
+After: [health](health-after.png), [activity opened by the status](health-activity.png),
+[disconnected](health-disconnected.png). WebKit confirmed `live → reconnecting → live`
+via LiveSocket disconnect/connect. Data and network calls were not changed.
+Zero console errors.
 
-Testes adicionados: sync além da janela de 20 eventos, falha posterior ao último
-sucesso e resumo de um board somente bloqueado. Gate local `scripts/ci-local.sh all`
-verde (154 testes Elixir; assets checks/build/deploy; validador e 20 testes da biblioteca).
-CI bloqueada por billing conforme informado; workflow_dispatch após liberação.
+Tests added: sync beyond the 20-event window, a failure after the last success and the
+summary of an only-blocked board. Local gate `scripts/ci-local.sh all` green
+(154 Elixir tests; asset checks/build/deploy; validator and 20 library tests).
+CI blocked by billing as reported; workflow_dispatch after release.

@@ -1,423 +1,431 @@
-# Superagents por projeto: plano de gestão no board
+# Superagents per project: management plan for the board
 
-**Estado:** fases 1–5 implementadas: registro, status/ticker/painel, ações de
-ligar/parar/pausar/retomar/escalar, provisionamento real pelo board, remoção
-com arquivamento e reconciliação de boot sem LaunchAgents por profile. O
-provisionamento real foi exercitado com um repositório temporário (agente
-ready, repo/config/workers corretos) e o repo foi arquivado depois. A
-revisão e os gates estão no histórico dos PRs.
-**Data:** 2026-11-08.
-**Escopo:** transformar a configuração manual de um `dsh-superagent`
-(profile, banco SQLite, porta, processo e keepalive) em um recurso do board,
-com vários projetos e vários donos de board.
-**Fora de escopo agora:** suporte multi-repositório dentro de um único
-superagent, rodar o superagent como processo filho do board, guardar token do
-GitHub no board, expor a API na rede.
+**Status:** phases 1–5 implemented: registry, status/ticker/panel, actions to
+start/stop/pause/resume/scale, real provisioning through the board, removal
+with archiving, and boot reconciliation without LaunchAgents per profile. Real
+provisioning was exercised with a temporary repository (agent ready, correct
+repo/config/workers) and the repo was archived afterwards. The review and the
+gates are in the PR history.
+**Date:** 2026-11-08.
+**Scope:** turn the manual configuration of a `dsh-superagent`
+(profile, SQLite database, port, process and keepalive) into a board resource,
+with multiple projects and multiple board owners.
+**Out of scope for now:** multi-repository support inside a single
+superagent, running the superagent as a child process of the board, storing a
+GitHub token in the board, exposing the API on the network.
 
-## 1. O problema real
+## 1. The real problem
 
-Hoje o DeepSeek é o executor padrão do board (`Executors.default/0 == "dsh"`),
-mas **quem executa** é um `dsh-superagent` externo, um por repositório. A
-segunda instância do `o_colmex` foi criada à mão:
+Today DeepSeek is the board's default executor (`Executors.default/0 == "dsh"`),
+but **who executes** is an external `dsh-superagent`, one per repository. The
+second `o_colmex` instance was created by hand:
 
-- profile `superagent-colmex`, porta 3083, state em
+- profile `superagent-colmex`, port 3083, state in
   `~/.dsh/state/superagent-colmex`;
-- um `LaunchAgent` por profile (`ops/com.dsh.superagent*.plist`);
-- configuração de repositório, CLI, executor, policy e prompts feita pelo
-  painel/API do DSH;
-- o board descobre os bancos por wildcard
-  (`~/.dsh/state/superagent*/orchestrator.sqlite`) e a lista de repositórios
-  pelo setting `dsh_repositories`.
+- one `LaunchAgent` per profile (`ops/com.dsh.superagent*.plist`);
+- repository, CLI, executor, policy and prompt configuration done through the
+  DSH panel/API;
+- the board discovers the databases by wildcard
+  (`~/.dsh/state/superagent*/orchestrator.sqlite`) and the repository list
+  through the `dsh_repositories` setting.
 
-Isso funciona para dois projetos de um dono, mas não é um produto operável:
-não há provisionamento, status por projeto, start/stop por projeto, escala
-de workers, validação de acesso, rollback nem isolamento entre donos.
+This works for two projects of one owner, but it is not an operable product:
+there is no provisioning, per-project status, per-project start/stop, worker
+scaling, access validation, rollback or isolation between owners.
 
-## 2. Decisões de arquitetura propostas
+## 2. Proposed architecture decisions
 
-### 2.1 Um board por dono; não um board multi-inquilino
+### 2.1 One board per owner; not a multi-tenant board
 
-“Mais pessoas usando o board na casa delas” deve significar **uma instalação
-do board por pessoa**, com o banco Postgres/estado local daquela pessoa. Um
-único board compartilhado exigiria autenticação, autorização por tenant,
-criptografia de segredo, auditoria por ator e isolamento de processo — um
-produto diferente, e a API atual escreve sem autenticação no localhost.
+"More people using the board in their own homes" should mean **one board
+installation per person**, with that person's local Postgres database/state. A
+single shared board would require authentication, per-tenant authorization,
+secret encryption, per-actor audit and process isolation — a different
+product, and the current API writes to localhost without authentication.
 
-**Recomendação:** manter o board single-owner e documentar a instalação
-repetível. Só considerar multi-tenant em uma fase futura, com autenticação e
-um limite de confiança explícito.
+**Recommendation:** keep the board single-owner and document the repeatable
+installation. Only consider multi-tenant in a future phase, with authentication
+and an explicit trust boundary.
 
-### 2.2 Um superagent por repositório; escala é `maxWorkers`
+### 2.2 One superagent per repository; scale is `maxWorkers`
 
-O `dsh-superagent` é desenhado para **um repositório** por instância. Não se
-deve rodar dois superagents no mesmo repositório: as notificações do GitHub,
-o lock do estado e as sessões colidem.
+The `dsh-superagent` is designed for **one repository** per instance. Two
+superagents must not run on the same repository: GitHub notifications, the
+state lock and the sessions collide.
 
-“Aumentar o número de processos” significa **aumentar
-`executor.maxWorkers`** daquele superagent (sessões concorrentes), não criar
-vários orquestradores para o mesmo repo. O board deve dizer isso na tela:
-“1 superagent, N sessões simultâneas”.
+"Increasing the number of processes" means **increasing
+`executor.maxWorkers`** for that superagent (concurrent sessions), not creating
+several orchestrators for the same repo. The board must say this on screen:
+"1 superagent, N sessões simultâneas" ("1 superagent, N concurrent sessions").
 
-### 2.3 O board é o plano de controle, não o pai do processo
+### 2.3 The board is the control plane, not the process parent
 
-O board não deve iniciar `dsh` como filho direto. Ele fala com o **manager
-oficial** do DSH (`scripts/dsh-superagent`) e com a **API de gestão** do
-superagent:
+The board must not start `dsh` as a direct child. It talks to the DSH's
+**official manager** (`scripts/dsh-superagent`) and to the superagent's
+**management API**:
 
-- `start|stop|restart|status` por profile/porta;
-- `PUT settings/executor` para `maxWorkers`, diretório e prepare;
-- `GET state` para saúde, repositório, load e setup.
+- `start|stop|restart|status` per profile/port;
+- `PUT settings/executor` for `maxWorkers`, directory and prepare;
+- `GET state` for health, repository, load and setup.
 
-O processo continua em tmux, fora do board. Se o board reiniciar, o
-superagent continua; quando o board volta, reconcilia o estado desejado com o
-observado. Após reboot, o **único** `LaunchAgent` do board inicia o board, que
-inicia os superagents desejados. Isso substitui N plists por projeto.
+The process stays in tmux, outside the board. If the board restarts, the
+superagent keeps running; when the board comes back, it reconciles desired
+state with observed state. After a reboot, the board's **only** `LaunchAgent`
+starts the board, which starts the desired superagents. This replaces N plists
+per project.
 
-### 2.4 Um único adapter, testável
+### 2.4 A single, testable adapter
 
-`AgentBoard.Superagents.Manager` é um behaviour com duas implementações:
+`AgentBoard.Superagents.Manager` is a behaviour with two implementations:
 
-- `AgentBoard.Superagents.DshManager` — comandos reais e API HTTP;
-- `AgentBoard.Superagents.FakeManager` — testes, cria profiles/portas/estados
-  temporários e simula start/stop/scale.
+- `AgentBoard.Superagents.DshManager` — real commands and HTTP API;
+- `AgentBoard.Superagents.FakeManager` — tests; creates temporary
+  profiles/ports/states and simulates start/stop/scale.
 
-Nenhuma LiveView ou worker chama `System.cmd/3` diretamente. O manager é
-injetado por configuração, como o `runner_launcher` dos runners.
+No LiveView or worker calls `System.cmd/3` directly. The manager is injected by
+configuration, like the runners' `runner_launcher`.
 
-## 3. Mapa de responsabilidades
+## 3. Responsibility map
 
-| Conceito / tabela | Dono | Quem lê | Quem escreve |
+| Concept / table | Owner | Readers | Writers |
 |---|---|---|---|
-| `repositories` | `Board` | `BoardLive`, `Routing`, `Superagents` | `Board` (ação `add_repository`) |
-| `tasks` | `Board` | board, routers, relatórios | `Board`/`Actions` e overlays do sync |
-| `superagents` | `Superagents` | board, `Routing`, `AgentState`, `Actions` | `Superagents` (via ações) |
-| `superagent_events` | `Superagents` | UI de auditoria | `Superagents` |
-| `runner_executions` | `Runners` | inspetor, Hoje | `Runners` (ação `dispatch_task`) |
-| SQLite de tickets do DSH | processo DSH (externo) | `AgentState` (somente leitura) | DSH |
-| USO/custos | `Usage` | painéis, router, resumo | leitores do ledger |
+| `repositories` | `Board` | `BoardLive`, `Routing`, `Superagents` | `Board` (action `add_repository`) |
+| `tasks` | `Board` | board, routers, reports | `Board`/`Actions` and sync overlays |
+| `superagents` | `Superagents` | board, `Routing`, `AgentState`, `Actions` | `Superagents` (via actions) |
+| `superagent_events` | `Superagents` | audit UI | `Superagents` |
+| `runner_executions` | `Runners` | inspector, Hoje (Today) | `Runners` (action `dispatch_task`) |
+| DSH ticket SQLite | DSH process (external) | `AgentState` (read-only) | DSH |
+| usage/costs | `Usage` | panels, router, summary | ledger readers |
 | GitHub (issues/PRs) | `Sync` | board | `Sync`/`Actions` |
 
-Direção de dependência:
+Dependency direction:
 
 ```
 web (LiveView) → Superagents → Manager (behaviour) → DSH manager/API
 web → Board → Repo
-Routing → Superagents (estado observado) + Usage
-AgentState → Superagents (lista de state dirs explícitos)
+Routing → Superagents (observed state) + Usage
+AgentState → Superagents (list of explicit state dirs)
 ```
 
-`Superagents` é o único dono da tabela `superagents` e do ciclo de vida. O
-board não importa detalhes de `dsh`; o adapter é a fronteira.
+`Superagents` is the only owner of the `superagents` table and of the lifecycle.
+The board does not import `dsh` details; the adapter is the boundary.
 
-## 4. Modelo de dados
+## 4. Data model
 
 ### 4.1 `superagents`
 
-Uma linha por projeto/repositório.
+One row per project/repository.
 
-| Campo | Tipo | Regra |
+| Field | Type | Rule |
 |---|---|---|
 | `id` | bigint | PK |
-| `repository_id` | FK repositories | **unique**, um agente por repo |
-| `profile` | string | unique; `superagent-<slug>` validado |
-| `port` | integer | unique; faixa configurável, 127.0.0.1 |
-| `state_dir` | string | root permitido; permissão 0700 |
+| `repository_id` | FK repositories | **unique**, one agent per repo |
+| `profile` | string | unique; `superagent-<slug>` validated |
+| `port` | integer | unique; configurable range, 127.0.0.1 |
+| `state_dir` | string | allowed root; 0700 permission |
 | `desired_state` | enum | `running`, `paused`, `stopped` |
 | `observed_state` | enum | `unknown`, `starting`, `ready`, `paused`, `error`, `stopped` |
-| `observed_at` | utc_datetime | última leitura |
-| `last_error` | text | motivo legível, sem segredo |
+| `observed_at` | utc_datetime | last read |
+| `last_error` | text | readable reason, no secret |
 | `max_workers` | integer | 1..N; default 3 |
 | `poll_seconds` | integer | 60..3600 |
-| `setup_version` | integer | versão do template aplicado |
-| `created_by` | string | ator local (dono) |
+| `setup_version` | integer | version of the applied template |
+| `created_by` | string | local actor (owner) |
 | timestamps | | |
 
-Índices: `repository_id` unique, `profile` unique, `port` unique,
+Indexes: `repository_id` unique, `profile` unique, `port` unique,
 `(desired_state, observed_state)`.
 
 ### 4.2 `superagent_events`
 
-Auditoria append-only: `superagent_id`, `action` (`provision`, `start`,
+Append-only audit: `superagent_id`, `action` (`provision`, `start`,
 `stop`, `pause`, `resume`, `scale`, `delete`, `reconcile`, `error`), `from`,
-`to`, `actor`, `detail`, `inserted_at`. A UI mostra os últimos eventos; o
-registro de ações do board continua sendo o registro de decisões.
+`to`, `actor`, `detail`, `inserted_at`. The UI shows the latest events; the
+board's action log remains the record of decisions.
 
-### 4.3 `AgentState` explícito
+### 4.3 Explicit `AgentState`
 
-Remover o wildcard como fonte de verdade. `AgentState.snapshot/0` passa a
-receber/ler os `state_dir` de `Superagents`:
+Remove the wildcard as the source of truth. `AgentState.snapshot/0` now
+receives/reads the `state_dir`s from `Superagents`:
 
 ```elixir
 AgentState.read_normalized(Superagents.state_paths())
 ```
 
-O wildcard atual é útil como migração, mas não serve para um board com
-múltiplos donos: ele varre o home e pode ler um banco de outro produto.
+The current wildcard is useful as a migration, but it does not serve a board
+with multiple owners: it scans the home directory and can read another product's
+database.
 
-### 4.4 Migração dos dois agentes atuais
+### 4.4 Migrating the two current agents
 
-Uma migração de dados cria as duas linhas (`superagent` → arena, porta 3082;
-`superagent-colmex` → o_colmex, porta 3083), com os state dirs atuais. O
-`LaunchAgent` do segundo profile pode ser removido depois que o board
-reconciliar com sucesso os dois; até lá, os dois caminhos convivem.
+A data migration creates the two rows (`superagent` → arena, port 3082;
+`superagent-colmex` → o_colmex, port 3083), with the current state dirs. The
+second profile's `LaunchAgent` can be removed after the board successfully
+reconciles both; until then, both paths coexist.
 
-## 5. Ciclo de vida e reconciliação
+## 5. Lifecycle and reconciliation
 
-### 5.1 Estados
+### 5.1 States
 
-Desejado: `running`, `paused`, `stopped`.
+Desired: `running`, `paused`, `stopped`.
 
-Observado: `unknown`, `starting`, `ready`, `paused`, `error`, `stopped`.
+Observed: `unknown`, `starting`, `ready`, `paused`, `error`, `stopped`.
 
-Regras:
+Rules:
 
-- `desired=stopped` → manager stop; observado `stopped`.
-- `desired=paused` → `POST executor/pause {paused:true}`; observado `paused`
-  (o processo fica vivo, sem pegar trabalho novo).
-- `desired=running` → start se necessário; remover pause; observado `ready`
-  quando `/state.health` e setup estão ok.
-- `setup.problem != nil` → observado `error`; a UI mostra o problema e o
-  comando/ação necessária; não fica reiniciando em loop.
-- `unreachable` > 3 leituras → `error` com “não respondeu”; o reconciliador
-  tenta `restart` com backoff (máx. 3) e depois para.
-- `starting` por mais de X segundos → `error` de timeout, nunca “ready”
-  otimista.
+- `desired=stopped` → manager stop; observed `stopped`.
+- `desired=paused` → `POST executor/pause {paused:true}`; observed `paused`
+  (the process stays alive, without taking new work).
+- `desired=running` → start if needed; remove pause; observed `ready`
+  when `/state.health` and setup are ok.
+- `setup.problem != nil` → observed `error`; the UI shows the problem and the
+  required command/action; it does not restart in a loop.
+- `unreachable` > 3 reads → `error` with "não respondeu" ("did not respond");
+  the reconciler tries `restart` with backoff (max. 3) and then stops.
+- `starting` for more than X seconds → timeout `error`, never an optimistic
+  "ready".
 
-### 5.2 Reconciliador
+### 5.2 Reconciler
 
-Um `SuperagentReconciler` (GenServer ou Oban cron a cada 30–60 s):
+A `SuperagentReconciler` (GenServer or Oban cron every 30–60 s):
 
-1. lê linhas com `desired_state != observed_state` ou saúde vencida;
-2. executa **uma** transição por linha, com lock lógico (`updated_at`/Oban
+1. reads rows with `desired_state != observed_state` or stale health;
+2. runs **one** transition per row, with a logical lock (`updated_at`/Oban
    unique);
-3. grava evento e observado;
-4. nunca bloqueia uma LiveView; o comando vai para Task/Oban com timeout;
-5. na inicialização do board, lê todas as linhas `desired=running` e inicia
-   as que estiverem `stopped/unreachable`, com jitter.
+3. writes the event and the observed state;
+4. never blocks a LiveView; the command goes to a Task/Oban with a timeout;
+5. on board startup, reads all `desired=running` rows and starts the ones that
+   are `stopped/unreachable`, with jitter.
 
-O manager já é idempotente (`start` acha um processo existente). O board
-também usa unique por profile/porta e um `GenServer`/Oban unique para evitar
-duas ações simultâneas.
+The manager is already idempotent (`start` finds an existing process). The
+board also uses a unique per profile/port and a `GenServer`/Oban unique to avoid
+two simultaneous actions.
 
 ### 5.3 Start/stop/pause/scale
 
-Ações do registro (ver §7):
+Registry actions (see §7):
 
-- `provision_superagent` — cria profile/state/porta, valida acesso, inicia,
-  configura via API e grava a linha; rollback em falha.
-- `start_superagent` — desired running; manager start; espera `/state`.
-- `stop_superagent` — desired stopped; manager stop; preserva estado.
-- `pause_superagent` / `resume_superagent` — pausa lógica no DSH.
-- `scale_superagent` — `maxWorkers` via `PUT settings/executor`; valida faixa.
-- `remove_superagent` — stop; arquiva state dir; não apaga dados por padrão.
+- `provision_superagent` — creates profile/state/port, validates access, starts,
+  configures via API and writes the row; rollback on failure.
+- `start_superagent` — desired running; manager start; waits for `/state`.
+- `stop_superagent` — desired stopped; manager stop; preserves state.
+- `pause_superagent` / `resume_superagent` — logical pause in the DSH.
+- `scale_superagent` — `maxWorkers` via `PUT settings/executor`; validates the
+  range.
+- `remove_superagent` — stop; archives the state dir; does not delete data by
+  default.
 
-## 6. Provisionamento de um novo projeto
+## 6. Provisioning a new project
 
-Fluxo em uma ação vermelha confirmada, executado fora da LiveView:
+Flow in one confirmed red action, executed outside the LiveView:
 
-1. **Validar** `owner/name`; o repo está no board? Não? oferecer
-   `add_repository` antes.
-2. **Validar bot**: `gh-agent api repos/:owner/:name` e `permission=write`;
-   sem segredo no board, o CLI do bot fica no ambiente do DSH.
-3. **Alocar** profile (`superagent-<slug>`), porta livre na faixa
-   (`dispatch_superagent_port_start` etc.), state dir sob um root permitido.
-4. **Criar profile** a partir de um template versionado (não copiar de
-   `~/.dsh/profiles/superagent` cegamente): port, stateDir, model provider.
-5. **Iniciar** via manager e esperar `GET /state`; timeout com rollback.
-6. **Configurar** source GitHub (repo, CLI), executor (directory, prepare,
-   `maxWorkers`), policy (lista permitida) e prompts (template + versão).
-7. **Conferir** `setup.problem == nil`, health ready, e que o repo é o
-   esperado.
-8. **Gravar** `superagents`, evento `provision`; devolver o painel/porta e o
-   link para o projeto.
+1. **Validate** `owner/name`; is the repo on the board? No? offer
+   `add_repository` first.
+2. **Validate the bot**: `gh-agent api repos/:owner/:name` and `permission=write`;
+   with no secret in the board, the bot's CLI stays in the DSH environment.
+3. **Allocate** profile (`superagent-<slug>`), a free port in the range
+   (`dispatch_superagent_port_start` etc.), a state dir under an allowed root.
+4. **Create the profile** from a versioned template (do not copy
+   `~/.dsh/profiles/superagent` blindly): port, stateDir, model provider.
+5. **Start** via the manager and wait for `GET /state`; timeout with rollback.
+6. **Configure** GitHub source (repo, CLI), executor (directory, prepare,
+   `maxWorkers`), policy (allowed list) and prompts (template + version).
+7. **Check** `setup.problem == nil`, health ready, and that the repo is the
+   expected one.
+8. **Write** `superagents`, event `provision`; return the panel/port and the
+   link to the project.
 
-O clone/prepare do projeto precisa de um diretório existente e limpo. O
-board não deve clonar repositórios pessoais sem uma escolha explícita; o
-formulário pede o caminho local ou oferece “usar `~/src/<name>`” com
-confirmação.
+The project's clone/prepare needs an existing, clean directory. The board must
+not clone personal repositories without an explicit choice; the form asks for
+the local path or offers "use `~/src/<name>`" with confirmation.
 
-### 6.1 Alocação de porta
+### 6.1 Port allocation
 
-Uma faixa por board (`3082..3182`, configurável), verificação de
-`lsof`/bind e unique no banco. O profile novo nunca reutiliza uma porta de
-uma linha `running`; uma linha `stopped` pode reutilizar após confirmação.
+One range per board (`3082..3182`, configurable), `lsof`/bind check and a
+database unique constraint. The new profile never reuses a port from a `running`
+row; a `stopped` row may reuse one after confirmation.
 
 ### 6.2 Rollback
 
-Falha em qualquer passo depois do profile/state:
+Failure in any step after profile/state:
 
-- `stop` best-effort;
-- mantém state dir/logs para diagnóstico;
-- grava `observed=error`, `last_error` e evento;
-- não apaga o repo/tarefas;
-- permite `retry` idempotente da ação.
+- best-effort `stop`;
+- keeps the state dir/logs for diagnosis;
+- writes `observed=error`, `last_error` and an event;
+- does not delete the repo/tasks;
+- allows an idempotent `retry` of the action.
 
-## 7. Ações e contrato de confirmação
+## 7. Actions and confirmation contract
 
-Toda ação nova entra em `AgentBoard.Actions`, com risco, frase com valores
-reais, auditoria e teste em `actions_test.exs`.
+Every new action goes into `AgentBoard.Actions`, with risk, a sentence with real
+values, audit and a test in `actions_test.exs`.
 
-| Ação | Risco | Efeito | Confirmação |
+| Action | Risk | Effect | Confirmation |
 |---|---|---|---|
-| `provision_superagent` | vermelho | cria profile/processo/porta/state e configura o DSH | frase com repo, profile, porta, caminho |
-| `start_superagent` | vermelho | inicia um processo que pode gastar DeepSeek | frase com repo/profile |
-| `stop_superagent` | vermelho | interrompe trabalho em andamento | frase com repo e tickets ativos |
-| `pause_superagent` | amarelo | para de pegar trabalho novo, processo vivo | clique; desfaz com resume |
-| `scale_superagent` | amarelo | muda `maxWorkers` | clique; −/+ desfaz |
-| `remove_superagent` | vermelho | para e arquiva o profile/state | frase; não apaga por padrão |
+| `provision_superagent` | red | creates profile/process/port/state and configures the DSH | sentence with repo, profile, port, path |
+| `start_superagent` | red | starts a process that may spend DeepSeek | sentence with repo/profile |
+| `stop_superagent` | red | interrupts work in progress | sentence with repo and active tickets |
+| `pause_superagent` | yellow | stops taking new work, process alive | click; undo with resume |
+| `scale_superagent` | yellow | changes `maxWorkers` | click; −/+ undoes |
+| `remove_superagent` | red | stops and archives the profile/state | sentence; does not delete by default |
 
-A UI de projeto deve usar `AgentAction` (dois passos) para as vermelhas, como
-o despacho local; nada começa no primeiro clique.
+The project UI must use `AgentAction` (two steps) for the red ones, like local
+dispatch; nothing starts on the first click.
 
-## 8. UI do board
+## 8. Board UI
 
-Nova seção **Projetos / Superagents** (ou uma aba em Executores):
+New **Projetos / Superagents** (Projects / Superagents) section (or a tab in
+**Executores** — Executors):
 
-- lista por repositório: avatar/slug, status observado (bolinha +
-  “ligado/desligado/pausado/erro”), porta, workers, último poll, tickets
-  abertos, última mensagem de erro;
-- botões: **Ligar**, **Parar**, **Pausar**, **Retomar**, **Workers −/+**,
-  **Remover** (com confirmação);
-- **Adicionar projeto**: repositório (select dos que o bot acessa), caminho
-  local, workers iniciais, porta automática; um preview do que será criado;
-- **DeepSeek** na tarefa: se o repositório tem um superagent `ready`, o
-  compositor sugere DeepSeek e explica “1 agente, N sessões”; se está
-  `stopped/error`, mostra o motivo e o botão de ligar;
-- **Custo/uso**: DeepSeek em US$ estimado (ou “desconhecido”), sem somar com
-  Claude/Codex; cota do Codex separada;
-- mobile: cards empilhados, controles de 44 px, sem overflow.
+- list per repository: avatar/slug, observed status (dot +
+  "ligado/desligado/pausado/erro" — on/off/paused/error), port, workers, last
+  poll, open tickets, last error message;
+- buttons: **Ligar** (start), **Parar** (stop), **Pausar** (pause),
+  **Retomar** (resume), **Workers −/+**, **Remover** (remove, with
+  confirmation);
+- **Adicionar projeto** (add project): repository (select of the ones the bot
+  accesses), local path, initial workers, automatic port; a preview of what will
+  be created;
+- **DeepSeek** in the task: if the repository has a `ready` superagent, the
+  composer suggests DeepSeek and explains "1 agente, N sessões" ("1 agent,
+  N sessions"); if it is `stopped/error`, it shows the reason and the start
+  button;
+- **Custo/uso** (cost/usage): DeepSeek in estimated US$ (or "desconhecido" —
+  unknown), without adding it to Claude/Codex; Codex quota separate;
+- mobile: stacked cards, 44 px controls, no overflow.
 
-## 9. Multi-dono e segurança
+## 9. Multi-owner and security
 
-- **Recomendado:** uma instalação por pessoa, no usuário dela, com
-  `~/.dsh`, `~/.agent_board`, Postgres e GitHub bot próprios. O board local
-  continua sem autenticação de rede, mas escuta só `127.0.0.1`.
-- **Se um board for compartilhado:** antes de qualquer projeto de outra
-  pessoa, adicionar autenticação, papéis (owner/viewer/operator), isolamento
-  por dono/repo, auditoria de ator e segregação de state dirs/portas. O
-  modelo `superagents` ganha `owner_id`; `repositories` ganha tenant. Isso é
-  um produto separado, não uma flag.
-- **Segredos:** o board nunca guarda token do GitHub. O CLI do agente
-  (`gh-agent`) e o login do DSH ficam no ambiente do dono; o board só
-  verifica `api user`/permissão e grava o login público.
-- **Fronteira de arquivo/processo:** profile/state/porta vêm de allowlist e
-  validação; nada de `System.cmd` com string interpolada de input; argumentos
-  em lista; state dirs 0700; root sob o home do usuário.
-- **Rede:** superagent e board em `127.0.0.1`; sem túnel público.
+- **Recommended:** one installation per person, under their user, with their own
+  `~/.dsh`, `~/.agent_board`, Postgres and GitHub bot. The local board still has
+  no network authentication, but listens only on `127.0.0.1`.
+- **If a board is shared:** before any other person's project, add
+  authentication, roles (owner/viewer/operator), isolation per owner/repo, actor
+  audit and segregation of state dirs/ports. The `superagents` model gains
+  `owner_id`; `repositories` gains a tenant. That is a separate product, not a
+  flag.
+- **Secrets:** the board never stores a GitHub token. The agent CLI
+  (`gh-agent`) and the DSH login stay in the owner's environment; the board only
+  checks `api user`/permission and records the public login.
+- **File/process boundary:** profile/state/port come from an allowlist and
+  validation; no `System.cmd` with an interpolated input string; arguments as
+  lists; state dirs 0700; root under the user's home.
+- **Network:** superagent and board on `127.0.0.1`; no public tunnel.
 
-## 10. Validação e testes
+## 10. Validation and tests
 
-### 10.1 Testes de unidade/contexto (sem DSH real)
+### 10.1 Unit/context tests (no real DSH)
 
-- `SuperagentsTest`: unique repo/profile/port; transições desejado/observado;
-  rollback; delete preserva state.
-- `FakeManagerTest`: provision cria profile/porta/state temporários; start
-  idempotente; stop; scale; manager fora do ar; timeout.
-- `ActionsTest`: cada ação nova, risco, frase, recusa sem confirmação,
-  auditoria; nenhuma LiveView chama manager.
-- `AgentStateTest`: lê só os state dirs do banco; não varre o home; dois
-  repos, tickets separados; banco ausente.
-- `RoutingTest`: DeepSeek só para repos com agente `ready`; pausado/erro/
-  desligado aparece com motivo; compositor escolhe dsh quando ready.
-- `BoardLiveTest`: card por projeto, ligar/parar/pausar/escala, confirmação;
+- `SuperagentsTest`: unique repo/profile/port; desired/observed transitions;
+  rollback; delete preserves state.
+- `FakeManagerTest`: provision creates temporary profile/port/state; idempotent
+  start; stop; scale; manager down; timeout.
+- `ActionsTest`: each new action, risk, sentence, refusal without confirmation,
+  audit; no LiveView calls the manager.
+- `AgentStateTest`: reads only the state dirs from the database; does not scan
+  the home directory; two repos, separate tickets; missing database.
+- `RoutingTest`: DeepSeek only for repos with a `ready` agent; paused/error/off
+  appears with a reason; the composer chooses dsh when ready.
+- `BoardLiveTest`: card per project, start/stop/pause/scale, confirmation;
   mobile 390 px.
 
-### 10.2 Teste de integração com fake manager
+### 10.2 Integration test with a fake manager
 
-Criar board → adicionar repo → provisionar → listar status → pausar →
-retomar → escalar workers → parar → reiniciar o board (novo processo) →
-reconciliar sem duplicar → remover. Tudo com state dirs temporários.
+Create board → add repo → provision → list status → pause → resume → scale
+workers → stop → restart the board (new process) → reconcile without
+duplicating → remove. All with temporary state dirs.
 
-### 10.3 E2E real (uma vez, por máquina)
+### 10.3 Real E2E (once, per machine)
 
-- Adicionar um projeto de teste com bot que tenha acesso.
-- Provisionar pelo board; conferir `GET /state`, health, repo, porta.
-- Criar uma tarefa de smoke; ver ticket no DSH e no board.
-- Parar pelo board; conferir que o processo parou e que um novo start não
-  duplica.
-- Reiniciar o board; conferir reconexão e status.
-- Medir tempo de provisionamento e falhas.
+- Add a test project whose bot has access.
+- Provision through the board; check `GET /state`, health, repo, port.
+- Create a smoke task; see the ticket in the DSH and on the board.
+- Stop through the board; check that the process stopped and that a new start
+  does not duplicate it.
+- Restart the board; check reconnection and status.
+- Measure provisioning time and failures.
 
-### 10.4 Critérios de aceitação
+### 10.4 Acceptance criteria
 
-1. Um dono adiciona um repositório e provisiona o DeepSeek **sem editar
-   arquivos à mão**.
-2. O board mostra ligado/desligado/pausado/erro por projeto, com motivo.
-3. Ligar/parar/pausar/retomar e workers funcionam e são auditados.
-4. Um segundo projeto no mesmo board não interfere no primeiro (porta,
-   state, tickets, tickets GitHub).
-5. Reiniciar o board não mata superagents e não cria duplicata.
-6. Falha de provisionamento não deixa processo órfão nem linha “ready”.
-7. Outra pessoa instala o board na casa dela e repete o fluxo com o bot dela,
-   sem mudar código.
-8. Nenhum token no banco/log; nada escuta fora de localhost.
+1. An owner adds a repository and provisions DeepSeek **without editing files
+   by hand**.
+2. The board shows on/off/paused/error per project, with a reason.
+3. Start/stop/pause/resume and workers work and are audited.
+4. A second project on the same board does not interfere with the first (port,
+   state, tickets, GitHub tickets).
+5. Restarting the board does not kill superagents and does not create
+   duplicates.
+6. A provisioning failure leaves no orphan process and no "ready" row.
+7. Another person installs the board in their own home and repeats the flow with
+   their own bot, without changing code.
+8. No token in the database/log; nothing listens outside localhost.
 
-## 11. Fases e PRs
+## 11. Phases and PRs
 
-| Fase | Entrega | Prova |
+| Phase | Deliverable | Proof |
 |---|---|---|
-| 0 | Este documento + ADR 0005 + decisões do dono | revisão aceita |
-| 1 | Migração `superagents`/`superagent_events`; contexto; seed dos dois atuais; `AgentState` lê state dirs do banco | testes; board sobe com os dois |
-| 2 | Manager behaviour + DshManager/Fake; status poller; cards read-only; reconciliação de status | testes + tela |
-| 3 | Ações start/stop/pause/resume/scale; confirmações; UI | testes + E2E |
-| 4 | Provisionamento (profile/porta/state/setup) + rollback + “Adicionar projeto” | fake + real |
-| 5 | Remoção/arquivamento; boot reconciliation; remover plists por profile; docs de instalação | E2E reboot |
-| 6 | Multi-dono: só se o dono escolher board compartilhado; auth/tenant/segurança | threat model + testes |
+| 0 | This document + ADR 0005 + owner decisions | review accepted |
+| 1 | `superagents`/`superagent_events` migration; context; seed of the two current ones; `AgentState` reads state dirs from the database | tests; board comes up with both |
+| 2 | Manager behaviour + DshManager/Fake; status poller; read-only cards; status reconciliation | tests + screen |
+| 3 | start/stop/pause/resume/scale actions; confirmations; UI | tests + E2E |
+| 4 | Provisioning (profile/port/state/setup) + rollback + "Adicionar projeto" | fake + real |
+| 5 | Removal/archiving; boot reconciliation; remove per-profile plists; installation docs | reboot E2E |
+| 6 | Multi-owner: only if the owner chooses a shared board; auth/tenant/security | threat model + tests |
 
-Cada fase é um PR squash, gate verde, serviço atualizado. A fase 1 não muda
-a UI; a fase 4 é a única que cria processos externos.
+Each phase is a squash PR, green gate, service updated. Phase 1 does not change
+the UI; phase 4 is the only one that creates external processes.
 
-## 12. Riscos e mitigação
+## 12. Risks and mitigation
 
-| Risco | Mitigação |
+| Risk | Mitigation |
 |---|---|
-| Duplicar superagent no mesmo repo | unique no banco + manager idempotente + lock |
-| Porta ocupada | alocador + bind + erro claro + retry |
-| Profile/state órfão | rollback para e arquiva; nunca apaga sem confirmação |
-| Board reiniciado mata processo | processo em tmux, manager externo, reconciliação |
-| Agente sem acesso ao repo | validação `gh-agent` antes de criar; UI explica |
-| Setup pending infinito | timeout, `observed=error`, link do painel |
-| Vazamento de token | nenhum token no board; CLI no home do dono |
-| Board compartilhado sem auth | proibido até fase 6; uma instância por pessoa |
-| Custo/consumo DeepSeek | uso estimado no ledger; sem somar moedas; teto por projeto no DSH |
+| Duplicate superagent on the same repo | database unique + idempotent manager + lock |
+| Port taken | allocator + bind + clear error + retry |
+| Orphan profile/state | rollback stops and archives; never deletes without confirmation |
+| Board restart kills the process | process in tmux, external manager, reconciliation |
+| Agent without repo access | `gh-agent` validation before creating; UI explains |
+| Infinite pending setup | timeout, `observed=error`, panel link |
+| Token leak | no token in the board; CLI in the owner's home |
+| Shared board without auth | forbidden until phase 6; one instance per person |
+| DeepSeek cost/consumption | estimated usage in the ledger; no summing currencies; per-project ceiling in the DSH |
 
-## 13. Perguntas que precisam da sua decisão
+## 13. Questions that need your decision
 
-1. **Uma instalação por pessoa** (recomendado) ou um board compartilhado
-   multi-dono? Se compartilhado, a fase 6 vira pré-requisito, não opcional.
-2. **Um bot por pessoa** (recomendado) ou um bot compartilhado? O bot é quem
-   recebe as notificações; compartilhar mistura permissões.
-3. **Auto-start no boot**: o board deve iniciar todos os projetos
-   `desired=running`? Recomendado sim; o único LaunchAgent é o do board.
-4. **Root dos state dirs**: `~/.dsh/state/superagent-<slug>` (atual) ou
-   `~/.agent_board/superagents/<slug>`? O segundo desacopla do DSH, mas exige
-   configurar o profile.
-5. **Remoção**: arquivar o state (recomendado) ou apagar? O padrão não apaga.
-6. **Faixa de portas** e máximo de workers por projeto.
-7. **Aprovação do plano**: posso começar pela fase 1 (dados + leitura
-   explícita), sem tocar na UI nem criar processos?
+1. **One installation per person** (recommended) or a shared multi-owner board?
+   If shared, phase 6 becomes a prerequisite, not optional.
+2. **One bot per person** (recommended) or a shared bot? The bot is who receives
+   the notifications; sharing mixes permissions.
+3. **Auto-start on boot**: should the board start every `desired=running`
+   project? Recommended yes; the only LaunchAgent is the board's.
+4. **State dir root**: `~/.dsh/state/superagent-<slug>` (current) or
+   `~/.agent_board/superagents/<slug>`? The second decouples from the DSH, but
+   requires configuring the profile.
+5. **Removal**: archive the state (recommended) or delete it? The default does
+   not delete.
+6. **Port range** and maximum workers per project.
+7. **Plan approval**: can I start with phase 1 (data + explicit reads), without
+   touching the UI or creating processes?
 
-## 14. O que eu não faria
+## 14. What I would not do
 
-- Não rodar `dsh` como filho do board (`Port`/`System.cmd` que morre no
-  restart).
-- Não criar N `LaunchAgents` por projeto; um board, um reconciliador.
-- Não varrer `~/.dsh` em produção; state dirs explícitos.
-- Não guardar token do GitHub no Postgres.
-- Não fingir que “mais processos” = mais superagents no mesmo repo; é
+- Run `dsh` as a child of the board (`Port`/`System.cmd` that dies on restart).
+- Create N `LaunchAgents` per project; one board, one reconciler.
+- Scan `~/.dsh` in production; explicit state dirs.
+- Store a GitHub token in Postgres.
+- Pretend that "more processes" = more superagents on the same repo; it is
   `maxWorkers`.
-- Não abrir a API para a rede antes de autenticação.
-- Não apagar state/worktrees automaticamente na remoção.
+- Open the API to the network before authentication.
+- Delete state/worktrees automatically on removal.
 
-## 15. Evidência do estado atual (baseline)
+## 15. Evidence of the current state (baseline)
 
 - `mix xref graph --format cycles --label compile-connected` → **No cycles found**.
-- Segundo profile em `~/.dsh/profiles/superagent-colmex`, porta 3083,
+- Second profile in `~/.dsh/profiles/superagent-colmex`, port 3083,
   `repository sallaumen/o_colmex`, health ready, `problem none`.
-- `AgentState.paths/0` hoje lê
-  `~/.dsh/state/superagent*/orchestrator.sqlite` (wildcard) — **temporário**;
-  a fase 1 troca por linhas explícitas.
-- `dsh_repositories` em Configurações → Despacho local; compositor do
-  `o_colmex` já sugere DeepSeek.
-- `ops/com.dsh.superagent.colmex.plist` existe como prova; a fase 5 remove
-  plists por profile em favor do reconciliador do board.
+- `AgentState.paths/0` today reads
+  `~/.dsh/state/superagent*/orchestrator.sqlite` (wildcard) — **temporary**;
+  phase 1 replaces it with explicit rows.
+- `dsh_repositories` in Configurações → Despacho local (Settings → Local
+  dispatch); the `o_colmex` composer already suggests DeepSeek.
+- `ops/com.dsh.superagent.colmex.plist` exists as proof; phase 5 removes
+  per-profile plists in favor of the board reconciler.

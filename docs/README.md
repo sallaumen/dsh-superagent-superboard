@@ -1,97 +1,99 @@
-# Documentação
+# Documentation
 
-Mapa da documentação do repositório. O [README](../README.md) é a porta de
-entrada; este índice organiza tudo que vive em `docs/`.
+Map of the repository documentation. The [README](../README.md) is the entry
+point; this index organizes everything that lives in `docs/`.
 
-> Regra de manutenção: se um documento novo não couber no README e não estiver
-> listado aqui, ele não é encontrável — adicione a linha no índice junto com o
-> arquivo.
+> Maintenance rule: if a new document does not fit in the README and is not
+> listed here, it is not findable — add the row to the index together with the
+> file.
 
-## O sistema em uma figura
+## The system in one figure
 
 ```mermaid
 flowchart LR
     GH[(GitHub)]
-    A[dsh-superagent<br/>orquestrador + worktrees]
-    B[agent-board<br/>painel Elixir :4099]
-    E[Claude Code / Codex<br/>despacho local]
-    V[Voz<br/>ElevenLabs / navegador]
+    A[dsh-superagent<br/>orchestrator + worktrees]
+    B[agent-board<br/>Elixir panel :4099]
+    E[Claude Code / Codex<br/>local dispatch]
+    V[Voice<br/>ElevenLabs / browser]
 
-    GH -- "menção @sallaumen-agent" --> A
+    GH -- "mention @sallaumen-agent" --> A
     A -- "ticket → PR → merge" --> GH
-    B -- "sync (5 min) · cria issues · API JSON" --> GH
-    B -- "lê tickets (10 s) · retry e ceiling (API)" --> A
-    B -- "despacha (ação vermelha)" --> E
-    E -- "PR com Closes #n" --> GH
-    B -- "fala e transcreve" --> V
+    B -- "sync (5 min) · creates issues · JSON API" --> GH
+    B -- "reads tickets (10 s) · retry and ceiling (API)" --> A
+    B -- "dispatches (red action)" --> E
+    E -- "PR with Closes #n" --> GH
+    B -- "speaks and transcribes" --> V
 ```
 
-O agente **não vive neste repositório**: é o processo `dsh-superagent` dentro
-do DeepSeek Harness, descrito em [agent/how-it-works.md](agent/how-it-works.md).
-O board é o espelho e a mesa de operação: lê GitHub e os tickets do agente,
-expõe a API JSON e despacha executores locais.
+The agent **does not live in this repository**: it is the `dsh-superagent`
+process inside the DeepSeek Harness, described in
+[agent/how-it-works.md](agent/how-it-works.md). The board is the mirror and the
+operations desk: it reads GitHub and the agent's tickets, exposes the JSON API,
+and dispatches local executors.
 
-## Arquitetura
+## Architecture
 
-| Arquivo | O que é |
+| File | What it is |
 |---|---|
-| [architecture/README.md](architecture/README.md) | Mapa dos contextos, donos das tabelas, fluxo de criação e onde mudanças futuras entram — inclui a revisão de 2026-11-08 |
+| [architecture/README.md](architecture/README.md) | Map of the contexts, table owners, creation flow, and where future changes enter — includes the 2026-11-08 review |
 
-## Contratos vinculantes
+## Binding contracts
 
-| Arquivo | O que é |
+| File | What it is |
 |---|---|
-| [maintainer-contract.md](maintainer-contract.md) | Regras de implementação: dados, registro de ações, voz, chamadas de IA, sync, rede e tempo real |
-| [api.md](api.md) | A API JSON do board (`/api` e `/api/voice`): rotas, corpos, status e efeitos reais |
-| [ui-motion.md](ui-motion.md) | Contrato do movimento da interface: tokens, o que se move, o que não se move, reduced motion |
-## Guias operacionais
+| [maintainer-contract.md](maintainer-contract.md) | Implementation rules: data, action log, voice, AI calls, sync, network, and real time |
+| [api.md](api.md) | The board's JSON API (`/api` and `/api/voice`): routes, bodies, status, and real effects |
+| [ui-motion.md](ui-motion.md) | Interface motion contract: tokens, what moves, what does not move, reduced motion |
 
-| Arquivo | O que é |
+## Operational guides
+
+| File | What it is |
 |---|---|
-| [agent/learning-path.md](agent/learning-path.md) | Tutorial do zero: instalar o Harness, Creator Mode, primeiro Super-Agent num repositório e segurança — destilado do guia de referência do dono |
-| [agent/how-it-works.md](agent/how-it-works.md) | O agente (`dsh-superagent`): o loop, as tabelas, os quatro desfechos e o que o board adiciona |
-| [agent/setup.md](agent/setup.md) | Instalar o agente em outra máquina: identidade do bot, perfil, LaunchAgent, política de merge |
-| [agent/collaboration.md](agent/collaboration.md) | Dois agentes escrevendo em `main`: as duas regras que evitam acidentes e o loop de PR |
-| [agent/practices.md](agent/practices.md) | Propriedade das práticas compartilhadas (Elixir Agent Kit), evolução e migração |
-| [voice-conversation.md](voice-conversation.md) | Guia de uso da conversa por voz (WisprFlow, comandos, ajustes, custo e diagnóstico) |
+| [agent/learning-path.md](agent/learning-path.md) | From-zero tutorial: install the Harness, Creator Mode, the first Super-Agent in a repository, and security — distilled from the owner's reference guide |
+| [agent/how-it-works.md](agent/how-it-works.md) | The agent (`dsh-superagent`): the loop, the tables, the four outcomes, and what the board adds |
+| [agent/setup.md](agent/setup.md) | Install the agent on another machine: bot identity, profile, LaunchAgent, merge policy |
+| [agent/collaboration.md](agent/collaboration.md) | Two agents writing to `main`: the two rules that prevent accidents and the PR loop |
+| [agent/practices.md](agent/practices.md) | Ownership of the shared practices (Elixir Agent Kit), evolution, and migration |
+| [voice-conversation.md](voice-conversation.md) | Guide to using voice conversation (WisprFlow, commands, settings, cost, and diagnosis) |
 
-## Prompts do agente
+## Agent prompts
 
-Os três textos que o orquestrador injeta em toda sessão do executor, versionados
-por `scripts/agent/prompts.sh` (ver [agent/setup.md](agent/setup.md#8-merge-policy)):
+The three texts the orchestrator injects into every executor session, versioned
+by `scripts/agent/prompts.sh` (see [agent/setup.md](agent/setup.md#8-merge-policy)):
 
-- [agent/prompts/communication.md](agent/prompts/communication.md) — Communication (inclui o formato do workpad)
-- [agent/prompts/scope.md](agent/prompts/scope.md) — Ticket scope (até onde uma tarefa vai sozinha)
-- [agent/prompts/delivery.md](agent/prompts/delivery.md) — Delivery requirements (evidência visual, gate local, merge)
+- [agent/prompts/communication.md](agent/prompts/communication.md) — Communication (includes the workpad format)
+- [agent/prompts/scope.md](agent/prompts/scope.md) — Ticket scope (how far a task goes on its own)
+- [agent/prompts/delivery.md](agent/prompts/delivery.md) — Delivery requirements (visual evidence, local gate, merge)
 
-## Decisões (ADRs)
+## Decisions (ADRs)
 
-[decisions/README.md](decisions/README.md) lista as decisões registradas com
-alternativas e estado. ADR novo: adicione a linha lá — o índice é a fonte única.
+[decisions/README.md](decisions/README.md) lists the recorded decisions with
+alternatives and status. New ADR: add the row there — the index is the single source.
 
-## Pesquisa e plano de produto
+## Research and product plan
 
-| Arquivo | O que é |
+| File | What it is |
 |---|---|
-| [research/alfred.md](research/alfred.md) | Plano de produto (07/11/2026): o Alfred comparado com a nossa plataforma, o roteamento entre executores e o roteiro por fases. As decisões D1–D5 saíram daqui para o [ADR 0004](decisions/0004-o-board-despacha-para-executores-locais.md); as regras entregues estão no [contrato](maintainer-contract.md#dispatch-despacho-local) |
-| [research/symphony.md](research/symphony.md) | Pesquisa (06/11/2026): o openai/symphony com dados de saúde, comparação e ideias. As ideias da frente paralela já foram entregues (ver [ADR 0003](decisions/0003-ciclo-de-vida-do-agente.md) e o contrato) |
-| [research/superagents.md](research/superagents.md) | Plano (08/11/2026) para o board provisionar, observar, ligar/desligar e escalar superagents DeepSeek por projeto, com isolamento por dono e o roteiro de implementação |
+| [research/alfred.md](research/alfred.md) | Product plan (07/11/2026): Alfred compared with our platform, the routing between executors, and the phased roadmap. Decisions D1–D5 moved from here to [ADR 0004](decisions/0004-o-board-despacha-para-executores-locais.md); the delivered rules are in the [contract](maintainer-contract.md#dispatch-local-dispatch) |
+| [research/symphony.md](research/symphony.md) | Research (06/11/2026): openai/symphony with health data, comparison, and ideas. The parallel-front ideas were already delivered (see [ADR 0003](decisions/0003-ciclo-de-vida-do-agente.md) and the contract) |
+| [research/superagents.md](research/superagents.md) | Plan (08/11/2026) for the board to provision, observe, start/stop, and scale DeepSeek superagents per project, with per-owner isolation and the implementation roadmap |
 
-## Planos históricos
+## Historical plans
 
-Propostas anteriores à implementação, preservadas como registro. Não descrevem
-o estado atual; cada uma aponta para onde a regra vigente mora:
+Proposals from before the implementation, preserved as a record. They do not
+describe the current state; each one points to where the current rule lives:
 
-| Arquivo | O que foi | Onde está o atual |
+| File | What it was | Where the current one is |
 |---|---|---|
-| [ai-layer.md](ai-layer.md) | Proposta da camada de IA do painel (05/11/2026) | [contrato — AI calls](maintainer-contract.md#ai-calls) |
-| [voice-command-plan.md](voice-command-plan.md) | Plano dos comandos de voz por duplo Espaço | substituído por [voice-conversation.md](voice-conversation.md) |
-| [voice-output-plan.md](voice-output-plan.md) | Plano da voz falada (itens escolhidos já implementados) | [contrato — The voice](maintainer-contract.md#the-voice) |
+| [ai-layer.md](ai-layer.md) | Proposal for the panel's AI layer (05/11/2026) | [contract — AI calls](maintainer-contract.md#ai-calls) |
+| [voice-command-plan.md](voice-command-plan.md) | Plan for the double-Space voice commands | superseded by [voice-conversation.md](voice-conversation.md) |
+| [voice-output-plan.md](voice-output-plan.md) | Plan for spoken voice (the chosen items are already implemented) | [contract — The voice](maintainer-contract.md#the-voice) |
 
-## Evidências e avaliação
+## Evidence and evaluation
 
-| Arquivo | O que é |
+| File | What it is |
 |---|---|
-| [board-ai-evaluation.md](board-ai-evaluation.md) | Como reproduzir a campanha de avaliação das respostas do board (casos, oráculo, rodada opcional com modelo real) |
-| [evaluations/](evaluations/README.md) | Rodadas da campanha com revisão humana caso a caso e o ledger JSONL completo |
-| [ui-audit/](ui-audit/README.md) | Auditorias de UI com capturas e gates locais (05 e 06/11/2026) — registro histórico |
+| [board-ai-evaluation.md](board-ai-evaluation.md) | How to reproduce the campaign that evaluates the board's answers (cases, oracle, optional round with a real model) |
+| [evaluations/](evaluations/README.md) | Campaign rounds with case-by-case human review and the complete JSONL ledger |
+| [ui-audit/](ui-audit/README.md) | UI audits with screenshots and local gates (05 and 06/11/2026) — historical record |

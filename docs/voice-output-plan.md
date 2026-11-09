@@ -1,72 +1,72 @@
-# Plano: a voz do agente falando com o dono
+# Plan: the agent's voice speaking to the owner
 
-> **Registro histórico:** plano de 6 de novembro de 2026, anterior à
-> implementação. Os itens marcados "(escolhido)" já foram entregues; as regras
-> vigentes estão em [maintainer-contract.md](maintainer-contract.md#the-voice) e o
-> uso atual em [voice-conversation.md](voice-conversation.md). Os itens adiados
-> (B6, B7, U6) seguem adiados.
+> **Historical record:** a plan from 6 November 2026, before the implementation.
+> The items marked "(chosen)" have already been delivered; the current rules are
+> in [maintainer-contract.md](maintainer-contract.md#the-voice) and the current
+> usage in [voice-conversation.md](voice-conversation.md). The postponed items
+> (B6, B7, U6) remain postponed.
 
-Workflow do kit: `notifications` (o que é falado, quando, quantas vezes e por
-que se repete). Data: 2026-11-06.
+Kit workflow: `notifications` (what is spoken, when, how many times and why it
+repeats). Date: 2026-11-06.
 
-## O que existe hoje
+## What exists today
 
-- `AgentBoard.Announcer` decide o que falar quando o board muda;
-  `BoardLive.speak/2` empurra `voice_play` e o hook `VoicePlayer` toca o mp3
-  de `/api/voice/speech` (ElevenLabs).
-- Sem chave ElevenLabs, só o resumo do botão "falar" usa a voz do navegador
-  (`phx:speak`, `utterance.lang = navigator.language`).
+- `AgentBoard.Announcer` decides what to speak when the board changes;
+  `BoardLive.speak/2` pushes `voice_play` and the `VoicePlayer` hook plays the mp3
+  from `/api/voice/speech` (ElevenLabs).
+- Without an ElevenLabs key, only the summary of the "falar" (speak) button uses
+  the browser voice (`phx:speak`, `utterance.lang = navigator.language`).
 
-## Problemas observados no código
+## Problems observed in the code
 
-| # | Problema | Onde |
+| # | Problem | Where |
 |---|---|---|
-| 1 | Toda frase falada é inglês ("Task 'X' is now running.", "Good morning", "The sync failed") enquanto títulos e voz são português: a mistura vem daqui. | `Voice`, `Announcer`, `BoardLive` |
-| 2 | O prompt `summarize_board` não diz o idioma; o modelo responde no idioma que quiser. | `AI.Registry` |
-| 3 | O TTS não força idioma: Flash v2.5 aceita `language_code` e normaliza números e siglas no idioma certo. | `ElevenLabs.speech/2` |
-| 4 | Uma tarefa que passa a `question` (o agente esperando sua resposta) não é anunciada: `question` não está nas lanes vivas. | `Announcer` |
-| 5 | Duas mudanças no mesmo update viram dois `voice_play`; o segundo cancela o primeiro, então a primeira frase nunca é ouvida. | `BoardLive.announce/3` + `VoicePlayer.play` |
-| 6 | A saudação usa a hora UTC: às 22h em São Paulo (01h UTC) o agente diz "Good morning". | `Voice.greeting/1` |
-| 7 | Volume não existe; o resumo não conta perguntas pendentes. | `VoicePanel`, `Voice.summary/2` |
+| 1 | Every spoken sentence is English ("Task 'X' is now running.", "Good morning", "The sync failed") while titles and voice are Portuguese: the mix comes from here. | `Voice`, `Announcer`, `BoardLive` |
+| 2 | The `summarize_board` prompt does not state the language; the model answers in whatever language it wants. | `AI.Registry` |
+| 3 | TTS does not force a language: Flash v2.5 accepts `language_code` and normalizes numbers and acronyms in the right language. | `ElevenLabs.speech/2` |
+| 4 | A task that moves to `question` (the agent waiting for your answer) is not announced: `question` is not in the live lanes. | `Announcer` |
+| 5 | Two changes in the same update become two `voice_play` events; the second cancels the first, so the first sentence is never heard. | `BoardLive.announce/3` + `VoicePlayer.play` |
+| 6 | The greeting uses the UTC hour: at 22h in São Paulo (01h UTC) the agent says "Good morning". | `Voice.greeting/1` |
+| 7 | Volume does not exist; the summary does not count pending questions. | `VoicePanel`, `Voice.summary/2` |
 
-## Opções
+## Options
 
 Backend
 
-- **B1 Idioma da voz** (escolhido): chave `voice_language` (`pt-BR` padrão,
-  `en-US`); todas as frases faladas saem de `AgentBoard.Voice.Phrases`; o
-  prompt do resumo recebe o idioma; o TTS manda `language_code` no Flash.
-- **B2 Chamadas de atenção** (escolhido): tarefa que entra em pergunta,
-  bloqueio ou revisão vira um chamado, com 10 frases por tipo em rodízio
-  (nunca a mesma duas vezes seguidas) e prioridade sobre as outras notícias.
-- **B3 Uma fala por atualização** (escolhido): as frases do mesmo update viram
-  uma só, então nenhuma é cortada.
-- **B4 Fala mais natural** (escolhido): estados com nome falado ("em
-  andamento", "na fila"), título curto cortado em palavra, saudação pela hora
-  local do navegador, resumo conta perguntas.
-- **B5 Volume** (escolhido): chave `voice_volume` 0–100, validada, também em
+- **B1 Language of the voice** (chosen): key `voice_language` (`pt-BR` default,
+  `en-US`); every spoken sentence comes from `AgentBoard.Voice.Phrases`; the
+  summary prompt receives the language; TTS sends `language_code` on Flash.
+- **B2 Attention calls** (chosen): a task entering question, block or review
+  becomes a call, with 10 sentences per type in rotation (never the same twice in
+  a row) and priority over the other news.
+- **B3 One utterance per update** (chosen): the sentences of the same update
+  become one, so none is cut off.
+- **B4 More natural speech** (chosen): states with a spoken name ("em andamento"
+  [in progress], "na fila" [in the queue]), a short title cut at a word, a
+  greeting by the browser's local hour, the summary counts questions.
+- **B5 Volume** (chosen): key `voice_volume` 0–100, validated, also in
   `PUT /api/voice/settings`.
-- B6 Lembrete: repetir o chamado se a tarefa seguir esperando por N minutos.
-  Adiado: precisa de um relógio por tarefa e de um limite para não virar
-  insistência.
-- B7 Horário silencioso. Adiado.
+- B6 Reminder: repeat the call if the task is still waiting for N minutes.
+  Postponed: it needs a clock per task and a limit so it does not become
+  insistence.
+- B7 Quiet hours. Postponed.
 
 Interface
 
-- **U1 Volume** (escolhido): slider com porcentagem, aplicado na hora ao áudio
-  que estiver tocando.
-- **U2 Idioma** (escolhido): seletor no topo da seção Voz; ao trocar, o agente
-  confirma no idioma novo.
-- **U3 Dois interruptores** (escolhido): "Chamar quando precisar de mim" e
-  "Narrar o resto do quadro", separados, para quem quer só os chamados.
-- **U4 Painel em português** (escolhido): a seção já se chama "Voz"; o
-  conteúdo estava em inglês.
-- **U5 Voz do navegador como reserva** (escolhido): sem chave ElevenLabs, os
-  chamados usam a voz do navegador no idioma escolhido.
-- U6 Um som curto antes do chamado. Adiado.
+- **U1 Volume** (chosen): slider with a percentage, applied immediately to the
+  audio that is playing.
+- **U2 Language** (chosen): picker at the top of the Voice section; when it is
+  changed, the agent confirms in the new language.
+- **U3 Two toggles** (chosen): "Chamar quando precisar de mim" and "Narrar o
+  resto do quadro", separate, for whoever wants only the calls.
+- **U4 Panel in Portuguese** (chosen): the section is already called "Voz"; the
+  content was in English.
+- **U5 Browser voice as a fallback** (chosen): without an ElevenLabs key, the
+  calls use the browser voice in the chosen language.
+- U6 A short sound before the call. Postponed.
 
-## Depois: a sua fala para o agente
+## Next: your speech to the agent
 
-O caminho inverso (ditado → comando) fica para a próxima rodada. O primeiro
-passo natural é mandar o idioma escolhido como dica ao Scribe
-(`/api/voice/transcribe?language=pt`), que já aceita o parâmetro.
+The reverse path (dictation → command) is left for the next round. The natural
+first step is to send the chosen language as a hint to Scribe
+(`/api/voice/transcribe?language=pt`), which already accepts the parameter.

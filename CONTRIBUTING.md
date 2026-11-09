@@ -1,27 +1,28 @@
 # Contributing
 
-## O fluxo
+## The flow
 
-1. Crie uma branch a partir de `main` com nome no padrão `feat/…`, `fix/…`, `docs/…`, `chore/…`, `test/…` ou `ci/…`.
-2. Faça commits pequenos com mensagens no imperativo explicando o porquê.
-3. Valide localmente com o pipeline correspondente (abaixo).
-4. Abra um PR para `main` preenchendo o [template](.github/pull_request_template.md).
-5. O merge é squash em `main`; quando o PR cobrir uma mudança grande, prefira dividir em vários PRs menores do que um só difuso.
+1. Create a branch from `main` named with the pattern `feat/…`, `fix/…`, `docs/…`, `chore/…`, `test/…`, or `ci/…`.
+2. Make small commits with imperative messages explaining why.
+3. Validate locally with the corresponding pipeline (below).
+4. Open a PR to `main` filling in the [template](.github/pull_request_template.md).
+5. Merging is squash into `main`; when the PR covers a large change, prefer splitting it into several smaller PRs over one diffuse PR.
 
-Toda mudança entra via PR na `main` — nunca por push direto.
+Every change lands via PR to `main` — never by direct push.
 
-## Validação antes do PR
+## Validation before the PR
 
-Siga a [matriz de scripts em PIPELINES.md](PIPELINES.md#matriz-de-scripts)
-para escolher os checks durante o trabalho e o pré-voo obrigatório de entrega.
-Os comandos e sua distribuição entre os jobs estão documentados ali.
+Follow the [script matrix in PIPELINES.md](PIPELINES.md#script-matrix) to
+choose the checks during the work and the mandatory pre-flight for delivery.
+The commands and their distribution across the jobs are documented there.
 
-Quando o GitHub Actions não iniciar, aplique a
-[regra de CI indisponível](PIPELINES.md#se-a-ci-não-consegue-rodar-sem-token-billing-ou-runner).
+When GitHub Actions does not start, apply the
+[CI-unavailable rule](PIPELINES.md#if-ci-cannot-run-no-token-billing-or-runner).
 
-## Práticas compartilhadas
+## Shared practices
 
-Siga [a política de propriedade e evolução](docs/agent/practices.md).
-Melhorias reutilizáveis entram por PR no Elixir Agent Kit e chegam aqui por uma
-versão fixada. Contratos específicos do board continuam em `docs/`. Não edite a
-dependência nem recrie uma biblioteca local. `make library` valida a instalação.
+Follow [the ownership and evolution policy](docs/agent/practices.md). Reusable
+improvements enter through a PR to the Elixir Agent Kit and arrive here through
+a pinned version. Board-specific contracts stay in `docs/`. Do not edit the
+dependency or recreate a local library. `make library` validates the
+installation.
