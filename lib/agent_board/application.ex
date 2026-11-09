@@ -17,6 +17,7 @@ defmodule AgentBoard.Application do
       AgentBoard.TicketPoller,
       AgentBoard.MessagePoller,
       AgentBoard.AutoRetry,
+      AgentBoard.Release,
       AgentBoard.DailySummary,
       AgentBoard.Runners.Ticker,
       {Task.Supervisor, name: AgentBoard.Superagents.TaskSupervisor},

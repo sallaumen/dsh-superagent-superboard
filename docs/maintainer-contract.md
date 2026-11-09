@@ -162,6 +162,7 @@ and is recorded as `automatic`.
 | `resume_task` | yellow | puts the task back in the board's queue (does not reopen the issue) | UI: one click. API: direct |
 | `retry_ticket` | red | `POST tickets/<id>/retry` asked by the owner; the executor spends tokens | UI: `AgentAction` "Tentar de novo" / "Tentar agora" |
 | `auto_retry_ticket` | red | the same request, asked by the board after a transient failure | System: the standing authorization ("Automatic retry"), `auto_retry` only |
+| `release_task` | red | comments the mention that starts a task that was waiting; standing authorization for `release` (ADR 0005) |
 | `dispatch_task` | red | starts Claude Code or Codex in a worktree; spends the owner's subscription | UI: `AgentAction` "Despachar" in two steps, with the sentence, executor, task, repository and ceiling; voice/API: `428` then `confirm` |
 | `stop_execution` | red | kills the active tmux session, records `stopped` and leaves the task blocked | UI: `AgentAction` "Parar execução" in two steps; voice/API: `428` then `confirm` |
 | `provision_superagent` | red | creates the profile, port, state and setup of a new DeepSeek project | UI: the Superagentes panel's "Adicionar projeto", preview then confirm |
@@ -332,8 +333,8 @@ other), authorized by the owner on
 (ADR-0003, "Retentativa automática"). `AgentBoard.AutoRetry` asks
 `POST tickets/<id>/retry` (`Orchestrator.retry/2`) and nothing else; the
 board still never writes the runner's sqlite. The request is the registry's
-red action `auto_retry_ticket`, and this authorization is the only standing
-one the gate knows ("Board actions" above): it covers the actor
+red action `auto_retry_ticket`, and this and `release_task` (ADR 0005) are the only standing
+authorizations the gate knows ("Board actions" above): it covers the actor
 `auto_retry`, each request is an `automatic` decision with the evidence
 `standing`, and nothing else may ask for a retry without a person.
 
@@ -594,6 +595,25 @@ Agora and the detail):
   `:budget_exhausted` and records nothing.
 - **A task that cannot close on its own is dropped**, not created
   half-written (see `AgentBoard.Intake`).
+
+## Release in order
+
+`AgentBoard.Release` (ADR 0005). The agent has no queue and a mention starts it
+at once, so a split's task that waits for others opens without the mention
+(`tasks.held`). Sending the split, with a sentence that says so, approves the
+tree; `release_task` is the second standing authorization, for the actor
+`release`.
+
+- **Due:** held, not yet claimed, `queued`, not stopped or archived, with stored
+  edges and every dependency `done` or `closed`. An issue closed without a merge
+  counts.
+- **Once.** `released_at` is claimed before the comment. A comment that failed
+  may have landed, so nothing repeats it: the task stays held, the tree says so,
+  a `release_error` event has the reason and the owner decides.
+- **Only the DeepSeek runner.** Claude Code and Codex keep `dispatch_task`.
+- **The owner can call the agent sooner** from the tree, with a confirmation.
+- **Switch:** `AGENT_BOARD_AUTO_RELEASE=0`. A board with no GitHub token does not
+  release either.
 
 ## Executor usage
 
@@ -1139,9 +1159,9 @@ computed from the tasks, never a second project manager.
   objective by `request_key`.
 - **The tree** (`BoardComponents.ObjectiveTree`) draws an objective with
   edges: each task one column after the deepest task it waits for. Its text
-  repeats the lines, so a phone and a screen reader lose nothing, and it says
-  only what is true: until the release step exists, a dependency still open
-  does not stop the agent.
+  repeats the lines, so a phone and a screen reader lose nothing. It says what
+  is true: only a held task really waits, and the owner can call the agent on
+  it sooner.
 - **It does not replace the board's lanes.** Attaching or finishing a task is
   the same write and the same sync; no separate status is written.
 - The tests: `objectives_test.exs` (the criterion, progress, one task is not a
@@ -1193,8 +1213,8 @@ records are the `ai_calls` rows (the split) and the tasks with their
   tasks open blockers first and the body starts with "Depende de #N". A blocker
   that failed holds its dependent back (`:dependency_failed`), and the retry
   opens it with the link. A blocker left out in the review is no dependency; a
-  cycle is broken in list order. This orders the **creation** only: the mention
-  still starts every task at once.
+  cycle is broken in list order. What waits opens without the mention; see
+  "Release in order".
 - **The split reads the repository** (`AgentBoard.Intake.RepoDigest`): the
   code paths and `AGENTS.md`, `CLAUDE.md` and `README.md` of the default
   branch, bounded, go to the refine and the split as data. It is help, never

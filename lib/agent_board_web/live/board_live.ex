@@ -2071,6 +2071,22 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("release_task", %{"id" => id, "confirm" => confirm}, socket) do
+    repo = socket.assigns.repo
+
+    with {number, ""} <- Integer.parse(to_string(id)),
+         %Task{held: true, repository_id: repo_id} = task when repo_id == repo.id <-
+           Board.task(number),
+         params = %{task: task, repository: repo, client: GitHub.client()},
+         :ok <- Actions.run(:release_task, params, ui(), confirm: confirm) do
+      {:noreply, socket}
+    else
+      _refused_or_failed ->
+        {:noreply, put_flash(socket, :error, gettext("Could not call the agent on this task."))}
+    end
+  end
+
+  @impl true
   def handle_event("composer_remove_attachment", %{"ref" => ref}, socket) do
     {:noreply, cancel_upload(socket, :attachments, ref)}
   end
@@ -3231,7 +3247,7 @@ defmodule AgentBoardWeb.BoardLive do
                   >
                     <span style={"width: #{progress(objective)}%"}></span>
                   </div>
-                  <.objective_tree :if={objective.edges != []} objective={objective} />
+                  <.objective_tree :if={objective.edges != []} objective={objective} repo={@repo} />
                 </article>
               </section>
 

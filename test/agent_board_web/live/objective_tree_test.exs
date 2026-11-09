@@ -90,6 +90,52 @@ defmodule AgentBoardWeb.ObjectiveTreeTest do
     assert has_element?(view, "#board-page[data-panel=conversation]")
   end
 
+  test "a held task says what it waits for and the owner can call the agent", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "espera")
+    test_pid = self()
+
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(
+        base_url: "https://api.github.com",
+        plug: fn conn ->
+          send(test_pid, {:called, conn.request_path})
+          Req.Test.json(conn, %{})
+        end,
+        retry: false
+      )
+    end)
+
+    on_exit(fn -> Application.delete_env(:agent_board, :github_client) end)
+
+    first = task(repo, 1, "running")
+
+    held =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 2,
+        title: "Tarefa 2",
+        state: "queued",
+        held: true
+      })
+      |> Repo.insert!()
+
+    waits(held, first)
+    objective(repo, [first, held])
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/espera")
+
+    assert has_element?(view, "#objective-tree-node-#{held.id}", "Espera #1")
+
+    view
+    |> element(".ab-tree__release button", "Chamar o agente na #2")
+    |> render_click()
+
+    assert_received {:called, "/repos/fixture/espera/issues/2/comments"}
+    assert %Task{held: false} = Repo.get!(Task, held.id)
+  end
+
   test "a group with no connections draws no tree", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "plana")
     objective(repo, [task(repo, 1, "queued"), task(repo, 2, "queued")])

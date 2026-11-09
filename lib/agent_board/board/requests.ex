@@ -42,7 +42,15 @@ defmodule AgentBoard.Board.Requests do
     title = clip_title(title)
     executor = Keyword.get(opts, :executor)
     claim = Keyword.get(opts, :claim)
-    body = if executor, do: Executors.issue_body(body, executor), else: body
+    held = Keyword.get(opts, :held, false)
+
+    body =
+      case {executor, held} do
+        {_any, true} -> body
+        {nil, false} -> body
+        {executor, false} -> Executors.issue_body(body, executor)
+      end
+
     labels = if executor, do: [Executors.label(executor)], else: []
 
     with issue <-
@@ -69,7 +77,8 @@ defmodule AgentBoard.Board.Requests do
         blocker_for_task_id: Keyword.get(opts, :blocker_for_task_id),
         work_type: Keyword.get(opts, :work_type),
         size: Keyword.get(opts, :size),
-        executor: executor
+        executor: executor,
+        held: Keyword.get(opts, :held, false)
       }
 
       target = claim || %Task{}
@@ -206,8 +215,20 @@ defmodule AgentBoard.Board.Requests do
     else
       language = Map.get(request, :language)
       body = IssueBody.with_dependencies(request.body, blockers, language)
-      create_request(repository, %{request | body: body}, client)
+
+      repository
+      |> create_request(%{request | body: body} |> hold(blockers), client)
     end
+  end
+
+  # The mention starts the runner at once, so what waits opens without it. Only
+  # the runner: another executor's issue never calls anybody.
+  defp hold(request, []), do: request
+
+  defp hold(request, _blockers) do
+    if Map.get(request, :executor) in [nil, "dsh"],
+      do: Map.put(request, :held, true),
+      else: request
   end
 
   defp remember(numbers, key, {:ok, %Task{number: number}, _outcome}),
@@ -226,6 +247,7 @@ defmodule AgentBoard.Board.Requests do
         executor -> Executors.issue_body(body, executor)
       end
 
+    body = if Map.get(request, :held), do: Executors.held_body(body), else: body
     request = %{request | title: title, body: body}
 
     case existing_request(repository, key, title, body) do
@@ -272,7 +294,8 @@ defmodule AgentBoard.Board.Requests do
       origin_task_id: Map.get(request, :origin_task_id),
       blocker_for_task_id: Map.get(request, :blocker_for_task_id),
       work_type: Map.get(request, :work_type),
-      size: Map.get(request, :size)
+      size: Map.get(request, :size),
+      held: Map.get(request, :held, false)
     }
 
     case %Task{} |> Task.changeset(attrs) |> Repo.insert() do
@@ -305,6 +328,7 @@ defmodule AgentBoard.Board.Requests do
         size: Map.get(request, :size),
         executor: Map.get(request, :executor),
         routing: Map.get(request, :routing),
+        held: Map.get(request, :held, false),
         claim: claim
       )
 

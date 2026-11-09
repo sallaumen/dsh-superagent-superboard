@@ -46,6 +46,10 @@ defmodule AgentBoard.Executors do
   @spec without_mention(String.t()) :: String.t()
   def without_mention(text), do: String.replace(text, ~r/@(sallaumen-agent)\b/i, "\\1")
 
+  @doc "The body of an issue that must not start anything yet."
+  @spec held_body(String.t()) :: String.t()
+  def held_body(body), do: body |> String.replace(@mention, "") |> without_mention()
+
   @doc """
   The issue body for an executor: the request's body with the bot's mention
   at the end for the DeepSeek runner, and without any mention for anyone

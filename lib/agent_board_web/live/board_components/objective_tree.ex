@@ -5,9 +5,11 @@ defmodule AgentBoardWeb.BoardComponents.ObjectiveTree do
 
   The text of each task says the same as the lines, so a phone (which stacks
   the tasks and hides the lines) and a screen reader lose nothing. It reports
-  what is true: a dependency still open does not stop the agent yet.
+  what is true: only a held task really waits; others may already be running.
   """
   use AgentBoardWeb, :html
+
+  alias AgentBoard.Actions
 
   @node_width 196
   @node_height 104
@@ -15,6 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.ObjectiveTree do
   @row_gap 12
 
   attr :objective, :map, required: true
+  attr :repo, :map, required: true
 
   def objective_tree(assigns) do
     assigns = assign(assigns, :layout, layout(assigns.objective.tasks, assigns.objective.edges))
@@ -63,6 +66,19 @@ defmodule AgentBoardWeb.BoardComponents.ObjectiveTree do
             <span class="ab-meta ab-tree__why">{why(node)}</span>
           </button>
         </div>
+      </div>
+      <div :if={held(@layout) != []} class="ab-tree__release">
+        <button
+          :for={node <- held(@layout)}
+          type="button"
+          class="ab-btn ab-btn--sm"
+          phx-click="release_task"
+          phx-value-id={node.id}
+          phx-value-confirm={phrase(node, @repo)}
+          data-confirm={phrase(node, @repo)}
+        >
+          {gettext("Call the agent on #%{number}", number: node.number)}
+        </button>
       </div>
       <a
         :if={@objective.issue_url}
@@ -140,21 +156,31 @@ defmodule AgentBoardWeb.BoardComponents.ObjectiveTree do
   defp extent(nodes, axis, size),
     do: (nodes |> Enum.map(&Map.fetch!(&1, axis)) |> Enum.max()) + size
 
+  defp held(layout), do: Enum.filter(layout.nodes, &Map.get(&1, :held, false))
+
+  defp phrase(node, repo), do: Actions.phrase(:release_task, %{task: node, repository: repo})
+
+  defp why(%{held: true, released_at: %DateTime{}}), do: gettext("Could not call the agent")
+
   defp why(%{waiting: []}), do: gettext("No dependency")
 
   defp why(%{state: state}) when state in ~w(done closed), do: gettext("Finished")
 
   defp why(%{waiting: waiting} = node) do
     case Enum.reject(waiting, &finished?/1) do
-      [] ->
-        if node.state == "queued",
-          do: gettext("Ready to start"),
-          else: gettext("Dependencies finished")
-
-      open ->
-        gettext("Depends on %{tasks}, still open", tasks: links(open))
+      [] -> finished_label(node)
+      open -> open_label(node, links(open))
     end
   end
+
+  defp finished_label(%{held: true}), do: gettext("Starting soon")
+  defp finished_label(%{state: "queued"}), do: gettext("Ready to start")
+  defp finished_label(_node), do: gettext("Dependencies finished")
+
+  defp open_label(%{held: true}, tasks), do: gettext("Waits for %{tasks}", tasks: tasks)
+
+  defp open_label(_node, tasks),
+    do: gettext("Depends on %{tasks}, still open", tasks: tasks)
 
   defp finished?(%{state: state}), do: state in ~w(done closed)
 

@@ -1351,6 +1351,7 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-objective { grid-template-columns: minmax(0, 1fr); }
 .ab-tree { overflow-x: auto; max-width: 100%; padding: var(--space-2) 0 var(--space-3); }
 .ab-tree__canvas { position: relative; width: var(--tree-width); height: var(--tree-height); }
+.ab-tree__release { display: flex; flex-wrap: wrap; gap: var(--space-2); padding-bottom: var(--space-2); }
 .ab-tree__lines { position: absolute; inset: 0; pointer-events: none; }
 .ab-tree__lines path { fill: none; stroke: var(--line-strong); stroke-width: 1.5; }
 .ab-tree__node {
