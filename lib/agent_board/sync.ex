@@ -462,7 +462,7 @@ defmodule AgentBoard.Sync do
         {nil, nil, nil}
 
       true ->
-        rollups(client, repository, pull)
+        rollups(client, repository, pull, existing)
     end
   end
 
@@ -475,17 +475,15 @@ defmodule AgentBoard.Sync do
   @stale_days 30
 
   defp stale?(pull) do
-    case to_dt(pull["merged_at"]) do
+    case to_dt(pull["merged_at"] || pull["closed_at"]) do
       nil -> false
-      merged_at -> DateTime.diff(DateTime.utc_now(), merged_at, :day) > @stale_days
+      ended_at -> DateTime.diff(DateTime.utc_now(), ended_at, :day) > @stale_days
     end
   end
 
-  defp rollups(client, repository, pull) do
+  defp rollups(client, repository, pull, existing) do
     # A failing review/check fetch must not abort the PR insert: the PR is
-    # stored with the rollups it can get, and the failure is logged. A nil
-    # checks state means "not read", so an ended pull is read again; "none"
-    # means GitHub answered that it has no checks.
+    # stored with the rollups it can get, and the failure is logged.
     reviews =
       safe_fetch(repository, "review_error", pull, fn ->
         GitHub.reviews(client, repository.owner, repository.name, pull["number"])
@@ -503,11 +501,25 @@ defmodule AgentBoard.Sync do
         )
       end)
 
-    {checks_state, checks_failed} =
-      if reviews && checks, do: checks_rollup(checks), else: {nil, nil}
-
-    {review_rollup(reviews || []), checks_state, checks_failed}
+    {checks_state, checks_failed} = read_checks(checks, reviews, pull, existing)
+    {read_reviews(reviews, pull, existing), checks_state, checks_failed}
   end
+
+  # What a failed read leaves depends on whether the pull comes back. An open
+  # pull is read on every sync, so it keeps what was known until the next one.
+  # An ended pull stores nil, "not read", so it is read again; "none" means
+  # GitHub answered that there are no checks, and that one is settled.
+  defp read_checks(nil, _reviews, %{"state" => "open"}, %PullRequest{} = existing),
+    do: {existing.checks_state, existing.checks_failed}
+
+  defp read_checks(nil, _reviews, _pull, _existing), do: {nil, nil}
+  defp read_checks(_checks, nil, %{"state" => "closed"}, _existing), do: {nil, nil}
+  defp read_checks(checks, _reviews, _pull, _existing), do: checks_rollup(checks)
+
+  defp read_reviews(nil, %{"state" => "open"}, %PullRequest{} = existing),
+    do: existing.review_state
+
+  defp read_reviews(reviews, _pull, _existing), do: review_rollup(reviews || [])
 
   defp safe_fetch(repository, kind, pull, fun) do
     fun.()
