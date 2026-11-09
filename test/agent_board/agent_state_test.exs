@@ -135,16 +135,22 @@ defmodule AgentBoard.AgentStateTest do
     first =
       Path.join(
         System.tmp_dir!(),
-        "agent-state-first-#{System.unique_integer([:positive])}.sqlite"
+        "agent-state-first-#{System.pid()}-#{System.unique_integer([:positive])}.sqlite"
       )
 
     second =
       Path.join(
         System.tmp_dir!(),
-        "agent-state-second-#{System.unique_integer([:positive])}.sqlite"
+        "agent-state-second-#{System.pid()}-#{System.unique_integer([:positive])}.sqlite"
       )
 
     previous = Application.get_env(:agent_board, :state_dbs)
+
+    # unique_integer restarts with the VM: a file left here collides with a later run.
+    on_exit(fn ->
+      for path <- [first, second], suffix <- ["", "-wal", "-shm"], do: File.rm(path <> suffix)
+      Application.put_env(:agent_board, :state_dbs, previous)
+    end)
 
     for {path, repo, number} <- [{first, "arena-rogue", 71}, {second, "o_colmex", 72}] do
       {:ok, db} = Exqlite.Sqlite3.open(path)
@@ -161,7 +167,6 @@ defmodule AgentBoard.AgentStateTest do
     end
 
     Application.put_env(:agent_board, :state_dbs, [first, second])
-    on_exit(fn -> Application.put_env(:agent_board, :state_dbs, previous) end)
 
     snapshot = AgentState.snapshot()
     assert snapshot.ok

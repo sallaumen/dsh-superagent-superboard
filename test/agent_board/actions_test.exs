@@ -400,6 +400,7 @@ defmodule AgentBoard.ActionsTest do
     test "stop_execution stops the active row after the confirmation", %{repo: repo} do
       task = task!(repo, 23)
       run_dir = Path.join(System.tmp_dir!(), "actions-stop-ok-#{task.id}")
+      on_exit(fn -> File.rm_rf(run_dir) end)
       File.mkdir_p!(run_dir)
       File.write!(Path.join(run_dir, "status"), "running")
 
