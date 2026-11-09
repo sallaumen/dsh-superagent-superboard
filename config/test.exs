@@ -50,6 +50,7 @@ config :agent_board, message_poll_interval: 3_600_000
 # The automatic retry ticks on the same schedule rule: the suite calls
 # AutoRetry.tick/1 itself.
 config :agent_board, auto_retry_interval: 3_600_000
+config :agent_board, auto_release_interval: 3_600_000
 
 # The summary of the day too: the suite calls DailySummary.tick/1 with its
 # own clock.

@@ -329,7 +329,8 @@ defmodule AgentBoard.Lanes do
             title: t.title,
             inserted_at: t.inserted_at,
             origin_task_id: t.origin_task_id,
-            blocker_for_task_id: t.blocker_for_task_id
+            blocker_for_task_id: t.blocker_for_task_id,
+            held: t.held
           }
       )
 
@@ -363,6 +364,7 @@ defmodule AgentBoard.Lanes do
 
     sub =
       case {Map.get(blockers, row.blocker_for_task_id), Map.get(origins, row.origin_task_id)} do
+        _ when row.held -> "espera as dependências"
         {number, _origin} when is_integer(number) -> "desbloqueia ##{number}"
         {nil, number} when is_integer(number) -> "dividido de ##{number}"
         _ -> nil

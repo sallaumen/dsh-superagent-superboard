@@ -68,6 +68,7 @@ defmodule AgentBoard.Actions do
 
   alias AgentBoard.Board.{Attachments, Repository, SplitGraph, Task}
   alias AgentBoard.Intake.IssueBody
+  alias AgentBoard.Release
   alias AgentBoard.Sync.Worker
   alias AgentBoard.Voice.Phrases
 
@@ -86,6 +87,7 @@ defmodule AgentBoard.Actions do
     :resume_task,
     :retry_ticket,
     :auto_retry_ticket,
+    :release_task,
     :dispatch_task,
     :stop_execution,
     :provision_superagent,
@@ -162,6 +164,17 @@ defmodule AgentBoard.Actions do
         by: "auto_retry",
         granted: "2026-11-07",
         where: "docs/maintainer-contract.md, Automatic retry"
+      }
+    }
+
+  defp spec(:release_task),
+    do: %{
+      risk: :red,
+      does: "comenta a menção que faz o agente começar a tarefa que esperava; gasta tokens",
+      standing: %{
+        by: "release",
+        granted: "2026-11-09",
+        where: "docs/decisions/0005-o-board-libera-tarefas-em-ordem.md"
       }
     }
 
@@ -244,24 +257,17 @@ defmodule AgentBoard.Actions do
   @spec phrase(name(), map(), String.t()) :: String.t()
   def phrase(name, params, lang \\ "pt-BR")
 
-  def phrase(:create_tasks, %{repository: repo, requests: requests}, lang) do
-    case {lang, requests, executor_of(requests)} do
-      {"en-US", [one], executor} ->
-        "Create the task #{q(title(one))} in #{repo_name(repo)}#{for_whom(executor, lang)}? " <>
-          after_create(executor, 1, lang)
+  def phrase(:create_tasks, %{repository: repo, requests: requests}, lang),
+    do: create_phrase(repo, requests, lang) <> held_note(requests, lang)
 
-      {"en-US", _many, executor} ->
-        "Create #{length(requests)} tasks in #{repo_name(repo)}#{for_whom(executor, lang)}: " <>
-          "#{titles(requests, "and")}? " <> after_create(executor, length(requests), lang)
+  def phrase(:release_task, %{task: %{number: number}, repository: repo}, "en-US") do
+    "Call the agent on ##{number} in #{repo_name(repo)}? " <>
+      "It starts now, even if a dependency is still open."
+  end
 
-      {_pt, [one], executor} ->
-        "Criar no #{repo_name(repo)} a tarefa #{q(title(one))}#{for_whom(executor, lang)}? " <>
-          after_create(executor, 1, lang)
-
-      {_pt, _many, executor} ->
-        "Criar no #{repo_name(repo)} #{length(requests)} tarefas#{for_whom(executor, lang)}: " <>
-          "#{titles(requests, "e")}? " <> after_create(executor, length(requests), lang)
-    end
+  def phrase(:release_task, %{task: %{number: number}, repository: repo}, _lang) do
+    "Chamar o agente na ##{number} do #{repo_name(repo)}? " <>
+      "Ele começa agora, mesmo que alguma dependência siga aberta."
   end
 
   def phrase(:ask_task, %{task: task, question: question}, "en-US"),
@@ -617,6 +623,9 @@ defmodule AgentBoard.Actions do
       {:error, results} -> {:ok, results}
     end
   end
+
+  defp execute(:release_task, %{task: task, repository: repo} = params),
+    do: Release.call_agent(task, repo, github(params))
 
   defp execute(:ask_task, %{task: task, question: question} = params),
     do: Board.ask(task, question, github(params))
@@ -1090,6 +1099,44 @@ defmodule AgentBoard.Actions do
   defp for_whom(nil, _lang), do: ""
   defp for_whom(executor, "en-US"), do: " for #{Executors.name(executor)}"
   defp for_whom(executor, _lang), do: " para o #{Executors.name(executor)}"
+
+  defp create_phrase(repo, requests, lang) do
+    case {lang, requests, executor_of(requests)} do
+      {"en-US", [one], executor} ->
+        "Create the task #{q(title(one))} in #{repo_name(repo)}#{for_whom(executor, lang)}? " <>
+          after_create(executor, 1, lang)
+
+      {"en-US", _many, executor} ->
+        "Create #{length(requests)} tasks in #{repo_name(repo)}#{for_whom(executor, lang)}: " <>
+          "#{titles(requests, "and")}? " <> after_create(executor, length(requests), lang)
+
+      {_pt, [one], executor} ->
+        "Criar no #{repo_name(repo)} a tarefa #{q(title(one))}#{for_whom(executor, lang)}? " <>
+          after_create(executor, 1, lang)
+
+      {_pt, _many, executor} ->
+        "Criar no #{repo_name(repo)} #{length(requests)} tarefas#{for_whom(executor, lang)}: " <>
+          "#{titles(requests, "e")}? " <> after_create(executor, length(requests), lang)
+    end
+  end
+
+  defp held_note(requests, lang) do
+    held? =
+      Enum.any?(requests, fn request ->
+        Map.get(request, :depends_on, []) != [] and Map.get(request, :executor) in [nil, "dsh"]
+      end)
+
+    case {held?, lang} do
+      {false, _lang} ->
+        ""
+
+      {true, "en-US"} ->
+        " Those that depend on others wait: the board calls the agent once they merge."
+
+      {true, _lang} ->
+        " As que dependem de outras esperam: o board chama o agente quando forem mescladas."
+    end
+  end
 
   defp after_create(nil, 1, "en-US"),
     do: "The board opens the GitHub issue and the agent starts on its own."

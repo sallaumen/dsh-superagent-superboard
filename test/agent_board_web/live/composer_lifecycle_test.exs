@@ -335,7 +335,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert first.body =~ "**Objetivo:** o board mostra o pedido"
     assert first.body =~ "### Restrições\n- Sem quebrar o sync"
     assert String.starts_with?(second.body, "**Depende de:** #101")
-    assert String.ends_with?(second.body, "@sallaumen-agent")
+    # It waits: the board calls the agent when #101 finishes.
+    refute second.body =~ "@sallaumen-agent"
+    assert second.held
   end
 
   test "the split reads the repository it is working on", %{conn: conn} do
