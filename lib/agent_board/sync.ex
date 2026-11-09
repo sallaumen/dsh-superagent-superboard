@@ -367,8 +367,11 @@ defmodule AgentBoard.Sync do
     state =
       if merged, do: "merged", else: if(pull["state"] == "closed", do: "closed", else: "open")
 
-    {review_state, checks_state, checks_failed} = rollup_for(client, repository, pull, state)
     existing = Repo.get_by(PullRequest, repository_id: repository.id, number: pull["number"])
+
+    {review_state, checks_state, checks_failed} =
+      rollup_for(client, repository, pull, state, existing)
+
     now = DateTime.utc_now()
     checks_changed_at = checks_changed_at(existing, checks_state, now)
 
@@ -442,15 +445,29 @@ defmodule AgentBoard.Sync do
 
   # Merged and closed pulls also carry reviews and checks: the board shows
   # them in the merged column, so they must be fetched, not left nil.
-  defp rollup_for(client, repository, pull, _state) do
-    # An old merged pull never changes: skipping its reviews and checks saves
-    # ~2 API calls per pull per sync (a 100-PR repo was hitting the limit).
-    if stale?(pull) do
-      {nil, nil, nil}
-    else
-      rollups(client, repository, pull)
+  # A pull that ended changes no more, and it is most of what the list brings:
+  # reading its reviews and checks again cost two calls per pull per sync, past
+  # the account's hourly quota with three repositories. Once stored as ended
+  # at the same commit it keeps what it has; only running checks are worth
+  # another read.
+  defp rollup_for(client, repository, pull, state, existing) do
+    cond do
+      settled?(existing, pull, state) ->
+        {existing.review_state, existing.checks_state, existing.checks_failed}
+
+      stale?(pull) ->
+        {nil, nil, nil}
+
+      true ->
+        rollups(client, repository, pull)
     end
   end
+
+  defp settled?(%PullRequest{state: state, checks_state: checks} = existing, pull, state)
+       when state in ["merged", "closed"] and checks != "pending",
+       do: existing.head_sha == get_in(pull, ["head", "sha"])
+
+  defp settled?(_existing, _pull, _state), do: false
 
   @stale_days 30
 
