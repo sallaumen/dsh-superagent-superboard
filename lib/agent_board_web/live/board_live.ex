@@ -60,6 +60,7 @@ defmodule AgentBoardWeb.BoardLive do
   import AgentBoardWeb.BoardComponents.Summary, only: [summary: 1]
   import AgentBoardWeb.BoardComponents.Today, only: [today_view: 1]
   import AgentBoardWeb.BoardComponents.Throughput, only: [throughput: 1]
+  import AgentBoardWeb.Components.VersionBadge, only: [version_badge: 1]
 
   alias AgentBoardWeb.{
     BoardComponents,
@@ -74,6 +75,7 @@ defmodule AgentBoardWeb.BoardLive do
   @task_actions %{"stop" => :stop_task, "archive" => :archive_task, "resume" => :resume_task}
   @refused_text "Nada foi feito: a ação mudou desde a confirmação. Confira e confirme de novo."
   @max_resume_items 1000
+  @version_check_interval 5 * 60 * 1000
 
   @impl true
   def mount(params, _session, socket) do
@@ -191,6 +193,8 @@ defmodule AgentBoardWeb.BoardLive do
     if connected?(socket), do: DailySummary.subscribe()
     if connected?(socket), do: Board.subscribe_today()
     if connected?(socket), do: Superagents.subscribe()
+
+    socket = maybe_check_version(socket)
 
     # handle_params/3 always follows mount and loads the board: loading here
     # too read everything twice on every page and every connection.
@@ -814,6 +818,18 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  def handle_info(:version_check, socket) do
+    if Application.get_env(:agent_board, :version_check_on_mount, true) do
+      Process.send_after(self(), :version_check, @version_check_interval)
+    end
+
+    if socket.assigns[:version_check] do
+      {:noreply, socket}
+    else
+      {:noreply, start_async(socket, :version_check, fn -> Version.refresh() end)}
+    end
+  end
+
   def handle_info(:restart_server, socket) do
     Actions.run(:restart_board, %{}, ui())
     {:noreply, socket}
@@ -930,6 +946,18 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp refresh_ai(socket), do: assign(socket, ai_calls: AI.recent(5), ai_status: AI.status())
+
+  # The header badge should know about a moved main on a fresh page, not
+  # only after someone opens Settings. This is a fetch, never an update;
+  # the same check repeats once every five minutes while the page is open.
+  defp maybe_check_version(socket) do
+    if connected?(socket) and Application.get_env(:agent_board, :version_check_on_mount, true) do
+      Process.send_after(self(), :version_check, @version_check_interval)
+      start_async(socket, :version_check, fn -> Version.refresh() end)
+    else
+      socket
+    end
+  end
 
   @impl true
   def handle_params(params, _uri, socket) do
@@ -2191,6 +2219,12 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_async({:unblock_ai, _id}, _outcome, socket), do: {:noreply, socket}
 
+  def handle_async(:version_check, {:ok, {:ok, _sha}}, socket) do
+    {:noreply, assign(socket, version: Version.status())}
+  end
+
+  def handle_async(:version_check, _outcome, socket), do: {:noreply, socket}
+
   def handle_async({:composer, ref}, outcome, socket) do
     case socket.assigns.composer_job do
       %{ref: ^ref} = job -> {:noreply, finish_composer_job(socket, job, outcome)}
@@ -2509,6 +2543,7 @@ defmodule AgentBoardWeb.BoardLive do
               today={@today}
               spend={@today_spend}
               offset={@tz_offset}
+              version={@version}
             />
 
             <.frozen_banner
@@ -2609,6 +2644,7 @@ defmodule AgentBoardWeb.BoardLive do
                 <h1>{@repo.name}</h1>
               </div>
               <.beacon freshness={@freshness} tz_offset={@tz_offset} />
+              <.version_badge version={@version} />
               <span class="ab-top__spacer"></span>
               <div id="board-tools" class="ab-top__actions" aria-label="Ações do board">
                 <button

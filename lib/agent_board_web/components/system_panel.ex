@@ -30,6 +30,17 @@ defmodule AgentBoardWeb.Components.SystemPanel do
         ></span>{label(@version)}</span>
       </h2>
 
+      <p
+        :if={@version.state == :behind}
+        id="version-restart-warning"
+        class="version-warning"
+        role="note"
+      >
+        Atualizar e reiniciar é manual. O board reinicia para carregar o código
+        novo; o acompanhamento em tempo real e agentes em execução podem ser
+        interrompidos por alguns segundos. Nada é atualizado sozinho.
+      </p>
+
       <div class="version-details">
         <span class="text-base-content/75">
           rodando <code class="text-base-content">{@version.served || "unknown"}</code>
@@ -55,6 +66,8 @@ defmodule AgentBoardWeb.Components.SystemPanel do
           type="button"
           phx-click="update"
           disabled={@busy}
+          aria-describedby="version-restart-warning"
+          title="Atualiza o checkout e reinicia o board; agentes em execução podem ser interrompidos."
           class="version-update bg-warning text-warning-content hover:brightness-110"
         >
           Atualizar e reiniciar

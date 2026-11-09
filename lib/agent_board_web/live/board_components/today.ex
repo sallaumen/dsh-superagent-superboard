@@ -11,6 +11,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
   use AgentBoardWeb, :html
 
   alias AgentBoard.Time
+  import AgentBoardWeb.Components.VersionBadge, only: [version_badge: 1]
 
   @sources ["dsh", "claude_code", "codex"]
   @labels %{"dsh" => "DeepSeek", "claude_code" => "Claude Code", "codex" => "Codex"}
@@ -25,6 +26,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
   attr :spend, :map, default: nil
   attr :offset, :integer, default: 0
   attr :now, :any, default: nil
+  attr :version, :map, default: %{state: :unknown}
 
   def today_view(assigns) do
     now = assigns.now || DateTime.utc_now()
@@ -41,6 +43,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
         <div class="ab-today__title-row">
           <h1 id="today-title">Hoje</h1>
           <span class="ab-today__date">{@date_label}</span>
+          <.version_badge version={@version} />
         </div>
         <div id="today-spend" class="ab-today__spend" aria-label="Gasto do dia">
           <span class="ab-label">Gasto do dia</span>

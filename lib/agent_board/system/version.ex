@@ -4,8 +4,9 @@ defmodule AgentBoard.System.Version do
 
   The served sha is read once and cached: code cannot change under a running
   node, so the answer stays true for the life of the process. The available
-  sha needs the network, so `refresh/0` is explicit and the panel calls it
-  when it opens -- never on a timer, because a fetch is not free.
+  sha needs the network, so `refresh/0` is explicit: the panel calls it when
+  it opens, and an open board rechecks every five minutes. The check is a
+  fetch, never an automatic update.
   """
 
   alias AgentBoard.System.Git
