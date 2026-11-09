@@ -1,56 +1,55 @@
-# Revisão e integração dos quatro PRs
+# Review and integration of the four PRs
 
-> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
-> descrevem as revisões identificadas neste documento, não o produto atual.
-> Consulte o [índice e a sequência da auditoria](README.md).
+> **Historical record — November 5, 2026.** Counts, captures and states
+> describe the revisions identified in this document, not the current product.
+> See the [audit index and sequence](README.md).
 
-Sequência de dependências: #154 → #158 → #161 → #164. Os PRs seguintes tiveram a
-base alterada para `main` após a integração da dependência. Foram preservados os
-novos provedores, a saída estruturada (#169/#170), a configuração de ambiente e o
-painel de versão que entraram em main depois da auditoria original.
+Dependency sequence: #154 → #158 → #161 → #164. The following PRs had their
+base changed to `main` after the dependency was integrated. The new providers,
+the structured output (#169/#170), the environment configuration and the
+version panel that entered main after the original audit were preserved.
 
-## Achados resolvidos na revisão
+## Findings resolved in the review
 
-- **Tokens do SystemPanel:** o componente novo havia reintroduzido cores
-  hexadecimais. O #154 inclui a conversão para warning/success/info e respectivos
-  tokens de conteúdo. Ações de versão e atualização preservadas; não acionadas
-  durante a revisão visual. Evidência em [01-theme](01-theme.md#revisão-para-merge).
-- **Documentação de saúde:** #161 atualiza AGENTS.md e README: ausência de sync,
-  falha de sync e reconexão têm significados distintos. O README ainda dizia que
-  `no sync yet` indicava exceção.
-- **Conflito textual no #164:** os eventos `check_version`/`update` adicionados ao
-  LiveView colidiam com a nova cláusula `intake` sem IA. Foram mantidos os dois
-  eventos e a cláusula de proteção antes do intake normal. Nenhum handler perdido.
+- **SystemPanel tokens:** the new component had reintroduced hexadecimal colors.
+  #154 includes the conversion to warning/success/info and the respective content
+  tokens. Version and update actions preserved; not triggered during the visual
+  review. Evidence in [01-theme](01-theme.md#review-for-merge).
+- **Health documentation:** #161 updates AGENTS.md and README: absence of sync,
+  sync failure and reconnection have distinct meanings. The README still said that
+  `no sync yet` indicated an exception.
+- **Textual conflict in #164:** the `check_version`/`update` events added to the
+  LiveView collided with the new `intake` clause without AI. Both events and the
+  protection clause before the normal intake were kept. No handler was lost.
 
-## Gates locais
+## Local gates
 
-| PR | Código validado | Resultado de scripts/ci-local.sh all |
+| PR | Validated code | Result of scripts/ci-local.sh all |
 |---|---|---|
-| #154 | `415a732` | 160 testes Elixir, Sobelow, assets e biblioteca verdes |
-| #158 | `331c876` | 160 testes Elixir, Sobelow, assets e biblioteca verdes |
-| #161 | `ec6fe27` (+ documentação em `26896b1`) | 164 testes Elixir, Sobelow, assets e biblioteca verdes |
-| #164 | `5f97600` | 168 testes Elixir, Sobelow, assets e biblioteca verdes |
+| #154 | `415a732` | 160 Elixir tests, Sobelow, assets and library green |
+| #158 | `331c876` | 160 Elixir tests, Sobelow, assets and library green |
+| #161 | `ec6fe27` (+ documentation in `26896b1`) | 164 Elixir tests, Sobelow, assets and library green |
+| #164 | `5f97600` | 168 Elixir tests, Sobelow, assets and library green |
 
-Cada execução incluiu format/credo/compilação/dependências/testes via mix gate,
-scripts/check_assets.sh, assets.build/deploy e os 20 testes da biblioteca.
-O main recebeu #169/#170 durante a sequência; o gate cumulativo final inclui ambos.
-Os acréscimos posteriores ao gate final são somente este registro e screenshots.
+Each run included format/credo/compile/dependencies/tests via mix gate,
+scripts/check_assets.sh, assets.build/deploy and the 20 library tests.
+Main received #169/#170 during the sequence; the final cumulative gate includes both.
+The additions after the final gate are only this record and screenshots.
 
-O GitHub confirmou billing na annotation do job 127201135118: o job não iniciou
-por falha de pagamento ou limite de gastos. O gate local foi usado conforme
-PIPELINES.md e a autorização do usuário; não se esperou nem se redisparou Actions.
-Quando billing for liberado, executar workflow_dispatch sobre main.
+GitHub confirmed billing in the annotation of job 127201135118: the job did not start
+due to a payment failure or spending limit. The local gate was used per
+PIPELINES.md and the user's authorization; Actions was neither waited for nor re-triggered.
+When billing is released, run workflow_dispatch on main.
 
-## WebKit após a resolução
+## WebKit after resolution
 
-Light/dark em 1366×768, 3440×1440 e 375×812: scrollWidth igual à largura do viewport,
-LiveView conectado e painel de versão acima das colunas. Disconnect/connect voltou
-`reconnecting → live`. Zero erros ou warnings no console. Sem operações mutáveis,
-mensagens, execução de Update & restart ou áudio real. Browser e servidor próprios
-encerrados.
+Light/dark at 1366×768, 3440×1440 and 375×812: scrollWidth equal to the viewport width,
+LiveView connected and the version panel above the columns. Disconnect/connect returned
+`reconnecting → live`. Zero errors or warnings in the console. No mutating operations,
+messages, execution of Update & restart or real audio. Own browser and server closed.
 
-Capturas: [1366 claro](merged-review-light-1366.png),
-[1366 escuro](merged-review-dark-1366.png),
-[3440 claro](merged-review-light-3440.png),
-[3440 escuro](merged-review-dark-3440.png),
-[375 claro](merged-review-light-375.png), [375 escuro](merged-review-dark-375.png).
+Captures: [1366 light](merged-review-light-1366.png),
+[1366 dark](merged-review-dark-1366.png),
+[3440 light](merged-review-light-3440.png),
+[3440 dark](merged-review-dark-3440.png),
+[375 light](merged-review-light-375.png), [375 dark](merged-review-dark-375.png).

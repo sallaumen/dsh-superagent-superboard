@@ -61,12 +61,12 @@ differ. Change a general rule upstream, not here.
   so an overlay is not reset to `queued` every five minutes. A **closed
   issue** is the exception: every sync moves its task to `done`, unless it
   is stopped or archived (`Sync.close_task/2`). Before this, an issue closed
-  after it entered the board stayed in Fila while the runner had nothing to
-  do (`sync_repo_test.exs`). A reopened issue is not moved back yet.
+  after it entered the board stayed in Fila (the queue) while the runner had
+  nothing to do (`sync_repo_test.exs`). A reopened issue is not moved back yet.
 - A review rollup is the strongest review (`changes_requested` beats `approved`);
   a check rollup names the failing check.
 
-## Board actions (o registro de ações)
+## Board actions (the action registry)
 
 Every write the board makes goes through `AgentBoard.Actions.run/4`: the
 interface, the voice, the API and the board's own automatic work. Each action
@@ -106,25 +106,25 @@ in a prompt, and it is the prerequisite of any dispatch that spends money.
 
 ```mermaid
 flowchart LR
-    A["Toda escrita<br/>(UI · voz · API · sistema)"] --> G["AgentBoard.Actions.run/4"]
-    G --> R{Risco declarado}
-    R -- verde / amarela --> E["Executa · decisão `automatic`"]
-    R -- vermelha --> C{Confirmação<br/>frase ou palavras do dono}
-    C -- ausente ou de outros valores --> X["Recusa `{:unconfirmed, frase}`<br/>decisão `refused`"]
-    C -- confirmada --> S["Decisão gravada **antes** do efeito<br/>(`ok`/`error` depois)"]
+    A["Every write<br/>(UI · voice · API · system)"] --> G["AgentBoard.Actions.run/4"]
+    G --> R{Declared risk}
+    R -- green / yellow --> E["Runs · `automatic` decision"]
+    R -- red --> C{Confirmation<br/>sentence or owner's words}
+    C -- missing or with other values --> X["Refusal `{:unconfirmed, phrase}`<br/>decision `refused`"]
+    C -- confirmed --> S["Decision recorded **before** the effect<br/>(`ok`/`error` after)"]
     S --> E
 ```
 
-A exceção única é a autorização permanente escrita neste contrato (a
-retentativa automática de falha transitória, ator `auto_retry`): ela dispensa
-a pergunta, mas segue gravando a decisão como `automatic` com a evidência
+The single exception is the standing authorization written in this contract
+(the automatic retry of a transient failure, actor `auto_retry`): it waives
+the question, but still records the decision as `automatic` with the evidence
 `standing`.
 
-The inventory (2026-11-07). "Confirma" says where the confirmation lives on
-each door; a yellow or green action runs on the click and is recorded as
-`automatic`.
+The inventory (2026-11-07). The Confirmation column says where the
+confirmation lives on each door; a yellow or green action runs on the click
+and is recorded as `automatic`.
 
-| Action | Risk | Effect | Confirma |
+| Action | Risk | Effect | Confirmation |
 |---|---|---|---|
 | `create_tasks` | red | opens GitHub issues that mention the agent (`Board.Requests.create_request/3`, once per request key) | UI: the composer shows the sentence above the send button and the send carries it; the intake panel's Create asks it in the browser (`data-confirm`). Voice: proposal and yes, or "cria direto". API: `428` then `confirm` |
 | `ask_task` | red | comments on the issue with the mention | UI: the inspector asks in two steps ("Mandar a pergunta"). Voice: proposal and yes |
@@ -145,7 +145,7 @@ each door; a yellow or green action runs on the click and is recorded as
 | `start_agent` | red | runs `dsh-superagent start` on this machine; clears a stop made on purpose | UI: `AgentAction` "Religar o agente" |
 | `set_max_workers` | yellow | `PUT settings/executor` with the new ceiling (− and + undo it) | UI: one click on the Paralelismo tile |
 | `add_repository` | yellow | tracks a repository | UI: settings menu. API: direct |
-| `change_setting` | yellow | one board preference: the voice (language, volume, speed, engine, voice, model…; a paid engine stays under its daily cap) or the daily summary (on/off, the hour) | UI: voice menu and daily summary settings. Voice: "mais devagar/alto". API: `PUT /api/voice/settings` |
+| `change_setting` | yellow | one board preference: the voice (language, volume, speed, engine, voice, model…; a paid engine stays under its daily cap) or the daily summary (on/off, the hour) | UI: voice menu and daily summary settings. Voice: "mais devagar/alto" (slower/louder). API: `PUT /api/voice/settings` |
 | `dismiss_summary` | yellow | takes the day's summary off the screen (the row stays) | UI: one click on the summary card |
 | `forget_conversation` | red | deletes the voice conversation's memory | UI: "Esquecer conversa" asks the sentence in the browser. Voice: proposal and yes |
 | `sync_now` | green | queues a sync (a read of GitHub) | UI: one click |
@@ -181,19 +181,21 @@ that already worked).
 ## Workpad
 
 - The agent keeps one comment per issue, edited in place, headed
-  `## Relatório do agente` with the sections `### Plano`, `### Validação`,
-  `### Pergunta` and `### Bloqueio` (the Communication prompt,
-  `docs/agent/prompts/communication.md`). `AgentBoard.Workpad.parse/1` reads
+  `## Relatório do agente` (Agent report) with the sections `### Plano`
+  (Plan), `### Validação` (Validation), `### Pergunta` (Question) and
+  `### Bloqueio` (Block), from the Communication prompt
+  (`docs/agent/prompts/communication.md`). `AgentBoard.Workpad.parse/1` reads
   it by section name; any other comment is `nil`, and an empty section is
   `nil`: the parser never invents a question, a block or a gate.
 - When the newest agent comment on a task is a workpad, its fields decide: a
-  filled Pergunta makes a `waiting` ticket a `question` with or without a
-  "?" (`Board.agent_asked?/2`, `Sync.waiting_state/2`), a filled Bloqueio
-  makes it `blocked` even when the ticket opened a PR, and the item in
-  Precisa de você quotes the section, never the whole comment.
-- Validação is the local CI of the PRs the ticket and the workpad name
-  (`LocalCI.by_pr/3`, scope `:workpad`): the command, its result and the
-  sha it ran on. The sha is checked against the PR's head
+  filled Pergunta (Question) makes a `waiting` ticket a `question` with or
+  without a "?" (`Board.agent_asked?/2`, `Sync.waiting_state/2`), a filled
+  Bloqueio (Block) makes it `blocked` even when the ticket opened a PR, and
+  the item in Precisa de você (Needs you) quotes the section, never the whole
+  comment.
+- Validação (validation) is the local CI of the PRs the ticket and the
+  workpad name (`LocalCI.by_pr/3`, scope `:workpad`): the command, its result
+  and the sha it ran on. The sha is checked against the PR's head
   (`pull_requests.head_sha`, written by the sync): a gate on another commit
   is `:stale`, shown as `CI local ?` with both shas in the tooltip, never as
   a pass. A head the sync has not written yet cannot contradict the gate.
@@ -225,8 +227,8 @@ that already worked).
   (`board_load_test.exs`).
 - The **runner** writes its status in a run directory; `Runners.Ticker`
   reads it and calls `Board.broadcast/1` on the task's repository, so the
-  inspector and the Execuções tab follow without a reload.
-- The **Hoje** view reads every repository in the same board load
+  inspector and the Execuções (Executions) tab follow without a reload.
+- The **Hoje** (Today) view reads every repository in the same board load
   (`Overview.today/0` and `Usage.Report.today/0`), never in a render. Because it
   shows all repositories, `Board.broadcast/1` also emits
   `{:today_updated, repository_id}` on the `board_today` topic; the view
@@ -234,7 +236,7 @@ that already worked).
   change already arrives as `:board_updated`. A board on a repository does
   not listen to that topic for work it does not show.
 
-## Silence (Sem sinal)
+## Silence
 
 - A running ticket's **last signal** is derived on every render by
   `AgentBoard.AgentSignal`: the newest of the runner's own timestamps
@@ -248,11 +250,12 @@ that already worked).
   in memory only (`AgentWorktree.Cache`). A render therefore shows the
   worktree as it was at most 10 s earlier; a fresh read per render cost 40 ms
   of `git` per running ticket, per LiveView, per broadcast.
-- Past `:stall_after_ms` (default 15 min) the silence is shown: the Agora
-  card says "sem sinal há N min" and its glyph stops pulsing, and the task
-  enters Precisa de você as `:stalled`, after blocks and before reviews, with
-  the moment it crossed the threshold as its age and as what "novo" means.
-  The item's DOM id is `silence-<id>`: the task's card is still in Agora.
+- Past `:stall_after_ms` (default 15 min) the silence is shown: the Agora (Now)
+  card says "sem sinal há N min" ("no signal for N min") and its glyph stops
+  pulsing, and the task enters Precisa de você as `:stalled`, after blocks and
+  before reviews, with the moment it crossed the threshold as its age and as
+  what "novo" (new) means. The item's DOM id is `silence-<id>`: the task's
+  card is still in Agora.
 - The voice says it once, when the item first appears in the needs list
   (`Announcer`, the `:needs` option), and stays quiet while it remains.
 - The item says what the board saw last (a report, a worktree change or the
@@ -329,15 +332,17 @@ Agora and the detail):
   item in Precisa de você: nobody has to act, the system is on it, and
   Agora is where the board says what is happening now. The row says what
   failed and when the next attempt goes out ("Falha de rede ao chamar o
-  modelo. Nova tentativa automática às 14:20 (2 de 3)."). Entering
+  modelo. Nova tentativa automática às 14:20 (2 de 3)." — "Network failure
+  calling the model. Automatic retry at 14:20 (2 of 3)."). Entering
   `retrying` is silent (`Announcer`); leaving it for `blocked` is the call.
 - When the retries ran out or the failure is not transient, the task is
   `blocked` and its item in Precisa de você says what failed and the step
   left to the owner, never only the raw error.
 - When the orchestrator does not answer `GET /state` (asked once per load,
   the same answer as the throughput strip), the blocks and silences collapse
-  into **one** item, "Agente fora do ar", with "Religar o agente". A board
-  with the API switched off does not know, and collapses nothing.
+  into **one** item, "Agente fora do ar" ("Agent offline"), with "Religar o
+  agente" ("Restart the agent"). A board with the API switched off does not
+  know, and collapses nothing.
 - The detail of a failed task shows the headline, what the system will do,
   what is left to the owner, the whole error and every Assignment as an
   attempt (when, what happened, whether the board or a person asked for the
@@ -388,7 +393,7 @@ Agora and the detail):
   activity event a day; the cap itself never refuses a call, the voice
   routing reads `over_cap?/0`. A ledger write that fails is logged and
   skipped, never a failed speech. `GET /api/voice/status` and the
-  "Bastidores da voz" summary show today's totals.
+  "Bastidores da voz" (Voice backstage) summary show today's totals.
 - **Voice activity** (`AgentBoard.Voice.Activity`): each stage of a turn,
   every retry and every failure (server, or browser via
   `voice_client_error`) is one event: a log line `voice stage=… status=…`,
@@ -465,9 +470,10 @@ Agora and the detail):
   (`Actions.phrase/3`, kept in the proposal with its language), settled
   once by a conditional update; yes and no are recognized locally. The yes
   passes that sentence to `AgentBoard.Actions`, so a task that changed in
-  between is refused ("Não fiz nada: algo mudou desde que perguntei") and
-  the no is a recorded refusal. `:voice_agent` refines a request itself
-  (title, acceptance criteria, or one question): no second model call.
+  between is refused ("Não fiz nada: algo mudou desde que perguntei" — "I did
+  nothing: something changed since I asked") and the no is a recorded
+  refusal. `:voice_agent` refines a request itself (title, acceptance
+  criteria, or one question): no second model call.
   The one exception is a **direct create**: only when the owner says so
   ("cria direto", "já cria", "sem perguntar": the model's `direct` flag
   **and** the owner's words, checked by `Actions.direct_order?/2`) the task
@@ -480,7 +486,7 @@ Agora and the detail):
   activity ring) and the registered `:voice_explain` call answers only from
   those facts, with ages precomputed in minutes. A missing task, an empty
   search or no project is said without a model call. The catalog the owner
-  sees ("O que posso pedir", the spoken "ajuda") is
+  sees ("O que posso pedir" ("What can I ask"), the spoken "ajuda" (help)) is
   `AgentBoard.Voice.Commands`; a new lookup kind is added there and to the
   `:voice_agent` schema together (a test compares them). "Status",
   "ajuda", "desfaz", "repete" and the voice adjustments are local: no
@@ -510,8 +516,9 @@ Agora and the detail):
   after the confirmation that is not the workpad, within a day — is spoken
   once on a board update (`Conversation.arrived_answers/1`, claimed by the
   conditional `mark_answered/1` so a second tab stays quiet), joins the
-  memory and is silenced by `voice_attention`. "Repete" and "mais devagar/rápido/alto/baixo" are
-  local commands of the conversation, no model. The old draft panel
+  memory and is silenced by `voice_attention`. "Repete" (repeat) and "mais
+  devagar/rápido/alto/baixo" (slower/faster/louder/quieter) are local commands
+  of the conversation, no model. The old draft panel
   (`VoiceCommand.draft`, `VoiceMutations`, `VoiceActionConfirmation`) was
   removed; `AgentBoardWeb.VoiceCommands` stays as the no-model fallback and
   `AgentBoardWeb.VoiceAnswer` only feeds the board AI evaluation.
@@ -532,7 +539,7 @@ Agora and the detail):
 - **A task that cannot close on its own is dropped**, not created
   half-written (see `AgentBoard.Intake`).
 
-## Executor usage (Executor do agente)
+## Executor usage
 
 - The board's own calls are rows in `ai_calls` (above). The **executor's**
   calls are not the board's: `AgentBoard.Usage.Harness` reads them from the
@@ -603,16 +610,16 @@ sync found or a task created before the choice existed.
 - The tests: `executors_test.exs` and `create_request_test.exs` (the body
   and the label GitHub receives, the stored executor, a repeat).
 
-## Dispatch (despacho local)
+## Dispatch (local dispatch)
 
-Fase 3 of the Alfred plan (`docs/research/alfred.md`, 3.6 and F3.1–F3.3):
+Phase 3 of the Alfred plan (`docs/research/alfred.md`, 3.6 and F3.1–F3.3):
 `AgentBoard.Runners` starts Claude Code (`claude -p`) or Codex
 (`codex exec`). The decision is the owner's, recorded in
 [ADR 0004](decisions/0004-o-board-despacha-para-executores-locais.md):
 the owner's `gh` account, US$ 300/month, US$ 5 per Claude Code task, 30
 minutes for Codex and 50 % of the Codex weekly window reserved; all are
 settings (`dispatch_*`); both the global pause and the numbers have a form
-in Configurações → Despacho local.
+in Configurações → Despacho local (Settings → Local dispatch).
 
 - **The process is not a child of the board.** `dispatch/3` writes a run
   directory (`~/.agent_board/runs/<uuid>`), a prompt and a `launch.sh`, and
@@ -623,14 +630,14 @@ in Configurações → Despacho local.
 
 ```mermaid
 flowchart LR
-    A["`dispatch/3`<br/>ação vermelha confirmada"] --> D["diretório de run<br/>`~/.agent_board/runs/&lt;uuid&gt;`<br/>prompt + launch.sh"]
-    D --> T["`scripts/runners/run.sh`<br/>em tmux (nohup de reserva)"]
-    T --> W["worktree a partir de<br/>`origin/main`"]
-    W --> C["CLI: `claude -p` / `codex exec`<br/>(stdin fechado)"]
-    C --> S["arquivos de status<br/>`status · session_id · result · error`"]
-    S --> K["`Runners.Ticker`<br/>lê a cada 15 s"]
-    K --> B["board: raia + Execuções"]
-    K -->|"Parar execução (vermelha)"| X["mata a sessão tmux `ab-&lt;uuid&gt;`<br/>registra `stopped`"]
+    A["`dispatch/3`<br/>confirmed red action"] --> D["run directory<br/>`~/.agent_board/runs/&lt;uuid&gt;`<br/>prompt + launch.sh"]
+    D --> T["`scripts/runners/run.sh`<br/>in tmux (nohup fallback)"]
+    T --> W["worktree from<br/>`origin/main`"]
+    W --> C["CLI: `claude -p` / `codex exec`<br/>(stdin closed)"]
+    C --> S["status files<br/>`status · session_id · result · error`"]
+    S --> K["`Runners.Ticker`<br/>reads every 15 s"]
+    K --> B["board: lane + Execuções tab"]
+    K -->|"Parar execução (red)"| X["kills the tmux session `ab-&lt;uuid&gt;`<br/>records `stopped`"]
 ```
 
 - **The dispatch is the red action `dispatch_task`.** Its sentence names the
@@ -663,8 +670,8 @@ flowchart LR
   and then the run directory; active/unknown runs are never touched. The
   default is a dry-run. `runners_cleanup_test.exs` covers dry-run and apply.
 - **The lane follows the execution**: starting puts the task in `running`
-  (Agora), a finished execution puts it in `ready` (Para revisar), and a
-  failure puts it in `blocked` (Precisa de você) until a new confirmed
+  (Agora), a finished execution puts it in `ready` (Para revisar, To review),
+  and a failure puts it in `blocked` (Precisa de você) until a new confirmed
   dispatch; a task already done, closed, stopped or archived is never moved.
 - **One execution, one row** in `runner_executions`: task, repository,
   executor, status (`starting`, `running`, `done`, `failed`, `stopped`),
@@ -680,8 +687,9 @@ flowchart LR
 - **The inspector** shows the dispatch block for a task whose executor is
   Claude Code or Codex (not for `dsh`, not for a finished task), the
   confirmation, the pause switch, and every dispatch in the Execuções tab
-  with its session and result. The Executores panel and the ledger keep
-  their currencies: the runner row says nothing about US$ by itself.
+  with its session and result. The Executores (Executors) panel and the
+  ledger keep their currencies: the runner row says nothing about US$ by
+  itself.
 - **The runner never reads stdin**: both CLIs run with `</dev/null`; the
   prompt is the file/argument. The real Codex smoke (2026-11-08) printed
   "Reading additional input from stdin" when its stdin was a pipe, so the
@@ -738,12 +746,13 @@ that watches one GitHub repository and picks the issues whose body mentions
   after a board restart: a process that is stopped/unknown, or an
   `econnrefused` error, is started again. Per-profile LaunchAgents are no
   longer required; the board LaunchAgent is the single boot entry.
-- **The board has a Superagentes panel.** It lists one card per registered
-  project (repository, profile, port, workers, desired/observed state, last
-  read and error) and exposes **Ligar**, **Parar**, **Pausar**, **Retomar**
-  and the worker ceiling. The ticker reads the manager API every 30 s; the
-  actions are `start_superagent`, `stop_superagent`, `pause_superagent`,
-  `resume_superagent` and `scale_superagent`.
+- **The board has a Superagentes (Superagents) panel.** It lists one card per
+  registered project (repository, profile, port, workers, desired/observed
+  state, last read and error) and exposes **Ligar**, **Parar**, **Pausar**,
+  **Retomar** (Start, Stop, Pause, Resume) and the worker ceiling. The ticker
+  reads the manager API every 30 s; the actions are `start_superagent`,
+  `stop_superagent`, `pause_superagent`, `resume_superagent` and
+  `scale_superagent`.
 - **The routing list is a setting.** `dsh_repositories`
   (Configurações → Despacho local, comma-separated) names the repositories
   the DeepSeek agents watch; the router only suggests DeepSeek for those. The
@@ -753,7 +762,7 @@ that watches one GitHub repository and picks the issues whose body mentions
   mention and the superagent picks it up. There is no per-task process to
   start, stop or budget; the `/state` read is the availability signal.
 
-## Routing (mode "sugerir")
+## Routing (mode "suggest")
 
 `AgentBoard.Routing.suggest/2` is pure: rules in the plan's order
 (`docs/research/alfred.md`, 3.5), no model, a suggestion and never a
@@ -771,8 +780,8 @@ dispatch.
   executor**, in the executor's own currency (`AgentBoard.Usage.Report`):
   estimated US$ for the harness, the Max subscription's list price as a
   reference for Claude Code, and `:unknown` for Codex, which has no US$.
-  With no priced history it is `:unknown`, shown as "desconhecido", never
-  zero.
+  With no priced history it is `:unknown`, shown as "desconhecido" (unknown),
+  never zero.
 - **Every task the board creates for an executor has one row** in
   `routing_decisions`: suggested (nil when nobody could take it), chosen,
   mode, reasons in Portuguese, alternatives, the snapshot of the signals
@@ -796,7 +805,7 @@ dispatch.
   `orchestrator_test.exs` (`dispatch_state/1`) and `create_request_test.exs`
   (the row, the repeat, the row computed without a shown suggestion).
 
-## Usage ledger (Livro de uso)
+## Usage ledger
 
 What Claude Code, Codex and the harness spent, kept by the board so a screen
 never reads hundreds of transcripts on render (`docs/research/alfred.md`,
@@ -880,8 +889,9 @@ read and cache write tokens, with the first and last time.
   live harness ticket's folder for the exact rule). The panel reads once when
   it opens or when the window changes; the tab reads when it opens and reuses
   the reading while the task stays open, so a board render adds no query.
-  Every value says **medido**, **estimado** or **desconhecido**; "fora do
-  board" carries no task.
+  Every value says **medido** (measured), **estimado** (estimated) or
+  **desconhecido** (unknown); "fora do board" (outside the board) carries no
+  task.
 - The tests: `ledger_test.exs` (the reader's groups, no change on a second
   read, a grown and a rewritten transcript, a copy that never counts twice,
   Codex days against `tokens_used`, the newest quota, the harness through
@@ -910,15 +920,15 @@ issue URL of the same repository, in the order named).
 
 ```mermaid
 flowchart TB
-    S["sessão do executor<br/>ou PR"] --> R1{"exact<br/>a sessão carrega o id da tarefa?"}
-    R1 -- sim --> T1["`{:task, id, :exact}`"]
-    R1 -- não --> R2{"pr-link<br/>um `pr-link` nomeia PR<br/>que fecha a issue da tarefa?"}
-    R2 -- sim --> T2["`{:task, id, :pr_link}`"]
-    R2 -- não --> R3{"branch<br/>a branch é o `head_ref` de um PR<br/>que fecha a issue da tarefa?"}
-    R3 -- sim --> T3["`{:task, id, :branch}`"]
-    R3 -- não --> R4{"repository<br/>remote, `pr-link` ou pasta<br/>nomeiam um repositório do board?"}
-    R4 -- sim --> T4["`{:repository, id}`"]
-    R4 -- não --> T5["`{:outside, folder}`<br/>ou `:unknown` sem pasta"]
+    S["executor session<br/>or PR"] --> R1{"exact<br/>does the session carry the task id?"}
+    R1 -- yes --> T1["`{:task, id, :exact}`"]
+    R1 -- no --> R2{"pr-link<br/>does a `pr-link` name a PR<br/>that closes the task's issue?"}
+    R2 -- yes --> T2["`{:task, id, :pr_link}`"]
+    R2 -- no --> R3{"branch<br/>is the branch the `head_ref` of a PR<br/>that closes the task's issue?"}
+    R3 -- yes --> T3["`{:task, id, :branch}`"]
+    R3 -- no --> R4{"repository<br/>do the remote, `pr-link` or folder<br/>name a board repository?"}
+    R4 -- yes --> T4["`{:repository, id}`"]
+    R4 -- no --> T5["`{:outside, folder}`<br/>or `:unknown` with no folder"]
 ```
 
 - **A PR without `Closes #n` has no task.** The board never guesses by
@@ -930,7 +940,7 @@ flowchart TB
   `sync_repo_test.exs` (the columns through the sync, the fork, a session
   attributed by branch).
 
-## Summary of the day (Resumo do dia)
+## Summary of the day
 
 The Alfred's daily report on a wall clock (`docs/research/alfred.md`, F1.6).
 `Oban.Cron` only inserts a job when its expression matches the minute it
@@ -965,7 +975,7 @@ slept is never recovered; this routine asks a question instead.
   `"quota": "unknown"`), and Codex as the share of the weekly window
   (`usage_limits`, `"currency": "quota"`), with no US$ anywhere. A source the
   board cannot read, and a Codex line without a quota reading, is
-  `desconhecido`, never zero.
+  `desconhecido` (unknown), never zero.
 - **On the board** it is a discreet block under the digest, today's only,
   that arrives with `{:daily_summary, :generated, id}` on the
   `"daily_summary"` topic and leaves on every board when one dismisses it
@@ -983,7 +993,8 @@ slept is never recovered; this routine asks a question instead.
   4000-4500, the live board included, and would spend it. Its own switch
   governs the voice, not the narration toggle; for the engine choice it is
   narration (the free browser voice unless the engine is `elevenlabs`).
-- **Settings** live in Configurações → Resumo do dia: `daily_summary_enabled`
+- **Settings** live in Configurações → Resumo do dia (Settings → Daily
+  summary): `daily_summary_enabled`
   (`"false"` switches it off) and `daily_summary_at` (`HH:MM`, default
   08:00); a malformed hour is refused in words and saves nothing.
 - The tests: `daily_summary_test.exs` (the wall clock with a controlled
@@ -995,7 +1006,7 @@ slept is never recovered; this routine asks a question instead.
   spoken once, dismissed everywhere, the stored facts, the settings fold)
   and `test/assets/daily_summary_voice_test.mjs` (who may ask).
 
-## Today (Hoje)
+## Today
 
 `Overview.repo_overview/0` reads every repository for the cross-repo view. Its
 ready tasks are filtered through **one** linked-PR query for the whole page
@@ -1004,8 +1015,8 @@ ready tasks are filtered through **one** linked-PR query for the whole page
 sync per repository are separate bounded reads, and the repository list is
 one more.
 
-The Alfred's "Hoje" (docs/research/alfred.md, 3.4 and F2.1): what needs the
-owner in every repository, one list, repository on each item.
+The Alfred's "Hoje" (Today) view (`docs/research/alfred.md`, 3.4 and F2.1):
+what needs the owner in every repository, one list, repository on each item.
 
 - **The list** comes from `Overview.today/0`: every task in `blocked`, `question`
   or `ready` (a ready task whose PR already merged is done, as on the board)
@@ -1017,8 +1028,8 @@ owner in every repository, one list, repository on each item.
   `Time.local/2`, its two UTC instants) per source, plus the newest weekly
   Codex quota. The ledger stores UTC days; the view does not
   show tomorrow's UTC date to an owner west of UTC. Each executor keeps its
-  own currency; a source with no row is "não rodou", a missing reading is
-  "desconhecido".
+  own currency; a source with no row is "não rodou" (did not run), a missing
+  reading is "desconhecido" (unknown).
 - **It is a view, not a repository**: `/?view=hoje` in the rail; clicking an
   item opens the task in its own repository (and loads that repository). The
   data is read with the board, not per render, and follows the Real-time
@@ -1028,7 +1039,7 @@ owner in every repository, one list, repository on each item.
   currencies, the click that changes repository, another repository's
   broadcast).
 
-## Objectives (Objetivo)
+## Objectives
 
 F3.4 of the Alfred plan: a group of tasks with one done criterion, progress
 computed from the tasks, never a second project manager.
@@ -1037,11 +1048,11 @@ computed from the tasks, never a second project manager.
   creates one `objectives` row and attaches the created tasks (`tasks.objective_id`);
   a single task, the API and the voice create no objective. The title is the
   first line of the request and the default criterion is "Todas as tarefas
-  mescladas.", both stored, not recomputed.
+  mescladas." ("All tasks merged."), both stored, not recomputed.
 - **Progress** is `merged` tasks (state `done`) over `total` attached tasks;
   the board shows the title, the criterion and "x de y tarefas mescladas"
-  with a progress bar. The objective has no state of its own: it exists only
-  as the criterion and the tasks.
+  ("x of y tasks merged") with a progress bar. The objective has no state of
+  its own: it exists only as the criterion and the tasks.
 - **It does not replace the board's lanes.** Attaching or finishing a task is
   the same write and the same sync; no separate status is written.
 - The tests: `objectives_test.exs` (the criterion, progress, one task is not a
@@ -1074,8 +1085,9 @@ records are the `ai_calls` rows (the split) and the tasks with their
   claim; the sync never sees a draft in a lane. A retry after a partial
   split creates only what is missing.
 - **The receipt names what happened**: number and link for each task that
-  entered, "já estava na fila" for a repeat, the reason for each failure, and
-  a retry for the failures only. Closing a receipt with a failure keeps it.
+  entered, "já estava na fila" ("already in the queue") for a repeat, the
+  reason for each failure, and a retry for the failures only. Closing a
+  receipt with a failure keeps it.
 - **Failures are words**, never `inspect/1`: the model's reason
   (`:malformed_output`, `:usage_limit`, `{:http, status}`, a timeout) maps to
   a sentence and a way out (retry, answer the questions, send as a single
@@ -1126,31 +1138,31 @@ records are the `ai_calls` rows (the split) and the tasks with their
 The header is the health line: if it says errors, open the activity panel,
 where each failing item is one row.
 
-## Throughput (Vazão)
+## Throughput
 
 The strip under the digest (`AgentBoardWeb.BoardComponents.Throughput`) shows
 the agent's throughput per hour. Every value is counted from a record the
 board holds; a source the board never read shows `?` and names the reason
 (`Metrics.reason/1`). Nothing is estimated and nothing is backfilled.
 
-Windows are sliding and end at the render: **última hora** is the last 60
-minutes, **24 h** and **7 d** the last 24 hours and 7 days; the delta chip
-compares the last 60 minutes with the 60 before. The sparkline is different on
-purpose: 24 clock hours in the reader's offset (`board_tz_offset`), 23 full
-ones and the current, partial one, so a bar reads "14:00–15:00". The strip is
-recomputed on every `:board_updated` (the sync and the 10 s poller), never on
-a browser timer, and says when it was computed.
+Windows are sliding and end at the render: **última hora** (last hour) is the
+last 60 minutes, **24 h** and **7 d** the last 24 hours and 7 days; the delta
+chip compares the last 60 minutes with the 60 before. The sparkline is
+different on purpose: 24 clock hours in the reader's offset
+(`board_tz_offset`), 23 full ones and the current, partial one, so a bar reads
+"14:00–15:00". The strip is recomputed on every `:board_updated` (the sync and
+the 10 s poller), never on a browser timer, and says when it was computed.
 
 | Tile | Numerator | Instant | Source | Known limits |
 |---|---|---|---|---|
-| Concluídas | tasks with `state == "done"` | `tasks.state_changed_at` | the sync (`reconcile_resolved_tasks`, the ticket overlay) | the instant the **board observed** the close, not GitHub's `closed_at`; rows migrated before the redesign have no instant and are not counted |
-| Issues abertas | tasks with `kind == "issue"` | `tasks.inserted_at` | the sync's first sight of the issue | a repository added with a backlog shows that backlog in one hour |
-| PRs mesclados | pull requests with `merged_at` | `pull_requests.merged_at` | GitHub's own merge time | the sync reads the 100 most recently updated pulls per run |
+| Concluídas (Completed) | tasks with `state == "done"` | `tasks.state_changed_at` | the sync (`reconcile_resolved_tasks`, the ticket overlay) | the instant the **board observed** the close, not GitHub's `closed_at`; rows migrated before the redesign have no instant and are not counted |
+| Issues abertas (Open issues) | tasks with `kind == "issue"` | `tasks.inserted_at` | the sync's first sight of the issue | a repository added with a backlog shows that backlog in one hour |
+| PRs mesclados (Merged PRs) | pull requests with `merged_at` | `pull_requests.merged_at` | GitHub's own merge time | the sync reads the 100 most recently updated pulls per run |
 | Commits | rows in `commits` | `commits.committed_at` (the committer date, when it landed) | `GitHub.commits/5`: the default branch as GitHub resolves it, `since` the newest commit stored (the first read covers 7 days), up to 10 pages per run | merge commits count; a commit stays once seen, even if the branch is later rewritten; `?` until the latest completed `sync` event carries a `commits` count |
-| Tickets encerrados | the agent's tickets with `ended.outcome` in `merged`, `completed` | `ended.at` (`AgentState`, `"ended_at"`) | the runner's sqlite, read-only, filtered to the tickets whose channel is one of this repository's issues | `?` when the sqlite did not answer (`agent.ok == false`); a ticket with no channel URL belongs to no repository |
-| Fila | tasks queued at the instant (depth, not a rate) | queued from `inserted_at` until `started_at` (the ticket's clock) or, failing that, `state_changed_at` | tasks | a task that left the queue at an unknown instant is left out; **24 h** and **7 d** are the peak depth at hour ends |
-| Ciclo | mean issue → PR and PR → merge | `tasks.inserted_at` → `pull_requests.opened_at` → `pull_requests.merged_at` | one cycle per ticket that ended `merged`: its channel issue, the newest PR in its `own_threads`, that PR's merge | over the tickets whose PR merged in the window; a leg with a missing instant is left out of that mean, never counted as zero |
-| Paralelismo | `load.running` of `load.maxWorkers`, plus `load.queued` | now | `AgentBoard.Orchestrator.load/0`: `GET $SUPERAGENT_API/state` with `x-orchestrator-request: 1`, 500 ms to connect, 1 s to answer | no history: the value is the instant of the render; `?` with the reason when the API is off (`orchestrator_api: false`), unreachable or malformed |
+| Tickets encerrados (Closed tickets) | the agent's tickets with `ended.outcome` in `merged`, `completed` | `ended.at` (`AgentState`, `"ended_at"`) | the runner's sqlite, read-only, filtered to the tickets whose channel is one of this repository's issues | `?` when the sqlite did not answer (`agent.ok == false`); a ticket with no channel URL belongs to no repository |
+| Fila (Queue) | tasks queued at the instant (depth, not a rate) | queued from `inserted_at` until `started_at` (the ticket's clock) or, failing that, `state_changed_at` | tasks | a task that left the queue at an unknown instant is left out; **24 h** and **7 d** are the peak depth at hour ends |
+| Ciclo (Cycle) | mean issue → PR and PR → merge | `tasks.inserted_at` → `pull_requests.opened_at` → `pull_requests.merged_at` | one cycle per ticket that ended `merged`: its channel issue, the newest PR in its `own_threads`, that PR's merge | over the tickets whose PR merged in the window; a leg with a missing instant is left out of that mean, never counted as zero |
+| Paralelismo (Parallelism) | `load.running` of `load.maxWorkers`, plus `load.queued` | now | `AgentBoard.Orchestrator.load/0`: `GET $SUPERAGENT_API/state` with `x-orchestrator-request: 1`, 500 ms to connect, 1 s to answer | no history: the value is the instant of the render; `?` with the reason when the API is off (`orchestrator_api: false`), unreachable or malformed |
 
 - A commit read that fails is one `commit_error` event; the issues, pulls and
   tickets still sync, and the `sync` event has no `commits` key for that run.
@@ -1189,15 +1201,15 @@ The sync is isolated **per item**, not per repository:
 
 ```mermaid
 flowchart TB
-    S["sync de um repositório"] --> I["issue"]
+    S["sync of one repository"] --> I["issue"]
     S --> P["pull + reviews/checks"]
-    S --> C["comentários da tarefa"]
+    S --> C["task comments"]
     S --> M["commits"]
-    I -- "falha de validação" --> E1["evento `issue_error`<br/>continua"]
-    P -- "falha de reviews/checks" --> E2["evento `pull_error`<br/>continua"]
-    C -- "falha" --> E3["evento `comment_error`<br/>continua"]
-    M -- "falha de leitura" --> E4["evento `commit_error`<br/>continua, sem a contagem"]
-    S -- "o repositório inteiro falha" --> R["`sync_error`<br/>retorna `{:error, exception}`<br/>Oban tenta de novo"]
+    I -- "validation failure" --> E1["`issue_error` event<br/>continues"]
+    P -- "reviews/checks failure" --> E2["`pull_error` event<br/>continues"]
+    C -- "failure" --> E3["`comment_error` event<br/>continues"]
+    M -- "read failure" --> E4["`commit_error` event<br/>continues, without the count"]
+    S -- "the whole repository fails" --> R["`sync_error`<br/>returns `{:error, exception}`<br/>Oban retries"]
 ```
 
 Every branch returns `:ok` or logs; nothing swallows an error silently and

@@ -1,100 +1,100 @@
-# A camada de IA do painel — proposta histórica
+# The board's AI layer — a historical proposal
 
-> **Registro histórico:** proposta de 5 de novembro de 2026, anterior à
-> implementação da camada de IA. O texto abaixo preserva o diagnóstico, as
-> projeções e as fases daquela proposta; não descreve o estado atual nem uma
-> lista de tarefas ainda pendentes. As referências ao `o_colmex` são o
-> levantamento da época, não um inventário verificado por este repositório.
-> Para trabalhar na implementação, consulte as [regras de IA](maintainer-contract.md#ai-calls)
-> e os pontos de entrada [AgentBoard.AI](../lib/agent_board/ai.ex) e
+> **Historical record:** a proposal from 5 November 2026, before the AI layer was
+> implemented. The text below preserves the diagnosis, the projections and the
+> phases of that proposal; it does not describe the current state nor a list of
+> tasks still pending. The references to `o_colmex` are the survey from that time,
+> not an inventory verified by this repository. To work on the implementation,
+> see the [AI rules](maintainer-contract.md#ai-calls) and the entry points
+> [AgentBoard.AI](../lib/agent_board/ai.ex) and
 > [AgentBoard.Intake](../lib/agent_board/intake.ex).
 
-O painel hoje **espelha** o trabalho do agente: sincroniza o GitHub, mostra o
-board, fala o resumo. Ele não **chama** modelo nenhum. O `ask` é um comentário
-no GitHub; o `Voice` é um template. Este documento mapeia o que falta para o
-painel ter uma camada de IA própria — curta, barata e transparente — e o que
-dela se aproveita do `o_colmex`, que já resolveu esse problema.
+The board today **mirrors** the agent's work: it syncs GitHub, shows the board,
+speaks the summary. It does not **call** any model. The `ask` is a GitHub
+comment; the `Voice` is a template. This document maps what is missing for the
+board to have its own AI layer — short, cheap and transparent — and what of it
+can be borrowed from `o_colmex`, which has already solved this problem.
 
-## 1. O que o `o_colmex` já tem
+## 1. What `o_colmex` already has
 
-| Contrato | O que faz | Arquivo |
+| Contract | What it does | File |
 |---|---|---|
-| `Engine` (behaviour) | o port para um modelo: `run/1` e `status/0`; um adapter por engine, Mox nos testes | `lib/colmex/brain/engine.ex` |
-| `Request` / `Result` | entrada (modelo, system, prompt, caps, schema, tier, rota) e saída (texto, json, tokens, custo em micros, `parse_state`) | `brain/request.ex`, `brain/result.ex` |
-| `Registry` | **lista literal das chamadas permitidas**; o prompt é código, um worker não inventa prompt | `brain/registry.ex` |
-| `Router` | escolhe a engine por `tier`, quota restante e `recommended`; troca só em resposta definitiva | `brain/engines/router.ex` |
-| `Providers` | catálogo: engine, pool, modelo por tier, preços, capacidades | `brain/providers.ex` |
-| `Cut` | a resposta paga que veio incompleta — guarda o que veio em vez de perder | `brain/cut.ex` |
-| `Line` | a fila de espera por capacidade (ticket, operação parqueada) | `brain/line.ex` |
-| `AiBudget` | teto por categoria (texto diário, mensal por provedor) | `ai_budget/policy.ex` |
-| `AiActivity` | operação, eventos e evidência de cada execução | `ai_activity/` |
-| `Rehearsal` | fixtures grátis em dev: a chamada existe, o modelo não roda | `brain/engines/rehearsal.ex` |
+| `Engine` (behaviour) | the port to a model: `run/1` and `status/0`; one adapter per engine, Mox in the tests | `lib/colmex/brain/engine.ex` |
+| `Request` / `Result` | input (model, system, prompt, caps, schema, tier, route) and output (text, json, tokens, cost in micros, `parse_state`) | `brain/request.ex`, `brain/result.ex` |
+| `Registry` | **literal list of the allowed calls**; the prompt is code, a worker does not invent a prompt | `brain/registry.ex` |
+| `Router` | picks the engine by `tier`, remaining quota and `recommended`; it only switches on a definitive response | `brain/engines/router.ex` |
+| `Providers` | catalog: engine, pool, model per tier, prices, capabilities | `brain/providers.ex` |
+| `Cut` | the paid response that came back incomplete — it keeps what arrived instead of losing it | `brain/cut.ex` |
+| `Line` | the wait queue per capacity (ticket, parked operation) | `brain/line.ex` |
+| `AiBudget` | ceiling per category (daily text, monthly per provider) | `ai_budget/policy.ex` |
+| `AiActivity` | operation, events and evidence of each execution | `ai_activity/` |
+| `Rehearsal` | free fixtures in dev: the call exists, the model does not run | `brain/engines/rehearsal.ex` |
 
-O adapter do DeepSeek (`brain/engines/deepseek.ex`) é o mais próximo do que
-precisamos: API OpenAI-compatible, **sem retry** (um retry pago é uma segunda
-cobrança), tool forçada com `strict: true` para resposta estruturada, custo em
-micros, `status/0` sem gastar token.
+The DeepSeek adapter (`brain/engines/deepseek.ex`) is the closest to what we
+need: OpenAI-compatible API, **no retry** (a paid retry is a second charge), a
+forced tool with `strict: true` for a structured response, cost in micros,
+`status/0` without spending a token.
 
-## 2. O que o painel precisa
+## 2. What the board needs
 
-Nada de agente autônomo novo: o painel precisa de **três coisas** e elas são
-pequenas se os contratos acima forem respeitados.
+No new autonomous agent: the board needs **three things** and they are small if
+the contracts above are respected.
 
-1. **Uma porta** (`AgentBoard.AI`) com um registry literal — sem prompt solto
-   pelo código.
-2. **O intake**: pedido livre → spec refinada → N tasks.
-3. **A prova de cada chamada**: uma linha por chamada, visível no painel, com
-   custo e latência.
+1. **A port** (`AgentBoard.AI`) with a literal registry — no prompt loose in the
+   code.
+2. **The intake**: free request → refined spec → N tasks.
+3. **The proof of each call**: one row per call, visible in the board, with cost
+   and latency.
 
-## 3. Arquitetura proposta
+## 3. Proposed architecture
 
 ```
-lib/agent_board/ai.ex                 a porta: call(name, inputs, opts)
-lib/agent_board/ai/registry.ex        a lista literal (prompt é código)
-lib/agent_board/ai/request.ex         modelo, system, prompt, caps, schema, tier
-lib/agent_board/ai/result.ex          texto, json, tokens, custo, latência
+lib/agent_board/ai.ex                 the port: call(name, inputs, opts)
+lib/agent_board/ai/registry.ex        the literal list (the prompt is code)
+lib/agent_board/ai/request.ex         model, system, prompt, caps, schema, tier
+lib/agent_board/ai/result.ex          text, json, tokens, cost, latency
 lib/agent_board/ai/engine.ex          behaviour: run/1, status/0
 lib/agent_board/ai/engines/deepseek.ex   OpenAI-compatible (flash + pro)
-lib/agent_board/ai/engines/gemini.ex     (a confirmar: "GM")
-lib/agent_board/ai/engines/router.ex     tier + orçamento + saúde
-lib/agent_board/ai/budget.ex             teto diário/mensal, em micros
-lib/agent_board/ai/cache.ex              resposta idêntica reusada
-lib/agent_board/ai/call.ex               a linha da tabela (Ecto)
+lib/agent_board/ai/engines/gemini.ex     (to be confirmed: "GM")
+lib/agent_board/ai/engines/router.ex     tier + budget + health
+lib/agent_board/ai/budget.ex             daily/monthly ceiling, in micros
+lib/agent_board/ai/cache.ex              identical response reused
+lib/agent_board/ai/call.ex               the table row (Ecto)
 priv/repo/migrations/*_create_ai_calls.exs
 
-lib/agent_board/intake.ex                pedido → spec
+lib/agent_board/intake.ex                request → spec
 lib/agent_board/intake/split.ex          spec → tasks
 ```
 
-Tabela `ai_calls`: `name`, `engine`, `model`, `status`, `input_tokens`,
+Table `ai_calls`: `name`, `engine`, `model`, `status`, `input_tokens`,
 `output_tokens`, `cost_micros`, `duration_ms`, `parse_state`, `json`,
-`error`, `inserted_at`. É a fonte do painel e do orçamento.
+`error`, `inserted_at`. It is the source of the board and of the budget.
 
-### O fluxo de uma chamada
+### The flow of a call
 
 ```
 call(:refine_request, %{text: "..."}, tier: :fast)
-  → Registry.fetch(:refine_request)          # existe? qual prompt?
-  → Budget.check(tier)                       # cabe no teto?
-  → Cache.get(hash)                          # resposta idêntica?
-  → Router.pick(tier)                        # qual engine?
-  → Engine.run(%Request{})                   # uma requisição
-  → Call.record(...)                         # a linha, com custo
+  → Registry.fetch(:refine_request)          # does it exist? which prompt?
+  → Budget.check(tier)                       # does it fit the ceiling?
+  → Cache.get(hash)                          # identical response?
+  → Router.pick(tier)                        # which engine?
+  → Engine.run(%Request{})                   # one request
+  → Call.record(...)                         # the row, with cost
   → {:ok, %Result{}}
 ```
 
-Uma chamada paga **sempre** vira linha. Sem linha, sem pagamento: é a regra que
-impede o custo invisível.
+A paid call **always** becomes a row. No row, no payment: it is the rule that
+prevents invisible cost.
 
-## 4. O intake (o que o usuário pediu)
+## 4. The intake (what the user asked for)
 
-Duas chamadas registradas, ambas de tier rápido:
+Two registered calls, both in the fast tier:
 
-Nota editorial: os exemplos abaixo ilustram uma única tarefa de documentação;
-não são saídas reais. Valores enumerados usam uma opção válida, e a primeira
-tarefa não depende de si mesma. A arquitetura ao redor continua sendo histórica.
+Editorial note: the examples below illustrate a single documentation task; they
+are not real outputs. Enumerated values use a valid option, and the first task
+does not depend on itself. The architecture around them remains historical.
 
-**`:refine_request`** — recebe o pedido cru e devolve JSON:
+**`:refine_request`** — receives the raw request and returns JSON:
 
 ```json
 {
@@ -109,19 +109,19 @@ tarefa não depende de si mesma. A arquitetura ao redor continua sendo históric
 }
 ```
 
-Regra do prompt: não inventar requisito. O que faltar vai em
-`open_questions`, não em suposição.
+Prompt rule: do not invent a requirement. Whatever is missing goes in
+`open_questions`, not in an assumption.
 
-**`:propose_tasks`** — recebe a spec refinada e devolve uma lista:
+**`:propose_tasks`** — receives the refined spec and returns a list:
 
 ```json
 {
   "tasks": [
     {
       "title": "Corrigir links locais da documentação",
-      "body": "Verificar os destinos dos links em docs/ e corrigir os caminhos quebrados, preservando o conteúdo técnico.",
+      "body": "Check the link targets under docs/ and fix the broken paths, preserving the technical content.",
       "kind": "docs",
-      "acceptance": ["Todos os links locais em docs/ resolvem para destinos existentes"],
+      "acceptance": ["Every local link under docs/ resolves to an existing target"],
       "depends_on": [],
       "size": "S"
     }
@@ -129,103 +129,104 @@ Regra do prompt: não inventar requisito. O que faltar vai em
 }
 ```
 
-Regras: cada task fecha sozinha; dependência só quando há ordem real; `size` L
-quase sempre é duas tasks. O prompt pede que a lista cubra o objetivo; a
-validação local descarta tarefas sem título, corpo ou critérios de aceitação.
+Rules: each task closes on its own; a dependency only when there is a real order;
+`size` L is almost always two tasks. The prompt asks the list to cover the goal;
+local validation discards tasks without a title, body or acceptance criteria.
 
-### O pipeline
+### The pipeline
 
 ```
-texto livre
-  → :refine_request        (JSON validado pelo schema; roda fora do processo da LiveView)
-  → ready=false?           (mostrar perguntas e uma caixa de resposta; a resposta entra no
-                            pedido como "Respostas:" e o texto respondido é dividido de novo)
-  → :propose_tasks         (lista validada; depends_on é índice)
-  → validação local        (descarta task sem título, body ou acceptance)
-  → lista vazia?           (dizer que nada utilizável foi proposto; oferecer tentar de novo
-                            ou enviar como pedido único)
-  → revisão humana         (a pessoa marca quais tarefas entram)
-  → Board.create_request   (uma issue por tarefa marcada; a chave do pedido evita a segunda
-                            issue num clique duplo, reload ou retry; o recibo lista o que
-                            entrou, o que já estava e o que falhou, com retry só do que falhou)
+free text
+  → :refine_request        (JSON validated by the schema; runs outside the LiveView process)
+  → ready=false?           (show questions and an answer box; the answer enters the
+                            request as "Respostas:" and the answered text is split again)
+  → :propose_tasks         (validated list; depends_on is an index)
+  → local validation       (discards a task without a title, body or acceptance)
+  → empty list?            (say nothing usable was proposed; offer to try again
+                            or send as a single request)
+  → human review           (the person marks which tasks enter)
+  → Board.create_request   (one issue per marked task; the request key avoids the second
+                            issue on a double click, reload or retry; the receipt lists what
+                            entered, what was already there and what failed, with a retry
+                            only for what failed)
 ```
 
-O composer (`AgentBoardWeb.BoardComponents.Composer`) é uma vista desse ciclo,
-com um trabalho por vez: `dividindo`, `criando`, proposta (`ready`,
-`needs_clarification`, `no_tasks`), falha com motivo e botão de tentar de novo,
-e recibo. Um resultado atrasado ou cancelado não encontra o trabalho pelo seu
-`ref` e não muda nada; um timeout (`:composer_timeout_ms`, 60 s) vira falha
-nomeada. A falha da IA aparece em palavras (`fora do formato esperado`, `sem
-cota`, `HTTP 500`), nunca como `inspect/1`. Os testes usam o engine
-`AgentBoard.AI.Engines.Scripted` (`test/support`) para respostas
-determinísticas: malformada, lenta, com perguntas ou vazia.
+The composer (`AgentBoardWeb.BoardComponents.Composer`) is a view of this cycle,
+with one job at a time: `dividindo`, `criando`, the proposal (`ready`,
+`needs_clarification`, `no_tasks`), a failure with a reason and a try-again
+button, and the receipt. A late or canceled result does not find the job by its
+`ref` and changes nothing; a timeout (`:composer_timeout_ms`, 60 s) becomes a
+named failure. The AI failure appears in words (`fora do formato esperado`
+[unexpected format], `sem cota` [no quota], `HTTP 500`), never as `inspect/1`.
+The tests use the `AgentBoard.AI.Engines.Scripted` engine (`test/support`) for
+deterministic responses: malformed, slow, with questions or empty.
 
-O mesmo pipeline serve para **avaliar**: a resposta é o par
-`(spec, tasks)` que o humano revisa antes de criar.
+The same pipeline serves **evaluation**: the response is the `(spec, tasks)` pair
+that the human reviews before creating.
 
-## 5. Tiers, custo e velocidade
+## 5. Tiers, cost and speed
 
-| Tier | Modelo | Para quê | Latência alvo |
+| Tier | Model | For what | Target latency |
 |---|---|---|---|
-| `:fast` | `deepseek-flash` | refinar, dividir, classificar, resumir | < 3 s |
-| `:deep` | `deepseek-v4-pro` | spec ambígua, decisão difícil | < 20 s |
+| `:fast` | `deepseek-flash` | refine, split, classify, summarize | < 3 s |
+| `:deep` | `deepseek-v4-pro` | ambiguous spec, difficult decision | < 20 s |
 
-A regra: **o rápido é o padrão**. O roteador sobe para `:deep` só quando o
-próprio resultado do rápido sinaliza ambiguidade (`open_questions` não vazio e
-`size: L`), nunca por hábito.
+The rule: **fast is the default**. The router moves up to `:deep` only when the
+fast result itself signals ambiguity (`open_questions` not empty and `size: L`),
+never out of habit.
 
-Orçamento: um teto diário em micros por tier, checado antes da chamada. O
-`deepseek-flash` cabe em centavos por dezena de refinações.
+Budget: a daily ceiling in micros per tier, checked before the call.
+`deepseek-flash` fits in cents per ten refinements.
 
 ## 6. Guardrails
 
-- **Registry**: chamada não registrada não roda. O prompt vem do código.
-- **Schema**: a resposta é validada; `partial` é guardado, não descartado.
-- **Input cap**: o texto de entrada é cortado antes de gastar.
-- **Budget**: teto diário; ao estourar, o painel diz isso, não tenta esconder.
-- **Sem retry pago**: um retry é uma segunda cobrança.
-- **Rehearsal em dev**: fixtures grátis, para o pipeline rodar sem chave.
-- **Fallback**: engine fora → `{:error, :unavailable}`, e a UI mostra; nunca
-  uma resposta inventada.
+- **Registry**: an unregistered call does not run. The prompt comes from the code.
+- **Schema**: the response is validated; `partial` is kept, not discarded.
+- **Input cap**: the input text is cut before spending.
+- **Budget**: daily ceiling; when it is crossed, the board says so, it does not
+  try to hide it.
+- **No paid retry**: a retry is a second charge.
+- **Rehearsal in dev**: free fixtures, so the pipeline runs without a key.
+- **Fallback**: engine down → `{:error, :unavailable}`, and the UI shows it; never
+  an invented response.
 
-## 7. Fases
+## 7. Phases
 
-1. **Fundação** — `AI`, `Registry`, `Request/Result`, `Engine`, `DeepSeek`,
-   tabela `ai_calls`, testes com `Req.Test` e `Rehearsal`. Sem UI.
-2. **Intake** — `:refine_request`, `:propose_tasks`, validação, `Intake.run/1`,
-   criação das tasks pelo `Board.create_task`.
-3. **UI** — o painel "AI" (as últimas chamadas com custo e latência) e o botão
-   "Split this request" no board, com o resultado antes de criar.
-4. **Router + Gemini + budget + cache** — a segunda engine, o teto, o cache.
-5. **Voz e conversa** — `Voice.summary` vira chamada de IA; a conversa do
-   board pode perguntar ao modelo em vez de só comentar no GitHub.
+1. **Foundation** — `AI`, `Registry`, `Request/Result`, `Engine`, `DeepSeek`, the
+   `ai_calls` table, tests with `Req.Test` and `Rehearsal`. No UI.
+2. **Intake** — `:refine_request`, `:propose_tasks`, validation, `Intake.run/1`,
+   task creation by `Board.create_task`.
+3. **UI** — the "AI" panel (the latest calls with cost and latency) and the
+   "Split this request" button on the board, with the result before creating.
+4. **Router + Gemini + budget + cache** — the second engine, the ceiling, the cache.
+5. **Voice and conversation** — `Voice.summary` becomes an AI call; the board's
+   conversation can ask the model instead of only commenting on GitHub.
 
-Cada fase é um PR com gate verde; a fase 2 é a que entrega o que o pedido
-descreve.
+Each phase is a PR with a green gate; phase 2 is the one that delivers what the
+request describes.
 
-## 8. Casos de avaliação (as tasks para testar o intake)
+## 8. Evaluation cases (the tasks for testing the intake)
 
-Cada caso é um pedido cru, do jeito que ele chega, e o que a saída precisa
-provar.
+Each case is a raw request, the way it arrives, and what the output must prove.
 
-| # | Pedido cru | O que a saída precisa provar |
+| # | Raw request | What the output must prove |
 |---|---|---|
-| 1 | "o board ta lento e as vezes nao carrega" | spec com `goal` de performance; 2–4 tasks (medir, corrigir, provar); nada de "otimizar tudo" |
-| 2 | "queria falar com o agente por voz e ele responder" | separa captura de fala, envio e resposta falada; `open_questions` pergunta sobre permissão do browser |
-| 3 | "faz o painel ficar bonito" | **recusa refinar sem escopo**: `open_questions` pergunta o que está feio; não gera 10 tasks genéricas |
-| 4 | "cria as tasks do PR 134 e do 135" | entende que são dois PRs distintos; `depends_on` correto |
-| 5 | "não sei, só quero que funcione" | `open_questions` com 1–3 perguntas concretas; nenhuma task inventada |
+| 1 | "o board ta lento e as vezes nao carrega" (the board is slow and sometimes does not load) | a spec with a performance `goal`; 2–4 tasks (measure, fix, prove); no "optimize everything" |
+| 2 | "queria falar com o agente por voz e ele responder" (I wanted to talk to the agent by voice and have it answer) | separates speech capture, sending and the spoken answer; `open_questions` asks about browser permission |
+| 3 | "faz o painel ficar bonito" (make the board pretty) | **refuses to refine without scope**: `open_questions` asks what is ugly; it does not generate 10 generic tasks |
+| 4 | "cria as tasks do PR 134 e do 135" (create the tasks for PR 134 and 135) | understands they are two distinct PRs; correct `depends_on` |
+| 5 | "não sei, só quero que funcione" (I don't know, I just want it to work) | `open_questions` with 1–3 concrete questions; no invented task |
 
-O caso 3 e o 5 são os mais importantes: provam que o intake **não inventa**.
-Um pipeline que sempre devolve tasks é pior que um que pergunta.
+Cases 3 and 5 are the most important: they prove that the intake **does not
+invent**. A pipeline that always returns tasks is worse than one that asks.
 
-## 9. Decisões abertas
+## 9. Open decisions
 
-- **"GM"**: é Gemini? O `o_colmex` hoje tem Claude CLI, Codex CLI e DeepSeek.
-  Se for Gemini, o adapter é OpenAI-compatible também e entra na fase 4.
-- **Chaves**: `DEEPSEEK_API_KEY` já existe no ambiente do runner? O painel
-  precisa da dele.
-- **Onde a IA mora**: no painel (Elixir, síncrono, latência visível) ou no
-  runner (TS, assíncrono)? A proposta é no painel para o intake, porque o
-  resultado precisa aparecer antes de virar issue.
-- **Teto**: qual o orçamento diário que faz sentido para o painel?
+- **"GM"**: is it Gemini? `o_colmex` today has Claude CLI, Codex CLI and DeepSeek.
+  If it is Gemini, the adapter is OpenAI-compatible too and enters phase 4.
+- **Keys**: does `DEEPSEEK_API_KEY` already exist in the runner's environment?
+  The board needs its own.
+- **Where the AI lives**: in the board (Elixir, synchronous, visible latency) or
+  in the runner (TS, asynchronous)? The proposal is in the board for the intake,
+  because the result must appear before it becomes an issue.
+- **Ceiling**: what daily budget makes sense for the board?

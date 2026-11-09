@@ -1,42 +1,42 @@
-# Auditoria: tema e acessibilidade
+# Audit: theme and accessibility
 
-> **Registro histórico — 5 de novembro de 2026.** Contagens, capturas e estados
-> descrevem as revisões identificadas neste documento, não o produto atual.
-> Consulte o [índice e a sequência da auditoria](README.md).
+> **Historical record — November 5, 2026.** Counts, captures and states
+> describe the revisions identified in this document, not the current product.
+> See the [audit index and sequence](README.md).
 
-Base: `52113d4` (main, incluindo #152). WebKit headless, 05/11/2026.
-`mix setup` passou. A porta 4002 pertence ao checkout `/Users/tavano/src/agent_board`;
-foi preservada. Este checkout foi servido com `PORT=4003 mix phx.server`.
-Dados reais apenas lidos. A página `fixture` é HTML renderizado com structs em memória,
-sem inserir tarefas ou chamadas de IA. Não representa uma sessão LiveView conectada.
+Baseline: `52113d4` (main, including #152). Headless WebKit, 2026-11-05.
+`mix setup` passed. Port 4002 belongs to the checkout `/Users/tavano/src/agent_board`;
+it was preserved. This checkout was served with `PORT=4003 mix phx.server`.
+Real data was only read. The `fixture` page is rendered HTML with in-memory structs,
+without inserting tasks or AI calls. It does not represent a connected LiveView session.
 
-Direção: console operacional para acompanhar agentes, preservando a tipografia mono,
-as cinco colunas e a ênfase em tarefas/bloqueios. Refinar legibilidade, sem redesign.
+Direction: an operational console for following agents, preserving the mono typography,
+the five columns and the emphasis on tasks/blocks. Refine readability, no redesign.
 
-| Severidade | Região | Evidência antes | Correção |
+| Severity | Region | Evidence before | Fix |
 |---|---|---|---|
-| P1 | Contraste | [Claro](baseline-light-1366.png), [formulários](baseline-forms.png). Primary/content: 2,75:1 light, 4,13:1 dark; success/base: 2,31:1 light; error/base: 2,94:1 dark. | Ajustar tokens canônicos, preservando laranja claro e violeta escuro. Primary/content agora 5,38:1 e 5,36:1. Textos secundários usam 75% em vez de 40/60%. |
-| P2 | Tema | Nenhum `[data-phx-theme]` renderizado; [cabeçalho](baseline-dark-1366.png). A função existia mas não era chamada. | Controle System/Light/Dark com nomes, `aria-pressed`, persistência e suporte à preferência do sistema. |
-| P2 | IA e carregamento | `board_live.ex` usava `text-[#e8a33d]`; `app.js` tinha `#29d` e sombra RGBA. [IA](baseline-mobile-ai.png). | `text-warning` e cor do progresso derivada de `--color-primary`. Cores literais ficam nas definições dos tokens; arte Phoenix não roteada e vendors ficam fora desse escopo. |
-| P2 | Teclado/formulários | [Fixture](baseline-fixture.png): campos dependiam de placeholders, foco inconsistente e ações de 25px. | Nomes explícitos para título/detalhes/mensagem, foco compartilhado e controles com altura mínima 44px. |
+| P1 | Contrast | [Light](baseline-light-1366.png), [forms](baseline-forms.png). Primary/content: 2.75:1 light, 4.13:1 dark; success/base: 2.31:1 light; error/base: 2.94:1 dark. | Adjust the canonical tokens, preserving light orange and dark violet. Primary/content is now 5.38:1 and 5.36:1. Secondary text uses 75% instead of 40/60%. |
+| P2 | Theme | No `[data-phx-theme]` rendered; [header](baseline-dark-1366.png). The function existed but was not called. | System/Light/Dark control with names, `aria-pressed`, persistence and support for the system preference. |
+| P2 | AI and loading | `board_live.ex` used `text-[#e8a33d]`; `app.js` had `#29d` and an RGBA shadow. [AI](baseline-mobile-ai.png). | `text-warning` and a progress color derived from `--color-primary`. Literal colors stay in the token definitions; unrouted Phoenix art and vendors stay out of this scope. |
+| P2 | Keyboard/forms | [Fixture](baseline-fixture.png): fields relied on placeholders, inconsistent focus and 25px actions. | Explicit names for title/details/message, shared focus and controls with a 44px minimum height. |
 
-Capturas claro/escuro recapturadas no commit `80e3ee9`, com transições concluídas.
-Depois: [claro](theme-after-light.png), [escuro](theme-after-dark.png),
-[fixture](theme-after-fixture.png), [foco de teclado](theme-keyboard-focus.png).
+Light/dark captures recaptured at commit `80e3ee9`, with transitions finished.
+After: [light](theme-after-light.png), [dark](theme-after-dark.png),
+[fixture](theme-after-fixture.png), [keyboard focus](theme-keyboard-focus.png).
 
-Verificado: clique e teclado nos temas, aria-pressed, reload, System + mudança da mídia
-para dark, LiveView conectado e zero erros de console. Contraste calculado com cores
-resolvidas pelo canvas do WebKit (sRGB); não é uma certificação de toda combinação.
+Verified: click and keyboard in the themes, aria-pressed, reload, System + media change
+to dark, LiveView connected and zero console errors. Contrast calculated with colors
+resolved by the WebKit canvas (sRGB); it is not a certification of every combination.
 
-Gate local: `scripts/ci-local.sh all` (inclui `MIX_ENV=test mix gate`,
-`scripts/check_assets.sh`, `mix assets.build`, assets.deploy e biblioteca).
-151 testes Elixir, zero falhas. CI indisponível por billing conforme informado;
-não esperamos nem redisparamos Actions. Reexecutar workflow_dispatch quando liberado.
+Local gate: `scripts/ci-local.sh all` (includes `MIX_ENV=test mix gate`,
+`scripts/check_assets.sh`, `mix assets.build`, assets.deploy and library).
+151 Elixir tests, zero failures. CI unavailable due to billing as reported;
+we neither waited for nor re-triggered Actions. Rerun workflow_dispatch when released.
 
-## Revisão para merge
+## Review for merge
 
-Integrado com `main` em `0b5d09d`. O novo SystemPanel foi preservado acima das
-colunas e migrado de cores hexadecimais para tokens semânticos, incluindo o botão
-Update & restart. O teste visual usa dados sintéticos e não aciona atualização.
-Capturas: [antes](version-before-review.png), [depois claro](version-after-review.png),
-[depois escuro](version-after-review-dark.png).
+Integrated with `main` at `0b5d09d`. The new SystemPanel was preserved above the
+columns and migrated from hexadecimal colors to semantic tokens, including the
+Update & restart button. The visual test uses synthetic data and does not trigger an
+update. Captures: [before](version-before-review.png), [light after](version-after-review.png),
+[dark after](version-after-review-dark.png).

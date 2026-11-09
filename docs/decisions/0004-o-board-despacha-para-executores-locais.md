@@ -1,166 +1,167 @@
-# ADR 0004 — O board despacha para executores locais
+# ADR 0004 — The board dispatches to local executors
 
-- **Decisão:** o board pode despachar uma tarefa para o Claude Code ou o
-  Codex locais por uma **ação confirmada** do registro de ações, com
-  orçamento e cota checados antes de iniciar, um processo que não é filho do
-  board e uma linha por execução. O board continua observando; ele não fala
-  com o modelo nem controla a máquina.
-- **Estado:** **aceita em 2026-11-08 pelo dono**. D1, D2, D3 e D5 foram
-  respondidas (abaixo) e a Fase 3 está implementada em `AgentBoard.Runners`;
-  o ADR registra a fronteira e o contrato em "Dispatch (despacho local)".
-- **Escopo:** as regras da seção 3.6 de
-  [`docs/research/alfred.md`](../research/alfred.md); não altera o contrato
-  nesta entrega.
+- **Decision:** the board can dispatch a task to the local Claude Code or
+  Codex through a **confirmed action** from the action registry, with budget
+  and quota checked before starting, a process that is not a child of the
+  board, and one row per execution. The board keeps observing; it does not
+  talk to the model or control the machine.
+- **Status:** **accepted on 2026-11-08 by the owner**. D1, D2, D3 and D5 were
+  answered (below) and Phase 3 is implemented in `AgentBoard.Runners`; the ADR
+  records the boundary and the contract under "Dispatch (despacho local)".
+- **Scope:** the rules of section 3.6 of
+  [`docs/research/alfred.md`](../research/alfred.md); it does not change the
+  contract in this delivery.
 
-## Problema e contexto
+## Problem and context
 
-O board já vê as três ferramentas e já sabe para onde uma tarefa deve ir:
+The board already sees the three tools and already knows where a task should go:
 
-| Peça | Estado em 2026-11-07 |
+| Piece | State on 2026-11-07 |
 |---|---|
-| Executor na tarefa, issue sem menção e rótulo `executor:<nome>` (F2.2) | implementado |
-| Registro de ações com risco, frase de confirmação e decisão gravada (F2.3) | implementado |
-| Livro de uso por execução e dia, com atribuição por PR e branch (F1.3, F1.4) | implementado |
-| Roteador sugerindo por regras e registrando a decisão (F2.4) | implementado |
-| Tipo, tamanho e custo esperado no composer (F2.5, F2.4) | implementado |
-| Resumo do dia e visão Hoje (F1.6, F2.1) | implementado |
-| Alguém iniciar Claude Code ou Codex por programa | **não existe** |
+| Executor on the task, issue without mention and label `executor:<nome>` (F2.2) | implemented |
+| Action registry with risk, confirmation phrase and recorded decision (F2.3) | implemented |
+| Usage ledger per execution and day, with attribution per PR and branch (F1.3, F1.4) | implemented |
+| Router suggesting by rules and recording the decision (F2.4) | implemented |
+| Type, size and expected cost in the composer (F2.5, F2.4) | implemented |
+| Resumo do dia (Daily summary) and the Hoje (Today) view (F1.6, F2.1) | implemented |
+| Someone starting Claude Code or Codex programmatically | **does not exist** |
 
-O DSH é o único executor que o board aciona sozinho, e o faz por um caminho
-que já existe: abre a issue com a menção e o orquestrador a encontra
-(`docs/research/alfred.md`, 3.2). Para Claude Code e Codex não há mencionável:
-o acionamento é `claude -p` e `codex exec`, processos locais que gastam a
-assinatura do dono. Fazer isso é uma escrita nova, que gasta, e por isso
-precisa de um ADR antes do código (o contrato, "Board actions", já exige que
-toda escrita passe pelo registro).
+DSH is the only executor the board triggers on its own, and it does so through
+a path that already exists: it opens the issue with the mention and the
+orchestrator finds it (`docs/research/alfred.md`, 3.2). For Claude Code and
+Codex there is nothing mentionable: the trigger is `claude -p` and
+`codex exec`, local processes that spend the owner's subscription. Doing this
+is a new write that spends, so it needs an ADR before the code (the contract,
+"Board actions", already requires every write to go through the registry).
 
-O que limita o desenho:
+What constrains the design:
 
-- O serviço reinicia a cada atualização (`launchctl kickstart`); um processo
-  aberto por `Port` pode morrer junto com o board.
-- As duas assinaturas são pessoais: Claude Max e o plano ChatGPT. Não há
-  chave de API nova, e o custo real é uma cota que os arquivos não guardam.
-- O board só mostra dado observado; o estado de uma execução tem de ser lido
-  do que o runner deixar (arquivo de resultado, transcrição, worktree, PR).
-- Uma tarefa não pode ter duas execuções ao mesmo tempo, e nenhuma
-  retentativa paga pode acontecer sem uma decisão.
+- The service restarts on every update (`launchctl kickstart`); a process
+  opened by `Port` can die with the board.
+- Both subscriptions are personal: Claude Max and the ChatGPT plan. There is
+  no new API key, and the real cost is a quota that the files do not store.
+- The board shows only observed data; the state of an execution has to be read
+  from what the runner leaves (result file, transcript, worktree, PR).
+- A task cannot have two executions at the same time, and no paid retry can
+  happen without a decision.
 
-## As regras propostas
+## The proposed rules
 
-Estas são as regras da seção 3.6 do plano, em forma de contrato.
+These are the rules from section 3.6 of the plan, in contract form.
 
-1. **O processo não é filho do board.** O board pede ao runner — um script
-   em `scripts/runners/` com a sessão num `tmux` ou num job do `launchd`,
-   como o `dsh-superagent` já roda — e depois só observa: o arquivo de
-   resultado, a transcrição, o worktree e o PR. Reiniciar o board não
-   interrompe a execução.
-2. **Despachar é uma ação do registro.** É vermelha, com a frase que nomeia
-   executor, repositório, tarefa, teto e custo esperado
-   (`AgentBoard.Actions`). A confirmação existe na tela, na voz e na API; o
-   modo automático por categoria (F4.1) é a única exceção, e só depois de o
-   dono ligá-lo.
-3. **O orçamento é checado antes de iniciar.** Um `Budget.check/1` do
-   executor, separado do orçamento das chamadas do board, compara o gasto do
-   dia e do mês com o teto. O teto vai na linha de comando quando a CLI
-   aceita (`--max-budget-usd` no Claude Code); o Codex, que não tem teto em
-   US$, tem teto de tempo e a cota semanal como limite.
-4. **Uma execução, uma linha.** Cada execução nasce de uma linha em
-   `routing_decisions` e grava o id da sessão, o início, o fim e o resultado
-   no livro de uso. Nenhuma retentativa paga sem uma decisão nova; uma
-   tarefa nunca tem duas execuções ao mesmo tempo.
-5. **Pausar despacho é um interruptor global.** Com a pausa ligada, o que
-   roda continua e nada novo sai. A trava por tarefa e a pausa são checadas
-   antes do runner, não dentro dele.
-6. **O mesmo contrato de entrega para os três.** O prompt do runner vem de
-   `docs/agent/prompts/` (o workpad `## Relatório do agente`, o gate local no
-   head e a política de merge), então "Precisa de você", o CI local e
-   "Mesclados" funcionam igual para qualquer executor.
-7. **Falha não vira troca silenciosa.** Transitória antes de gastar: o mesmo
-   executor. Indisponível ou teto: o board propõe o próximo com motivo e
-   custo; no automático, só antes de qualquer gasto. Falha de conteúdo
-   (teste, bloqueio, pergunta) nunca troca sozinha: vai para Precisa de você,
-   e "Reenviar para o Codex" é uma ação confirmada que continua o mesmo
-   branch.
-8. **Credencial é do dono e não entra em código, log ou prompt.** Se D5
-   escolher o bot, o token dele fica no ambiente do runner; o board não
-   guarda nem imprime segredo.
-9. **Nada disso sai do localhost.** A API do board não ganha autenticação
-   neste ADR; o despacho é acionado pelo dono na máquina dele.
+1. **The process is not a child of the board.** The board asks the runner — a
+   script in `scripts/runners/` with the session in a `tmux` or a `launchd`
+   job, as `dsh-superagent` already runs — and then only observes: the result
+   file, the transcript, the worktree and the PR. Restarting the board does
+   not interrupt the execution.
+2. **Dispatching is an action from the registry.** It is red, with the phrase
+   that names executor, repository, task, ceiling and expected cost
+   (`AgentBoard.Actions`). Confirmation exists on screen, by voice and in the
+   API; automatic mode per category (F4.1) is the only exception, and only
+   after the owner turns it on.
+3. **The budget is checked before starting.** A `Budget.check/1` for the
+   executor, separate from the budget of the board's calls, compares the day's
+   and month's spending with the ceiling. The ceiling goes on the command line
+   when the CLI accepts it (`--max-budget-usd` in Claude Code); Codex, which
+   has no ceiling in US$, has a time ceiling and the weekly quota as its limit.
+4. **One execution, one row.** Each execution is born from a row in
+   `routing_decisions` and writes the session id, the start, the end and the
+   result to the usage ledger. No paid retry without a new decision; a task
+   never has two executions at the same time.
+5. **Pausing dispatch is a global switch.** With the pause on, what runs
+   continues and nothing new leaves. The per-task lock and the pause are
+   checked before the runner, not inside it.
+6. **The same delivery contract for all three.** The runner's prompt comes from
+   `docs/agent/prompts/` (the workpad `## Relatório do agente` (Agent report),
+   the local gate on head and the merge policy), so "Precisa de você",
+   "CI local" (local CI) and "Mesclados" (Merged) work the same for any
+   executor.
+7. **Failure does not become a silent switch.** Transient before spending: the
+   same executor. Unavailable or ceiling: the board proposes the next one with
+   reason and cost; in automatic mode, only before any spending. Content
+   failure (test, block, question) never switches on its own: it goes to
+   Precisa de você, and "Reenviar para o Codex" (Resend to Codex) is a
+   confirmed action that continues the same branch.
+8. **The credential belongs to the owner and does not enter code, log or
+   prompt.** If D5 chooses the bot, its token stays in the runner's
+   environment; the board neither stores nor prints secrets.
+9. **None of this leaves localhost.** The board API gains no authentication in
+   this ADR; dispatch is triggered by the owner on their machine.
 
-## Decisões do dono (2026-11-08)
+## Owner decisions (2026-11-08)
 
-| # | Decisão | Resposta |
+| # | Decision | Answer |
 |---|---|---|
-| **D1** | O board pode iniciar Claude Code e Codex locais por uma ação confirmada? | **Sim.** A ação vermelha `dispatch_task`, com a frase e o teto, é a única porta. |
-| **D2** | Orçamento mensal, teto por tarefa e reserva das assinaturas | **US$ 300/mês, US$ 5 por tarefa no Claude Code, 30 minutos no Codex e 50 % da cota semanal reservada**, todos configuráveis no formulário de Configurações → Despacho local (`dispatch_*`); nenhum valor é somado entre executores. |
-| **D3** | Os termos das assinaturas cobrem execução headless para uso pessoal? | **Sim, para uso pessoal**, confirmado pelo dono; nenhuma credencial nova é criada. |
-| **D5** | Quem abre e mescla os PRs? | **A conta do dono**, com o `gh` já autenticado e a mesma política de entrega do DSH; o token do bot não entra no runner. |
+| **D1** | Can the board start local Claude Code and Codex through a confirmed action? | **Yes.** The red `dispatch_task` action, with the phrase and the ceiling, is the only door. |
+| **D2** | Monthly budget, per-task ceiling and subscription reserve | **US$ 300/month, US$ 5 per task in Claude Code, 30 minutes in Codex and 50% of the weekly quota reserved**, all configurable in the Configurações → Despacho local (Settings → Local dispatch) form (`dispatch_*`); no value is summed across executors. |
+| **D3** | Do the subscription terms cover headless execution for personal use? | **Yes, for personal use**, confirmed by the owner; no new credential is created. |
+| **D5** | Who opens and merges the PRs? | **The owner's account**, with `gh` already authenticated and the same delivery policy as DSH; the bot token does not enter the runner. |
 
-D4 (quais repositórios entram no board) já estava respondida: só
-`sallaumen/arena-rogue` e `sallaumen/o_colmex`; uso em outros repositórios
-aparece como "fora do board", sem tarefa.
+D4 (which repositories enter the board) was already answered: only
+`sallaumen/arena-rogue` and `sallaumen/o_colmex`; use in other repositories
+appears as "fora do board" (outside the board), without a task.
 
-Perguntas menores que ficam para a operação: ler a cota do Claude sem abrir
-o app (hoje desconhecida), o tempo máximo de uma execução antes do aviso de
-silêncio e a variante do prompt por executor.
+Smaller questions left for operations: reading Claude's quota without opening
+the app (currently unknown), the maximum time of an execution before the
+silence warning, and the prompt variant per executor.
 
-## Alternativas
+## Alternatives
 
-| Alternativa | Benefício | Custo ou risco |
+| Alternative | Benefit | Cost or risk |
 |---|---|---|
-| Deixar o despacho manual (o dono abre Claude Code e Codex) | Nenhuma credencial, nenhum processo novo, nenhum risco de termo | O board não fecha o ciclo; o dono continua abrindo a ferramenta, que é o que a fase 3 quer evitar |
-| O board inicia o processo como filho (`Port`/`System.cmd`) | Implementação local mais simples, sem tmux nem launchd | Um reinício do board pode matar a execução; contraria "o processo não é filho do board" e a atualização do serviço |
-| Usar o Agent SDK (TypeScript/Python) com o login da assinatura | API mais rica que o CLI | O SDK não está instalado, e usar a assinatura num produto é justamente o que a seção 5 do plano proíbe; o CLI `claude -p` é o caminho pessoal |
-| Usar a rota `llm-pi-ai` do DSH com chaves de API | Um lugar só para os modelos | Seria cobrança de API, global por papel, e não o Claude Code nem o Codex que o dono usa |
-| Um runner por executor, com ação confirmada e orçamento (proposta) | Mantém o board como centro de controle, preserva a observação e a trilha | Exige os quatro processos (Claude, Codex, pausa, teto) e as respostas D1–D3 e D5 |
+| Keep dispatch manual (the owner opens Claude Code and Codex) | No credential, no new process, no term risk | The board does not close the cycle; the owner keeps opening the tool, which is what phase 3 wants to avoid |
+| The board starts the process as a child (`Port`/`System.cmd`) | Simpler local implementation, no tmux or launchd | A board restart can kill the execution; contradicts "the process is not a child of the board" and service updates |
+| Use the Agent SDK (TypeScript/Python) with the subscription login | Richer API than the CLI | The SDK is not installed, and using the subscription in a product is exactly what section 5 of the plan forbids; the `claude -p` CLI is the personal path |
+| Use DSH's `llm-pi-ai` route with API keys | One place for the models | It would be API billing, global per role, and not the Claude Code or Codex that the owner uses |
+| One runner per executor, with confirmed action and budget (proposal) | Keeps the board as control center, preserves observation and the trail | Requires the four processes (Claude, Codex, pause, ceiling) and the answers D1–D3 and D5 |
 
-## Escolha e consequência
+## Choice and consequence
 
-A proposta mantém o board no papel que ele já tem: o centro de controle que
-**observa** e **pede**, nunca o processo que executa. O runner é um detalhe
-trocável; o contrato é o registro de ações, o orçamento antes do gasto e uma
-linha por execução. O dono aceitou D1–D3 e D5 em 2026-11-08; a
-implementação entrou em PRs separados, na ordem do plano:
+The proposal keeps the board in the role it already has: the control center
+that **observes** and **asks**, never the process that executes. The runner is
+a replaceable detail; the contract is the action registry, the budget before
+spending, and one row per execution. The owner accepted D1–D3 and D5 on
+2026-11-08; the implementation came in separate PRs, in the plan's order:
 
-F3.1 (runner do Claude Code, worktree, `--session-id`, resultado e
-observação), F3.2 (runner do Codex, `codex exec --json` e captura da thread),
-F3.3 (pausa global e uma execução por tarefa) e F3.5 (classificação da falha,
-retentativa e troca de executor só com uma nova confirmação) estão
-implementados e testados. F3.4 (objetivo com critério de pronto) continua
-como trabalho separado.
+F3.1 (Claude Code runner, worktree, `--session-id`, result and observation),
+F3.2 (Codex runner, `codex exec --json` and thread capture), F3.3 (global pause
+and one execution per task) and F3.5 (failure classification, retry and
+executor switch only with a new confirmation) are implemented and tested. F3.4
+(objective with a definition of done) remains as separate work.
 
-## Riscos e limites
+## Risks and limits
 
-- **Termos das assinaturas:** o risco maior não é técnico; D3 foi confirmada
-  pelo dono para uso pessoal, e o despacho continua local, sem produto.
-- **Cota compartilhada:** uma execução despachada consome a mesma cota que o
-  dono usa à mão; D2 decidiu reservar 50 % da janela semanal do Codex, e o
-  Claude Code tem teto por tarefa e por mês.
-- **Processo sobrevivente:** o runner precisa de um lugar que sobreviva ao
-  board e ao logout; tmux ou launchd, nunca um `Port`.
-- **Máquina do dono:** o runner roda com as permissões que o DSH já usa
-  (`danger-full-access`); o board não ganha shell nem controle de tela.
-- **Dados:** o livro de uso continua sem ler texto de conversa; o runner
-  entrega o resultado pelo workpad e pelo PR, não por um canal novo.
-- **Custo de errar:** uma execução perdida no meio pode deixar worktree e
-  branch; a limpeza já existe em `scripts/agent/cleanup.sh` e continua sendo
-  do dono.
+- **Subscription terms:** the biggest risk is not technical; D3 was confirmed
+  by the owner for personal use, and dispatch remains local, with no product.
+- **Shared quota:** a dispatched execution consumes the same quota the owner
+  uses by hand; D2 decided to reserve 50% of Codex's weekly window, and
+  Claude Code has a per-task and per-month ceiling.
+- **Surviving process:** the runner needs a place that survives the board and
+  logout; tmux or launchd, never a `Port`.
+- **Owner's machine:** the runner runs with the permissions DSH already uses
+  (`danger-full-access`); the board gains no shell or screen control.
+- **Data:** the usage ledger still does not read conversation text; the runner
+  delivers the result through the workpad and the PR, not through a new
+  channel.
+- **Cost of a mistake:** an execution lost mid-way can leave a worktree and a
+  branch; cleanup already exists in `scripts/agent/cleanup.sh` and remains the
+  owner's.
 
-## Implantação e revisão
+## Rollout and review
 
-A primeira entrega foi o ADR e a linha no índice; a implementação veio em
-PRs separados (`AgentBoard.Runners`, o script `scripts/runners/run.sh`, a
-ação `dispatch_task`, a pausa e a observação) e a seção "Dispatch (despacho
-local)" do contrato. Revisar quando:
+The first delivery was the ADR and the line in the index; the implementation
+came in separate PRs (`AgentBoard.Runners`, the `scripts/runners/run.sh`
+script, the `dispatch_task` action, the pause and the observation) and the
+contract's "Dispatch (despacho local)" section. Review when:
 
-- o dono quiser mudar os tetos, a reserva ou o modelo padrão;
-- o Claude Code ou o Codex mudarem o formato de `--json`/`cost-state` (o
-  leitor do livro de uso já cobre o que existe hoje);
-- a cota da assinatura puder ser lida sem abrir o app — o roteador deixa de
-  tratar a disponibilidade do Claude como desconhecida.
+- the owner wants to change the ceilings, the reserve or the default model;
+- Claude Code or Codex change the `--json`/`cost-state` format (the
+  usage-ledger reader already covers what exists today);
+- the subscription quota can be read without opening the app — the router
+  stops treating Claude's availability as unknown.
 
-Referências: [`docs/research/alfred.md`](../research/alfred.md) seções 3.4,
-3.5, 3.6 e 4; [`docs/maintainer-contract.md`](../maintainer-contract.md)
-seções "Board actions", "Executors", "Routing", "Usage ledger" e
-"Attribution"; [`ADR 0003`](0003-ciclo-de-vida-do-agente.md) para o ciclo de
-vida e a retentativa automática que já existe.
+References: [`docs/research/alfred.md`](../research/alfred.md) sections 3.4,
+3.5, 3.6 and 4; [`docs/maintainer-contract.md`](../maintainer-contract.md)
+sections "Board actions", "Executors", "Routing", "Usage ledger" and
+"Attribution"; [`ADR 0003`](0003-ciclo-de-vida-do-agente.md) for the lifecycle
+and the automatic retry that already exists.

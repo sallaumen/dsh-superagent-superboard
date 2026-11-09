@@ -1,53 +1,53 @@
-# Arquitetura do board
+# Board architecture
 
-Este documento é o mapa que faltava: onde cada responsabilidade mora, quem
-pode escrever cada tabela, como os fluxos atravessam os contextos e onde uma
-mudança nova deve entrar. Ele descreve o código **depois** da revisão de
-2026-11-08; a seção [O que mudou](#5-o-que-mudou-nesta-revisão) aponta o antes.
+This document is the map that was missing: where each responsibility lives, who
+may write each table, how the flows cross the contexts and where a new change
+should enter. It describes the code **after** the 2026-11-08 review; the section
+[What changed](#5-what-changed-in-this-review) shows what it was before.
 
-> **Contexto não é página.** O board é uma página só (`AgentBoardWeb.BoardLive`),
-> mas tem vários contextos de domínio. `Board`, `Sync`, `Runners`, `Superagents`,
-> `Usage`, `AI`, `Conversation` e `Voice` não são abas da interface: são donos de
-> dados, regras e efeitos diferentes.
+> **A context is not a page.** The board is a single page (`AgentBoardWeb.BoardLive`),
+> but it has several domain contexts. `Board`, `Sync`, `Runners`, `Superagents`,
+> `Usage`, `AI`, `Conversation` and `Voice` are not UI tabs: they own different
+> data, rules and effects.
 
-## 1. O que roda
+## 1. What runs
 
-| Entrada | Módulo | Cadência / gatilho |
+| Entry point | Module | Cadence / trigger |
 |---|---|---|
-| Navegador | `AgentBoardWeb.BoardLive` | uma leitura por `handle_params/3` e por `:board_updated` |
-| API JSON | `AgentBoardWeb.BoardController` | `/api/...` |
-| API de voz | `AgentBoardWeb.VoiceController` | `/api/voice/...` |
-| Sync durável | `AgentBoard.Sync.Worker` (Oban) | cron a cada 5 min |
-| Ledger de uso | `AgentBoard.Usage.Worker` (Oban) | cron a cada 5 min |
-| Tickets do runner | `AgentBoard.TicketPoller` | 10 s (`:ticket_poll_interval`) |
-| Retentativa automática | `AgentBoard.AutoRetry` | 30 s (`:auto_retry_interval`) |
-| Execuções locais | `AgentBoard.Runners.Ticker` | 15 s (`:runner_tick_interval`) |
+| Browser | `AgentBoardWeb.BoardLive` | one read per `handle_params/3` and per `:board_updated` |
+| JSON API | `AgentBoardWeb.BoardController` | `/api/...` |
+| Voice API | `AgentBoardWeb.VoiceController` | `/api/voice/...` |
+| Durable sync | `AgentBoard.Sync.Worker` (Oban) | cron every 5 min |
+| Usage ledger | `AgentBoard.Usage.Worker` (Oban) | cron every 5 min |
+| Runner tickets | `AgentBoard.TicketPoller` | 10 s (`:ticket_poll_interval`) |
+| Automatic retry | `AgentBoard.AutoRetry` | 30 s (`:auto_retry_interval`) |
+| Local runs | `AgentBoard.Runners.Ticker` | 15 s (`:runner_tick_interval`) |
 | Superagents | `AgentBoard.Superagents.Ticker` | 30 s (`:superagent_tick_interval`) |
-| Resumo do dia | `AgentBoard.DailySummary` | 60 s (`:daily_summary_interval`) |
+| Daily summary | `AgentBoard.DailySummary` | 60 s (`:daily_summary_interval`) |
 
-Os efeitos externos ficam nas bordas: `GitHub` (HTTP), `Orchestrator` (API do
-runner), `Superagents.DshManager`/`DshProvisioner` (processo e API do DSH),
-`AI` (provedores), `ElevenLabs` (voz), `Runners` (tmux/CLI), `System.*` (git,
-release). Nenhum deles é chamado de dentro de um componente de UI.
+External effects live at the edges: `GitHub` (HTTP), `Orchestrator` (runner
+API), `Superagents.DshManager`/`DshProvisioner` (DSH process and API),
+`AI` (providers), `ElevenLabs` (voice), `Runners` (tmux/CLI), `System.*` (git,
+release). None of them is called from inside a UI component.
 
-## 2. Mapa dos contextos
+## 2. Context map
 
-### Escrita: tudo passa por `Actions`
+### Writes: everything goes through `Actions`
 
 ```mermaid
 flowchart LR
-    subgraph portas["Portas"]
+    subgraph portas["Ports"]
         UI["BoardLive"]
         API["BoardController\nVoiceController"]
         VOICE["Conversation.Agent"]
     end
 
-    UI --> ACT["Actions.run/4\nrisco · frase · decisão"]
+    UI --> ACT["Actions.run/4\nrisk · sentence · decision"]
     API --> ACT
     VOICE --> ACT
 
-    ACT --> BOARD["Board\ntarefas, repositórios, comentários"]
-    ACT --> RUNNERS["Runners\nexecuções locais"]
+    ACT --> BOARD["Board\ntasks, repositories, comments"]
+    ACT --> RUNNERS["Runners\nlocal runs"]
     ACT --> SUP["Superagents"]
     ACT --> SETTINGS["Settings"]
     ACT --> CONV["Conversation"]
@@ -59,19 +59,20 @@ flowchart LR
     BOARD --> GH["GitHub"]
 ```
 
-`Actions` não é um "service layer" genérico: é o **registro de risco**. Toda
-escrita declara o risco (verde/amarelo/vermelho), a frase que a confirma com os
-valores reais e o efeito. A porta (UI, voz, API) só apresenta a frase e devolve
-a confirmação; o código recusa uma ação vermelha sem ela. O efeito em si mora no
-contexto dono (`Board`, `Runners`, `Superagents`...).
+`Actions` is not a generic "service layer": it is the **risk registry**. Every
+write declares the risk (green/yellow/red), the sentence that confirms it with
+the real values, and the effect. The door (UI, voice, API) only presents the
+sentence and returns the confirmation; the code refuses a red action without
+it. The effect itself lives in the owning context (`Board`, `Runners`,
+`Superagents`...).
 
-### Observação: os espelhos escrevem no board
+### Observation: the mirrors write to the board
 
 ```mermaid
 flowchart LR
     GH[(GitHub)]
-    AGENT[(sqlite do runner)]
-    FILES[(transcripts e run dirs)]
+    AGENT[(runner sqlite)]
+    FILES[(transcripts and run dirs)]
 
     SYNC["Sync\n5 min"] --> GH
     SYNC --> BOARD["Board"]
@@ -97,95 +98,98 @@ flowchart LR
     UI --> RUNNERS
 ```
 
-Duas leituras independentes do mesmo fato (sync de 5 min e poll de 10 s) são
-propositais: o GitHub é a verdade do issue; o sqlite do runner é a verdade do
-ticket. O poller não substitui o sync, só antecipa o overlay.
+Two independent reads of the same fact (the 5 min sync and the 10 s poll) are
+deliberate: GitHub is the truth of the issue; the runner's sqlite is the truth
+of the ticket. The poller does not replace the sync, it only anticipates the
+overlay.
 
-## 3. Donos das tabelas
+## 3. Table owners
 
-A regra depois da revisão: **o contexto que lê e escreve uma tabela é o dono do
-schema e da escrita**. Exceções são os espelhos, que escrevem o que observaram,
-e estão listadas com o motivo.
+The rule after the review: **the context that reads and writes a table owns the
+schema and the write**. The exceptions are the mirrors, which write what they
+observed, and they are listed with the reason.
 
-| Tabela | Schema / dono | Quem escreve | Observação |
+| Table | Schema / owner | Who writes | Note |
 |---|---|---|---|
-| `repositories` | `Board.Repository` / `Board` | `Board` via `Actions` | sync só lê |
-| `tasks` | `Board.Task` / `Board` | `Board`, `Sync`, `TicketPoller`, `Runners` | overlays documentados: issue, ticket, execução local. `stopped`/`archived` nunca; `done`/`closed` só o sync, quando o issue foi reaberto (`include_finished`) |
-| `comments` | `Board.Comment` / `Board` | `Board.upsert_comment/3` (o sync chama) | conversa da tarefa |
-| `pull_requests`, `reviews`, `commits` | schemas em `Board.*` | `Sync` | espelho do GitHub; o board não escreve |
-| `events` | `Board.Event` / `Board` | `Board.log_event/4` | append-only; todo contexto chama o dono |
-| `objectives` | `Board.Objective` / `Board` | `Board` | agrupa tarefas |
-| `settings` | `Settings.Setting` / `Settings` | `Settings` (voz e resumo chamam) | schema movido de `Board` na revisão |
-| `action_decisions` | `Actions.Decision` / `Actions` | `Actions` | uma linha por decisão, antes do efeito |
-| `routing_decisions` | `Routing.Decision` / `Routing` | `Routing.record/3` (o board chama) | escrita movida para o dono na revisão |
-| `agent_retries` | `AutoRetry.Attempt` / `AutoRetry` | `AutoRetry` | claim único por assignment |
-| `ai_calls`, `ai_cache` | `AI.*` / `AI` | `AI` | toda chamada paga é uma linha |
-| `voice_turns` | `Conversation.Turn` / `Conversation` | `Conversation` | memória e propostas da voz |
-| `daily_summaries` | `DailySummary.Entry` / `DailySummary` | `DailySummary` | uma por dia local |
-| `eleven_labs_usage` | `ElevenLabs.Usage` | `ElevenLabs.Usage` | gasto de TTS/STT por dia UTC |
-| `usage_ledger`, `usage_messages`, `usage_limits` | `Usage.Ledger` | `Usage.Ledger` | lido dos transcripts |
-| `voice_speech_cache` | `ElevenLabs.SpeechCache` | `ElevenLabs.SpeechCache` | áudio já pago |
-| `runner_executions` | `Runners.Execution` / `Runners` | `Runners` | uma execução local por linha |
-| `superagents`, `superagent_events` | `Superagents.*` / `Superagents` | `Superagents` | um por repositório; eventos append-only |
+| `repositories` | `Board.Repository` / `Board` | `Board` via `Actions` | sync only reads |
+| `tasks` | `Board.Task` / `Board` | `Board`, `Sync`, `TicketPoller`, `Runners` | documented overlays: issue, ticket, local run. `stopped`/`archived` never; `done`/`closed` only the sync, when the issue was reopened (`include_finished`) |
+| `comments` | `Board.Comment` / `Board` | `Board.upsert_comment/3` (the sync calls it) | task conversation |
+| `pull_requests`, `reviews`, `commits` | schemas in `Board.*` | `Sync` | GitHub mirror; the board does not write |
+| `events` | `Board.Event` / `Board` | `Board.log_event/4` | append-only; every context calls the owner |
+| `objectives` | `Board.Objective` / `Board` | `Board` | groups tasks |
+| `settings` | `Settings.Setting` / `Settings` | `Settings` (voice and summary call it) | schema moved out of `Board` in the review |
+| `action_decisions` | `Actions.Decision` / `Actions` | `Actions` | one row per decision, before the effect |
+| `routing_decisions` | `Routing.Decision` / `Routing` | `Routing.record/3` (the board calls it) | write moved to the owner in the review |
+| `agent_retries` | `AutoRetry.Attempt` / `AutoRetry` | `AutoRetry` | a single claim per assignment |
+| `ai_calls`, `ai_cache` | `AI.*` / `AI` | `AI` | every paid call is a row |
+| `voice_turns` | `Conversation.Turn` / `Conversation` | `Conversation` | voice memory and proposals |
+| `daily_summaries` | `DailySummary.Entry` / `DailySummary` | `DailySummary` | one per local day |
+| `eleven_labs_usage` | `ElevenLabs.Usage` | `ElevenLabs.Usage` | TTS/STT spend per UTC day |
+| `usage_ledger`, `usage_messages`, `usage_limits` | `Usage.Ledger` | `Usage.Ledger` | read from the transcripts |
+| `voice_speech_cache` | `ElevenLabs.SpeechCache` | `ElevenLabs.SpeechCache` | audio already paid for |
+| `runner_executions` | `Runners.Execution` / `Runners` | `Runners` | one local run per row |
+| `superagents`, `superagent_events` | `Superagents.*` / `Superagents` | `Superagents` | one per repository; append-only events |
 
-O teste `test/agent_board/write_boundary_test.exs` fixa duas partes disso: a
-web não escreve direto e não usa `Repo`; `test/agent_board/actions_test.exs`
-verifica que os efeitos registrados só são chamados por `Actions`.
+The test `test/agent_board/write_boundary_test.exs` fixes two parts of this: the
+web does not write directly and does not use `Repo`; `test/agent_board/actions_test.exs`
+verifies that the registered effects are only called by `Actions`.
 
-## 4. Um fluxo traçado: criar uma tarefa
+## 4. One traced flow: creating a task
 
 ```mermaid
 flowchart TD
-    A["Porta: composer, API ou voz"] --> B["Routing.Signals.read/0\n+ Routing.plan/5"]
-    B --> C["Actions.run(:create_tasks)\nvermelha"]
-    C --> D{"a frase confere?"}
-    D -- não --> X["recusa registrada\nnada executa"]
-    D -- sim --> E["Board.Requests.create_request/3\n(routing presente)"]
-    E --> F["claim `draft` + request_key único"]
+    A["Door: composer, API or voice"] --> B["Routing.Signals.read/0\n+ Routing.plan/5"]
+    B --> C["Actions.run(:create_tasks)\nred"]
+    C --> D{"does the sentence check out?"}
+    D -- no --> X["refusal recorded\nnothing runs"]
+    D -- yes --> E["Board.Requests.create_request/3\n(routing present)"]
+    E --> F["claim `draft` + unique request_key"]
     F --> G["GitHub.create_issue"]
     G --> H["Task `queued` + Routing.record/3"]
     H --> I["Board.broadcast/1"]
-    G -. erro .-> J["remove o claim\nlog `create_error`"]
+    G -. error .-> J["removes the claim\nlogs `create_error`"]
 ```
 
-O que cada camada esconde:
+What each layer hides from the others:
 
-- **Porta**: lê os sinais e chama `Routing.plan/5` para mostrar a sugestão e a
-  frase; não decide risco nem abre issue. Uma requisição que chega só com
-  `executor` (a voz) é planejada por `Actions`, que é a porta de escrita.
-- **`Actions`**: aplica o risco, grava a decisão, planeja a requisição que ainda
-  não tem linha e chama o efeito; não sabe como o board persiste a tarefa.
-- **`Board.Requests.create_request/3`**: garante "uma vez" (claim, `request_key`, corrida,
-  receipt), fala com o GitHub e grava a linha que já recebeu. Exige `:routing`
-  para executor nomeado e responde `{:error, :not_routed}` antes do claim; é
-  orquestração de contexto, não uma função pura.
-- **`TicketOverlay`/`Sync`**: depois, o issue e o ticket viram estado da tarefa.
+- **Door**: reads the signals and calls `Routing.plan/5` to show the suggestion
+  and the sentence; it does not decide risk and does not open an issue. A
+  request that arrives with only `executor` (the voice) is planned by `Actions`,
+  which is the write door.
+- **`Actions`**: applies the risk, records the decision, plans the request that
+  has no row yet and calls the effect; it does not know how the board persists
+  the task.
+- **`Board.Requests.create_request/3`**: guarantees "once" (claim, `request_key`,
+  race, receipt), talks to GitHub and writes the row that already arrived. It
+  requires `:routing` for a named executor and answers `{:error, :not_routed}`
+  before the claim; it is context orchestration, not a pure function.
+- **`TicketOverlay`/`Sync`**: later, the issue and the ticket become task state.
 
-O caminho de falha é parte do contrato: uma requisição de executor sem linha é
-recusada antes do claim; se o GitHub falha, o claim é removido e um evento é
-gravado; se o insert da decisão de roteamento falha, a tarefa fica e o erro vira
-evento (uma retentativa abriria um segundo issue).
+The failure path is part of the contract: a request with an executor and no row
+is refused before the claim; if GitHub fails, the claim is removed and an event
+is recorded; if the insert of the routing decision fails, the task stays and the
+error becomes an event (a retry would open a second issue).
 
-## 5. O que mudou nesta revisão
+## 5. What changed in this review
 
-| PR | Problema | Mudança | Evidência |
+| PR | Problem | Change | Evidence |
 |---|---|---|---|
-| #401 | `Board` chamava `Sync` por dois helpers; a web lia `Repo` | `Freshness` e `Workpad.question?/1` saíram de `Sync`; leituras da web passaram a usar funções de contexto | `mix xref`: aresta `board -> sync` sumiu; teste de fronteira novo |
-| #402 | o overlay do ticket tinha duas escritas com guardas divergentes | `TicketOverlay.apply/5`; sync usa `include_finished: true`, poll usa o padrão | 6 testes novos, incluindo o caminho do sync que não tinha teste direto |
-| #404 | `Board` escrevia `routing_decisions`; `Board.Setting` morava no contexto errado | `Routing.record/3`; `Settings.Setting` | testes de `create_request` e `settings` verdes |
-| #406 | teste do `changes_since` corria com a truncagem de segundos | cutoff depois do insert | removeu a falha intermitente observada na validação |
-| #409 | `Live` colidia com `BoardLive`; `Work` colidia com `Workpad`/`Worktree` | `TicketPoller` e `Lanes` (+ `:ticket_poll_interval`) | suíte completa verde |
-| roteamento (esta rodada) | `Board.route/5` lia `Routing.Signals` num default; `Board` participava do ciclo de leitura | `Routing.plan/5` puro; `Actions` planeja requisição só com executor; `Board` recusa sem linha (`:not_routed`); `snapshot/1` saiu de `Signals` | `mix xref`: ciclo `Board/Signals/Runners/Usage.Report` sumiu; testes de plano e de recusa |
-| visão Hoje (esta rodada) | a visão "Hoje" (cross-repo) morava no contexto de um repositório | `AgentBoard.Overview` para `today/0` e `repo_overview/0` | testes de overview/board e orçamento de queries verdes |
-| uso do Harness (esta rodada) | `ExecutorUsage` não dizia qual fonte lia e morava fora de `Usage` | `AgentBoard.Usage.Harness`; leitor por tarefa separado do Ledger/Report | testes de harness, ledger e report verdes |
-| criação de pedido (esta rodada) | `create_request`, `create_task` e o claim viviam no `Board` junto das leituras | `AgentBoard.Board.Requests`; o `Board` chama de volta só para persistir, registrar e broadcastar | testes de requests e de fronteira verdes |
-| estado do ticket (esta rodada) | `Sync` era dono da regra de estado e o poller dependia dele; o plano de retry misturava decisão e efeito | `AgentBoard.Tickets` para a regra; `AutoRetry.Plan` para a decisão pura; poller lê o `AgentState` direto | `mix xref`: nenhum ciclo de domínio restante; testes de sync/ticket/retry verdes |
+| #401 | `Board` called `Sync` through two helpers; the web read `Repo` | `Freshness` and `Workpad.question?/1` left `Sync`; web reads now use context functions | `mix xref`: the `board -> sync` edge is gone; new boundary test |
+| #402 | the ticket overlay had two writes with divergent guards | `TicketOverlay.apply/5`; the sync uses `include_finished: true`, the poll uses the default | 6 new tests, including the sync path that had no direct test |
+| #404 | `Board` wrote `routing_decisions`; `Board.Setting` lived in the wrong context | `Routing.record/3`; `Settings.Setting` | `create_request` and `settings` tests green |
+| #406 | the `changes_since` test raced the truncation of seconds | cutoff after the insert | removed the intermittent failure seen during validation |
+| #409 | `Live` collided with `BoardLive`; `Work` collided with `Workpad`/`Worktree` | `TicketPoller` and `Lanes` (+ `:ticket_poll_interval`) | full suite green |
+| routing (this round) | `Board.route/5` read `Routing.Signals` in a default; `Board` took part in the read cycle | pure `Routing.plan/5`; `Actions` plans a request that only has an executor; `Board` refuses without a row (`:not_routed`); `snapshot/1` left `Signals` | `mix xref`: the `Board/Signals/Runners/Usage.Report` cycle is gone; plan and refusal tests |
+| Today (Hoje) view (this round) | the "Hoje" (cross-repo) view lived in the context of one repository | `AgentBoard.Overview` for `today/0` and `repo_overview/0` | overview/board and query-budget tests green |
+| Harness usage (this round) | `ExecutorUsage` did not say which source it read and lived outside `Usage` | `AgentBoard.Usage.Harness`; per-task reader separate from the Ledger/Report | harness, ledger and report tests green |
+| request creation (this round) | `create_request`, `create_task` and the claim lived in `Board` next to the reads | `AgentBoard.Board.Requests`; `Board` is called back only to persist, record and broadcast | requests and boundary tests green |
+| ticket state (this round) | `Sync` owned the state rule and the poller depended on it; the retry plan mixed decision and effect | `AgentBoard.Tickets` for the rule; `AutoRetry.Plan` for the pure decision; the poller reads `AgentState` directly | `mix xref`: no domain cycle left; sync/ticket/retry tests green |
 
-### Antes e depois do acoplamento
+### Coupling before and after
 
 ```mermaid
 flowchart LR
-    subgraph antes["Antes"]
+    subgraph antes["Before"]
         B1["Board"] --> S1["Sync\nquestion? · Freshness"]
         S1 --> B1
         B1 --> SIG1["Routing.Signals"] --> R1["Runners"] --> U1["Usage.Report"] --> B1
@@ -194,7 +198,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    subgraph depois["Depois"]
+    subgraph depois["After"]
         S2["Sync"] --> B2["Board"]
         B2 --> F2["Freshness"]
         B2 --> W2["Workpad.question?/1"]
@@ -204,307 +208,305 @@ flowchart LR
     end
 ```
 
-`mix xref graph --format cycles` antes: 6 ciclos, o de domínio com 11 módulos.
-Depois: 5 ciclos; o SCC de 11 não existe mais e **não sobrou ciclo de
-domínio**. O ciclo da web (36) é a direção router/endpoint do Phoenix, o dos
-schemas (6) são associações Ecto e os três pares de `Superagents` são
-behaviour ↔ implementação; nenhum tem aresta de compilação (`--label
-compile-connected` continua sem ciclos).
+`mix xref graph --format cycles` before: 6 cycles, the domain one with 11
+modules. After: 5 cycles; the SCC of 11 no longer exists and **no domain cycle
+remains**. The web cycle (36) is Phoenix's router/endpoint direction, the
+schema cycle (6) is Ecto associations and the three `Superagents` pairs are
+behaviour ↔ implementation; none has a compile edge (`--label
+compile-connected` still has no cycles).
 
-## 6. Decisões, com o porquê
+## 6. Decisions, with the why
 
-### 6.1 Tirar `Freshness` e `question?` de `Sync`
+### 6.1 Moving `Freshness` and `question?` out of `Sync`
 
-**Problema.** `Board` dependia de `Sync` por `Sync.Freshness.stale_ttl/0` e
-`Sync.question?/1`; `Sync` já dependia de `Board` para escrever. Era um ciclo
-mantido por dois detalhes que não eram "sync".
+**Problem.** `Board` depended on `Sync` through `Sync.Freshness.stale_ttl/0` and
+`Sync.question?/1`; `Sync` already depended on `Board` to write. It was a cycle
+kept by two details that were not "sync".
 
-**Evidência.** `mix xref` mostrava o SCC de 11; `Board` tinha uma única chamada a
-`Sync.question?` (`comment_asks?/1`) e uma a `Freshness.stale_ttl/0`
+**Evidence.** `mix xref` showed the SCC of 11; `Board` had a single call to
+`Sync.question?` (`comment_asks?/1`) and one to `Freshness.stale_ttl/0`
 (`repo_overview/0`).
 
-**Alternativas.** (a) deixar o ciclo e documentar; (b) mover as duas funções
-para `Board`; (c) dar às duas um dono próprio.
+**Alternatives.** (a) leave the cycle and document it; (b) move the two functions
+to `Board`; (c) give both their own owner.
 
-**Escolha.** (c): `Freshness` é leitura do board (o quanto os dados estão
-frescos), não uma operação do sync; `Workpad.question?/1` é semântica da
-comunicação do agente, usada por `Sync`, `Board` e `Lanes`. A direção virou
-`Sync -> Board`.
+**Choice.** (c): `Freshness` is a board read (how fresh the data is), not a sync
+operation; `Workpad.question?/1` is semantics of the agent's communication, used
+by `Sync`, `Board` and `Lanes`. The direction became `Sync -> Board`.
 
-**O que ficou mais simples.** O board não recompila nem quebra quando o sync
-muda; a regra de pergunta tem um lugar. **Custo.** Um arquivo a mais em `lib/` e
-dois call sites atualizados; nenhuma compatibilidade foi necessária porque nada
-persistido guarda esses nomes.
+**What got simpler.** The board does not recompile or break when the sync
+changes; the question rule has one place. **Cost.** One more file in `lib/` and
+two updated call sites; no compatibility was needed because nothing persisted
+stores those names.
 
-### 6.2 A web lê pelo contexto, não por `Repo`
+### 6.2 The web reads through the context, not through `Repo`
 
-**Problema.** `BoardLive`, `BoardController`, `BoardNavigation` e `AgentAction`
-faziam `Repo.get`/`Repo.preload` de `Task`, `Repository`, `Execution` e
-`Superagent`. O mesmo "tarefa + repositório" era remontado em quatro lugares.
+**Problem.** `BoardLive`, `BoardController`, `BoardNavigation` and `AgentAction`
+did `Repo.get`/`Repo.preload` of `Task`, `Repository`, `Execution` and
+`Superagent`. The same "task + repository" was reassembled in four places.
 
-**Evidência.** 20 chamadas a `Repo` em `lib/agent_board_web/**`; o preload de
-`:repository` repetido.
+**Evidence.** 20 `Repo` calls in `lib/agent_board_web/**`; the `:repository`
+preload repeated.
 
-**Alternativas.** (a) manter e confiar na disciplina; (b) criar um `ReadModel`
-novo; (c) expor leituras nos contextos que já são donos.
+**Alternatives.** (a) keep it and trust discipline; (b) create a new `ReadModel`;
+(c) expose reads in the contexts that already own them.
 
-**Escolha.** (c): `Board.task/1`, `Board.task_of/2`, `Board.repository/1`,
+**Choice.** (c): `Board.task/1`, `Board.task_of/2`, `Board.repository/1`,
 `Board.find_repository/2`, `Runners.get_execution/1`, `Superagents.get/1`
-(com repositório). O teste `write_boundary_test.exs` agora falha se a web voltar
-a citar `Repo`.
+(with repository). The test `write_boundary_test.exs` now fails if the web
+mentions `Repo` again.
 
-**O que ficou mais simples.** Uma mudança de preload/consulta acontece no
-contexto, não na LiveView de 3 mil linhas. **Custo.** Funções pequenas a mais na
-API pública; a web ainda conhece os structs (`%Task{}`) para pattern matching,
-o que é aceitável — struct é o vocabulário do contexto.
+**What got simpler.** A preload/query change happens in the context, not in the
+3 thousand line LiveView. **Cost.** A few more small functions in the public
+API; the web still knows the structs (`%Task{}`) for pattern matching, which is
+acceptable — the struct is the context's vocabulary.
 
-### 6.3 Uma escrita para o overlay do ticket
+### 6.3 One write for the ticket overlay
 
-**Problema.** `Sync.apply_overlay/5` e `TicketPoller.overlay_number/4` tinham o
-mesmo `update_all` e guardas diferentes: o sync podia mover uma tarefa `done`
-depois de o issue reabrir; o poll não. Duas fontes para a mesma regra.
+**Problem.** `Sync.apply_overlay/5` and `TicketPoller.overlay_number/4` had the
+same `update_all` and different guards: the sync could move a `done` task after
+the issue reopened; the poll could not. Two sources for the same rule.
 
-**Evidência.** O SQL era idêntico; a diferença era `include_finished` (sync) e
-`state not in done/closed` (poll).
+**Evidence.** The SQL was identical; the difference was `include_finished` (sync)
+and `state not in done/closed` (poll).
 
-**Alternativas.** (a) deixar duplicado; (b) unificar tudo e escolher uma guarda;
-(c) unificar a escrita e deixar cada chamador declarar seu alcance.
+**Alternatives.** (a) leave it duplicated; (b) unify everything and pick one
+guard; (c) unify the write and let each caller declare its scope.
 
-**Escolha.** (c): `TicketOverlay.apply/5` com `:include_finished`. O sync mantém
-a guarda do issue fechado; o poll mantém o padrão. A regra "como o estado vira
-linha" tem um dono; a política de quando aplicar continua com quem tem o fato.
+**Choice.** (c): `TicketOverlay.apply/5` with `:include_finished`. The sync keeps
+the closed-issue guard; the poll keeps the default. The rule "how the state
+becomes a row" has one owner; the policy of when to apply it stays with whoever
+has the fact.
 
-**O que ficou mais simples.** Um campo novo (`finished_at`, por exemplo) entra
-uma vez. **Custo.** A opção `include_finished` precisa ser entendida por quem
-mexer no sync; os testes nomeiam os dois alcances.
+**What got simpler.** A new field (`finished_at`, for example) enters once.
+**Cost.** The `include_finished` option has to be understood by whoever touches
+the sync; the tests name both scopes.
 
-### 6.4 O dono da tabela escreve a tabela
+### 6.4 The table owner writes the table
 
-**Problema.** `Board.record_routing/4` inseria em `routing_decisions`, cujo
-schema e cujo tipo são de `Routing`; `Board.Setting` era um schema de `Settings`
-morando no namespace de `Board`.
+**Problem.** `Board.record_routing/4` inserted into `routing_decisions`, whose
+schema and type belong to `Routing`; `Board.Setting` was a `Settings` schema
+living in the `Board` namespace.
 
-**Evidência.** `Routing.Decision` já existia com o changeset; `Settings` era o
-único leitor/escritor de `settings`.
+**Evidence.** `Routing.Decision` already existed with the changeset; `Settings`
+was the only reader/writer of `settings`.
 
-**Escolha.** `Routing.record/3` e `Settings.Setting`. `Board` continua decidindo
-**quando** gravar a linha e transforma uma falha em evento — a tarefa nunca é
-descartada por falta de auditoria.
+**Choice.** `Routing.record/3` and `Settings.Setting`. `Board` still decides
+**when** to write the row and turns a failure into an event — the task is never
+discarded for lack of an audit.
 
-**O que ficou mais simples.** Achar quem escreve uma tabela é procurar o dono.
-**Custo.** `Routing` deixou de ser 100% puro; a parte pura (`suggest/2`)
-continua separada da parte de persistência (`record/3`).
+**What got simpler.** Finding who writes a table means looking for the owner.
+**Cost.** `Routing` is no longer 100% pure; the pure part (`suggest/2`) stays
+separate from the persistence part (`record/3`).
 
-### 6.5 Nomes que dizem o trabalho
+### 6.5 Names that say the work
 
-**Problema.** `AgentBoard.Live` parecia um LiveView ao lado de `BoardLive` e não
-dizia que lê tickets; `AgentBoard.Work` não dizia que constrói as raias e
-colidia com `Workpad` e `AgentWorktree`.
+**Problem.** `AgentBoard.Live` looked like a LiveView next to `BoardLive` and did
+not say it reads tickets; `AgentBoard.Work` did not say it builds the lanes and
+collided with `Workpad` and `AgentWorktree`.
 
-**Escolha.** `TicketPoller` (o quê e como) e `Lanes` (o conceito que a UI já
-usa). Nomes persistidos? Nenhum: não são workers do Oban nem valores de banco.
-Configuração interna mudou junto (`:ticket_poll_interval`).
+**Choice.** `TicketPoller` (what and how) and `Lanes` (the concept the UI already
+uses). Persisted names? None: they are not Oban workers or database values.
+Internal configuration changed with them (`:ticket_poll_interval`).
 
-**O que ficou mais simples.** A busca por "quem faz o poll" e "quem monta a
-Fila" acha o módulo. **Custo.** Um rename mecânico grande; o histórico do git
-segue o arquivo e o teste de fronteira garante que nada ficou para trás.
+**What got simpler.** Searching for "who polls" and "who builds the Fila"
+(Queue) finds the module. **Cost.** A large mechanical rename; git history
+follows the file and the boundary test guarantees nothing was left behind.
 
-### 6.6 A decisão de rota sai do `Board`
+### 6.6 The routing decision leaves `Board`
 
-**Problema.** `Board.route/5` tinha `Routing.Signals.read/0` como valor padrão.
-Chamar uma função do contexto disparava uma leitura da API do runner e do
-ledger; o `Board` ainda entrava no ciclo `Board -> Signals -> Runners ->
-Usage.Report -> Board`.
+**Problem.** `Board.route/5` had `Routing.Signals.read/0` as a default value.
+Calling a context function triggered a read of the runner API and of the ledger;
+`Board` also entered the cycle `Board -> Signals -> Runners -> Usage.Report ->
+Board`.
 
-**Evidência.** O default estava na assinatura de `route/5`; `Board` não precisa
-dos sinais para gravar a tarefa, só para decidir o executor. O ciclo aparecia
-no `mix xref` (5 módulos) depois de tirar `Sync` do caminho.
+**Evidence.** The default was in the signature of `route/5`; `Board` does not
+need the signals to write the task, only to decide the executor. The cycle
+showed up in `mix xref` (5 modules) after `Sync` left the path.
 
-**Alternativas.** (a) manter e documentar; (b) só remover o default e passar
-`Signals.read()` em cada chamada, mantendo a decisão no `Board`; (c) mover a
-decisão para `Routing` e a leitura para a porta.
+**Alternatives.** (a) keep it and document it; (b) only remove the default and
+pass `Signals.read()` at each call, keeping the decision in `Board`; (c) move the
+decision to `Routing` and the read to the door.
 
-**Escolha.** (c): `Routing.plan/5` é puro (recebe `signals`), `Routing.snapshot/1`
-saiu de `Signals` para não acoplar `Routing` ao leitor, e `Actions` planeja a
-requisição que chega só com `executor`. `Board.Requests.create_request/3` exige a linha
-para executor nomeado e recusa `{:error, :not_routed}` antes do claim. As portas
-(composer, API, voz) leem os sinais e chamam `plan/5` antes de mostrar a frase.
+**Choice.** (c): `Routing.plan/5` is pure (it receives `signals`), `Routing.snapshot/1`
+left `Signals` so `Routing` is not coupled to the reader, and `Actions` plans the
+request that arrives with only `executor`. `Board.Requests.create_request/3`
+requires the row for a named executor and refuses `{:error, :not_routed}` before
+the claim. The doors (composer, API, voice) read the signals and call `plan/5`
+before showing the sentence.
 
-**O que ficou mais simples.** O `Board` saiu do ciclo; a decisão é testável sem
-rede; a requisição que chega ao contexto já está completa. **Custo.** O contrato
-de `create_request/3` ficou mais estrito: uma chamada direta com executor
-precisa passar a linha, e o teste novo fixa essa recusa.
+**What got simpler.** `Board` left the cycle; the decision is testable without
+the network; the request that reaches the context is already complete. **Cost.**
+The `create_request/3` contract became stricter: a direct call with an executor
+must pass the row, and the new test fixes that refusal.
 
-### 6.7 A visão "Hoje" é um read model, não o `Board`
+### 6.7 The Today (Hoje) view is a read model, not `Board`
 
-**Problema.** `Board.today/0` e `Board.repo_overview/0` liam **todos** os
-repositórios, com `@today_states` e `@need_rank` próprios, dentro do contexto
-que é escopado a um repositório. Era a única parte do `Board` que respondia
-"em todos, agora" — uma responsabilidade de tela, não de escrita.
+**Problem.** `Board.today/0` and `Board.repo_overview/0` read **all**
+repositories, with their own `@today_states` and `@need_rank`, inside the context
+that is scoped to one repository. It was the only part of `Board` that answered
+"in all, now" — a screen responsibility, not a write one.
 
-**Evidência.** `BoardLive` chamava `Board.today/0` nas duas leituras do board;
-`repo_overview/0` só era usado por `today/0` e pelos testes. O `Board` ainda
-guardava dois atributos que nenhuma outra função usava.
+**Evidence.** `BoardLive` called `Board.today/0` in both board reads;
+`repo_overview/0` was only used by `today/0` and the tests. `Board` also kept two
+attributes that no other function used.
 
-**Alternativas.** (a) deixar no `Board`; (b) mover para `BoardLive`; (c) criar
-um read model cross-repository.
+**Alternatives.** (a) leave it in `Board`; (b) move it to `BoardLive`; (c) create
+a cross-repository read model.
 
-**Escolha.** (c): `AgentBoard.Overview` lê as tabelas do board e chama as
-funções públicas do contexto (`Board.list_repositories/0`,
-`Board.resolved_task_ids/1`). O `Board` continua o dono das tabelas e das
-operações de um repositório; `Overview` é a leitura de todos, como `Lanes` é a
-leitura de um.
+**Choice.** (c): `AgentBoard.Overview` reads the board tables and calls the
+context's public functions (`Board.list_repositories/0`,
+`Board.resolved_task_ids/1`). `Board` remains the owner of the tables and of the
+operations of one repository; `Overview` is the read of all, as `Lanes` is the
+read of one.
 
-**O que ficou mais simples.** A tela "Hoje" muda sem tocar no contexto de
-tarefa/repositório; o teste de orçamento de queries fica junto do read model.
-**Custo.** Uma chamada de UI mudou de módulo e o caminho de leitura ganhou mais
-um nome para aprender (`Board` por repositório, `Overview` para todos).
+**What got simpler.** The "Hoje" screen changes without touching the
+task/repository context; the query-budget test lives next to the read model.
+**Cost.** One UI call changed module and the read path gained one more name to
+learn (`Board` per repository, `Overview` for all).
 
-### 6.8 A criação de pedido é um comando do contexto
+### 6.8 Request creation is a context command
 
-**Problema.** `Board.create_request/3`, `Board.create_task/5` e o claim
-(`draft` + `request_key` + receipt) viviam no mesmo módulo das leituras de
-tarefa, comentário e PR, que mudam por outros motivos. A garantia "uma vez"
-ficava escondida entre paginação, workpad e atividade.
+**Problem.** `Board.create_request/3`, `Board.create_task/5` and the claim
+(`draft` + `request_key` + receipt) lived in the same module as the reads of
+tasks, comments and PRs, which change for other reasons. The "once" guarantee
+was hidden among pagination, workpad and activity.
 
-**Evidência.** As funções de criação e o claim ocupavam ~200 linhas
-contíguas; `Actions` era o único chamador de `create_request/3`; os testes de
-idempotência formavam um arquivo próprio (`create_request_test.exs`).
+**Evidence.** The creation functions and the claim took ~200 contiguous lines;
+`Actions` was the only caller of `create_request/3`; the idempotency tests formed
+their own file (`create_request_test.exs`).
 
-**Alternativas.** (a) manter no `Board`; (b) criar um contexto novo, com a
-tabela e o schema; (c) criar um comando dentro do contexto.
+**Alternatives.** (a) keep it in `Board`; (b) create a new context, with the
+table and the schema; (c) create a command inside the context.
 
-**Escolha.** (c): `AgentBoard.Board.Requests` recebe a requisição já roteada,
-faz o claim, chama o GitHub, grava a tarefa, registra a linha e broadcasta.
-Chama de volta `Board.log_event/4`, `Board.broadcast/1` e
-`Board.request_key/3`; o `Board` não chama `Requests`. A tabela e o schema
-continuam no contexto.
+**Choice.** (c): `AgentBoard.Board.Requests` receives the request already routed,
+makes the claim, calls GitHub, writes the task, records the row and broadcasts.
+It calls back `Board.log_event/4`, `Board.broadcast/1` and
+`Board.request_key/3`; `Board` does not call `Requests`. The table and the schema
+stay in the context.
 
-**O que ficou mais simples.** A idempotência tem um arquivo e um teste; o
-`Board` ficou com as leituras e as escritas de tarefa que não criam issue.
-**Custo.** Mais um caminho público (`Board.Requests.create_request/3`) e um
-call site em `Actions`; o teste de fronteira precisou apontar para o novo
-módulo.
+**What got simpler.** Idempotency has one file and one test; `Board` kept the
+reads and the task writes that do not create an issue. **Cost.** One more public
+path (`Board.Requests.create_request/3`) and one call site in `Actions`; the
+boundary test had to point to the new module.
 
-### 6.9 O estado do ticket e a decisão de retry saem do `Sync`
+### 6.9 Ticket state and the retry decision leave `Sync`
 
-**Problema.** `Sync.ticket_state/2` era a regra de estado do ticket, mas quem
-mais a usava era o poller de 10 s — que, por isso, dependia do contexto do
-sync. E `AutoRetry` misturava a decisão (`plan/2`, pura) com o tick, o claim
-e a escrita.
+**Problem.** `Sync.ticket_state/2` was the ticket state rule, but its main user
+was the 10 s poller — which therefore depended on the sync context. And
+`AutoRetry` mixed the decision (`plan/2`, pure) with the tick, the claim and the
+write.
 
-**Evidência.** `TicketPoller` chamava `Sync.ticket_state/2` e
-`Sync.normalized_tickets/0`; `Sync` chamava `AutoRetry.plan/1` e
-`queued_retry?/1` só para decidir `retrying`; o `mix xref` mostrava o ciclo
+**Evidence.** `TicketPoller` called `Sync.ticket_state/2` and
+`Sync.normalized_tickets/0`; `Sync` called `AutoRetry.plan/1` and
+`queued_retry?/1` only to decide `retrying`; `mix xref` showed the cycle
 `Actions/AutoRetry/Sync/Worker`.
 
-**Alternativas.** (a) deixar o ciclo documentado; (b) mover a regra para o
-poller, duplicando-a; (c) dar um dono à regra e outro à decisão.
+**Alternatives.** (a) leave the cycle documented; (b) move the rule to the
+poller, duplicating it; (c) give the rule one owner and the decision another.
 
-**Escolha.** (c): `AgentBoard.Tickets.state/2` é a regra (recebe o workpad e
-o `asked?` como valores/funções, não lê o board); `AutoRetry.Plan` é a
-decisão pura, sem `Actions`; `AutoRetry` continua com o tick, o claim e o
-efeito. O poller lê `AgentState.tickets/0` e `Tickets.state/2` direto; `Sync`
-mantém `ticket_state/2` como delegado para não quebrar chamadores antigos.
-`Sync` não chama mais `AutoRetry`.
+**Choice.** (c): `AgentBoard.Tickets.state/2` is the rule (it receives the
+workpad and the `asked?` as values/functions, it does not read the board);
+`AutoRetry.Plan` is the pure decision, without `Actions`; `AutoRetry` keeps the
+tick, the claim and the effect. The poller reads `AgentState.tickets/0` and
+`Tickets.state/2` directly; `Sync` keeps `ticket_state/2` as a delegate so old
+callers do not break. `Sync` no longer calls `AutoRetry`.
 
-**Ganho.** O poller deixa de depender do sync e o último ciclo de domínio
-some; a decisão de retry é testável sem banco/rede. **Custo.** Dois módulos
-novos e um delegado de compatibilidade em `Sync` (mantido porque o teste e o
-contrato ainda o nomeiam; pode sair quando ninguém mais o usar).
+**Gain.** The poller stops depending on the sync and the last domain cycle
+disappears; the retry decision is testable without a database/network. **Cost.**
+Two new modules and a compatibility delegate in `Sync` (kept because the test
+and the contract still name it; it can go when nobody uses it anymore).
 
-### 6.10 O que foi mantido de propósito
+### 6.10 What was kept on purpose
 
-- **`Board` continua um contexto só.** As tabelas de tarefa, comentário e PR
-  compartilham invariantes (o estado de duas camadas, o `request_key`, a
-  resolução de PR). Dividir por tamanho criaria transações e contratos novos sem
-  remover acoplamento.
-- **`Usage.Harness` fica separado de `Usage.Ledger`/`Report`.** Ele lê o
-  transcript de **uma tarefa** para o inspetor; o Ledger e o Report falam do
-  dia e do executor. Ficam no mesmo namespace porque a fonte é a mesma (o
-  Harness), mas continuam módulos diferentes porque os trabalhos são
-  diferentes.
-- **`BoardLive` continua dono dos eventos.** As páginas não são domínios; o
-  componente não decide regra. Se a LiveView começar a bloquear mudanças, o
-  corte é por painel (eventos no componente), não por "contexto de tela".
-- **O ciclo da web não é um defeito.** `router -> endpoint -> router` é a
-  direção do Phoenix; `mix xref --label compile-connected` não acusa ciclo.
+- **`Board` remains a single context.** The task, comment and PR tables share
+  invariants (the two-layer state, the `request_key`, the PR resolution).
+  Splitting by size would create new transactions and contracts without removing
+  coupling.
+- **`Usage.Harness` stays separate from `Usage.Ledger`/`Report`.** It reads the
+  transcript of **one task** for the inspector; the Ledger and the Report talk
+  about the day and the executor. They stay in the same namespace because the
+  source is the same (the Harness), but they remain different modules because the
+  jobs are different.
+- **`BoardLive` remains the owner of the events.** Pages are not domains; the
+  component does not decide a rule. If the LiveView starts to block changes, the
+  cut is by panel (events in the component), not by "screen context".
+- **The web cycle is not a defect.** `router -> endpoint -> router` is Phoenix's
+  direction; `mix xref --label compile-connected` does not report a cycle.
 
-## 7. Desenho estratificado: dados, cálculos e ações
+## 7. Stratified design: data, calculations and actions
 
-A referência é *Grokking Simplicity* (Eric Normand): dados são fatos; cálculos
-são funções puras sobre dados; ações dependem do mundo (tempo, rede, banco) e
-não são idempotentes por si. A adaptação ao projeto:
+The reference is *Grokking Simplicity* (Eric Normand): data are facts;
+calculations are pure functions over data; actions depend on the world (time,
+network, database) and are not idempotent by themselves. The adaptation to the
+project:
 
-| Nível | Exemplos | Regra |
+| Level | Examples | Rule |
 |---|---|---|
-| Dados | structs `Board.Task`, `Routing.Decision`, mapas de ticket | sem efeito; o formato é o contrato |
-| Cálculos | `Routing.suggest/2`, `Routing.plan/5`, `Routing.snapshot/1`, `Tickets.state/2`, `AutoRetry.Plan.plan/2`, `Metrics.throughput/3`, `AgentBlock`, `AgentFailure`, `Workpad.parse/1`, `Freshness.snapshot/1`, `Announcer` | testáveis sem banco/rede; erro é valor |
-| Leituras | `Board.board/3`, `Overview.today/0`, `Overview.repo_overview/0`, `Lanes.needs/3`, `Metrics.Observations`, `Usage.Report`, `AgentSignal`, `AgentWorktree` | leem banco, git ou arquivos; podem ser cacheadas, mas não decidem escrita |
-| Ações | `Actions.run/4`, `Sync.sync_repo/2`, `TicketPoller.poll/1`, `Runners.dispatch/3`, `AI.call`, `ElevenLabs`, `Superagents` | efeito nas bordas; decisão antes do efeito; falha vira motivo, não resposta inventada |
+| Data | `Board.Task`, `Routing.Decision` structs, ticket maps | no effect; the format is the contract |
+| Calculations | `Routing.suggest/2`, `Routing.plan/5`, `Routing.snapshot/1`, `Tickets.state/2`, `AutoRetry.Plan.plan/2`, `Metrics.throughput/3`, `AgentBlock`, `AgentFailure`, `Workpad.parse/1`, `Freshness.snapshot/1`, `Announcer` | testable without a database/network; an error is a value |
+| Reads | `Board.board/3`, `Overview.today/0`, `Overview.repo_overview/0`, `Lanes.needs/3`, `Metrics.Observations`, `Usage.Report`, `AgentSignal`, `AgentWorktree` | read the database, git or files; they may be cached, but they do not decide a write |
+| Actions | `Actions.run/4`, `Sync.sync_repo/2`, `TicketPoller.poll/1`, `Runners.dispatch/3`, `AI.call`, `ElevenLabs`, `Superagents` | effect at the edges; decision before the effect; a failure becomes a reason, not an invented answer |
 
-Dois exemplos concretos:
+Two concrete examples:
 
-- `TicketOverlay.apply/5` é ação (escreve), mas a decisão "que estado o ticket
-  impõe" é `Tickets.state/2`; `TicketPoller` e `Sync` só orquestram. A decisão
-  é quase toda cálculo, com uma leitura opcional de filesystem: quando o
-  relatório é uma falha de prepare, `AutoRetry.Plan.plan/2` olha se sobraram
-  arquivos no diretório da execução. Isso permite testar a regra com um mapa e
-  a escrita com uma tarefa só.
-- `Board.Requests.create_request/3` mistura níveis de propósito: é a fronteira
-  da criação que garante "uma vez". O efeito (GitHub) está isolado em `GitHub`
-  e o claim é uma linha com chave única; a parte pura (`Board.request_key/3`)
-  fica no contexto. A decisão de rota não mora mais aqui: chega pronta e é
-  recusada quando falta. O "claim + receipt" já tem módulo próprio; não é uma
-  camada genérica.
+- `TicketOverlay.apply/5` is an action (it writes), but the decision "what state
+  the ticket imposes" is `Tickets.state/2`; `TicketPoller` and `Sync` only
+  orchestrate. The decision is almost all calculation, with one optional
+  filesystem read: when the report is a prepare failure, `AutoRetry.Plan.plan/2`
+  looks at whether files were left in the run directory. This allows testing the
+  rule with a map and the write with a single task.
+- `Board.Requests.create_request/3` mixes levels on purpose: it is the creation
+  boundary that guarantees "once". The effect (GitHub) is isolated in `GitHub`
+  and the claim is a row with a unique key; the pure part (`Board.request_key/3`)
+  stays in the context. The routing decision no longer lives here: it arrives
+  ready and is refused when missing. The "claim + receipt" already has its own
+  module; it is not a generic layer.
 
-## 8. Onde futuras mudanças entram
+## 8. Where future changes enter
 
-- **Novo campo em `tasks`**: migração → `Board.Task` (schema/changeset) →
-  leitura em `Board` → quem escreve o campo (`Board`, `Sync` ou
-  `TicketOverlay`) → UI. Não escreva `Repo` na web.
-- **Nova ação de escrita**: `Actions` (risco, frase, efeito), teste em
-  `actions_test.exs`, confirmação em cada porta que a oferece. Se for vermelha,
-  a frase é obrigatória; uma autorização permanente só entra no contrato.
-- **Nova leitura para a UI**: função no contexto dono (`Board`, `Runners`,
-  `Superagents`, `Lanes`...). Se a consulta é só de apresentação, ela fica no
-  módulo de leitura (`Lanes` por repositório, `Overview` para todos,
-  `Metrics`), nunca no componente.
-- **Nova integração externa**: cliente/adaptador atrás de um behaviour quando há
-  troca (o padrão de `Superagents.Manager`/`Provisioner`); nada de LiveView
-  chamando processo ou HTTP direto.
-- **Novo job assíncrono**: Oban (`Worker`) quando precisa de retentativa
-  durável; GenServer ticker só para observação barata e idempotente. O knob de
-  intervalo entra em `config/test.exs` como `:manual`/uma hora e o teste chama
-  o tick.
-- **Novo executor**: `Executors` (rótulo e corpo), `Runners`/superagent,
-  `Usage.*` para o gasto e `Routing` para a sugestão. O board continua sem
-  escrever no sqlite do runner.
-- **Nova tabela**: schema no contexto dono, migração, uma única escrita; se for
-  espelho, documente a exceção no contrato e teste a guarda.
+- **New field in `tasks`**: migration → `Board.Task` (schema/changeset) → read in
+  `Board` → whoever writes the field (`Board`, `Sync` or `TicketOverlay`) → UI.
+  Do not write `Repo` in the web.
+- **New write action**: `Actions` (risk, sentence, effect), test in
+  `actions_test.exs`, confirmation at every door that offers it. If it is red,
+  the sentence is mandatory; a permanent authorization only enters the contract.
+- **New read for the UI**: a function in the owning context (`Board`, `Runners`,
+  `Superagents`, `Lanes`...). If the query is presentation only, it lives in the
+  read module (`Lanes` per repository, `Overview` for all, `Metrics`), never in
+  the component.
+- **New external integration**: client/adapter behind a behaviour when there is
+  a swap (the `Superagents.Manager`/`Provisioner` pattern); no LiveView calling a
+  process or HTTP directly.
+- **New asynchronous job**: Oban (`Worker`) when it needs a durable retry; a
+  GenServer ticker only for cheap and idempotent observation. The interval knob
+  goes into `config/test.exs` as `:manual`/one hour and the test calls the tick.
+- **New executor**: `Executors` (label and body), `Runners`/superagent,
+  `Usage.*` for the spend and `Routing` for the suggestion. The board still does
+  not write to the runner's sqlite.
+- **New table**: schema in the owning context, migration, a single write; if it
+  is a mirror, document the exception in the contract and test the guard.
 
-## 9. Limites e próximos passos
+## 9. Limits and next steps
 
-- **Nenhum ciclo de domínio restante.** O `xref` só mostra a web, as
-  associações Ecto e os pares behaviour ↔ implementação de `Superagents`.
-- **`BoardLive` tem ~3 mil linhas.** Ainda não é o gargalo; o próximo corte, se
-  necessário, é por painel (mover os `handle_event` para o componente), com
-  teste de renderização por painel.
-- **Referências históricas.** `docs/decisions/0003-...` e a auditoria de UI
-  mantêm nomes antigos (`work.ex`, `live.ex`, `sync/freshness.ex`) porque são
-  registro do que existia; os guias atuais apontam para os nomes novos.
+- **No domain cycle remains.** `xref` only shows the web, the Ecto associations
+  and the `Superagents` behaviour ↔ implementation pairs.
+- **`BoardLive` has ~3 thousand lines.** It is not the bottleneck yet; the next
+  cut, if needed, is by panel (move the `handle_event` callbacks to the
+  component), with a render test per panel.
+- **Historical references.** `docs/decisions/0003-...` and the UI audit keep old
+  names (`work.ex`, `live.ex`, `sync/freshness.ex`) because they are a record of
+  what existed; the current guides point to the new names.
 
-## 10. Evidência de validação
+## 10. Validation evidence
 
-- `MIX_ENV=test mix gate` no commit final: 982 testes, 0 falhas; compilação com
-  warnings como erro, formato, credo e `agent_kit.check` verdes.
-- `mix xref graph --format cycles` antes/depois (seção 5) e
-  `mix xref graph --format cycles --label compile-connected`: sem ciclos de
-  compilação.
-- PRs: #401, #402, #404, #406, #409, a entrega de roteamento, a extração da
-  visão Hoje, a renomeação de `Usage.Harness`, a extração de
-  `Board.Requests`, a extração de `Tickets`/`AutoRetry.Plan` e este documento.
-  Cada um passou a CI
-  (backend em quatro partições, gates, frontend, biblioteca, release).
-- O defeito de teste de #406 foi encontrado validando os PRs e tratado em
-  separado; nenhum comportamento de produto mudou nesta revisão.
+- `MIX_ENV=test mix gate` in the final commit: 982 tests, 0 failures; compilation
+  with warnings as errors, format, credo and `agent_kit.check` green.
+- `mix xref graph --format cycles` before/after (section 5) and
+  `mix xref graph --format cycles --label compile-connected`: no compile cycles.
+- PRs: #401, #402, #404, #406, #409, the routing delivery, the Today view
+  extraction, the `Usage.Harness` rename, the `Board.Requests` extraction, the
+  `Tickets`/`AutoRetry.Plan` extraction and this document. Each went through CI
+  (backend in four partitions, gates, frontend, library, release).
+- The test defect in #406 was found while validating the PRs and handled
+  separately; no product behavior changed in this review.
