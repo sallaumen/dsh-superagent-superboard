@@ -1,5 +1,5 @@
 defmodule AgentBoardWeb.SuperagentsPanelTest do
-  @moduledoc "The superagents panel: project status, controls and provisioning."
+  @moduledoc "Settings → Projects: project rows, controls and provisioning."
   use AgentBoardWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
@@ -24,20 +24,33 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     superagent
   end
 
-  test "renders one title with project status, details and error", %{conn: conn} do
+  test "renders the project row with state, details and the error under it", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "panel")
     superagent = superagent!(repo, %{observed_state: "error", last_error: "github: sem acesso"})
     {:ok, _} = Superagents.observe(superagent, %{state: "error", detail: "github: sem acesso"})
 
-    {:ok, view, html} = live(conn, "/?repo=fixture/panel&panel=settings&section=superagents")
+    {:ok, view, html} = live(conn, "/?repo=fixture/panel&panel=settings&section=projects")
 
     assert html =~ "fixture/panel"
     assert html =~ "superagent-panel"
-    assert html =~ "erro"
-    assert html =~ "github: sem acesso"
-    assert has_element?(view, "#settings-superagents-title")
-    refute has_element?(view, "#superagents-panel h2")
-    assert has_element?(view, "#superagents-panel .ab-superagent-table__details")
+    assert html =~ "Não sobe"
+    assert has_element?(view, "#settings-projects-title")
+
+    assert has_element?(
+             view,
+             "#project-#{superagent.id} .ab-project__error",
+             "github: sem acesso"
+           )
+
+    view
+    |> element("#project-#{superagent.id} button[phx-click=toggle_project]")
+    |> render_click()
+
+    assert has_element?(
+             view,
+             "#project-#{superagent.id}-details .ab-project__fold",
+             "Pasta de estado"
+           )
   end
 
   test "summarizes a long GitHub limit error and keeps its diagnostic", %{conn: conn} do
@@ -51,11 +64,25 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     {:ok, _} = Superagents.observe(superagent, %{state: "error", detail: detail})
 
     {:ok, view, _html} =
-      live(conn, "/?repo=fixture/rate-limited-panel&panel=settings&section=superagents")
+      live(conn, "/?repo=fixture/rate-limited-panel&panel=settings&section=projects")
 
-    assert has_element?(view, ".ab-superagents__errors", "O GitHub atingiu o limite de consultas")
-    assert has_element?(view, ".ab-superagents__errors details", "Detalhes técnicos")
-    assert has_element?(view, ".ab-superagents__errors code", "rate limit exceeded")
+    assert has_element?(
+             view,
+             "#project-#{superagent.id} .ab-project__error",
+             "O GitHub atingiu o limite de consultas"
+           )
+
+    assert has_element?(
+             view,
+             "#project-#{superagent.id} .ab-project__error details",
+             "Detalhes técnicos"
+           )
+
+    assert has_element?(
+             view,
+             "#project-#{superagent.id} .ab-project__error code",
+             "rate limit exceeded"
+           )
   end
 
   test "a ready project can be paused and scaled", %{conn: conn} do
@@ -76,12 +103,11 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     {:ok, _} = Superagents.observe(superagent, %{state: "ready"})
     FakeManager.put(superagent.id, %{state: "ready"})
 
-    {:ok, view, html} = live(conn, "/?repo=fixture/controls&panel=settings&section=superagents")
+    {:ok, view, html} = live(conn, "/?repo=fixture/controls&panel=settings&section=projects")
     assert html =~ "Pausar"
-    assert html =~ "Parar"
 
     view
-    |> element("#superagents-panel button[phx-value-action='pause']")
+    |> element("#project-#{superagent.id} button[phx-value-action='pause']")
     |> render_click()
 
     Process.sleep(100)
@@ -89,7 +115,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert Repo.get!(Superagent, superagent.id).desired_state == "paused"
 
     view
-    |> element("#superagents-panel button[phx-value-delta='1']")
+    |> element("#project-#{superagent.id} button[phx-value-delta='1']")
     |> render_click()
 
     Process.sleep(100)
@@ -97,17 +123,9 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert Repo.get!(Superagent, superagent.id).max_workers == superagent.max_workers + 1
   end
 
-  test "the add-project form previews and confirms a new project", %{conn: conn} do
-    {:ok, source_repo} = Board.add_repository("fixture", "source-panel")
+  test "the add-project form previews the sentence, the workers and confirms", %{conn: conn} do
+    {:ok, _source_repo} = Board.add_repository("fixture", "source-panel")
     {:ok, target} = Board.add_repository("fixture", "target-panel")
-
-    {:ok, _source} =
-      Superagents.create(%{
-        repository_id: source_repo.id,
-        profile: "superagent-source-panel",
-        port: 3190,
-        state_dir: "/tmp/source-panel"
-      })
 
     profiles =
       Path.join(System.tmp_dir!(), "dsh-profiles-#{System.unique_integer([:positive])}")
@@ -137,20 +155,22 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     end)
 
     {:ok, view, _html} =
-      live(conn, "/?repo=fixture/target-panel&panel=settings&section=superagents")
+      live(conn, "/?repo=fixture/target-panel&panel=settings&section=projects")
 
     view
-    |> form(".ab-superagent-add__form", %{
-      "repository_id" => target.id,
-      "source_profile" => "superagent",
+    |> form("#track-repo", %{
+      "owner" => target.owner,
+      "name" => target.name,
       "path" => "/tmp/target-checkout",
+      "create_agent" => "true",
       "workers" => "2"
     })
     |> render_submit()
 
-    assert has_element?(view, ".ab-superagent-add__preview", "Provisionar o DeepSeek")
+    assert has_element?(view, "#add-project-confirm", "Provisionar o DeepSeek")
+    assert has_element?(view, "#add-project-confirm", "2")
 
-    view |> element(".ab-superagent-add__preview button", "Adicionar e iniciar") |> render_click()
+    view |> element("#add-project-confirm button", "Criar superagente") |> render_click()
     Process.sleep(150)
     _ = render(view)
 
@@ -158,47 +178,35 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert superagent.max_workers == 2
   end
 
-  test "each project keeps its own agent pool and the panel sums the total", %{conn: conn} do
+  test "each project keeps its own agent pool and the list sums the total", %{conn: conn} do
     {:ok, one} = Board.add_repository("fixture", "pool-one")
     {:ok, two} = Board.add_repository("fixture", "pool-two")
     first = superagent!(one, %{max_workers: 2})
     second = superagent!(two, %{max_workers: 4})
 
-    {:ok, view, _html} = live(conn, "/?repo=fixture/pool-one&panel=settings&section=superagents")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/pool-one&panel=settings&section=projects")
 
-    assert has_element?(
-             view,
-             "#superagents-panel .ab-superagents__summary",
-             "6 agentes configurados"
-           )
-
-    assert has_element?(view, "#superagent-#{first.id} .ab-superagent__workers", "2")
-    assert has_element?(view, "#superagent-#{second.id} .ab-superagent__workers", "4")
-    refute has_element?(view, "#superagents-panel a[href='#superagent-add']")
-
-    assert has_element?(
-             view,
-             "#superagents-panel .ab-superagents__complete",
-             "Todos os repositórios"
-           )
+    assert has_element?(view, ".ab-projects__summary", "6 agentes")
+    assert has_element?(view, "#project-#{first.id} .ab-project__agent-count", "2")
+    assert has_element?(view, "#project-#{second.id} .ab-project__agent-count", "4")
 
     assert Repo.get!(Superagent, first.id).max_workers == 2
     assert Repo.get!(Superagent, second.id).max_workers == 4
   end
 
-  test "an empty board says no superagent is registered", %{conn: conn} do
+  test "an empty board says no project is registered", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "empty-panel")
 
-    {:ok, _view, html} =
-      live(conn, "/?repo=fixture/empty-panel&panel=settings&section=superagents")
+    {:ok, view, _html} =
+      live(conn, "/?repo=fixture/empty-panel&panel=settings&section=projects")
 
-    assert html =~ "Nenhum superagente registrado"
+    assert has_element?(view, ".ab-projects__empty", "Nenhum projeto ainda")
   end
 
   test "a control for a superagent removed elsewhere says so and keeps the socket", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "gone")
     superagent = superagent!(repo, %{observed_state: "ready"})
-    {:ok, view, _html} = live(conn, "/?repo=fixture/gone&panel=settings&section=superagents")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/gone&panel=settings&section=projects")
 
     Repo.delete!(superagent)
 
@@ -248,21 +256,21 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
       })
 
     {:ok, view, html} =
-      live(conn, "/?repo=fixture/failed-panel&panel=settings&section=superagents")
+      live(conn, "/?repo=fixture/failed-panel&panel=settings&section=projects")
 
     assert html =~ "@bot cannot push"
     assert html =~ "a configuração não terminou"
 
-    trigger = "#superagent-retry_provision_superagent-#{superagent.id}-trigger"
+    trigger = "#project-retry_provision_superagent-#{superagent.id}-trigger"
     assert view |> element(trigger) |> render() =~ "Tentar de novo"
-    refute has_element?(view, "#superagent-start_superagent-#{superagent.id}-trigger")
+    refute has_element?(view, "#project-start_superagent-#{superagent.id}-trigger")
 
     view |> element(trigger) |> render_click()
     assert render(view) =~ "Provisionar de novo"
     assert Repo.get!(Superagent, superagent.id).observed_state == "error"
 
     view
-    |> element("#superagent-retry_provision_superagent-#{superagent.id}-confirm")
+    |> element("#project-retry_provision_superagent-#{superagent.id}-confirm")
     |> render_click()
 
     _ = render_async(view)

@@ -133,9 +133,20 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
   end
 
   defp settled(view) do
-    # Two rounds: the panel's read, then what it renders.
+    # Two rounds: the access read, then the collaborators read.
     _ = render_async(view)
     render_async(view)
+  end
+
+  defp open_access(conn, path, superagent) do
+    {:ok, view, _html} = live(conn, path)
+
+    html =
+      view
+      |> element("#project-#{superagent.id} button[phx-click=toggle_project]")
+      |> render_click()
+
+    {:ok, view, html}
   end
 
   defp cleared(superagent) do
@@ -147,12 +158,12 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
     %{conn: conn, path: path, superagent: superagent} = context
     FakeManager.put_access(superagent.id, ["fixture", "amiga"])
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     html = settled(view)
 
     assert html =~ "@amiga"
     assert html =~ "@fixture"
-    assert has_element?(view, "#settings-access-title")
+    assert has_element?(view, "#waiting-#{superagent.id}", "Esperando acesso")
     assert has_element?(view, ~s(button[id^="access-revoke-#{superagent.id}-amiga"]))
     refute has_element?(view, ~s(button[id^="access-revoke-#{superagent.id}-fixture"]))
   end
@@ -171,13 +182,13 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
     %{conn: conn, path: path, superagent: superagent, state_dir: state_dir} = context
     refused!(state_dir, "amiga", 1476, "trigger-1")
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     html = settled(view)
 
     assert html =~ "@amiga"
     assert html =~ "#1476"
     assert html =~ "Uma issue"
-    assert has_element?(view, ".settings-nav__count", "1")
+    assert has_element?(view, ".settings-nav__mark--you", "1")
 
     id = "access-grant-run-#{superagent.id}-amiga"
     view |> element("##{id}-trigger") |> render_click()
@@ -192,7 +203,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
 
     assert cleared(superagent) == ["fixture", "amiga"]
     assert FakeManager.requeued(superagent.id) == ["trigger-1"]
-    refute has_element?(view, ".settings-nav__count")
+    refute has_element?(view, ".settings-nav__mark--you")
     assert html =~ "liberado"
     assert %Decision{action: "grant_agent_access", outcome: "ok"} = last_decision()
   end
@@ -201,7 +212,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
     %{conn: conn, path: path, superagent: superagent, state_dir: state_dir} = context
     refused!(state_dir, "amiga", 12, "trigger-2")
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     settled(view)
 
     id = "access-grant-#{superagent.id}-amiga"
@@ -216,7 +227,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
     %{conn: conn, path: path, state_dir: state_dir, superagent: superagent} = context
     refused!(state_dir, "amiga", 12, "trigger-3")
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     settled(view)
 
     view |> element(~s(button[phx-click="dismiss_request"])) |> render_click()
@@ -229,7 +240,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
   test "a malformed login stops at the form", context do
     %{conn: conn, path: path, superagent: superagent} = context
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     settled(view)
 
     html = view |> element("#access-add-#{superagent.id}") |> render_submit(%{login: "@@"})
@@ -241,7 +252,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
   test "adding someone checks GitHub and asks before clearing", context do
     %{conn: conn, path: path, superagent: superagent} = context
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     settled(view)
 
     view |> element("#access-add-#{superagent.id}") |> render_submit(%{login: "@nova"})
@@ -261,7 +272,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
   test "a person without repository access is warned, not blocked", context do
     %{conn: conn, path: path, superagent: superagent} = context
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     settled(view)
 
     view |> element("#access-add-#{superagent.id}") |> render_submit(%{login: "fora"})
@@ -274,7 +285,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
   test "an account GitHub does not have cannot be allowed", context do
     %{conn: conn, path: path, superagent: superagent} = context
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     settled(view)
 
     view |> element("#access-add-#{superagent.id}") |> render_submit(%{login: "fantasma"})
@@ -287,7 +298,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
   test "someone already allowed is told so", context do
     %{conn: conn, path: path, superagent: superagent} = context
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     settled(view)
 
     html = view |> element("#access-add-#{superagent.id}") |> render_submit(%{login: "FIXTURE"})
@@ -299,7 +310,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
     %{conn: conn, path: path, superagent: superagent} = context
     FakeManager.put_access(superagent.id, {:error, :econnrefused})
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     html = settled(view)
 
     assert html =~ "não está respondendo"
@@ -308,10 +319,41 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
     refute has_element?(view, "#access-add-#{superagent.id}")
   end
 
+  test "the collaborators list is read once while the row is reopened", context do
+    %{conn: conn, path: path, superagent: superagent} = context
+    counter = :counters.new(1, [:atomics])
+
+    Req.Test.stub(__MODULE__, fn conn ->
+      if String.ends_with?(conn.request_path, "/collaborators") do
+        :counters.add(counter, 1, 1)
+      end
+
+      Req.Test.json(conn, [
+        %{"login" => "fixture", "role_name" => "admin"},
+        %{"login" => "amiga", "role_name" => "write"}
+      ])
+    end)
+
+    {:ok, view, _html} = open_access(conn, path, superagent)
+    settled(view)
+    assert :counters.get(counter, 1) == 1
+
+    view
+    |> element("#project-#{superagent.id} button[phx-click=toggle_project]")
+    |> render_click()
+
+    view
+    |> element("#project-#{superagent.id} button[phx-click=toggle_project]")
+    |> render_click()
+
+    settled(view)
+    assert :counters.get(counter, 1) == 1
+  end
+
   test "a change announced elsewhere reaches the open section", context do
     %{conn: conn, path: path, superagent: superagent} = context
 
-    {:ok, view, _html} = live(conn, path)
+    {:ok, view, _html} = open_access(conn, path, superagent)
     refute settled(view) =~ "@colega"
 
     FakeManager.put_access(superagent.id, ["fixture", "colega"])

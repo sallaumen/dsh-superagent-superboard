@@ -125,9 +125,7 @@ defmodule AgentBoardWeb.BoardLive do
         superagents: [],
         agent_access_projects: [],
         agent_access: %{count: 0, refused: MapSet.new()},
-        superagent_sources: Superagents.profiles_on_disk(),
         project_pending: nil,
-        provision_preview: nil,
         provisioning: false,
         resume: resume,
         events: [],
@@ -197,6 +195,7 @@ defmodule AgentBoardWeb.BoardLive do
         ai_calls: [],
         ai_status: AI.status(),
         version: Version.status(),
+        codex_quota: Runners.snapshot().quota,
         # A page opened during an update joins it, the fast-forward's own
         # reload included.
         busy: UpdateRun.running?(),
@@ -1032,7 +1031,6 @@ defmodule AgentBoardWeb.BoardLive do
     socket =
       socket
       |> assign(:superagents, Superagents.list())
-      |> assign(:superagent_sources, Superagents.profiles_on_disk())
 
     # A new profile becomes a new source while the sheet is open; the old
     # entries stay in the buffer and the new file is read from its tail.
@@ -1130,6 +1128,7 @@ defmodule AgentBoardWeb.BoardLive do
     socket =
       socket
       |> BoardNavigation.apply_params(params)
+      |> refresh_settings_quota(previous_panel)
       |> sync_logs_panel(previous_panel)
       |> load_inspector()
       |> load_panel()
@@ -1144,6 +1143,15 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply, mark_open_conversation_seen(socket)}
   end
+
+  # The Codex quota moves while the board runs. Reading it when the settings
+  # panel opens keeps the navigation hint fresh without a query per render.
+  defp refresh_settings_quota(%{assigns: %{panel: "settings"}} = socket, previous)
+       when previous != "settings" do
+    assign(socket, :codex_quota, Runners.snapshot().quota)
+  end
+
+  defp refresh_settings_quota(socket, _previous), do: socket
 
   defp mark_open_conversation_seen(%{assigns: %{conversation: nil}} = socket), do: socket
 
@@ -1172,10 +1180,6 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp refresh_agent_access(socket) do
     superagents = socket.assigns.superagents
-
-    if socket.assigns[:panel] == "settings" and socket.assigns[:settings_section] == "access" do
-      send_update(BoardComponents.AgentAccessPanel, id: "settings-agent-access", refresh: true)
-    end
 
     start_async(socket, :agent_access, fn -> AgentAccess.overview(superagents) end)
   end
@@ -1268,6 +1272,76 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp showing?(%{assigns: %{repo: %{id: id}}}, %{id: id}), do: true
   defp showing?(_socket, _repo), do: false
+
+  defp provision_project(socket, owner, name, params) do
+    owner = String.trim(owner)
+    name = String.trim(name)
+    path = String.trim(params["path"] || "")
+    path = if path == "", do: default_checkout_path(name), else: Path.expand(path)
+    workers = worker_count(params["workers"])
+
+    with {:ok, _} <- Actions.run(:add_repository, %{owner: owner, name: name}, ui()),
+         repository when not is_nil(repository) <- Board.repository_by_slug("#{owner}/#{name}"),
+         {:ok, source} <- Superagents.default_source(),
+         {:ok, preview} <-
+           Superagents.preview(repository, source, %{path: path, workers: workers}) do
+      phrase =
+        Actions.phrase(:provision_superagent, %{
+          repository: repository,
+          source: source,
+          path: path
+        })
+
+      {:noreply,
+       socket
+       |> assign(:repos, Board.list_repositories())
+       |> assign(:project_pending, %{
+         params: %{repository: repository, source: source, path: path, workers: preview.workers},
+         phrase: phrase
+       })}
+    else
+      {:error, :no_working_profile} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext(
+             "No DSH working profile on this machine. Run dsh once to create the superagent profile."
+           )
+         )}
+
+      {:error, reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Could not prepare the project: %{reason}", reason: inspect(reason))
+         )}
+    end
+  end
+
+  defp track_project(socket, owner, name) do
+    owner = String.trim(owner)
+    name = String.trim(name)
+
+    case Actions.run(:add_repository, %{owner: owner, name: name}, ui()) do
+      {:ok, _} ->
+        repos = Board.list_repositories()
+        repo = Enum.find(repos, &(&1.owner == owner and &1.name == name))
+        {:noreply, socket |> assign(:repos, repos) |> load(repo)}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Could not track %{repo}", repo: "#{owner}/#{name}"))}
+    end
+  end
+
+  defp worker_count(value) do
+    case Integer.parse(to_string(value || "")) do
+      {count, ""} when count >= 1 -> min(count, 32)
+      _ -> 1
+    end
+  end
 
   @impl true
   def handle_event("set_max_workers", %{"to" => to}, socket) do
@@ -1628,94 +1702,16 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, BoardNavigation.open_panel(socket, panel)}
   end
 
-  def handle_event("provision_review", params, socket) do
-    with {repository_id, ""} <- Integer.parse(params["repository_id"] || ""),
-         %AgentBoard.Board.Repository{} = repository <- Board.repository(repository_id),
-         source_name when is_binary(source_name) and source_name != "" <-
-           String.trim(params["source_profile"] || ""),
-         {:ok, source} <- Superagents.source_by_profile(source_name),
-         path when is_binary(path) and path != "" <- String.trim(params["path"] || ""),
-         path = Path.expand(path),
-         {workers, ""} <- Integer.parse(params["workers"] || "3") do
-      params = %{repository: repository, source: source, path: path, workers: workers}
-
-      {:noreply,
-       assign(socket, :provision_preview, %{
-         params: params,
-         phrase: Actions.phrase(:provision_superagent, params)
-       })}
-    else
-      _ ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Check repository, source profile, path, and workers.")
-         )}
-    end
-  end
-
   def handle_event("add_project", %{"owner" => owner, "name" => name} = params, socket) do
-    owner = String.trim(owner)
-    name = String.trim(name)
-    path = String.trim(params["path"] || "")
-    path = if path == "", do: default_checkout_path(name), else: Path.expand(path)
-
-    with {:ok, _} <- Actions.run(:add_repository, %{owner: owner, name: name}, ui()),
-         repository when not is_nil(repository) <- Board.repository_by_slug("#{owner}/#{name}"),
-         {:ok, source} <- Superagents.default_source(),
-         {:ok, preview} <-
-           Superagents.preview(repository, source, %{path: path, workers: 3}) do
-      phrase =
-        Actions.phrase(:provision_superagent, %{
-          repository: repository,
-          source: source,
-          path: path
-        })
-
-      {:noreply,
-       socket
-       |> assign(:repos, Board.list_repositories())
-       |> assign(:project_pending, %{
-         params: %{repository: repository, source: source, path: path, workers: preview.workers},
-         phrase: phrase
-       })}
+    if params["create_agent"] == "true" do
+      provision_project(socket, owner, name, params)
     else
-      {:error, :no_working_profile} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext(
-             "No DSH working profile on this machine. Run dsh once to create the superagent profile."
-           )
-         )}
-
-      {:error, reason} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("Could not prepare the project: %{reason}", reason: inspect(reason))
-         )}
+      track_project(socket, owner, name)
     end
   end
 
-  def handle_event("add_track", %{"owner" => owner, "name" => name}, socket) do
-    owner = String.trim(owner)
-    name = String.trim(name)
-
-    case Actions.run(:add_repository, %{owner: owner, name: name}, ui()) do
-      {:ok, _} ->
-        repos = Board.list_repositories()
-        repo = Enum.find(repos, &(&1.owner == owner and &1.name == name))
-        {:noreply, socket |> assign(:repos, repos) |> load(repo)}
-
-      {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Could not track %{repo}", repo: "#{owner}/#{name}"))}
-    end
-  end
+  def handle_event("add_track", %{"owner" => owner, "name" => name}, socket),
+    do: track_project(socket, owner, name)
 
   def handle_event("add_project_confirm", _params, socket) do
     case socket.assigns.project_pending do
@@ -1736,26 +1732,6 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_event("add_project_cancel", _params, socket),
     do: {:noreply, assign(socket, :project_pending, nil)}
-
-  def handle_event("provision_cancel", _params, socket),
-    do: {:noreply, assign(socket, :provision_preview, nil)}
-
-  def handle_event(
-        "provision_confirm",
-        _params,
-        %{assigns: %{provision_preview: %{params: params, phrase: phrase}}} = socket
-      ) do
-    {:noreply,
-     socket
-     |> assign(provision_preview: nil, provisioning: true)
-     |> start_async(:provision, fn ->
-       Superagents.detached(fn ->
-         Actions.run(:provision_superagent, params, ui(), confirm: phrase)
-       end)
-     end)}
-  end
-
-  def handle_event("provision_confirm", _params, socket), do: {:noreply, socket}
 
   def handle_event("superagent_command", %{"id" => id, "action" => action}, socket) do
     name = if action == "pause", do: :pause_superagent, else: :resume_superagent
@@ -2585,22 +2561,14 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_async(:provision, {:ok, {:ok, text}}, socket) do
     {:noreply,
      socket
-     |> assign(
-       superagents: Superagents.list(),
-       superagent_sources: Superagents.profiles_on_disk(),
-       provisioning: false
-     )
+     |> assign(superagents: Superagents.list(), provisioning: false)
      |> put_flash(:info, text)}
   end
 
   def handle_async(:provision, {:ok, {:error, text}}, socket) do
     {:noreply,
      socket
-     |> assign(
-       superagents: Superagents.list(),
-       superagent_sources: Superagents.profiles_on_disk(),
-       provisioning: false
-     )
+     |> assign(superagents: Superagents.list(), provisioning: false)
      |> put_flash(:error, text)}
   end
 
@@ -3100,7 +3068,7 @@ defmodule AgentBoardWeb.BoardLive do
                     class="ab-btn ab-btn--quiet ab-btn--sm"
                     phx-click="show_panel"
                     phx-value-panel="settings"
-                    phx-value-section="access"
+                    phx-value-section="projects"
                     data-panel-trigger
                     aria-haspopup="dialog"
                     aria-controls="panel-settings"
@@ -3117,7 +3085,7 @@ defmodule AgentBoardWeb.BoardLive do
                     class="ab-btn ab-btn--quiet ab-btn--sm"
                     phx-click="show_panel"
                     phx-value-panel="settings"
-                    phx-value-section="superagents"
+                    phx-value-section="projects"
                     data-panel-trigger
                     aria-haspopup="dialog"
                     aria-controls="panel-settings"
@@ -3617,6 +3585,7 @@ defmodule AgentBoardWeb.BoardLive do
             id="board-settings-panel"
             repo={@repo}
             version={@version}
+            codex_quota={@codex_quota}
             busy={@busy}
             progress={@update_progress}
             voice={@voice}
@@ -3625,9 +3594,7 @@ defmodule AgentBoardWeb.BoardLive do
             section={@settings_section}
             superagents={@superagents}
             access_waiting={@agent_access.count}
-            repos={@repos}
-            sources={@superagent_sources}
-            provision_preview={@provision_preview}
+            access_projects={@agent_access_projects}
             provisioning={@provisioning}
             tz_offset={@tz_offset}
             project_pending={@project_pending}

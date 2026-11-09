@@ -11,7 +11,20 @@ defmodule AgentBoardWeb.BoardNavigation do
   # The rail shows these on a board with no repository: Settings is where the
   # first one is added, and the others do not depend on one.
   @panels_without_repo ~w(voice logs settings shortcuts superagents)
-  @settings_sections ~w(inspect dispatch voice summary repositories superagents access appearance language version)
+  @settings_sections ~w(projects execution voice system)
+
+  # Old links keep working: each key maps to the section that now holds it.
+  @settings_aliases %{
+    "repositories" => "projects",
+    "superagents" => "projects",
+    "access" => "projects",
+    "dispatch" => "execution",
+    "inspect" => "execution",
+    "summary" => "voice",
+    "appearance" => "system",
+    "language" => "system",
+    "version" => "system"
+  }
 
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
@@ -33,9 +46,19 @@ defmodule AgentBoardWeb.BoardNavigation do
   def settings_path(repo, section \\ nil) do
     query = %{"panel" => "settings"}
     query = if repo, do: Map.put(query, "repo", "#{repo.owner}/#{repo.name}"), else: query
-    query = if section in @settings_sections, do: Map.put(query, "section", section), else: query
+
+    query =
+      case canonical_settings_section(section) do
+        nil -> query
+        key -> Map.put(query, "section", key)
+      end
+
     "/?" <> URI.encode_query(query)
   end
+
+  @doc "The section a URL names, including the keys the old menu used."
+  def canonical_settings_section(section) when section in @settings_sections, do: section
+  def canonical_settings_section(section), do: Map.get(@settings_aliases, section)
 
   # The voice panel is where a spoken question is reviewed: opening it must
   # not forget the task the owner was reading, or the ask has no target.
@@ -87,7 +110,7 @@ defmodule AgentBoardWeb.BoardNavigation do
     )
   end
 
-  defp settings_section("settings", section) when section in @settings_sections, do: section
+  defp settings_section("settings", section), do: canonical_settings_section(section)
   defp settings_section(_panel, _section), do: nil
 
   defp default_tab(%Task{state: "running"}), do: "atividade"
@@ -120,7 +143,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   def open_panel(socket, "shortcuts"),
     do: push_patch(socket, to: path(socket.assigns.repo, "shortcuts"))
 
-  def open_panel(socket, "superagents"), do: open_panel(socket, "settings", "superagents")
+  def open_panel(socket, "superagents"), do: open_panel(socket, "settings", "projects")
 
   def open_panel(socket, "settings"), do: open_panel(socket, "settings", nil)
 

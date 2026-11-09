@@ -583,9 +583,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings")
-    view |> element(".settings-nav__item[phx-value-section=version]") |> render_click()
+    view |> element(".settings-nav__item[phx-value-section=system]") |> render_click()
 
-    assert has_element?(view, ".settings-nav__item.is-current", "Versão")
+    assert has_element?(view, ".settings-nav__item.is-current", "Sistema")
     assert has_element?(view, "#version-panel", "rodando")
     assert has_element?(view, "#version-panel button", "Verificar")
   end
@@ -599,20 +599,21 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#board-settings", "Configurações")
     view |> element("#board-settings") |> render_click()
     assert_patch(view, "/?panel=settings&repo=fixture%2Fsettings")
-    assert has_element?(view, "#settings-dispatch-title", "Despacho local")
-    assert has_element?(view, ".settings-nav__item.is-current", "Despacho local")
+    assert has_element?(view, ".settings-nav__item.is-current", "Projetos")
 
     assert has_element?(
              view,
-             "#settings-current-section section[aria-labelledby=settings-inspect-title][hidden]"
+             "#settings-current-section section[aria-labelledby=settings-execution-title][hidden]"
            )
 
-    view |> element(".settings-nav__item[phx-value-section=inspect]") |> render_click()
-    assert has_element?(view, ".settings-nav__item.is-current", "Inspecionar")
+    view |> element(".settings-nav__item[phx-value-section=execution]") |> render_click()
+    assert has_element?(view, ".settings-nav__item.is-current", "Execução")
+    assert has_element?(view, "#settings-dispatch-title", "Despacho local")
+    assert has_element?(view, "#settings-inspect-title", "Inspecionar")
 
     refute has_element?(
              view,
-             "#settings-current-section section[aria-labelledby=settings-inspect-title][hidden]"
+             "#settings-current-section section[aria-labelledby=settings-execution-title][hidden]"
            )
 
     assert has_element?(view, "#board-tools #open-intake", "Dividir pedido")
@@ -954,7 +955,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     assert html =~ ~s(aria-label="Repositório")
     view |> element("#board-settings") |> render_click()
-    view |> element(".settings-nav__item[phx-value-section=repositories]") |> render_click()
+    view |> element(".settings-nav__item[phx-value-section=projects]") |> render_click()
     assert has_element?(view, "label:has(input[name=owner])", "Dono")
     assert has_element?(view, "label:has(input[name=name])", "Repositório")
   end
@@ -993,7 +994,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
     {:ok, view, _html} = live(conn, ~p"/?panel=settings")
-    view |> element(".settings-nav__item[phx-value-section=repositories]") |> render_click()
+    view |> element(".settings-nav__item[phx-value-section=projects]") |> render_click()
 
     assert has_element?(view, "#board-settings-panel label", "Dono")
     assert has_element?(view, "#board-settings-panel label", "Repositório")
@@ -1145,7 +1146,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     render_patch(view, "/?repo=fixture/panels&panel=conversation&task=invalid")
     refute has_element?(view, "#conversation")
     view |> element("#board-settings") |> render_click()
-    view |> element(".settings-nav__item[phx-value-section=inspect]") |> render_click()
+    view |> element(".settings-nav__item[phx-value-section=execution]") |> render_click()
     view |> element("#open-ai") |> render_click()
     assert_patch(view, "/?panel=ai&repo=fixture%2Fpanels")
     assert has_element?(view, "#board-page[data-panel=ai]")
@@ -1280,7 +1281,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "phx-disable-with"
     assert html =~ "Enviando"
     view |> element("#board-settings") |> render_click()
-    view |> element(".settings-nav__item[phx-value-section=repositories]") |> render_click()
+    view |> element(".settings-nav__item[phx-value-section=projects]") |> render_click()
     assert render(view) =~ "Adicionar projeto"
   end
 end

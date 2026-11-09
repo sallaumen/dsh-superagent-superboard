@@ -46,7 +46,9 @@ defmodule AgentBoardWeb.AddProjectTest do
       |> form("#track-repo", %{
         "owner" => "fixture",
         "name" => "fresh",
-        "path" => "/tmp/fresh-checkout"
+        "path" => "/tmp/fresh-checkout",
+        "create_agent" => "true",
+        "workers" => "5"
       })
       |> render_submit()
 
@@ -59,7 +61,7 @@ defmodule AgentBoardWeb.AddProjectTest do
       assert repository = Board.repository_by_slug("fixture/fresh")
       assert superagent = Superagents.get_by_repository(repository)
       assert superagent.profile =~ "superagent-fresh"
-      assert superagent.max_workers == 3
+      assert superagent.max_workers == 5
     end)
   end
 
@@ -70,8 +72,10 @@ defmodule AgentBoardWeb.AddProjectTest do
       {:ok, view, _html} =
         live(conn, ~p"/?repo=fixture/base-track&panel=settings&section=repositories")
 
+      view |> element("#track-repo input[name=create_agent]") |> render_click()
+
       view
-      |> form("#track-repo-only", %{"owner" => "fixture", "name" => "tracked"})
+      |> form("#track-repo", %{"owner" => "fixture", "name" => "tracked"})
       |> render_submit()
 
       refute has_element?(view, "#add-project-confirm")
@@ -103,7 +107,12 @@ defmodule AgentBoardWeb.AddProjectTest do
       live(conn, ~p"/?repo=fixture/base-no-source&panel=settings&section=repositories")
 
     view
-    |> form("#track-repo", %{"owner" => "fixture", "name" => "nosource", "path" => "/tmp/x"})
+    |> form("#track-repo", %{
+      "owner" => "fixture",
+      "name" => "nosource",
+      "path" => "/tmp/x",
+      "create_agent" => "true"
+    })
     |> render_submit()
 
     assert has_element?(view, ".toast", "Nenhum perfil DSH de trabalho nesta máquina")

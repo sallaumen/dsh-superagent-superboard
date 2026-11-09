@@ -184,7 +184,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             class="ab-btn ab-btn--sm"
             phx-click="show_panel"
             phx-value-panel="settings"
-            phx-value-section="access"
+            phx-value-section="projects"
           >{gettext("Review access")}</button>
         </div>
 
