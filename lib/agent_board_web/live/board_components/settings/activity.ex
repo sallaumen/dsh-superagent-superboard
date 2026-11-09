@@ -138,6 +138,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Activity do
         class="settings-activity__error-list"
         role="region"
         aria-label={gettext("Errors in the recent reads")}
+        aria-live="polite"
+        aria-atomic="true"
       >
         <div class="settings-activity__error-head">
           <strong>{gettext("Errors in the recent reads")}</strong>

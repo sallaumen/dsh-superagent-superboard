@@ -52,7 +52,7 @@ defmodule AgentBoardWeb.SettingsActivityTest do
 
     view |> element("button", "Ver os erros") |> render_click()
 
-    assert has_element?(view, ".settings-activity__error-list", "boom 1")
+    assert has_element?(view, ~s(.settings-activity__error-list[aria-live="polite"]), "boom 1")
     assert has_element?(view, ".settings-activity__error-list", "boom 2")
   end
 
