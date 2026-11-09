@@ -15,22 +15,26 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     previous = Application.get_env(:agent_board, :updater)
     previous_delay = Application.get_env(:agent_board, :update_restart_delay_ms)
     previous_result = Application.get_env(:agent_board, :updater_result)
+    previous_stopper = Application.get_env(:agent_board, :board_stopper)
+    test_pid = self()
 
     Application.put_env(:agent_board, :updater, UpdaterStub)
     Application.put_env(:agent_board, :update_restart_delay_ms, 60_000)
     Application.put_env(:agent_board, :updater_test_pid, self())
+    Application.put_env(:agent_board, :board_stopper, fn -> send(test_pid, :stopped) end)
 
     on_exit(fn ->
       restore(:updater, previous)
       restore(:update_restart_delay_ms, previous_delay)
       restore(:updater_result, previous_result)
+      restore(:board_stopper, previous_stopper)
       Application.delete_env(:agent_board, :updater_test_pid)
     end)
 
     :ok
   end
 
-  test "a successful update says it is restarting and schedules the restart", %{conn: conn} do
+  test "a successful update restarts immediately, without losing the stop", %{conn: conn} do
     Application.put_env(:agent_board, :updater_result, {:ok, "abc123"})
     {:ok, _} = Board.add_repository("fixture", "update")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update")
@@ -39,6 +43,8 @@ defmodule AgentBoardWeb.UpdateFlowTest do
 
     assert html =~ "Atualizado para abc123"
     assert html =~ "reiniciando o servidor"
+    assert_received :restart_called
+    assert_received :stopped
     refute html =~ "Já está em dia"
   end
 

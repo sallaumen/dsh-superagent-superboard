@@ -19,7 +19,7 @@ defmodule AgentBoard.System.Version do
           available: String.t() | nil,
           behind: non_neg_integer() | nil,
           dirty: boolean(),
-          state: :up_to_date | :behind | :ahead | :unknown
+          state: :up_to_date | :behind | :restart | :ahead | :unknown
         }
 
   @doc "The sha this node booted with (nil when git is unavailable)."
@@ -85,10 +85,16 @@ defmodule AgentBoard.System.Version do
     }
   end
 
-  defp state(nil, _available, _behind), do: :unknown
-  defp state(_served, nil, _behind), do: :unknown
-  defp state(served, served, _behind), do: :up_to_date
-  defp state(_served, _available, 0), do: :up_to_date
-  defp state(_served, _available, behind) when is_integer(behind) and behind > 0, do: :behind
-  defp state(_served, _available, _behind), do: :unknown
+  @doc false
+  def state(nil, _available, _behind), do: :unknown
+  def state(_served, nil, _behind), do: :unknown
+  def state(served, served, _behind), do: :up_to_date
+  def state(_served, _available, behind) when is_integer(behind) and behind > 0, do: :behind
+
+  # The checkout is already on main, but this VM still serves the old sha:
+  # the fast-forward happened and the restart did not. Say so instead of
+  # claiming "up to date" from HEAD alone.
+  def state(served, available, 0) when served != available, do: :restart
+  def state(_served, _available, 0), do: :up_to_date
+  def state(_served, _available, _behind), do: :unknown
 end

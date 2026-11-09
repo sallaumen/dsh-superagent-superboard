@@ -16,7 +16,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
       data-board-menu
       open={@settings_panel}
       class="board-settings"
-      data-update-ready={to_string(@version.state == :behind)}
+      data-update-ready={to_string(@version.state in [:behind, :restart])}
     >
       <summary aria-label="Configurações">
         <.icon name="hero-cog-6-tooth" class="size-4" />
@@ -162,6 +162,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   end
 
   defp version_summary(%{state: :behind}), do: "Atualização disponível"
+  defp version_summary(%{state: :restart}), do: "Reinício pendente"
   defp version_summary(%{state: :up_to_date}), do: "Em dia"
   defp version_summary(%{state: :ahead}), do: "À frente da main"
   defp version_summary(_), do: "Status desconhecido"

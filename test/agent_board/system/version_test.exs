@@ -14,7 +14,14 @@ defmodule AgentBoard.System.VersionTest do
     status = Version.status()
     assert is_binary(status.served)
     assert is_boolean(status.dirty)
-    assert status.state in [:up_to_date, :behind, :ahead, :unknown]
+    assert status.state in [:up_to_date, :behind, :restart, :ahead, :unknown]
+  end
+
+  test "the checkout can be current while this VM still serves an older sha" do
+    assert Version.state("abc1234", "abc1234", 0) == :up_to_date
+    assert Version.state("abc1234", "def5678", 0) == :restart
+    assert Version.state("abc1234", "def5678", 2) == :behind
+    assert Version.state("abc1234", "def5678", nil) == :unknown
   end
 
   test "without a fetch, available is nil and the state is unknown" do

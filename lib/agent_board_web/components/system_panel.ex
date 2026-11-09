@@ -31,14 +31,16 @@ defmodule AgentBoardWeb.Components.SystemPanel do
       </h2>
 
       <p
-        :if={@version.state == :behind}
+        :if={@version.state in [:behind, :restart]}
         id="version-restart-warning"
         class="version-warning"
         role="note"
       >
-        Atualizar e reiniciar é manual. O board reinicia para carregar o código
-        novo; o acompanhamento em tempo real e agentes em execução podem ser
-        interrompidos por alguns segundos. Nada é atualizado sozinho.
+        {if @version.state == :restart,
+          do:
+            "O código novo já está no checkout, mas este processo ainda roda o commit antigo. Reinicie para aplicar; o board fica fora por alguns segundos.",
+          else:
+            "Atualizar e reiniciar é manual. O board reinicia para carregar o código novo; o acompanhamento em tempo real e agentes em execução podem ser interrompidos por alguns segundos. Nada é atualizado sozinho."}
       </p>
 
       <div class="version-details">
@@ -77,9 +79,14 @@ defmodule AgentBoardWeb.Components.SystemPanel do
           type="button"
           phx-click="restart"
           disabled={@busy}
-          class="version-check"
+          aria-describedby={@version.state == :restart && "version-restart-warning"}
+          class={[
+            "version-check",
+            @version.state == :restart &&
+              "version-update bg-warning text-warning-content hover:brightness-110"
+          ]}
         >
-          Reiniciar
+          {if @version.state == :restart, do: "Reiniciar para aplicar", else: "Reiniciar"}
         </button>
       </div>
     </section>
@@ -89,11 +96,13 @@ defmodule AgentBoardWeb.Components.SystemPanel do
   defp label(%{state: :up_to_date}), do: "em dia"
   defp label(%{state: :behind, behind: n}) when is_integer(n), do: "#{n} commit(s) atrás"
   defp label(%{state: :behind}), do: "atrás"
+  defp label(%{state: :restart}), do: "atualização baixada; reinicie"
   defp label(%{state: :ahead}), do: "à frente da main"
   defp label(_version), do: "desconhecido"
 
   defp tone(:up_to_date), do: "text-success"
   defp tone(:behind), do: "text-warning"
+  defp tone(:restart), do: "text-warning"
   defp tone(:ahead), do: "text-info"
   defp tone(_state), do: "text-base-content/75"
 end
