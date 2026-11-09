@@ -380,6 +380,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
                 id="blocker-title"
                 name="title"
                 type="text"
+                maxlength="255"
                 value={@blocker_title}
                 required
               />

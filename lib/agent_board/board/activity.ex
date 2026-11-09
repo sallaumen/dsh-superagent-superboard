@@ -60,7 +60,7 @@ defmodule AgentBoard.Board.Activity do
     |> Event.changeset(%{
       repository_id: repository_id,
       kind: kind,
-      subject: subject,
+      subject: subject && String.slice(subject, 0, 255),
       payload: payload
     })
     |> Repo.insert()

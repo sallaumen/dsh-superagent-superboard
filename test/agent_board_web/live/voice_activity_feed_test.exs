@@ -45,4 +45,13 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeedTest do
     assert html =~ "voice-usage-today"
     assert html =~ "hoje: 1.500 de 20.000 caracteres · 1 do cache"
   end
+
+  test "an event's clock is the browser's, not UTC" do
+    event = %{at: ~U[2026-11-09 14:15:30Z], stage: :tts, status: :ok, detail: "ok", ms: nil}
+
+    html = render_component(&VoiceActivityFeed.feed/1, events: [event], tz_offset: 180)
+
+    assert html =~ "11:15:30"
+    refute html =~ "14:15:30<"
+  end
 end

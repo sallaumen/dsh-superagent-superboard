@@ -1141,6 +1141,13 @@ defmodule AgentBoardWeb.BoardLive do
     |> put_flash(:error, gettext("That superagent is no longer on the board."))
   end
 
+  # Dictation continues the draft: it arrives whole and has no undo.
+  defp with_dictated(draft, dictated) do
+    if String.trim(draft || "") == "",
+      do: dictated,
+      else: String.trim_trailing(draft) <> "\n" <> dictated
+  end
+
   # -- the logs sheet ---------------------------------------------------------
   #
   # The sheet owns a timer only while its panel is the routed one. Opening
@@ -2073,6 +2080,8 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, socket}
 
       socket.assigns.panel == "composer" ->
+        text = with_dictated(socket.assigns.composer_text, text)
+
         {:noreply,
          assign(socket, composer_text: text, composer_error: nil)
          |> invalidate_intake_if_changed(text)}
@@ -3390,7 +3399,7 @@ defmodule AgentBoardWeb.BoardLive do
             </span>
           </div>
           <BoardComponents.VoiceCommandList.list open={@voice_commands_open} />
-          <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} />
+          <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} tz_offset={@tz_offset} />
         </BoardComponents.Panel.shell>
 
         <.logs_sheet

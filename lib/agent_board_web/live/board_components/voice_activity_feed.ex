@@ -13,6 +13,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
   alias AgentBoard.ElevenLabs.Usage
 
   attr :events, :list, required: true
+  attr :tz_offset, :integer, default: 0
 
   def feed(assigns) do
     assigns = assign(assigns, usage: Usage.today(), cap: Usage.cap())
@@ -37,7 +38,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
         aria-live="polite"
       >
         <li :for={event <- @events} class="voice-activity-event" data-status={event.status}>
-          <time datetime={DateTime.to_iso8601(event.at)}>{clock(event.at)}</time>
+          <time datetime={DateTime.to_iso8601(event.at)}>{clock(event.at, @tz_offset)}</time>
           <span class="voice-activity-stage">{stage(event.stage)}</span>
           <span class="voice-activity-detail">
             {event.detail}<span :if={event.ms} class="voice-activity-ms"> · {ms(event.ms)}</span>
@@ -99,7 +100,8 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
   defp portuguese?, do: Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR"
 
   # The board shows times in UTC like the header's sync line.
-  defp clock(at), do: Calendar.strftime(at, "%H:%M:%S")
+  defp clock(at, offset),
+    do: at |> AgentBoardWeb.Time.local(offset) |> Calendar.strftime("%H:%M:%S")
 
   defp ms(ms) when ms < 1000, do: "#{ms} ms"
 

@@ -6,6 +6,8 @@ defmodule AgentBoard.ActionsTest do
   """
   use AgentBoard.DataCase, async: false
 
+  import Ecto.Query, only: [from: 2]
+
   # Refusals and failed effects are exercised on purpose.
   @moduletag capture_log: true
 
@@ -773,5 +775,17 @@ defmodule AgentBoard.ActionsTest do
 
       assert offenders == [], "writes outside AgentBoard.Actions:\n" <> Enum.join(offenders, "\n")
     end
+  end
+
+  test "a repository name past the column is refused, with its decision recorded" do
+    name = String.duplicate("r", 300)
+
+    assert {:error, %Ecto.Changeset{}} =
+             Actions.run(:add_repository, %{owner: "fixture", name: name}, Actions.owner(:ui))
+
+    assert %Decision{action: "add_repository", outcome: "error", subject: subject} =
+             Repo.one(from d in Decision, order_by: [desc: d.id], limit: 1)
+
+    assert String.length(subject) == 255
   end
 end
