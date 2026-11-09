@@ -1963,8 +1963,8 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 /* The design system forbids spaced uppercase for labels. */
 
 /* The two header windows share a quiet position, but never mix replies with work alerts. */
-.ab-inbox-top { display: flex; justify-content: flex-end; min-height: 44px; margin: -4px 0 10px; position: relative; z-index: 6; }
-.ab-message-hub { display: flex; justify-content: flex-end; gap: 6px; width: min(100%, 440px); position: relative; }
+.ab-inbox-top { display: flex; justify-content: flex-end; min-height: 44px; margin: -4px 0 10px; position: sticky; top: 0; z-index: 6; pointer-events: none; }
+.ab-message-hub { display: flex; justify-content: flex-end; gap: 6px; width: min(100%, 440px); position: relative; border-radius: var(--radius-sm); background: var(--paper); pointer-events: auto; }
 .ab-hub-menu { min-width: 0; }
 .ab-hub-menu > summary { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 8px 11px; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--ink-muted); font-size: 12.5px; font-weight: 600; cursor: pointer; list-style: none; }
 .ab-hub-menu > summary::-webkit-details-marker { display: none; }
@@ -1984,10 +1984,16 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-hub-menu__mark-all { min-height: 44px; padding: 0 6px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--you); font-size: 12px; font-weight: 600; cursor: pointer; }
 .ab-hub-menu__mark-all:hover:not(:disabled) { background: var(--you-wash); }
 .ab-hub-menu__mark-all:disabled { color: var(--ink-faint); cursor: default; }
+.ab-hub-menu__notice { margin: 0; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--stale-wash); color: var(--stale); font-size: 12.5px; line-height: 18px; }
 .ab-hub-menu__empty { margin: 0; padding: 26px 20px; color: var(--ink-muted); font-size: 13px; line-height: 20px; }
 .ab-hub-menu__list { margin: 0; padding: 0; list-style: none; }
 .ab-hub-menu__list li + li { border-top: 1px solid var(--line); }
+#message-inbox .ab-hub-menu__list li.has-quick-read { display: grid; grid-template-columns: minmax(0, 1fr) 76px; }
 .ab-hub-item { display: grid; width: 100%; gap: 4px; padding: 13px 20px; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+#message-inbox .ab-hub-item { min-width: 0; overflow-wrap: anywhere; }
+#message-inbox li.has-quick-read .ab-hub-item { padding-right: 8px; }
+.ab-hub-row__read { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; align-self: end; min-height: 44px; margin: 0 8px 10px 0; padding: 3px; border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--ink-muted); font-size: 11px; line-height: 14px; font-weight: 600; text-align: center; cursor: pointer; }
+.ab-hub-row__read:hover, .ab-hub-row__read:focus-visible { border-color: var(--line); background: var(--you-wash); color: var(--you); }
 .ab-hub-item:hover, .ab-hub-item:focus-visible { background: var(--paper-sunk); }
 .ab-hub-item.is-unread { box-shadow: inset 3px 0 var(--you); }
 .ab-hub-item.is-unread:hover, .ab-hub-item.is-unread:focus-visible { background: var(--you-wash); }

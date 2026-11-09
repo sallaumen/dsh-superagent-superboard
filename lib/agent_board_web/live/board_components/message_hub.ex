@@ -8,6 +8,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
   attr :alerts, :list, default: []
   attr :seen, :map, default: %{}
   attr :filter, :string, default: "all"
+  attr :notice, :string, default: nil
 
   def hub(assigns) do
     unread_messages = Enum.filter(assigns.messages, &unread?(&1, assigns.seen))
@@ -66,6 +67,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
               Marcar todas como vistas
             </button>
           </div>
+          <p :if={@notice} class="ab-hub-menu__notice" role="alert">{@notice}</p>
           <p :if={@messages == []} class="ab-hub-menu__empty">
             Nenhuma resposta registrada. As conversas aparecerão aqui quando a Yasme responder.
           </p>
@@ -73,7 +75,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
             Você está em dia. Novas respostas aparecerão aqui.
           </p>
           <ol :if={@visible_messages != []} class="ab-hub-menu__list">
-            <li :for={item <- @visible_messages}>
+            <li :for={item <- @visible_messages} class={unread?(item, @seen) && "has-quick-read"}>
               <button
                 type="button"
                 class={["ab-hub-item", unread?(item, @seen) && "is-unread"]}
@@ -96,6 +98,20 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
                 <strong>#{item.number} · {item.title}</strong>
                 <span class="ab-hub-item__preview">{item.preview}</span>
                 <span class="ab-hub-item__action">Abrir conversa <span aria-hidden="true">→</span></span>
+              </button>
+              <button
+                :if={unread?(item, @seen)}
+                type="button"
+                class="ab-hub-row__read"
+                phx-click="mark_inbox_message_seen"
+                phx-value-id={item.task_id}
+                phx-value-version={item.version}
+                phx-disable-with="Marcando…"
+                aria-label={"Marcar resposta da tarefa ##{item.number} como vista"}
+                title="Marcar como vista sem abrir a conversa"
+              >
+                <.icon name="hero-check" class="size-4" />
+                <span>Marcar vista</span>
               </button>
             </li>
           </ol>

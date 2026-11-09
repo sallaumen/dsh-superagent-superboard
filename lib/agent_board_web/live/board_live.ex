@@ -91,6 +91,7 @@ defmodule AgentBoardWeb.BoardLive do
         last_visit: last_visit,
         message_seen: message_seen,
         inbox_filter: "all",
+        inbox_notice: nil,
         inbox: %{messages: [], alerts: []},
         tz_offset: tz_offset,
         work: empty_work(),
@@ -1343,10 +1344,47 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_event("filter_inbox", %{"filter" => filter}, socket)
       when filter in ["all", "unread"] do
-    {:noreply, assign(socket, :inbox_filter, filter)}
+    {:noreply, assign(socket, inbox_filter: filter, inbox_notice: nil)}
   end
 
   def handle_event("filter_inbox", _params, socket), do: {:noreply, socket}
+
+  def handle_event("mark_inbox_message_seen", %{"id" => id, "version" => version}, socket)
+      when is_binary(id) and is_binary(version) do
+    inbox = Board.inbox()
+    socket = assign(socket, :inbox, inbox)
+
+    with {task_id, ""} <- Integer.parse(id),
+         true <- task_id > 0,
+         %{version: ^version} <- Enum.find(inbox.messages, &(&1.task_id == task_id)) do
+      key = Integer.to_string(task_id)
+
+      if Map.get(socket.assigns.message_seen, key) == version do
+        {:noreply, assign(socket, :inbox_notice, nil)}
+      else
+        {:noreply,
+         socket
+         |> assign(
+           message_seen: Map.put(socket.assigns.message_seen, key, version),
+           inbox_notice: nil
+         )
+         |> push_event("message_seen", %{task_id: task_id, version: version, quick: true})}
+      end
+    else
+      _ ->
+        {:noreply,
+         assign(
+           socket,
+           :inbox_notice,
+           "A resposta mudou. Confira a nova mensagem antes de marcá-la."
+         )}
+    end
+  end
+
+  def handle_event("mark_inbox_message_seen", _params, socket),
+    do:
+      {:noreply,
+       assign(socket, :inbox_notice, "Não encontramos essa resposta. Atualize a janela.")}
 
   def handle_event("mark_messages_seen", _params, socket) do
     versions =
@@ -1357,11 +1395,11 @@ defmodule AgentBoardWeb.BoardLive do
     seen = Map.merge(socket.assigns.message_seen, versions)
 
     if seen == socket.assigns.message_seen do
-      {:noreply, socket}
+      {:noreply, assign(socket, :inbox_notice, nil)}
     else
       {:noreply,
        socket
-       |> assign(:message_seen, seen)
+       |> assign(message_seen: seen, inbox_notice: nil)
        |> push_event("messages_seen", %{versions: versions})}
     end
   end
@@ -2797,6 +2835,7 @@ defmodule AgentBoardWeb.BoardLive do
                 alerts={@inbox.alerts}
                 seen={@message_seen}
                 filter={@inbox_filter}
+                notice={@inbox_notice}
               />
             </div>
             <div :if={@repo == nil} class="ab-empty">
