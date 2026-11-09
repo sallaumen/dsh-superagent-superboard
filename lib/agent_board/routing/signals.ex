@@ -83,19 +83,4 @@ defmodule AgentBoard.Routing.Signals do
   defp reason(:malformed), do: "o orquestrador respondeu num formato inesperado"
   defp reason({:http, status}), do: "o orquestrador respondeu HTTP #{status}"
   defp reason(_other), do: "o orquestrador não respondeu"
-
-  @doc "The signals as stored data: strings for every atom and tuple."
-  @spec snapshot(AgentBoard.Routing.signals()) :: map()
-  def snapshot(signals) do
-    Map.new(signals, fn {executor, signal} -> {executor, Map.new(signal, &stored/1)} end)
-  end
-
-  defp stored({key, {:unavailable, why}}), do: {to_string(key), "unavailable: " <> why}
-
-  defp stored({key, value}) when is_atom(value) and not is_nil(value) and not is_boolean(value),
-    do: {to_string(key), to_string(value)}
-
-  defp stored({key, %{} = value}), do: {to_string(key), Map.new(value, &stored/1)}
-  defp stored({key, value}) when is_list(value), do: {to_string(key), Enum.join(value, ",")}
-  defp stored({key, value}), do: {to_string(key), value}
 end

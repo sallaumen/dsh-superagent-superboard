@@ -34,7 +34,7 @@ defmodule AgentBoard.Conversation.Agent do
   agent picks up on its own, exactly like the composer's.
   """
 
-  alias AgentBoard.{Actions, AI, Board, Conversation, Executors, Repo, Titles}
+  alias AgentBoard.{Actions, AI, Board, Conversation, Executors, Repo, Routing, Titles}
   alias AgentBoard.Board.{Repository, Task}
   alias AgentBoard.Conversation.{Lookup, Turn}
   alias AgentBoard.Voice.{Activity, Phrases}
@@ -518,7 +518,7 @@ defmodule AgentBoard.Conversation.Agent do
   # the owner named it, for the router's line.
   defp new_task(json, request, repo, lang) do
     requested = if Executors.valid?(json["executor"]), do: json["executor"]
-    routed = Board.route(repo, %{}, requested, "voice")
+    routed = Routing.plan(repo, %{}, requested, "voice", Routing.Signals.read())
 
     %{
       "kind" => "create_task",

@@ -58,6 +58,7 @@ defmodule AgentBoard.Actions do
     Executors,
     Orchestrator,
     Repo,
+    Routing,
     Runners,
     Settings,
     Superagents,
@@ -559,6 +560,7 @@ defmodule AgentBoard.Actions do
 
   defp execute(:create_tasks, %{repository: repo, requests: requests} = params) do
     client = github(params)
+    requests = route_requests(repo, requests)
     results = Enum.map(requests, &{&1, Board.create_request(repo, &1, client)})
 
     maybe_objective(repo, params[:objective], results)
@@ -722,6 +724,33 @@ defmodule AgentBoard.Actions do
     Application.get_env(:agent_board, :board_stopper, &System.stop/0).()
     :ok
   end
+
+  # A request for a named executor carries the router line the door showed
+  # (or the one this door builds now). A request without an executor is
+  # opened as given, with no label and no line, as before.
+  defp route_requests(repo, requests) do
+    signals = if Enum.any?(requests, &needs_route?/1), do: Routing.Signals.read(), else: nil
+    Enum.map(requests, &route_request(repo, &1, signals))
+  end
+
+  defp needs_route?(%{routing: %{}}), do: false
+  defp needs_route?(%{executor: executor}) when is_binary(executor), do: true
+  defp needs_route?(_request), do: false
+
+  defp route_request(_repo, %{routing: %{}} = request, _signals), do: request
+
+  defp route_request(repo, %{executor: executor} = request, signals)
+       when is_binary(executor) and is_map(signals) do
+    Routing.plan(
+      repo,
+      request,
+      Map.get(request, :requested, executor),
+      Map.get(request, :decided_by, "api"),
+      signals
+    )
+  end
+
+  defp route_request(_repo, request, _signals), do: request
 
   defp github(params), do: Map.get_lazy(params, :client, &AgentBoard.GitHub.client/0)
   defp orchestrator(params), do: Map.get_lazy(params, :client, &Orchestrator.client/0)

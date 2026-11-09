@@ -10,7 +10,7 @@ defmodule AgentBoardWeb.BoardController do
   """
   use AgentBoardWeb, :controller
 
-  alias AgentBoard.{Actions, Board, Executors}
+  alias AgentBoard.{Actions, Board, Executors, Routing}
   alias AgentBoard.Board.Task
 
   # The task actions the API accepts, mapped explicitly (never to_atom).
@@ -54,7 +54,7 @@ defmodule AgentBoardWeb.BoardController do
       text = String.trim(params["body"] || "") <> "\n\n@sallaumen-agent"
       request = %{title: title, body: text, key: Board.request_key(repo, "api", [title, text])}
       # `executor` names who the task is for; without it the router suggests.
-      request = Board.route(repo, request, params["executor"], "api")
+      request = Routing.plan(repo, request, params["executor"], "api", Routing.Signals.read())
       action = %{repository: repo, requests: [request], client: client()}
 
       case Actions.run(:create_tasks, action, api(), confirm: params["confirm"]) do

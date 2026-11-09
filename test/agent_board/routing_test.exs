@@ -121,4 +121,33 @@ defmodule AgentBoard.RoutingTest do
     assert "Nenhum executor pode receber a tarefa agora." in suggestion.reasons
     assert "O Codex não está disponível (cota semanal esgotada)." in suggestion.reasons
   end
+
+  describe "plan/5" do
+    @repo %{owner: "sallaumen", name: "arena-rogue"}
+
+    test "keeps the request's executor and stores the line for the door" do
+      planned =
+        Routing.plan(@repo, %{executor: "codex", work_type: "ui"}, "claude", "composer", @ready)
+
+      assert planned.executor == "codex"
+      assert planned.routing.suggestion.executor == "claude"
+      assert planned.routing.decided_by == "composer"
+      assert planned.routing.signals["claude"]["state"] == "unknown"
+    end
+
+    test "uses the suggestion when the request has no executor" do
+      planned = Routing.plan(@repo, %{}, nil, "api", @ready)
+
+      assert planned.executor == "dsh"
+      assert planned.routing.suggestion.executor == "dsh"
+      assert planned.routing.decided_by == "api"
+    end
+
+    test "the snapshot is stored data, not atoms and tuples" do
+      signals = put_in(@ready, ["dsh", :state], {:unavailable, "sem resposta"})
+      planned = Routing.plan(@repo, %{}, nil, "api", signals)
+
+      assert planned.routing.signals["dsh"]["state"] == "unavailable: sem resposta"
+    end
+  end
 end

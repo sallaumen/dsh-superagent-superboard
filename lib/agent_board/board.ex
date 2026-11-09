@@ -441,10 +441,30 @@ defmodule AgentBoard.Board do
   it could record the key), is the receipt of an earlier submit: it answers
   `{:ok, task, :existing}` and no second issue is opened. Otherwise the issue
   is created and the task answers `{:ok, task, :created}`.
+
+  A request for a named executor must carry `:routing` (built by
+  `AgentBoard.Routing.plan/5` at the door or by `Actions`); without one it
+  answers `{:error, :not_routed}` and opens nothing. A request without an
+  executor is opened as given, with no label and no router line.
   """
   @spec create_request(Repository.t(), map(), term()) ::
           {:ok, Task.t(), :created | :existing} | {:error, term()}
-  def create_request(repository, %{title: title, body: body, key: key} = request, client) do
+  def create_request(repository, %{executor: executor} = request, client)
+      when is_binary(executor) do
+    if is_map(Map.get(request, :routing)) do
+      do_create_request(repository, request, client)
+    else
+      # A task for a named executor always carries its router line. The
+      # write door builds it before calling here; a request without one is a
+      # bug, not a reason to read the world from inside the context.
+      {:error, :not_routed}
+    end
+  end
+
+  def create_request(repository, request, client),
+    do: do_create_request(repository, request, client)
+
+  defp do_create_request(repository, %{title: title, body: body, key: key} = request, client) do
     # The body the issue will carry, so a repeat matches the stored task.
     body =
       case Map.get(request, :executor) do
@@ -502,68 +522,12 @@ defmodule AgentBoard.Board do
     end
   end
 
-  @doc """
-  Fills a request's executor and its router line from the signals read now.
-
-  `requested` is the executor the owner named (the voice's "manda pro
-  Claude", an API field), or nil. A request that already carries an
-  executor keeps it (a choice made when the suggestion was shown);
-  otherwise the executor is the one requested, else the router's
-  suggestion, else the DeepSeek runner when nobody can take the task. The
-  line records who decided (`composer`, `voice`, `api`).
-  """
-  @spec route(Repository.t(), map(), String.t() | nil, String.t(), AgentBoard.Routing.signals()) ::
-          map()
-  def route(repository, request, requested, decided_by, signals \\ Routing.Signals.read()) do
-    suggestion =
-      Routing.suggest(
-        %{
-          repository: "#{repository.owner}/#{repository.name}",
-          work_type: Map.get(request, :work_type),
-          size: Map.get(request, :size),
-          requested: requested
-        },
-        signals
-      )
-
-    executor =
-      cond do
-        Executors.valid?(Map.get(request, :executor)) -> request.executor
-        Executors.valid?(requested) -> requested
-        true -> suggestion.executor || Executors.default()
-      end
-
-    request
-    |> Map.put(:executor, executor)
-    |> Map.put(:routing, %{
-      suggestion: suggestion,
-      signals: Routing.Signals.snapshot(signals),
-      decided_by: decided_by
-    })
-  end
-
-  # Every task the board creates for an executor gets a router line. A
-  # caller that showed the suggestion passes it (`:routing`); otherwise the
-  # router runs here, with the chosen executor as the owner's explicit ask.
-  defp with_routing(%{executor: executor, routing: %{}} = request, _repository)
-       when is_binary(executor),
-       do: request
-
-  defp with_routing(%{executor: executor} = request, repository) when is_binary(executor) do
-    requested = Map.get(request, :requested, executor)
-    route(repository, request, requested, Map.get(request, :decided_by, "api"))
-  end
-
-  defp with_routing(request, _repository), do: request
-
   defp create_new_request(
          repository,
          %{title: title, body: body, key: key} = request,
          client,
          claim
        ) do
-    request = with_routing(request, repository)
-
     created =
       create_task(repository, title, body, client,
         request_key: key,
