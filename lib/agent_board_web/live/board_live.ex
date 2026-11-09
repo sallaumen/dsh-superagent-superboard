@@ -139,6 +139,7 @@ defmodule AgentBoardWeb.BoardLive do
         comments: [],
         ask_pending: nil,
         ask_draft: "",
+        ask_draft_task: nil,
         inspector_tab: "conversa",
         inspector_activity: [],
         inspector_calls: [],
@@ -1058,6 +1059,7 @@ defmodule AgentBoardWeb.BoardLive do
     socket =
       socket
       |> BoardNavigation.apply_params(params)
+      |> forget_ask_draft_of_another_task()
       |> sync_logs_panel(previous_panel)
       |> load_inspector()
       |> load_panel()
@@ -1091,6 +1093,23 @@ defmodule AgentBoardWeb.BoardLive do
       socket
     end
   end
+
+  # The list on screen can be older than a removal in another tab.
+  defp superagent_gone(socket) do
+    socket
+    |> assign(:superagents, Superagents.list())
+    |> put_flash(:error, gettext("That superagent is no longer on the board."))
+  end
+
+  # A draft belongs to the task it was typed on; closing and reopening that
+  # task keeps it.
+  defp forget_ask_draft_of_another_task(%{assigns: %{conversation: %Task{id: id}}} = socket) do
+    if socket.assigns.ask_draft_task == id,
+      do: socket,
+      else: assign(socket, ask_draft: "", ask_draft_task: id)
+  end
+
+  defp forget_ask_draft_of_another_task(socket), do: socket
 
   # -- the logs sheet ---------------------------------------------------------
   #
@@ -1504,18 +1523,24 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_event("superagent_command", %{"id" => id, "action" => action}, socket) do
     name = if action == "pause", do: :pause_superagent, else: :resume_superagent
-    superagent = Superagents.get(id)
 
-    {:noreply,
-     start_async(socket, {:superagent_command, superagent.id}, fn ->
-       Actions.run(name, %{superagent: superagent}, ui())
-     end)}
+    case Superagents.get(id) do
+      nil ->
+        {:noreply, superagent_gone(socket)}
+
+      superagent ->
+        {:noreply,
+         start_async(socket, {:superagent_command, superagent.id}, fn ->
+           Actions.run(name, %{superagent: superagent}, ui())
+         end)}
+    end
   end
 
   def handle_event("superagent_scale", %{"id" => id, "delta" => delta}, socket) do
     superagent = Superagents.get(id)
 
-    with {delta, ""} <- Integer.parse(delta),
+    with %AgentBoard.Superagents.Superagent{} <- superagent,
+         {delta, ""} <- Integer.parse(delta),
          workers = max(1, min(32, superagent.max_workers + delta)),
          true <- workers != superagent.max_workers do
       {:noreply,
@@ -1524,6 +1549,7 @@ defmodule AgentBoardWeb.BoardLive do
        end)}
     else
       false -> {:noreply, socket}
+      nil -> {:noreply, superagent_gone(socket)}
       _ -> {:noreply, put_flash(socket, :error, gettext("Unable to change the session limit."))}
     end
   end
@@ -1568,6 +1594,12 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  # The form leaves the page with the tab, and a form without phx-change is
+  # not recovered after a reconnect: what was typed lives here.
+  def handle_event("ask_change", %{"body" => body}, socket) when is_binary(body) do
+    {:noreply, assign(socket, ask_draft: body)}
+  end
+
   def handle_event("use_unblock_suggestion", %{"text" => text}, socket) do
     {:noreply, assign(socket, ask_draft: text)}
   end
@@ -1602,6 +1634,8 @@ defmodule AgentBoardWeb.BoardLive do
       {:noreply,
        assign(socket,
          blocker_open: false,
+         blocker_title: title,
+         blocker_body: body,
          blocker_pending: %{request: request, phrase: phrase}
        )}
     else
@@ -1610,8 +1644,17 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
-  def handle_event("blocker_cancel", _params, socket),
-    do: {:noreply, assign(socket, blocker_pending: nil, blocker_open: false)}
+  # "Voltar e editar": a recorded no, and the form comes back with the edits.
+  def handle_event("blocker_cancel", _params, socket) do
+    case {socket.assigns.repo, socket.assigns.blocker_pending} do
+      {%{} = repo, %{request: request}} ->
+        :ok = Actions.decline(:create_tasks, %{repository: repo, requests: [request]}, ui())
+        {:noreply, assign(socket, blocker_pending: nil, blocker_open: true)}
+
+      _other ->
+        {:noreply, assign(socket, blocker_pending: nil, blocker_open: false)}
+    end
+  end
 
   def handle_event("blocker_confirm", _params, socket) do
     case {socket.assigns.conversation, socket.assigns.repo, socket.assigns.blocker_pending} do
@@ -1816,11 +1859,7 @@ defmodule AgentBoardWeb.BoardLive do
     text = params["text"] || socket.assigns.composer_text
     changed? = text != socket.assigns.composer_text
 
-    selected =
-      case params do
-        %{"tasks" => tasks} -> MapSet.new(tasks, &String.to_integer/1)
-        _ -> socket.assigns.composer_selected
-      end
+    selected = selected_from(params, socket)
 
     # New words invalidate the proposal (it was for other words) and the
     # last failure; a checkbox or a title edit must not hide either.
@@ -3460,9 +3499,15 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp selected_from(params, socket) do
     case params do
-      %{"tasks" => values} -> MapSet.new(values, &String.to_integer/1)
+      %{"tasks" => values} when is_list(values) -> selected_indices(values)
       _ -> socket.assigns.composer_selected
     end
+  end
+
+  # The form always sends a blank `tasks[]`, so no box checked is an empty
+  # choice and not the absence of one.
+  defp selected_indices(values) do
+    MapSet.new(for value <- values, {index, ""} <- [Integer.parse(value)], do: index)
   end
 
   defp split_requests(repo, text, tasks, selected) do

@@ -62,4 +62,27 @@ defmodule AgentBoardWeb.BoardUrlParamsTest do
 
     assert Process.alive?(view.pid)
   end
+
+  describe "a board with no repository yet" do
+    setup %{repo: repo} do
+      AgentBoard.Repo.delete!(repo)
+      :ok
+    end
+
+    test "Settings opens, because that is where the first repository is added", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/")
+      assert html =~ "Nenhum repositório acompanhado"
+
+      view |> element("#board-settings") |> render_click()
+      assert_patch(view, "/?panel=settings")
+      assert has_element?(view, "#board-page[data-panel=settings]")
+
+      view
+      |> element("#track-repo")
+      |> render_submit(%{"owner" => "fixture", "name" => "primeiro"})
+
+      assert Board.repository_by_slug("fixture/primeiro")
+      assert render(view) =~ "primeiro"
+    end
+  end
 end

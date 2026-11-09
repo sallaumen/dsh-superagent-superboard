@@ -2530,6 +2530,11 @@ msgstr "Este pedido já estava na fila: #%{number}"
 msgid "Transcripts could not be read"
 msgstr "As transcrições não puderam ser lidas"
 
+#: lib/agent_board_web/live/board_live.ex:1101
+#, elixir-autogen, elixir-format
+msgid "That superagent is no longer on the board."
+msgstr "Esse superagente não está mais no board."
+
 #: lib/agent_board_web/live/board_live.ex:1460
 #: lib/agent_board_web/live/board_live.ex:2270
 #, elixir-autogen, elixir-format

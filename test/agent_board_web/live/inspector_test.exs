@@ -2,6 +2,7 @@ defmodule AgentBoardWeb.InspectorTest do
   @moduledoc "The task inspector: tabs, attributed calls, the linked PR and the quiet actions."
   use AgentBoardWeb.ConnCase, async: true
 
+  import Ecto.Query, only: [from: 2]
   import Phoenix.LiveViewTest
 
   alias AgentBoard.{AI, Board, Repo}
@@ -245,6 +246,17 @@ defmodule AgentBoardWeb.InspectorTest do
 
     assert has_element?(view, "#blocker-confirm", "Desbloquear #1417: decidir perfis")
     assert has_element?(view, "#blocker-confirm", "Criar tarefa")
+
+    view |> element("#blocker-confirm button", "Voltar e editar") |> render_click()
+
+    assert view |> element("#blocker-title") |> render() =~ "Desbloquear #1417: decidir perfis"
+    assert view |> element("#blocker-body") |> render() =~ "Resolver #1416."
+
+    assert %AgentBoard.Actions.Decision{
+             action: "create_tasks",
+             decision: "refused",
+             detail: "declined"
+           } = Repo.one(from d in AgentBoard.Actions.Decision, order_by: [desc: d.id], limit: 1)
   end
 
   defp task(repo, number, title, state) do
@@ -274,5 +286,23 @@ defmodule AgentBoardWeb.InspectorTest do
       task_id: task.id
     })
     |> Repo.insert!()
+  end
+
+  test "a typed question survives a tab change and stays on its task", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "inspector")
+    first = task(repo, 25, "Salvar replays", "ready")
+    other = task(repo, 26, "Outra tarefa", "ready")
+
+    {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", first.id))
+
+    view |> element("#ask-agent") |> render_change(%{"body" => "Rodou os testes?"})
+    view |> element("#conversation button", "Chamadas de IA") |> render_click()
+    refute has_element?(view, "#ask-agent")
+    view |> element("#conversation button", "Conversa") |> render_click()
+
+    assert view |> element("#ask-body") |> render() =~ "Rodou os testes?"
+
+    render_patch(view, BoardNavigation.path(repo, "conversation", other.id))
+    refute view |> element("#ask-body") |> render() =~ "Rodou os testes?"
   end
 end

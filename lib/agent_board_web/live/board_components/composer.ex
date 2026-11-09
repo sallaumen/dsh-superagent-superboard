@@ -211,6 +211,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
         />
 
         <div :if={@split && @tasks != [] && !@busy} class="ab-split">
+          <input type="hidden" name="tasks[]" value="" />
           <label
             :for={{task, index} <- Enum.with_index(@tasks)}
             for={"composer-task-#{index}"}

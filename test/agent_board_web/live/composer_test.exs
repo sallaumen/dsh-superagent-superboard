@@ -84,6 +84,22 @@ defmodule AgentBoardWeb.ComposerTest do
     assert render(view) =~ "deixe a fila menor"
   end
 
+  test "unchecking every proposed task leaves nothing to enqueue", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/composer")
+    view |> element("#open-create") |> render_click()
+    view |> element("#composer-form") |> render_change(%{"text" => "Quero respostas rápidas"})
+    view |> element("#composer-form .ab-toggle") |> render_click()
+    render_async(view, 2000)
+
+    assert has_element?(view, ~s(#composer-form input[type=hidden][name="tasks[]"]))
+
+    view
+    |> element("#composer-form")
+    |> render_change(%{"text" => "Quero respostas rápidas", "tasks" => [""]})
+
+    assert has_element?(view, "#composer-form button[disabled]", "Pôr 0 na fila")
+  end
+
   test "a single request becomes one task without the split model", %{conn: conn} do
     Req.Test.stub(@stub, fn conn ->
       Req.Test.json(conn, %{"number" => 9002, "html_url" => "https://github.com/x/y/issues/9002"})

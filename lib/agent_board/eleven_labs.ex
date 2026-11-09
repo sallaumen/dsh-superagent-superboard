@@ -10,6 +10,8 @@ defmodule AgentBoard.ElevenLabs do
   of times by `AgentBoard.ElevenLabs.Retry`; a 4xx about the request is final.
   """
 
+  require Logger
+
   alias AgentBoard.ElevenLabs.{Retry, Usage}
 
   @base_url "https://api.elevenlabs.io"
@@ -246,8 +248,8 @@ defmodule AgentBoard.ElevenLabs do
     end
   end
 
-  # Only a 200 reaches the listener; an error body is dropped and the status
-  # becomes the reason.
+  # Only a 200 reaches the listener. The start of an error body is kept for
+  # the log: the status alone did not say why the voice answered 400.
   defp stream_into(on_chunk) do
     fn
       {:data, data}, {req, %Req.Response{status: 200} = resp} ->
@@ -255,8 +257,9 @@ defmodule AgentBoard.ElevenLabs do
         Retry.mark_streamed()
         if on_chunk.(data) == :ok, do: {:cont, {req, resp}}, else: {:halt, {req, resp}}
 
-      {:data, _data}, acc ->
-        {:cont, acc}
+      {:data, data}, {req, %Req.Response{} = resp} ->
+        body = resp.body <> data
+        {:cont, {req, %{resp | body: binary_part(body, 0, min(byte_size(body), 2_000))}}}
     end
   end
 
@@ -270,8 +273,22 @@ defmodule AgentBoard.ElevenLabs do
   defp stream_result({:ok, %Req.Response{status: 200}}), do: :ok
   defp stream_result({:ok, %Req.Response{status: 401}}), do: {:error, :auth_expired}
   defp stream_result({:ok, %Req.Response{status: 429}}), do: {:error, :usage_limit}
-  defp stream_result({:ok, %Req.Response{status: status}}), do: {:error, {:http, status}}
+
+  defp stream_result({:ok, %Req.Response{status: status, body: body}}) do
+    Logger.warning("elevenlabs stream status=#{status} code=#{error_code(body)}")
+    {:error, {:http, status}}
+  end
+
   defp stream_result({:error, reason}), do: {:error, reason}
+
+  # The provider's own code and nothing else: its message can quote the text.
+  defp error_code(body) do
+    case Jason.decode(body) do
+      {:ok, %{"detail" => %{"status" => code}}} when is_binary(code) -> code
+      {:ok, %{"detail" => [%{"type" => code} | _rest]}} when is_binary(code) -> code
+      _other -> "unknown"
+    end
+  end
 
   defp speech_params(format, opts) do
     [output_format: format, optimize_streaming_latency: Keyword.get(opts, :latency, 3)]

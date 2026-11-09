@@ -226,4 +226,32 @@ defmodule AgentBoardWeb.BoardControllerTest do
     })
     |> Repo.insert!()
   end
+
+  describe "a body in another shape" do
+    test "a map where a slug goes answers 404 on the board", %{conn: conn} do
+      assert json_response(get(conn, "/api/board", %{"repo" => %{"a" => "b"}}), 404)
+    end
+
+    test "a map where text goes is refused", %{conn: conn} do
+      {:ok, _repo} = AgentBoard.Board.add_repository("fixture", "shapes")
+
+      for params <- [
+            %{"repo" => %{"a" => 1}, "title" => "x"},
+            %{"repo" => "fixture/shapes", "title" => ["x"]}
+          ] do
+        assert_error_sent 400, fn -> post(conn, "/api/tasks", params) end
+      end
+
+      assert json_response(
+               post(conn, "/api/tasks", %{
+                 "repo" => "fixture/shapes",
+                 "title" => "x",
+                 "body" => %{"a" => 1}
+               }),
+               400
+             )
+
+      assert_error_sent 400, fn -> post(conn, "/api/repos", %{"owner" => %{}, "name" => "x"}) end
+    end
+  end
 end

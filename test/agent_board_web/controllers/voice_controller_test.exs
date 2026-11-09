@@ -477,4 +477,9 @@ defmodule AgentBoardWeb.VoiceControllerTest do
     assert %{"error" => "the audio is too large"} =
              json_response(post(conn, "/api/voice/transcribe", "0123456789"), 413)
   end
+
+  test "PUT /api/voice/settings refuses a setting that is not a value", %{conn: conn} do
+    assert %{"error" => "a setting must be text or a number"} =
+             json_response(put(conn, "/api/voice/settings", %{"volume" => [%{"a" => 1}]}), 400)
+  end
 end
