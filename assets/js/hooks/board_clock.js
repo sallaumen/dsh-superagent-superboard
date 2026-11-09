@@ -1,5 +1,7 @@
 // The board's clocks run only while the data is live. A frozen board must not
 // look like it is still counting: the age and the elapsed time are evidence.
+import {isPortuguese} from "../i18n"
+
 export const BoardClock = {
   mounted() {
     this.restart()
@@ -45,8 +47,10 @@ function duration(sec) {
 
 function ago(sec) {
   sec = Math.max(0, Math.floor(sec))
-  if (sec < 60) return `há ${sec} s`
-  if (sec < 3600) return `há ${Math.floor(sec / 60)} min`
-  if (sec < 86400) return `há ${Math.floor(sec / 3600)} h`
-  return `há ${Math.floor(sec / 86400)} d`
+  const prefix = isPortuguese() ? "há " : ""
+  const suffix = isPortuguese() ? "" : " ago"
+  if (sec < 60) return `${prefix}${sec} s${suffix}`
+  if (sec < 3600) return `${prefix}${Math.floor(sec / 60)} min${suffix}`
+  if (sec < 86400) return `${prefix}${Math.floor(sec / 3600)} h${suffix}`
+  return `${prefix}${Math.floor(sec / 86400)} d${suffix}`
 }

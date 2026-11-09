@@ -40,7 +40,7 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
         data-log-drag
         role="separator"
         aria-orientation="horizontal"
-        aria-label="Redimensionar o painel de logs"
+        aria-label={gettext("Resize log panel")}
         aria-valuemin="180"
         tabindex="0"
       >
@@ -48,7 +48,7 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
 
       <header class="ab-logs__head">
         <div class="ab-logs__heading">
-          <h2 id="logs-title">Logs</h2>
+          <h2 id="logs-title">{gettext("Logs")}</h2>
           <span class="ab-meta">
             {@counts.warning} {plural(@counts.warning, "aviso", "avisos")} · {@counts.error} {plural(
               @counts.error,
@@ -62,17 +62,17 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
             type="button"
             class="ab-btn ab-btn--quiet ab-btn--sm"
             data-log-size="min"
-            aria-label="Recolher o painel de logs"
+            aria-label={gettext("Collapse the logs panel")}
           >
-            Recolher
+            {gettext("Collapse")}
           </button>
           <button
             type="button"
             class="ab-btn ab-btn--quiet ab-btn--sm"
             data-log-size="max"
-            aria-label="Expandir o painel de logs"
+            aria-label={gettext("Expand log panel")}
           >
-            Expandir
+            {gettext("Expand")}
           </button>
           <button
             type="button"
@@ -80,7 +80,7 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
             phx-click="logs_clear"
             disabled={@entries == []}
           >
-            Limpar
+            {gettext("Clear")}
           </button>
           <button
             type="button"
@@ -89,13 +89,18 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
           >
             {if @paused, do: "Retomar", else: "Pausar"}
           </button>
-          <button type="button" class="panel-close" phx-click="close" aria-label="Fechar logs">
-            <.ico name="close" />Fechar
+          <button
+            type="button"
+            class="panel-close"
+            phx-click="close"
+            aria-label={gettext("Close logs")}
+          >
+            <.ico name="close" />{gettext("Close")}
           </button>
         </div>
       </header>
 
-      <ul class="ab-logs__sources" aria-label="Fontes de log">
+      <ul class="ab-logs__sources" aria-label={gettext("Log sources")}>
         <li :for={source <- @sources} class="ab-logs__source" data-status={status(@status, source.id)}>
           <span class="ab-logs__dot" aria-hidden="true"></span>
           <span class="ab-logs__source-name">{source.label}</span>
@@ -104,12 +109,14 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
         </li>
         <li :if={@sources == []} class="ab-logs__source" data-status="unreadable">
           <span class="ab-logs__dot" aria-hidden="true"></span>
-          <span>Nenhuma fonte configurada.</span>
+          <span>{gettext("No source configured.")}</span>
         </li>
       </ul>
 
       <p :if={@has_superagents} class="ab-logs__note ab-meta">
-        Superagentes: só o log de keepalive tem caminho estável; o stdout do processo não é lido.
+        {gettext(
+          "Superagents: only the keepalive log has a stable path; the process stdout is not read."
+        )}
       </p>
 
       <div
@@ -117,15 +124,15 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
         class="ab-logs__body"
         role="log"
         aria-live="polite"
-        aria-label="Avisos e erros"
+        aria-label={gettext("Warnings and Errors")}
       >
         <p :if={@entries == []} class="ab-logs__empty" role="status">
-          <strong>Nenhum aviso ou erro no trecho recente.</strong>
+          <strong>{gettext("No recent warnings or errors.")}</strong>
           <span :if={@unreadable}>
-            Uma fonte não pôde ser lida; o motivo está na lista de fontes acima.
+            {gettext("One source could not be read; the reason is in the list of sources above.")}
           </span>
           <span :if={!@unreadable}>
-            O painel continua lendo a partir do fim dos arquivos enquanto estiver aberto.
+            {gettext("The dashboard continues reading from the end of files while open.")}
           </span>
         </p>
 
@@ -149,8 +156,10 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
       </div>
 
       <footer class="ab-logs__foot ab-meta">
-        <span>Só avisos e erros · até {Logs.cap()} registros · leitura incremental</span>
-        <span :if={@paused}>Pausado: nada é lido até retomar.</span>
+        <span>{gettext("Warnings and errors only · up to %{count} entries · incremental reading",
+          count: Logs.cap()
+        )}</span>
+        <span :if={@paused}>{gettext("Paused: nothing is read until resumed.")}</span>
       </footer>
     </dialog>
     """

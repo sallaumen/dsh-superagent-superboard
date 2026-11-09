@@ -1,6 +1,6 @@
 defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
   @moduledoc """
-  The dispatch numbers in Configurações: monthly cap, per-task ceiling, Codex
+  The dispatch numbers in Settings: monthly cap, per-task ceiling, Codex
   timeout, quota reserve and the two models. Every save is one
   `change_setting` action per key, so the registry sees the same writes as
   the voice and the API; an invalid number saves nothing.
@@ -53,12 +53,12 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
     >
       <div class="dispatch-settings__body">
         <div class="dispatch-settings__heading">
-          <h4>Tetos</h4>
-          <p>Os limites em US$ se aplicam ao Claude Code. A cota do Codex aparece separadamente.</p>
+          <h4>{gettext("Limits")}</h4>
+          <p>{gettext("USD limits apply to Claude Code. The Codex quota appears separately.")}</p>
         </div>
         <div class="dispatch-settings__grid">
           <label>
-            <span>Mensal · US$</span>
+            <span>{gettext("Monthly · US$")}</span>
             <input
               name="monthly_usd"
               type="number"
@@ -70,7 +70,7 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
             />
           </label>
           <label>
-            <span>Por tarefa · US$</span>
+            <span>{gettext("Per task · US$")}</span>
             <input
               name="task_usd"
               type="number"
@@ -81,7 +81,7 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
             />
           </label>
           <label>
-            <span>Tempo por tarefa · min</span>
+            <span>{gettext("Time per task · min")}</span>
             <input
               name="codex_timeout_minutes"
               type="number"
@@ -93,46 +93,42 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
           </label>
         </div>
         <p id="dispatch-monthly-hint" class="ab-meta">
-          Use 0 para deixar o mês sem teto. O tempo máximo se aplica ao Codex.
+          {gettext("Use 0 for no monthly limit. The maximum time applies to Codex.")}
         </p>
 
         <div :if={is_number(@snapshot.spent_usd)} class="dispatch-settings__usage">
           <div>
-            <span>Claude Code · usado no mês</span><strong>{money(@snapshot.spent_usd)}{if @snapshot.monthly_usd >
-                                                                                             0,
-                                                                                           do:
-                                                                                             " de #{money(@snapshot.monthly_usd)}",
-                                                                                           else:
-                                                                                             " · sem teto"}</strong>
+            <span>{gettext("Claude Code · used this month")}</span>
+            <strong>{money(@snapshot.spent_usd)}{monthly_limit(@snapshot.monthly_usd)}</strong>
           </div>
           <progress
             :if={@snapshot.monthly_usd > 0}
             value={min(@snapshot.spent_usd, @snapshot.monthly_usd)}
             max={@snapshot.monthly_usd}
-            aria-label="Uso do teto mensal do Claude Code"
+            aria-label={gettext("Claude Code monthly limit usage")}
           ></progress>
         </div>
         <p :if={not is_number(@snapshot.spent_usd)} class="ab-meta">
-          Uso mensal do Claude Code indisponível: há execuções sem preço conhecido.
+          {gettext("Claude Code monthly usage is unavailable: some runs have unknown prices.")}
         </p>
 
         <div class="dispatch-settings__quota">
           <div class="dispatch-settings__quota-head">
-            <h4>Codex · cota semanal</h4><strong :if={@snapshot.quota}>{percent(
+            <h4>{gettext("Codex · weekly quota")}</h4><strong :if={@snapshot.quota}>{percent(
               @snapshot.quota.used_percent
-            )}% usada</strong>
+            )}% {gettext("used")}</strong>
           </div>
           <progress
             :if={@snapshot.quota}
             value={@snapshot.quota.used_percent}
             max="100"
-            aria-label="Cota semanal usada do Codex"
+            aria-label={gettext("Codex weekly quota used")}
           ></progress>
           <p :if={is_nil(@snapshot.quota)}>
-            Sem leitura recente da cota. O board não a trata como zero.
+            {gettext("No recent quota reading. The board does not treat it as zero.")}
           </p>
           <label>
-            <span>Reserva da cota semanal · %</span>
+            <span>{gettext("Weekly quota reserve · %")}</span>
             <input
               name="reserve_percent"
               type="number"
@@ -146,18 +142,18 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
         </div>
 
         <details class="dispatch-settings__advanced">
-          <summary>Modelos e integração</summary>
+          <summary>{gettext("Models and integration")}</summary>
           <div class="dispatch-settings__advanced-body">
             <label>
-              <span>Modelo do Claude Code</span>
+              <span>{gettext("Claude Code model")}</span>
               <input name="claude_model" value={Runners.claude_model()} required />
             </label>
             <label>
-              <span>Modelo do Codex</span>
+              <span>{gettext("Codex model")}</span>
               <input name="codex_model" value={Runners.codex_model()} required />
             </label>
             <label>
-              <span>Repositórios do DeepSeek (separados por vírgula)</span>
+              <span>{gettext("DeepSeek repositories (comma-separated)")}</span>
               <input
                 name="dsh_repositories"
                 value={Enum.join(@snapshot.dsh_repositories, ", ")}
@@ -167,25 +163,27 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
             <p class="ab-meta">
               Claude Code:
               <code>{Runners.claude_bin()}</code> {if Runners.ready?("claude"),
-                do: "pronto",
-                else: "não encontrado ou sem permissão"}
+                do: gettext("ready"),
+                else: gettext("not found or no permission")}
             </p>
             <p class="ab-meta">
               Codex:
               <code>{Runners.codex_bin()}</code> {if Runners.ready?("codex"),
-                do: "pronto",
-                else: "não encontrado ou sem permissão"}
+                do: gettext("ready"),
+                else: gettext("not found or no permission")}
             </p>
           </div>
         </details>
       </div>
 
       <p :if={@error} class="settings-error" role="alert">{@error}</p>
-      <p :if={@saved} class="settings-saved" role="status">Tetos salvos.</p>
+      <p :if={@saved} class="settings-saved" role="status">{gettext("Caps saved.")}</p>
 
       <div class="dispatch-settings__actions">
-        <button type="reset" class="ab-btn">Descartar</button>
-        <button type="submit" class="ab-btn ab-btn--primary" phx-disable-with="Salvando…">Salvar tetos</button>
+        <button type="reset" class="ab-btn">{gettext("Discard")}</button>
+        <button type="submit" class="ab-btn ab-btn--primary" phx-disable-with={gettext("Saving…")}>{gettext(
+          "Save limits"
+        )}</button>
       </div>
     </form>
     """
@@ -208,15 +206,15 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
   end
 
   defp validate(params) do
-    with {:ok, monthly} <- float(params["monthly_usd"], "orçamento mensal"),
-         {:ok, task} <- float(params["task_usd"], "teto por tarefa"),
-         {:ok, timeout} <- integer(params["codex_timeout_minutes"], "tempo do Codex", 1),
-         {:ok, reserve} <- integer(params["reserve_percent"], "reserva da cota", 0),
-         true <- reserve <= 100 || {:error, "A reserva da cota fica entre 0 e 100%."},
+    with {:ok, monthly} <- float(params["monthly_usd"], gettext("monthly budget")),
+         {:ok, task} <- float(params["task_usd"], gettext("per-task ceiling")),
+         {:ok, timeout} <- integer(params["codex_timeout_minutes"], gettext("Codex timeout"), 1),
+         {:ok, reserve} <- integer(params["reserve_percent"], gettext("quota reserve"), 0),
+         true <- reserve <= 100 || {:error, gettext("Quota reserve must be between 0 and 100%.")},
          claude = String.trim(params["claude_model"] || ""),
          codex = String.trim(params["codex_model"] || ""),
-         true <- claude != "" || {:error, "Escolha o modelo do Claude Code."},
-         true <- codex != "" || {:error, "Escolha o modelo do Codex."} do
+         true <- claude != "" || {:error, gettext("Choose a Claude Code model.")},
+         true <- codex != "" || {:error, gettext("Choose a Codex model.")} do
       {:ok,
        %{
          "dispatch_monthly_usd" => number(monthly),
@@ -229,27 +227,47 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
        }}
     else
       {:error, message} -> {:error, message}
+      false -> {:error, gettext("Check the dispatch numbers.")}
     end
   end
 
   defp float(value, label) do
     case Float.parse(to_string(value || "")) do
-      {number, _} when number >= 0 -> {:ok, number}
-      _ -> {:error, "O #{label} precisa ser um número maior ou igual a zero."}
+      {number, _} when number >= 0 ->
+        {:ok, number}
+
+      _ ->
+        {:error,
+         gettext("%{label} must be a number greater than or equal to zero.", label: label)}
     end
   end
 
   defp integer(value, label, min) do
     case Integer.parse(to_string(value || "")) do
-      {number, ""} when number >= min -> {:ok, number}
-      _ -> {:error, "O #{label} precisa ser um inteiro maior ou igual a #{min}."}
+      {number, ""} when number >= min ->
+        {:ok, number}
+
+      _ ->
+        {:error,
+         gettext("%{label} must be an integer greater than or equal to %{min}.",
+           label: label,
+           min: min
+         )}
     end
   end
 
   defp number(value) when is_float(value), do: :erlang.float_to_binary(value, decimals: 2)
   defp number(value), do: to_string(value)
 
-  defp money(value), do: "US$ " <> (value |> number() |> String.replace(".", ","))
+  defp monthly_limit(value) when value > 0,
+    do: gettext(" of %{amount}", amount: money(value))
+
+  defp monthly_limit(_value), do: gettext(" · no limit")
+
+  defp money(value) do
+    separator = if Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR", do: ",", else: "."
+    "US$ " <> (value |> number() |> String.replace(".", separator))
+  end
 
   defp percent(value) when is_float(value),
     do: value |> :erlang.float_to_binary(decimals: 0) |> String.replace(".", ",")

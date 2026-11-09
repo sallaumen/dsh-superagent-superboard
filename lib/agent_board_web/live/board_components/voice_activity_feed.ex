@@ -8,6 +8,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
   one primary-key query, and every paid call or cache hit is an event.
   """
   use Phoenix.Component
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   alias AgentBoard.ElevenLabs.Usage
 
@@ -19,13 +20,15 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
     ~H"""
     <details id="voice-activity" class="voice-activity" open={has_problem?(@events)}>
       <summary>
-        <span class="voice-activity-title">Bastidores da voz</span>
+        <span class="voice-activity-title">{gettext("Voice activity")}</span>
         <span class="voice-activity-summary">
           {summary(@events)}<span id="voice-usage-today"> · {usage(@usage, @cap)}</span>
         </span>
       </summary>
       <p :if={@events == []} class="voice-activity-empty">
-        Nada ainda. Cada etapa de uma fala aparece aqui na hora: transcrição, modelo, voz, re-tentativas e erros.
+        {gettext(
+          "Nothing yet. Every step of a speech appears here in real time: transcription, model, voice, retries, and errors."
+        )}
       </p>
       <ol
         :if={@events != []}
@@ -47,44 +50,53 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
 
   defp has_problem?(events), do: Enum.any?(Enum.take(events, 5), &(&1.status in [:error, :retry]))
 
-  defp summary([]), do: "sem eventos"
+  defp summary([]), do: gettext("no events")
 
   defp summary(events) do
     errors = Enum.count(events, &(&1.status == :error))
     retries = Enum.count(events, &(&1.status == :retry))
 
     [
-      "#{length(events)} eventos",
-      errors > 0 && "#{errors} #{if errors == 1, do: "erro", else: "erros"}",
-      retries > 0 && "#{retries} #{if retries == 1, do: "re-tentativa", else: "re-tentativas"}"
+      ngettext("%{count} event", "%{count} events", length(events)),
+      errors > 0 && ngettext("%{count} error", "%{count} errors", errors),
+      retries > 0 && ngettext("%{count} retry", "%{count} retries", retries)
     ]
     |> Enum.filter(& &1)
     |> Enum.join(" · ")
   end
 
   @doc """
-  Today's ElevenLabs usage in words: "hoje: 3.420 de 20.000 caracteres ·
-  1,2 min transcritos · 18 do cache". The minutes and the cache hits show
+  Today's ElevenLabs usage in words, including characters, transcription
+  minutes, and cache hits. The minutes and the cache hits show
   only when there are some; the cap only when there is one.
   """
   @spec usage(Usage.day(), non_neg_integer()) :: String.t()
   def usage(usage, cap) do
-    chars = Usage.number(usage.tts_characters)
+    chars = number(usage.tts_characters)
 
     [
       if(cap > 0,
-        do: "hoje: #{chars} de #{Usage.number(cap)} caracteres",
-        else: "hoje: #{chars} caracteres"
+        do: gettext("today: %{count} of %{cap} characters", count: chars, cap: number(cap)),
+        else: gettext("today: %{count} characters", count: chars)
       ),
-      usage.stt_seconds > 0 && "#{minutes(usage.stt_seconds)} min transcritos",
-      usage.cache_hits > 0 && "#{usage.cache_hits} do cache"
+      usage.stt_seconds > 0 &&
+        gettext("%{minutes} min transcribed", minutes: minutes(usage.stt_seconds)),
+      usage.cache_hits > 0 && gettext("%{count} from cache", count: usage.cache_hits)
     ]
     |> Enum.filter(& &1)
     |> Enum.join(" · ")
   end
 
   defp minutes(seconds),
-    do: :erlang.float_to_binary(seconds / 60, decimals: 1) |> String.replace(".", ",")
+    do: :erlang.float_to_binary(seconds / 60, decimals: 1) |> decimal()
+
+  defp number(value) do
+    formatted = Usage.number(value)
+    if portuguese?(), do: formatted, else: String.replace(formatted, ".", ",")
+  end
+
+  defp decimal(value), do: if(portuguese?(), do: String.replace(value, ".", ","), else: value)
+  defp portuguese?, do: Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR"
 
   # The board shows times in UTC like the header's sync line.
   defp clock(at), do: Calendar.strftime(at, "%H:%M:%S")
@@ -94,16 +106,16 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
   defp ms(ms),
     do:
       :erlang.float_to_binary(ms / 1000, decimals: 1)
-      |> String.replace(".", ",")
+      |> decimal()
       |> Kernel.<>(" s")
 
-  defp stage(:turn), do: "fala"
-  defp stage(:transcribe), do: "transcrição"
-  defp stage(:model), do: "modelo"
-  defp stage(:action), do: "ação"
-  defp stage(:tts), do: "voz"
-  defp stage(:voices), do: "vozes"
-  defp stage(:browser), do: "navegador"
-  defp stage(:ui), do: "tela"
+  defp stage(:turn), do: gettext("speech")
+  defp stage(:transcribe), do: gettext("transcription")
+  defp stage(:model), do: gettext("model")
+  defp stage(:action), do: gettext("Action")
+  defp stage(:tts), do: gettext("voice")
+  defp stage(:voices), do: gettext("voices")
+  defp stage(:browser), do: gettext("browser")
+  defp stage(:ui), do: gettext("screen")
   defp stage(other), do: to_string(other)
 end

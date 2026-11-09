@@ -7,15 +7,15 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
   @impl true
   def render(assigns) do
     ~H"""
-    <section id={@id} aria-label="Histórico de PRs mesclados" tabindex="-1" class="board-archive">
+    <section id={@id} aria-label={gettext("Merged PR History")} tabindex="-1" class="board-archive">
       <header class="archive-heading">
         <div class="archive-title">
-          <h2>PRs mesclados</h2>
+          <h2>{gettext("Merged PRs")}</h2>
           <span class="archive-count" aria-label={"#{length(@items)} pull requests loaded"}>
             {length(@items)} carregados
           </span>
         </div>
-        <span class="archive-scope">Mais novos primeiro</span>
+        <span class="archive-scope">{gettext("Newest first")}</span>
       </header>
       <.live_component
         :if={@items != []}
@@ -28,7 +28,7 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
         class="archive-list"
         role="region"
         tabindex="0"
-        aria-label="Lista de PRs mesclados"
+        aria-label={gettext("Merged PR List")}
         phx-viewport-bottom={if @has_more, do: "load_more_merged"}
       >
         <.live_component
@@ -44,9 +44,9 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
           id={"merged-tail-#{List.last(@items).id}"}
           class="archive-tail"
         >
-          Role para PRs mais antigos
+          {gettext("Scroll to older PRs")}
         </p>
-        <p :if={@items != [] && !@has_more} class="archive-tail">Fim do histórico salvo</p>
+        <p :if={@items != [] && !@has_more} class="archive-tail">{gettext("End of saved history")}</p>
       </div>
     </section>
     """

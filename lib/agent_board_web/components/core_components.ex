@@ -27,6 +27,7 @@ defmodule AgentBoardWeb.CoreComponents do
 
   """
   use Phoenix.Component
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   alias Phoenix.LiveView.JS
 
@@ -375,7 +376,7 @@ defmodule AgentBoardWeb.CoreComponents do
         <tr>
           <th :for={col <- @col}>{col[:label]}</th>
           <th :if={@action != []}>
-            <span class="sr-only">Actions</span>
+            <span class="sr-only">{gettext("Actions")}</span>
           </th>
         </tr>
       </thead>

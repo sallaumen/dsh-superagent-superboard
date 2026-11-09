@@ -7,8 +7,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [status_mark: 1]
   import AgentBoardWeb.BoardComponents.WorkTag, only: [work_tag: 1]
 
-  alias AgentBoard.Time
   alias AgentBoardWeb.BoardComponents.AgentAction
+  alias AgentBoardWeb.Time
 
   attr :task, :any, required: true
   attr :comments, :list, required: true
@@ -44,7 +44,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       {"conversa", "Conversa", length(assigns.comments)},
       {"atividade", "Atividade", length(assigns.activity)},
       {"chamadas", "Chamadas de IA", length(assigns.calls)},
-      {"execucoes", "Execuções", length(assigns.executions) + length(assigns.runner_executions)},
+      {"execucoes", gettext("Executions"),
+       length(assigns.executions) + length(assigns.runner_executions)},
       {"pr", "PR", nil}
     ]
 
@@ -70,7 +71,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             type="button"
             class="ab-btn ab-btn--icon ab-btn--sm"
             phx-click="close"
-            aria-label="Fechar painel (Esc)"
+            aria-label={gettext("Close panel (Esc)")}
           >
             <.ico name="close" />
           </button>
@@ -80,11 +81,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
         <div class="ab-insp__facts">
           <span class="ab-meta">
-            aberta há {Time.ago(Time.age_seconds(@task.inserted_at, @now))}
+            {gettext("opened %{age}", age: Time.ago(Time.age_seconds(@task.inserted_at, @now)))}
           </span>
-          <span class="ab-meta">atualizado {Time.ago(Time.age_seconds(@task.updated_at, @now))}</span>
+          <span class="ab-meta">{gettext("updated %{age}",
+            age: Time.ago(Time.age_seconds(@task.updated_at, @now))
+          )}</span>
           <span :if={@task.started_at} class="ab-meta">
-            começou às {Time.local_time(@task.started_at, @tz_offset)}
+            {gettext("started at %{time}", time: Time.local_time(@task.started_at, @tz_offset))}
           </span>
           <.work_tag work_type={@task.work_type} size={@task.size} />
           <span :if={@task.executor} class="ab-meta">
@@ -101,7 +104,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             rel="noopener noreferrer"
             class="ab-meta"
           >
-            Issue no GitHub
+            {gettext("GitHub issue")}
           </a>
         </div>
 
@@ -109,9 +112,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
         <div :if={dispatchable?(@task)} class="ab-insp__dispatch" id="task-dispatch">
           <div class="ab-insp__dispatch-head">
-            <span class="ab-label">Despacho local</span>
-            <span :if={@dispatch_active} class="ab-tag ab-tag--agent">execução em andamento</span>
-            <span :if={@dispatch_paused} class="ab-tag ab-tag--stale">despacho pausado</span>
+            <span class="ab-label">{gettext("Local dispatch")}</span>
+            <span :if={@dispatch_active} class="ab-tag ab-tag--agent">{gettext("In Progress")}</span>
+            <span :if={@dispatch_paused} class="ab-tag ab-tag--stale">{gettext("paused dispatch")}</span>
           </div>
 
           <.live_component
@@ -138,19 +141,21 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             {fallback_reason(@dispatch_fallback)}
           </p>
           <p :if={@dispatch_fallback == :none} class="ab-meta ab-fail__system">
-            A última execução falhou por conteúdo (teste, bloqueio ou pergunta):
-            o board não troca de executor sozinho. Confira o resultado em Execuções.
+            {gettext(
+              "The last execution failed due to content (test, block, or question): the board does not switch executors automatically. Check the result in Executions."
+            )}
           </p>
           <p :if={fallback_kind(@dispatch_fallback) == :budget} class="ab-meta ab-fail__system">
-            Ajuste o teto por tarefa em Configurações antes de tentar de novo;
-            o board não inicia outra execução sozinho.
+            {gettext(
+              "Adjust the per-task cap in Settings before trying again; the board won't start another run on its own."
+            )}
           </p>
 
           <p class="ab-meta">
-            O Claude Code ou o Codex roda num worktree fora do board, com teto de {money(
-              @dispatch_ceiling
-            )} por tarefa. A sessão e o resultado aparecem
-            em Execuções; nada começa sem a confirmação.
+            {gettext(
+              "Claude Code or Codex runs in a worktree outside the board, with a %{ceiling} per-task cap. The session and result appear in Executions; nothing starts before confirmation.",
+              ceiling: money(@dispatch_ceiling)
+            )}
           </p>
 
           <button
@@ -158,7 +163,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             class="ab-btn ab-btn--sm ab-btn--quiet"
             phx-click="toggle_dispatch"
           >
-            {if @dispatch_paused, do: "Retomar despacho", else: "Pausar despacho"}
+            {if @dispatch_paused, do: gettext("Resume dispatch"), else: gettext("Pause dispatch")}
           </button>
         </div>
 
@@ -169,7 +174,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             class="ab-btn ab-btn--sm"
             phx-click="inspector_tab"
             phx-value-tab="conversa"
-          >Perguntar</button>
+          >{gettext("Ask")}</button>
 
           <.live_component
             :if={@failure && @failure.retry && @failure.ticket_id}
@@ -194,8 +199,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             tone={:halt}
             task={@task}
             execution={active_execution(@runner_executions)}
-            label="Parar execução"
-            confirm_label="Parar execução"
+            label={gettext("Stop execution")}
+            confirm_label={gettext("Stop execution")}
             cancel_label="Continuar rodando"
             busy_label="Parando…"
           />
@@ -206,7 +211,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             phx-click="act"
             phx-value-id={@task.id}
             phx-value-action="resume"
-          >Retomar</button>
+          >{gettext("Resume")}</button>
           <.live_component
             :if={not (@task.stopped or @task.archived)}
             module={AgentAction}
@@ -226,10 +231,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             phx-click="act"
             phx-value-id={@task.id}
             phx-value-action="archive"
-          >Arquivar</button>
+          >{gettext("Archive")}</button>
         </div>
 
-        <div class="ab-tabs" role="tablist" aria-label="Detalhes da tarefa">
+        <div class="ab-tabs" role="tablist" aria-label={gettext("Task details")}>
           <button
             :for={{key, label, count} <- @tabs}
             type="button"
@@ -280,25 +285,25 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           :if={@unblock || @inspector_blockers != []}
           id="unblock-panel"
           class="ab-unblock"
-          aria-label="Desbloquear a tarefa"
+          aria-label={gettext("Unlock Task")}
         >
           <div class="ab-unblock__head">
-            <strong>Desbloquear</strong>
-            <span class="ab-meta">O agente parou e pediu uma decisão sua.</span>
+            <strong>{gettext("Unlock")}</strong>
+            <span class="ab-meta">{gettext("The agent stopped and asked for your decision.")}</span>
           </div>
 
           <div :if={@unblock && @unblock.question} class="ab-unblock__quote">
-            <span class="ab-meta">Pergunta</span>
+            <span class="ab-meta">{gettext("Question")}</span>
             <p>{@unblock.question}</p>
           </div>
 
           <div :if={@unblock && @unblock.blockage} class="ab-unblock__quote">
-            <span class="ab-meta">Bloqueio</span>
+            <span class="ab-meta">{gettext("Block")}</span>
             <p>{@unblock.blockage}</p>
           </div>
 
           <div :if={@inspector_blockers != []} class="ab-unblock__links">
-            <span class="ab-meta">Tarefa de desbloqueio</span>
+            <span class="ab-meta">{gettext("Unblocking task")}</span>
             <a
               :for={blocker <- @inspector_blockers}
               href={blocker.url || "#"}
@@ -317,7 +322,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               phx-click="suggest_unblock"
               disabled={@unblock_ai == :busy or @ai_status == :not_configured}
             >
-              {if @unblock_ai == :busy, do: "Gerando sugestões…", else: "Sugerir resposta"}
+              {if @unblock_ai == :busy,
+                do: gettext("Generating suggestions…"),
+                else: gettext("Suggest a response")}
             </button>
             <button
               id="open-blocker"
@@ -325,20 +332,22 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               class="ab-btn ab-btn--sm ab-btn--quiet"
               phx-click="open_blocker"
             >
-              Criar tarefa bloqueadora
+              {gettext("Create blocking task")}
             </button>
           </div>
 
           <p :if={@ai_status == :not_configured} class="ab-meta">
-            IA não configurada; escreva a resposta abaixo ou crie a tarefa bloqueadora.
+            {gettext("AI not configured; write the response below or create the blocking task.")}
           </p>
 
           <p :if={@unblock_ai == :error} class="ab-unblock__error" role="status">
-            Não foi possível gerar sugestões. Escreva a resposta ou crie a tarefa bloqueadora.
+            {gettext(
+              "Could not generate suggestions. Write the response or create the blocking task."
+            )}
           </p>
 
           <div :if={@unblock_suggestions != []} class="ab-unblock__suggestions" aria-live="polite">
-            <span class="ab-meta">Sugestões — clique para editar antes de enviar</span>
+            <span class="ab-meta">{gettext("Suggestions — click to edit before sending")}</span>
             <button
               :for={suggestion <- @unblock_suggestions}
               type="button"
@@ -352,7 +361,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
           <div :if={@blocker_open} class="ab-unblock__form">
             <form id="blocker-form" phx-submit="blocker_prepare">
-              <label for="blocker-title">Título da tarefa</label>
+              <label for="blocker-title">{gettext("Task title")}</label>
               <input
                 id="blocker-title"
                 name="title"
@@ -360,18 +369,18 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
                 value={@blocker_title}
                 required
               />
-              <label for="blocker-body">O que precisa ser resolvido</label>
+              <label for="blocker-body">{gettext("What needs to be resolved")}</label>
               <textarea id="blocker-body" name="body" rows="8" required>{@blocker_body}</textarea>
               <div class="ab-unblock__form-actions">
                 <button type="submit" class="ab-btn ab-btn--sm ab-btn--primary">
-                  Preparar tarefa
+                  {gettext("Prepare task")}
                 </button>
                 <button
                   type="button"
                   class="ab-btn ab-btn--sm ab-btn--quiet"
                   phx-click="close_blocker"
                 >
-                  Cancelar
+                  {gettext("Cancel")}
                 </button>
               </div>
             </form>
@@ -390,16 +399,16 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
                 type="button"
                 class="ab-btn ab-btn--sm ab-btn--primary"
                 phx-click="blocker_confirm"
-                phx-disable-with="Criando…"
+                phx-disable-with={gettext("Creating…")}
               >
-                Criar tarefa
+                {gettext("Create task")}
               </button>
               <button
                 type="button"
                 class="ab-btn ab-btn--sm ab-btn--quiet"
                 phx-click="blocker_cancel"
               >
-                Voltar e editar
+                {gettext("Back and edit")}
               </button>
             </div>
           </div>
@@ -419,10 +428,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               type="button"
               class="ab-btn ab-btn--sm ab-btn--primary"
               phx-click="ask_confirm"
-              phx-disable-with="Mandando…"
+              phx-disable-with={gettext("Sending...")}
               phx-mounted={Phoenix.LiveView.JS.focus()}
             >
-              Mandar a pergunta
+              {gettext("Send the question")}
             </button>
             <button
               id="ask-confirm-cancel"
@@ -430,7 +439,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               class="ab-btn ab-btn--sm ab-btn--quiet"
               phx-click="ask_cancel"
             >
-              Voltar e editar
+              {gettext("Back and edit")}
             </button>
           </div>
         </div>
@@ -444,8 +453,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               id="ask-body"
               name="body"
               rows="2"
-              aria-label="Mensagem para o agente"
-              placeholder="Responder ao agente…"
+              aria-label={gettext("Message to the agent")}
+              placeholder={gettext("Respond to agent...")}
               required
             >{@ask_draft}</textarea>
             <div class="ab-compose__bar">
@@ -454,13 +463,16 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
                 class="ab-btn ab-btn--icon ab-btn--sm"
                 phx-click="show_panel"
                 phx-value-panel="voice"
-                aria-label="Ditar por voz"
+                aria-label={gettext("Dictate by voice")}
               >
                 <.ico name="mic" />
               </button>
               <span class="ab-top__spacer"></span>
-              <button class="ab-btn ab-btn--primary ab-btn--sm" phx-disable-with="Enviando…">
-                Enviar <.kbd key="⌘↵" />
+              <button
+                class="ab-btn ab-btn--primary ab-btn--sm"
+                phx-disable-with={gettext("Sending...")}
+              >
+                {gettext("Send")} <.kbd key="⌘↵" />
               </button>
             </div>
           </div>
@@ -488,7 +500,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       <p class="ab-fail__action">{@failure.action}</p>
 
       <details class="ab-fail__evidence">
-        <summary>Erro e tentativas</summary>
+        <summary>{gettext("Errors and attempts")}</summary>
         <pre :if={@failure.error} class="ab-fail__error">{@failure.error}</pre>
         <ol class="ab-fail__attempts">
           <li :for={attempt <- @failure.attempts}>
@@ -518,7 +530,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     <div class="ab-conversation">
       <div :if={@task.body not in [nil, ""]} class="ab-msg ab-msg--you">
         <div class="ab-msg__who">
-          Tarefa <span class="ab-data-sm">{Time.local_time(@task.inserted_at, @offset)}</span>
+          {gettext("Task")}
+          <span class="ab-data-sm">{Time.local_time(@task.inserted_at, @offset)}</span>
         </div>
         <p>{clean_body(@task.body)}</p>
       </div>
@@ -532,18 +545,18 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         ]}
       >
         <div class="ab-msg__who">
-          {if comment.kind == "agent", do: comment.author || "Agente", else: "Você"}
+          {if comment.kind == "agent", do: comment.author || gettext("Agent"), else: gettext("You")}
           <span class="ab-data-sm">{Time.local_time(comment.inserted_at, @offset)}</span>
         </div>
         <p><.markup text={clean_body(comment.body)} /></p>
       </div>
 
       <div :if={@comments == [] and @task.body in [nil, ""]} class="ab-sec__empty">
-        Sem conversa nesta tarefa.
+        {gettext("No conversation in this task.")}
       </div>
 
       <div :if={@comments == [] and @task.body not in [nil, ""]} class="ab-sec__empty">
-        Nenhuma resposta ainda. O agente recebe a mensagem pelo GitHub.
+        {gettext("No response yet. The agent receives the message via GitHub.")}
       </div>
     </div>
     """
@@ -552,7 +565,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp activity_tab(assigns) do
     ~H"""
     <div>
-      <div :if={@activity == []} class="ab-sec__empty">Nenhuma atividade registrada.</div>
+      <div :if={@activity == []} class="ab-sec__empty">{gettext("No activity recorded.")}</div>
       <ol :if={@activity != []} class="ab-tl">
         <li :for={item <- @activity}>
           <span class="ab-data-sm">{Time.local_time(item.at, @offset)}</span>
@@ -575,7 +588,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     ~H"""
     <div>
       <div :if={@calls == []} class="ab-sec__empty">
-        Nenhuma chamada de IA registrada para esta tarefa.
+        {gettext("No AI calls recorded for this task.")}
       </div>
 
       <div
@@ -583,23 +596,23 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         class="ab-table-wrap"
         tabindex="0"
         role="region"
-        aria-label="Chamadas de IA"
+        aria-label={gettext("AI Calls")}
       >
         <table class="ab-table">
           <thead>
             <tr>
-              <th>Hora</th>
-              <th>Modelo</th>
-              <th class="r">Entrada</th>
-              <th class="r">Saída</th>
-              <th class="r">Tempo</th>
-              <th class="r">Custo</th>
+              <th>{gettext("Time")}</th>
+              <th>{gettext("Model")}</th>
+              <th class="r">{gettext("Input")}</th>
+              <th class="r">{gettext("Output")}</th>
+              <th class="r">{gettext("Duration")}</th>
+              <th class="r">{gettext("Cost")}</th>
             </tr>
           </thead>
           <tbody>
             <tr :for={call <- Enum.reverse(@calls)}>
               <td>{Time.local_time(call.inserted_at, @offset)}</td>
-              <td>{call.model || "desconhecido"}</td>
+              <td>{call.model || gettext("unknown")}</td>
               <td class="r">{tokens(call.input_tokens)}</td>
               <td class="r">{tokens(call.output_tokens)}</td>
               <td class="r">{duration(call.duration_ms)}</td>
@@ -621,8 +634,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       </div>
 
       <p :if={@calls != []} class="ab-meta">
-        Chamadas feitas pelo board.
-        <span :if={@totals.missing_cost}>Custo ausente aparece como —; o total é um mínimo.</span>
+        {gettext("Calls made by the board.")}
+        <span :if={@totals.missing_cost}>{gettext(
+          "Missing cost appears as —; the total is a minimum."
+        )}</span>
       </p>
 
       <.executor_usage usage={@usage} />
@@ -640,9 +655,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     ~H"""
     <div>
       <p class="ab-meta">
-        Resultado da tarefa: <b>{task_result(@task, @pr)}</b>.
+        {gettext("Task Result:")} <b>{task_result(@task, @pr)}</b>.
         <span :if={@executions == [] and @runner_executions == []}>
-          Nenhuma execução desta tarefa no livro de uso.
+          {gettext("No runs for this task in the usage ledger.")}
         </span>
       </p>
 
@@ -651,7 +666,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         class="ab-runner-list"
         aria-labelledby="runner-list-title"
       >
-        <h3 id="runner-list-title" class="ab-label">Despachos do board</h3>
+        <h3 id="runner-list-title" class="ab-label">{gettext("Board dispatches")}</h3>
         <article
           :for={execution <- @runner_executions}
           class="ab-runner-row"
@@ -665,7 +680,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             <span
               :if={execution.cost_micros}
               class="ab-meta"
-              title="Preço de lista informado pela CLI; não é a fatura"
+              title={gettext("List price provided by CLI; not the invoice")}
             >
               ≈ {money(execution.cost_micros / 1_000_000)} lista
             </span>
@@ -677,7 +692,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             </span>
           </header>
           <p class="ab-meta">
-            <span :if={execution.session_id}>sessão {execution.session_id} · </span>
+            <span :if={execution.session_id}>{gettext("session %{id} · ", id: execution.session_id)}</span>
             branch {execution.branch || "—"}
           </p>
           <p :if={execution.error} class="ab-runner-row__error">{execution.error}</p>
@@ -699,27 +714,25 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           </div>
           <dl class="ab-exec-row__facts">
             <div>
-              <dt>Requisições</dt><dd>{execution.requests}</dd>
+              <dt>{gettext("Requests")}</dt><dd>{execution.requests}</dd>
             </div>
             <div>
-              <dt>Entrada</dt><dd>{tokens(execution.input_tokens)}</dd>
+              <dt>{gettext("Input")}</dt><dd>{tokens(execution.input_tokens)}</dd>
             </div>
             <div>
-              <dt>Saída</dt><dd>{tokens(execution.output_tokens)}</dd>
+              <dt>{gettext("Output")}</dt><dd>{tokens(execution.output_tokens)}</dd>
             </div>
             <div>
-              <dt>Custo</dt><dd>{execution_cost(execution)}</dd>
+              <dt>{gettext("Cost")}</dt><dd>{execution_cost(execution)}</dd>
             </div>
           </dl>
         </li>
       </ol>
 
       <p :if={@executions != []} class="ab-meta">
-        Tokens medidos. O custo é estimado na moeda de cada executor; "lista"
-        é o preço de referência do Claude Max, não a fatura. O Codex não tem US$:
-        a cota semanal fica no painel Executores. Uma sessão sem branch de PR
-        nem vínculo direto não aparece como tarefa, e o livro não guarda o
-        resultado de cada sessão.
+        {gettext(
+          "Tokens measured. Cost is estimated in each executor's currency; \"list\" is the reference price for Claude Max, not the invoice. Codex has no USD: weekly allowance appears on the Executors panel. A session without a PR branch or direct link does not appear as a task, and the ledger does not store each session's result."
+        )}
       </p>
     </div>
     """
@@ -745,21 +758,21 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     do: "Tentar de novo no #{AgentBoard.Executors.name(executor)}"
 
   defp dispatch_label(task, _fallback),
-    do: "Despachar para o #{AgentBoard.Executors.name(task.executor)}"
+    do: gettext("Dispatch to %{executor}", executor: AgentBoard.Executors.name(task.executor))
 
   # A dispatch belongs to a task that can still run: queued, blocked after a
   # failure, or already running. A task waiting for review or finished has
-  # its result in Execuções, not another dispatch button.
+  # its result in Executions, not another dispatch button.
   defp dispatchable?(task) do
     task.executor in ["claude", "codex"] and task.state in ["queued", "blocked", "running"] and
       not (task.stopped or task.archived)
   end
 
-  defp runner_status("starting"), do: "iniciando"
-  defp runner_status("running"), do: "rodando"
-  defp runner_status("done"), do: "concluído"
-  defp runner_status("failed"), do: "falhou"
-  defp runner_status("stopped"), do: "parado"
+  defp runner_status("starting"), do: gettext("starting")
+  defp runner_status("running"), do: gettext("running")
+  defp runner_status("done"), do: gettext("Completed")
+  defp runner_status("failed"), do: gettext("failed")
+  defp runner_status("stopped"), do: gettext("stopped")
   defp runner_status(status), do: status
 
   defp runner_tag("done"), do: "ab-tag--agent"
@@ -787,35 +800,34 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp executor_label("codex"), do: "Codex"
   defp executor_label(source), do: source
 
-  defp execution_cost(%{source: "codex"}), do: "desconhecido"
-  defp execution_cost(%{cost: nil}), do: "desconhecido"
+  defp execution_cost(%{source: "codex"}), do: gettext("unknown")
+  defp execution_cost(%{cost: nil}), do: gettext("unknown")
 
   defp execution_cost(%{source: "claude_code", cost: %{micros: micros, complete?: true}}),
-    do: "≈ #{cost(micros)} lista"
+    do: "≈ #{cost(micros)} " <> gettext("list price")
 
   defp execution_cost(%{source: "claude_code", cost: %{micros: micros}}),
-    do: "≥ #{cost(micros)} lista"
+    do: "≥ #{cost(micros)} " <> gettext("list price")
 
   defp execution_cost(%{cost: %{micros: micros, complete?: true}}), do: "≈ #{cost(micros)}"
   defp execution_cost(%{cost: %{micros: micros}}), do: "≥ #{cost(micros)}"
 
-  @task_results %{
-    "done" => "mesclado",
-    "blocked" => "bloqueado",
-    "question" => "pergunta",
-    "ready" => "para revisar",
-    "running" => "em andamento",
-    "retrying" => "tentando de novo",
-    "queued" => "na fila",
-    "stopped" => "parado",
-    "archived" => "arquivado",
-    "closed" => "fechado sem merge"
-  }
-
   defp task_result(task, pr) do
-    word = Map.get(@task_results, task.state, "desconhecido")
+    word = task_result_label(task.state)
     if pr, do: "#{word}, PR ##{pr.number}", else: word
   end
+
+  defp task_result_label("done"), do: gettext("merged")
+  defp task_result_label("blocked"), do: gettext("blocked")
+  defp task_result_label("question"), do: gettext("question")
+  defp task_result_label("ready"), do: gettext("ready for review")
+  defp task_result_label("running"), do: gettext("in progress")
+  defp task_result_label("retrying"), do: gettext("retrying")
+  defp task_result_label("queued"), do: gettext("queued")
+  defp task_result_label("stopped"), do: gettext("stopped")
+  defp task_result_label("archived"), do: gettext("archived")
+  defp task_result_label("closed"), do: gettext("closed without merge")
+  defp task_result_label(_), do: gettext("unknown")
 
   attr :usage, :map, default: nil
 
@@ -824,8 +836,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp executor_usage(%{usage: %{status: :none}} = assigns) do
     ~H"""
     <section id="executor-usage" class="ab-insp__usage">
-      <h3 class="ab-label">Executor do agente</h3>
-      <p class="ab-meta">Nenhuma transcrição do executor para esta tarefa.</p>
+      <h3 class="ab-label">{gettext("Agent Executor")}</h3>
+      <p class="ab-meta">{gettext("No executor transcript for this task.")}</p>
     </section>
     """
   end
@@ -833,9 +845,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp executor_usage(%{usage: %{status: :unavailable}} = assigns) do
     ~H"""
     <section id="executor-usage" class="ab-insp__usage">
-      <h3 class="ab-label">Executor do agente</h3>
+      <h3 class="ab-label">{gettext("Agent Executor")}</h3>
       <p class="ab-meta">
-        As transcrições existem, mas o board não consegue lê-las: falta o <code>zstd</code>.
+        {gettext("Transcripts exist, but the board can't read them: missing the")} <code>{gettext("zstd")}</code>.
       </p>
     </section>
     """
@@ -844,16 +856,16 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp executor_usage(assigns) do
     ~H"""
     <section id="executor-usage" class="ab-insp__usage">
-      <h3 class="ab-label">Executor do agente</h3>
+      <h3 class="ab-label">{gettext("Agent Executor")}</h3>
       <table class="ab-table">
         <thead>
           <tr>
-            <th>Sessões</th>
-            <th class="r">Requisições</th>
-            <th class="r">Entrada</th>
-            <th class="r">Saída</th>
-            <th class="r">Cache lido</th>
-            <th class="r">Custo estimado</th>
+            <th>{gettext("Sessions")}</th>
+            <th class="r">{gettext("Requests")}</th>
+            <th class="r">{gettext("Input")}</th>
+            <th class="r">{gettext("Output")}</th>
+            <th class="r">{gettext("Cache reads")}</th>
+            <th class="r">{gettext("Estimated Cost")}</th>
           </tr>
         </thead>
         <tbody>
@@ -868,15 +880,20 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         </tbody>
       </table>
       <p class="ab-meta">
-        Medido nas transcrições locais do executor ({models(@usage.models)}). O custo usa a tabela de preços do board.
+        {gettext(
+          "Measured from local executor transcripts (%{models}). Cost uses the board's pricing table.",
+          models: models(@usage.models)
+        )}
         <span :if={@usage.cost && not @usage.cost.complete?}>
-          Algum tipo de token não tem preço na tabela (a leitura de cache, hoje); o custo é um mínimo.
+          {gettext("Some token type has no price in the table (cache read today); cost is a minimum.")}
         </span>
-        <span :if={@usage.cost == nil}>O modelo não tem preço na tabela; custo desconhecido.</span>
+        <span :if={@usage.cost == nil}>{gettext("The model has no price in the table; cost unknown.")}</span>
         <span :if={@usage.unreadable > 0}>
-          {@usage.unreadable} {if @usage.unreadable == 1,
-            do: "transcrição ilegível",
-            else: "transcrições ilegíveis"}; os números são um mínimo.
+          {ngettext(
+            "%{count} unreadable transcript; these numbers are a minimum.",
+            "%{count} unreadable transcripts; these numbers are a minimum.",
+            @usage.unreadable
+          )}
         </span>
       </p>
     </section>
@@ -886,9 +903,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp sessions(%{workers: workers, subagents: 0}), do: "#{workers} worker"
 
   defp sessions(%{workers: workers, subagents: subagents}),
-    do: "#{workers} worker + #{subagents} subagente(s)"
+    do:
+      gettext("%{workers} worker + %{subagents} subagents",
+        workers: workers,
+        subagents: subagents
+      )
 
-  defp models([]), do: "modelo desconhecido"
+  defp models([]), do: gettext("unknown model")
   defp models(models), do: Enum.join(models, ", ")
 
   defp usage_cost(nil), do: "—"
@@ -899,7 +920,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp pr_tab(assigns) do
     ~H"""
     <div>
-      <div :if={is_nil(@pr)} class="ab-sec__empty">Esta tarefa ainda não abriu PR.</div>
+      <div :if={is_nil(@pr)} class="ab-sec__empty">
+        {gettext("This task has not opened a PR yet.")}
+      </div>
 
       <div :if={@pr} class="ab-pr-facts">
         <div class="ab-need__title">
@@ -925,7 +948,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           href={@pr.url}
           target="_blank"
           rel="noopener noreferrer"
-        ><.ico name="ext" />Abrir no GitHub</a>
+        ><.ico name="ext" />{gettext("Open on GitHub")}</a>
       </div>
     </div>
     """
@@ -950,48 +973,52 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp pr_kind(%{state: "merged"}, _ci), do: :done
   defp pr_kind(_pr, _ci), do: :review
 
-  defp pr_word(_pr, %{state: :fail}), do: "CI local falhou"
-  defp pr_word(%{state: "merged"}, _ci), do: "Mesclado"
-  defp pr_word(_pr, _ci), do: "Aberto"
+  defp pr_word(_pr, %{state: :fail}), do: gettext("Local CI failed")
+  defp pr_word(%{state: "merged"}, _ci), do: gettext("Merged")
+  defp pr_word(_pr, _ci), do: gettext("Open")
 
-  defp pr_ci(_pr, %{state: :pass}), do: "CI local ok"
-  defp pr_ci(_pr, %{state: :fail}), do: "CI local falhou"
-  defp pr_ci(_pr, %{state: :stale}), do: "CI local ?"
-  defp pr_ci(%{checks_state: "failure"}, _ci), do: "CI local ?"
-  defp pr_ci(%{checks_state: "success"}, _ci), do: "CI ok"
-  defp pr_ci(%{checks_state: "none"}, _ci), do: "sem CI"
-  defp pr_ci(_pr, _ci), do: "CI desconhecido"
+  defp pr_ci(_pr, %{state: :pass}), do: gettext("Local CI passed")
+  defp pr_ci(_pr, %{state: :fail}), do: gettext("Local CI failed")
+  defp pr_ci(_pr, %{state: :stale}), do: gettext("Local CI unknown")
+  defp pr_ci(%{checks_state: "failure"}, _ci), do: gettext("Local CI unknown")
+  defp pr_ci(%{checks_state: "success"}, _ci), do: gettext("CI passed")
+  defp pr_ci(%{checks_state: "none"}, _ci), do: gettext("no CI")
+  defp pr_ci(_pr, _ci), do: gettext("CI unknown")
 
   defp pr_ci_title(_pr, %{state: :pass, detail: detail, remote_blocked: true} = ci) do
-    "GitHub Actions não rodou (billing/sem crédito). " <> local_scope(ci) <> detail
+    gettext("GitHub Actions did not run (billing/no credit). ") <> local_scope(ci) <> detail
   end
 
   defp pr_ci_title(_pr, %{state: :pass, detail: detail} = ci),
     do: local_scope(ci) <> detail
 
   defp pr_ci_title(_pr, %{state: :fail, detail: detail}),
-    do: "CI local falhou: #{detail}"
+    do: gettext("Local CI failed: %{detail}", detail: detail)
 
   defp pr_ci_title(_pr, %{state: :stale, detail: detail}), do: detail
 
   defp pr_ci_title(%{checks_state: "failure"}, _ci),
-    do: "GitHub Actions falhou (billing/sem crédito); sem evidência de CI local."
+    do: gettext("GitHub Actions failed (billing/no credit); no evidence of local CI.")
 
-  defp pr_ci_title(%{checks_state: "success"}, _ci), do: "GitHub Actions passou."
-  defp pr_ci_title(_pr, _ci), do: "Nenhum check remoto configurado."
+  defp pr_ci_title(%{checks_state: "success"}, _ci), do: gettext("GitHub Actions passed.")
+  defp pr_ci_title(_pr, _ci), do: gettext("No remote checks configured.")
 
   defp local_scope(%{scope: :ticket, evidence_pr: number}),
-    do: "CI local passou no ticket (relatório cita ##{number}); este PR é do mesmo trabalho: "
+    do:
+      gettext(
+        "Local CI passed on the ticket (report cites #%{number}); this PR is from the same work: ",
+        number: number
+      )
 
-  defp local_scope(_ci), do: "CI local passou: "
+  defp local_scope(_ci), do: gettext("Local CI passed: ")
 
   defp local_ci_pass?(%{state: :pass}), do: true
   defp local_ci_pass?(_ci), do: false
 
-  defp pr_review("approved"), do: "revisado"
-  defp pr_review("changes_requested"), do: "mudanças pedidas"
-  defp pr_review("pending"), do: "revisão pendente"
-  defp pr_review(_state), do: "sem revisão"
+  defp pr_review("approved"), do: gettext("reviewed")
+  defp pr_review("changes_requested"), do: gettext("changes requested")
+  defp pr_review("pending"), do: gettext("pending review")
+  defp pr_review(_state), do: gettext("no review")
 
   defp call_totals(calls) do
     %{

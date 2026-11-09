@@ -3,7 +3,7 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
   use AgentBoardWeb, :html
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
-  alias AgentBoard.Time
+  alias AgentBoardWeb.Time
 
   attr :queue, :map, required: true
   attr :frozen, :boolean, default: false
@@ -15,7 +15,7 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
     ~H"""
     <section id="sec-queue" aria-labelledby="sec-queue-title">
       <div class="ab-sec__head">
-        <h2 id="sec-queue-title">Fila</h2>
+        <h2 id="sec-queue-title">{gettext("Queue")}</h2>
         <span class="ab-sec__count">
           {count(@queue.total, @frozen)}
           <span :if={@queue.filter != :all} class="ab-meta">
@@ -23,10 +23,15 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
           </span>
         </span>
         <span class="ab-top__spacer"></span>
-        <span class="ab-meta">mais antigas primeiro</span>
+        <span class="ab-meta">{gettext("oldest first")}</span>
       </div>
 
-      <div :if={@queue.filters != []} class="ab-filter" role="toolbar" aria-label="Filtrar fila">
+      <div
+        :if={@queue.filters != []}
+        class="ab-filter"
+        role="toolbar"
+        aria-label={gettext("Filter queue")}
+      >
         <button
           :for={{label, filter, n} <- filter_buttons(@queue.filters)}
           type="button"
@@ -41,15 +46,15 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
 
       <div :if={@queue.items == []} class="ab-sec__empty">
         <.glyph kind={:queue} />
-        <span :if={@queue.filter != :all}>Nenhuma tarefa neste filtro.</span>
-        <span :if={@queue.filter == :all}>Fila vazia.</span>
+        <span :if={@queue.filter != :all}>{gettext("No tasks match this filter.")}</span>
+        <span :if={@queue.filter == :all}>{gettext("Empty queue.")}</span>
         <button
           :if={@queue.filter == :all}
           type="button"
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
           phx-value-panel="create"
-        >Novo pedido</button>
+        >{gettext("New request")}</button>
       </div>
 
       <div :if={@queue.items != []} class="ab-list" role="list">
@@ -81,7 +86,7 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
       </div>
 
       <button :if={@queue.hidden > 0} type="button" class="ab-more" phx-click="queue_more">
-        Mais {@queue.hidden} na fila
+        {ngettext("%{count} more task in queue", "%{count} more tasks in queue", @queue.hidden)}
       </button>
     </section>
     """

@@ -1,27 +1,17 @@
 defmodule AgentBoardWeb.BoardComponents.Today do
   @moduledoc """
-  A visão "Hoje": decisões e trabalho em andamento de todos os projetos,
-  com o repositório em cada item, o resumo persistido, resultados da semana e
-  uso por fonte (`docs/research/alfred.md`, 3.4 e F2.1).
-
-  A leitura vem de `Overview.today/2` e `Usage.Report.today/1`, calculadas na
-  mesma carga do board; o componente não consulta o banco. Dado que chega não
-  anima (`docs/ui-motion.md`).
+  The Today view combines decisions and work across tracked repositories,
+  a persisted summary, weekly results, and usage by source. It reads prepared
+  snapshots from the board load; incoming data does not animate.
   """
   use AgentBoardWeb, :html
 
-  alias AgentBoard.Time
+  alias AgentBoardWeb.Time
   import AgentBoardWeb.Components.VersionBadge, only: [version_badge: 1]
   import AgentBoardWeb.BoardComponents.DailySummary, only: [daily_summary: 1]
 
   @sources ["dsh", "claude_code", "codex"]
   @labels %{"dsh" => "DeepSeek", "claude_code" => "Claude Code", "codex" => "Codex"}
-  @states %{
-    "blocked" => "bloqueado",
-    "question" => "pergunta",
-    "ready" => "para revisar",
-    "running" => "rodando"
-  }
 
   attr :today, :map, required: true
   attr :spend, :map, default: nil
@@ -49,30 +39,30 @@ defmodule AgentBoardWeb.BoardComponents.Today do
     <section id="today" class="ab-today" aria-labelledby="today-title">
       <header class="ab-today__head">
         <div class="ab-today__title-row">
-          <h1 id="today-title">Hoje</h1>
+          <h1 id="today-title">{gettext("Today")}</h1>
           <span class="ab-today__date">{@date_label}</span>
           <.version_badge version={@version} />
         </div>
         <p class="ab-meta ab-today__scope">
-          Todos os projetos acompanhados · dados registrados no board
+          {gettext("All tracked projects · data recorded by the board")}
         </p>
       </header>
 
-      <section id="today-overview" class="ab-today__overview" aria-label="Hoje até agora">
+      <section id="today-overview" class="ab-today__overview" aria-label={gettext("Today so far")}>
         <div class="ab-today__metric">
-          <span class="ab-label">PRs mesclados hoje</span>
+          <span class="ab-label">{gettext("PRs merged today")}</span>
           <strong>{@merged_today}</strong>
-          <span class="ab-meta">registrados no board</span>
+          <span class="ab-meta">{gettext("recorded by the board")}</span>
         </div>
         <div class="ab-today__metric">
-          <span class="ab-label">Issues vistas hoje</span>
+          <span class="ab-label">{gettext("Issues seen today")}</span>
           <strong>{@seen_today}</strong>
-          <span class="ab-meta">primeira leitura pelo board</span>
+          <span class="ab-meta">{gettext("first seen by the board")}</span>
         </div>
         <div class="ab-today__metric">
-          <span class="ab-label">Na fila agora</span>
+          <span class="ab-label">{gettext("Queued now")}</span>
           <strong>{@queued}</strong>
-          <span class="ab-meta">em todos os projetos</span>
+          <span class="ab-meta">{gettext("across all projects")}</span>
         </div>
       </section>
 
@@ -80,12 +70,12 @@ defmodule AgentBoardWeb.BoardComponents.Today do
         <div class="ab-today__worklists">
           <section id="today-needs" class="ab-today__section" aria-labelledby="today-needs-title">
             <div class="ab-sec__head">
-              <h2 id="today-needs-title">Precisa de você</h2>
+              <h2 id="today-needs-title">{gettext("Needs you")}</h2>
               <span class="ab-sec__count">{length(@today.needs)}</span>
             </div>
 
             <p :if={@today.needs == []} class="ab-sec__empty">
-              Nada esperando você nos repositórios do board.
+              {gettext("Nothing waiting for you in the board repositories.")}
             </p>
 
             <ol :if={@today.needs != []} class="ab-today__list">
@@ -111,11 +101,11 @@ defmodule AgentBoardWeb.BoardComponents.Today do
 
           <section id="today-running" class="ab-today__section" aria-labelledby="today-running-title">
             <div class="ab-sec__head">
-              <h2 id="today-running-title">Rodando agora</h2>
+              <h2 id="today-running-title">{gettext("Running now")}</h2>
               <span class="ab-sec__count">{length(@today.running)}</span>
             </div>
 
-            <p :if={@today.running == []} class="ab-sec__empty">Nada rodando agora.</p>
+            <p :if={@today.running == []} class="ab-sec__empty">{gettext("Nothing running now.")}</p>
 
             <ol :if={@today.running != []} class="ab-today__list">
               <li :for={item <- @today.running}>
@@ -132,7 +122,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
                     {item[:executor_name] || state_label(item.state)}
                   </span>
                   <span class="ab-meta ab-today__age">{elapsed(item[:started_at], @now)}</span>
-                  <span class="ab-today__action">Abrir</span>
+                  <span class="ab-today__action">{gettext("Open")}</span>
                 </button>
               </li>
             </ol>
@@ -143,7 +133,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
           :if={@daily_summary}
           id="today-daily-report"
           class="ab-today__section"
-          aria-label="Último resumo gerado pelo board"
+          aria-label={gettext("Latest summary generated by the board")}
         >
           <.daily_summary entry={@daily_summary} tz_offset={@offset} />
         </section>
@@ -152,18 +142,20 @@ defmodule AgentBoardWeb.BoardComponents.Today do
       <div class="ab-today__insights">
         <section id="today-projects" class="ab-today__section" aria-labelledby="today-projects-title">
           <div class="ab-sec__head">
-            <h2 id="today-projects-title">Por projeto</h2>
+            <h2 id="today-projects-title">{gettext("By project")}</h2>
             <span class="ab-sec__count">{length(@projects)}</span>
           </div>
-          <p :if={@projects == []} class="ab-sec__empty">Nenhum projeto acompanhado.</p>
+          <p :if={@projects == []} class="ab-sec__empty">{gettext("No tracked projects.")}</p>
           <div :if={@projects != []} class="ab-today__projects-wrap">
             <table class="ab-today__projects">
               <thead>
                 <tr>
-                  <th scope="col">Projeto</th><th scope="col">Precisa de você</th><th scope="col">
-                    Rodando
-                  </th><th scope="col">Fila</th><th scope="col">PRs hoje</th><th scope="col">
-                    Leitura
+                  <th scope="col">{gettext("Project")}</th><th scope="col">{gettext("Needs you")}</th><th scope="col">
+                    {gettext("Running")}
+                  </th><th scope="col">{gettext("Queue")}</th><th scope="col">
+                    {gettext("PRs today")}
+                  </th><th scope="col">
+                    {gettext("Reading")}
                   </th>
                 </tr>
               </thead>
@@ -177,9 +169,13 @@ defmodule AgentBoardWeb.BoardComponents.Today do
                       phx-value-repo={project.name}
                     >{project.name}</button>
                   </th>
-                  <td data-label="Precisa de você">{project.needs}</td><td data-label="Rodando">
+                  <td data-label={gettext("Needs you")}>{project.needs}</td><td data-label={
+                    gettext("Running")
+                  }>
                     {project.running}
-                  </td><td data-label="Fila">{project.queued}</td><td data-label="PRs hoje">
+                  </td><td data-label={gettext("Queue")}>{project.queued}</td><td data-label={
+                    gettext("PRs today")
+                  }>
                     {project.merged}
                   </td>
                   <td
@@ -189,7 +185,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
                         else: "ab-today__freshness"
                       )
                     }
-                    data-label="Leitura"
+                    data-label={gettext("Reading")}
                   >
                     <span>{freshness_label(project)}</span>
                     <span :if={project.last_sync} class="ab-today__freshness-time">
@@ -204,13 +200,13 @@ defmodule AgentBoardWeb.BoardComponents.Today do
 
         <section id="today-trend" class="ab-today__section" aria-labelledby="today-trend-title">
           <div class="ab-sec__head">
-            <h2 id="today-trend-title">PRs mesclados · 7 dias</h2>
-            <span class="ab-sec__count">{@trend_total} no período</span>
+            <h2 id="today-trend-title">{gettext("Merged PRs · 7 days")}</h2>
+            <span class="ab-sec__count">{gettext("%{count} in period", count: @trend_total)}</span>
           </div>
           <p class="ab-meta ab-today__note">
-            Pela data de mesclagem, entre os PRs registrados no board. Os dias seguem seu horário local.
+            {gettext("By merge date among PRs recorded by the board. Days follow your local time.")}
           </p>
-          <ol class="ab-today__trend" aria-label="PRs mesclados nos últimos sete dias">
+          <ol class="ab-today__trend" aria-label={gettext("PRs merged in the last seven days")}>
             <li :for={bar <- @trend} aria-label={bar.description}>
               <span class="ab-today__bar-number">{bar.count}</span>
               <span class="ab-today__bar-track"><span
@@ -223,9 +219,9 @@ defmodule AgentBoardWeb.BoardComponents.Today do
         </section>
       </div>
 
-      <section id="today-spend" class="ab-today__section" aria-label="Gasto do dia">
+      <section id="today-spend" class="ab-today__section" aria-label={gettext("Daily spend")}>
         <div class="ab-sec__head">
-          <h2>Uso hoje</h2>
+          <h2>{gettext("Usage today")}</h2>
         </div>
         <div class="ab-today__spend">
           <span :for={row <- @spend_rows} class="ab-today__money" title={row.title}>
@@ -237,10 +233,10 @@ defmodule AgentBoardWeb.BoardComponents.Today do
     """
   end
 
-  defp freshness_label(%{last_sync: nil}), do: "sem leitura"
-  defp freshness_label(%{unknown: true, last_sync: %{kind: "sync_error"}}), do: "falhou"
-  defp freshness_label(%{unknown: true}), do: "atrasada"
-  defp freshness_label(_project), do: "atualizada"
+  defp freshness_label(%{last_sync: nil}), do: gettext("not read")
+  defp freshness_label(%{unknown: true, last_sync: %{kind: "sync_error"}}), do: gettext("failed")
+  defp freshness_label(%{unknown: true}), do: gettext("stale")
+  defp freshness_label(_project), do: gettext("current")
 
   defp trend_bars([]), do: []
 
@@ -252,7 +248,11 @@ defmodule AgentBoardWeb.BoardComponents.Today do
       %{
         count: point.count,
         label: Time.short_day_label(point.date, today),
-        description: "#{Time.day_label(point.date, today)}: #{point.count} PRs mesclados",
+        description:
+          gettext("%{day}: %{count} PRs merged",
+            day: Time.day_label(point.date, today),
+            count: point.count
+          ),
         height: round(point.count / top * 100)
       }
     end)
@@ -262,8 +262,8 @@ defmodule AgentBoardWeb.BoardComponents.Today do
     for source <- @sources,
         do: %{
           label: Map.fetch!(@labels, source),
-          value: "desconhecido",
-          title: "Sem leitura do livro de uso para hoje"
+          value: gettext("unknown"),
+          title: gettext("No usage ledger reading for today")
         }
   end
 
@@ -279,24 +279,27 @@ defmodule AgentBoardWeb.BoardComponents.Today do
 
   defp value("codex", spend) do
     case spend.quota do
-      %{used_percent: percent} -> "#{percent(percent)}% da cota semanal"
-      nil -> "desconhecido"
+      %{used_percent: percent} ->
+        gettext("%{percent}% of weekly quota", percent: percent(percent))
+
+      nil ->
+        gettext("unknown")
     end
   end
 
   defp value(source, spend) do
     case Map.get(spend.by_source, source) do
       nil ->
-        "não rodou"
+        gettext("did not run")
 
       %{status: :none} ->
-        "não rodou"
+        gettext("did not run")
 
       %{status: :unknown} ->
-        "desconhecido"
+        gettext("unknown")
 
       %{cost: nil} ->
-        "desconhecido"
+        gettext("unknown")
 
       %{cost: %{micros: micros, complete?: true}} ->
         "≈ #{money(micros)}"
@@ -309,54 +312,65 @@ defmodule AgentBoardWeb.BoardComponents.Today do
   defp title("codex", spend) do
     case spend.quota do
       %{used_percent: percent, resets_at: at} when is_binary(at) ->
-        "Cota semanal do plano ChatGPT: #{percent(percent)}% usada; renova em #{at}."
+        gettext("ChatGPT plan weekly quota: %{percent}% used; resets at %{time}.",
+          percent: percent(percent),
+          time: at
+        )
 
       %{used_percent: percent} ->
-        "Cota semanal do plano ChatGPT: #{percent(percent)}% usada."
+        gettext("ChatGPT plan weekly quota: %{percent}% used.", percent: percent(percent))
 
       nil ->
-        "Sem leitura da cota semanal do Codex"
+        gettext("No Codex weekly quota reading")
     end
   end
 
   defp title("claude_code", _spend),
-    do: "Estimado a preço de lista do Claude Max; é uma referência, não a fatura."
+    do: gettext("Estimated at the Claude Max list price; it is a reference, not the bill.")
 
-  defp title("dsh", _spend), do: "Estimado em US$ pela tabela do board."
+  defp title("dsh", _spend), do: gettext("Estimated in USD from the board's pricing table.")
 
   defp date_label(now, offset) do
     at = DateTime.add(now, -offset * 60, :second)
-    "#{weekday(at)} #{at.day} de #{month(at)}"
+
+    if Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR" do
+      weekdays =
+        ~w(segunda-feira terça-feira quarta-feira quinta-feira sexta-feira sábado domingo)
+
+      months =
+        ~w(janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro)
+
+      "#{Enum.at(weekdays, Date.day_of_week(DateTime.to_date(at)) - 1)} #{at.day} de #{Enum.at(months, at.month - 1)}"
+    else
+      gettext("%{day}, %{date} %{month}",
+        day: Time.weekday(DateTime.to_date(at)),
+        date: at.day,
+        month: Time.month(DateTime.to_date(at))
+      )
+    end
   end
 
-  defp weekday(at) do
-    ~w(segunda-feira terça-feira quarta-feira quinta-feira sexta-feira sábado domingo)
-    |> Enum.at(Date.day_of_week(DateTime.to_date(at)) - 1)
-  end
+  defp state_label("blocked"), do: gettext("blocked")
+  defp state_label("question"), do: gettext("question")
+  defp state_label("ready"), do: gettext("ready for review")
+  defp state_label("running"), do: gettext("running")
+  defp state_label(state), do: state
 
-  defp month(at) do
-    ~w(janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro)
-    |> Enum.at(at.month - 1)
-  end
+  defp action_label("question"), do: gettext("Respond")
+  defp action_label("ready"), do: gettext("Review")
+  defp action_label(_state), do: gettext("Open")
 
-  defp state_label(state), do: Map.get(@states, state, state)
-
-  defp action_label("blocked"), do: "Abrir"
-  defp action_label("question"), do: "Responder"
-  defp action_label("ready"), do: "Revisar"
-  defp action_label(_state), do: "Abrir"
-
-  defp elapsed(nil, _now), do: "agora"
+  defp elapsed(nil, _now), do: gettext("now")
 
   defp elapsed(%DateTime{} = at, now),
-    do: AgentBoard.Time.duration(AgentBoard.Time.age_seconds(at, now))
+    do: AgentBoardWeb.Time.duration(AgentBoardWeb.Time.age_seconds(at, now))
 
   defp tag_class("blocked"), do: "ab-tag--halt"
   defp tag_class("question"), do: "ab-tag--you"
   defp tag_class("ready"), do: "ab-tag--you"
   defp tag_class(_state), do: "ab-tag--agent"
 
-  defp ago(nil, _now), do: "agora"
+  defp ago(nil, _now), do: gettext("now")
   defp ago(at, now), do: Time.ago(Time.age_seconds(at, now))
 
   defp percent(value) when is_float(value),
@@ -366,7 +380,8 @@ defmodule AgentBoardWeb.BoardComponents.Today do
 
   defp money(micros) do
     cents = div(micros + 5_000, 10_000)
+    separator = if Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR", do: ",", else: "."
 
-    "US$ #{div(cents, 100)},#{cents |> rem(100) |> Integer.to_string() |> String.pad_leading(2, "0")}"
+    "US$ #{div(cents, 100)}#{separator}#{cents |> rem(100) |> Integer.to_string() |> String.pad_leading(2, "0")}"
   end
 end

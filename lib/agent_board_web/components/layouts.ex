@@ -59,7 +59,7 @@ defmodule AgentBoardWeb.Layouts do
       <.flash
         id="client-error"
         kind={:error}
-        title="We can't find the internet"
+        title={gettext("Cannot connect to the internet")}
         phx-disconnected={
           show(".phx-client-error #client-error")
           |> JS.remove_attribute("hidden", to: ".phx-client-error #client-error")
@@ -67,14 +67,14 @@ defmodule AgentBoardWeb.Layouts do
         phx-connected={hide("#client-error") |> JS.set_attribute({"hidden", ""})}
         hidden
       >
-        Attempting to reconnect
+        {gettext("Attempting to reconnect")}
         <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
       </.flash>
 
       <.flash
         id="server-error"
         kind={:error}
-        title="Something went wrong!"
+        title={gettext("Something went wrong!")}
         phx-disconnected={
           show(".phx-server-error #server-error")
           |> JS.remove_attribute("hidden", to: ".phx-server-error #server-error")
@@ -82,7 +82,7 @@ defmodule AgentBoardWeb.Layouts do
         phx-connected={hide("#server-error") |> JS.set_attribute({"hidden", ""})}
         hidden
       >
-        Attempting to reconnect
+        {gettext("Attempting to reconnect")}
         <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
       </.flash>
     </div>
@@ -96,7 +96,7 @@ defmodule AgentBoardWeb.Layouts do
   """
   def theme_toggle(assigns) do
     ~H"""
-    <div role="group" aria-label="Tema" class="flex gap-1">
+    <div role="group" aria-label={gettext("Theme")} class="flex gap-1">
       <button
         :for={{label, theme} <- [{"Sistema", "system"}, {"Claro", "light"}, {"Escuro", "dark"}]}
         type="button"

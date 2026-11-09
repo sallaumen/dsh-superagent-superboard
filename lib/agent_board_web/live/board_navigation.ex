@@ -17,6 +17,7 @@ defmodule AgentBoardWeb.BoardNavigation do
 
   def path(nil, "voice", _task_id, _tab), do: "/?panel=voice"
   def path(nil, "logs", _task_id, _tab), do: "/?panel=logs"
+  def path(nil, "settings", _task_id, _tab), do: "/?panel=settings"
 
   def path(repo, panel, task_id, tab) do
     query = %{"repo" => "#{repo.owner}/#{repo.name}", "panel" => panel}
@@ -58,7 +59,7 @@ defmodule AgentBoardWeb.BoardNavigation do
 
     panel =
       cond do
-        panel in ["voice", "logs"] -> panel
+        panel in ["voice", "logs", "settings"] -> panel
         socket.assigns.repo && panel in (@panels -- ["conversation", "voice"]) -> panel
         true -> nil
       end
@@ -99,7 +100,7 @@ defmodule AgentBoardWeb.BoardNavigation do
              "settings",
              "superagents"
            ] do
-    if socket.assigns.repo,
+    if not is_nil(socket.assigns.repo) or panel == "settings",
       do: push_patch(socket, to: path(socket.assigns.repo, panel)),
       else: socket
   end

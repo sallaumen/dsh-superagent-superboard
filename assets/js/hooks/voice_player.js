@@ -1,4 +1,5 @@
 import {voiceInputActive, voiceState} from "../voice_state"
+import {isPortuguese, localize} from "../i18n"
 
 // The server chooses the speech URL. Playback state follows the audio element,
 // never the request or the presence of an ElevenLabs key alone.
@@ -14,9 +15,11 @@ const volumeOf = (value) => {
 const latencyDetail = () => {
   const endedAt = window.boardVoiceTurnEndedAt
   window.boardVoiceTurnEndedAt = null
-  if (!endedAt) return "Tocando o áudio da ElevenLabs."
+  if (!endedAt) return localize("Tocando o áudio da ElevenLabs.")
   const seconds = (performance.now() - endedAt) / 1000
-  return seconds < 60 ? `Respondi em ${seconds.toFixed(1).replace(".", ",")} s.` : "Tocando o áudio da ElevenLabs."
+  return seconds < 60
+    ? (isPortuguese() ? `Respondi em ${seconds.toFixed(1).replace(".", ",")} s.` : `Responded in ${seconds.toFixed(1)} s.`)
+    : localize("Tocando o áudio da ElevenLabs.")
 }
 
 export const VoicePlayer = {

@@ -9,7 +9,7 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
     ~H"""
     <section id={@id} class="border-t border-base-content/10 px-5 py-4">
       <p id="intake-repository" class="mb-4 text-xs text-base-content/75 sm:text-right">
-        Repositório
+        {gettext("Repository")}
         <strong class="font-semibold text-base-content">{@repo.owner}/{@repo.name}</strong>
       </p>
 
@@ -18,7 +18,7 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
         id="intake-voice-draft"
         class="mb-4 border-l-2 border-l-info bg-info/10 px-3 py-2 text-xs leading-relaxed text-base-content"
       >
-        Rascunho por voz. Revise o texto e o repositório antes de dividir.
+        {gettext("Voice draft. Review the text and repository before splitting.")}
       </p>
 
       <p
@@ -26,17 +26,17 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
         id="intake-unavailable"
         class="mb-3 text-xs text-base-content/75"
       >
-        IA não configurada. Dividir fica indisponível até configurar um modelo.
+        {gettext("AI not configured. Split is unavailable until a model is configured.")}
       </p>
       <form id="intake-form" phx-submit="intake" phx-change="intake_draft_change" class="space-y-3">
         <label for="intake-request" class="block text-xs font-semibold text-base-content">
-          Pedido
+          {gettext("Request")}
         </label>
         <textarea
           id="intake-request"
           name="text"
           rows="4"
-          placeholder="Descreva o que você quer que o agente construa…"
+          placeholder={gettext("Describe what you want the agent to build…")}
           aria-describedby={if @ai_status == :not_configured, do: "intake-unavailable"}
           class="min-h-28 w-full resize-y rounded-lg border border-base-content/20 bg-base-200 px-3 py-2.5 text-sm leading-relaxed text-base-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           required
@@ -49,14 +49,14 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
         />
         <div class="flex flex-wrap items-center justify-between gap-3">
           <p class="max-w-sm text-xs leading-relaxed text-base-content/75">
-            Dividir propõe tarefas. Não cria issues.
+            {gettext("Split proposes tasks. Does not create issues.")}
           </p>
           <button
             disabled={@ai_status == :not_configured}
-            phx-disable-with="Dividindo…"
+            phx-disable-with={gettext("Splitting...")}
             class="min-h-11 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-content hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            Dividir pedido
+            {gettext("Split request")}
           </button>
         </div>
       </form>
@@ -68,11 +68,11 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
           role="status"
           class="mb-3 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-xs leading-relaxed text-base-content"
         >
-          Este pedido precisa de mais detalhe antes de propor tarefas.
+          {gettext("This request needs more detail before proposing tasks.")}
           <%= if @intake.spec["open_questions"] != [] do %>
-            Revise as perguntas abaixo e edite o pedido.
+            {gettext("Review the questions below and edit the request.")}
           <% else %>
-            Adicione detalhe e tente de novo.
+            {gettext("Add detail and try again.")}
           <% end %>
         </p>
         <p
@@ -81,13 +81,13 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
           role="status"
           class="mb-3 border-l-2 border-l-warning bg-warning/10 px-3 py-2 text-xs leading-relaxed text-base-content"
         >
-          Nenhuma tarefa utilizável foi proposta. Revise o pedido e tente dividir de novo.
+          {gettext("No usable task was proposed. Review the request and try splitting it again.")}
         </p>
-        <p class="text-[10px] uppercase text-base-content/75">Objetivo</p>
+        <p class="text-[10px] uppercase text-base-content/75">{gettext("Objective")}</p>
         <p class="text-sm text-base-content">{@intake.spec["goal"]}</p>
 
         <div :if={@intake.spec["open_questions"] != []} class="mt-2 text-[11px] text-warning">
-          <p class="uppercase text-[10px]">Perguntas em aberto</p>
+          <p class="uppercase text-[10px]">{gettext("Open Questions")}</p>
           <p :for={q <- @intake.spec["open_questions"]}>{q}</p>
         </div>
 
@@ -109,13 +109,13 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
                  sentence, and the click carries it to the gate. --%>
             <button
               phx-click="create_from_intake"
-              phx-disable-with="Criando…"
+              phx-disable-with={gettext("Creating…")}
               phx-value-index={index}
               phx-value-confirm={Enum.at(@phrases, index)}
               data-confirm={Enum.at(@phrases, index)}
               class="mt-2 border border-base-content/10 px-2 py-1 text-[10px]"
             >
-              Criar
+              {gettext("Create")}
             </button>
           </li>
         </ol>

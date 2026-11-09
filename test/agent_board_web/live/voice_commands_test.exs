@@ -159,6 +159,13 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
              VoiceCommands.resolve("perguntar qualquer coisa", %{conversation: nil})
 
     assert text =~ "Abra uma tarefa primeiro"
+
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+
+    assert %{result: %{text: english}} =
+             VoiceCommands.resolve("ask anything", %{conversation: nil})
+
+    assert english =~ "Open a task first"
   end
 
   test "asking with an open task proposes the confirmed ask" do

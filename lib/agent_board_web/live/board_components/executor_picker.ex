@@ -9,6 +9,7 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
   reads the signals it is `nil` and the group still works.
   """
   use Phoenix.Component
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   alias AgentBoard.Executors
   alias Phoenix.LiveView.JS
@@ -26,7 +27,7 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
 
     ~H"""
     <fieldset id="composer-executor" class="ab-exec" disabled={@disabled}>
-      <legend class="ab-label">Executor</legend>
+      <legend class="ab-label">{gettext("Executor")}</legend>
       <div class="ab-exec__options">
         <label
           :for={executor <- @executors}
@@ -42,12 +43,12 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
             class="ab-sr"
           />
           <span>{Executors.name(executor)}</span>
-          <span :if={suggested?(@suggestion, executor)} class="ab-exec__hint">sugerido</span>
+          <span :if={suggested?(@suggestion, executor)} class="ab-exec__hint">{gettext("suggested")}</span>
         </label>
       </div>
 
       <div id="composer-routing" class="ab-exec__why" aria-live="polite">
-        <p :if={is_nil(@suggestion)} class="ab-meta">Lendo os executores…</p>
+        <p :if={is_nil(@suggestion)} class="ab-meta">{gettext("Reading the executors...")}</p>
         <p :if={@suggestion} class="ab-meta">
           <b>{suggestion_head(@suggestion)}</b>
           <span :if={@reasons != []}>{hd(@reasons)}</span>
@@ -64,17 +65,17 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
           </ul>
         </details>
         <p :if={@suggestion} class="ab-meta">
-          Custo esperado: {cost_label(@suggestion.cost)}
+          {gettext("Expected cost:")} {cost_label(@suggestion.cost)}
         </p>
         <p :if={@ruled_out} id="composer-executor-warning" class="ab-meta ab-exec__warn" role="alert">
-          Atenção: {@ruled_out} A issue abre, mas não anda.
+          {gettext("Note:")} {@ruled_out} {gettext("The issue opens, but work does not start.")}
         </p>
         <p
           :if={not Executors.dispatched_by_board?(@chosen)}
           id="composer-executor-note"
           class="ab-meta"
         >
-          Sem a menção ao agente, o DeepSeek não pega o pedido.
+          {gettext("Without mentioning the agent, DeepSeek won't pick up the request.")}
         </p>
       </div>
     </fieldset>
@@ -91,29 +92,30 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
 
   defp ruled_out(_suggestion, _chosen), do: nil
 
-  defp more_label(1), do: "Mais 1 motivo"
-  defp more_label(n), do: "Mais #{n} motivos"
+  defp more_label(n), do: ngettext("%{count} more reason", "%{count} more reasons", n)
 
   defp suggested?(%{executor: executor}, executor), do: true
   defp suggested?(_suggestion, _executor), do: false
 
-  defp suggestion_head(%{executor: nil}), do: "Sem sugestão."
-  defp suggestion_head(%{executor: executor}), do: "Sugestão: #{Executors.name(executor)}."
+  defp suggestion_head(%{executor: nil}), do: gettext("No suggestion.")
+
+  defp suggestion_head(%{executor: executor}),
+    do: gettext("Suggested: %{executor}.", executor: Executors.name(executor))
 
   @doc """
   The expected cost in the executor's own currency. The Claude Code US$ is
   the list price of the Max subscription, a reference and not a bill; an
   executor with no history is unknown, never zero.
   """
-  def cost_label(:unknown), do: "desconhecido (sem histórico de uso)"
+  def cost_label(:unknown), do: gettext("Unknown (no usage history)")
 
   def cost_label(%{micros: micros, reference: :list} = cost) when is_integer(micros) do
-    amount(cost) <> " a preço de lista (referência, não é fatura)"
+    amount(cost) <> gettext(" at list price (reference, not a bill)")
   end
 
   def cost_label(%{micros: micros} = cost) when is_integer(micros), do: amount(cost)
 
-  def cost_label(_other), do: "desconhecido"
+  def cost_label(_other), do: gettext("unknown")
 
   defp amount(%{micros: micros, complete?: false}),
     do: "≥ US$ #{:erlang.float_to_binary(micros / 1_000_000, decimals: 2)}"
