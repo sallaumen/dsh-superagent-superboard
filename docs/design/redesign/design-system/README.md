@@ -1,72 +1,72 @@
-O Agent Board é a mesa de trabalho de quem deixa agentes programando e volta para ver o que mudou. Ele não é um painel de métricas: é uma leitura. A pergunta que cada tela responde, nesta ordem, é **o que o agente está fazendo agora, o que só eu posso destravar, o que mudou desde que saí e quão recente é tudo isso**.
+Agent Board is the workbench for someone who leaves agents coding and comes back to see what changed. It is not a metrics dashboard: it is a reading. The question each screen answers, in this order, is **what the agent is doing now, what only I can unblock, what changed since I left and how recent all of it is**.
 
-## Princípios
+## Principles
 
-1. **A verdade antes da forma.** Um número só aparece se veio de um dado observado. Dado velho se declara velho (`stale`, hachura, “≥”, “visto às 09:36”); dado desconhecido vira `?` ou “desconhecido”, nunca `0`. Um cronômetro só anda enquanto a sincronia está ao vivo.
-2. **Seu trabalho é azul, o do agente é verde, o que travou é telha.** `you` marca tudo o que espera uma decisão sua (revisão, pergunta, seleção, ação primária). `agent` marca o que o agente está fazendo. `halt` marca bloqueio e falha. O que terminou recua para `ink-muted`.
-3. **Espaço separa, não caixa.** Seções vivem soltas sobre `paper`, divididas por espaço (`space-7`) e por fios `line`. Só ganham superfície (`surface`) as coisas que pedem uma ação sua. Nada de quatro colunas iguais com vazio dentro.
-4. **Ficar na página.** Abrir uma tarefa abre o painel lateral; escrever um pedido abre o composer por cima. A lista continua visível e o foco volta para onde estava ao fechar (`Esc`).
-5. **Calmo por horas.** Fundo quente e pouco saturado nos dois temas, um único movimento contínuo (o ponto do agente respirando) e nenhum outro.
+1. **Truth before form.** A number appears only if it came from observed data. Stale data declares itself stale (`stale`, hatching, “≥”, “visto às 09:36” (seen at 09:36)); unknown data becomes `?` or “desconhecido” (unknown), never `0`. A timer only runs while sync is live.
+2. **Your work is blue, the agent's is green, what got stuck is tile.** `you` marks everything waiting for a decision from you (review, question, selection, primary action). `agent` marks what the agent is doing. `halt` marks a block and failure. What finished recedes to `ink-muted`.
+3. **Space separates, not boxes.** Sections live loose on `paper`, divided by space (`space-7`) and `line` hairlines. Only things that ask for an action from you get a surface (`surface`). No four equal columns with emptiness inside.
+4. **Stay on the page.** Opening a task opens the side panel; writing a request opens the composer on top. The list stays visible and focus returns to where it was when you close (`Esc`).
+5. **Calm for hours.** Warm, low-saturation background in both themes, a single continuous motion (the agent dot breathing) and nothing else.
 
-## Conteúdo e voz
+## Content and voice
 
-- Português do Brasil, frases curtas, caixa normal. Rótulos nunca em MAIÚSCULAS espaçadas.
-- Diga o motivo, não o estado: “**CI falhou em `gates`** depois do merge. A main está vermelha desde 23:58.” em vez de “CI FAILED: GATES”.
-- O resumo do topo é **uma frase**, escrita a partir dos dados desde a sua última visita: “Desde ontem às 22:10 o agente mesclou 3 PRs, os 3 com CI falhando, abriu 1 PR para revisão…”. Cada trecho é um link colorido pelo papel (`you`, `agent`, `halt`).
-- Tempo relativo para o que é recente (“há 41 min”), hora absoluta em `data` para o que é registro (“23:41”). Quando a conexão cai, troque para absoluto: “dados de 09:36”.
-- Títulos de tarefa como o agente ou você os escreveu; não traduza nem reescreva.
-- Sem emoji, sem exclamação, sem “Ops!”.
+- Brazilian Portuguese, short sentences, normal case. Labels never in spaced UPPERCASE.
+- Give the reason, not the state: “**CI falhou em `gates`** depois do merge. A main está vermelha desde 23:58.” (**CI failed in `gates`** after the merge. Main has been red since 23:58.) instead of “CI FAILED: GATES”.
+- The top summary is **one sentence**, written from the data since your last visit: “Desde ontem às 22:10 o agente mesclou 3 PRs, os 3 com CI falhando, abriu 1 PR para revisão…” (“Since yesterday at 22:10 the agent merged 3 PRs, all 3 with failing CI, opened 1 PR for review…”). Each fragment is a link colored by role (`you`, `agent`, `halt`).
+- Relative time for what is recent (“há 41 min” — 41 min ago), absolute time in `data` for what is a record (“23:41”). When the connection drops, switch to absolute: “dados de 09:36” (data from 09:36).
+- Task titles as the agent or you wrote them; do not translate or rewrite them.
+- No emoji, no exclamation mark, no “Ops!”.
 
-## Cor
+## Color
 
-- Fundo da página `paper`; trilho e campos recuados `paper-sunk`; itens acionáveis e o painel `surface`; o que flutua `surface-raised` com `shadow-layer`.
-- Texto em `ink`; motivos e metadados em `ink-muted`; carimbos e números de PR em `ink-faint`. Os três passam 4.5:1 sobre todos os fundos e washes nos dois temas.
-- Cada papel tem um tom e um wash: `agent`/`agent-wash`, `you`/`you-wash`, `halt`/`halt-wash`, `stale`/`stale-wash`. O tom serve para texto e marcas; o wash é só fundo. Texto sobre preenchimento `you` usa `on-you`, sobre `agent` usa `on-agent` — nunca branco literal.
-- `agent` e `halt` têm luminosidade parecida: **nunca** dependa só da cor. Todo estado leva glifo e palavra (veja StatusMark).
-- Bordas de controle em `line-strong` (≥3:1). `line` é decorativa.
+- Page background `paper`; rail and recessed fields `paper-sunk`; actionable items and the panel `surface`; what floats `surface-raised` with `shadow-layer`.
+- Text in `ink`; reasons and metadata in `ink-muted`; timestamps and PR numbers in `ink-faint`. All three pass 4.5:1 over all backgrounds and washes in both themes.
+- Each role has a tone and a wash: `agent`/`agent-wash`, `you`/`you-wash`, `halt`/`halt-wash`, `stale`/`stale-wash`. The tone is for text and marks; the wash is background only. Text over a `you` fill uses `on-you`, over `agent` uses `on-agent` — never literal white.
+- `agent` and `halt` have similar luminosity: **never** rely on color alone. Every state carries a glyph and a word (see StatusMark).
+- Control borders in `line-strong` (≥3:1). `line` is decorative.
 
-## Tipografia
+## Typography
 
-- `sans` (IBM Plex Sans) para interface e leitura; `mono` (IBM Plex Mono) só para o que é dado de máquina: horas, durações, tokens, custos, hashes, caminhos, comandos. Mono sempre com `tabular-nums`.
-- Escala: `display` uma vez por tela (nome do repositório), `title` para seções e o painel, `task` para títulos em listas, `body` para conversa, `meta` para motivos, `label` para rótulos e contagens, `data`/`data-small` para valores.
+- `sans` (IBM Plex Sans) for interface and reading; `mono` (IBM Plex Mono) only for machine data: times, durations, tokens, costs, hashes, paths, commands. Mono always with `tabular-nums`.
+- Scale: `display` once per screen (repository name), `title` for sections and the panel, `task` for titles in lists, `body` for conversation, `meta` for reasons, `label` for labels and counts, `data`/`data-small` for values.
 
-## Espaço, forma e camadas
+## Space, shape and layers
 
-- Página com gutter `space-6` (`space-5` no celular); `space-7` entre seções; `space-4` de padding vertical por linha.
-- `radius-sm` para controles, `radius-md` para linhas em foco e cartões de “Precisa de você”, `radius-lg` para o painel, o composer e a faixa “Agora”, `radius-pill` para o farol de sincronia e filtros.
-- Sombra só em camada que flutua (`shadow-layer`). Cartões no fluxo usam `line`, não sombra.
+- Page with gutter `space-6` (`space-5` on mobile); `space-7` between sections; `space-4` vertical padding per row.
+- `radius-sm` for controls, `radius-md` for focused rows and “Precisa de você” cards, `radius-lg` for the panel, the composer and the “Agora” strip, `radius-pill` for the sync beacon and filters.
+- Shadow only on a layer that floats (`shadow-layer`). Cards in the flow use `line`, not shadow.
 
-## Estrutura da tela
+## Screen structure
 
-- **Trilho** (224px, `paper-sunk`): repositórios com marcas de atenção — ponto do agente se há algo rodando, `◆ n` esperando você, `■ n` bloqueado ou com CI falhando, `?` se o dado do repositório está velho.
-- **Topo**: nome do repositório, o **farol de sincronia** colado nele, e as ações `Dividir pedido` e `Novo pedido` (`N`).
-- **Resumo** de uma frase desde a última visita.
-- **Coluna principal**, nesta ordem: **Agora** (o passo real do agente) → **Precisa de você** (ordem: CI falhando na main, bloqueios, revisões, perguntas; o que é novo desde a visita vem antes da linha “antes da sua última visita”) → **Fila** (numerada, de cima para baixo, com aviso de repetição).
-- **Coluna lateral**: **Mesclados** — sete dias em pontos (um ponto por PR, telha se o CI falhou) e o registro por dia.
-- **Painel lateral** (440px; 520px no ultrawide): Conversa, Atividade, Chamadas de IA, PR. Abaixo de ~1240px de largura ele flutua sobre o conteúdo; no celular ocupa a tela.
+- **Rail** (224px, `paper-sunk`): repositories with attention marks — agent dot if something is running, `◆ n` waiting for you, `■ n` blocked or with failing CI, `?` if the repository data is stale.
+- **Top**: repository name, the **sync beacon** glued to it, and the actions `Dividir pedido` and `Novo pedido` (`N`).
+- **Summary** of one sentence since the last visit.
+- **Main column**, in this order: **Agora** (the agent's real step) → **Precisa de você** (order: failing CI on main, blocks, reviews, questions; what is new since the visit comes before the “before your last visit” line) → **Fila** (numbered, top to bottom, with a duplicate warning).
+- **Side column**: **Mesclados** — seven days as dots (one dot per PR, a tile if CI failed) and the record per day.
+- **Side panel** (440px; 520px on ultrawide): Conversa, Atividade, Chamadas de IA, PR. Below ~1240px wide it floats over the content; on mobile it takes the screen.
 
-## Sincronia e honestidade
+## Sync and honesty
 
-- O farol tem cinco estados: **Ao vivo** (todas as fontes responderam no último minuto), **Atrasado**, **Reconectando**, **Sem conexão** e **Sem dados ainda**. Clicar abre o detalhe por fonte (GitHub, processo do agente, fila local).
-- Sem conexão: faixa `stale-wash` “Mostrando o que sabíamos às HH:MM”, contagens com “≥”, cronômetros parados com “visto às”, o cartão “Agora” hachurado, o trilho com `?`, a área de dados levemente dessaturada.
-- Ao reconectar: um aviso único no canto (“Reconectado. 3 mudanças desde 09:36.”) com `Mostrar`, que destaca essas mudanças com a marca **novo**.
-- Custo ou tokens faltando: mostre `—` e totalize como mínimo (“≥ $1.52”), dizendo que é mínimo.
+- The beacon has five states: **Ao vivo** (all sources answered in the last minute), **Atrasado**, **Reconectando**, **Sem conexão** and **Sem dados ainda**. Clicking opens the detail per source (GitHub, agent process, local queue).
+- No connection: `stale-wash` strip “Mostrando o que sabíamos às HH:MM”, counts with “≥”, clocks stopped at “visto às”, the “Agora” card hatched, the rail with `?`, the data area slightly desaturated.
+- On reconnect: a single notice in the corner (“Reconectado. 3 mudanças desde 09:36.”) with `Mostrar`, which highlights those changes with the **new** mark.
+- Missing cost or tokens: show `—` and total as a minimum (“≥ $1.52”), saying it is a minimum.
 
-## Movimento
+## Motion
 
-- O ponto `agent` respira (2.4s) só enquanto a sincronia está ao vivo. Parado = não sabemos.
-- Camadas entram com 180–220ms de subida curta; nada mais anima. `prefers-reduced-motion` desliga tudo.
+- The `agent` dot breathes (2.4s) only while sync is live. Stopped = we do not know.
+- Layers enter with 180–220ms of a short rise; nothing else animates. `prefers-reduced-motion` turns everything off.
 
-## Teclado e foco
+## Keyboard and focus
 
-- `J`/`K` percorre tarefas na ordem da tela, `Enter` abre no painel, `Esc` fecha a camada de cima e devolve o foco, `N` novo pedido, `V` ditar, `1–4` troca a aba do painel, `?` lista os atalhos.
-- Anel de foco único: `focus-ring`, 2px sólido, afastado 2px. Passa 3:1 sobre todos os fundos nos dois temas.
+- `J`/`K` moves through tasks in screen order, `Enter` opens in the panel, `Esc` closes the top layer and returns focus, `N` new request, `V` dictate, `1–4` switches the panel tab, `?` lists the shortcuts.
+- Single focus ring: `focus-ring`, 2px solid, offset 2px. Passes 3:1 over all backgrounds in both themes.
 
-## Iconografia
+## Iconography
 
-- Estados são glifos geométricos desenhados em CSS: ● rodando, ◆ espera você, ■ bloqueado/falhou, ○ na fila, ✓ mesclado, círculo hachurado dado velho, círculo tracejado desconhecido.
-- Ícones de ação são traços de 1.6px em 16×16 (`AgentBoard.ico`). Não há logotipo: o nome é escrito em tipo, com uma marca simples de ponto `agent` sobre `ink`.
+- States are geometric glyphs drawn in CSS: ● running, ◆ waiting for you, ■ blocked/failed, ○ queued, ✓ merged, hatched circle stale data, dashed circle unknown.
+- Action icons are 1.6px strokes at 16×16 (`AgentBoard.ico`). There is no logo: the name is set in type, with a simple `agent` dot mark over `ink`.
 
-## Usando os componentes
+## Using the components
 
-`components/bundle.js` expõe `window.AgentBoard` sem React: funções que recebem dados e devolvem HTML (`needsSection`, `nowSection`, `queueSection`, `logSection`, `inspector`, `composer`, `beacon`) e `mount(el, estado)`, que liga teclado, painel e relógio. `AgentBoard.demo` traz os estados de exemplo usados nas telas (`morning`, `working`, `offline`, `reconnected`, `volume`, `empty`). Os formatos de dados estão em `components/index.d.ts`.
+`components/bundle.js` exposes `window.AgentBoard` without React: functions that take data and return HTML (`needsSection`, `nowSection`, `queueSection`, `logSection`, `inspector`, `composer`, `beacon`) and `mount(el, estado)`, which wires keyboard, panel and clock. `AgentBoard.demo` brings the sample states used in the screens (`morning`, `working`, `offline`, `reconnected`, `volume`, `empty`). The data formats are in `components/index.d.ts`.

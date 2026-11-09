@@ -1,26 +1,26 @@
 # Agent Board — DESIGN.md
 
-Base: o design system **Agent Board** (tokens, voz, glifos) continua sendo a fonte da verdade. Este arquivo é o
-delta para o board atual e a ponte para LiveView + HEEx + Tailwind/daisyUI. Sem bibliotecas novas.
+Base: the **Agent Board** design system (tokens, voice, glyphs) remains the source of truth. This file is the
+delta for the current board and the bridge to LiveView + HEEx + Tailwind/daisyUI. No new libraries.
 
-## 1. O que muda em relação ao board atual
+## 1. What changes from the current board
 
-| Hoje | Passa a ser | Por quê |
+| Today | Becomes | Why |
 |---|---|---|
-| Cinza frio, preto puro | `paper` quente nos dois temas | Calmo por horas; o DS já decidiu isso |
-| 8 tiles de vazão em caixas, no meio da tela | Uma faixa de 8 células divididas por fio, **abaixo das raias** | Vazão é telemetria; a decisão são as raias |
-| "Precisa de você" no fim da página (y≈750 a 1920) | Logo abaixo de "Agora", na 1ª coluna, acima da dobra | É a única raia que pede ação sua |
-| Objetivos em duas caixas empilhadas | Linhas com fio, barra de 4 px, contagem mono à direita; concluído recua para uma linha `ink-muted` | Menos caixa, mesma informação |
-| "SUPERAGENTES" em caixa alta + "Superagentes DeepSeek" repetido | Um título em caixa normal | Regra do DS: sem maiúsculas espaçadas |
-| Cards de agente dentro de modal (caixa dentro de caixa) | Tabela: uma linha por projeto | Comparar 2 projetos lado a lado; ações alinhadas |
-| "Remover" colado em "Parar" | "Arquivar" no menu ⋯, longe de Pausar/Parar | Destrutivo nunca ao lado do comum |
-| "ligado" duas vezes (selo + desejado) | "Ligado · como desejado"; divergência vira telha: "Parado · desejado ligado" | Mostrar só o que informa |
-| "Parar / Arquivar" como links coloridos no inspector | Botões; Parar em contorno telha com confirmação inline | Alvo de 32–44 px, foco visível |
-| Deltas "−7", "+13" soltos | Mesmos números + "comparado com a hora anterior" no cabeçalho da faixa | Delta sem referência é ruído |
+| Cold gray, pure black | warm `paper` in both themes | Calm for hours; the DS already decided this |
+| 8 throughput tiles in boxes, mid-screen | A strip of 8 cells divided by hairlines, **below the lanes** | Throughput is telemetry; the decision is the lanes |
+| "Precisa de você" at the bottom of the page (y≈750 to 1920) | Right below "Agora" (Now), in the 1st column, above the fold | It is the only lane that asks for your action |
+| Objectives in two stacked boxes | Rows with a hairline, 4 px bar, mono count on the right; a completed one recedes to an `ink-muted` row | Less box, same information |
+| "SUPERAGENTES" in all caps + repeated "Superagentes DeepSeek" | One title in normal case | DS rule: no spaced capitals |
+| Agent cards inside a modal (box inside a box) | Table: one row per project | Compare 2 projects side by side; aligned actions |
+| "Remover" glued to "Parar" | "Arquivar" in the ⋯ menu, far from Pausar/Parar | Destructive never next to the common |
+| "ligado" twice (badge + desired) | "Ligado · como desejado"; divergence becomes a tile: "Parado · desejado ligado" | Show only what informs |
+| "Parar / Arquivar" as colored links in the inspector | Buttons; Parar in a tile outline with inline confirmation | 32–44 px target, visible focus |
+| Loose "−7", "+13" deltas | Same numbers + "comparado com a hora anterior" (compared with the previous hour) in the strip header | A delta without a reference is noise |
 
 ## 2. Tokens
 
-Copie para `assets/css/app.css`. Escuro é `[data-theme="dark"]`; claro é o padrão.
+Copy into `assets/css/app.css`. Dark is `[data-theme="dark"]`; light is the default.
 
 ```css
 :root {
@@ -48,129 +48,144 @@ Copie para `assets/css/app.css`. Escuro é `[data-theme="dark"]`; claro é o pad
 }
 ```
 
-`--on-halt` é novo (botão de confirmação destrutiva preenchido). Fio de divisão dentro de `agent-wash`:
-`#2b3f33` escuro / `#c9dccf` claro.
+`--on-halt` is new (filled destructive confirmation button). Divider hairline inside `agent-wash`:
+`#2b3f33` dark / `#c9dccf` light.
 
 Tailwind (`tailwind.config.js` → `theme.extend`): `colors: { paper:'var(--paper)', 'paper-sunk':'var(--paper-sunk)', surface:'var(--surface)', raised:'var(--surface-raised)', line:'var(--line)', 'line-strong':'var(--line-strong)', ink:'var(--ink)', muted:'var(--ink-muted)', faint:'var(--ink-faint)', agent:'var(--agent)', 'agent-wash':'var(--agent-wash)', you:'var(--you)', 'you-wash':'var(--you-wash)', halt:'var(--halt)', 'halt-wash':'var(--halt-wash)', stale:'var(--stale)', 'stale-wash':'var(--stale-wash)' }`.
-daisyUI: mapeie no tema da versão instalada `primary→you`, `success→agent`, `error→halt`, `warning→stale`,
-`base-100→paper`, `base-200→paper-sunk`, `base-300→line`, `base-content→ink`. Use daisyUI só para
-comportamento (`dropdown`, `modal`, `tabs`, `toggle`); o visual vem dos tokens.
+daisyUI: map in the installed version's theme `primary→you`, `success→agent`, `error→halt`, `warning→stale`,
+`base-100→paper`, `base-200→paper-sunk`, `base-300→line`, `base-content→ink`. Use daisyUI only for
+behavior (`dropdown`, `modal`, `tabs`, `toggle`); the look comes from the tokens.
 
-### Tipo (Plex Sans para leitura, Plex Mono só para dado de máquina, sempre `tabular-nums`)
+### Type (Plex Sans for reading, Plex Mono only for machine data, always `tabular-nums`)
 
-| Nome | Tamanho/linha | Peso | Uso |
+| Name | Size/line | Weight | Use |
 |---|---|---|---|
-| display | 26/32 | 600, −0.01em | nome do repositório, uma vez por tela |
-| title | 16/22 | 600 | seção, painel |
-| task | 14.5/21 | 500 | título de tarefa em lista |
-| body | 14/21 | 400 | conversa, resumo |
-| meta | 12.5/18 | 400 | motivo, metadado |
-| label | 12/16 | 600 | rótulo, contagem — caixa normal |
-| data | 12.5/18 mono | 450 | hora, duração, custo, caminho |
-| data-lg | 22/28 mono | 400 | valor da célula de vazão (novo) |
-| data-small | 11.5/16 mono | 450 | #número, kbd |
+| display | 26/32 | 600, −0.01em | repository name, once per screen |
+| title | 16/22 | 600 | section, panel |
+| task | 14.5/21 | 500 | task title in lists |
+| body | 14/21 | 400 | conversation, summary |
+| meta | 12.5/18 | 400 | reason, metadata |
+| label | 12/16 | 600 | label, count — normal case |
+| data | 12.5/18 mono | 450 | time, duration, cost, path |
+| data-lg | 22/28 mono | 400 | throughput cell value (new) |
+| data-small | 11.5/16 mono | 450 | #number, kbd |
 
-### Espaço e forma
+### Space and shape
 
-`space-1..8` = 2, 4, 8, 12, 16, 24, 40, 64 px. Raio: 6 controles · 10 cartões de atenção e linha em foco ·
-16 painel, composer, faixa Agora · 999 farol e filtros. Sombra só no que flutua.
+`space-1..8` = 2, 4, 8, 12, 16, 24, 40, 64 px. Radius: 6 controls · 10 attention cards and focused row ·
+16 panel, composer, Agora strip · 999 beacon and filters. Shadow only on what floats.
 
-## 3. Grade e densidade
+## 3. Grid and density
 
-| Largura | Estrutura |
+| Width | Structure |
 |---|---|
-| 390 | Sem trilho (repositório vira seletor no topo). Uma coluna: resumo → Agora → Precisa de você → Fila. Mesclados, Vazão e Resumo do dia viram `<details>` de uma linha. Barra fixa embaixo: Novo pedido + voz (48 px). Gutter 16. |
-| 768 | Trilho recolhe para 56 px (ícone + marcas). Uma coluna de raias; Mesclados abaixo. Inspector ocupa a tela. |
-| 1366 | Trilho 224. Raias em 2 colunas `3fr 2fr`: [Agora, Precisa, Fila] · [Mesclados, Vazão 2×2]. Inspector flutua (abaixo de 1240 px de conteúdo). |
-| 1920 | Contexto em `7fr 5fr` (objetivos · resumo do dia). Raias em 3 colunas `5fr 4fr 3fr`: [Agora + Precisa] · [Fila] · [Mesclados]. Vazão em faixa de 8 células abaixo. Inspector 440 px empurra o conteúdo. |
-| 2560 | Mesmo layout de 1920 com gutter 48 e inspector 520. **Ocioso**: as quatro raias colapsam numa linha só; abaixo, histórico de 7 dias em 7 colunas e a faixa de vazão mostrando 24 h/7 d. Volta às raias quando algo entra. |
+| 390 | No rail (repository becomes a selector at the top). One column: summary → Agora → Precisa de você → Fila (Queue). Mesclados (Merged), Vazão (Throughput) and Resumo do dia (Day summary) become one-line `<details>`. Fixed bottom bar: Novo pedido + voice (48 px). Gutter 16. |
+| 768 | Rail collapses to 56 px (icon + marks). One lane column; Mesclados below. Inspector takes the screen. |
+| 1366 | Rail 224. Lanes in 2 columns `3fr 2fr`: [Agora, Precisa, Fila] · [Mesclados, Vazão 2×2]. Inspector floats (below 1240 px of content). |
+| 1920 | Context in `7fr 5fr` (objectives · day summary). Lanes in 3 columns `5fr 4fr 3fr`: [Agora + Precisa] · [Fila] · [Mesclados]. Vazão in an 8-cell strip below. Inspector 440 px pushes the content. |
+| 2560 | Same layout as 1920 with gutter 48 and inspector 520. **Idle**: the four lanes collapse into a single row; below, a 7-day history in 7 columns and the throughput strip showing 24 h/7 d. Back to lanes when something comes in. |
 
-Largura de leitura: texto corrido (resumo, conversa, motivos) ≤ 760 px / ~80 caracteres, mesmo em 2560.
-Gaps: 40 entre colunas e seções, 32 entre blocos de uma coluna, 12 entre título de seção e conteúdo.
-Linha de lista: 10–12 px vertical; alvo mínimo 32 px no desktop, 44 px no toque.
+Reading width: running text (summary, conversation, reasons) ≤ 760 px / ~80 characters, even at 2560.
+Gaps: 40 between columns and sections, 32 between blocks in a column, 12 between a section title and its
+content.
+List row: 10–12 px vertical; minimum target 32 px on desktop, 44 px on touch.
 
-## 4. Componentes (regras curtas)
+## 4. Components (short rules)
 
-- **Farol**: pílula colada ao nome do repositório. Só "Ao vivo" anima. Âmbar para dado velho; nunca vermelho.
-- **Faixa Agora**: `agent-wash`, raio 16. Card de execução = status + #id + executor · título · passo real em
-  mono `agent` · fases (✓ feito, ● atual, ○ por vir). Falha em nova tentativa: glifo ■ telha + "tentativa n de m" +
-  contagem regressiva. Silêncio: glifo hachurado + "sem saída há N min" e também entra em Precisa de você.
-- **Item de atenção**: `surface` + `line`, raio 10. Linha 1: glifo ◆/■ + tipo + #id + idade (+ **novo**).
-  Linha 2: título. Linha 3: motivo com causa. Uma ação primária à direita. Ordem: CI na main → bloqueio →
-  revisão → pergunta → silêncio. Separador "antes da sua última visita".
-- **Linha de fila**: número · ○ · #id + título · idade. Selecionada = `you-wash` raio 10. Marcas de texto
-  "possível repetida" (âmbar) e "dividida" (muted). Filtros em pílula com `aria-pressed`.
-- **Linha de merge**: ✓ · #id + título · "CI ✓/?/falhou · revisão · hora". CI falho troca ✓ por ■ telha.
-- **Célula de vazão**: rótulo · valor data-lg + unidade + delta · sparkline 20 px 1.5 px traço `ink-muted` ·
-  24 h/7 d. Quatro verdades: medido (sem marca), estimado ("≥" + frase), desconhecido ("?" + glifo tracejado +
-  motivo), sem dados ("—"). Nunca 0 para o desconhecido.
-- **Inspector**: cabeçalho (status, título, #id · idade · tipo · tamanho · link), ações em botões
-  (Perguntar, Tentar de novo, Parar execução em telha, Arquivar discreto), confirmação inline em `halt-wash`
-  com a frase e dois botões nomeados ("Parar execução" / "Continuar rodando"). Abas com contagem; `1–5` troca.
-  Custo por executor, nunca somado. Despacho: executor em radio-card com sugestão e motivo, teto, tempo,
-  saldo do teto mensal, botão nomeado com o executor.
-- **Composer**: diálogo `surface-raised` raio 16, etapas Pedido · Revisar · Recibo. Executor em 3 radio-cards
-  (sugestão, motivo, custo esperado na moeda dele). Split em linhas com checkbox, tipo e tamanho (P/M/G);
-  possível repetida vem desmarcada. Rodapé = frase de confirmação com números + "Criar N tarefas". Recibo:
-  criadas · já estavam na fila · falhas com motivo e "Tentar de novo".
-- **Superagentes**: tabela (Projeto + state dir · Estado · Workers stepper · Profile · porta · Última leitura ·
-  Pausar/Parar/⋯). "Adicionar projeto" é formulário inline com frase de revisão e "Adicionar e iniciar".
-- **Voz**: histórico em bolhas (`you-wash` você, `agent-wash` board); confirmação falada em `halt-wash` com
-  botões; "Bastidores" como lista de etapas com tempo; "O que posso pedir" agrupado; gasto de voz do dia vs teto.
-- **Configurações**: diálogo com navegação lateral; seções na ordem do menu atual; salvar explícito.
-- **Hoje**: uma lista; repositório como coluna fixa de 120 px; legenda de glifos no rodapé.
+- **Beacon**: a pill glued to the repository name. Only "Ao vivo" animates. Amber for stale data; never red.
+- **Agora strip**: `agent-wash`, radius 16. Run card = status + #id + executor · title · real step in mono
+  `agent` · phases (✓ done, ● current, ○ upcoming). Failure on retry: ■ tile glyph + "tentativa n de m"
+  (attempt n of m) + countdown. Silence: hatched glyph + "sem saída há N min" (no output for N min), and it
+  also enters Precisa de você.
+- **Attention item**: `surface` + `line`, radius 10. Line 1: glyph ◆/■ + type + #id + age (+ **new**).
+  Line 2: title. Line 3: reason with cause. One primary action on the right. Order: CI on main → block →
+  review → question → silence. Separator "antes da sua última visita" (before your last visit).
+- **Queue row**: number · ○ · #id + title · age. Selected = `you-wash` radius 10. Text marks "possível
+  repetida" (possible duplicate; amber) and "dividida" (split; muted). Filters as pills with `aria-pressed`.
+- **Merge row**: ✓ · #id + title · "CI ✓/?/falhou · revisão · hora" (CI ✓/?/failed · review · time). Failed CI
+  swaps ✓ for ■ tile.
+- **Throughput cell**: label · data-lg value + unit + delta · sparkline 20 px, 1.5 px `ink-muted` stroke ·
+  24 h/7 d. Four truths: measured (no mark), estimated ("≥" + sentence), unknown ("?" + dashed glyph +
+  reason), no data ("—"). Never 0 for unknown.
+- **Inspector**: header (status, title, #id · age · type · size · link), actions as buttons (Perguntar, Tentar
+  de novo, Parar execução in a tile, Arquivar as a discreet button), inline confirmation in `halt-wash` with
+  the sentence and two named buttons ("Parar execução" / "Continuar rodando" (Keep running)). Tabs with
+  counts; `1–5` switches. Cost per executor, never summed. Dispatch: executor in a radio-card with suggestion
+  and reason, ceiling, time, monthly ceiling balance, button named after the executor.
+- **Composer**: `surface-raised` dialog, radius 16, steps Pedido · Revisar · Recibo (Request · Review ·
+  Receipt). Executor in 3 radio-cards (suggestion, reason, expected cost in its own currency). Split in rows
+  with checkbox, type and size (P/M/G); a possible duplicate comes unchecked. Footer = confirmation sentence
+  with numbers + "Criar N tarefas" (Create N tasks). Receipt: created · already in the queue · failures with
+  reason and "Tentar de novo".
+- **Superagentes**: table (Projeto + state dir · Estado · Workers stepper · Profile · porta (port) · Última
+  leitura · Pausar/Parar/⋯). "Adicionar projeto" is an inline form with a review sentence and "Adicionar e
+  iniciar" (Add and start).
+- **Voz**: history in bubbles (`you-wash` you, `agent-wash` board); spoken confirmation in `halt-wash` with
+  buttons; "Bastidores" as a list of steps with time; "O que posso pedir" grouped; the day's voice spend vs
+  ceiling.
+- **Configurações**: dialog with side navigation; sections in the order of the current menu; explicit save.
+- **Hoje**: one list; repository as a fixed 120 px column; glyph legend at the bottom.
 
-## 5. Sincronia
+## 5. Sync
+
+Table labels stay in Portuguese: Ao vivo (Live), Atrasado (Delayed), Reconectando (Reconnecting), Sem conexão
+(No connection), Sem dados (No data).
 
 | | Ao vivo | Atrasado | Reconectando | Sem conexão | Sem dados |
 |---|---|---|---|---|---|
-| Farol | ● respira | ○ âmbar + "dados de HH:MM · há N" | ◌ âmbar tracejado + "tentativa n" | hachurado + `stale-wash` | ◌ tracejado neutro |
-| Relógios | andam | andam | param | "visto às" | — |
-| Contagens | exatas | exatas | exatas | "≥" | — |
-| Idades | relativas | relativas | relativas | absolutas | — |
-| Faixa topo | — | — | — | sim + "Tentar agora" | — |
-| Card Agora | normal | normal | normal | hachurado, borda tracejada | vazio "—" |
+| Beacon | ● breathes | ○ amber + "dados de HH:MM · há N" | ◌ dashed amber + "tentativa n" | hatched + `stale-wash` | ◌ neutral dashed |
+| Clocks | run | run | stop | "visto às" | — |
+| Counts | exact | exact | exact | "≥" | — |
+| Ages | relative | relative | relative | absolute | — |
+| Top strip | — | — | — | yes + "Tentar agora" | — |
+| Agora card | normal | normal | normal | hatched, dashed border | empty "—" |
 
-Ao reconectar: um toast "Reconectado. N mudanças desde HH:MM." + "Mostrar" (marca **novo**). Some em 8 s ou Esc.
+On reconnect: a toast "Reconectado. N mudanças desde HH:MM." (Reconnected. N changes since HH:MM.) +
+"Mostrar" (Show; marks **new**). It disappears in 8 s or Esc.
 
-## 6. Movimento
+## 6. Motion
 
-| Anima | Como |
+| Animates | How |
 |---|---|
-| Ponto do agente | opacidade 1 → .35, 2.4 s, só com sincronia ao vivo |
-| Camadas (inspector, composer, menus, toast) | entrada 180–220 ms, `translateY(4px)` + opacidade, `cubic-bezier(.2,0,0,1)`; saída 120 ms |
-| Troca de estado de um item (fila → rodando → mesclado) | cor e glifo trocam em 150 ms; a linha não se move sozinha |
-| Barra de objetivo | largura em 300 ms quando muda por ação sua |
+| Agent dot | opacity 1 → .35, 2.4 s, only with live sync |
+| Layers (inspector, composer, menus, toast) | enter 180–220 ms, `translateY(4px)` + opacity, `cubic-bezier(.2,0,0,1)`; exit 120 ms |
+| Item state change (queue → running → merged) | color and glyph swap in 150 ms; the row does not move on its own |
+| Objective bar | width in 300 ms when it changes through your action |
 
-**Não anima**: dado que chega por broadcast (PubSub) — troca o texto no lugar, sem fade, sem contagem
-progressiva; reordenação da fila; sparkline; skeleton (estático, sem shimmer); farol fora de "Ao vivo".
-Nada bloqueia ação: botões respondem durante qualquer transição.
-`prefers-reduced-motion: reduce` → todas as durações 0 e o ponto fica parado; o feedback continua pelo texto
-(o farol diz "Ao vivo", o botão diz "Parando…").
+**Does not animate**: data arriving by broadcast (PubSub) — swap the text in place, no fade, no progressive
+count; queue reordering; sparkline; skeleton (static, no shimmer); beacon outside "Ao vivo".
+Nothing blocks action: buttons respond during any transition.
+`prefers-reduced-motion: reduce` → all durations 0 and the dot stays still; feedback continues through text
+(the beacon says "Ao vivo", the button says "Parando…" (Stopping…)).
 
-LiveView: `phx-mounted`/`JS.transition` só nas camadas; atualizações de stream sem `phx-update` animado.
+LiveView: `phx-mounted`/`JS.transition` only on layers; stream updates without animated `phx-update`.
 
-## 7. Acessibilidade
+## 7. Accessibility
 
-- Texto ≥ 4.5:1 em todos os fundos (tokens já passam); bordas de controle `line-strong` ≥ 3:1.
-- Um anel de foco: 2 px `focus-ring`, afastado 2 px. Ordem de tab: trilho → topo → contexto → Agora →
-  Precisa → Fila → Mesclados → Vazão. `J/K` percorre tarefas na ordem da tela, `Enter` abre, `Esc` fecha e
-  devolve o foco.
-- Estado nunca só por cor: glifo + palavra. `agent` e `halt` têm luminosidade próxima.
-- Botões de ícone com `aria-label`; gráficos com `role="img"` e `aria-label` com os números; faixa de dados
-  parados com `role="status"`; confirmações com `role="alertdialog"`.
-- Atalhos de letra não disparam dentro de campos.
+- Text ≥ 4.5:1 on all backgrounds (tokens already pass); control borders `line-strong` ≥ 3:1.
+- One focus ring: 2 px `focus-ring`, offset 2 px. Tab order: rail → top → context → Agora → Precisa → Fila →
+  Mesclados → Vazão. `J/K` moves through tasks in screen order, `Enter` opens, `Esc` closes and returns focus.
+- State never by color alone: glyph + word. `agent` and `halt` have close luminosity.
+- Icon buttons with `aria-label`; charts with `role="img"` and an `aria-label` with the numbers; stale-data
+  strip with `role="status"`; confirmations with `role="alertdialog"`.
+- Letter shortcuts do not fire inside fields.
 
 ## 8. Copy
 
-Frases curtas, ativas, caixa normal. Erro = causa + recuperação ("Não lemos os PRs. O token do GitHub expirou.").
-Confirmação repete o objeto e a consequência ("Parar a execução de #116? A nova tentativa agendada é cancelada.").
-Botões nomeiam a ação ("Parar execução", "Criar 7 tarefas"), nunca "OK"/"Sim".
+Short, active sentences, normal case. Error = cause + recovery ("Não lemos os PRs. O token do GitHub expirou."
+— "We did not read the PRs. The GitHub token expired."). Confirmation repeats the object and the consequence
+("Parar a execução de #116? A nova tentativa agendada é cancelada." — "Stop the execution of #116? The
+scheduled retry is cancelled."). Buttons name the action ("Parar execução", "Criar 7 tarefas"), never
+"OK"/"Sim".
 
-## 9. Hipóteses (fora do escopo atual, marcadas)
+## 9. Hypotheses (out of current scope, marked)
 
-1. **hipótese** — Agrupar a Fila por objetivo quando há um objetivo aberto (hoje "0 de 13" e "13 na fila" não se ligam visualmente).
-2. **hipótese** — O inspector tem 5 abas no produto (Conversa, Atividade, Chamadas de IA, Execuções, PR) e 4 no brief; decidir se Chamadas de IA entra em Execuções.
-3. **hipótese** — Pedidos e respostas escritos sem conexão ficam guardados e saem ao reconectar. Hoje não sei o comportamento; desenhei sem prometer.
-4. **hipótese** — Cota do Codex fora do teto em US$ nas Configurações (o brief lista tetos sem dizer por executor).
-5. **hipótese** — Contexto de "silêncio de execução": limiar sugerido 10 min sem saída.
+1. **hypothesis** — Group the Fila by objective when there is an open objective (today "0 de 13" and "13 na
+   fila" do not connect visually).
+2. **hypothesis** — The inspector has 5 tabs in the product (Conversa, Atividade, Chamadas de IA, Execuções,
+   PR) and 4 in the brief; decide whether Chamadas de IA goes into Execuções.
+3. **hypothesis** — Requests and replies written while offline are kept and sent on reconnect. I do not know
+   the current behavior; I designed without promising it.
+4. **hypothesis** — Codex quota outside the US$ ceiling in Configurações (the brief lists ceilings without
+   saying per executor).
+5. **hypothesis** — "Execution silence" context: suggested threshold 10 min without output.
