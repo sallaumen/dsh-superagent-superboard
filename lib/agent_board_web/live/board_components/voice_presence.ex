@@ -1,6 +1,7 @@
 defmodule AgentBoardWeb.BoardComponents.VoicePresence do
   @moduledoc "Browser media activity, presented without changing the board or taking focus."
   use Phoenix.Component
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   import AgentBoardWeb.CoreComponents, only: [icon: 1]
 
@@ -23,12 +24,12 @@ defmodule AgentBoardWeb.BoardComponents.VoicePresence do
           <.icon name="hero-speaker-wave" class="voice-presence-speak-icon size-4" />
         </span>
         <div class="voice-presence-copy">
-          <span class="voice-presence-phase">Voz</span>
-          <h2 id={"#{@id}-title"} class="voice-presence-title">Voz</h2>
+          <span class="voice-presence-phase">{gettext("Voice")}</span>
+          <h2 id={"#{@id}-title"} class="voice-presence-title">{gettext("Voice")}</h2>
           <p class="voice-presence-detail"></p>
         </div>
         <button type="button" class="voice-presence-control">
-          Fechar
+          {gettext("Close")}
         </button>
       </div>
       <div class="voice-presence-flow" aria-hidden="true">

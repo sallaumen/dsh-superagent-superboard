@@ -1,5 +1,9 @@
 # Original BRIEF — Refining the Agent Board design (the agent's operational panel)
 
+This is the original design brief. Its Portuguese-only copy direction has been
+superseded by the current interface-language contract in
+[the maintainer contract](../../maintainer-contract.md#interface-language).
+
 ## 1. What the product is
 
 The Agent Board is a local panel (Phoenix LiveView, runs at 127.0.0.1:4099) that operates a coding agent

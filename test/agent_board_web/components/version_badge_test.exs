@@ -6,6 +6,11 @@ defmodule AgentBoardWeb.Components.VersionBadgeTest do
 
   alias AgentBoardWeb.Components.VersionBadge
 
+  setup do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+    :ok
+  end
+
   test "shows the commit count and opens Settings" do
     html =
       render_component(&VersionBadge.version_badge/1, %{

@@ -1,5 +1,6 @@
 defmodule AgentBoardWeb.BoardComponents.Presentation do
   @moduledoc "Formatting of stored board data; no reads or actions."
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   def time(nil), do: ""
 
@@ -91,24 +92,24 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
   def truncate(value), do: inspect(value)
 
   def empty_copy(:running), do: "Nenhuma tarefa rodando."
-  def empty_copy(:ready), do: "Nada esperando revisão."
-  def empty_copy(:blocked), do: "Nada bloqueado."
-  def empty_copy(:merged), do: "Nenhum PR mesclado ainda."
-  def empty_copy(:queued), do: "Nenhuma tarefa na fila."
+  def empty_copy(:ready), do: gettext("Nothing awaiting review.")
+  def empty_copy(:blocked), do: gettext("Nothing blocked.")
+  def empty_copy(:merged), do: gettext("No PRs merged yet.")
+  def empty_copy(:queued), do: gettext("No tasks in queue.")
 
-  def ai_status_label(:logged_in), do: "configurada · conexão não verificada"
-  def ai_status_label(:not_configured), do: "não configurada"
-  def ai_status_label(:rehearsal), do: "ensaio · fixtures locais"
+  def ai_status_label(:logged_in), do: gettext("Configured · connection not verified")
+  def ai_status_label(:not_configured), do: gettext("not configured")
+  def ai_status_label(:rehearsal), do: gettext("rehearsal · local fixtures")
   def ai_status_label(status), do: to_string(status)
 
   def latency(value) when is_integer(value), do: "#{value}ms"
-  def latency(_), do: "desconhecido"
+  def latency(_), do: gettext("unknown")
 
   def token_usage(%{input_tokens: input, output_tokens: output})
       when is_integer(input) and is_integer(output),
       do: "#{input + output} tokens"
 
-  def token_usage(_), do: "desconhecido"
+  def token_usage(_), do: gettext("unknown")
 
   # Zero is also stored for old calls and unpriced models, so it is not a
   # trustworthy zero-dollar bill. Keep the stored microdollar precision.
@@ -125,5 +126,5 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
     if fraction == "", do: "$#{dollars}", else: "$#{dollars}.#{fraction}"
   end
 
-  def estimated_cost(_), do: "desconhecido"
+  def estimated_cost(_), do: gettext("unknown")
 end

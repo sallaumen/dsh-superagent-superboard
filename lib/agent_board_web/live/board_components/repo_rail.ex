@@ -26,7 +26,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
       |> assign(:agent_total, Enum.sum(Enum.map(assigns.superagents, & &1.max_workers)))
 
     ~H"""
-    <nav class="ab-rail" aria-label="Repositórios">
+    <nav class="ab-rail" aria-label={gettext("Repositories")}>
       <div class="ab-brand">
         <span class="ab-brand__mark" aria-hidden="true"></span>
         <span>Agent Board</span>
@@ -40,10 +40,10 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
         aria-current={to_string(@view == "hoje")}
         phx-click="select"
         phx-value-view="hoje"
-        title="Hoje, nos dois repositórios"
+        title={gettext("Today, across repositories")}
         data-initial="H"
       >
-        <span class="ab-repo__name">Hoje</span>
+        <span class="ab-repo__name">{gettext("Today")}</span>
         <span class="ab-repo__marks">
           <span :if={waiting(@overview) > 0} class="ab-repo__n ab-repo__n--you">
             <.glyph kind={:review} />{waiting(@overview)}
@@ -64,22 +64,22 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
         <span class="ab-repo__name">{repo.name}</span>
         <span class="ab-repo__marks">
           <%= if old?(repo, @overview) do %>
-            <span class="ab-repo__n ab-repo__n--unknown" title="Sem dado recente">?</span>
+            <span class="ab-repo__n ab-repo__n--unknown" title={gettext("No recent data")}>?</span>
           <% else %>
-            <span :if={running(repo, @overview) > 0} class="ab-repo__n" title="Rodando">
+            <span :if={running(repo, @overview) > 0} class="ab-repo__n" title={gettext("Running")}>
               <.glyph kind={:run} live={@live} />
             </span>
             <span
               :if={you(repo, @overview) > 0}
               class="ab-repo__n ab-repo__n--you"
-              title={"#{you(repo, @overview)} esperando você"}
+              title={gettext("%{count} waiting for you", count: you(repo, @overview))}
             >
               <.glyph kind={:review} />{you(repo, @overview)}
             </span>
             <span
               :if={halt(repo, @overview) > 0}
               class="ab-repo__n ab-repo__n--halt"
-              title={"#{halt(repo, @overview)} bloqueados ou com CI falhando"}
+              title={gettext("%{count} blocked or failing CI", count: halt(repo, @overview))}
             >
               <.glyph kind={:blocked} />{halt(repo, @overview)}
             </span>
@@ -88,7 +88,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
       </button>
 
       <form id="repo-select" phx-change="select" hidden>
-        <select name="repo" aria-label="Repositório">
+        <select name="repo" aria-label={gettext("Repository")}>
           <option
             :for={repo <- @repos}
             value={"#{repo.owner}/#{repo.name}"}
@@ -106,10 +106,20 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
           phx-value-panel="superagents"
-          aria-label={"Superagentes: #{@agent_total} agentes em #{length(@superagents)} projetos"}
-          title={"#{@agent_total} agentes em #{length(@superagents)} projetos"}
+          aria-label={
+            gettext("Superagents: %{agents} · projects: %{projects}",
+              agents: @agent_total,
+              projects: length(@superagents)
+            )
+          }
+          title={
+            gettext("Superagents: %{agents} · projects: %{projects}",
+              agents: @agent_total,
+              projects: length(@superagents)
+            )
+          }
         >
-          <.ico name="grip" /><span>Superagentes</span>
+          <.ico name="grip" /><span>{gettext("Superagents")}</span>
           <span class="ab-rail__badge" aria-hidden="true">{@agent_total}</span>
         </button>
         <button
@@ -121,9 +131,9 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           data-panel-trigger
           aria-haspopup="dialog"
           aria-controls="panel-shortcuts"
-          aria-label="Atalhos"
+          aria-label={gettext("Shortcuts")}
         >
-          <.ico name="keys" /><span>Atalhos</span><.kbd key="?" />
+          <.ico name="keys" /><span>{gettext("Shortcuts")}</span><.kbd key="?" />
         </button>
         <button
           id="open-logs"
@@ -134,18 +144,18 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           data-panel-trigger
           aria-haspopup="dialog"
           aria-controls="panel-logs"
-          aria-label="Logs de avisos e erros"
+          aria-label={gettext("Warning and Error Logs")}
         >
-          <.ico name="log" /><span>Logs</span>
+          <.ico name="log" /><span>{gettext("Logs")}</span>
         </button>
         <button
           type="button"
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
           phx-value-panel="voice"
-          aria-label="Conversa por voz"
+          aria-label={gettext("Voice Conversation")}
         >
-          <.ico name="mic" /><span>Conversa por voz</span>
+          <.ico name="mic" /><span>{gettext("Voice conversation")}</span>
         </button>
         <button
           id="board-settings"
@@ -158,9 +168,9 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           aria-controls="panel-settings"
           data-update-ready={to_string(@version.state in [:behind, :restart])}
         >
-          <.ico name="cog" /><span>Configurações</span>
+          <.ico name="cog" /><span>{gettext("Settings")}</span>
           <span :if={@version.state in [:behind, :restart]} class="ab-sr">
-            · {if @version.state == :restart, do: "reinício pendente", else: "atualização disponível"}
+            · {if @version.state == :restart, do: gettext("restart pending"), else: gettext("update available")}
           </span>
         </button>
       </div>

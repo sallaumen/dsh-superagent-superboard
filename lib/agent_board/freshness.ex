@@ -112,6 +112,7 @@ defmodule AgentBoard.Freshness do
       github_source(now, state, last_attempt, last_success, age),
       agent_source(now, agent),
       %{
+        code: :queue_current,
         label: "Fila local",
         kind: :run,
         word: "OK",
@@ -125,6 +126,7 @@ defmodule AgentBoard.Freshness do
     cond do
       is_nil(last_attempt) ->
         %{
+          code: :github_waiting,
           label: "GitHub (PRs, CI)",
           kind: :unknown,
           word: "Sem dados",
@@ -134,6 +136,8 @@ defmodule AgentBoard.Freshness do
 
       last_attempt.kind == "sync_error" ->
         %{
+          code: :github_failed,
+          attempted_at: last_attempt.inserted_at,
           label: "GitHub (PRs, CI)",
           kind: :blocked,
           word: "Falhou",
@@ -143,6 +147,8 @@ defmodule AgentBoard.Freshness do
 
       state == :delayed and errors(last_success) > 0 ->
         %{
+          code: :github_errors,
+          error_count: errors(last_success),
           label: "GitHub (PRs, CI)",
           kind: :stale,
           word: "Com erros",
@@ -152,6 +158,7 @@ defmodule AgentBoard.Freshness do
 
       state == :delayed ->
         %{
+          code: :github_delayed,
           label: "GitHub (PRs, CI)",
           kind: :stale,
           word: "Atrasado",
@@ -161,6 +168,7 @@ defmodule AgentBoard.Freshness do
 
       true ->
         %{
+          code: :github_current,
           label: "GitHub (PRs, CI)",
           kind: :run,
           word: "OK",
@@ -186,6 +194,7 @@ defmodule AgentBoard.Freshness do
     cond do
       running? and is_integer(age) and age > @agent_running_ttl ->
         %{
+          code: :agent_stale,
           label: "Processo do agente",
           kind: :stale,
           word: "Sem sinal",
@@ -195,6 +204,7 @@ defmodule AgentBoard.Freshness do
 
       is_nil(at) ->
         %{
+          code: :agent_empty,
           label: "Processo do agente",
           kind: :run,
           word: "OK",
@@ -204,6 +214,7 @@ defmodule AgentBoard.Freshness do
 
       true ->
         %{
+          code: :agent_current,
           label: "Processo do agente",
           kind: :run,
           word: "OK",
@@ -215,6 +226,7 @@ defmodule AgentBoard.Freshness do
 
   defp agent_unavailable do
     %{
+      code: :agent_unavailable,
       label: "Processo do agente",
       kind: :blocked,
       word: "Indisponível",

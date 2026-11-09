@@ -273,6 +273,7 @@
 .board-settings-body [role="group"] { display: inline-flex; gap: 0; padding: 0.1875rem; border-radius: 0.625rem; background: var(--color-base-300); }
 .board-settings-body [role="group"] button { min-height: 2.375rem; border: 0; border-radius: 0.5rem; }
 .board-settings-body [role="group"] button[aria-pressed="true"] { background: var(--color-base-content); color: var(--color-base-100); }
+.board-settings-body #board-language-form button { min-height: 2.75rem; }
 .board-settings-body #version-panel { display: grid; gap: 0.75rem; width: auto; margin: 0; padding: 0.875rem 0 1rem; border: 0; border-top: 1px solid var(--color-base-300); border-radius: 0; background: transparent; }
 .board-settings-body .version-details { gap: 0.5rem 1rem; }
 @media (max-width: 63.999rem) {

@@ -22,7 +22,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
     ~H"""
     <section id="sec-log" aria-labelledby="sec-log-title">
       <div class="ab-sec__head">
-        <h2 id="sec-log-title">Mesclados</h2>
+        <h2 id="sec-log-title">{gettext("Merged")}</h2>
         <span class="ab-sec__count">{count(@log.total, @frozen)} em 7 dias</span>
         <span class="ab-top__spacer"></span>
         <button
@@ -33,11 +33,11 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
           phx-value-panel="history"
           data-panel-trigger
         >
-          Histórico <.ico name="ext" />
+          {gettext("History")} <.ico name="ext" />
         </button>
       </div>
 
-      <div class="ab-week" aria-label="Merges por dia, últimos 7 dias">
+      <div class="ab-week" aria-label={gettext("Merges per day, last 7 days")}>
         <div
           :for={day <- @log.days}
           class={["ab-day", day.today && "is-today"]}
@@ -62,10 +62,10 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
         </div>
       </div>
 
-      <div :if={@log.total == 0} class="ab-sec__empty">Nenhum PR mesclado nesta semana.</div>
+      <div :if={@log.total == 0} class="ab-sec__empty">{gettext("No PRs merged this week.")}</div>
 
       <div :if={@log.total > 0} class="ab-log">
-        <h3 class="ab-log__title">Histórico de 7 dias</h3>
+        <h3 class="ab-log__title">{gettext("7-day history")}</h3>
         <div :for={group <- @groups} class="ab-log__group">
           <div class="ab-log__day">
             <span class="ab-label">{group.label}</span>
@@ -111,7 +111,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
           phx-value-panel="history"
           data-panel-trigger
         >
-          Mais {@hidden_groups} {if @hidden_groups == 1, do: "dia", else: "dias"} no histórico
+          {ngettext("%{count} more day in history", "%{count} more days in history", @hidden_groups)}
         </button>
       </div>
     </section>

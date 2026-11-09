@@ -7,6 +7,11 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeedTest do
   alias AgentBoard.ElevenLabs.Usage
   alias AgentBoardWeb.BoardComponents.VoiceActivityFeed
 
+  setup do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+    :ok
+  end
+
   defp day(fields), do: Map.merge(Usage.today(), Map.new(fields))
 
   test "the usage line shows characters against the cap, minutes and cache hits" do
@@ -21,6 +26,15 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeedTest do
 
   test "without a cap, minutes or hits the line is only the characters" do
     assert VoiceActivityFeed.usage(day([]), 0) == "hoje: 0 caracteres"
+  end
+
+  test "English usage uses English labels and number separators" do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+
+    assert VoiceActivityFeed.usage(
+             day(tts_characters: 3420, stt_seconds: 72.0, cache_hits: 18),
+             20_000
+           ) == "today: 3,420 of 20,000 characters · 1.2 min transcribed · 18 from cache"
   end
 
   test "the rendered feed reads today's ledger" do

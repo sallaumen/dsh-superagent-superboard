@@ -1,6 +1,6 @@
 defmodule AgentBoardWeb.Components.VoicePanel do
   @moduledoc """
-  The voice controls of the Voz settings section: the language and the
+  The voice controls of the Voice settings section: the language and the
   volume the agent speaks with, when it speaks (calls for attention and the
   rest of the board), and the ElevenLabs voice and model, a preview, the
   save and a free-form phrase to try the voice.
@@ -27,6 +27,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
   """
 
   use Phoenix.Component
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   import AgentBoardWeb.CoreComponents, only: [icon: 1]
 
@@ -50,8 +51,8 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           class="voice-field"
         >
           <label for="voice-input" class="voice-field-label">
-            Sua voz para o agente
-            <span class="voice-source-note">· espaço duas vezes abre a entrada</span>
+            {gettext("Your voice to the agent")}
+            <span class="voice-source-note">{gettext("· press Space twice to start input")}</span>
           </label>
           <div class="settings-actions">
             <select id="voice-input" name="input" class="voice-select">
@@ -69,9 +70,9 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           class="voice-field"
         >
           <label for="voice-engine" class="voice-field-label">
-            Motor da voz
+            {gettext("Voice engine")}
             <span :if={!@voice.configured} class="voice-source-note">
-              · sem chave ElevenLabs, sempre a do navegador
+              {gettext("· without an ElevenLabs key, always use the browser voice")}
             </span>
           </label>
           <div class="settings-actions">
@@ -89,7 +90,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           phx-auto-recover="ignore"
           class="voice-field"
         >
-          <label for="voice-replies" class="voice-field-label">Respostas faladas</label>
+          <label for="voice-replies" class="voice-field-label">{gettext("Spoken Responses")}</label>
           <div class="settings-actions">
             <select id="voice-replies" name="replies" class="voice-select">
               <option :for={{id, name} <- replies()} value={id} selected={id == @voice.replies}>
@@ -100,7 +101,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
         </form>
 
         <div class="voice-field">
-          <label for="voice-language" class="voice-field-label">Idioma da voz</label>
+          <label for="voice-language" class="voice-field-label">{gettext("Voice language")}</label>
           <form
             id="voice-language-form"
             phx-change="voice_language"
@@ -126,7 +127,8 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           class="voice-field"
         >
           <label for="voice-volume" class="voice-field-label">
-            Volume <output for="voice-volume" data-voice-volume-readout>{@voice.volume}%</output>
+            {gettext("Volume")}
+            <output for="voice-volume" data-voice-volume-readout>{@voice.volume}%</output>
           </label>
           <input
             id="voice-volume"
@@ -149,7 +151,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           class="voice-field"
         >
           <label for="voice-speed" class="voice-field-label">
-            Velocidade <output for="voice-speed">{speed_label(@voice.speed)}</output>
+            {gettext("Speed")} <output for="voice-speed">{speed_label(@voice.speed)}</output>
           </label>
           <input
             id="voice-speed"
@@ -172,7 +174,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           phx-auto-recover="ignore"
           class="voice-field"
         >
-          <label for="voice-style" class="voice-field-label">Entonação</label>
+          <label for="voice-style" class="voice-field-label">{gettext("Intonation")}</label>
           <div class="settings-actions">
             <select id="voice-style" name="style" class="voice-select">
               <option
@@ -193,8 +195,8 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           class="voice-field"
         >
           <label for="voice-pause" class="voice-field-label">
-            Pausa para enviar
-            <span class="voice-source-note">· quanto silêncio encerra a sua fala</span>
+            {gettext("Pause before sending")}
+            <span class="voice-source-note">{gettext("· how much silence ends your speech")}</span>
           </label>
           <div class="settings-actions">
             <select id="voice-pause" name="pause" class="voice-select">
@@ -210,7 +212,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
         </form>
 
         <fieldset class="voice-field">
-          <legend class="voice-field-label">Quando falar</legend>
+          <legend class="voice-field-label">{gettext("When to speak")}</legend>
           <form id="voice-attention-form" phx-change="voice_attention" phx-auto-recover="ignore">
             <input type="hidden" name="attention" value="false" />
             <label class="voice-toggle">
@@ -220,7 +222,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
                 name="attention"
                 value="true"
                 checked={@voice.attention}
-              /> Chamar quando uma tarefa precisar de mim
+              /> {gettext("Notify me when a task needs me")}
             </label>
           </form>
           <form
@@ -236,7 +238,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
                 name="speak_events"
                 value="true"
                 checked={@voice.speak_events}
-              /> Narrar o resto: início de tarefa, fila, sincronização e confirmações
+              /> {gettext("Narrate the rest: task start, queue, synchronization, and confirmations")}
             </label>
           </form>
           <form id="voice-earcons-form" phx-change="voice_earcons" phx-auto-recover="ignore">
@@ -248,25 +250,28 @@ defmodule AgentBoardWeb.Components.VoicePanel do
                 name="earcons"
                 value="true"
                 checked={@voice.earcons}
-              /> Som curto ao abrir e fechar o microfone
+              /> {gettext("Short sound when opening and closing the microphone")}
             </label>
           </form>
         </fieldset>
       </div>
 
       <p :if={!@voice.configured} class="voice-note">
-        Sem chave, o agente fala com a voz do navegador (grátis). Para a voz da ElevenLabs, defina
+        {gettext(
+          "Without a key, the agent speaks with the browser's voice (free). For ElevenLabs' voice, set"
+        )}
         <code class="text-base-content">ELEVENLABS_API_KEY</code>
-        no <code class="text-base-content">.env.local</code>
-        e reinicie o board.
+        {gettext("in")} <code class="text-base-content">.env.local</code>
+        {gettext("and restart the board.")}
       </p>
 
       <div :if={@voice.configured} class="voice-fields">
         <div class="voice-field">
           <label for="voice-picker" class="voice-field-label">
-            Voz da ElevenLabs
+            {gettext("ElevenLabs voice")}
             <span class="voice-source-note">
-              · {@voice.name || "sem nome"} · <code>{@voice.id}</code> · {source_label(@voice.source)}
+              · {@voice.name || gettext("unnamed")} · <code>{@voice.id}</code>
+              · {source_label(@voice.source)}
             </span>
           </label>
           <div class="settings-actions">
@@ -279,19 +284,19 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               <select
                 id="voice-picker"
                 name="voice"
-                aria-label="Voz da ElevenLabs"
+                aria-label={gettext("ElevenLabs Voice")}
                 aria-describedby="voice-picker-note"
                 disabled={@voice.source == :environment}
                 class="voice-select"
               >
-                <%!-- Before "Listar vozes" the picker still names the voice in
+                <%!-- Before "List voices" the picker still names the voice in
                      use: a blank picker read as "nothing was saved". --%>
                 <option
                   :if={not Enum.any?(@voice.voices || [], &(&1.id == @voice.id))}
                   value={@voice.id}
                   selected
                 >
-                  {@voice.name || "Voz atual"} · {@voice.id}
+                  {@voice.name || gettext("Current voice")} · {@voice.id}
                 </option>
                 <option
                   :for={voice <- @voice.voices || []}
@@ -310,14 +315,14 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               disabled={@voice.loading}
             >
               {cond do
-                @voice.loading -> "Carregando…"
-                @voice.voices in [nil, []] -> "Listar vozes"
-                true -> "Atualizar lista"
+                @voice.loading -> gettext("Loading…")
+                @voice.voices in [nil, []] -> gettext("List voices")
+                true -> gettext("Refresh list")
               end}
             </button>
 
             <button type="button" phx-click="voice_preview">
-              <.icon name="hero-play" class="size-3.5" />Ouvir
+              <.icon name="hero-play" class="size-3.5" />{gettext("Listen")}
             </button>
 
             <button
@@ -326,7 +331,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               phx-click="voice_reset"
               class="voice-reset"
             >
-              Voltar ao padrão
+              {gettext("Reset to default")}
             </button>
           </div>
           <p id="voice-picker-note" class="voice-source-note">
@@ -336,9 +341,9 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
         <div class="voice-field">
           <label for="voice-model" class="voice-field-label">
-            Modelo de fala
+            {gettext("Speech model")}
             <span :if={@voice.model_source == :environment} class="voice-source-note">
-              · definido no .env.local
+              {gettext("· set in .env.local")}
             </span>
           </label>
           <form
@@ -350,7 +355,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
             <select
               id="voice-model"
               name="model"
-              aria-label="Modelo de fala"
+              aria-label={gettext("Speech model")}
               disabled={@voice.model_source == :environment}
               class="voice-select"
             >
@@ -366,15 +371,15 @@ defmodule AgentBoardWeb.Components.VoicePanel do
         </div>
 
         <form id="voice-try" phx-submit="voice_try" class="voice-field">
-          <label for="voice-phrase" class="voice-field-label">Testar uma frase</label>
+          <label for="voice-phrase" class="voice-field-label">{gettext("Test a phrase")}</label>
           <div class="settings-actions">
             <input
               id="voice-phrase"
               name="phrase"
-              placeholder="Digite algo para ouvir o agente…"
-              aria-label="Frase para falar"
+              placeholder={gettext("Type something to hear the agent...")}
+              aria-label={gettext("Phrase to speak")}
             />
-            <button type="submit"><.icon name="hero-play" class="size-3.5" />Tocar</button>
+            <button type="submit"><.icon name="hero-play" class="size-3.5" />{gettext("Play")}</button>
           </div>
         </form>
       </div>
@@ -390,48 +395,57 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
   defp inputs,
     do: [
-      {"wispr", "WisprFlow (digita no board, sem custo)"},
-      {"microphone", "Microfone do board (transcrição ElevenLabs, paga)"}
+      {"wispr", gettext("WisprFlow (types into the board, free)")},
+      {"microphone", gettext("Board microphone (ElevenLabs transcription, paid)")}
     ]
 
   defp engines,
     do: [
-      {"browser", "Navegador em tudo (grátis)"},
-      {"mixed", "Misto: ElevenLabs só nos chamados"},
-      {"elevenlabs", "ElevenLabs em tudo (pago)"}
+      {"browser", gettext("Browser for everything (free)")},
+      {"mixed", gettext("Mixed: ElevenLabs only for alerts")},
+      {"elevenlabs", gettext("ElevenLabs for everything (paid)")}
     ]
 
   defp replies,
     do: [
-      {"short", "Curtas: falo a primeira frase, o resto fica escrito"},
-      {"full", "Completas"}
+      {"short", gettext("Short: speak the first sentence, write the rest")},
+      {"full", gettext("Full responses")}
     ]
 
   defp styles,
-    do: [{"steady", "Estável"}, {"natural", "Natural"}, {"expressive", "Expressiva"}]
+    do: [
+      {"steady", gettext("Stable")},
+      {"natural", gettext("Natural")},
+      {"expressive", gettext("Expressive")}
+    ]
 
   defp pauses,
-    do: [{"short", "Curta · 0,8 s"}, {"normal", "Normal · 1,2 s"}, {"long", "Longa · 1,8 s"}]
+    do: [
+      {"short", gettext("Short · 0.8 s")},
+      {"normal", gettext("Normal · 1.2 s")},
+      {"long", gettext("Long · 1.8 s")}
+    ]
 
-  # What the picked voice is used for under the chosen engine: with Misto or
-  # Navegador, a saved voice that is never heard reads as "it didn't save".
+  # Explain what the picked voice does under each engine.
   defp picker_note(_engine, :environment),
-    do: "Definida no .env.local (ELEVENLABS_VOICE_ID); para trocar aqui, remova a variável."
+    do: gettext("Set in .env.local (ELEVENLABS_VOICE_ID); to change here, remove the variable.")
 
   defp picker_note("elevenlabs", _source),
-    do: "Escolher na lista já salva. Esta voz fala tudo."
+    do: gettext("Choose from the saved list. This voice speaks everything.")
 
   defp picker_note("mixed", _source),
     do:
-      "Escolher na lista já salva. Com o motor Misto, esta voz fala os chamados de atenção " <>
-        "e as respostas do agente de código; a conversa usa a voz do navegador."
+      gettext(
+        "Choose from the saved list. With Mixed mode, this voice speaks alerts and code-agent replies; conversation uses the browser voice."
+      )
 
   defp picker_note(_engine, _source),
     do:
-      "Escolher na lista já salva. Com o motor Navegador, esta voz não é usada: escolha " <>
-        "Misto ou ElevenLabs em tudo no Motor da voz."
+      gettext(
+        "Choose from the saved list. Browser mode does not use this voice; choose Mixed or ElevenLabs for everything in Voice engine."
+      )
 
-  defp source_label(:environment), do: "definida no .env.local"
-  defp source_label(:saved), do: "escolhida aqui"
-  defp source_label(:default), do: "voz padrão"
+  defp source_label(:environment), do: gettext("set in .env.local")
+  defp source_label(:saved), do: gettext("chosen here")
+  defp source_label(:default), do: gettext("Default voice")
 end

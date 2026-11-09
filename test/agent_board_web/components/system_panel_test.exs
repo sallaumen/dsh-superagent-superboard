@@ -6,6 +6,11 @@ defmodule AgentBoardWeb.Components.SystemPanelTest do
 
   alias AgentBoardWeb.Components.SystemPanel
 
+  setup do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+    :ok
+  end
+
   test "a behind checkout warns that the restart is manual" do
     html =
       render_component(&SystemPanel.version_panel/1, %{

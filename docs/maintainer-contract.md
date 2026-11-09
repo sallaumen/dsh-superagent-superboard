@@ -48,6 +48,24 @@ differ. Change a general rule upstream, not here.
 
 ## The data
 
+### Interface language
+
+- The board interface defaults to English for a browser without a supported
+  `board_locale` cookie. The only supported choices are `en` and `pt-BR`;
+  unknown cookie values fall back to English, and the language form rejects
+  unknown values. The form's return path is restricted to the board route.
+- The browser pipeline sets the request locale and passes the validated value
+  to the LiveView session. The LiveView sets its own Gettext locale on mount,
+  because the HTTP request and connected LiveView run in different processes.
+  The root HTML `lang` attribute follows the same validated preference.
+- Interface language is per browser. `AgentBoard.Settings` continues to own
+  board-wide voice language; changing interface language must never update the
+  spoken-language preference, provider requests, stored task data, or JSON API.
+- User-facing interface copy uses Gettext, with English as the default message
+  and `priv/gettext/pt_BR/LC_MESSAGES/default.po` for Brazilian Portuguese.
+  Keep both languages complete when adding or changing a control, status,
+  error, empty state, or accessible name.
+
 - **Ecto migrations** own the schema. Never edit a migrated table by hand; add a
   migration.
 - The task state is two-layered: the **issue** is the baseline (`open` →

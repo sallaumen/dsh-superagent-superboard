@@ -128,17 +128,19 @@ List row: 10–12 px vertical; minimum target 32 px on desktop, 44 px on touch.
 
 ## 5. Sync
 
-Table labels stay in Portuguese: Ao vivo (Live), Atrasado (Delayed), Reconectando (Reconnecting), Sem conexão
-(No connection), Sem dados (No data).
+Table labels follow the viewer's board language. English is the initial choice;
+Brazilian Portuguese remains available in Settings. The original Portuguese
+labels in the brief are historical references: Ao vivo (Live), Atrasado (Delayed),
+Reconectando (Reconnecting), Sem conexão (No connection), Sem dados (No data).
 
-| | Ao vivo | Atrasado | Reconectando | Sem conexão | Sem dados |
+| | Live | Delayed | Reconnecting | No connection | No data |
 |---|---|---|---|---|---|
-| Beacon | ● breathes | ○ amber + "dados de HH:MM · há N" | ◌ dashed amber + "tentativa n" | hatched + `stale-wash` | ◌ neutral dashed |
-| Clocks | run | run | stop | "visto às" | — |
+| Beacon | ● breathes | ○ amber + "data from HH:MM · N min ago" | ◌ dashed amber + "attempt N" | hatched + `stale-wash` | ◌ neutral dashed |
+| Clocks | run | run | stop | "last seen at" | — |
 | Counts | exact | exact | exact | "≥" | — |
 | Ages | relative | relative | relative | absolute | — |
-| Top strip | — | — | — | yes + "Tentar agora" | — |
-| Agora card | normal | normal | normal | hatched, dashed border | empty "—" |
+| Top strip | — | — | — | yes + "Try now" | — |
+| Now card | normal | normal | normal | hatched, dashed border | empty "—" |
 
 On reconnect: a toast "Reconectado. N mudanças desde HH:MM." (Reconnected. N changes since HH:MM.) +
 "Mostrar" (Show; marks **new**). It disappears in 8 s or Esc.
