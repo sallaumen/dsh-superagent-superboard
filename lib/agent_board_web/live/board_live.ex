@@ -24,6 +24,7 @@ defmodule AgentBoardWeb.BoardLive do
     LocalCI,
     Metrics,
     Orchestrator,
+    Overview,
     Runners,
     Settings,
     Superagents,
@@ -539,7 +540,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp load(socket, nil) do
-    today = Board.today() |> with_runner_running()
+    today = Overview.today() |> with_runner_running()
 
     socket
     |> assign(
@@ -576,7 +577,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp read_board(socket, repo) do
-    today = Board.today() |> with_runner_running()
+    today = Overview.today() |> with_runner_running()
     spend = Report.today(socket.assigns.tz_offset)
 
     # load/2 runs again on every reload: subscribing twice would deliver every

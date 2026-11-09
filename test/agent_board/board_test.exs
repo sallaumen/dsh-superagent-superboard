@@ -2,7 +2,7 @@ defmodule AgentBoard.BoardTest do
   @moduledoc "The context: the repositories, the board and the task actions."
   use AgentBoard.DataCase, async: true
 
-  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.{Board, Overview, Repo}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   test "a repository can be added" do
@@ -245,7 +245,7 @@ defmodule AgentBoard.Board.ConversationTest do
   @moduledoc "The conversation: the comments on a task."
   use AgentBoard.DataCase, async: true
 
-  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.{Board, Overview, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
 
   defp task(repo) do
@@ -424,7 +424,7 @@ defmodule AgentBoard.BoardOverviewTest do
   @moduledoc "The rail's counts and the reconnect change count, from real rows."
   use AgentBoard.DataCase, async: true
 
-  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.{Board, Overview, Repo}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   test "the rail counts running, waiting and failing work per repository" do
@@ -436,7 +436,7 @@ defmodule AgentBoard.BoardOverviewTest do
 
     insert_merged(repo, 10, "failure")
 
-    overview = Board.repo_overview()[repo.id]
+    overview = Overview.repo_overview()[repo.id]
     assert overview.running == 1
     assert overview.you == 1
     assert overview.halt == 1
@@ -463,19 +463,19 @@ defmodule AgentBoard.BoardOverviewTest do
 
     assert Enum.map(board.ready, & &1.number) == [3]
     assert board.task_counts.ready == 1
-    assert Board.repo_overview()[repo.id].you == 1
+    assert Overview.repo_overview()[repo.id].you == 1
 
     assert Board.reconcile_resolved_tasks(repo) == 1
     assert Repo.get(Task, linked.id).state == "done"
     assert Repo.get(Task, open.id).state == "ready"
-    assert Board.repo_overview()[repo.id].you == 1
+    assert Overview.repo_overview()[repo.id].you == 1
   end
 
   test "a clean sync makes the repository known" do
     {:ok, repo} = Board.add_repository("sallaumen", "known")
     Board.log_event(repo.id, "sync", "sallaumen/known", %{"errors" => 0})
 
-    refute Board.repo_overview()[repo.id].unknown
+    refute Overview.repo_overview()[repo.id].unknown
   end
 
   test "the sync snapshot keeps the last success apart from the failed attempt" do
@@ -531,7 +531,7 @@ defmodule AgentBoard.BoardChangesTest do
   @moduledoc "The reconnect count uses stored timestamps, not a live process."
   use AgentBoard.DataCase, async: true
 
-  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.{Board, Overview, Repo}
   alias AgentBoard.Board.Task
 
   test "changes since a point count tasks, merges and comments" do

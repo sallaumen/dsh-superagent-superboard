@@ -171,7 +171,8 @@ evento (uma retentativa abriria um segundo issue).
 | #404 | `Board` escrevia `routing_decisions`; `Board.Setting` morava no contexto errado | `Routing.record/3`; `Settings.Setting` | testes de `create_request` e `settings` verdes |
 | #406 | teste do `changes_since` corria com a truncagem de segundos | cutoff depois do insert | removeu a falha intermitente observada na validação |
 | #409 | `Live` colidia com `BoardLive`; `Work` colidia com `Workpad`/`Worktree` | `TicketPoller` e `Lanes` (+ `:ticket_poll_interval`) | suíte completa verde |
-| esta rodada | `Board.route/5` lia `Routing.Signals` num default; `Board` participava do ciclo de leitura | `Routing.plan/5` puro; `Actions` planeja requisição só com executor; `Board` recusa sem linha (`:not_routed`); `snapshot/1` saiu de `Signals` | `mix xref`: ciclo `Board/Signals/Runners/Usage.Report` sumiu; testes de plano e de recusa |
+| roteamento (esta rodada) | `Board.route/5` lia `Routing.Signals` num default; `Board` participava do ciclo de leitura | `Routing.plan/5` puro; `Actions` planeja requisição só com executor; `Board` recusa sem linha (`:not_routed`); `snapshot/1` saiu de `Signals` | `mix xref`: ciclo `Board/Signals/Runners/Usage.Report` sumiu; testes de plano e de recusa |
+| visão Hoje (esta rodada) | a visão "Hoje" (cross-repo) morava no contexto de um repositório | `AgentBoard.Overview` para `today/0` e `repo_overview/0` | testes de overview/board e orçamento de queries verdes |
 
 ### Antes e depois do acoplamento
 
@@ -328,7 +329,32 @@ rede; a requisição que chega ao contexto já está completa. **Custo.** O cont
 de `create_request/3` ficou mais estrito: uma chamada direta com executor
 precisa passar a linha, e o teste novo fixa essa recusa.
 
-### 6.7 O que foi mantido de propósito
+### 6.7 A visão "Hoje" é um read model, não o `Board`
+
+**Problema.** `Board.today/0` e `Board.repo_overview/0` liam **todos** os
+repositórios, com `@today_states` e `@need_rank` próprios, dentro do contexto
+que é escopado a um repositório. Era a única parte do `Board` que respondia
+"em todos, agora" — uma responsabilidade de tela, não de escrita.
+
+**Evidência.** `BoardLive` chamava `Board.today/0` nas duas leituras do board;
+`repo_overview/0` só era usado por `today/0` e pelos testes. O `Board` ainda
+guardava dois atributos que nenhuma outra função usava.
+
+**Alternativas.** (a) deixar no `Board`; (b) mover para `BoardLive`; (c) criar
+um read model cross-repository.
+
+**Escolha.** (c): `AgentBoard.Overview` lê as tabelas do board e chama as
+funções públicas do contexto (`Board.list_repositories/0`,
+`Board.resolved_task_ids/1`). O `Board` continua o dono das tabelas e das
+operações de um repositório; `Overview` é a leitura de todos, como `Lanes` é a
+leitura de um.
+
+**O que ficou mais simples.** A tela "Hoje" muda sem tocar no contexto de
+tarefa/repositório; o teste de orçamento de queries fica junto do read model.
+**Custo.** Uma chamada de UI mudou de módulo e o caminho de leitura ganhou mais
+um nome para aprender (`Board` por repositório, `Overview` para todos).
+
+### 6.8 O que foi mantido de propósito
 
 - **`Board` continua um contexto só.** As tabelas de tarefa, comentário e PR
   compartilham invariantes (o estado de duas camadas, o `request_key`, a
@@ -353,7 +379,7 @@ não são idempotentes por si. A adaptação ao projeto:
 |---|---|---|
 | Dados | structs `Board.Task`, `Routing.Decision`, mapas de ticket | sem efeito; o formato é o contrato |
 | Cálculos | `Routing.suggest/2`, `Routing.plan/5`, `Routing.snapshot/1`, `Metrics.throughput/3`, `AgentBlock`, `AgentFailure`, `Workpad.parse/1`, `Freshness.snapshot/1`, `Announcer` | testáveis sem banco/rede; erro é valor |
-| Leituras | `Board.board/3`, `Board.today/0`, `Lanes.needs/3`, `Metrics.Observations`, `Usage.Report`, `AgentSignal`, `AgentWorktree` | leem banco, git ou arquivos; podem ser cacheadas, mas não decidem escrita |
+| Leituras | `Board.board/3`, `Overview.today/0`, `Overview.repo_overview/0`, `Lanes.needs/3`, `Metrics.Observations`, `Usage.Report`, `AgentSignal`, `AgentWorktree` | leem banco, git ou arquivos; podem ser cacheadas, mas não decidem escrita |
 | Ações | `Actions.run/4`, `Sync.sync_repo/2`, `TicketPoller.poll/1`, `Runners.dispatch/3`, `AI.call`, `ElevenLabs`, `Superagents` | efeito nas bordas; decisão antes do efeito; falha vira motivo, não resposta inventada |
 
 Dois exemplos concretos:
@@ -381,7 +407,8 @@ Dois exemplos concretos:
   a frase é obrigatória; uma autorização permanente só entra no contrato.
 - **Nova leitura para a UI**: função no contexto dono (`Board`, `Runners`,
   `Superagents`, `Lanes`...). Se a consulta é só de apresentação, ela fica no
-  módulo de leitura (`Lanes`/`Metrics`), nunca no componente.
+  módulo de leitura (`Lanes` por repositório, `Overview` para todos,
+  `Metrics`), nunca no componente.
 - **Nova integração externa**: cliente/adaptador atrás de um behaviour quando há
   troca (o padrão de `Superagents.Manager`/`Provisioner`); nada de LiveView
   chamando processo ou HTTP direto.
@@ -415,8 +442,8 @@ Dois exemplos concretos:
 - `mix xref graph --format cycles` antes/depois (seção 5) e
   `mix xref graph --format cycles --label compile-connected`: sem ciclos de
   compilação.
-- PRs: #401, #402, #404, #406, #409, a entrega de roteamento e este documento.
-  Cada um passou a CI
+- PRs: #401, #402, #404, #406, #409, a entrega de roteamento, a extração da
+  visão Hoje e este documento. Cada um passou a CI
   (backend em quatro partições, gates, frontend, biblioteca, release).
 - O defeito de teste de #406 foi encontrado validando os PRs e tratado em
   separado; nenhum comportamento de produto mudou nesta revisão.

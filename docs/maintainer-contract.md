@@ -225,7 +225,7 @@ that already worked).
   reads it and calls `Board.broadcast/1` on the task's repository, so the
   inspector and the Execuções tab follow without a reload.
 - The **Hoje** view reads every repository in the same board load
-  (`Board.today/0` and `Usage.Report.today/0`), never in a render. Because it
+  (`Overview.today/0` and `Usage.Report.today/0`), never in a render. Because it
   shows all repositories, `Board.broadcast/1` also emits
   `{:today_updated, repository_id}` on the `board_today` topic; the view
   reloads on the other repository's change, and the current repository's
@@ -995,21 +995,21 @@ slept is never recovered; this routine asks a question instead.
 
 ## Today (Hoje)
 
-`Board.repo_overview/0` reads every repository for the cross-repo view. Its
+`Overview.repo_overview/0` reads every repository for the cross-repo view. Its
 ready tasks are filtered through **one** linked-PR query for the whole page
 (`resolved_task_ids/1`), not one per task; the query-count test
-(`repo_overview_query_test.exs`) fixes the budget. `counts` and the newest
+(`overview_query_test.exs`) fixes the budget. `counts` and the newest
 sync per repository are separate bounded reads, and the repository list is
 one more.
 
 The Alfred's "Hoje" (docs/research/alfred.md, 3.4 and F2.1): what needs the
 owner in every repository, one list, repository on each item.
 
-- **The list** comes from `Board.today/0`: every task in `blocked`, `question`
+- **The list** comes from `Overview.today/0`: every task in `blocked`, `question`
   or `ready` (a ready task whose PR already merged is done, as on the board)
   and every `running` task, with the repository, number, title, state, URL and
   the time of the last state change. Stopped and archived tasks are left out.
-  The same call returns `repo_overview/0` for the rail.
+  The same call returns `Overview.repo_overview/0` for the rail.
 - **The spending of the day** is `Usage.Report.today/1`: the owner's local
   day (the browser's `tz_offset`, in minutes west of UTC like
   `Time.local/2`, its two UTC instants) per source, plus the newest weekly
