@@ -6,6 +6,7 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   """
   @behaviour AgentBoard.Superagents.Provisioner
 
+  alias AgentBoard.Superagents
   alias AgentBoard.Superagents.{DshManager, Superagent}
 
   @doc false
@@ -55,12 +56,13 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   end
 
   defp profile_dir(profile) do
-    root = Path.expand("~/.dsh/profiles")
+    root = Path.expand(Superagents.profiles_root())
     path = Path.expand(Path.join(root, profile))
     if Path.dirname(path) == root, do: path, else: nil
   end
 
-  defp state_root, do: Path.expand("~/.dsh/state")
+  defp state_root,
+    do: Application.get_env(:agent_board, :dsh_state_root, Path.expand("~/.dsh/state"))
 
   defp inside_state?(path) do
     root = state_root()
@@ -256,6 +258,8 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   end
 
   defp ok({:ok, 200, _body}), do: :ok
+  # The agent says what is wrong (no push access, say); the status alone does not.
+  defp ok({:ok, _status, %{"error" => detail}}) when is_binary(detail), do: {:error, detail}
   defp ok({:ok, status, _body}), do: {:error, {:http, status}}
   defp ok({:error, reason}), do: {:error, reason}
 
@@ -297,25 +301,8 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
-  defp remove_tree(path) do
-    case :file.read_file_info(path) do
-      {:ok, %{type: :directory}} ->
-        with {:ok, entries} <- :file.list_dir(path) do
-          Enum.each(entries, &remove_tree(Path.join(path, &1)))
-        end
-
-        :file.del_dir(path)
-
-      {:ok, _file} ->
-        :file.delete(path)
-
-      {:error, :enoent} ->
-        :ok
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
+  # Does not follow symlinks: a profile's node_modules points into a shared store.
+  defp remove_tree(path), do: :file.del_dir_r(path)
 
   defp get(superagent, path), do: request(superagent, :get, path, nil)
   defp put(superagent, path, body), do: request(superagent, :put, path, body)

@@ -137,8 +137,8 @@ defmodule AgentBoard.Superagents do
 
   @doc """
   Reserve one row and ask the provisioner to create the external profile,
-  port, state and setup. A failure keeps the row in `error` with the reason so
-  the owner sees what happened instead of a silent half-project.
+  port, state and setup. A failure leaves nothing behind and returns the reason,
+  so the owner sees what happened and can try the same repository again.
   """
   def provision(repository, source, attrs, provisioner \\ Provisioner.impl()) do
     with nil <- get_by_repository(repository),
@@ -163,8 +163,11 @@ defmodule AgentBoard.Superagents do
           {:ok, superagent}
 
         {:error, reason} ->
-          event(superagent, "provision", "starting", "error", "owner", inspect(reason))
-          observe(superagent, %{state: "error", detail: inspect(reason)})
+          # The provisioner undid its work. A row left behind would point at
+          # nothing, restart an empty agent and keep the repository from being
+          # tried again; the reason goes back to the person who asked.
+          {:ok, _} = Repo.delete(superagent)
+          broadcast()
           {:error, reason}
       end
     else

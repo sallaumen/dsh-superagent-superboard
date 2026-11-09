@@ -791,8 +791,9 @@ that watches one GitHub repository and picks the issues whose body mentions
   repository, a ready source profile, the local checkout and the initial
   workers. The red `provision_superagent` action reserves the row, copies the
   source profile/port/state (standard DSH location), starts the manager and
-  copies source/executor/policy/prompts through the DSH API; a failure keeps
-  the row in `error` with the reason and rolls the half-project back.
+  copies source/executor/policy/prompts through the DSH API; a failure rolls
+  the half-project back, removes the row and shows the agent's own reason, so
+  the same repository can be tried again from the form.
   `DshProvisioner` is the real adapter; `FakeProvisioner` covers the tests.
 - **Removal preserves the state.** `remove_superagent` stops the process and
   copies the state (and moves the profile) under

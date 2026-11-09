@@ -263,6 +263,31 @@ defmodule AgentBoard.SuperagentsTest do
              Superagents.provision(repo, source, %{path: "/tmp/checkout"}, FakeProvisioner)
   end
 
+  test "a failed provision leaves no row, so the repository can be tried again", %{repo: repo} do
+    {:ok, source_repo} = Board.add_repository("fixture", "source")
+
+    {:ok, source} =
+      Superagents.create(%{
+        repository_id: source_repo.id,
+        profile: "superagent-source",
+        port: 3193,
+        state_dir: "/tmp/source-superagent-retry"
+      })
+
+    assert {:error, "the bot cannot push"} =
+             Superagents.provision(
+               repo,
+               source,
+               %{path: "/tmp/checkout", fail: "the bot cannot push"},
+               FakeProvisioner
+             )
+
+    assert Superagents.get_by_repository(repo) == nil
+
+    assert {:ok, %Superagent{}} =
+             Superagents.provision(repo, source, %{path: "/tmp/checkout"}, FakeProvisioner)
+  end
+
   test "AgentState uses the registered state paths", %{repo: repo} do
     {:ok, _} =
       Superagents.create(%{
