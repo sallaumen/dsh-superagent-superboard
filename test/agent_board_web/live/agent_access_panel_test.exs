@@ -31,11 +31,18 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
             %{"login" => "amiga", "role_name" => "write"}
           ])
 
+        String.ends_with?(conn.request_path, "/collaborators/nova") ->
+          Plug.Conn.send_resp(conn, 204, "")
+
+        String.ends_with?(conn.request_path, "/collaborators/fora") ->
+          conn |> Plug.Conn.put_status(404) |> Req.Test.json(%{"message" => "Not Found"})
+
         String.ends_with?(conn.request_path, "/collaborators/nova/permission") ->
           Req.Test.json(conn, %{"role_name" => "write"})
 
+        # GitHub answers read for anyone on a public repository.
         String.ends_with?(conn.request_path, "/collaborators/fora/permission") ->
-          Req.Test.json(conn, %{"role_name" => "none"})
+          Req.Test.json(conn, %{"role_name" => "read"})
 
         String.ends_with?(conn.request_path, "/permission") ->
           conn |> Plug.Conn.put_status(404) |> Req.Test.json(%{"message" => "Not Found"})
@@ -296,7 +303,22 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
     html = settled(view)
 
     assert html =~ "não está respondendo"
+    refute html =~ "Ninguém está liberado"
+    refute html =~ "Ninguém mencionou"
     refute has_element?(view, "#access-add-#{superagent.id}")
+  end
+
+  test "a change announced elsewhere reaches the open section", context do
+    %{conn: conn, path: path, superagent: superagent} = context
+
+    {:ok, view, _html} = live(conn, path)
+    refute settled(view) =~ "@colega"
+
+    FakeManager.put_access(superagent.id, ["fixture", "colega"])
+    Superagents.broadcast_access_changed()
+    _ = render(view)
+
+    assert settled(view) =~ "@colega"
   end
 
   test "a refused issue says why in the inspector", context do

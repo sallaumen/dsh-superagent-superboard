@@ -198,6 +198,62 @@ defmodule AgentBoard.AgentAccessTest do
       assert MapSet.equal?(project.refused, MapSet.new([20, 22]))
     end
 
+    test "an issue the owner stopped or archived does not run again", context do
+      %{superagent: superagent, state_dir: state_dir, repo: repo} = context
+      FakeManager.put_access(superagent.id, ["sallaumen"])
+
+      for {number, attrs} <- [
+            {30, %{state: "stopped"}},
+            {31, %{state: "archived"}},
+            {32, %{state: "queued", stopped: true}},
+            {33, %{state: "queued", archived: true}}
+          ] do
+        Repo.insert!(
+          struct!(
+            %Board.Task{
+              repository_id: repo.id,
+              kind: "issue",
+              number: number,
+              title: "Parada",
+              url: "https://github.com/fixture/access/issues/#{number}"
+            },
+            attrs
+          )
+        )
+      end
+
+      database!(state_dir, fn conn ->
+        for number <- 30..34 do
+          mention!(conn, "t#{number}", "amiga", number, "2026-11-09T10:00:00.000Z")
+        end
+      end)
+
+      assert [%{requests: [request]}] = AgentAccess.overview([superagent])
+      assert request.rerun == [%{number: 34, trigger_id: "t34"}]
+    end
+
+    test "a failed read of the refusals keeps who was waiting", context do
+      %{superagent: superagent, state_dir: state_dir} = context
+      FakeManager.put_access(superagent.id, ["sallaumen"])
+
+      database!(state_dir, fn conn ->
+        mention!(conn, "t1", "amiga", 10, "2026-11-09T10:00:00.000Z")
+        mention!(conn, "t2", "colega", 11, "2026-11-09T10:00:00.000Z")
+      end)
+
+      [good] = AgentAccess.overview([superagent])
+      assert length(good.requests) == 2
+
+      File.rm!(Path.join(state_dir, "orchestrator.sqlite"))
+      FakeManager.put_access(superagent.id, ["sallaumen", "colega"])
+
+      [kept] = AgentAccess.keep_last_good([good], AgentAccess.overview([superagent]))
+
+      assert {:refusals, _reason} = kept.reason
+      assert Enum.map(kept.requests, & &1.login) == ["amiga"]
+      assert MapSet.equal?(kept.refused, MapSet.new([10]))
+    end
+
     test "an agent that does not answer is unavailable, not empty", context do
       %{superagent: superagent} = context
       FakeManager.put_access(superagent.id, {:error, :econnrefused})
@@ -229,6 +285,57 @@ defmodule AgentBoard.AgentAccessTest do
 
       assert summary.count == 1
       assert MapSet.member?(summary.refused, {repo.id, 10})
+    end
+  end
+
+  describe "candidate/3" do
+    @stub __MODULE__
+
+    setup do
+      Req.Test.set_req_test_to_shared(%{})
+      on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
+
+      Req.Test.stub(@stub, fn conn ->
+        case conn.request_path do
+          "/repos/fixture/" <> rest ->
+            cond do
+              String.ends_with?(rest, "/collaborators/nova") ->
+                Plug.Conn.send_resp(conn, 204, "")
+
+              String.ends_with?(rest, "/collaborators/nova/permission") ->
+                Req.Test.json(conn, %{"role_name" => "write"})
+
+              String.ends_with?(rest, "/collaborators/estranha") ->
+                conn |> Plug.Conn.put_status(404) |> Req.Test.json(%{"message" => "no"})
+
+              # What GitHub really answers on a public repository for anyone.
+              String.ends_with?(rest, "/collaborators/estranha/permission") ->
+                Req.Test.json(conn, %{"permission" => "read", "role_name" => "read"})
+
+              true ->
+                conn |> Plug.Conn.put_status(404) |> Req.Test.json(%{"message" => "no"})
+            end
+        end
+      end)
+
+      {:ok,
+       client: Req.new(base_url: "https://api.github.test", plug: {Req.Test, @stub}, retry: false)}
+    end
+
+    test "a collaborator shows their role", %{superagent: superagent, client: client} do
+      assert %{exists: true, role: "write"} =
+               AgentAccess.candidate(superagent, "nova", client)
+    end
+
+    test "a stranger on a public repository is not a collaborator", context do
+      %{superagent: superagent, client: client} = context
+
+      assert %{exists: true, role: "none"} =
+               AgentAccess.candidate(superagent, "estranha", client)
+    end
+
+    test "an account GitHub does not have", %{superagent: superagent, client: client} do
+      assert %{exists: false, role: nil} = AgentAccess.candidate(superagent, "fantasma", client)
     end
   end
 
@@ -291,6 +398,24 @@ defmodule AgentBoard.AgentAccessTest do
       assert {:ok, %{allowed: [%{login: "sallaumen"}]}} = FakeManager.access(superagent)
     end
 
+    test "the person does not come back as waiting for the old mention", context do
+      %{superagent: superagent, state_dir: state_dir} = context
+      FakeManager.put_access(superagent.id, ["sallaumen", "amiga"])
+
+      database!(state_dir, fn conn ->
+        mention!(conn, "t1", "amiga", 10, "2026-01-01T10:00:00.000Z")
+      end)
+
+      assert {:ok, "amiga"} = AgentAccess.revoke(superagent, "amiga")
+      assert [%{requests: []}] = AgentAccess.overview([superagent])
+
+      database!(state_dir, fn conn ->
+        mention!(conn, "t2", "amiga", 11, "2099-01-01T10:00:00.000Z")
+      end)
+
+      assert [%{requests: [%{login: "amiga"}]}] = AgentAccess.overview([superagent])
+    end
+
     test "refuses the repository's owner, whatever the case", %{superagent: superagent} do
       FakeManager.put_access(superagent.id, ["fixture"])
 
@@ -347,6 +472,41 @@ defmodule AgentBoard.AgentAccessTest do
 
       assert text =~ "@amiga liberado"
       assert text =~ "#10"
+    end
+
+    test "revoking says what happens to mentions on issues with a ticket", context do
+      %{superagent: superagent} = context
+      params = %{superagent: superagent, login: "amiga"}
+
+      for lang <- ["pt-BR", "en-US"] do
+        phrase = Actions.phrase(:revoke_agent_access, params, lang)
+        assert phrase =~ if(lang == "pt-BR", do: "sem ticket", else: "without a ticket")
+      end
+
+      FakeManager.put_access(superagent.id, ["amiga"])
+
+      assert {:ok, text} =
+               Actions.run(:revoke_agent_access, params, Actions.owner(:ui),
+                 confirm: Actions.phrase(:revoke_agent_access, params)
+               )
+
+      refute text =~ "não aciona mais"
+    end
+
+    test "a failure from the agent is a sentence, not an Elixir term", context do
+      %{superagent: superagent} = context
+      params = %{superagent: superagent, login: "amiga", rerun: []}
+      phrase = Actions.phrase(:grant_agent_access, params)
+
+      for reason <- [{:http, 500}, :malformed, {:weird, %{a: 1}}] do
+        FakeManager.put_access(superagent.id, {:error, reason})
+
+        assert {:error, text} =
+                 Actions.run(:grant_agent_access, params, Actions.owner(:ui), confirm: phrase)
+
+        refute text =~ "{"
+        refute text =~ ":malformed"
+      end
     end
 
     test "a sentence for other issues is refused", %{superagent: superagent} do

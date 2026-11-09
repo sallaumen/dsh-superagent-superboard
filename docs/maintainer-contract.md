@@ -171,7 +171,7 @@ and is recorded as `automatic`.
 | `remove_superagent` | red | stops the agent, archives profile/state and removes the project from the board | UI: `AgentAction` "Remover", two steps |
 | `scale_superagent` | yellow | changes `maxWorkers` through the DSH settings API | UI: −/+ on the project card |
 | `grant_agent_access` | red | puts a person on one project's `allowed` list through the DSH settings API and, when the sentence names issues, requeues their refused mentions | UI: `AgentAction` "Liberar" / "Liberar e rodar" in Configurações → Acesso do agente |
-| `revoke_agent_access` | red | takes a person off that list; their open tickets may be refused (the repository owner cannot be removed) | UI: `AgentAction` "Revogar" |
+| `revoke_agent_access` | red | takes a person off that list and sets their old mentions aside; mentions on issues without a ticket are ignored, those on issues with a ticket may still be weighed as a follow-up, and their open tickets may be refused (the repository owner cannot be removed) | UI: `AgentAction` "Revogar" |
 | `dismiss_access_request` | yellow | sets a request aside until the person mentions the bot again (`agent_access_dismissals`) | UI: one click on "Dispensar" |
 | `start_agent` | red | runs `dsh-superagent start` on this machine; clears a stop made on purpose | UI: `AgentAction` "Religar o agente" |
 | `set_max_workers` | yellow | `PUT settings/executor` with the new ceiling (− and + undo it) | UI: one click on the Paralelismo tile |

@@ -353,13 +353,15 @@ defmodule AgentBoard.Actions do
 
   def phrase(:revoke_agent_access, %{superagent: superagent, login: login}, "en-US"),
     do:
-      "Remove @#{login} from #{project(superagent)}? New mentions are ignored, and open " <>
-        "tickets from this person may be refused."
+      "Remove @#{login} from #{project(superagent)}? New mentions on issues without a ticket " <>
+        "are ignored; on issues with a ticket the agent may still weigh them as a follow-up. " <>
+        "Open tickets from this person may be refused."
 
   def phrase(:revoke_agent_access, %{superagent: superagent, login: login}, _lang),
     do:
-      "Revogar @#{login} em #{project(superagent)}? Novas menções são ignoradas, e tickets " <>
-        "abertos dessa pessoa podem ser recusados."
+      "Revogar @#{login} em #{project(superagent)}? Novas menções em issues sem ticket são " <>
+        "ignoradas; em issues com ticket, o agente ainda pode avaliá-las como continuação. " <>
+        "Tickets abertos dessa pessoa podem ser recusados."
 
   def phrase(:dismiss_access_request, %{superagent: superagent, login: login}, "en-US"),
     do: "Set aside @#{login}'s request on #{project(superagent)}? A new mention brings it back."
@@ -737,7 +739,7 @@ defmodule AgentBoard.Actions do
   defp execute(:revoke_agent_access, %{superagent: superagent, login: login}) do
     case AgentAccess.revoke(superagent, login) do
       {:ok, login} ->
-        {:ok, "@#{login} não aciona mais o agente em #{project(superagent)}."}
+        {:ok, "@#{login} saiu da lista de #{project(superagent)}."}
 
       {:error, reason} ->
         {:error, "Não foi possível revogar @#{login}: #{access_failure(reason)}"}
@@ -953,7 +955,14 @@ defmodule AgentBoard.Actions do
     do: "o agente deste projeto não tem o GitHub configurado."
 
   defp access_failure(%{__exception__: true}), do: "o agente não respondeu; ele está ligado?"
-  defp access_failure(other), do: describe(other)
+  defp access_failure(:timeout), do: "o agente demorou demais para responder."
+  defp access_failure({:http, status}), do: "o agente respondeu com erro (HTTP #{status})."
+  defp access_failure(:malformed), do: "o agente deu uma resposta que o board não entende."
+
+  defp access_failure(other) do
+    Logger.warning("agent access failed: #{inspect(other)}")
+    "o agente recusou o pedido."
+  end
 
   defp describe(%{__exception__: true} = exception), do: Exception.message(exception)
   defp describe(text) when is_binary(text), do: text
