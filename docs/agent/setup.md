@@ -212,6 +212,21 @@ only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
   establishes nothing. The kit's
   [compatibility note](https://github.com/sallaumen/elixir-agent-kit/blob/v0.8.0/docs/compatibility.md)
   describes the fresh-session check.
+- **Recommended: [Ponytail](https://github.com/DietrichGebert/ponytail) on
+  every executor.** It keeps the executor to the least new code that solves the
+  ticket, while the kit still decides the workflow, the checks and the
+  evidence; where they disagree, this repository's instructions and the kit
+  win. DeepSeek Harness has no Ponytail plugin, so install it
+  instruction-only, once per machine: clone Ponytail at a release tag, link its
+  `AGENTS.md` to `~/.dsh/AGENTS.md` and each folder in its `skills/` into
+  `~/.dsh/skills/`. Every dsh profile reads that home, so the `superagent`
+  executor and a second repository's profile both pick it up on their next
+  session; nothing in the profile changes. The default level is `full`
+  (`~/.config/ponytail/config.json`). Claude Code and Codex install it as a
+  plugin; see the kit's
+  [companion setup](https://github.com/sallaumen/elixir-agent-kit/blob/main/docs/compatibility.md#recommended-companion-ponytail).
+  For a kit evaluation round, record the Ponytail level with each run, or
+  rename `~/.dsh/AGENTS.md` for the round to run without it.
 
 ## 8. Merge policy
 
