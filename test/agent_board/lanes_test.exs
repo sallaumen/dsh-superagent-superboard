@@ -438,8 +438,10 @@ defmodule AgentBoard.LanesTest do
 
     assert log.total == 2
     assert List.last(log.days).n == 1
+    assert Enum.take(log.days, -2) |> Enum.map(& &1.label) == ["Ontem, 5 nov", "Hoje"]
     assert Enum.find(log.days, &(&1.date == Date.add(DateTime.to_date(today), -1))).n == 1
     assert Enum.map(log.groups, & &1.label) == ["Hoje", "Ontem, 5 nov"]
+    assert Enum.map(log.groups, & &1.date) == [~D[2026-11-06], ~D[2026-11-05]]
     assert hd(log.groups).items |> hd() |> Map.fetch!(:ci) == "pass"
 
     yesterday = Enum.find(log.groups, &(&1.label == "Ontem, 5 nov"))
