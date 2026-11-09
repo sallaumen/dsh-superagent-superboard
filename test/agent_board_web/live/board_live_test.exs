@@ -997,7 +997,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     assert has_element?(view, "#board-settings-panel label", "Dono")
     assert has_element?(view, "#board-settings-panel label", "Repositório")
-    assert has_element?(view, "#board-settings-panel #track-repo[phx-submit=add]")
+    assert has_element?(view, "#board-settings-panel #track-repo[phx-submit=add_project]")
   end
 
   test "the reading columns switch to one column through a container query", %{conn: conn} do
@@ -1281,7 +1281,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "Enviando"
     view |> element("#board-settings") |> render_click()
     view |> element(".settings-nav__item[phx-value-section=repositories]") |> render_click()
-    assert render(view) =~ "Acompanhar"
+    assert render(view) =~ "Adicionar projeto"
   end
 end
 

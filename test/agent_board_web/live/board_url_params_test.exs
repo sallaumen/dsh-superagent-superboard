@@ -69,17 +69,28 @@ defmodule AgentBoardWeb.BoardUrlParamsTest do
       :ok
     end
 
-    for panel <- ["shortcuts", "superagents"] do
-      test "#{panel} opens, because its button is on the empty board", %{conn: conn} do
-        {:ok, view, _html} = live(conn, "/")
+    test "shortcuts opens, because its button is on the empty board", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
 
-        view
-        |> element(~s(.ab-rail [phx-click=show_panel][phx-value-panel=#{unquote(panel)}]))
-        |> render_click()
+      view
+      |> element(~s(.ab-rail [phx-click=show_panel][phx-value-panel=shortcuts]))
+      |> render_click()
 
-        assert_patch(view, "/?panel=#{unquote(panel)}")
-        assert has_element?(view, "#board-page[data-panel=#{unquote(panel)}]")
-      end
+      assert_patch(view, "/?panel=shortcuts")
+      assert has_element?(view, "#board-page[data-panel=shortcuts]")
+    end
+
+    test "superagents opens Settings at its section, because management lives there", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/")
+
+      view
+      |> element(~s(.ab-rail [phx-click=show_panel][phx-value-section=superagents]))
+      |> render_click()
+
+      assert_patch(view, "/?panel=settings&section=superagents")
+      assert has_element?(view, "#board-page[data-panel=settings]")
     end
 
     test "Settings opens, because that is where the first repository is added", %{conn: conn} do

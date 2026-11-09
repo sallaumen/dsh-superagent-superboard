@@ -29,14 +29,13 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     superagent = superagent!(repo, %{observed_state: "error", last_error: "github: sem acesso"})
     {:ok, _} = Superagents.observe(superagent, %{state: "error", detail: "github: sem acesso"})
 
-    {:ok, view, html} = live(conn, "/?repo=fixture/panel&panel=superagents")
+    {:ok, view, html} = live(conn, "/?repo=fixture/panel&panel=settings&section=superagents")
 
-    assert html =~ "Superagentes DeepSeek"
     assert html =~ "fixture/panel"
     assert html =~ "superagent-panel"
     assert html =~ "erro"
     assert html =~ "github: sem acesso"
-    assert has_element?(view, "#panel-superagents h2#panel-title-superagents")
+    assert has_element?(view, "#settings-superagents-title")
     refute has_element?(view, "#superagents-panel h2")
     assert has_element?(view, "#superagents-panel .ab-superagent-table__details")
   end
@@ -51,7 +50,8 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     {:ok, _} = Superagents.observe(superagent, %{state: "error", detail: detail})
 
-    {:ok, view, _html} = live(conn, "/?repo=fixture/rate-limited-panel&panel=superagents")
+    {:ok, view, _html} =
+      live(conn, "/?repo=fixture/rate-limited-panel&panel=settings&section=superagents")
 
     assert has_element?(view, ".ab-superagents__errors", "O GitHub atingiu o limite de consultas")
     assert has_element?(view, ".ab-superagents__errors details", "Detalhes técnicos")
@@ -76,7 +76,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     {:ok, _} = Superagents.observe(superagent, %{state: "ready"})
     FakeManager.put(superagent.id, %{state: "ready"})
 
-    {:ok, view, html} = live(conn, "/?repo=fixture/controls&panel=superagents")
+    {:ok, view, html} = live(conn, "/?repo=fixture/controls&panel=settings&section=superagents")
     assert html =~ "Pausar"
     assert html =~ "Parar"
 
@@ -101,7 +101,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     {:ok, source_repo} = Board.add_repository("fixture", "source-panel")
     {:ok, target} = Board.add_repository("fixture", "target-panel")
 
-    {:ok, source} =
+    {:ok, _source} =
       Superagents.create(%{
         repository_id: source_repo.id,
         profile: "superagent-source-panel",
@@ -109,21 +109,40 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
         state_dir: "/tmp/source-panel"
       })
 
+    profiles =
+      Path.join(System.tmp_dir!(), "dsh-profiles-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(Path.join(profiles, "superagent"))
+
+    File.write!(
+      Path.join([profiles, "superagent", "cordis.patch.yml"]),
+      "webserver:\n  port: 3082\n"
+    )
+
     previous = Application.get_env(:agent_board, :superagent_provisioner)
+    previous_profiles = Application.get_env(:agent_board, :dsh_profiles_dir)
     Application.put_env(:agent_board, :superagent_provisioner, FakeProvisioner)
+    Application.put_env(:agent_board, :dsh_profiles_dir, profiles)
 
     on_exit(fn ->
       if previous,
         do: Application.put_env(:agent_board, :superagent_provisioner, previous),
         else: Application.delete_env(:agent_board, :superagent_provisioner)
+
+      if previous_profiles,
+        do: Application.put_env(:agent_board, :dsh_profiles_dir, previous_profiles),
+        else: Application.delete_env(:agent_board, :dsh_profiles_dir)
+
+      File.rm_rf!(profiles)
     end)
 
-    {:ok, view, _html} = live(conn, "/?repo=fixture/target-panel&panel=superagents")
+    {:ok, view, _html} =
+      live(conn, "/?repo=fixture/target-panel&panel=settings&section=superagents")
 
     view
     |> form(".ab-superagent-add__form", %{
       "repository_id" => target.id,
-      "source_id" => source.id,
+      "source_profile" => "superagent",
       "path" => "/tmp/target-checkout",
       "workers" => "2"
     })
@@ -145,7 +164,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     first = superagent!(one, %{max_workers: 2})
     second = superagent!(two, %{max_workers: 4})
 
-    {:ok, view, _html} = live(conn, "/?repo=fixture/pool-one&panel=superagents")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/pool-one&panel=settings&section=superagents")
 
     assert has_element?(
              view,
@@ -169,7 +188,9 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
   test "an empty board says no superagent is registered", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "empty-panel")
-    {:ok, _view, html} = live(conn, "/?repo=fixture/empty-panel&panel=superagents")
+
+    {:ok, _view, html} =
+      live(conn, "/?repo=fixture/empty-panel&panel=settings&section=superagents")
 
     assert html =~ "Nenhum superagente registrado"
   end
@@ -177,7 +198,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
   test "a control for a superagent removed elsewhere says so and keeps the socket", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "gone")
     superagent = superagent!(repo, %{observed_state: "ready"})
-    {:ok, view, _html} = live(conn, "/?repo=fixture/gone&panel=superagents")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/gone&panel=settings&section=superagents")
 
     Repo.delete!(superagent)
 

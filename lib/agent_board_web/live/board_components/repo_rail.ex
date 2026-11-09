@@ -105,7 +105,8 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           type="button"
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
-          phx-value-panel="superagents"
+          phx-value-panel="settings"
+          phx-value-section="superagents"
           aria-label={
             gettext("Superagents: %{agents} · projects: %{projects}",
               agents: @agent_total,
