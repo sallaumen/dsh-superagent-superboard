@@ -16,7 +16,7 @@ defmodule AgentBoard.Superagents do
 
   @topic "superagents"
 
-  @doc "Subscribe to `{:superagents_changed}`."
+  @doc "Subscribe to `:superagents_changed` and `:agent_access_changed`."
   def subscribe, do: Phoenix.PubSub.subscribe(AgentBoard.PubSub, @topic)
 
   @doc "Every registered superagent, newest first, with its repository."
@@ -510,6 +510,10 @@ defmodule AgentBoard.Superagents do
         limit: ^limit
     )
   end
+
+  @doc "Tell every open board that who may use an agent, or who asked, changed."
+  def broadcast_access_changed,
+    do: Phoenix.PubSub.broadcast(AgentBoard.PubSub, @topic, :agent_access_changed)
 
   defp broadcast,
     do: Phoenix.PubSub.broadcast(AgentBoard.PubSub, @topic, :superagents_changed)

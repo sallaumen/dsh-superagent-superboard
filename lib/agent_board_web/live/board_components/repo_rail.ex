@@ -13,6 +13,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
   attr :overview, :map, default: %{}
   attr :live, :boolean, default: false
   attr :superagents, :list, default: []
+  attr :access_waiting, :integer, default: 0
   attr :version, :map, default: nil
 
   @impl true
@@ -100,6 +101,24 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
       </form>
 
       <div class="ab-rail__foot">
+        <button
+          :if={@access_waiting > 0}
+          id="open-agent-access"
+          type="button"
+          class="ab-btn ab-btn--quiet ab-btn--sm ab-rail__access"
+          phx-click="show_panel"
+          phx-value-panel="settings"
+          phx-value-section="access"
+          data-panel-trigger
+          aria-haspopup="dialog"
+          aria-controls="panel-settings"
+        >
+          <span>{ngettext(
+            "%{count} waiting for access",
+            "%{count} waiting for access",
+            @access_waiting
+          )}</span>
+        </button>
         <button
           id="open-superagents"
           type="button"

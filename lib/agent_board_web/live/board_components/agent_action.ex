@@ -11,6 +11,8 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     * `:dispatch` - "Despachar" para o Claude Code ou o Codex (`:dispatch_task`)
     * `:stop` - "Parar" (`:stop_task`): only the confirmation lives here;
       the confirmed click is BoardLive's `act` event, carrying the sentence.
+    * `:grant_agent_access`, `:revoke_agent_access` - who may use a project's
+      agent; the row leaves on success, so BoardLive says the result.
 
   The result stays until the next action, so a board reload (every poll)
   does not erase it.
@@ -43,6 +45,8 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:reason, fn -> nil end)
      |> assign_new(:execution, fn -> nil end)
      |> assign_new(:superagent, fn -> nil end)
+     |> assign_new(:login, fn -> nil end)
+     |> assign_new(:rerun, fn -> [] end)
      |> then(&assign(&1, :question, Actions.phrase(action(&1.assigns), params(&1.assigns))))}
   end
 
@@ -165,6 +169,12 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     {:noreply, assign(socket, step: :done, result: %{tone: :ok, text: text})}
   end
 
+  def handle_async(:run, {:ok, {:ok, text}}, %{assigns: %{mode: mode}} = socket)
+      when mode in [:grant_agent_access, :revoke_agent_access] do
+    send(self(), {:agent_access_done, text})
+    {:noreply, assign(socket, step: :done, result: %{tone: :ok, text: text})}
+  end
+
   def handle_async(:run, {:ok, {:ok, text}}, socket),
     do: {:noreply, assign(socket, step: :done, result: %{tone: :ok, text: text})}
 
@@ -196,6 +206,8 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   defp action(%{mode: :start_superagent}), do: :start_superagent
   defp action(%{mode: :stop_superagent}), do: :stop_superagent
   defp action(%{mode: :remove_superagent}), do: :remove_superagent
+  defp action(%{mode: :grant_agent_access}), do: :grant_agent_access
+  defp action(%{mode: :revoke_agent_access}), do: :revoke_agent_access
   defp action(%{mode: :stop}), do: :stop_task
 
   defp params(%{mode: :retry} = assigns),
@@ -223,6 +235,12 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
 
   defp params(%{mode: :stop_execution} = assigns),
     do: %{execution: assigns.execution, task: assigns.task}
+
+  defp params(%{mode: :grant_agent_access} = assigns),
+    do: %{superagent: assigns.superagent, login: assigns.login, rerun: assigns.rerun}
+
+  defp params(%{mode: :revoke_agent_access} = assigns),
+    do: %{superagent: assigns.superagent, login: assigns.login}
 
   defp params(%{mode: mode} = assigns)
        when mode in [:start_superagent, :stop_superagent, :remove_superagent],

@@ -170,6 +170,9 @@ and is recorded as `automatic`.
 | `pause_superagent` / `resume_superagent` | yellow | pauses/resumes new work without killing the process | UI: one click |
 | `remove_superagent` | red | stops the agent, archives profile/state and removes the project from the board | UI: `AgentAction` "Remover", two steps |
 | `scale_superagent` | yellow | changes `maxWorkers` through the DSH settings API | UI: −/+ on the project card |
+| `grant_agent_access` | red | puts a person on one project's `allowed` list through the DSH settings API and, when the sentence names issues, requeues their refused mentions | UI: `AgentAction` "Liberar" / "Liberar e rodar" in Configurações → Acesso do agente |
+| `revoke_agent_access` | red | takes a person off that list; their open tickets may be refused (the repository owner cannot be removed) | UI: `AgentAction` "Revogar" |
+| `dismiss_access_request` | yellow | sets a request aside until the person mentions the bot again (`agent_access_dismissals`) | UI: one click on "Dispensar" |
 | `start_agent` | red | runs `dsh-superagent start` on this machine; clears a stop made on purpose | UI: `AgentAction` "Religar o agente" |
 | `set_max_workers` | yellow | `PUT settings/executor` with the new ceiling (− and + undo it) | UI: one click on the Paralelismo tile |
 | `add_repository` | yellow | tracks a repository | UI: settings menu. API: direct |
@@ -800,6 +803,22 @@ that watches one GitHub repository and picks the issues whose body mentions
   reads the manager API every 30 s; the actions are `start_superagent`,
   `stop_superagent`, `pause_superagent`, `resume_superagent` and
   `scale_superagent`.
+- **Who may start work is per project and per person** (Configurações → Acesso
+  do agente, `AgentBoard.AgentAccess`). The list belongs to the agent
+  (`policy.sources.github.allowed`); a change is read, edited and saved at the
+  revision it was read, so a change made elsewhere is a conflict, and only the
+  list changes. A mention from someone not listed is recorded by the agent as
+  `ignore` / `not_a_member`; the board reads those from the agent's database,
+  read-only, because `GET decisions` does not carry the author. Only a person
+  who addressed the bot is a request: the same reason code also marks issues
+  that never mentioned it. "Liberar e rodar" reevaluates the original mention
+  (`POST triggers/<id>/requeue`, at most 10 issues per confirmation), skipping
+  an issue already finished or accepted later. The overview uses only loopback
+  and the local database; the collaborators list is the one GitHub read, made
+  while the section is on screen, at most once per 10 minutes. The ticker
+  compares a fingerprint every 30 s and announces `:agent_access_changed`, which
+  moves the badge and the note on a refused issue ("Queued" remains the task's
+  state, per the sync baseline).
 - **The routing list is a setting.** `dsh_repositories`
   (Configurações → Despacho local, comma-separated) names the repositories
   the DeepSeek agents watch; the router only suggests DeepSeek for those. The

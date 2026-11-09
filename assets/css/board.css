@@ -1907,6 +1907,7 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .settings-nav__item:hover { background: var(--surface); color: var(--ink); }
 .settings-nav__item.is-current { background: var(--you-wash); color: var(--you); font-weight: 600; }
 .settings-nav__notice { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--stale); }
+.settings-nav__count { flex: none; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--you); color: var(--on-you); font-size: 11px; line-height: 18px; font-weight: 600; text-align: center; }
 .settings-content { min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 28px 32px 36px; }
 .settings-pane { max-width: 680px; }
 .settings-pane--dispatch { display: flex; flex-direction: column; height: 100%; min-height: 0; }
@@ -2866,3 +2867,44 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
 }
 .version-progress li[data-state="done"] .version-progress__mark { background: var(--agent); }
 .version-progress li[data-state="error"] .version-progress__mark { background: var(--halt); }
+
+/* Settings → Agent access */
+.ab-access { display: grid; gap: var(--space-6); }
+.ab-access__project { display: grid; gap: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--line); }
+.ab-access__project:first-of-type { padding-top: 0; border-top: 0; }
+.ab-access__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px var(--space-4); }
+.ab-access__head h4 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; overflow-wrap: anywhere; }
+.ab-access__block { display: grid; gap: var(--space-3); }
+.ab-access__block h5 { margin: 0; font-size: 12.5px; line-height: 18px; font-weight: 600; color: var(--ink-muted); }
+.ab-access__block > .ab-meta { margin: 0; }
+.ab-access__notice { margin: 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); background: var(--stale-wash); color: var(--ink); font-size: 13px; line-height: 20px; }
+.ab-access__list { display: grid; margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
+.ab-access__row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3) var(--space-4); padding: var(--space-4); border-bottom: 1px solid var(--line); }
+.ab-access__row:last-child { border-bottom: 0; }
+.ab-access__who { display: grid; gap: 2px; flex: 1 1 260px; min-width: 0; }
+.ab-access__login { justify-self: start; font-family: var(--font-mono); font-size: 13px; line-height: 20px; color: var(--ink); overflow-wrap: anywhere; }
+.ab-access__issues { display: grid; gap: 2px; margin: var(--space-2) 0 0; padding: 0; list-style: none; font-size: 12.5px; line-height: 18px; }
+.ab-access__issues a { font-family: var(--font-mono); }
+.ab-access__title { color: var(--ink-muted); overflow-wrap: anywhere; }
+.ab-access__actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2) var(--space-3); }
+.ab-access__actions .ab-act__question { max-width: 44ch; }
+.ab-access__form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+.ab-access__form label { display: grid; gap: var(--space-2); flex: 0 1 260px; min-width: 0; color: var(--ink-muted); font-size: 12px; }
+.ab-access__form input { width: 100%; height: 34px; padding: 0 var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 12px; }
+.ab-access__form .ab-btn { height: 34px; }
+.ab-access__error { margin: 0; color: var(--halt); font-size: 12.5px; line-height: 18px; }
+.ab-access__candidate { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
+.ab-access__checklist { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; font-size: 13px; line-height: 20px; }
+.ab-access__checklist li { display: flex; align-items: flex-start; gap: 6px; }
+.ab-access__checklist .ab-ico { flex: none; margin-top: 3px; }
+.ab-access__checklist .is-ok .ab-ico { color: var(--agent); }
+.ab-access__checklist .is-missing .ab-ico { color: var(--halt); }
+.ab-access__guide summary { cursor: pointer; color: var(--ink-muted); font-size: 12.5px; line-height: 18px; }
+.ab-access__guide p { margin: var(--space-2) 0 0; }
+.ab-access__howto { padding: var(--space-3); border-radius: var(--radius-sm); background: var(--paper-sunk); font-size: 13px; line-height: 20px; user-select: all; }
+.ab-insp__refused { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); background: var(--stale-wash); color: var(--ink); font-size: 13px; line-height: 20px; }
+.ab-rail__access { color: var(--you); font-weight: 600; }
+@media (max-width: 767px) {
+  .ab-access__actions .ab-btn, .ab-access__form .ab-btn { height: 44px; }
+  .ab-access__form label { flex-basis: 100%; }
+}
