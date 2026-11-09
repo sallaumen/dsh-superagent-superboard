@@ -87,7 +87,7 @@ body { margin: 0; background: var(--paper); }
 .ab-tag--halt { color: var(--halt); background: var(--halt-wash); }
 .ab-tag--you { color: var(--you); background: var(--you-wash); }
 .ab-tag--stale { color: var(--stale); background: var(--stale-wash); }
-.ab-tag--agent { color: var(--agent); background: var(--agent-wash); }
+.ab-tag--agent { color: var(--ink); background: var(--agent-wash); }
 
 /* ---------- freshness beacon ---------- */
 .ab-beacon {
@@ -597,7 +597,11 @@ body.board-panel-open .ab-toast,
   border: 0;
   border-bottom: 1px solid var(--line-strong);
   background: none;
-  padding: 0;
+  padding: 0 2px;
+  margin: -4px -2px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   font: inherit;
   font-weight: 500;
   color: var(--ink);
@@ -641,6 +645,8 @@ body.board-panel-open .ab-toast,
   .ab-need__side { grid-column: 2; grid-row: auto; }
   .ab-need__actions { grid-column: 2; grid-row: auto; justify-self: start; margin: 0 0 0 -8px; }
 }
+
+.ab-daily__scope { margin-left: 4px; font-size: 10px; font-weight: 400; letter-spacing: .02em; text-transform: none; color: var(--ink-muted); }
 
 /* ---------- inspector: the task stays on the board ---------- */
 .ab-insp__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
@@ -1019,7 +1025,7 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-exec-card__value { margin: 0; font-family: var(--font-mono); font-size: 20px; line-height: 26px; font-variant-numeric: tabular-nums; }
 .ab-exec-card__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-4); margin: 0; }
 .ab-exec-card__facts div { display: grid; gap: 0; }
-.ab-exec-card__facts dt { font-size: 11.5px; line-height: 16px; color: var(--ink-faint); }
+.ab-exec-card__facts dt { font-size: 11.5px; line-height: 16px; color: var(--ink-muted); }
 .ab-exec-card__facts dd { margin: 0; font-family: var(--font-mono); font-size: 12.5px; line-height: 18px; font-variant-numeric: tabular-nums; }
 .ab-executors__days { display: grid; gap: var(--space-3); }
 .ab-exec-day { border: 1px solid var(--line); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); background: var(--surface); }
@@ -1227,3 +1233,13 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   .dispatch-settings input { height: 40px; }
   .ab-tab { min-height: 40px; min-width: 44px; }
 }
+
+/* Inline references stay inline, but get a 24px target instead of a 16px line. */
+.ab-daily__refs a { display: inline-flex; align-items: center; min-height: 24px; padding: 0 2px; margin: -4px -2px; }
+
+@container board (max-width: 900px) {
+  .ab-filter .ab-chip { min-height: 40px; }
+}
+
+/* The composer header label is a small caption on a raised surface. */
+.ab-compose__head .ab-label { color: var(--ink); }

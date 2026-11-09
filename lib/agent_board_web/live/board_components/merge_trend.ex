@@ -28,11 +28,11 @@ defmodule AgentBoardWeb.BoardComponents.MergeTrend do
     ~H"""
     <figure id={@id} class="merge-trend">
       <figcaption>
-        <strong>Recent merges</strong>
-        <span>{@recent_count} in the last 7 UTC days · loaded history</span>
+        <strong>Mesclagens recentes</strong>
+        <span>{@recent_count} nos últimos 7 dias UTC · histórico carregado</span>
       </figcaption>
-      <ol aria-label="Loaded merges by UTC day">
-        <li :for={day <- @days} aria-label={"#{day.date}: #{day.count} loaded merges"}>
+      <ol aria-label="Mesclagens carregadas por dia UTC">
+        <li :for={day <- @days} aria-label={"#{day.date}: #{day.count} mesclagens carregadas"}>
           <span class="merge-trend-count">{day.count}</span>
           <span class="merge-trend-track">
             <span class="merge-trend-bar" style={"height: #{day.height}%"}></span>

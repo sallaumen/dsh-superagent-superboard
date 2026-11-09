@@ -65,7 +65,7 @@ defmodule AgentBoardWeb.IntakeUITest do
 
     view |> element("#ask-agent") |> render_submit(%{"body" => "por que demora?"})
     html = view |> element("#ask-confirm-go") |> render_click()
-    assert html =~ "Question sent"
+    assert html =~ "Pergunta enviada"
 
     # the model answers on another process: let it land, then render
     Process.sleep(150)
@@ -79,9 +79,9 @@ defmodule AgentBoardWeb.IntakeUITest do
     {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
     assert has_element?(view, "#intake-form button[disabled]")
-    assert html =~ "not configured"
-    assert html =~ "No AI calls recorded yet."
-    assert html =~ "Split is unavailable"
+    assert html =~ "não configurada"
+    assert html =~ "Nenhuma chamada de IA registrada ainda."
+    assert html =~ "Dividir fica indisponível"
   end
 
   test "failed creation reports one error and never a success", %{conn: conn} do
@@ -162,12 +162,12 @@ defmodule AgentBoardWeb.IntakeUITest do
 
     assert html =~ "o board responde rapido"
     assert html =~ "medir o tempo"
-    assert html =~ "Latest 2 calls across the board."
+    assert html =~ "Últimas 2 chamadas no board."
     assert html =~ "refine_request"
 
     for index <- ["invalid", "-1", "99"] do
       render_hook(view, "create_from_intake", %{"index" => index})
-      assert has_element?(view, "#flash-error", "Could not create the task")
+      assert has_element?(view, "#flash-error", "Não foi possível criar a tarefa")
       assert AgentBoard.Repo.aggregate(AgentBoard.Board.Task, :count, :id) == 0
     end
 
@@ -191,7 +191,7 @@ defmodule AgentBoardWeb.IntakeUITest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/unclear-intake")
     view |> element("#intake-form") |> render_submit(%{"text" => "melhore o board"})
 
-    assert has_element?(view, "#intake-needs-clarification", "needs more detail")
+    assert has_element?(view, "#intake-needs-clarification", "precisa de mais detalhe")
     assert render(view) =~ "Qual parte?"
     refute has_element?(view, "[phx-click='create_from_intake']")
     assert AgentBoard.Repo.aggregate(AgentBoard.AI.Call, :count, :id) == 1
@@ -217,7 +217,7 @@ defmodule AgentBoardWeb.IntakeUITest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/empty-intake")
     view |> element("#intake-form") |> render_submit(%{"text" => "melhore o board"})
 
-    assert has_element?(view, "#intake-no-tasks", "try Split again")
+    assert has_element?(view, "#intake-no-tasks", "tente dividir de novo")
     refute has_element?(view, "#intake-needs-clarification")
     refute has_element?(view, "[phx-click='create_from_intake']")
   end
@@ -259,7 +259,7 @@ defmodule AgentBoardWeb.IntakeUITest do
     view |> element("#intake-form") |> render_change(%{"text" => "pedido B"})
     refute has_element?(view, "[phx-click='create_from_intake']")
     render_hook(view, "create_from_intake", %{"index" => "0"})
-    assert has_element?(view, "#flash-error", "Could not create the task")
+    assert has_element?(view, "#flash-error", "Não foi possível criar a tarefa")
 
     view |> element("#intake-form") |> render_submit(%{"text" => "pedido B"})
     refute has_element?(view, "[phx-click='create_from_intake']")

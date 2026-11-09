@@ -1099,7 +1099,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, socket |> assign(:repos, repos) |> load(repo)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Could not track #{owner}/#{name}")}
+        {:noreply, put_flash(socket, :error, "Não foi possível acompanhar #{owner}/#{name}")}
     end
   end
 
@@ -1130,11 +1130,11 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply,
          socket
          |> refresh_inspector_after_act(task_id)
-         |> put_flash(:info, "Task updated")
+         |> put_flash(:info, "Tarefa atualizada")
          |> speak(Voice.task_summary(task.title, action, socket.assigns.voice.language))}
 
       _ ->
-        {:noreply, put_flash(socket, :error, "Could not update the task")}
+        {:noreply, put_flash(socket, :error, "Não foi possível atualizar a tarefa")}
     end
   end
 
@@ -1271,7 +1271,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("ask", %{"body" => body}, socket) do
     case {socket.assigns.conversation, String.trim(body)} do
       {nil, _body} ->
-        {:noreply, put_flash(socket, :error, "Open a task first")}
+        {:noreply, put_flash(socket, :error, "Abra uma tarefa primeiro")}
 
       {_task, ""} ->
         {:noreply, socket}
@@ -1299,7 +1299,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("ask_confirm", _params, socket) do
     case {socket.assigns.conversation, socket.assigns.ask_pending} do
       {nil, _pending} ->
-        {:noreply, put_flash(socket, :error, "Open a task first")}
+        {:noreply, put_flash(socket, :error, "Abra uma tarefa primeiro")}
 
       {_task, pending} when not is_map(pending) ->
         {:noreply, socket}
@@ -1321,13 +1321,13 @@ defmodule AgentBoardWeb.BoardLive do
                comments: Board.comments(task)
              )
              |> load_inspector()
-             |> put_flash(:info, "Question sent")}
+             |> put_flash(:info, "Pergunta enviada")}
 
           {:error, _} ->
             {:noreply,
              socket
              |> assign(ask_draft: body)
-             |> put_flash(:error, "The question did not reach GitHub")}
+             |> put_flash(:error, "A pergunta não chegou ao GitHub")}
         end
 
       {_task, _pending_for_another_task} ->
@@ -1528,10 +1528,10 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, put_flash(socket, :error, "Select a repository before splitting.")}
 
       params["source_repo"] && params["source_repo"] != to_string(repo.id) ->
-        {:noreply, put_flash(socket, :error, "Repository changed. Review the request again.")}
+        {:noreply, put_flash(socket, :error, "O repositório mudou. Revise o pedido de novo.")}
 
       socket.assigns.ai_status == :not_configured ->
-        {:noreply, put_flash(socket, :error, "AI is not configured. Split is unavailable.")}
+        {:noreply, put_flash(socket, :error, "IA não configurada. Dividir fica indisponível.")}
 
       String.trim(text) == "" ->
         {:noreply, put_flash(socket, :error, "Add a request before splitting.")}
@@ -1571,7 +1571,7 @@ defmodule AgentBoardWeb.BoardLive do
            Actions.run(:create_tasks, action, ui(), confirm: params["confirm"]) do
       {:noreply, put_flash(socket, :info, "Task created: #{task.title}")}
     else
-      _ -> {:noreply, put_flash(socket, :error, "Could not create the task")}
+      _ -> {:noreply, put_flash(socket, :error, "Não foi possível criar a tarefa")}
     end
   end
 
@@ -2108,7 +2108,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   # A question that reached GitHub is a success even when the model cannot
   # answer it: the failure is shown as an error and never overwrites the
-  # "Question sent" confirmation.
+  # "Pergunta enviada" confirmation.
   defp answer_arrived(socket, text) when is_binary(text), do: answer_arrived(socket, {:ok, text})
 
   defp answer_arrived(socket, {:ok, text}) do
@@ -2137,7 +2137,7 @@ defmodule AgentBoardWeb.BoardLive do
          ) do
       {:ok, %{json: %{"answer" => text}}} -> {:ok, text}
       {:ok, _} -> {:ok, "The model answered, but not with text."}
-      {:error, :not_configured} -> {:error, "The AI is not configured."}
+      {:error, :not_configured} -> {:error, "A IA não está configurada."}
       {:error, reason} -> {:error, "The AI did not answer: #{inspect(reason)}"}
     end
   end
