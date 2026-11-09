@@ -103,7 +103,9 @@ chooses another file (for example, in a worktree). The loader lives in
 | `No task is running.` | the runner has no active ticket | not an error; it is the empty state |
 | every card says `no review` / `no ci` | the repo has no reviews or CI | correct, not a bug |
 | CI red on every PR | GitHub Billing: payment failed / spending limit | fix it in Billing & plans; no code makes this green |
-| `sync_error` with 401/403 | `GITHUB_TOKEN` missing, expired, or rate limited | update the token in `.env.local` or the service environment |
+| `sync_error` with 401/403 | `GITHUB_TOKEN` expired or without access to the repository | update the token in `.env.local` or the service environment |
+| GitHub row says `Rate limited` | GitHub asked the board to wait | nothing to do: the sync job waits and runs again by itself |
+| sync job `cancelled` with `no GITHUB_TOKEN` | this server has no token, so it does not sync (a worktree server, usually) | correct for a side server; on the real board, set the token |
 
 ## The tests
 

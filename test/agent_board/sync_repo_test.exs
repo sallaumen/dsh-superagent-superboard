@@ -676,4 +676,46 @@ defmodule AgentBoard.SyncRepoTest do
     assert Repo.one(from t in Task, where: t.number == 11, select: t.title) ==
              String.duplicate("a", 255)
   end
+
+  test "a rate limit on one pull stops the run instead of asking for every other", %{repo: repo} do
+    {:ok, calls} = Agent.start_link(fn -> 0 end)
+
+    pull = fn number ->
+      %{
+        "number" => number,
+        "title" => "PR #{number}",
+        "state" => "open",
+        "html_url" => "https://github.com/sallaumen/arena-rogue/pull/#{number}",
+        "user" => %{"login" => "s"},
+        "head" => %{"sha" => "abc#{number}", "ref" => "b#{number}"},
+        "created_at" => "2026-11-04T00:00:00Z",
+        "updated_at" => "2026-11-04T00:00:00Z"
+      }
+    end
+
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/pulls" ->
+          Req.Test.json(conn, [pull.(1), pull.(2), pull.(3)])
+
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Req.Test.json(conn, [])
+
+        _other ->
+          Agent.update(calls, &(&1 + 1))
+          Plug.Conn.send_resp(conn, 429, "slow down")
+      end
+    end)
+
+    assert {:error, %AgentBoard.GitHub.RateLimited{}} = Sync.sync_repo(client(), repo)
+    assert Agent.get(calls, & &1) == 1
+
+    kinds = Enum.map(Board.events(repo), & &1.kind)
+    assert "sync_error" in kinds
+    refute "review_error" in kinds
+    refute "check_error" in kinds
+
+    assert %{payload: %{"rate_limited" => true, "retry_after" => 60}} =
+             Enum.find(Board.events(repo), &(&1.kind == "sync_error"))
+  end
 end

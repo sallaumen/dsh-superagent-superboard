@@ -181,7 +181,11 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     do: {:noreply, assign(socket, step: :done, result: %{tone: :error, text: text})}
 
   def handle_async(:run, {:exit, reason}, socket) do
-    text = gettext("The action did not finish: %{reason}", reason: inspect(reason))
+    text =
+      gettext("The action did not finish: %{reason}",
+        reason: AgentBoardWeb.FailureText.text(reason)
+      )
+
     {:noreply, assign(socket, step: :done, result: %{tone: :error, text: text})}
   end
 

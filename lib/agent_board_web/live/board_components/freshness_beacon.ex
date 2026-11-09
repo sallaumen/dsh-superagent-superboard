@@ -97,6 +97,7 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeacon do
        when code in [
               :github_waiting,
               :github_failed,
+              :github_rate_limited,
               :github_errors,
               :github_delayed,
               :github_current
@@ -108,6 +109,7 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeacon do
   defp source_word(%{kind: :unknown}), do: gettext("No data")
   defp source_word(%{kind: :blocked, code: :github_failed}), do: gettext("Failed")
   defp source_word(%{kind: :blocked}), do: gettext("Unavailable")
+  defp source_word(%{kind: :stale, code: :github_rate_limited}), do: gettext("Rate limited")
   defp source_word(%{kind: :stale, code: :github_errors}), do: gettext("With errors")
   defp source_word(%{kind: :stale, code: :github_delayed}), do: gettext("Delayed")
   defp source_word(%{kind: :stale}), do: gettext("No signal")
@@ -118,6 +120,9 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeacon do
 
   defp source_detail(%{code: :github_failed, attempted_at: at}, offset),
     do: gettext("last attempt at %{time}", time: time(at, offset))
+
+  defp source_detail(%{code: :github_rate_limited}, _offset),
+    do: gettext("limiting calls; the board tries again by itself")
 
   defp source_detail(%{code: :github_errors, error_count: n}, _offset),
     do: ngettext("%{count} error in the last sync", "%{count} errors in the last sync", n)

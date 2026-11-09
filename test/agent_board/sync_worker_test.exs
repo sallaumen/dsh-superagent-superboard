@@ -71,4 +71,65 @@ defmodule AgentBoard.Sync.WorkerTest do
     assert reason =~ "superseded"
     refute Enum.any?(Board.events(repo), &(&1.kind == "sync"))
   end
+
+  describe "a sync that could not finish" do
+    setup do
+      Req.Test.set_req_test_to_shared(%{})
+      on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
+
+      {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+      Application.put_env(:agent_board, :github_client, fn -> client() end)
+      on_exit(fn -> Application.delete_env(:agent_board, :github_client) end)
+      %{repo: repo}
+    end
+
+    test "goes back to Oban to be retried", %{repo: repo} do
+      Req.Test.stub(@stub, &Plug.Conn.send_resp(&1, 502, "bad gateway"))
+
+      assert {:error, reason} = Worker.perform(%Oban.Job{args: %{}})
+      assert reason =~ "502"
+      assert Enum.any?(Board.events(repo), &(&1.kind == "sync_error"))
+    end
+
+    test "waits as long as GitHub asked when rate limited" do
+      Req.Test.stub(@stub, fn conn ->
+        conn
+        |> Plug.Conn.put_resp_header("retry-after", "120")
+        |> Plug.Conn.send_resp(429, "slow down")
+      end)
+
+      assert Worker.perform(%Oban.Job{args: %{}}) == {:snooze, 120}
+    end
+
+    test "stops at the first rate limit instead of asking for each remaining repository", %{
+      repo: _repo
+    } do
+      {:ok, _other} = Board.add_repository("sallaumen", "o_colmex")
+      {:ok, calls} = Agent.start_link(fn -> 0 end)
+
+      Req.Test.stub(@stub, fn conn ->
+        Agent.update(calls, &(&1 + 1))
+        Plug.Conn.send_resp(conn, 429, "slow down")
+      end)
+
+      assert {:snooze, 60} = Worker.perform(%Oban.Job{args: %{}})
+      assert Agent.get(calls, & &1) == 1
+    end
+  end
+
+  test "perform/1 leaves the database alone with no GitHub token", _ctx do
+    {:ok, repo} = Board.add_repository("sallaumen", "sem-token")
+    previous = Application.get_env(:agent_board, :github_token)
+    Application.put_env(:agent_board, :github_token, "")
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:agent_board, :github_token, previous),
+        else: Application.delete_env(:agent_board, :github_token)
+    end)
+
+    assert {:cancel, reason} = Worker.perform(%Oban.Job{args: %{}})
+    assert reason =~ "GITHUB_TOKEN"
+    assert Board.events(repo) == []
+  end
 end

@@ -56,6 +56,7 @@ defmodule AgentBoard.Freshness do
     cond do
       not connected -> :reconnecting
       is_nil(last_attempt) -> :unknown
+      rate_limited?(last_attempt) -> :delayed
       last_attempt.kind == "sync_error" -> :offline
       is_nil(last_success) -> :unknown
       true -> healthy_state(age, agent, now, last_success)
@@ -134,6 +135,17 @@ defmodule AgentBoard.Freshness do
           age_sec: nil
         }
 
+      rate_limited?(last_attempt) ->
+        %{
+          code: :github_rate_limited,
+          retry_after: last_attempt.payload["retry_after"],
+          label: "GitHub (PRs, CI)",
+          kind: :stale,
+          word: "Limitado",
+          detail: "limitando as chamadas; o board tenta de novo sozinho",
+          age_sec: age
+        }
+
       last_attempt.kind == "sync_error" ->
         %{
           code: :github_failed,
@@ -177,6 +189,11 @@ defmodule AgentBoard.Freshness do
         }
     end
   end
+
+  # A limit that lifts by itself is a delay, not a lost connection: the board
+  # waits and retries, and nothing is wrong on the owner's side.
+  defp rate_limited?(%{kind: "sync_error", payload: %{"rate_limited" => true}}), do: true
+  defp rate_limited?(_event), do: false
 
   defp errors(nil), do: 0
   defp errors(%{payload: %{"errors" => n}}) when is_integer(n), do: n

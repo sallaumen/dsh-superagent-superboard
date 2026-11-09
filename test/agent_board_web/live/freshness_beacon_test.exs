@@ -24,4 +24,21 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeaconTest do
     refute html =~ "14:11"
     refute html =~ "14:15"
   end
+
+  test "a rate limit says the board is handling it" do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+    on_exit(fn -> Gettext.put_locale(AgentBoardWeb.Gettext, "en") end)
+
+    freshness = %{
+      state: :delayed,
+      at: ~U[2026-11-09 14:11:00Z],
+      age_sec: 300,
+      sources: [%{code: :github_rate_limited, kind: :stale, retry_after: 300}]
+    }
+
+    html = render_component(&FreshnessBeacon.beacon/1, freshness: freshness, tz_offset: 180)
+
+    assert html =~ "Limitado"
+    assert html =~ "tenta de novo sozinho"
+  end
 end

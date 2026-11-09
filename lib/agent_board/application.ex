@@ -10,6 +10,8 @@ defmodule AgentBoard.Application do
     children = [
       AgentBoardWeb.Telemetry,
       AgentBoard.Repo,
+      # Before anything that can broadcast: a job started by Oban at boot.
+      {Phoenix.PubSub, name: AgentBoard.PubSub},
       {Oban, Application.fetch_env!(:agent_board, Oban)},
       AgentBoard.AgentWorktree.Cache,
       AgentBoard.TicketPoller,
@@ -22,7 +24,6 @@ defmodule AgentBoard.Application do
       AgentBoard.Superagents.Ticker,
       AgentBoard.ElevenLabs.SpeechCache,
       {DNSCluster, query: Application.get_env(:agent_board, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: AgentBoard.PubSub},
       AgentBoard.Voice.Activity,
       # Start a worker by calling: AgentBoard.Worker.start_link(arg)
       # {AgentBoard.Worker, arg},

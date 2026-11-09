@@ -11,27 +11,45 @@ defmodule AgentBoard.Sync.Worker do
   """
   use Oban.Worker, queue: :sync, max_attempts: 3, unique: [period: 30]
 
+  alias AgentBoard.{GitHub, Sync}
+
   # The crontab's period. A retry or a snooze that woke is scheduled seconds
   # before it runs; an orphan Lifeline rescued, at least `rescue_after` ago.
   @superseded_after_seconds 5 * 60
 
   @impl Oban.Worker
   def perform(%Oban.Job{} = job) do
-    if superseded?(job) do
-      {:cancel, "superseded: scheduled at #{job.scheduled_at}, before the last cron run"}
-    else
-      sync()
+    cond do
+      superseded?(job) ->
+        {:cancel, "superseded: scheduled at #{job.scheduled_at}, before the last cron run"}
+
+      # A server with no token (a worktree on the shared database) can only
+      # fail, and each failure tells the live board GitHub is down.
+      Sync.repositories?() and not GitHub.configured?() ->
+        {:cancel, "no GITHUB_TOKEN: this server does not sync"}
+
+      true ->
+        Sync.run() |> outcome()
     end
   end
 
-  defp sync do
-    AgentBoard.Sync.all()
-    :ok
-  rescue
-    # A spent quota is not a broken job: snooze for as long as GitHub asked
-    # instead of burning the retry budget on requests that cannot succeed.
-    error in AgentBoard.GitHub.RateLimited ->
-      {:snooze, max(error.retry_after, 60)}
+  # A spent quota is not a broken job: snooze for as long as GitHub asked
+  # instead of burning the retry budget on requests that cannot succeed.
+  # Anything else goes back to Oban, which retries with a backoff.
+  defp outcome(results) do
+    case Enum.filter(results, &match?({:error, _exception}, &1)) do
+      [] ->
+        :ok
+
+      failures ->
+        case Enum.find(failures, &match?({:error, %GitHub.RateLimited{}}, &1)) do
+          {:error, %GitHub.RateLimited{retry_after: seconds}} ->
+            {:snooze, seconds |> max(60) |> min(3_600)}
+
+          nil ->
+            {:error, failures |> List.first() |> elem(1) |> Exception.message()}
+        end
+    end
   end
 
   defp superseded?(%Oban.Job{scheduled_at: %DateTime{} = at}),

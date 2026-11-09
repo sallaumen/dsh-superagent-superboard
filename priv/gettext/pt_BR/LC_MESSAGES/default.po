@@ -4536,3 +4536,59 @@ msgstr "para o %{executor}"
 msgctxt "task status"
 msgid "Merged"
 msgstr "Mesclado"
+
+#, elixir-autogen, elixir-format
+msgid "The key for this service is not configured."
+msgstr "A chave deste serviço não está configurada."
+
+#, elixir-autogen, elixir-format
+msgid "The service refused the key."
+msgstr "O serviço recusou a chave."
+
+#, elixir-autogen, elixir-format
+msgid "The service's usage limit was reached."
+msgstr "O serviço atingiu o limite de uso."
+
+#, elixir-autogen, elixir-format
+msgid "The service did not respond in time."
+msgstr "O serviço não respondeu a tempo."
+
+#, elixir-autogen, elixir-format
+msgid "The service did not respond."
+msgstr "O serviço não respondeu."
+
+#, elixir-autogen, elixir-format
+msgid "The service answered with an error (HTTP %{status})."
+msgstr "O serviço respondeu com erro (HTTP %{status})."
+
+#, elixir-autogen, elixir-format
+msgid "GitHub is limiting calls; try again in %{minutes} min."
+msgstr "O GitHub está limitando as chamadas; tente de novo em %{minutes} min."
+
+#, elixir-autogen, elixir-format
+msgid "Could not reach the service; check the network."
+msgstr "Não foi possível chegar ao serviço; confira a rede."
+
+#, elixir-autogen, elixir-format
+msgid "The connection dropped before an answer."
+msgstr "A conexão caiu antes da resposta."
+
+#, elixir-autogen, elixir-format
+msgid "GitHub answered with an error (HTTP %{status})."
+msgstr "O GitHub respondeu com erro (HTTP %{status})."
+
+#, elixir-autogen, elixir-format
+msgid "Something unexpected went wrong; the detail is in the log."
+msgstr "Algo inesperado aconteceu; o detalhe ficou no registro."
+
+#, elixir-autogen, elixir-format
+msgid "The AI did not answer: %{reason}"
+msgstr "A IA não respondeu: %{reason}"
+
+#, elixir-autogen, elixir-format
+msgid "Rate limited"
+msgstr "Limitado"
+
+#, elixir-autogen, elixir-format
+msgid "limiting calls; the board tries again by itself"
+msgstr "limitando as chamadas; o board tenta de novo sozinho"

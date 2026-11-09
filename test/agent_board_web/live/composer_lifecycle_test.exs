@@ -591,7 +591,13 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     submit(view, %{"text" => "Pedido com falha parcial", "tasks" => ["0", "1"]})
 
     assert has_element?(view, "#composer-receipt", "1 de 2 na fila; 1 falhou")
-    assert has_element?(view, "#composer-receipt", "falhou: GitHub HTTP 500")
+
+    assert has_element?(
+             view,
+             "#composer-receipt",
+             "falhou: O GitHub respondeu com erro (HTTP 500)"
+           )
+
     assert has_element?(view, "#composer-receipt button", "Tentar as 1 que falharam")
     assert has_element?(view, "#flash-error", "Criei 1 de 2")
     assert Repo.aggregate(Task, :count) == 1

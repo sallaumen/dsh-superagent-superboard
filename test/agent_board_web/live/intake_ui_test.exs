@@ -110,7 +110,13 @@ defmodule AgentBoardWeb.IntakeUITest do
     render_async(view, 2000)
 
     assert has_element?(view, "#composer-receipt", "Nada entrou na fila: 1 falhou")
-    assert has_element?(view, "#composer-receipt", "falhou: GitHub HTTP 422")
+
+    assert has_element?(
+             view,
+             "#composer-receipt",
+             "falhou: O GitHub respondeu com erro (HTTP 422)"
+           )
+
     assert has_element?(view, "#composer-receipt button", "Tentar as 1 que falharam")
     refute has_element?(view, "#flash-info")
   end
