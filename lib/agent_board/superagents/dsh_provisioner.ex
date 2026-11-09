@@ -6,15 +6,16 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   """
   @behaviour AgentBoard.Superagents.Provisioner
 
-  alias AgentBoard.Superagents
-  alias AgentBoard.Superagents.{DshManager, Superagent}
+  alias AgentBoard.{AgentAccess, Superagents}
+  alias AgentBoard.Superagents.{BotAccess, DshManager, Superagent}
 
   @doc false
   def provision(%Superagent{} = superagent, %Superagent{} = source, attrs) do
     # Nothing is touched until the target is known to be free: what is on disk
     # before this attempt is not this attempt's to remove.
     with :ok <- validate(attrs),
-         :ok <- target_free(superagent, source) do
+         :ok <- target_free(superagent, source),
+         :ok <- ensure_bot_access(superagent, source) do
       build(superagent, source, attrs, File.exists?(superagent.state_dir))
     end
   end
@@ -33,6 +34,28 @@ defmodule AgentBoard.Superagents.DshProvisioner do
       {:error, reason} -> undo(superagent, reason, state_existed?)
     end
   end
+
+  # The bot and its CLI are the ones the source profile already uses. A source
+  # that cannot say is not a failure here: saving the settings still checks.
+  defp ensure_bot_access(superagent, source) do
+    with {:ok, 200, state} <- get(source, "/state"),
+         {:ok, 200, settings} <- get(source, "/settings"),
+         bot when is_binary(bot) <- get_in(state, ["setup", "accounts", "agent"]),
+         {:ok, bot} <- AgentAccess.normalize_login(bot),
+         %{"value" => %{"config" => %{"cli" => cli}}} when is_binary(cli) and cli != "" <-
+           github_source(settings),
+         %{owner: _, name: _} = repository <- repository_of(superagent) do
+      BotAccess.ensure(repository, bot, cli)
+    else
+      _unknown -> :ok
+    end
+  end
+
+  defp github_source(settings) do
+    Enum.find(settings["sources"] || [], &(&1["id"] == "github"))
+  end
+
+  defp repository_of(superagent), do: AgentBoard.Repo.preload(superagent, :repository).repository
 
   defp target_free(superagent, source) do
     from = profile_dir(source.profile)
@@ -71,8 +94,7 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     if Path.dirname(path) == root, do: path, else: nil
   end
 
-  defp state_root,
-    do: Application.get_env(:agent_board, :dsh_state_root, Path.expand("~/.dsh/state"))
+  defp state_root, do: Superagents.state_root()
 
   defp inside_state?(path) do
     root = state_root()

@@ -40,6 +40,24 @@ defmodule AgentBoard.Superagents.DshProvisionerTest do
     defp answer(_method, _path), do: {404, %{error: "unexpected"}}
   end
 
+  defmodule AccountAgent do
+    @moduledoc false
+    import Plug.Conn
+
+    def init(options), do: options
+
+    def call(conn, _options) do
+      {:ok, _body, conn} = read_body(conn)
+
+      body =
+        if String.ends_with?(conn.request_path, "/state"),
+          do: %{setup: %{accounts: %{agent: "robo"}}},
+          else: %{sources: [%{id: "github", value: %{config: %{cli: "/bin/true"}}}]}
+
+      conn |> put_resp_content_type("application/json") |> send_resp(200, Jason.encode!(body))
+    end
+  end
+
   setup do
     root = Path.join(System.tmp_dir!(), "provisioner-#{System.pid()}-#{System.unique_integer()}")
     profiles = Path.join(root, "profiles")
@@ -166,5 +184,43 @@ defmodule AgentBoard.Superagents.DshProvisionerTest do
              DshProvisioner.provision(project, source(context), %{path: context.checkout})
 
     assert File.dir?(Path.join(context.profiles, "new"))
+  end
+
+  test "a bot the board cannot give access to stops before anything is created", context do
+    server =
+      start_supervised!({Bandit, plug: AccountAgent, port: 0, ip: :loopback}, id: :accounts)
+
+    {:ok, {_ip, port}} = ThousandIsland.listener_info(server)
+
+    previous = Application.get_env(:agent_board, :github_client)
+    Req.Test.set_req_test_to_shared(%{})
+
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(base_url: "https://api.github.test", plug: {Req.Test, __MODULE__}, retry: false)
+    end)
+
+    on_exit(fn ->
+      Req.Test.set_req_test_to_private(%{})
+
+      if previous,
+        do: Application.put_env(:agent_board, :github_client, previous),
+        else: Application.delete_env(:agent_board, :github_client)
+    end)
+
+    Req.Test.stub(__MODULE__, fn
+      %{method: "GET"} = conn ->
+        Req.Test.json(conn, %{"role_name" => "read"})
+
+      %{method: "PUT"} = conn ->
+        conn |> Plug.Conn.put_status(403) |> Req.Test.json(%{"message" => "no"})
+    end)
+
+    source = %Superagent{profile: "source", port: port, state_dir: "/x"}
+
+    assert {:error, text} =
+             DshProvisioner.provision(project(context), source, %{path: context.checkout})
+
+    assert text =~ "@robo"
+    refute File.exists?(Path.join(context.profiles, "new"))
   end
 end

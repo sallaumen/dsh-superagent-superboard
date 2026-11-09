@@ -388,6 +388,24 @@ defmodule AgentBoard.GitHub do
     end
   end
 
+  @doc """
+  Invite `login` to push to the repository: `{:invited, id}` when GitHub made
+  an invitation, `:already` when it had nothing to do. `login` is validated by
+  the caller.
+  """
+  def invite_collaborator(client, owner, repo, login) do
+    response =
+      Req.put!(client,
+        url: "/repos/#{owner}/#{repo}/collaborators/#{login}",
+        json: %{permission: "push"}
+      )
+
+    case response.status do
+      204 -> :already
+      _status -> {:invited, body!(response)["id"]}
+    end
+  end
+
   @doc "Close an issue."
   def close_issue(client, owner, repo, number) do
     client

@@ -1040,6 +1040,7 @@ msgid "Transcripts exist, but the board can't read them: missing the"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/composer.ex:117
+#: lib/agent_board_web/live/board_components/settings/projects.ex:532
 #, elixir-autogen, elixir-format
 msgid "Try again"
 msgstr ""
@@ -3795,7 +3796,7 @@ msgid "Starting runner…"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:244
-#: lib/agent_board_web/live/board_components/settings/projects.ex:524
+#: lib/agent_board_web/live/board_components/settings/projects.ex:534
 #, elixir-autogen, elixir-format
 msgid "Stop"
 msgstr ""
@@ -4510,7 +4511,7 @@ msgstr ""
 msgid "Empty uses ~/projects/project-name."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:496
+#: lib/agent_board_web/live/board_components/settings/projects.ex:498
 #, elixir-autogen, elixir-format
 msgid "GitHub reached its reading limit. Wait for the quota to renew and check again."
 msgstr ""
@@ -4598,7 +4599,7 @@ msgstr ""
 msgid "Paused"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:523
+#: lib/agent_board_web/live/board_components/settings/projects.ex:533
 #, elixir-autogen, elixir-format
 msgid "Start"
 msgstr ""
@@ -4608,17 +4609,17 @@ msgstr ""
 msgid "Starting"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:501
+#: lib/agent_board_web/live/board_components/settings/projects.ex:503
 #, elixir-autogen, elixir-format
 msgid "The GitHub source does not point to any repository, so the agent does not start. Its %{count} agents stay stopped until this is fixed."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:488
+#: lib/agent_board_web/live/board_components/settings/projects.ex:490
 #, elixir-autogen, elixir-format
 msgid "The agent is in an error state. Open the controls to try again."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:507
+#: lib/agent_board_web/live/board_components/settings/projects.ex:509
 #, elixir-autogen, elixir-format
 msgid "The agent reported an error. Open the technical details to see the cause."
 msgstr ""
@@ -4648,17 +4649,17 @@ msgstr ""
 msgid "read at %{time}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:482
+#: lib/agent_board_web/live/board_components/settings/projects.ex:484
 #, elixir-autogen, elixir-format
 msgid "should be on"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:483
+#: lib/agent_board_web/live/board_components/settings/projects.ex:485
 #, elixir-autogen, elixir-format
 msgid "should be paused"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:484
+#: lib/agent_board_web/live/board_components/settings/projects.ex:486
 #, elixir-autogen, elixir-format
 msgid "should be stopped"
 msgstr ""
@@ -5359,4 +5360,9 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/merge_log.ex:27
 #, elixir-autogen, elixir-format
 msgid "in 7 days"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:472
+#, elixir-autogen, elixir-format
+msgid "setup did not finish"
 msgstr ""

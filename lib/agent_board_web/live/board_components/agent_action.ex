@@ -19,7 +19,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   """
   use AgentBoardWeb, :live_component
 
-  alias AgentBoard.{Actions, Board}
+  alias AgentBoard.{Actions, Board, Superagents}
   alias AgentBoard.Board.{Repository, Task}
   alias Phoenix.LiveView.JS
 
@@ -155,7 +155,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   def handle_event("go", _params, %{assigns: %{step: :confirm} = assigns} = socket) do
     {name, params, question} = {action(assigns), params(assigns), assigns.question}
     run = fn -> Actions.run(name, params, Actions.owner(:ui), confirm: question) end
-    {:noreply, socket |> assign(step: :busy) |> start_async(:run, run)}
+    {:noreply, socket |> assign(step: :busy) |> start_async(:run, outliving_page(name, run))}
   end
 
   def handle_event("go", _params, socket), do: {:noreply, socket}
@@ -199,11 +199,16 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     {:noreply, assign(socket, step: :done, result: %{tone: :error, text: text})}
   end
 
+  # Provisioning takes minutes; closing the page must not cut it in half.
+  defp outliving_page(:retry_provision_superagent, run), do: fn -> Superagents.detached(run) end
+  defp outliving_page(_name, run), do: run
+
   defp action(%{mode: :retry}), do: :retry_ticket
   defp action(%{mode: :restart}), do: :start_agent
   defp action(%{mode: :dispatch}), do: :dispatch_task
   defp action(%{mode: :stop_execution}), do: :stop_execution
   defp action(%{mode: :start_superagent}), do: :start_superagent
+  defp action(%{mode: :retry_provision_superagent}), do: :retry_provision_superagent
   defp action(%{mode: :stop_superagent}), do: :stop_superagent
   defp action(%{mode: :remove_superagent}), do: :remove_superagent
   defp action(%{mode: :grant_agent_access}), do: :grant_agent_access
@@ -243,7 +248,12 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     do: %{superagent: assigns.superagent, login: assigns.login}
 
   defp params(%{mode: mode} = assigns)
-       when mode in [:start_superagent, :stop_superagent, :remove_superagent],
+       when mode in [
+              :start_superagent,
+              :stop_superagent,
+              :remove_superagent,
+              :retry_provision_superagent
+            ],
        do: %{superagent: assigns.superagent}
 
   defp repository(%Task{repository: %Repository{} = repository}), do: repository

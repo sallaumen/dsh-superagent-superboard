@@ -91,6 +91,7 @@ defmodule AgentBoard.Actions do
     :dispatch_task,
     :stop_execution,
     :provision_superagent,
+    :retry_provision_superagent,
     :remove_superagent,
     :start_superagent,
     :stop_superagent,
@@ -189,6 +190,9 @@ defmodule AgentBoard.Actions do
 
   defp spec(:provision_superagent),
     do: %{risk: :red, does: "cria profile, porta, state e setup de um superagent novo"}
+
+  defp spec(:retry_provision_superagent),
+    do: %{risk: :red, does: "provisiona de novo um superagent cuja tentativa falhou"}
 
   defp spec(:remove_superagent),
     do: %{risk: :red, does: "para o superagent e arquiva profile/state; o projeto sai do board"}
@@ -381,12 +385,26 @@ defmodule AgentBoard.Actions do
   def phrase(:provision_superagent, %{repository: repo, source: source, path: path}, "en-US"),
     do:
       "Provision DeepSeek for #{repo_name(repo)} from #{source.profile}? The board creates " <>
-        "a profile, port and state, and uses the checkout #{short(path)}."
+        "a profile, port and state, uses the checkout #{short(path)}, and gives the bot write " <>
+        "access to the repository if it lacks it."
 
   def phrase(:provision_superagent, %{repository: repo, source: source, path: path}, _lang),
     do:
       "Provisionar o DeepSeek para #{repo_name(repo)} a partir de #{source.profile}? O board " <>
-        "cria profile, porta e state, e usa o checkout #{short(path)}."
+        "cria profile, porta e state, usa o checkout #{short(path)} e dá ao bot acesso de " <>
+        "escrita no repositório, se faltar."
+
+  def phrase(:retry_provision_superagent, %{superagent: superagent}, "en-US"),
+    do:
+      "Provision #{project(superagent)} again from #{superagent.source_profile}? The board " <>
+        "creates a profile, port and state, uses the checkout " <>
+        "#{short(superagent.checkout_path)}, and gives the bot write access if it lacks it."
+
+  def phrase(:retry_provision_superagent, %{superagent: superagent}, _lang),
+    do:
+      "Provisionar de novo #{project(superagent)} a partir de #{superagent.source_profile}? " <>
+        "O board cria profile, porta e state, usa o checkout " <>
+        "#{short(superagent.checkout_path)} e dá ao bot acesso de escrita, se faltar."
 
   def phrase(:remove_superagent, %{superagent: superagent}, "en-US"),
     do:
@@ -693,6 +711,13 @@ defmodule AgentBoard.Actions do
 
       {:error, reason} ->
         {:error, "Não foi possível provisionar: #{describe(reason)}"}
+    end
+  end
+
+  defp execute(:retry_provision_superagent, %{superagent: superagent}) do
+    case Superagents.retry_provision(superagent) do
+      {:ok, _superagent} -> {:ok, "Provisionado de novo; o status atualiza no ticker."}
+      {:error, reason} -> {:error, "Não foi possível provisionar: #{describe(reason)}"}
     end
   end
 
@@ -1006,6 +1031,13 @@ defmodule AgentBoard.Actions do
     Logger.warning("agent access failed: #{inspect(other)}")
     "o agente recusou o pedido."
   end
+
+  defp describe({:setup, text}) when is_binary(text), do: text
+
+  defp describe(:provision_failed),
+    do: "a configuração deste projeto não terminou; use Tentar de novo."
+
+  defp describe(:nothing_to_retry), do: "este projeto não tem provisionamento para refazer."
 
   defp describe(%{__exception__: true} = exception), do: Exception.message(exception)
   defp describe(text) when is_binary(text), do: text

@@ -469,6 +469,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   defp state_status(%{observed_state: "stopped"}), do: "ab-status--queue"
   defp state_status(_superagent), do: "ab-status--queue"
 
+  defp desired_line(%{provision_failed_at: %DateTime{}}), do: gettext("setup did not finish")
+
   defp desired_line(%{desired_state: "running", observed_state: state})
        when state in ["ready", "starting"],
        do: nil
@@ -511,16 +513,25 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
     end
   end
 
+  # A project whose setup failed has nothing to start: it is set up again.
+  defp remote_action(%{provision_failed_at: %DateTime{}, observed_state: "error"} = superagent)
+       when is_binary(superagent.checkout_path),
+       do: :retry_provision_superagent
+
+  # A retry is running, or there is nothing stored to retry with.
+  defp remote_action(%{provision_failed_at: %DateTime{}}), do: nil
+
   defp remote_action(superagent)
        when superagent.observed_state in ["stopped", "unknown", "error"],
        do: :start_superagent
 
   defp remote_action(_superagent), do: :stop_superagent
 
-  defp remote_label(superagent),
-    do:
-      if(remote_action(superagent) == :start_superagent,
-        do: gettext("Start"),
-        else: gettext("Stop")
-      )
+  defp remote_label(superagent) do
+    case remote_action(superagent) do
+      :retry_provision_superagent -> gettext("Try again")
+      :start_superagent -> gettext("Start")
+      _other -> gettext("Stop")
+    end
+  end
 end

@@ -169,6 +169,7 @@ and is recorded as `automatic`.
 | `start_superagent` | red | starts the DeepSeek superagent of one project | UI: `AgentAction` "Ligar" in the Superagentes panel, two steps |
 | `stop_superagent` | red | stops that superagent; in-flight work is interrupted | UI: `AgentAction` "Parar", two steps |
 | `pause_superagent` / `resume_superagent` | yellow | pauses/resumes new work without killing the process | UI: one click |
+| `retry_provision_superagent` | red | runs a failed provisioning again with the stored source and checkout, one attempt at a time; it refuses a profile or state it did not create | UI: `AgentAction` "Tentar de novo" on the failed project, two steps |
 | `remove_superagent` | red | stops the agent, archives profile/state and removes the project from the board | UI: `AgentAction` "Remover", two steps |
 | `scale_superagent` | yellow | changes `maxWorkers` through the DSH settings API | UI: −/+ on the project card |
 | `grant_agent_access` | red | puts a person on one project's `allowed` list through the DSH settings API and, when the sentence names issues, requeues their refused mentions | UI: `AgentAction` "Liberar" / "Liberar e rodar" in Configurações → Acesso do agente |
@@ -811,13 +812,18 @@ that watches one GitHub repository and picks the issues whose body mentions
   repository, a ready source profile, the local checkout and the initial
   workers. The red `provision_superagent` action reserves the row, copies the
   source profile/port/state (standard DSH location), starts the manager and
-  copies source/executor/policy/prompts through the DSH API. A failure undoes
-  only what this attempt created (a profile already on disk is refused, and a
-  state directory from before it stays), removes the row and shows the agent's
-  own reason, so the same repository can be tried again from the form. An agent
-  that will not stop keeps its files and its row in `error`, desired `stopped`.
-  The work outlives the page that started it; a board restart in the middle is
-  not undone, and **Remover** clears what it leaves.
+  copies source/executor/policy/prompts through the DSH API. Before anything is
+  created the board gives the bot write access if it lacks it, as the source
+  refuses a repository it cannot push to (`BotAccess`); the owner's confirmation
+  says so. A failure undoes only what this attempt created (a profile already on
+  disk is refused, a state directory from before it stays, and a link into the
+  agent's code is never followed), keeps the row in `error` with the agent's own
+  reason, and records it in the repository's activity. A failed project is not
+  started by the ticker or by "Ligar": "Tentar de novo" runs it again with the
+  source and checkout stored on the row, one attempt at a time. An agent that
+  will not stop keeps its files and an ordinary row in `error`, desired
+  `stopped`. The work outlives the page that started it; a board restart in the
+  middle is not undone, and **Arquivar** clears what it leaves.
   `DshProvisioner` is the real adapter; `FakeProvisioner` covers the tests.
 - **Removal preserves the state.** `remove_superagent` stops the process and
   copies the state (and moves the profile) under
