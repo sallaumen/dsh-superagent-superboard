@@ -6,3 +6,5 @@ Commit author: every commit must be authored as `Lucas Tavano <lucas.c.tavano@gm
 A terminal, CLI, library, configuration or backend change does not need screenshots; include a short text transcript only when it helps the reviewer.
 
 If the repository pins elixir-agent-kit, run `mix deps.get` before reading its practice index or running its gates: it only fetches the pinned dependencies, it never compiles the project. Do not build or test code the change does not touch.
+
+Never update or restart the board's service checkout (no `git pull` there, no `launchctl kickstart` of the board): the owner updates it from **Configurações → Versão**. An unexpected restart interrupts the owner and other agents mid-ticket.

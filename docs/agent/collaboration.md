@@ -61,6 +61,11 @@ feature.
 
 ## The board itself
 
-The board reads GitHub; it never writes to the agent's sqlite. A restart is
-`launchctl kickstart -k "gui/$(id -u)/com.agentboard"` and costs nothing but a
-reconnect.
+The board reads GitHub; it never writes to the agent's sqlite.
+
+**Do not update or restart it.** The live board runs from its own checkout
+(the plist's `WorkingDirectory`); a `git pull` or a
+`launchctl kickstart -k "gui/$(id -u)/com.agentboard"` there restarts the
+owner's board and interrupts agents mid-ticket. Updating is the owner's button
+in **Configurações → Versão**; nothing pulls `main` on a timer, and no agent
+does it on the owner's behalf.

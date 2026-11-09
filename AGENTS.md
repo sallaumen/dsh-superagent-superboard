@@ -30,6 +30,12 @@ agent's files into your PR. Add the files you touched, by name. Fetch before
 you branch and before you merge. The full protocol is
 [`docs/agent/collaboration.md`](docs/agent/collaboration.md).
 
+**Never update or restart the board's service checkout.** The live board runs
+from its own checkout (the plist's `WorkingDirectory`); a `git pull` or a
+`launchctl kickstart` there restarts the owner's board and interrupts agents
+mid-ticket. Updating is the owner's button in **Configurações → Versão**;
+nothing in the app pulls `main` on a timer.
+
 ## The agent
 
 The agent is a separate process (DeepSeek Harness + `dsh-superagent`) that
