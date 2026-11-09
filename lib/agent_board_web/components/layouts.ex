@@ -94,9 +94,17 @@ defmodule AgentBoardWeb.Layouts do
 
   See <head> in root.html.heex which applies the theme before page load.
   """
+  attr :id, :string, default: "theme-toggle"
+
   def theme_toggle(assigns) do
     ~H"""
-    <div role="group" aria-label={gettext("Theme")} class="settings-segmented">
+    <div
+      id={@id}
+      role="group"
+      aria-label={gettext("Theme")}
+      class="settings-segmented"
+      phx-hook="ThemeToggle"
+    >
       <button
         :for={{theme, label} <- themes()}
         type="button"

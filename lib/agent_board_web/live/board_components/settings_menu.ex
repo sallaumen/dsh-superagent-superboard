@@ -279,7 +279,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
             <div class="settings-browser">
               <div class="settings-browser__field">
                 <h5>{gettext("Theme")}</h5>
-                <Layouts.theme_toggle />
+                <Layouts.theme_toggle id="settings-theme-toggle" />
               </div>
               <div class="settings-browser__field">
                 <h5>{gettext("Board language")}</h5>
