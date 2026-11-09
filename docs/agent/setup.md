@@ -135,7 +135,8 @@ python3 scripts/dsh-superagent --profile superagent-colmex \
 
 In the new panel at `http://127.0.0.1:3083`, set the GitHub repository to
 `owner/second-repo`, the agent CLI to the same `gh-agent`, the executor
-directory/prepare command to the second clone, and the policy allowed list.
+directory/prepare command to the second clone, and the policy allowed list
+(changed afterwards in Configurações → Acesso do agente, per person and project).
 The bot account needs write access to that repository (invite it, then accept
 the invitation as the bot).
 

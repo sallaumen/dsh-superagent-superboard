@@ -58,6 +58,97 @@ defmodule AgentBoard.Superagents.DshManager do
     end
   end
 
+  @impl true
+  def access(%Superagent{} = superagent) do
+    with {:ok, 200, settings} <- get(superagent, "/settings"),
+         {:ok, value, _revision} <- policy_block(settings),
+         {:ok, entries} <- allowed_entries(value) do
+      {:ok, %{allowed: Enum.flat_map(entries, &allowed_person/1)}}
+    else
+      {:ok, status, _body} -> {:error, {:http, status}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
+  def allow(%Superagent{} = superagent, login) when is_binary(login) do
+    edit_allowed(superagent, fn entries ->
+      if Enum.any?(entries, &same_login?(&1, login)),
+        do: entries,
+        else: entries ++ [%{"id" => login}]
+    end)
+  end
+
+  @impl true
+  def disallow(%Superagent{} = superagent, login) when is_binary(login) do
+    edit_allowed(superagent, fn entries -> Enum.reject(entries, &same_login?(&1, login)) end)
+  end
+
+  @impl true
+  def requeue(%Superagent{} = superagent, trigger_id) when is_binary(trigger_id) do
+    id = URI.encode(trigger_id, &URI.char_unreserved?/1)
+
+    case post(superagent, "/triggers/#{id}/requeue", %{}) do
+      {:ok, 200, %{"queued" => queued}} when is_boolean(queued) -> {:ok, queued}
+      {:ok, 200, _body} -> {:error, :malformed}
+      {:ok, status, _body} -> {:error, {:http, status}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # Read the whole block and save it back at the revision it was read, so a
+  # change made elsewhere in between is a conflict, never an overwrite, and
+  # everything but the list stays exactly as the agent had it.
+  defp edit_allowed(superagent, change) do
+    with {:ok, 200, settings} <- get(superagent, "/settings"),
+         {:ok, value, revision} <- policy_block(settings),
+         {:ok, entries} <- allowed_entries(value) do
+      case change.(entries) do
+        ^entries -> :ok
+        next -> save_allowed(superagent, value, revision, next)
+      end
+    else
+      {:ok, status, _body} -> {:error, {:http, status}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp save_allowed(superagent, value, revision, entries) do
+    body = %{
+      "value" => put_in(value, ["sources", "github", "allowed"], entries),
+      "revision" => revision
+    }
+
+    case put(superagent, "/settings/policy", body) do
+      {:ok, 200, _body} -> :ok
+      {:ok, 409, _body} -> {:error, :conflict}
+      {:ok, status, _body} -> {:error, {:http, status}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp policy_block(%{"blocks" => %{"policy" => %{"value" => value, "revision" => revision}}})
+       when is_map(value) and is_integer(revision),
+       do: {:ok, value, revision}
+
+  defp policy_block(_settings), do: {:error, :malformed}
+
+  defp allowed_entries(%{"sources" => %{"github" => %{"allowed" => entries}}})
+       when is_list(entries),
+       do: {:ok, entries}
+
+  defp allowed_entries(_value), do: {:error, :github_source_missing}
+
+  defp allowed_person(%{"id" => login} = entry) when is_binary(login),
+    do: [%{login: login, name: entry["name"]}]
+
+  defp allowed_person(_entry), do: []
+
+  defp same_login?(%{"id" => id}, login) when is_binary(id),
+    do: String.downcase(id) == String.downcase(login)
+
+  defp same_login?(_entry, _login), do: false
+
   defp executor_block(settings) do
     case get_in(settings, ["blocks", "executor"]) do
       %{"value" => value, "revision" => revision} when is_map(value) ->

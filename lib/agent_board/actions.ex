@@ -50,6 +50,7 @@ defmodule AgentBoard.Actions do
   alias AgentBoard.Actions.Decision
 
   alias AgentBoard.{
+    AgentAccess,
     AgentControl,
     Board,
     Conversation,
@@ -93,6 +94,9 @@ defmodule AgentBoard.Actions do
     :pause_superagent,
     :resume_superagent,
     :scale_superagent,
+    :grant_agent_access,
+    :revoke_agent_access,
+    :dismiss_access_request,
     :start_agent,
     :set_max_workers,
     :add_repository,
@@ -189,6 +193,18 @@ defmodule AgentBoard.Actions do
 
   defp spec(:scale_superagent),
     do: %{risk: :yellow, does: "muda o limite de sessões simultâneas do superagent"}
+
+  defp spec(:grant_agent_access),
+    do: %{
+      risk: :red,
+      does: "libera uma pessoa para acionar o superagent; as menções dela gastam tokens"
+    }
+
+  defp spec(:revoke_agent_access),
+    do: %{risk: :red, does: "tira uma pessoa da lista do superagent; tickets dela podem parar"}
+
+  defp spec(:dismiss_access_request),
+    do: %{risk: :yellow, does: "deixa um pedido de acesso de lado até uma nova menção"}
 
   defp spec(:start_agent),
     do: %{risk: :red, does: "liga o orquestrador nesta máquina e desfaz um stop de propósito"}
@@ -322,6 +338,36 @@ defmodule AgentBoard.Actions do
   def phrase(:scale_superagent, %{superagent: superagent, workers: workers}, _lang),
     do:
       "Mudar o limite de sessões de #{project(superagent)} de #{superagent.max_workers} para #{workers}?"
+
+  def phrase(:grant_agent_access, %{superagent: superagent, login: login} = params, "en-US") do
+    "Allow @#{login} on #{project(superagent)}? Each mention of the bot by this person starts " <>
+      "work, spends DeepSeek tokens, and the agent may merge without human review." <>
+      rerun_text(params, "en-US")
+  end
+
+  def phrase(:grant_agent_access, %{superagent: superagent, login: login} = params, _lang) do
+    "Liberar @#{login} em #{project(superagent)}? Cada menção dessa pessoa ao bot abre trabalho, " <>
+      "gasta tokens do DeepSeek, e o agente pode fazer merge sem revisão humana." <>
+      rerun_text(params, "pt-BR")
+  end
+
+  def phrase(:revoke_agent_access, %{superagent: superagent, login: login}, "en-US"),
+    do:
+      "Remove @#{login} from #{project(superagent)}? New mentions are ignored, and open " <>
+        "tickets from this person may be refused."
+
+  def phrase(:revoke_agent_access, %{superagent: superagent, login: login}, _lang),
+    do:
+      "Revogar @#{login} em #{project(superagent)}? Novas menções são ignoradas, e tickets " <>
+        "abertos dessa pessoa podem ser recusados."
+
+  def phrase(:dismiss_access_request, %{superagent: superagent, login: login}, "en-US"),
+    do: "Set aside @#{login}'s request on #{project(superagent)}? A new mention brings it back."
+
+  def phrase(:dismiss_access_request, %{superagent: superagent, login: login}, _lang),
+    do:
+      "Dispensar o pedido de @#{login} em #{project(superagent)}? Uma nova menção traz o " <>
+        "pedido de volta."
 
   def phrase(:provision_superagent, %{repository: repo, source: source, path: path}, "en-US"),
     do:
@@ -678,6 +724,33 @@ defmodule AgentBoard.Actions do
     end
   end
 
+  defp execute(:grant_agent_access, %{superagent: superagent, login: login} = params) do
+    case AgentAccess.grant(superagent, login, Map.get(params, :rerun, [])) do
+      {:ok, result} ->
+        {:ok, granted_text(superagent, result)}
+
+      {:error, reason} ->
+        {:error, "Não foi possível liberar @#{login}: #{access_failure(reason)}"}
+    end
+  end
+
+  defp execute(:revoke_agent_access, %{superagent: superagent, login: login}) do
+    case AgentAccess.revoke(superagent, login) do
+      {:ok, login} ->
+        {:ok, "@#{login} não aciona mais o agente em #{project(superagent)}."}
+
+      {:error, reason} ->
+        {:error, "Não foi possível revogar @#{login}: #{access_failure(reason)}"}
+    end
+  end
+
+  defp execute(:dismiss_access_request, %{superagent: superagent, login: login}) do
+    case AgentAccess.dismiss(superagent, login) do
+      {:ok, _dismissal} -> {:ok, "Pedido de @#{login} dispensado."}
+      {:error, reason} -> {:error, "Não foi possível dispensar: #{access_failure(reason)}"}
+    end
+  end
+
   defp execute(:start_agent, params), do: AgentControl.start_agent(Map.get(params, :opts, []))
 
   defp execute(:set_max_workers, %{max: max} = params),
@@ -849,6 +922,39 @@ defmodule AgentBoard.Actions do
   defp project(%AgentBoard.Superagents.Superagent{} = superagent),
     do: "projeto #{superagent.repository_id}"
 
+  defp rerun_text(%{rerun: [_ | _] = rerun}, "en-US"),
+    do: " The refused mentions on #{issue_list(rerun)} run again."
+
+  defp rerun_text(%{rerun: [_ | _] = rerun}, _lang),
+    do: " As menções recusadas em #{issue_list(rerun)} rodam de novo."
+
+  defp rerun_text(_params, _lang), do: ""
+
+  defp issue_list(rerun), do: Enum.map_join(rerun, ", ", &"##{&1.number}")
+
+  defp granted_text(superagent, %{login: login, requeued: requeued, failed: failed}) do
+    "@#{login} liberado em #{project(superagent)}." <>
+      if(requeued == [], do: "", else: " Rodando de novo: #{numbers(requeued)}.") <>
+      if(failed == [],
+        do: "",
+        else: " Não consegui reprocessar #{numbers(failed)}: peça uma nova menção."
+      )
+  end
+
+  defp numbers(numbers), do: Enum.map_join(numbers, ", ", &"##{&1}")
+
+  defp access_failure(:conflict),
+    do: "a lista mudou no painel do agente; confira e tente de novo."
+
+  defp access_failure(:invalid_login), do: "esse login do GitHub não é válido."
+  defp access_failure(:owner_protected), do: "o dono do repositório não pode ser revogado."
+
+  defp access_failure(:github_source_missing),
+    do: "o agente deste projeto não tem o GitHub configurado."
+
+  defp access_failure(%{__exception__: true}), do: "o agente não respondeu; ele está ligado?"
+  defp access_failure(other), do: describe(other)
+
   defp describe(%{__exception__: true} = exception), do: Exception.message(exception)
   defp describe(text) when is_binary(text), do: text
   defp describe(%Ecto.Changeset{errors: errors}), do: inspect(errors)
@@ -857,6 +963,12 @@ defmodule AgentBoard.Actions do
   # The record of a refusal has to fit whatever was refused.
   defp clip_subject(nil), do: nil
   defp clip_subject(subject), do: String.slice(subject, 0, 255)
+
+  defp subject(_name, %{
+         superagent: %AgentBoard.Superagents.Superagent{profile: profile},
+         login: login
+       }),
+       do: "#{profile} @#{login}"
 
   defp subject(_name, %{superagent: %AgentBoard.Superagents.Superagent{profile: profile}}),
     do: profile

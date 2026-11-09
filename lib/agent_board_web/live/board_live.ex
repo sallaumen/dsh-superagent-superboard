@@ -6,6 +6,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   alias AgentBoard.{
     Actions,
+    AgentAccess,
     AgentBlock,
     AgentSignal,
     AgentState,
@@ -121,6 +122,8 @@ defmodule AgentBoardWeb.BoardLive do
         today_spend: nil,
         objectives: [],
         superagents: [],
+        agent_access_projects: [],
+        agent_access: %{count: 0, refused: MapSet.new()},
         superagent_sources: Superagents.profiles_on_disk(),
         project_pending: nil,
         provision_preview: nil,
@@ -221,6 +224,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:ok,
      socket
      |> assign(:superagents, Superagents.list())
+     |> then(&if(connected?(&1), do: refresh_agent_access(&1), else: &1))
      |> VoiceConversation.mount()
      |> assign(:opening_repo, repo)
      |> show_daily_summary()}
@@ -1032,8 +1036,16 @@ defmodule AgentBoardWeb.BoardLive do
         socket
       end
 
-    {:noreply, socket}
+    {:noreply, refresh_agent_access(socket)}
   end
+
+  def handle_info(:agent_access_changed, socket),
+    do: {:noreply, refresh_agent_access(socket)}
+
+  # The row that held the button leaves on the next read, so the result is
+  # said here (AgentAction).
+  def handle_info({:agent_access_done, text}, socket),
+    do: {:noreply, put_flash(socket, :info, text)}
 
   def handle_info({:logs_tick, token}, socket) do
     current = socket.assigns.logs_timer
@@ -1145,6 +1157,21 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   # The list on screen can be older than a removal in another tab.
+  # Only the agent's loopback API and its local database: no GitHub quota.
+  defp refresh_agent_access(%{assigns: %{superagents: []}} = socket) do
+    assign(socket, agent_access_projects: [], agent_access: AgentAccess.summary([]))
+  end
+
+  defp refresh_agent_access(socket) do
+    superagents = socket.assigns.superagents
+
+    if socket.assigns[:panel] == "settings" and socket.assigns[:settings_section] == "access" do
+      send_update(BoardComponents.AgentAccessPanel, id: "settings-agent-access", refresh: true)
+    end
+
+    start_async(socket, :agent_access, fn -> AgentAccess.overview(superagents) end)
+  end
+
   defp superagent_gone(socket) do
     socket
     |> assign(:superagents, Superagents.list())
@@ -2541,6 +2568,16 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_async(:agent_access, {:ok, fresh}, socket) do
+    projects = AgentAccess.keep_last_good(socket.assigns.agent_access_projects, fresh)
+
+    {:noreply,
+     assign(socket, agent_access_projects: projects, agent_access: AgentAccess.summary(projects))}
+  end
+
+  # The badge keeps its last reading; the ticker tries again.
+  def handle_async(:agent_access, {:exit, _reason}, socket), do: {:noreply, socket}
+
   def handle_async({:superagent_command, _id}, {:ok, {:ok, text}}, socket) do
     {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:info, text)}
   end
@@ -2938,6 +2975,7 @@ defmodule AgentBoardWeb.BoardLive do
             live={@freshness.live?}
             version={@version}
             superagents={@superagents}
+            access_waiting={@agent_access.count}
           />
 
           <main id="board-work" class="ab-main">
@@ -3011,6 +3049,24 @@ defmodule AgentBoardWeb.BoardLive do
                     <span class="ab-repo__name">{r.owner}/{r.name}</span>
                   </button>
 
+                  <button
+                    :if={@agent_access.count > 0}
+                    id="mobile-panel-agent-access"
+                    type="button"
+                    class="ab-btn ab-btn--quiet ab-btn--sm"
+                    phx-click="show_panel"
+                    phx-value-panel="settings"
+                    phx-value-section="access"
+                    data-panel-trigger
+                    aria-haspopup="dialog"
+                    aria-controls="panel-settings"
+                  >
+                    {ngettext(
+                      "%{count} waiting for access",
+                      "%{count} waiting for access",
+                      @agent_access.count
+                    )}
+                  </button>
                   <button
                     id="mobile-panel-superagents"
                     type="button"
@@ -3334,6 +3390,12 @@ defmodule AgentBoardWeb.BoardLive do
             blocker_title={@blocker_title}
             blocker_body={@blocker_body}
             blocker_pending={@blocker_pending}
+            agent_refused={
+              MapSet.member?(
+                @agent_access.refused,
+                {@conversation.repository_id, @conversation.number}
+              )
+            }
           />
         </div>
 
@@ -3515,6 +3577,7 @@ defmodule AgentBoardWeb.BoardLive do
             active={@panel == "settings"}
             section={@settings_section}
             superagents={@superagents}
+            access_waiting={@agent_access.count}
             repos={@repos}
             sources={@superagent_sources}
             provision_preview={@provision_preview}

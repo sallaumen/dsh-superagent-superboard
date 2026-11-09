@@ -195,6 +195,118 @@ defmodule AgentBoard.SyncRepoTest do
     assert repo.name == "arena-rogue"
   end
 
+  describe "the GitHub quota" do
+    # 287 pulls with two reads each, every five minutes, spent more than the
+    # account's 5000 an hour and froze the board for the rest of the hour.
+    defp recent_pull(number, sha, merged_at) do
+      %{
+        "number" => number,
+        "title" => "PR #{number}",
+        "state" => if(merged_at, do: "closed", else: "open"),
+        "merged_at" => merged_at,
+        "html_url" => "https://github.com/x/y/pull/#{number}",
+        "user" => %{"login" => "sallaumen"},
+        "created_at" => "2026-11-04T00:00:00Z",
+        "body" => nil,
+        "head" => %{
+          "ref" => "b",
+          "sha" => sha,
+          "repo" => %{"full_name" => "sallaumen/arena-rogue"}
+        }
+      }
+    end
+
+    defp stub_pulls(pulls, runs) do
+      test = self()
+
+      stub_github(fn conn ->
+        cond do
+          conn.request_path == "/repos/sallaumen/arena-rogue/pulls" ->
+            Req.Test.json(conn, pulls)
+
+          String.ends_with?(conn.request_path, "/reviews") ->
+            send(test, {:read, :reviews, conn.request_path})
+            Req.Test.json(conn, [%{"state" => "APPROVED", "user" => %{"login" => "a"}}])
+
+          String.ends_with?(conn.request_path, "/check-runs") ->
+            send(test, {:read, :checks, conn.request_path})
+            Req.Test.json(conn, %{"check_runs" => runs})
+
+          true ->
+            Req.Test.json(conn, [])
+        end
+      end)
+    end
+
+    defp merged_at, do: DateTime.utc_now() |> DateTime.add(-1, :day) |> DateTime.to_iso8601()
+
+    defp stored(number) do
+      Repo.one(from p in AgentBoard.Board.PullRequest, where: p.number == ^number)
+    end
+
+    defp flush_reads do
+      receive do
+        {:read, _kind, _path} -> flush_reads()
+      after
+        0 -> :ok
+      end
+    end
+
+    @done [%{"name" => "ci", "status" => "completed", "conclusion" => "success"}]
+    @running [%{"name" => "ci", "status" => "in_progress", "conclusion" => nil}]
+
+    test "a pull already stored as merged is not read again and keeps its rollups", %{repo: repo} do
+      stub_pulls([recent_pull(9, "abc", merged_at())], @done)
+
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert_received {:read, :reviews, _path}
+      assert_received {:read, :checks, _path}
+      first = stored(9)
+      assert first.review_state
+      assert first.checks_state
+      flush_reads()
+
+      assert Sync.sync_repo(client(), repo) == :ok
+      refute_received {:read, _kind, _path}
+      second = stored(9)
+      assert second.review_state == first.review_state
+      assert second.checks_state == first.checks_state
+    end
+
+    test "a pull that just merged is read once more", %{repo: repo} do
+      stub_pulls([recent_pull(9, "abc", nil)], @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      flush_reads()
+
+      stub_pulls([recent_pull(9, "abc", merged_at())], @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+
+      assert_received {:read, :reviews, _path}
+      assert stored(9).state == "merged"
+    end
+
+    test "an open pull is read on every sync", %{repo: repo} do
+      stub_pulls([recent_pull(9, "abc", nil)], @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      flush_reads()
+
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert_received {:read, :checks, _path}
+    end
+
+    test "a merged pull whose checks were still running is read until they end", %{repo: repo} do
+      stub_pulls([recent_pull(9, "abc", merged_at())], @running)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == "pending"
+      flush_reads()
+
+      stub_pulls([recent_pull(9, "abc", merged_at())], @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert_received {:read, :checks, _path}
+      refute stored(9).checks_state == "pending"
+    end
+  end
+
   test "an old merged pull skips its reviews", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do

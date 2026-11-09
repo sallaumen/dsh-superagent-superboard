@@ -251,6 +251,26 @@ defmodule AgentBoard.GitHub do
     |> body!()
   end
 
+  @doc "The repository's collaborators, one page of 100."
+  def collaborators(client, owner, repo) do
+    client
+    |> Req.get!(url: "/repos/#{owner}/#{repo}/collaborators", params: [per_page: 100])
+    |> body!()
+  end
+
+  @doc """
+  What `login` may do in the repository (`role_name`), or `:not_found` when
+  GitHub has no such account. `login` is already validated by the caller.
+  """
+  def collaborator_permission(client, owner, repo, login) do
+    response = Req.get!(client, url: "/repos/#{owner}/#{repo}/collaborators/#{login}/permission")
+
+    case response.status do
+      404 -> :not_found
+      _status -> {:ok, body!(response)["role_name"]}
+    end
+  end
+
   @doc "Close an issue."
   def close_issue(client, owner, repo, number) do
     client

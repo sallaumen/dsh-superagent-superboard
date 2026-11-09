@@ -13,6 +13,45 @@ defmodule AgentBoard.Superagents.FakeManager do
     Agent.update(__MODULE__, &Map.put(&1, id, state))
   end
 
+  @doc "Who is cleared on one project; `{:error, reason}` makes the read fail."
+  def put_access(id, access), do: Agent.update(__MODULE__, &Map.put(&1, {:access, id}, access))
+
+  @doc "What the fake was asked to run again, oldest first."
+  def requeued(id), do: Agent.get(__MODULE__, &Map.get(&1, {:requeued, id}, []))
+
+  @doc "Make the next requeue answers this value for one project."
+  def put_requeue_answer(id, answer),
+    do: Agent.update(__MODULE__, &Map.put(&1, {:requeue_answer, id}, answer))
+
+  def access(%{id: id}) do
+    case Agent.get(__MODULE__, &Map.get(&1, {:access, id}, [])) do
+      {:error, reason} -> {:error, reason}
+      logins -> {:ok, %{allowed: Enum.map(logins, &%{login: &1, name: nil})}}
+    end
+  end
+
+  def allow(%{id: id}, login), do: edit_access(id, &(&1 ++ [login]))
+  def disallow(%{id: id}, login), do: edit_access(id, &List.delete(&1, login))
+
+  defp edit_access(id, change) do
+    case Agent.get(__MODULE__, &Map.get(&1, {:access, id}, [])) do
+      {:error, reason} ->
+        {:error, reason}
+
+      logins ->
+        Agent.update(__MODULE__, &Map.put(&1, {:access, id}, change.(logins)))
+        :ok
+    end
+  end
+
+  def requeue(%{id: id}, trigger_id) do
+    Agent.update(__MODULE__, fn current ->
+      Map.update(current, {:requeued, id}, [trigger_id], &(&1 ++ [trigger_id]))
+    end)
+
+    Agent.get(__MODULE__, &Map.get(&1, {:requeue_answer, id}, {:ok, true}))
+  end
+
   def status(%{id: id}) do
     case Agent.get(__MODULE__, &Map.get(&1, id)) do
       nil -> {:error, :not_configured}

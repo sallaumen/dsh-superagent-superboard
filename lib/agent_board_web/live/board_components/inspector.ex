@@ -39,6 +39,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :blocker_title, :string, default: ""
   attr :blocker_body, :string, default: ""
   attr :blocker_pending, :any, default: nil
+  attr :agent_refused, :boolean, default: false
 
   def inspector(assigns) do
     tabs = [
@@ -172,6 +173,17 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           >
             {if @dispatch_paused, do: gettext("Resume dispatch"), else: gettext("Pause dispatch")}
           </button>
+        </div>
+
+        <div :if={@agent_refused and @task.state == "queued"} class="ab-insp__refused" role="status">
+          <span>{gettext("The agent ignored this issue: its author is not allowed on this project.")}</span>
+          <button
+            type="button"
+            class="ab-btn ab-btn--sm"
+            phx-click="show_panel"
+            phx-value-panel="settings"
+            phx-value-section="access"
+          >{gettext("Review access")}</button>
         </div>
 
         <div class="ab-insp__actions">
