@@ -550,6 +550,11 @@ defmodule AgentBoard.BoardChangesTest do
     |> Repo.insert!()
 
     assert Board.changes_since(repo, since) == 1
-    assert Board.changes_since(repo, DateTime.add(since, 60, :second)) == 0
+
+    # A cutoff after the insert, not the `since + 60` that races the second
+    # truncation of `state_changed_at`: the row is written between the two
+    # reads, and the old form failed whenever that crossed a second.
+    after_insert = DateTime.add(DateTime.utc_now(), 2, :second)
+    assert Board.changes_since(repo, after_insert) == 0
   end
 end
