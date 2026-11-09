@@ -48,7 +48,7 @@ defmodule AgentBoard.AgentState do
   defp registered_or_fallback_paths do
     case Superagents.state_paths() do
       [] -> local_or_production_paths()
-      paths -> paths
+      dirs -> Enum.map(dirs, &Path.join(&1, "orchestrator.sqlite"))
     end
   rescue
     _exception -> local_or_production_paths()

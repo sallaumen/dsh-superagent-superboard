@@ -35,7 +35,7 @@ defmodule AgentBoard.Superagents do
 
   def get_by_repository(%{id: id}), do: get_by_repository(id)
 
-  @doc "The explicit SQLite state files, in registration order."
+  @doc "The explicit state directories, in registration order."
   def state_paths do
     Repo.all(from s in Superagent, order_by: [asc: s.id], select: s.state_dir)
   end

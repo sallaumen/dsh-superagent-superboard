@@ -2,7 +2,7 @@ defmodule AgentBoard.SuperagentsTest do
   @moduledoc "The registry owns profile/port/state per repository and keeps the lifecycle audit."
   use AgentBoard.DataCase, async: false
 
-  alias AgentBoard.{Board, Superagents}
+  alias AgentBoard.{AgentState, Board, Superagents}
   alias AgentBoard.Superagents.{FakeManager, FakeProvisioner, Superagent}
 
   setup do
@@ -34,6 +34,73 @@ defmodule AgentBoard.SuperagentsTest do
              })
 
     assert changeset.errors[:repository_id]
+  end
+
+  test "AgentState reads orchestrator.sqlite inside each registered state dir", %{repo: repo} do
+    dir =
+      Path.join(
+        System.tmp_dir!(),
+        "agent-state-paths-#{System.pid()}-#{System.unique_integer([:positive])}"
+      )
+
+    File.mkdir_p!(dir)
+    db_path = Path.join(dir, "orchestrator.sqlite")
+    {:ok, conn} = Exqlite.Sqlite3.open(db_path)
+    :ok = Exqlite.Sqlite3.execute(conn, "create table ticket (value text)")
+
+    ticket = %{
+      "mandate" => %{"basis" => %{"scope" => %{"number" => 126}}},
+      "channels" => [
+        %{
+          "address" => %{
+            "number" => "126",
+            "url" => "https://github.com/fixture/superagent/issues/126"
+          }
+        }
+      ],
+      "assignments" => [
+        %{
+          "state" => "ended",
+          "report" => %{"state" => "failed", "summary" => "tool input is invalid JSON"}
+        }
+      ],
+      "updatedAt" => "2026-11-09T01:04:06.163Z"
+    }
+
+    value = ticket |> Jason.encode!() |> String.replace("'", "''")
+    :ok = Exqlite.Sqlite3.execute(conn, "insert into ticket (value) values ('#{value}')")
+
+    Exqlite.Sqlite3.close(conn)
+
+    {:ok, _superagent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "superagent-state-path-test",
+        port: 3299,
+        state_dir: dir
+      })
+
+    previous = Application.get_env(:agent_board, :state_db)
+    previous_dbs = Application.get_env(:agent_board, :state_dbs)
+    Application.put_env(:agent_board, :state_db, nil)
+    Application.put_env(:agent_board, :state_dbs, nil)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:agent_board, :state_db, previous),
+        else: Application.delete_env(:agent_board, :state_db)
+
+      if previous_dbs,
+        do: Application.put_env(:agent_board, :state_dbs, previous_dbs),
+        else: Application.delete_env(:agent_board, :state_dbs)
+
+      File.rm_rf!(dir)
+    end)
+
+    assert AgentState.paths() == [db_path]
+    assert [ticket] = AgentState.tickets()
+    assert ticket["numbers"] == [126]
+    assert ticket["report"] == "failed"
   end
 
   test "an unchanged observation does not add an event; a change does", %{repo: repo} do
@@ -209,6 +276,8 @@ defmodule AgentBoard.SuperagentsTest do
     Application.put_env(:agent_board, :state_db, nil)
     on_exit(fn -> Application.put_env(:agent_board, :state_db, previous) end)
 
-    assert AgentBoard.AgentState.paths() == ["/tmp/fixture-superagent-4"]
+    assert AgentBoard.AgentState.paths() == [
+             Path.join("/tmp/fixture-superagent-4", "orchestrator.sqlite")
+           ]
   end
 end
