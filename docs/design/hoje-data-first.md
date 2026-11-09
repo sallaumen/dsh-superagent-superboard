@@ -25,6 +25,26 @@ Hoje é a entrada para todos os projetos acompanhados. A ordem de leitura é: re
 - O resumo persistido só aparece quando ainda está visível. Dispensar segue ocultando em todas as abas.
 - Dados recebidos por broadcast atualizam sem animação; mudança de estado não deve depender de movimento.
 
-## Próximo passe visual
+## Passe visual aplicado
 
-Refinar ritmo, tipografia e densidade dos blocos após validar o conteúdo com uso real. O gráfico pode ganhar melhor escala e comparação, desde que continue legível por texto e preserve a origem dos dados. A tabela por projeto deve conservar suas colunas e navegação, inclusive em tela estreita. Seguir [DESIGN.md](redesign/DESIGN.md), os padrões do board e [ui-motion.md](../ui-motion.md).
+### Direção e hierarquia
+
+- Produto: um board para acompanhar trabalho de agentes em vários repositórios; a pessoa precisa decidir o que revisar e entender o que terminou.
+- Caráter: calmo, preciso e operacional, sem decoração que concorra com os dados.
+- Mundo visual: papel quente nos dois temas, linhas finas, Plex Sans para leitura e Plex Mono para números e horários.
+- Momentos importantes: uma tarefa que espera decisão e o resultado de PRs mesclados ao longo da semana.
+- Detalhe próprio: estado sempre escrito por extenso e associado ao projeto; números sem misturar moedas ou janelas.
+
+| Bloco | Peso antes | Peso depois |
+|---|---|---|
+| Título e data | Primário | Primário, com escopo de projetos discreto |
+| Indicadores do dia | Primário, três células iguais | Secundário, faixa de leitura rápida |
+| Precisa de você | Primário, mas após os indicadores | Primário, no começo do corpo e com ação visível |
+| Rodando agora | Primário | Secundário, junto ao trabalho que pede ação |
+| Resumo persistido | Suporte no fim da página | Suporte próximo ao trabalho; sua janela continua explícita |
+| Por projeto | Secundário, largura inteira | Secundário, comparável ao gráfico no desktop |
+| Tendência de PRs | Secundário, largura inteira | Secundário, junto aos projetos e com total do período |
+| Uso hoje | Suporte | Suporte no rodapé |
+| Legenda de glifos | Suporte sem glifos correspondentes na lista | Removida para não sugerir uma codificação ausente |
+
+Seguir [DESIGN.md](redesign/DESIGN.md), os padrões do board e [ui-motion.md](../ui-motion.md). O gráfico deve continuar legível por texto e preservar a origem dos dados. A tabela por projeto conserva suas colunas e navegação, inclusive em tela estreita.

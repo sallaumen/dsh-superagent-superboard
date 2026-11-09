@@ -1,10 +1,10 @@
 defmodule AgentBoardWeb.BoardComponents.Today do
   @moduledoc """
-  A visão "Hoje": o que precisa do dono nos dois repositórios numa lista só,
-  com o repositório em cada item, o que está rodando e o gasto do dia em cada
-  moeda (`docs/research/alfred.md`, 3.4 e F2.1).
+  A visão "Hoje": decisões e trabalho em andamento de todos os projetos,
+  com o repositório em cada item, o resumo persistido, resultados da semana e
+  uso por fonte (`docs/research/alfred.md`, 3.4 e F2.1).
 
-  A leitura vem de `Overview.today/2` e `Usage.Report.today/0`, calculadas na
+  A leitura vem de `Overview.today/2` e `Usage.Report.today/1`, calculadas na
   mesma carga do board; o componente não consulta o banco. Dado que chega não
   anima (`docs/ui-motion.md`).
   """
@@ -40,6 +40,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
       |> assign(:date_label, date_label(now, assigns.offset))
       |> assign(:projects, Map.get(assigns.today, :projects, []))
       |> assign(:trend, trend_bars(Map.get(assigns.today, :trend, [])))
+      |> assign(:trend_total, Enum.sum(Enum.map(Map.get(assigns.today, :trend, []), & &1.count)))
       |> assign(:merged_today, Map.get(assigns.today, :merged_today, 0))
       |> assign(:seen_today, Map.get(assigns.today, :seen_today, 0))
       |> assign(:queued, length(Map.get(assigns.today, :queue, [])))
@@ -75,133 +76,152 @@ defmodule AgentBoardWeb.BoardComponents.Today do
         </div>
       </section>
 
-      <section id="today-needs" class="ab-today__section" aria-labelledby="today-needs-title">
-        <div class="ab-sec__head">
-          <h2 id="today-needs-title">Precisa de você</h2>
-          <span class="ab-sec__count">{length(@today.needs)}</span>
-        </div>
+      <div class={["ab-today__work", @daily_summary && "ab-today__work--with-report"]}>
+        <div class="ab-today__worklists">
+          <section id="today-needs" class="ab-today__section" aria-labelledby="today-needs-title">
+            <div class="ab-sec__head">
+              <h2 id="today-needs-title">Precisa de você</h2>
+              <span class="ab-sec__count">{length(@today.needs)}</span>
+            </div>
 
-        <p :if={@today.needs == []} class="ab-sec__empty">
-          Nada esperando você nos repositórios do board.
-        </p>
+            <p :if={@today.needs == []} class="ab-sec__empty">
+              Nada esperando você nos repositórios do board.
+            </p>
 
-        <ol :if={@today.needs != []} class="ab-today__list">
-          <li :for={item <- @today.needs}>
-            <button
-              type="button"
-              class="ab-today__item"
-              phx-click="open_any"
-              phx-value-id={item.id}
-            >
-              <span class="ab-today__repo">{item.repo}</span>
-              <span class="ab-today__num">#{item.number}</span>
-              <span class="ab-today__title">{item.title}</span>
-              <span class={["ab-tag", "ab-today__state", tag_class(item.state)]}>
-                {state_label(item.state)}
-              </span>
-              <span class="ab-meta ab-today__age">{ago(item.at, @now)}</span>
-              <span class="ab-today__action">{action_label(item.state)}</span>
-            </button>
-          </li>
-        </ol>
-      </section>
-
-      <section id="today-running" class="ab-today__section" aria-labelledby="today-running-title">
-        <div class="ab-sec__head">
-          <h2 id="today-running-title">Rodando agora</h2>
-          <span class="ab-sec__count">{length(@today.running)}</span>
-        </div>
-
-        <p :if={@today.running == []} class="ab-sec__empty">Nada rodando agora.</p>
-
-        <ol :if={@today.running != []} class="ab-today__list">
-          <li :for={item <- @today.running}>
-            <button
-              type="button"
-              class="ab-today__item"
-              phx-click="open_any"
-              phx-value-id={item.id}
-            >
-              <span class="ab-today__repo">{item.repo}</span>
-              <span class="ab-today__num">#{item.number}</span>
-              <span class="ab-today__title">{item.title}</span>
-              <span class="ab-tag ab-tag--agent ab-today__state">
-                {item[:executor_name] || state_label(item.state)}
-              </span>
-              <span class="ab-meta ab-today__age">{elapsed(item[:started_at], @now)}</span>
-              <span class="ab-today__action">Abrir</span>
-            </button>
-          </li>
-        </ol>
-      </section>
-
-      <section id="today-projects" class="ab-today__section" aria-labelledby="today-projects-title">
-        <div class="ab-sec__head">
-          <h2 id="today-projects-title">Por projeto</h2>
-          <span class="ab-sec__count">{length(@projects)}</span>
-        </div>
-        <p :if={@projects == []} class="ab-sec__empty">Nenhum projeto acompanhado.</p>
-        <div :if={@projects != []} class="ab-today__projects-wrap">
-          <table class="ab-today__projects">
-            <thead>
-              <tr>
-                <th scope="col">Projeto</th><th scope="col">Precisa de você</th><th scope="col">
-                  Rodando
-                </th><th scope="col">Fila</th><th scope="col">PRs hoje</th><th scope="col">
-                  Leitura
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={project <- @projects}>
-                <th scope="row">
-                  <button
-                    type="button"
-                    class="ab-today__project-link"
-                    phx-click="select"
-                    phx-value-repo={project.name}
-                  >{project.name}</button>
-                </th>
-                <td data-label="Precisa de você">{project.needs}</td><td data-label="Rodando">
-                  {project.running}
-                </td><td data-label="Fila">{project.queued}</td><td data-label="PRs hoje">
-                  {project.merged}
-                </td>
-                <td
-                  class={
-                    if(project.unknown,
-                      do: "ab-today__freshness ab-today__freshness--unknown",
-                      else: "ab-today__freshness"
-                    )
-                  }
-                  data-label="Leitura"
+            <ol :if={@today.needs != []} class="ab-today__list">
+              <li :for={item <- @today.needs}>
+                <button
+                  type="button"
+                  class="ab-today__item"
+                  phx-click="open_any"
+                  phx-value-id={item.id}
                 >
-                  {freshness_label(project)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+                  <span class="ab-today__repo">{item.repo}</span>
+                  <span class="ab-today__num">#{item.number}</span>
+                  <span class="ab-today__title">{item.title}</span>
+                  <span class={["ab-tag", "ab-today__state", tag_class(item.state)]}>
+                    {state_label(item.state)}
+                  </span>
+                  <span class="ab-meta ab-today__age">{ago(item.at, @now)}</span>
+                  <span class="ab-today__action">{action_label(item.state)}</span>
+                </button>
+              </li>
+            </ol>
+          </section>
 
-      <section id="today-trend" class="ab-today__section" aria-labelledby="today-trend-title">
-        <div class="ab-sec__head">
-          <h2 id="today-trend-title">PRs mesclados · 7 dias</h2>
+          <section id="today-running" class="ab-today__section" aria-labelledby="today-running-title">
+            <div class="ab-sec__head">
+              <h2 id="today-running-title">Rodando agora</h2>
+              <span class="ab-sec__count">{length(@today.running)}</span>
+            </div>
+
+            <p :if={@today.running == []} class="ab-sec__empty">Nada rodando agora.</p>
+
+            <ol :if={@today.running != []} class="ab-today__list">
+              <li :for={item <- @today.running}>
+                <button
+                  type="button"
+                  class="ab-today__item"
+                  phx-click="open_any"
+                  phx-value-id={item.id}
+                >
+                  <span class="ab-today__repo">{item.repo}</span>
+                  <span class="ab-today__num">#{item.number}</span>
+                  <span class="ab-today__title">{item.title}</span>
+                  <span class="ab-tag ab-tag--agent ab-today__state">
+                    {item[:executor_name] || state_label(item.state)}
+                  </span>
+                  <span class="ab-meta ab-today__age">{elapsed(item[:started_at], @now)}</span>
+                  <span class="ab-today__action">Abrir</span>
+                </button>
+              </li>
+            </ol>
+          </section>
         </div>
-        <p class="ab-meta ab-today__note">
-          Pela data de mesclagem, entre os PRs registrados no board. Os dias seguem seu horário local.
-        </p>
-        <ol class="ab-today__trend" aria-label="PRs mesclados nos últimos sete dias">
-          <li :for={bar <- @trend} aria-label={bar.description}>
-            <span class="ab-today__bar-number">{bar.count}</span>
-            <span class="ab-today__bar-track"><span
-              class="ab-today__bar"
-              style={"height: #{bar.height}%"}
-            ></span></span>
-            <span class="ab-today__bar-day">{bar.label}</span>
-          </li>
-        </ol>
-      </section>
+
+        <section
+          :if={@daily_summary}
+          id="today-daily-report"
+          class="ab-today__section"
+          aria-label="Último resumo gerado pelo board"
+        >
+          <.daily_summary entry={@daily_summary} tz_offset={@offset} />
+        </section>
+      </div>
+
+      <div class="ab-today__insights">
+        <section id="today-projects" class="ab-today__section" aria-labelledby="today-projects-title">
+          <div class="ab-sec__head">
+            <h2 id="today-projects-title">Por projeto</h2>
+            <span class="ab-sec__count">{length(@projects)}</span>
+          </div>
+          <p :if={@projects == []} class="ab-sec__empty">Nenhum projeto acompanhado.</p>
+          <div :if={@projects != []} class="ab-today__projects-wrap">
+            <table class="ab-today__projects">
+              <thead>
+                <tr>
+                  <th scope="col">Projeto</th><th scope="col">Precisa de você</th><th scope="col">
+                    Rodando
+                  </th><th scope="col">Fila</th><th scope="col">PRs hoje</th><th scope="col">
+                    Leitura
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr :for={project <- @projects}>
+                  <th scope="row">
+                    <button
+                      type="button"
+                      class="ab-today__project-link"
+                      phx-click="select"
+                      phx-value-repo={project.name}
+                    >{project.name}</button>
+                  </th>
+                  <td data-label="Precisa de você">{project.needs}</td><td data-label="Rodando">
+                    {project.running}
+                  </td><td data-label="Fila">{project.queued}</td><td data-label="PRs hoje">
+                    {project.merged}
+                  </td>
+                  <td
+                    class={
+                      if(project.unknown,
+                        do: "ab-today__freshness ab-today__freshness--unknown",
+                        else: "ab-today__freshness"
+                      )
+                    }
+                    data-label="Leitura"
+                  >
+                    <span>{freshness_label(project)}</span>
+                    <span :if={project.last_sync} class="ab-today__freshness-time">
+                      {Time.since_label(project.last_sync.inserted_at, @offset, @now)}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="today-trend" class="ab-today__section" aria-labelledby="today-trend-title">
+          <div class="ab-sec__head">
+            <h2 id="today-trend-title">PRs mesclados · 7 dias</h2>
+            <span class="ab-sec__count">{@trend_total} no período</span>
+          </div>
+          <p class="ab-meta ab-today__note">
+            Pela data de mesclagem, entre os PRs registrados no board. Os dias seguem seu horário local.
+          </p>
+          <ol class="ab-today__trend" aria-label="PRs mesclados nos últimos sete dias">
+            <li :for={bar <- @trend} aria-label={bar.description}>
+              <span class="ab-today__bar-number">{bar.count}</span>
+              <span class="ab-today__bar-track"><span
+                class="ab-today__bar"
+                style={"height: #{bar.height}%"}
+              ></span></span>
+              <span class="ab-today__bar-day">{bar.label}</span>
+            </li>
+          </ol>
+        </section>
+      </div>
 
       <section id="today-spend" class="ab-today__section" aria-label="Gasto do dia">
         <div class="ab-sec__head">
@@ -213,22 +233,6 @@ defmodule AgentBoardWeb.BoardComponents.Today do
           </span>
         </div>
       </section>
-
-      <section
-        :if={@daily_summary}
-        id="today-daily-report"
-        class="ab-today__section"
-        aria-label="Último resumo gerado pelo board"
-      >
-        <.daily_summary entry={@daily_summary} tz_offset={@offset} />
-      </section>
-
-      <footer class="ab-today__legend" aria-label="Legenda">
-        <span><i class="ab-g ab-g--run"></i>rodando</span>
-        <span><i class="ab-g ab-g--you"></i>espera você</span>
-        <span><i class="ab-g ab-g--halt"></i>bloqueado ou falhou</span>
-        <span><i class="ab-g ab-g--queue"></i>na fila</span>
-      </footer>
     </section>
     """
   end
