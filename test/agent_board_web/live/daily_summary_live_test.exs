@@ -204,7 +204,7 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
   end
 
   test "Configurações saves the switch and the hour", %{conn: conn} do
-    {:ok, view, _html} = live(conn, @path)
+    {:ok, view, _html} = live(conn, @path <> "&panel=settings")
     assert has_element?(view, "#settings-daily-summary-section", "Todo dia às 08:00")
 
     view
@@ -222,7 +222,7 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
   end
 
   test "a malformed hour is refused in words and nothing is saved", %{conn: conn} do
-    {:ok, view, _html} = live(conn, @path)
+    {:ok, view, _html} = live(conn, @path <> "&panel=settings")
 
     view
     |> element("#daily-summary-form")
@@ -233,7 +233,7 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
   end
 
   test "a change made in another tab reaches the open settings", %{conn: conn} do
-    {:ok, view, _html} = live(conn, @path)
+    {:ok, view, _html} = live(conn, @path <> "&panel=settings")
 
     :ok = DailySummary.put_settings(%{"at" => "07:30"})
     # The broadcast reaches the board, which then updates the fold: one

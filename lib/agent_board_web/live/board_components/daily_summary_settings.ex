@@ -17,7 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
   def update(assigns, socket) do
     {:ok,
      socket
-     |> assign(Map.take(assigns, [:id]))
+     |> assign(Map.take(assigns, [:id, :expanded]))
      |> assign(settings: DailySummary.settings(), error: nil)}
   end
 
@@ -36,7 +36,12 @@ defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
   def render(assigns) do
     ~H"""
     <%!-- A save re-renders this root; the fold the owner opened stays open. --%>
-    <details id={@id} class="settings-fold" phx-mounted={JS.ignore_attributes("open")}>
+    <details
+      id={@id}
+      class="settings-fold"
+      open={@expanded}
+      phx-mounted={JS.ignore_attributes("open")}
+    >
       <summary>
         <span class="settings-fold-label">
           Resumo do dia <small>{fold_summary(@settings)}</small>
