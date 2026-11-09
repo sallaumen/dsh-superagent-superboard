@@ -3363,7 +3363,7 @@ defmodule AgentBoardWeb.BoardLive do
             )}</span>
           </div>
           <BoardComponents.VoiceCommandList.list open={@voice_commands_open} />
-          <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} />
+          <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} tz_offset={@tz_offset} />
         </BoardComponents.Panel.shell>
 
         <.logs_sheet

@@ -38,13 +38,13 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeacon do
 
       <div class="ab-sync-pop" role="region" aria-label={gettext("Sync details")}>
         <h4>{title(@freshness)}</h4>
-        <div class="ab-meta">{note(@freshness)}</div>
+        <div class="ab-meta">{note(@freshness, @tz_offset)}</div>
         <dl>
           <div :for={source <- @freshness.sources} class="ab-sync-pop__source">
             <dt>{source_label(source)}</dt>
             <dd>
               <.status_mark kind={source.kind} word={source_word(source)} />
-              <span class="ab-meta">{source_detail(source)}</span>
+              <span class="ab-meta">{source_detail(source, @tz_offset)}</span>
             </dd>
           </div>
         </dl>
@@ -68,28 +68,28 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeacon do
   defp title(%{state: :offline}), do: gettext("No connection to GitHub")
   defp title(_), do: gettext("No data yet")
 
-  defp note(%{state: :live}),
+  defp note(%{state: :live}, _offset),
     do: gettext("GitHub, the agent process, and the local queue responded on schedule.")
 
-  defp note(%{state: :delayed}),
+  defp note(%{state: :delayed}, _offset),
     do: gettext("One source is late; the times below are paused.")
 
-  defp note(%{state: :reconnecting}),
+  defp note(%{state: :reconnecting}, _offset),
     do: gettext("The board connection dropped. The screen shows the last known state.")
 
-  defp note(%{state: :offline, at: nil}),
+  defp note(%{state: :offline, at: nil}, _offset),
     do:
       gettext(
         "No sync has succeeded. Saved data is the last received; it may have changed elsewhere."
       )
 
-  defp note(%{state: :offline, at: at}),
+  defp note(%{state: :offline, at: at}, offset),
     do:
       gettext("The last complete data is from %{time}. It may have changed elsewhere.",
-        time: time(at, 0)
+        time: time(at, offset)
       )
 
-  defp note(_), do: gettext("No sync has completed for this repository yet.")
+  defp note(_, _offset), do: gettext("No sync has completed for this repository yet.")
 
   defp source_label(%{code: :queue_current}), do: gettext("Local queue")
 
@@ -113,30 +113,30 @@ defmodule AgentBoardWeb.BoardComponents.FreshnessBeacon do
   defp source_word(%{kind: :stale}), do: gettext("No signal")
   defp source_word(_), do: "OK"
 
-  defp source_detail(%{code: :queue_current}), do: gettext("checked now")
-  defp source_detail(%{code: :github_waiting}), do: gettext("waiting for first sync")
+  defp source_detail(%{code: :queue_current}, _offset), do: gettext("checked now")
+  defp source_detail(%{code: :github_waiting}, _offset), do: gettext("waiting for first sync")
 
-  defp source_detail(%{code: :github_failed, attempted_at: at}),
-    do: gettext("last attempt at %{time}", time: time(at, 0))
+  defp source_detail(%{code: :github_failed, attempted_at: at}, offset),
+    do: gettext("last attempt at %{time}", time: time(at, offset))
 
-  defp source_detail(%{code: :github_errors, error_count: n}),
+  defp source_detail(%{code: :github_errors, error_count: n}, _offset),
     do: ngettext("%{count} error in the last sync", "%{count} errors in the last sync", n)
 
-  defp source_detail(%{code: :github_delayed, age_sec: age}),
+  defp source_detail(%{code: :github_delayed, age_sec: age}, _offset),
     do: gettext("last data %{age}", age: ago(age))
 
-  defp source_detail(%{code: :github_current, age_sec: age}),
+  defp source_detail(%{code: :github_current, age_sec: age}, _offset),
     do: gettext("%{age} ago", age: short(age))
 
-  defp source_detail(%{code: :agent_stale, age_sec: age}),
+  defp source_detail(%{code: :agent_stale, age_sec: age}, _offset),
     do: gettext("%{age} ago; a task is running without a heartbeat", age: short(age))
 
-  defp source_detail(%{code: :agent_empty}), do: gettext("checked now; no tickets yet")
+  defp source_detail(%{code: :agent_empty}, _offset), do: gettext("checked now; no tickets yet")
 
-  defp source_detail(%{code: :agent_current, age_sec: age}),
+  defp source_detail(%{code: :agent_current, age_sec: age}, _offset),
     do: gettext("checked now; last ticket %{age}", age: ago(age))
 
-  defp source_detail(_), do: gettext("the executor database did not respond")
+  defp source_detail(_, _offset), do: gettext("the executor database did not respond")
 
   defp age_text(%{state: :live, age_sec: sec}, _offset) when is_integer(sec),
     do: gettext("%{age} ago", age: short(sec))
