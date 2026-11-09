@@ -11,6 +11,7 @@
   --ink-faint: #6f685e;
   --agent: #2c6a4d;
   --agent-wash: #e2eee6;
+  --agent-line: #c9dccf;
   --on-agent: #ffffff;
   --you: #2f4f9e;
   --you-wash: #e7ecf8;
@@ -34,6 +35,7 @@
   --ink-faint: #958e83;
   --agent: #7cc29d;
   --agent-wash: #1d2c24;
+  --agent-line: #2b3f33;
   --on-agent: #0e1d15;
   --you: #a3b7ef;
   --you-wash: #1e2538;
@@ -58,6 +60,7 @@
     --ink-faint: #958e83;
     --agent: #7cc29d;
     --agent-wash: #1d2c24;
+  --agent-line: #2b3f33;
     --on-agent: #0e1d15;
     --you: #a3b7ef;
     --you-wash: #1e2538;
@@ -85,6 +88,7 @@
   --radius-pill: 999px;
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --selection: color-mix(in oklab, var(--you) 22%, transparent);
 }
 .t-display { font-family: var(--font-sans); font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; }
 .t-title { font-family: var(--font-sans); font-size: 16px; line-height: 22px; font-weight: 600; }

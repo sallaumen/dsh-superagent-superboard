@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Board arena-rogue · celular</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#171614}
+*{box-sizing:border-box}
+a{color:#a3b7ef}a:hover{color:#c6d3f7}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.g{display:inline-block;flex:none;width:10px;height:10px}
+.g-run{border-radius:50%;background:#7cc29d}
+.g-you{width:9px;height:9px;background:#a3b7ef;transform:rotate(45deg);border-radius:1.5px}
+.g-halt{width:9px;height:9px;background:#f09670;border-radius:2px}
+.g-queue{border-radius:50%;border:1.5px solid #958e83}
+.breathe{animation:br 2.4s ease-in-out infinite}
+@keyframes br{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.breathe{animation:none}}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid #a3b7ef;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 1900px; background: #171614; color: #ece8e1; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 21px; display: flex; flex-direction: column;">
+  <header style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #34312c; background: #121110;">
+    <button type="button" aria-label="Trocar repositório" style="display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 8px; border: 0; background: transparent; color: #ece8e1; font: inherit; font-size: 17px; font-weight: 600; cursor: pointer;">arena-rogue <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="#aaa398" stroke-width="1.6"></path></svg></button>
+    <div style="flex-grow: 1;"></div>
+    <button type="button" aria-label="Sincronia ao vivo às 20:47" style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid #34312c; background: #201e1b; color: #ece8e1; font: inherit; font-size: 12px; cursor: pointer;"><span class="g g-run breathe" style="width: 8px; height: 8px;"></span>Ao vivo</button>
+    <button type="button" aria-label="Menu" style="width: 44px; height: 44px; border: 0; background: transparent; cursor: pointer;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M3 5h12M3 9h12M3 13h12" stroke="#ece8e1" stroke-width="1.6" fill="none"></path></svg></button>
+  </header>
+
+  <div style="padding: 16px; display: flex; flex-direction: column; gap: 28px; flex-grow: 1;">
+    <p style="margin: 0; font-size: 15px; line-height: 22px;">Desde 20:39 entraram <a href="#">11 na fila</a>, <span style="color: #7cc29d;">o agente está em 2</span> e <a href="#">2 esperam você</a>.</p>
+
+    <section aria-labelledby="ag">
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;"><h2 id="ag" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Agora</h2><span class="m" style="font-size: 12px; color: #aaa398;">2 de 4</span></div>
+      <div style="background: #1d2c24; border-radius: 16px; padding: 2px 14px;">
+        <a href="#" style="display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-bottom: 1px solid #2b3f33; color: #ece8e1; text-decoration: none;">
+          <span style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span class="g g-run breathe"></span><span style="color: #7cc29d; font-weight: 600;">Rodando</span><span class="m" style="color: #958e83; font-size: 11.5px;">#114</span><span style="flex-grow: 1;"></span><span class="m" style="font-size: 12.5px;">04:12</span></span>
+          <span style="font-weight: 500;">Decidir modelo de progressão sem tela de mapa</span>
+          <span class="m" style="font-size: 12px; color: #7cc29d;">→ escrevendo docs/design/progressao.md</span>
+        </a>
+        <a href="#" style="display: flex; flex-direction: column; gap: 4px; padding: 12px 0; color: #ece8e1; text-decoration: none;">
+          <span style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span class="g g-halt"></span><span style="color: #f09670; font-weight: 600;">Falhou · tentativa 2 de 3</span><span class="m" style="color: #958e83; font-size: 11.5px;">#116</span><span style="flex-grow: 1;"></span><span class="m" style="font-size: 12.5px; color: #aaa398;">em 0:40</span></span>
+          <span style="font-weight: 500;">Definir rosters dos 4 personagens e 8 habilidades</span>
+        </a>
+      </div>
+    </section>
+
+    <section aria-labelledby="pv">
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;"><h2 id="pv" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Precisa de você</h2><span class="m" style="font-size: 12px; color: #a3b7ef;">2</span></div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <article style="background: #201e1b; border: 1px solid #34312c; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span class="g g-you"></span><span style="color: #a3b7ef; font-weight: 600;">Pergunta</span><span class="m" style="color: #958e83; font-size: 11.5px;">#115 · há 6 min</span></span>
+          <span style="font-weight: 500;">Definir significado de 'alt' no minimapa</span>
+          <span style="font-size: 13px; color: #aaa398;">“alt” é altitude do terreno ou alternância de camada?</span>
+          <button type="button" style="align-self: flex-start; height: 44px; padding: 0 16px; border-radius: 6px; border: 0; background: #a3b7ef; color: #111a33; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;">Responder</button>
+        </article>
+        <article style="background: #201e1b; border: 1px solid #34312c; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span class="g g-you"></span><span style="color: #a3b7ef; font-weight: 600;">Revisão</span><span class="m" style="color: #958e83; font-size: 11.5px;">PR #1359 · há 14 min</span></span>
+          <span style="font-weight: 500;">Sistema de câmera com dead zone e lerp</span>
+          <button type="button" style="align-self: flex-start; height: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;">Revisar no GitHub</button>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="fl">
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;"><h2 id="fl" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Fila</h2><span class="m" style="font-size: 12px; color: #aaa398;">11</span></div>
+      <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px;">
+        <button type="button" aria-pressed="true" style="flex: none; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #a3b7ef; background: #1e2538; color: #ece8e1; font: inherit; font-size: 12px; font-weight: 600;">Todas 11</button>
+        <button type="button" aria-pressed="false" style="flex: none; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #7d756a; background: transparent; color: #aaa398; font: inherit; font-size: 12px;">Novas 11</button>
+        <button type="button" aria-pressed="false" style="flex: none; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #7d756a; background: transparent; color: #aaa398; font: inherit; font-size: 12px;">Divididas 0</button>
+        <button type="button" aria-pressed="false" style="flex: none; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #7d756a; background: transparent; color: #aaa398; font: inherit; font-size: 12px;">Possíveis repetidas 0</button>
+      </div>
+      <ol style="list-style: none; margin: 0; padding: 0;">
+        <li style="display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; padding: 12px 0; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83;">1</span><span><span style="font-weight: 500;">Política de fullscreen/letterbox em ultrawide</span><br><span class="m" style="font-size: 11.5px; color: #958e83;">#117 · há 5 s</span></span></li>
+        <li style="display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; padding: 12px 0; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83;">2</span><span><span style="font-weight: 500;">Aumentar mapas e renderização por viewport</span><br><span class="m" style="font-size: 11.5px; color: #958e83;">#119 · há 4 s</span></span></li>
+        <li style="display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; padding: 12px 0; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83;">3</span><span><span style="font-weight: 500;">Canvas em 100vw/100vh com letterbox</span><br><span class="m" style="font-size: 11.5px; color: #958e83;">#120 · há 3 s</span></span></li>
+      </ol>
+      <button type="button" style="height: 44px; border: 0; background: transparent; color: #a3b7ef; font: inherit; font-size: 14px; padding: 0;">Mais 8 na fila</button>
+    </section>
+
+    <details style="border-top: 1px solid #34312c; padding-top: 12px;">
+      <summary style="min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none;"><span style="font-size: 16px; font-weight: 600;">Mesclados</span><span class="m" style="font-size: 12px; color: #aaa398;">54 em 7 dias · 21 hoje</span></summary>
+    </details>
+    <details style="border-top: 1px solid #34312c; padding-top: 12px;">
+      <summary style="min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none;"><span style="font-size: 16px; font-weight: 600;">Vazão</span><span style="font-size: 12.5px; color: #aaa398;">0 concluídas/h · fila 11 · 2 de 4</span></summary>
+    </details>
+    <details style="border-top: 1px solid #34312c; padding-top: 12px;">
+      <summary style="min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none;"><span style="font-size: 16px; font-weight: 600;">Resumo do dia</span><span style="font-size: 12.5px; color: #aaa398;">14 PRs · gasto em 3 moedas</span></summary>
+    </details>
+  </div>
+
+  <div style="position: sticky; bottom: 0; display: flex; gap: 8px; padding: 12px 16px 20px; background: #121110; border-top: 1px solid #34312c;">
+    <button type="button" style="flex-grow: 1; height: 48px; border-radius: 6px; border: 0; background: #a3b7ef; color: #111a33; font: inherit; font-size: 15px; font-weight: 600;">Novo pedido</button>
+    <button type="button" aria-label="Conversa por voz" style="width: 48px; height: 48px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; display: flex; align-items: center; justify-content: center;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5" fill="none" stroke="#ece8e1" stroke-width="1.6"></rect><path d="M3.5 8.5a5.5 5.5 0 0 0 11 0M9 14v2.5" fill="none" stroke="#ece8e1" stroke-width="1.6"></path></svg></button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

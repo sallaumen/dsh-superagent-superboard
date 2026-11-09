@@ -12,6 +12,8 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   attr :selected, :any, default: nil
   attr :last_visit, :any, default: nil
   attr :frozen, :boolean, default: false
+  attr :frozen_at, :any, default: nil
+  attr :tz_offset, :integer, default: 0
 
   def needs_you(assigns) do
     # The line only makes sense when every new item comes before every old
@@ -59,12 +61,18 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
             phx-value-tab={if need.kind == :review, do: "pr"}
             data-panel-trigger={need[:id] && "conversation"}
           >
-            <.glyph kind={need.kind} />
-
-            <div class="ab-need__title">
+            <div class="ab-need__top">
+              <.glyph kind={need.kind} />
+              <span class="ab-need__kind">{kind_label(need.kind)}</span>
               <span :if={need.number} class="ab-need__id">#{need.number}</span>
-              <span>{need.title}</span>
+              <span class="ab-top__spacer"></span>
+              <span class="ab-need__side ab-meta">
+                <span :if={need.is_new} class="ab-new">novo</span>
+                <span :if={need.age_seconds}>{age(need.age_seconds, @frozen, @frozen_at, @tz_offset)}</span>
+              </span>
             </div>
+
+            <div class="ab-need__title">{need.title}</div>
 
             <div class={["ab-need__why", tone(need.kind)]}>
               <.markup text={need.why} />
@@ -80,11 +88,6 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                 <.glyph :if={need.ci.state == "fail"} kind={:cifail} />
                 {need.ci.note}
               </span>
-            </div>
-
-            <div class="ab-need__side ab-meta">
-              <span :if={need.is_new} class="ab-new">novo</span>
-              <span :if={need.age_seconds}>{Time.ago(need.age_seconds)}</span>
             </div>
 
             <div class="ab-need__actions">
@@ -133,6 +136,14 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   defp dom_id(%{id: id}) when not is_nil(id), do: "task-#{id}"
   defp dom_id(_need), do: nil
 
+  defp kind_label(:review), do: "Revisão"
+  defp kind_label(:question), do: "Pergunta"
+  defp kind_label(:blocked), do: "Bloqueado"
+  defp kind_label(:cifail), do: "CI falhou"
+  defp kind_label(:stalled), do: "Sem sinal"
+  defp kind_label(:agent_down), do: "Agente fora do ar"
+  defp kind_label(_kind), do: "Atenção"
+
   defp tone(:agent_down), do: "is-halt"
   defp tone(:cifail), do: "is-halt"
   defp tone(:blocked), do: "is-halt"
@@ -144,6 +155,9 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   defp action_class(:blocked), do: "ab-btn--halt"
   defp action_class(:stalled), do: "ab-btn--halt"
   defp action_class(_kind), do: "ab-btn--quiet"
+
+  defp age(_seconds, true, %DateTime{} = at, offset), do: Time.local_time(at, offset)
+  defp age(seconds, _frozen, _at, _offset), do: Time.ago(seconds)
 
   defp count(0, _frozen), do: "0"
   defp count(n, true), do: "≥#{n}"

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Hoje · entre repositórios</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#171614}
+*{box-sizing:border-box}
+a{color:#a3b7ef}a:hover{color:#c6d3f7}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.g{display:inline-block;flex:none;width:10px;height:10px}
+.g-run{border-radius:50%;background:#7cc29d}
+.g-you{width:9px;height:9px;background:#a3b7ef;transform:rotate(45deg);border-radius:1.5px}
+.g-halt{width:9px;height:9px;background:#f09670;border-radius:2px}
+.g-queue{border-radius:50%;border:1.5px solid #958e83}
+.breathe{animation:br 2.4s ease-in-out infinite}
+@keyframes br{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.breathe{animation:none}}
+button:focus-visible,a:focus-visible{outline:2px solid #a3b7ef;outline-offset:2px}
+</style>
+</helmet>
+<main style="width: 1100px; min-height: 820px; background: #171614; color: #ece8e1; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 21px; padding: 32px 48px; display: flex; flex-direction: column; gap: 28px;">
+  <header style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 16px;">
+    <h1 style="margin: 0; font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em;">Hoje</h1>
+    <span style="color: #aaa398;">domingo, 8 de novembro</span>
+    <div style="flex-grow: 1;"></div>
+    <span style="font-size: 13px; color: #aaa398;">Gasto do dia: DeepSeek <span class="m" style="color: #ece8e1;">≥ US$ 0,20</span> · Claude Code <span class="m" style="color: #ece8e1;">≥ US$ 4,12</span> · Codex <span class="m" style="color: #ece8e1;">90%</span> da cota</span>
+  </header>
+
+  <section aria-labelledby="hp">
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;"><h2 id="hp" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Precisa de você</h2><span class="m" style="font-size: 12px; color: #a3b7ef;">3</span></div>
+    <ul style="list-style: none; margin: 0; padding: 0;">
+      <li style="display: grid; grid-template-columns: 14px 120px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 12px 8px; border-bottom: 1px solid #34312c;"><span class="g g-you"></span><span style="font-size: 12.5px; color: #aaa398;">arena-rogue</span><span><span style="font-size: 12px; font-weight: 600; color: #a3b7ef;">Pergunta </span><span style="font-weight: 500;">Definir significado de 'alt' no minimapa</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 6 min</span><a href="#" style="font-size: 13px;">Responder</a></li>
+      <li style="display: grid; grid-template-columns: 14px 120px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 12px 8px; border-bottom: 1px solid #34312c;"><span class="g g-you"></span><span style="font-size: 12.5px; color: #aaa398;">arena-rogue</span><span><span style="font-size: 12px; font-weight: 600; color: #a3b7ef;">Revisão </span><span style="font-weight: 500;">Sistema de câmera com dead zone e lerp</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 14 min</span><a href="#" style="font-size: 13px;">Revisar</a></li>
+      <li style="display: grid; grid-template-columns: 14px 120px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 12px 8px; border-bottom: 1px solid #34312c;"><span class="g g-halt"></span><span style="font-size: 12.5px; color: #aaa398;">o_colmex</span><span><span style="font-size: 12px; font-weight: 600; color: #f09670;">Bloqueado </span><span style="font-weight: 500;">Exportar relatório</span> <span style="font-size: 12.5px; color: #aaa398;">· CI falhou em gates depois do merge</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 2 h</span><a href="#" style="font-size: 13px;">Abrir</a></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="hr">
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;"><h2 id="hr" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Rodando agora</h2><span class="m" style="font-size: 12px; color: #aaa398;">1</span></div>
+    <ul style="list-style: none; margin: 0; padding: 0;">
+      <li style="display: grid; grid-template-columns: 14px 120px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 8px; border-bottom: 1px solid #34312c;"><span class="g g-run breathe"></span><span style="font-size: 12.5px; color: #aaa398;">arena-rogue</span><span><span style="font-weight: 500;">Decidir modelo de progressão sem tela de mapa</span> <span class="m" style="font-size: 12px; color: #7cc29d;">→ escrevendo docs/design/progressao.md</span></span><span class="m" style="font-size: 12.5px;">04:12</span></li>
+    </ul>
+  </section>
+
+  <footer style="margin-top: auto; display: flex; flex-wrap: wrap; gap: 20px; font-size: 12.5px; color: #aaa398; border-top: 1px solid #34312c; padding-top: 12px;">
+    <span style="display: flex; align-items: center; gap: 6px;"><span class="g g-run"></span>rodando</span>
+    <span style="display: flex; align-items: center; gap: 6px;"><span class="g g-you"></span>espera você</span>
+    <span style="display: flex; align-items: center; gap: 6px;"><span class="g g-halt"></span>bloqueado ou falhou</span>
+    <span style="display: flex; align-items: center; gap: 6px;"><span class="g g-queue"></span>na fila</span>
+  </footer>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

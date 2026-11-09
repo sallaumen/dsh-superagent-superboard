@@ -38,11 +38,12 @@ defmodule AgentBoardWeb.BoardComponents.Today do
     ~H"""
     <section id="today" class="ab-today" aria-labelledby="today-title">
       <header class="ab-today__head">
-        <div>
-          <p class="ab-label">Hoje</p>
-          <h1 id="today-title">{@date_label}</h1>
+        <div class="ab-today__title-row">
+          <h1 id="today-title">Hoje</h1>
+          <span class="ab-today__date">{@date_label}</span>
         </div>
         <div id="today-spend" class="ab-today__spend" aria-label="Gasto do dia">
+          <span class="ab-label">Gasto do dia</span>
           <span :for={row <- @spend_rows} class="ab-today__money" title={row.title}>
             {row.label} <b>{row.value}</b>
           </span>
@@ -74,6 +75,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
                 {state_label(item.state)}
               </span>
               <span class="ab-meta ab-today__age">{ago(item.at, @now)}</span>
+              <span class="ab-today__action">{action_label(item.state)}</span>
             </button>
           </li>
         </ol>
@@ -101,17 +103,19 @@ defmodule AgentBoardWeb.BoardComponents.Today do
               <span class="ab-tag ab-tag--agent ab-today__state">
                 {item[:executor_name] || state_label(item.state)}
               </span>
-              <span class="ab-meta ab-today__age">{ago(item.at, @now)}</span>
+              <span class="ab-meta ab-today__age">{elapsed(item[:started_at], @now)}</span>
+              <span class="ab-today__action">Abrir</span>
             </button>
           </li>
         </ol>
       </section>
 
-      <p class="ab-meta ab-today__note">
-        O repositório aparece em cada item. O gasto é por executor, na moeda de
-        cada um, e nunca somado. "Não rodou" é um dia sem chamadas; "desconhecido"
-        é fonte sem leitura.
-      </p>
+      <footer class="ab-today__legend" aria-label="Legenda">
+        <span><i class="ab-g ab-g--run"></i>rodando</span>
+        <span><i class="ab-g ab-g--you"></i>espera você</span>
+        <span><i class="ab-g ab-g--halt"></i>bloqueado ou falhou</span>
+        <span><i class="ab-g ab-g--queue"></i>na fila</span>
+      </footer>
     </section>
     """
   end
@@ -198,6 +202,16 @@ defmodule AgentBoardWeb.BoardComponents.Today do
   end
 
   defp state_label(state), do: Map.get(@states, state, state)
+
+  defp action_label("blocked"), do: "Abrir"
+  defp action_label("question"), do: "Responder"
+  defp action_label("ready"), do: "Revisar"
+  defp action_label(_state), do: "Abrir"
+
+  defp elapsed(nil, _now), do: "agora"
+
+  defp elapsed(%DateTime{} = at, now),
+    do: AgentBoard.Time.duration(AgentBoard.Time.age_seconds(at, now))
 
   defp tag_class("blocked"), do: "ab-tag--halt"
   defp tag_class("question"), do: "ab-tag--you"

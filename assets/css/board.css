@@ -1243,3 +1243,1058 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 
 /* The composer header label is a small caption on a raised surface. */
 .ab-compose__head .ab-label { color: var(--ink); }
+
+/* ==========================================================================
+   Redesign §3 — the decision is the lanes; flow is telemetry below them.
+   Context (objectives · day summary) sits on its own row; the rails use the
+   real proportions (5fr 4fr 3fr at 1920, 3fr 2fr at 1366) from the container
+   that actually holds them, so an open inspector squeezes the rails instead
+   of pushing them out of the viewport.
+   ========================================================================== */
+
+.ab-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  margin: 0 0 var(--space-7);
+  align-items: start;
+}
+.ab-context.is-daily-only { justify-items: start; }
+.ab-context .ab-daily { max-width: 70ch; }
+
+.ab-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "main" "queue" "log" "flow";
+  gap: var(--space-7);
+  max-width: none;
+  align-items: start;
+}
+.ab-cols > .ab-col { display: flex; gap: var(--space-7); }
+.ab-col--main { grid-area: main; }
+.ab-col--queue { grid-area: queue; }
+.ab-col--log { grid-area: log; }
+.ab-cols > .ab-flow { grid-area: flow; margin: 0; max-width: none; }
+
+/* objectives: rows divided by a hairline, a 4px bar, the count on the right */
+.ab-objectives {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.ab-objective {
+  display: grid;
+  gap: var(--space-1);
+  padding: 10px 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+}
+.ab-objective[data-done="true"] { color: var(--ink-muted); }
+.ab-objective[data-done="true"] .ab-objective__head b { font-weight: 500; }
+.ab-objective__head { gap: var(--space-2) var(--space-3); }
+.ab-objective__head b {
+  min-width: 0;
+  font-size: 14.5px;
+  line-height: 21px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.ab-objective__count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.ab-objective__head .ab-tag { margin-left: 0; }
+.ab-objective .ab-meta { margin: 0; font-size: 12px; line-height: 17px; }
+.ab-objective__bar { height: 4px; margin-top: 2px; }
+
+@container main (min-width: 1100px) {
+  .ab-context { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--space-7); }
+  .ab-context.is-daily-only .ab-daily { grid-column: 2; }
+}
+
+/* 1366: [Agora + Precisa + Fila] · [Mesclados + Vazão 2×2] */
+@container main (min-width: 1000px) {
+  .ab-cols {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-areas:
+      "main log"
+      "queue flow";
+    gap: var(--space-7) var(--space-7);
+  }
+  .ab-cols > .ab-flow {
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--line);
+  }
+  .ab-cols > .ab-flow .ab-flow__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* 1920: context 7fr/5fr, rails 5fr/4fr/3fr, flow as one 8-cell strip */
+@container main (min-width: 1300px) {
+  .ab-cols {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 3fr);
+    grid-template-areas:
+      "main queue log"
+      "flow flow flow";
+    gap: var(--space-7);
+  }
+  .ab-cols > .ab-flow {
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--line);
+  }
+  .ab-cols > .ab-flow .ab-flow__grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+}
+
+/* The strip is eight cells separated by a hairline, not eight boxes. */
+.ab-flow__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+.ab-flow__tile {
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.ab-flow__tile + .ab-flow__tile { border-left: 1px solid var(--line); }
+.ab-flow__tile:nth-child(2n + 1) { border-left: 0; }
+.ab-flow__tile:nth-child(n + 3) { border-top: 1px solid var(--line); }
+@container main (min-width: 1300px) {
+  .ab-flow__tile + .ab-flow__tile { border-left: 1px solid var(--line); border-top: 0; }
+  .ab-flow__tile:nth-child(2n + 1) { border-left: 1px solid var(--line); }
+  .ab-flow__tile:first-child { border-left: 0; }
+}
+.ab-flow .ab-sec__head { margin-bottom: var(--space-3); }
+
+/* idle at ultrawide: four lanes on one row, history seven columns below it */
+@container main (min-width: 1000px) {
+  .ab-cols[data-idle="true"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "now needs queue log"
+      "history history history history"
+      "flow flow flow flow";
+    gap: var(--space-6) var(--space-7);
+  }
+  .ab-cols[data-idle="true"] > .ab-col { display: contents; }
+  .ab-cols[data-idle="true"] #sec-now { grid-area: now; }
+  .ab-cols[data-idle="true"] #sec-needs { grid-area: needs; }
+  .ab-cols[data-idle="true"] #sec-queue { grid-area: queue; }
+  .ab-cols[data-idle="true"] #sec-log { grid-area: log; }
+  .ab-cols[data-idle="true"] #sec-log .ab-week { display: none; }
+  .ab-cols[data-idle="true"] #sec-log .ab-log { grid-area: history; }
+  .ab-cols[data-idle="true"] #sec-log .ab-log__group { break-inside: avoid; }
+  .ab-cols[data-idle="true"] #sec-log .ab-log {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--space-4) var(--space-4);
+    border-top: 1px solid var(--line);
+    padding-top: var(--space-4);
+  }
+  .ab-cols[data-idle="true"] #sec-log .ab-log__day { margin: 0; }
+  .ab-cols[data-idle="true"] .ab-cols > .ab-flow,
+  .ab-cols[data-idle="true"] > .ab-flow { grid-area: flow; }
+}
+
+/* Mobile and tablet: one column, in reading order. */
+@container main (max-width: 999px) {
+  .ab-cols { gap: var(--space-6); }
+  .ab-cols > .ab-flow { margin-top: var(--space-2); }
+  .ab-context { gap: var(--space-5); margin-bottom: var(--space-6); }
+}
+
+/* ---------- redesigned lane cards (slice 3) ---------- */
+.ab-run {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 12px 16px;
+  border: 1px solid var(--agent-line);
+  border-radius: var(--radius-lg);
+  background: var(--agent-wash);
+}
+.ab-run__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--agent);
+  font-size: 12.5px;
+  line-height: 18px;
+  font-weight: 500;
+}
+.ab-run__status .ab-g { margin-top: 0; }
+.ab-run__status .ab-need__id { color: var(--agent); opacity: .8; }
+.ab-run__title {
+  font-size: 14.5px;
+  line-height: 21px;
+  font-weight: 500;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.ab-run__step { grid-column: auto; display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+.ab-run__clock { margin-left: auto; text-align: right; }
+.ab-run__clock small { display: inline; }
+.ab-run__retry { grid-column: auto; }
+.ab-run__silence { grid-column: auto; }
+
+.ab-need {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 12px 16px;
+}
+.ab-need__top {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12.5px;
+  line-height: 18px;
+}
+.ab-need__top .ab-g { margin-top: 0; }
+.ab-need__kind { font-weight: 600; color: var(--you); white-space: nowrap; }
+.ab-need__top.is-halt .ab-need__kind,
+.ab-need[data-task] .ab-need__top:has(.ab-g--halt) .ab-need__kind { color: var(--halt); }
+.ab-need__title { grid-column: 1; grid-row: 2; }
+.ab-need__title span:last-child { white-space: normal; }
+.ab-need__why { grid-column: 1; grid-row: 3; }
+.ab-need__actions { grid-column: 2; grid-row: 2 / span 2; align-self: center; justify-self: end; margin: 0; }
+.ab-need__side { color: var(--ink-muted); white-space: nowrap; }
+.ab-need[aria-current="true"] { background: var(--you-wash); border-color: var(--you); }
+.ab-need__why .ab-tag { margin-left: 6px; }
+
+.ab-row[aria-selected="true"] { background: var(--you-wash); }
+.ab-row[aria-selected="true"] .ab-row__title { color: var(--ink); }
+
+.ab-context .ab-daily {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 13px;
+}
+.ab-context .ab-daily__head h2 { font-size: 16px; line-height: 22px; }
+.ab-context .ab-daily__head { margin-bottom: 8px; }
+.ab-context .ab-daily__dismiss { min-height: 32px; }
+
+@media (max-width: 640px) {
+  .ab-need__top { flex-wrap: wrap; }
+  .ab-need__title,
+  .ab-need__why,
+  .ab-need__actions { grid-column: 1 / -1; grid-row: auto; justify-self: start; }
+  .ab-need__side { margin-left: auto; }
+  .ab-run__status { flex-wrap: wrap; }
+  .ab-run__clock { margin-left: 0; }
+}
+
+/* The idle lane header stays in its cell; the day record becomes the wide
+   history row below the four compact lanes. */
+@container main (min-width: 1000px) {
+  .ab-cols[data-idle="true"] #sec-log { display: contents; }
+  .ab-cols[data-idle="true"] #sec-log .ab-sec__head { grid-area: log; align-self: start; margin: 0; }
+  .ab-cols[data-idle="true"] #sec-log .ab-log {
+    grid-area: history;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+    padding: var(--space-4) 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .ab-cols[data-idle="true"] #sec-log .ab-log__group { min-width: 0; }
+  .ab-cols[data-idle="true"] #sec-log .ab-log__day { margin: 0 0 4px; }
+  .ab-cols[data-idle="true"] #sec-log .ab-pr { padding: 4px 0; }
+  .ab-cols[data-idle="true"] #sec-log .ab-pr__meta { gap: 2px 6px; }
+  .ab-cols[data-idle="true"] #sec-log .ab-pr__meta .ab-meta { display: none; }
+}
+
+/* ---------- phone: the repository selector is the top row, the actions are
+   a fixed 48px bar; only the current repository name is repeated there. ---------- */
+.ab-mobilebar__repo {
+  max-width: 52vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.ab-mobile-actions { display: none; }
+
+@container board (max-width: 640px) {
+  .ab-mobilebar { margin-bottom: var(--space-2); }
+  .ab-mobilebar > summary { height: 40px; border-color: transparent; padding: 0; }
+  .ab-mobilebar > summary:hover { background: transparent; }
+  .ab-top__repo { display: none; }
+  .ab-top__actions { display: none; }
+  .ab-top { margin-bottom: var(--space-3); }
+  .ab-mobile-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+    background: color-mix(in oklab, var(--paper) 94%, transparent);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(6px);
+  }
+  .ab-mobile-actions .ab-btn--primary { flex: 1; height: 48px; justify-content: center; font-size: 14.5px; }
+  .ab-mobile-actions .ab-btn--icon { width: 48px; height: 48px; border: 1px solid var(--line-strong); background: var(--surface); }
+}
+
+/* Wrappers let the 2-column layout stack the lanes without a tall log
+   stretching the queue's row. At 3 columns both wrappers dissolve into the
+   board grid, so the lanes keep their real proportions. */
+.ab-cols { grid-template-areas: "lanes" "side"; }
+.ab-lanes, .ab-side { display: flex; flex-direction: column; gap: var(--space-7); min-width: 0; }
+.ab-col--main { grid-area: auto; }
+.ab-col--queue { grid-area: auto; }
+.ab-col--log { grid-area: auto; }
+.ab-side > .ab-flow { grid-area: auto; margin: 0; }
+
+@container main (min-width: 1000px) and (max-width: 1299px) {
+  .ab-cols {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-areas: "lanes side";
+    gap: var(--space-7);
+  }
+  .ab-lanes { grid-area: lanes; }
+  .ab-side { grid-area: side; }
+}
+
+@container main (min-width: 1300px) {
+  .ab-cols {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 3fr);
+    grid-template-areas:
+      "main queue log"
+      "flow flow flow";
+    gap: var(--space-7);
+  }
+  .ab-lanes, .ab-side { display: contents; }
+  .ab-col--main { grid-area: main; }
+  .ab-col--queue { grid-area: queue; }
+  .ab-col--log { grid-area: log; }
+  .ab-side > .ab-flow { grid-area: flow; }
+}
+
+@container main (min-width: 1000px) {
+  .ab-cols[data-idle="true"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "now needs queue log"
+      "history history history history"
+      "flow flow flow flow";
+  }
+  .ab-cols[data-idle="true"] .ab-lanes,
+  .ab-cols[data-idle="true"] .ab-side { display: contents; }
+  .ab-cols[data-idle="true"] .ab-col--main { display: contents; }
+  .ab-cols[data-idle="true"] #sec-now { grid-area: now; }
+  .ab-cols[data-idle="true"] #sec-needs { grid-area: needs; }
+  .ab-cols[data-idle="true"] #sec-queue { grid-area: queue; }
+  .ab-cols[data-idle="true"] #sec-log { display: contents; }
+  .ab-cols[data-idle="true"] #sec-log .ab-sec__head { grid-area: log; align-self: start; margin: 0; }
+  .ab-cols[data-idle="true"] #sec-log .ab-log {
+    grid-area: history;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+    padding: var(--space-4) 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .ab-cols[data-idle="true"] .ab-side > .ab-flow { grid-area: flow; }
+}
+
+/* Flow cells are dense data, not boxes: allow the value row to wrap before
+   it collides with the window rows, and keep the cycle table inside its cell. */
+.ab-flow__now { flex-wrap: wrap; row-gap: 2px; }
+.ab-flow__unit { overflow: visible; }
+.ab-flow__cycle { table-layout: fixed; }
+.ab-flow__cycle th,
+.ab-flow__cycle td { padding-left: 4px; font-size: 10.5px; line-height: 14px; }
+.ab-flow__cycle th[scope="row"],
+.ab-flow__cycle thead th:first-child { width: 38%; padding-left: 0; }
+.ab-flow__cycle td.ab-flow__value { font-size: 10.5px; }
+.ab-flow__tile { padding: var(--space-3) var(--space-3); }
+.ab-context .ab-daily { max-width: 70ch; }
+
+@container main (min-width: 1000px) and (max-width: 1299px) {
+  .ab-side > .ab-flow .ab-flow__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container main (min-width: 1300px) {
+  .ab-side > .ab-flow .ab-flow__grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .ab-side > .ab-flow { padding-top: var(--space-6); border-top: 1px solid var(--line); }
+}
+
+/* The destructive confirmation is a halt surface; the two buttons name what
+   happens, never "OK". */
+.ab-act__confirm.is-halt {
+  background: var(--halt-wash);
+  border-color: var(--halt);
+}
+.ab-act__confirm.is-halt .ab-act__question { color: var(--ink); }
+.ab-insp__actions .ab-btn { min-height: 32px; }
+.ab-insp__actions .ab-act { display: inline-flex; }
+
+/* Composer: the 760px layer and its three named steps. */
+.ab-composer-dialog.board-dialog { width: min(760px, calc(100vw - var(--space-6))); }
+.ab-compose #composer-text { min-height: 120px; }
+.ab-compose__head { gap: var(--space-2) var(--space-3); }
+.ab-steps {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.ab-steps li { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ab-steps li + li::before { content: "·"; margin-right: 3px; color: var(--line-strong); }
+.ab-steps li span {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.ab-steps li.is-on { color: var(--ink); font-weight: 600; }
+.ab-steps li.is-on span { border-color: var(--you); background: var(--you); color: var(--on-you); }
+@container board (max-width: 640px) {
+  .ab-steps { display: none; }
+}
+
+/* Superagentes: one row per project, so two projects compare side by side. */
+.ab-superagents__table-wrap {
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.ab-superagent-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.ab-superagent-table th {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.ab-superagent-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+  color: var(--ink);
+}
+.ab-superagent-table tr:last-child td { border-bottom: 0; }
+.ab-superagent-table__project b { display: block; font-size: 13.5px; font-weight: 500; }
+.ab-superagent-table__path { display: block; color: var(--ink-faint); font-size: 11px; }
+.ab-superagent-table td code { font-family: var(--font-mono); font-size: 12px; }
+.ab-superagent-table .ab-status { display: flex; align-items: center; gap: 6px; }
+.ab-superagent-table .ab-meta { display: block; font-size: 11.5px; line-height: 16px; }
+.ab-superagent-table__actions { text-align: right; white-space: nowrap; }
+.ab-superagent-table__actions > * { margin-left: 4px; }
+.ab-superagent-table__actions .ab-act { display: inline-flex; vertical-align: middle; }
+.ab-superagent-table .ab-superagent__workers { margin: 0; }
+.ab-superagent-menu { position: relative; display: inline-block; }
+.ab-superagent-menu > summary { list-style: none; cursor: pointer; }
+.ab-superagent-menu > summary::-webkit-details-marker { display: none; }
+.ab-superagent-menu__body {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 9;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-layer);
+  text-align: left;
+}
+.ab-superagent-menu__body .ab-act { display: flex; }
+.ab-superagents__errors {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--halt);
+  background: var(--halt-wash);
+  font-size: 12px;
+  line-height: 17px;
+}
+.ab-superagent-add { display: grid; gap: var(--space-3); padding: var(--space-4); border-top: 1px solid var(--line); }
+.ab-superagent-add h3 { margin: 0; font-size: 16px; line-height: 22px; }
+.ab-superagent-add > p { margin: 0; }
+
+.ab-superagent-table .ab-meta { white-space: nowrap; }
+.ab-superagent-table td code + .ab-data-sm::before { content: "·"; margin: 0 5px; color: var(--line-strong); }
+.panel-heading h2:focus,
+.panel-heading h2:focus-visible { outline: none; }
+
+/* Hoje: one list, the repository as a fixed column, a glyph legend at the foot. */
+.ab-today { max-width: 1100px; }
+.ab-today__title-row { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+.ab-today__title-row h1 { font-size: 26px; line-height: 32px; }
+.ab-today__date { color: var(--ink-muted); font-size: 14px; }
+.ab-today__head .ab-label { margin: 0; }
+.ab-today__spend { align-items: baseline; gap: var(--space-2) var(--space-3); }
+.ab-today__money { border: 0; background: none; padding: 0; }
+.ab-today__list { gap: 0; }
+.ab-today__item {
+  grid-template-columns: 120px auto minmax(0, 1fr) auto auto auto;
+  gap: var(--space-2) var(--space-3);
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  padding: 9px 2px;
+  min-height: 36px;
+}
+.ab-today__item:hover { background: var(--surface); border-color: var(--line); }
+.ab-today__repo { width: 120px; white-space: nowrap; }
+.ab-today__action { color: var(--you); font-size: 12.5px; font-weight: 500; text-decoration: underline; text-underline-offset: .2em; }
+.ab-today__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+.ab-today__legend span { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 39.999rem) {
+  .ab-today__item { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "repo repo repo" "title title title" "state age action"; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 12px; }
+  .ab-today__repo { grid-area: repo; width: auto; }
+  .ab-today__title { grid-area: title; white-space: normal; }
+  .ab-today__state { grid-area: state; justify-self: start; }
+  .ab-today__age { grid-area: age; }
+  .ab-today__action { grid-area: action; justify-self: end; }
+}
+
+/* Configurações: lateral sections, one column of content, explicit save. */
+.settings-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
+.settings-layout.is-panel { grid-template-columns: 190px minmax(0, 1fr); gap: var(--space-7); }
+.settings-nav { display: grid; gap: 2px; align-content: start; position: sticky; top: 0; }
+.settings-nav a { padding: 8px 10px; border-radius: var(--radius-sm); color: var(--ink-muted); font-size: 13px; text-decoration: none; }
+.settings-nav a:hover { background: var(--paper-sunk); color: var(--ink); }
+.settings-nav a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.settings-content { min-width: 0; }
+.settings-content > section { padding: var(--space-4) 0; border-top: 1px solid var(--line); }
+.settings-content > section:first-child { padding-top: 0; border-top: 0; }
+.settings-content > * { scroll-margin-top: var(--space-5); }
+.board-dialog .board-settings-body { max-height: calc(100dvh - 96px); }
+@container board (max-width: 900px) {
+  .settings-layout.is-panel { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+  .settings-nav { display: flex; flex-wrap: wrap; position: static; gap: 2px 4px; }
+  .settings-nav a { padding: 6px 8px; }
+}
+
+/* The design system forbids spaced uppercase for labels. */
+.board-settings-body h3,
+.settings-content h3,
+.settings-fold-label,
+.voice-field-label {
+  text-transform: none;
+  letter-spacing: normal;
+}
+.board-settings-body h3,
+.settings-content h3 { font-size: 13px; color: var(--ink-muted); }
+.panel-heading h2:focus,
+.panel-heading h2:focus-visible { outline: none !important; }
+
+/* Ultrawide: use the width for the lanes, keep the context at reading width. */
+@container board (min-width: 1600px) {
+  #board-page .ab-main { max-width: none; margin-inline: 0; padding-left: 48px; padding-right: 48px; }
+  .ab-context { max-width: 1600px; }
+}
+
+.ab-flow__atleast { font-family: var(--font-mono); font-size: 12px; color: var(--ink-muted); margin-right: 1px; }
+[data-frozen="true"] .ab-context,
+[data-frozen="true"] .ab-flow { filter: saturate(.55); }
+
+.ab-log__title { margin: 0 0 var(--space-3); font-size: 16px; line-height: 22px; font-weight: 600; grid-column: 1 / -1; }
+
+@container board (max-width: 640px) {
+  .ab-top { position: relative; }
+  .ab-mobilebar[open] .ab-mobilebar__list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 12;
+    box-shadow: var(--shadow-layer);
+  }
+  .ab-mobilebar > summary { gap: 6px; }
+}
+
+/* Executor: three cards, not pills; each names itself and the suggestion. */
+.ab-exec__options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.ab-exec__opt {
+  min-height: 64px;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+.ab-exec__opt > span:first-of-type { font-weight: 500; }
+.ab-exec__hint { font-size: 11.5px; }
+@container board (max-width: 640px) {
+  .ab-exec__options { grid-template-columns: 1fr; }
+  .ab-exec__opt { min-height: 48px; }
+}
+
+/* The inspector docks only when the content beside it keeps a reading width;
+   below that it floats over the board (Esc closes it). */
+@container board (max-width: 1903px) {
+  .ab-board[data-inspector="open"] { grid-template-columns: 224px minmax(0, 1fr); }
+  .ab-board[data-inspector="open"] .ab-insp {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: min(440px, 100%);
+    box-shadow: var(--shadow-layer);
+    z-index: 4;
+  }
+}
+@container board (min-width: 1904px) and (max-width: 1999px) {
+  .ab-board[data-inspector="open"] { grid-template-columns: 224px minmax(0, 1fr) 440px; }
+}
+
+/* Panels keep the width the frame gives them; they never stretch to 832 by
+   default just because the dialog shell does. */
+#panel-voice.board-dialog { width: min(560px, calc(100vw - var(--space-6))); }
+#panel-shortcuts.board-dialog { width: min(560px, calc(100vw - var(--space-6))); }
+#panel-settings.board-dialog { width: min(1040px, calc(100vw - var(--space-6))); }
+#panel-superagents.board-dialog { width: min(1200px, calc(100vw - var(--space-6))); }
+#panel-history.board-dialog,
+#panel-activity.board-dialog,
+#panel-ai.board-dialog,
+#panel-executors.board-dialog { width: min(860px, calc(100vw - var(--space-6))); }
+
+.ab-voice-talk {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin: var(--space-3) var(--space-5) 0;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line);
+}
+.ab-voice-talk .ab-btn { min-height: 40px; }
+.ab-voice-talk .ab-meta { max-width: 42ch; }
+
+@container board (max-width: 900px) {
+  .ab-top__repo { display: none; }
+  .ab-top { gap: 10px; }
+}
+.voice-chat-turns { max-height: none; }
+
+/* 768: the rail stays as a 56px strip of marks and icons; the inspector owns
+   the screen. The mobile bar is only for the phone. */
+@container board (min-width: 641px) and (max-width: 900px) {
+  .ab-board,
+  .ab-board[data-inspector="open"] { grid-template-columns: 56px minmax(0, 1fr); }
+  .ab-rail { display: flex; width: 56px; padding: 14px 6px; align-items: stretch; }
+  .ab-brand { justify-content: center; padding: 0 0 12px; }
+  .ab-brand > span:last-child { display: none; }
+  .ab-rail h3 { display: none; }
+  .ab-repo { grid-template-columns: minmax(0, 1fr); justify-items: center; padding: 8px 0; min-height: 36px; }
+  .ab-repo__name { display: none; }
+  .ab-repo--today .ab-repo__name { display: block; font-size: 10px; }
+  .ab-repo__marks { justify-content: center; flex-wrap: wrap; gap: 2px; }
+  .ab-rail__foot { align-items: stretch; padding: 8px 0 0; gap: 2px; }
+  .ab-rail__foot .ab-btn { justify-content: center; width: 100%; padding: 0; }
+  .ab-rail__foot .ab-btn > span,
+  .ab-rail__foot .ab-btn .ab-kbd { display: none; }
+  .ab-rail .board-settings > summary { justify-content: center; width: 100%; padding: 0; }
+  .ab-rail .settings-menu-label,
+  .ab-rail .settings-chevron { display: none; }
+  .ab-mobilebar { display: none; }
+  .ab-top__repo { display: flex; }
+  .ab-top { gap: 10px; }
+  .ab-board[data-inspector="open"] .ab-insp {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    border-left: 0;
+    border-radius: 0;
+    z-index: 4;
+  }
+}
+
+@container board (min-width: 641px) and (max-width: 900px) {
+  .ab-repo { min-height: 44px; align-content: center; gap: 3px; }
+  .ab-repo::before {
+    content: attr(data-initial);
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    margin: 0 auto;
+    border-radius: var(--radius-sm);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink);
+  }
+  .ab-repo[aria-current="true"]::before { border-color: var(--line-strong); background: var(--surface); }
+  .ab-repo__marks { min-height: 12px; }
+}
+
+.ab-row__note.is-stale { color: var(--stale); }
+.ab-row__note.is-stale .ab-g { border-color: var(--stale); }
+
+.ab-flow__cycle th,
+.ab-flow__cycle td { font-size: 10px; line-height: 13px; }
+.ab-flow__cycle th[scope="row"],
+.ab-flow__cycle thead th:first-child { width: 42%; }
+
+/* Phone: Mesclados and Vazão start as one-line disclosures. The hook closes
+   them on a phone and opens them on wider screens; no data is removed. */
+.ab-fold > .ab-fold__summary { display: none; }
+.ab-fold--log > .ab-fold__body,
+.ab-fold--flow > .ab-fold__body { display: contents; }
+.ab-fold__summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+  list-style: none;
+  font-size: 16px;
+  font-weight: 600;
+}
+.ab-fold__summary::-webkit-details-marker { display: none; }
+.ab-fold__summary .ab-meta { margin-left: auto; font-weight: 400; }
+.ab-fold__summary::after { content: "⌄"; color: var(--ink-faint); font-size: 12px; }
+.ab-fold[open] > .ab-fold__summary::after { transform: rotate(180deg); }
+
+@container board (min-width: 641px) {
+  .ab-fold--log,
+  .ab-fold--flow { display: contents; }
+  .ab-fold--log > .ab-fold__body,
+  .ab-fold--flow > .ab-fold__body { display: contents; }
+}
+@container main (max-width: 640px) {
+  .ab-fold:not([data-ready]) > .ab-fold__body { display: none; }
+  .ab-fold > .ab-fold__summary { display: flex; }
+  .ab-fold--log > .ab-fold__body,
+  .ab-fold--flow > .ab-fold__body { display: block; }
+  .ab-fold[open] > .ab-fold__body { display: block; }
+  .ab-fold:not([open]) > .ab-fold__body { display: none; }
+  .ab-fold--log .ab-fold__body #sec-log .ab-sec__head { display: none; }
+  .ab-fold--flow .ab-fold__body #sec-flow .ab-sec__head { display: none; }
+}
+
+@container board (max-width: 640px) {
+  .ab-sec__empty { flex-wrap: wrap; align-items: flex-start; }
+  .ab-sec__empty > span { flex-basis: 100%; }
+}
+
+/* The fold wrapper is transparent on desktop; the inner flow must inherit the
+   grid area and the eight-cell strip, not the two-column phone default. */
+.ab-fold--flow .ab-flow { width: 100%; }
+@container main (min-width: 1000px) and (max-width: 1299px) {
+  .ab-fold--flow { display: contents; }
+  .ab-fold--flow > .ab-fold__body { display: contents; }
+  .ab-fold--flow .ab-flow__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container main (min-width: 1300px) {
+  .ab-fold--flow { display: contents; }
+  .ab-fold--flow > .ab-fold__body { display: contents; }
+  .ab-fold--flow .ab-flow { grid-area: flow; padding-top: var(--space-6); border-top: 1px solid var(--line); }
+  .ab-fold--flow .ab-flow__grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+}
+
+/* Keep the flow wrapper as the grid item (a <details> with display:contents
+   does not size its nested flow to the spanned area in Chromium). */
+.ab-fold--flow > .ab-fold__body { display: block; }
+@container main (min-width: 1000px) {
+  .ab-fold--flow { display: block; }
+  .ab-fold--flow > .ab-fold__body { display: block; }
+  .ab-fold--flow .ab-flow { grid-area: auto; width: 100%; max-width: none; margin: 0; }
+}
+@container main (min-width: 1300px) {
+  .ab-fold--flow { grid-area: flow; padding-top: var(--space-6); border-top: 1px solid var(--line); }
+  .ab-fold--flow .ab-flow { padding-top: 0; border-top: 0; }
+}
+
+.ab-fold--daily { display: block; min-width: 0; }
+.ab-fold--daily > .ab-fold__body { display: block; }
+.ab-context.is-daily-only .ab-fold--daily { grid-column: 2; }
+@container board (max-width: 640px) {
+  .ab-fold--daily { margin-bottom: var(--space-2); }
+  .ab-fold--daily > .ab-fold__body { padding-top: var(--space-2); }
+  .ab-fold--daily .ab-daily__head h2,
+  .ab-fold--daily .ab-daily__since { display: none; }
+  .ab-fold--daily .ab-daily__dismiss { display: inline-flex; margin-left: auto; }
+  .ab-fold--daily .ab-daily__rows { margin-top: 0; }
+}
+
+@container main (min-width: 1000px) {
+  .ab-cols[data-idle="true"] .ab-fold--flow { grid-area: flow; }
+}
+
+/* Ultrawide: the context uses the width, with a readable text measure inside;
+   the merged record scrolls inside its lane instead of stretching the whole
+   board and leaving Agora/Precisa with a dead column underneath. */
+.ab-context { max-width: none; }
+.ab-objective__head b { max-width: 70ch; }
+.ab-context .ab-daily { max-width: 70ch; }
+
+@container main (min-width: 1000px) {
+  .ab-cols:not([data-idle="true"]) .ab-col--log .ab-log {
+    max-height: min(52vh, 520px);
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-right: 4px;
+  }
+}
+@container main (max-width: 640px) {
+  .ab-col--log .ab-log { max-height: none; overflow: visible; }
+}
+
+/* Compact by default: three day groups and the history button. The idle layout
+   and the ultrawide board show all seven days across the width. */
+.ab-log__title { display: none; }
+.ab-log > .ab-log__group:nth-of-type(n + 4) { display: none; }
+
+@container main (min-width: 1000px) {
+  .ab-cols[data-idle="true"] .ab-log__title { display: block; }
+  .ab-cols[data-idle="true"] .ab-log > .ab-log__group { display: block; }
+  .ab-cols[data-idle="true"] .ab-log > .ab-more { display: none; }
+}
+
+@container main (min-width: 2200px) {
+  .ab-cols:not([data-idle="true"]) {
+    grid-template-areas:
+      "main queue log"
+      "history history history"
+      "flow flow flow";
+  }
+  .ab-cols:not([data-idle="true"]) .ab-col--log,
+  .ab-cols:not([data-idle="true"]) .ab-fold--log,
+  .ab-cols:not([data-idle="true"]) .ab-fold--log > .ab-fold__body,
+  .ab-cols:not([data-idle="true"]) #sec-log { display: contents; }
+  .ab-cols:not([data-idle="true"]) #sec-log .ab-sec__head {
+    grid-area: log;
+    align-self: start;
+    margin: 0;
+  }
+  .ab-cols:not([data-idle="true"]) #sec-log .ab-week { display: none; }
+  .ab-cols:not([data-idle="true"]) #sec-log .ab-log {
+    grid-area: history;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+    padding: var(--space-4) 0 0;
+    border-top: 1px solid var(--line);
+    max-height: none;
+    overflow: visible;
+  }
+  .ab-cols:not([data-idle="true"]) #sec-log .ab-log__title { display: block; }
+  .ab-cols:not([data-idle="true"]) #sec-log .ab-log > .ab-log__group { display: block; }
+  .ab-cols:not([data-idle="true"]) #sec-log .ab-log > .ab-more { display: none; }
+  .ab-cols:not([data-idle="true"]) #sec-log .ab-log__group .ab-pr { padding: 4px 0; }
+  .ab-cols:not([data-idle="true"]) #sec-log .ab-log__day { margin: 0 0 4px; }
+  .ab-cols:not([data-idle="true"]) #sec-log .ab-log__group .ab-meta { display: none; }
+}
+
+/* The merged lane scrolls on a phone instead of running the whole page long. */
+@container main (max-width: 640px) {
+  .ab-col--log .ab-log { max-height: 56vh; overflow: auto; overscroll-behavior: contain; }
+}
+
+/* Truly wide: four lanes on one row (Agora, Precisa, Fila, Mesclados), then
+   the seven-day history across the width and the flow strip below. This is
+   the idle layout applied to working boards too, so no column is left empty. */
+@container main (min-width: 2200px) {
+  .ab-cols:not([data-idle="true"]) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "now needs queue log"
+      "history history history history"
+      "flow flow flow flow";
+    gap: var(--space-7) var(--space-7);
+  }
+  .ab-cols:not([data-idle="true"]) .ab-lanes,
+  .ab-cols:not([data-idle="true"]) .ab-side,
+  .ab-cols:not([data-idle="true"]) .ab-col--main { display: contents; }
+  .ab-cols:not([data-idle="true"]) #sec-now { grid-area: now; }
+  .ab-cols:not([data-idle="true"]) #sec-needs { grid-area: needs; }
+}
+
+@container main (min-width: 2200px) {
+  .ab-cols:not([data-idle="true"]) #sec-log .ab-week {
+    display: grid;
+    grid-area: log;
+    align-self: start;
+    margin-top: 36px;
+    margin-bottom: 0;
+  }
+}
+
+/* Superagentes: the per-project pool is visible as a stack, and the header
+   sums the configured agents across projects. */
+.ab-superagents__head { align-items: flex-start; }
+.ab-superagents__title { flex-wrap: wrap; gap: var(--space-2); }
+.ab-superagents__title h2 { margin-right: var(--space-2); }
+.ab-superagents__head > .ab-btn { flex: none; }
+.ab-superagent-table__agents { min-width: 150px; }
+.ab-agent-stack {
+  display: flex;
+  gap: 1px;
+  width: 96px;
+  height: 6px;
+  margin-bottom: 5px;
+}
+.ab-agent-stack i { flex: 1; min-width: 1px; border-radius: 1px; background: var(--line); }
+.ab-agent-stack i.is-on { background: var(--agent); }
+.ab-superagent-table__agents .ab-superagent__workers { margin: 0; gap: 4px; }
+.ab-superagent-table__agents .ab-superagent__workers > span { min-width: 1.5ch; text-align: center; }
+.ab-superagent-menu__hint {
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-1);
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  line-height: 16px;
+}
+.ab-superagent-menu__hint code { font-family: var(--font-mono); font-size: 10.5px; }
+.ab-superagent-add { scroll-margin-top: var(--space-5); }
+.ab-superagent-add__empty { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ab-superagent-add__empty p { margin: 0; }
+.ab-superagent-add__preview .ab-act__buttons { align-items: center; }
+
+.ab-rail__badge {
+  margin-left: auto;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.ab-rail__foot .ab-btn:hover .ab-rail__badge { color: var(--ink); }
+
+.ab-superagents__note {
+  margin: 0;
+  padding: var(--space-2) 0 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.ab-flow__agents {
+  margin-left: auto;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ab-superagent-table__agents .ab-btn { min-width: 28px; height: 28px; padding: 0 6px; }
+.ab-flow .ab-sec__head { flex-wrap: wrap; row-gap: 4px; }
+.ab-flow__agents { margin-left: auto; }
+
+.ab-superagent-table__mobile-agents { display: none; }
+@media (max-width: 39.999rem) {
+  .ab-superagent-table__mobile-agents {
+    display: block;
+    margin-top: 3px;
+    color: var(--agent);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+}
+
+/* Phone: a table row becomes a card, so Agentes, Pausar/Parar and ⋯ are in
+   reach without a horizontal scroll. */
+@media (max-width: 39.999rem) {
+  .ab-superagents__table-wrap { border: 0; background: none; overflow: visible; }
+  .ab-superagent-table { min-width: 0; display: block; }
+  .ab-superagent-table thead { display: none; }
+  .ab-superagent-table tbody,
+  .ab-superagent-table tr,
+  .ab-superagent-table td { display: block; width: 100%; }
+  .ab-superagent-table tr {
+    margin-bottom: var(--space-3);
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+  .ab-superagent-table td {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: var(--space-2);
+    align-items: start;
+    padding: 5px 0;
+    border: 0;
+    white-space: normal;
+  }
+  .ab-superagent-table td::before {
+    content: attr(data-label);
+    color: var(--ink-muted);
+    font-size: 11.5px;
+    line-height: 18px;
+    font-weight: 600;
+  }
+  .ab-superagent-table td.ab-superagent-table__project { display: block; padding-bottom: 8px; }
+  .ab-superagent-table td.ab-superagent-table__project::before { display: none; }
+  .ab-superagent-table td.ab-superagent-table__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+  .ab-superagent-table td.ab-superagent-table__actions::before { flex-basis: 100%; }
+  .ab-superagent-table__actions .ab-act { display: inline-flex; }
+  .ab-superagent-table__agents { min-width: 0; }
+}

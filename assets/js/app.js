@@ -27,6 +27,7 @@ import {BoardPanels} from "./hooks/board_panels"
 import {BoardMenu} from "./hooks/board_menu"
 import {BoardClock} from "./hooks/board_clock"
 import {BoardKeyboard} from "./hooks/board_keyboard"
+import {BoardFold} from "./hooks/board_fold"
 import {Composer} from "./hooks/composer"
 import {BoardConnection} from "./hooks/board_connection"
 import {BoardRestart} from "./hooks/board_restart"
@@ -63,13 +64,14 @@ const liveSocket = new LiveSocket("/live", Socket, {
     board_last_visit: localStorage.getItem("ab:last-visit"),
     board_tz_offset: new Date().getTimezoneOffset(),
   }),
-  hooks: {...colocatedHooks, DataAge, DailySummaryVoice, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, Composer, Throughput, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr},
+  hooks: {...colocatedHooks, DataAge, DailySummaryVoice, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, BoardFold, Composer, Throughput, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
       if (from.matches("dialog.board-dialog")) to.toggleAttribute("open", from.open)
       // Header disclosures remain open while a broadcast refreshes the board.
       if (from.matches("[data-board-menu]")) to.toggleAttribute("open", from.open)
+      if (from.matches("[data-mobile-fold]")) to.toggleAttribute("open", from.open)
     },
   },
 })

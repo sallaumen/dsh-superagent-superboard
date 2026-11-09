@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Composer · Dividir pedido</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#171614}
+*{box-sizing:border-box}
+a{color:#a3b7ef}a:hover{color:#c6d3f7}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #a3b7ef;outline-offset:2px}
+</style>
+</helmet>
+<div role="dialog" aria-labelledby="ch" style="width: 760px; height: 1000px; background: #292723; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.45); color: #ece8e1; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 21px; display: flex; flex-direction: column; overflow: hidden;">
+  <header style="display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid #3d3a34;">
+    <h2 id="ch" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Dividir pedido</h2>
+    <span style="font-size: 12.5px; color: #aaa398;">arena-rogue</span>
+    <div style="flex-grow: 1;"></div>
+    <ol aria-label="Etapas" style="display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; font-size: 12px; color: #aaa398;">
+      <li>1 Pedido</li><li aria-hidden="true">·</li><li style="color: #ece8e1; font-weight: 600;" aria-current="step">2 Revisar</li><li aria-hidden="true">·</li><li>3 Recibo</li>
+    </ol>
+    <button type="button" aria-label="Fechar" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; cursor: pointer;"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="#ece8e1" stroke-width="1.6"></path></svg></button>
+  </header>
+
+  <div style="flex-grow: 1; overflow: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <label for="ped" style="font-size: 12px; font-weight: 600; color: #aaa398;">Pedido</label>
+      <textarea id="ped" rows="3" style="resize: vertical; padding: 10px 12px; border-radius: 6px; border: 1px solid #7d756a; background: #121110; color: #ece8e1; font: inherit; font-size: 14px;">Ainda não está muito legal. A parte de, ao acabar uma fase, ir para um mapa: eu gostaria que nunca voltasse para o mapa.</textarea>
+      <span style="font-size: 12px; color: #958e83;">Segure <span class="m" style="border: 1px solid #7d756a; border-radius: 4px; padding: 0 4px;">V</span> para ditar.</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <label for="tit" style="font-size: 12px; font-weight: 600; color: #aaa398;">Título do objetivo</label>
+      <input id="tit" type="text" value="Fases contínuas sem tela de mapa" style="height: 38px; padding: 0 12px; border-radius: 6px; border: 1px solid #7d756a; background: #121110; color: #ece8e1; font: inherit; font-size: 14px;">
+    </div>
+
+    <fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;">
+      <legend style="font-size: 12px; font-weight: 600; color: #aaa398; margin-bottom: 8px;">Executor</legend>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+        <label style="display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 10px; border: 1px solid #a3b7ef; background: #1e2538; cursor: pointer;">
+          <span style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px;"><input type="radio" name="ex" checked="checked" style="accent-color: #a3b7ef; margin: 0;">DeepSeek</span>
+          <span style="font-size: 12px; color: #a3b7ef; font-weight: 600;">Sugerido</span>
+          <span style="font-size: 12px; line-height: 17px; color: #aaa398;">Tarefas de pesquisa e escrita curta; agente já tem contexto do repositório.</span>
+          <span class="m" style="font-size: 12px;">≈ US$ 0,02–0,08 por tarefa</span>
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 10px; border: 1px solid #7d756a; cursor: pointer;">
+          <span style="display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 13.5px;"><input type="radio" name="ex" style="accent-color: #a3b7ef; margin: 0;">Claude Code</span>
+          <span style="font-size: 12px; line-height: 17px; color: #aaa398;">Melhor para mudanças grandes no jogo.</span>
+          <span class="m" style="font-size: 12px;">≈ US$ 0,80–3,00 por tarefa</span>
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 10px; border: 1px solid #7d756a; cursor: pointer;">
+          <span style="display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 13.5px;"><input type="radio" name="ex" style="accent-color: #a3b7ef; margin: 0;">Codex</span>
+          <span style="font-size: 12px; line-height: 17px; color: #f09670;">90% da cota semanal usada.</span>
+          <span class="m" style="font-size: 12px;">cota, não US$</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <section aria-labelledby="split-h" style="display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;"><h3 id="split-h" style="margin: 0; font-size: 14px; font-weight: 600;">Tarefas propostas</h3><span class="m" style="font-size: 12px; color: #aaa398;">7 de 8 marcadas</span><div style="flex-grow: 1;"></div><span style="font-size: 12px; color: #aaa398;">critério: todas as tarefas mescladas</span></div>
+      <label style="display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 4px; border-top: 1px solid #3d3a34; cursor: pointer;"><input type="checkbox" checked="checked" style="accent-color: #a3b7ef; width: 16px; height: 16px; margin: 0;"><span style="font-weight: 500;">Decidir modelo de progressão sem tela de mapa</span><span style="font-size: 12px; color: #aaa398;">pesquisa</span><span class="m" style="font-size: 11.5px; color: #aaa398; border: 1px solid #7d756a; border-radius: 4px; padding: 0 5px;">P</span></label>
+      <label style="display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 4px; border-top: 1px solid #3d3a34; cursor: pointer;"><input type="checkbox" checked="checked" style="accent-color: #a3b7ef; width: 16px; height: 16px; margin: 0;"><span style="font-weight: 500;">Definir significado de 'alt' no minimapa</span><span style="font-size: 12px; color: #aaa398;">pesquisa</span><span class="m" style="font-size: 11.5px; color: #aaa398; border: 1px solid #7d756a; border-radius: 4px; padding: 0 5px;">P</span></label>
+      <label style="display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 4px; border-top: 1px solid #3d3a34; cursor: pointer;"><input type="checkbox" checked="checked" style="accent-color: #a3b7ef; width: 16px; height: 16px; margin: 0;"><span style="font-weight: 500;">Sistema de câmera com dead zone e lerp</span><span style="font-size: 12px; color: #aaa398;">código</span><span class="m" style="font-size: 11.5px; color: #aaa398; border: 1px solid #7d756a; border-radius: 4px; padding: 0 5px;">M</span></label>
+      <label style="display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 4px; border-top: 1px solid #3d3a34; cursor: pointer;"><input type="checkbox" checked="checked" style="accent-color: #a3b7ef; width: 16px; height: 16px; margin: 0;"><span style="font-weight: 500;">Aumentar mapas e renderização por viewport</span><span style="font-size: 12px; color: #aaa398;">código</span><span class="m" style="font-size: 11.5px; color: #aaa398; border: 1px solid #7d756a; border-radius: 4px; padding: 0 5px;">G</span></label>
+      <label style="display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 4px; border-top: 1px solid #3d3a34; cursor: pointer;"><input type="checkbox" style="accent-color: #a3b7ef; width: 16px; height: 16px; margin: 0;"><span style="color: #aaa398;">Remover navegação de tela de mapa <span style="font-size: 12px; color: #dcb15e;">· parecida com #121 na fila</span></span><span style="font-size: 12px; color: #aaa398;">código</span><span class="m" style="font-size: 11.5px; color: #aaa398; border: 1px solid #7d756a; border-radius: 4px; padding: 0 5px;">M</span></label>
+      <div style="padding: 10px 4px; border-top: 1px solid #3d3a34; font-size: 12.5px; color: #a3b7ef;">e mais 3</div>
+    </section>
+  </div>
+
+  <footer style="padding: 14px 20px 18px; border-top: 1px solid #3d3a34; display: flex; flex-direction: column; gap: 10px;">
+    <p style="margin: 0; font-size: 13.5px;">Vamos criar <strong style="font-weight: 600;">7 issues</strong> em sallaumen/arena-rogue para o DeepSeek, agrupadas no objetivo “Fases contínuas sem tela de mapa”. Custo esperado <span class="m">≈ US$ 0,15–0,55</span>.</p>
+    <div style="display: flex; gap: 8px;">
+      <button type="button" style="height: 36px; padding: 0 12px; border-radius: 6px; border: 0; background: transparent; color: #aaa398; font: inherit; font-size: 13px; cursor: pointer;">Voltar</button>
+      <div style="flex-grow: 1;"></div>
+      <button type="button" style="height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 13px; cursor: pointer;">Cancelar</button>
+      <button type="button" style="height: 36px; padding: 0 14px; border-radius: 6px; border: 0; background: #a3b7ef; color: #111a33; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;">Criar 7 tarefas</button>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

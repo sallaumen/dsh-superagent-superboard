@@ -15,6 +15,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
   attr :version, :map, default: nil
   attr :busy, :boolean, default: false
   attr :voice, :map, default: nil
+  attr :superagents, :list, default: []
   attr :dispatch_paused, :boolean, default: false
   attr :show_settings, :boolean, default: true
   attr :settings_panel, :boolean, default: false
@@ -27,6 +28,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
       assigns
       |> assign(:owner, owner)
       |> assign(:overview, assigns.overview || %{})
+      |> assign(:agent_total, Enum.sum(Enum.map(assigns.superagents, & &1.max_workers)))
 
     ~H"""
     <nav class="ab-rail" aria-label="Repositórios">
@@ -44,6 +46,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
         phx-click="select"
         phx-value-view="hoje"
         title="Hoje, nos dois repositórios"
+        data-initial="H"
       >
         <span class="ab-repo__name">Hoje</span>
         <span class="ab-repo__marks">
@@ -61,6 +64,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
         phx-click="select"
         phx-value-repo={"#{repo.owner}/#{repo.name}"}
         title={"#{repo.owner}/#{repo.name}"}
+        data-initial={String.first(repo.name)}
       >
         <span class="ab-repo__name">{repo.name}</span>
         <span class="ab-repo__marks">
@@ -107,8 +111,11 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
           phx-value-panel="superagents"
+          aria-label={"Superagentes: #{@agent_total} agentes em #{length(@superagents)} projetos"}
+          title={"#{@agent_total} agentes em #{length(@superagents)} projetos"}
         >
           <.ico name="grip" /><span>Superagentes</span>
+          <span class="ab-rail__badge" aria-hidden="true">{@agent_total}</span>
         </button>
         <button
           id="open-shortcuts"
@@ -119,6 +126,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           data-panel-trigger
           aria-haspopup="dialog"
           aria-controls="panel-shortcuts"
+          aria-label="Atalhos"
         >
           <.ico name="keys" /><span>Atalhos</span><.kbd key="?" />
         </button>
@@ -127,6 +135,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
           phx-value-panel="voice"
+          aria-label="Conversa por voz"
         >
           <.ico name="mic" /><span>Conversa por voz</span>
         </button>

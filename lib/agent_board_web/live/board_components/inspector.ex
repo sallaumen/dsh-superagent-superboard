@@ -70,6 +70,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         <h2 id="conversation-title">{@task.title}</h2>
 
         <div class="ab-insp__facts">
+          <span class="ab-meta">
+            aberta há {Time.ago(Time.age_seconds(@task.inserted_at, @now))}
+          </span>
           <span class="ab-meta">atualizado {Time.ago(Time.age_seconds(@task.updated_at, @now))}</span>
           <span :if={@task.started_at} class="ab-meta">
             começou às {Time.local_time(@task.started_at, @tz_offset)}
@@ -101,19 +104,6 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             <span :if={@dispatch_active} class="ab-tag ab-tag--agent">execução em andamento</span>
             <span :if={@dispatch_paused} class="ab-tag ab-tag--stale">despacho pausado</span>
           </div>
-
-          <.live_component
-            :if={@dispatch_active and active_execution(@runner_executions)}
-            module={AgentAction}
-            id={"stop-execution-#{@task.id}"}
-            mode={:stop_execution}
-            tone={:halt}
-            task={@task}
-            execution={active_execution(@runner_executions)}
-            label="Parar execução"
-            confirm_label="Parar execução"
-            busy_label="Parando…"
-          />
 
           <.live_component
             :if={
@@ -164,6 +154,42 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         </div>
 
         <div class="ab-insp__actions">
+          <button
+            :if={not (@task.stopped or @task.archived)}
+            type="button"
+            class="ab-btn ab-btn--sm"
+            phx-click="inspector_tab"
+            phx-value-tab="conversa"
+          >Perguntar</button>
+
+          <.live_component
+            :if={@failure && @failure.retry && @failure.ticket_id}
+            module={AgentAction}
+            id={"retry-#{@task.id}"}
+            mode={:retry}
+            tone={if @failure.state == :scheduled, do: :quiet, else: :primary}
+            ticket_id={@failure.ticket_id}
+            task_id={@task.id}
+            repository_id={@task.repository_id}
+            number={@task.number}
+            label={@failure.retry}
+            confirm_label="Pedir nova tentativa"
+            busy_label="Pedindo ao agente…"
+          />
+
+          <.live_component
+            :if={@dispatch_active and active_execution(@runner_executions)}
+            module={AgentAction}
+            id={"stop-execution-#{@task.id}"}
+            mode={:stop_execution}
+            tone={:halt}
+            task={@task}
+            execution={active_execution(@runner_executions)}
+            label="Parar execução"
+            confirm_label="Parar execução"
+            cancel_label="Continuar rodando"
+            busy_label="Parando…"
+          />
           <button
             :if={@task.stopped or @task.archived}
             type="button"
@@ -322,21 +348,6 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       <h3 id="agent-failure-title" class="ab-fail__title">{@failure.headline}</h3>
       <p class="ab-fail__system">{@failure.system}</p>
       <p class="ab-fail__action">{@failure.action}</p>
-
-      <.live_component
-        :if={@failure.retry && @failure.ticket_id}
-        module={AgentAction}
-        id={"retry-#{@task.id}"}
-        mode={:retry}
-        tone={if @failure.state == :scheduled, do: :quiet, else: :primary}
-        ticket_id={@failure.ticket_id}
-        task_id={@task.id}
-        repository_id={@task.repository_id}
-        number={@task.number}
-        label={@failure.retry}
-        confirm_label="Pedir nova tentativa"
-        busy_label="Pedindo ao agente…"
-      />
 
       <details class="ab-fail__evidence">
         <summary>Erro e tentativas</summary>
