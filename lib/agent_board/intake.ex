@@ -39,6 +39,8 @@ defmodule AgentBoard.Intake do
     end
   end
 
+  defp maybe_propose(%{"blocking_questions" => [_ | _]} = spec), do: needs_clarification(spec)
+
   defp maybe_propose(%{"ready" => true} = spec) do
     with {:ok, tasks} <- propose(spec) do
       status = if tasks == [], do: :no_tasks, else: :ready
@@ -46,7 +48,61 @@ defmodule AgentBoard.Intake do
     end
   end
 
-  defp maybe_propose(spec), do: {:ok, %{spec: spec, tasks: [], status: :needs_clarification}}
+  defp maybe_propose(spec), do: needs_clarification(spec)
+
+  defp needs_clarification(spec),
+    do: {:ok, %{spec: spec, tasks: [], status: :needs_clarification}}
+
+  @doc """
+  The tasks with the owner's edits from the review form, keyed by position.
+  `source_title` stays: it is what makes the request the same one on a retry.
+  """
+  @spec edit_tasks([task()], map()) :: [task()]
+  def edit_tasks(tasks, edits) do
+    tasks
+    |> Enum.with_index()
+    |> Enum.map(fn {task, index} -> edit_task(task, edits[Integer.to_string(index)]) end)
+  end
+
+  defp edit_task(task, %{"title" => title, "body" => body, "acceptance" => acceptance}) do
+    %{task | title: title, body: body, acceptance: acceptance_lines(acceptance)}
+  end
+
+  defp edit_task(task, _no_edit), do: task
+
+  defp acceptance_lines(text) do
+    text |> String.split("\n") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+  end
+
+  @doc "Whether a task can still close on its own after the owner's edits."
+  @spec complete?(map()) :: boolean()
+  def complete?(%{title: title, body: body, acceptance: acceptance}) do
+    String.trim(title) != "" and String.trim(body) != "" and acceptance != []
+  end
+
+  @doc """
+  What the task at `index` depends on among the `selected` positions. A blocker
+  the owner left out hands over its own dependencies, so the order survives.
+  """
+  @spec dependencies_within([task()], non_neg_integer(), MapSet.t(non_neg_integer())) ::
+          [non_neg_integer()]
+  def dependencies_within(tasks, index, selected) do
+    tasks |> Enum.at(index) |> Map.fetch!(:depends_on) |> through_selected(tasks, selected)
+  end
+
+  defp through_selected(depends_on, tasks, selected) do
+    depends_on
+    |> Enum.flat_map(fn dependency ->
+      if MapSet.member?(selected, dependency),
+        do: [dependency],
+        else:
+          tasks
+          |> Enum.at(dependency)
+          |> Map.fetch!(:depends_on)
+          |> through_selected(tasks, selected)
+    end)
+    |> Enum.uniq()
+  end
 
   defp call(name, inputs, normalizer) do
     with {:ok, result} <- AI.call(name, inputs) do
@@ -61,7 +117,10 @@ defmodule AgentBoard.Intake do
     kept = tasks |> Enum.with_index() |> Enum.reject(fn {task, _at} -> incomplete?(task) end)
     positions = kept |> Enum.with_index() |> Map.new(fn {{_task, at}, new} -> {at, new} end)
 
-    Enum.map(kept, fn {task, at} -> normalize_task(task, dependencies(task, at, positions)) end)
+    drafts =
+      Enum.map(kept, fn {task, at} -> normalize_task(task, dependencies(task, at, positions)) end)
+
+    without_cycles(drafts)
   end
 
   defp normalize(:propose_tasks, _other), do: []
@@ -78,12 +137,33 @@ defmodule AgentBoard.Intake do
   defp normalize_task(task, depends_on) do
     %{
       title: task["title"],
+      source_title: task["title"],
       body: task["body"],
       kind: task["kind"],
       acceptance: task["acceptance"] || [],
       depends_on: depends_on,
       size: task["size"]
     }
+  end
+
+  # An edge that would let a task reach itself is dropped, in list order, so
+  # the review and the creation always see a graph with an order.
+  defp without_cycles(tasks) do
+    edges =
+      tasks
+      |> Enum.with_index()
+      |> Enum.reduce(%{}, fn {task, index}, kept ->
+        Map.put(kept, index, Enum.reject(task.depends_on, &closes_cycle?(&1, index, kept, tasks)))
+      end)
+
+    tasks
+    |> Enum.with_index()
+    |> Enum.map(fn {task, index} -> %{task | depends_on: edges[index]} end)
+  end
+
+  defp closes_cycle?(dependency, index, kept, tasks) do
+    dependency == index or
+      Enum.any?(Map.get(kept, dependency, []), &closes_cycle?(&1, index, kept, tasks))
   end
 
   # `depends_on` indexes the list the model wrote, so a dropped task moves

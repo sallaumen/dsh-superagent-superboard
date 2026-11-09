@@ -17,6 +17,7 @@ defmodule AgentBoard.AI.Engines.Rehearsal do
       "constraints" => ["sem quebrar o sync", "sem inventar dados"],
       "non_goals" => ["refatorar o visual"],
       "risks" => ["o poller e o sync competem pelo mesmo dado"],
+      "blocking_questions" => [],
       "open_questions" => ["qual o volume de PRs por sync?"],
       "assumptions" => [],
       "ready" => true,

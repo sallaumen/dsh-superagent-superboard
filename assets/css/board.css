@@ -375,7 +375,19 @@ body { margin: 0; background: var(--paper); }
 
 .ab-split { padding: 4px 16px 12px; display: flex; flex-direction: column; gap: 2px; }
 .ab-split__item { display: grid; grid-template-columns: 18px 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
-.ab-split__item:first-child { border-top: 0; }
+.ab-split__task { border-top: 1px solid var(--line); padding-bottom: 6px; }
+.ab-split__task:first-of-type { border-top: 0; }
+.ab-split__task .ab-split__item { border-top: 0; }
+.ab-split__deps { margin: 0; padding-left: 50px; font-size: 12px; }
+.ab-split__detail { margin-top: var(--space-1); padding-left: 50px; font-size: 13px; }
+.ab-split-note > .ab-split__detail { padding-left: 0; }
+.ab-split__detail > summary { min-height: 32px; display: flex; align-items: center; cursor: pointer; color: var(--ink-muted); width: fit-content; }
+@media (pointer: coarse) { .ab-split__detail > summary { min-height: 44px; } }
+.ab-split__detail .ab-label { display: block; margin-top: var(--space-2); }
+.ab-split__detail input[type="text"], .ab-split__detail textarea {
+  display: block; width: 100%; margin-top: var(--space-1); padding: var(--space-2) var(--space-3); min-height: 0; font-size: 14px; line-height: 20px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); resize: vertical;
+}
 .ab-check { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--line-strong); display: grid; place-items: center; background: var(--surface); }
 .ab-check.is-on { background: var(--you); border-color: var(--you); }
 .ab-check.is-on::after { content: ""; width: 4px; height: 8px; border: solid var(--on-you); border-width: 0 1.75px 1.75px 0; transform: translate(0, -1px) rotate(42deg); }
@@ -690,7 +702,9 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   box-shadow: none;
 }
 .ab-composer-dialog.board-dialog::backdrop { background: color-mix(in oklab, var(--ink) 18%, transparent); }
-.ab-composer-dialog .ab-compose { width: 100%; max-height: calc(100dvh - var(--space-6)); }
+.ab-composer-dialog .ab-compose { width: 100%; max-height: calc(100dvh - var(--space-6)); display: flex; flex-direction: column; }
+.ab-composer-dialog .ab-compose > form, .ab-composer-dialog .ab-receipt { min-height: 0; overflow-y: auto; }
+.ab-composer-dialog .ab-compose__bar { position: sticky; bottom: 0; z-index: 1; }
 .ab-compose__error {
   margin: 0;
   padding: var(--space-3) var(--space-5);

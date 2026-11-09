@@ -19,9 +19,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   import AgentBoardWeb.BoardComponents.WorkTag, only: [work_tag: 1]
   import AgentBoardWeb.BoardComponents.ExecutorPicker, only: [executor_picker: 1]
 
-  alias AgentBoard.Executors
-
-  alias AgentBoard.Titles
+  alias AgentBoard.{Executors, Intake, Titles}
 
   attr :repo, :string, required: true
   attr :text, :string, default: ""
@@ -45,7 +43,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
     tasks = (assigns.intake && assigns.intake.tasks) || []
     status = assigns.intake && Map.get(assigns.intake, :status)
     spec = (assigns.intake && assigns.intake.spec) || %{}
-    questions = spec["open_questions"] || []
+    questions = clarifying_questions(spec)
     risks = spec["risks"] || []
     selected = assigns.selected || MapSet.new(Enum.to_list(0..max(length(tasks) - 1, 0)))
 
@@ -54,6 +52,8 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       |> assign(:tasks, tasks)
       |> assign(:status, status)
       |> assign(:questions, questions)
+      |> assign(:spec, spec)
+      |> assign(:incomplete, incomplete?(tasks, selected))
       |> assign(:risks, risks)
       |> assign(:selected, selected)
       |> assign(:selected_count, Enum.count(selected, &(&1 in 0..max(length(tasks) - 1, 0))))
@@ -210,30 +210,73 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           disabled={@busy}
         />
 
+        <.understood :if={@split && @status == :ready && !@busy} spec={@spec} />
+
         <div :if={@split && @tasks != [] && !@busy} class="ab-split">
           <input type="hidden" name="tasks[]" value="" />
-          <label
-            :for={{task, index} <- Enum.with_index(@tasks)}
-            for={"composer-task-#{index}"}
-            class="ab-split__item"
-          >
-            <input
-              type="checkbox"
-              id={"composer-task-#{index}"}
-              name="tasks[]"
-              value={index}
-              checked={index in @selected}
-              class="ab-sr"
-            />
-            <span
-              class={"ab-check" <> if(index in @selected, do: " is-on", else: "")}
-              aria-hidden="true"
-            ></span>
-            <span class="ab-row__pos">{index + 1}</span>
-            <span>{task.title}</span>
-            <.work_tag work_type={task.kind} size={task.size} />
-          </label>
+          <div :for={{task, index} <- Enum.with_index(@tasks)} class="ab-split__task">
+            <label for={"composer-task-#{index}"} class="ab-split__item">
+              <input
+                type="checkbox"
+                id={"composer-task-#{index}"}
+                name="tasks[]"
+                value={index}
+                checked={index in @selected}
+                class="ab-sr"
+              />
+              <span
+                class={"ab-check" <> if(index in @selected, do: " is-on", else: "")}
+                aria-hidden="true"
+              ></span>
+              <span class="ab-row__pos">{index + 1}</span>
+              <span>{task.title}</span>
+              <.work_tag work_type={task.kind} size={task.size} />
+            </label>
+            <p id={"composer-task-deps-#{index}"} class="ab-meta ab-split__deps">
+              {dependency_label(Intake.dependencies_within(@tasks, index, @selected))}
+            </p>
+            <details
+              id={"composer-task-detail-#{index}"}
+              class="ab-split__detail"
+              phx-mounted={JS.ignore_attributes(["open"])}
+            >
+              <summary>{gettext("Edit title, description and acceptance")}</summary>
+              <label for={"composer-task-title-#{index}"} class="ab-label">{gettext("Title")}</label>
+              <input
+                id={"composer-task-title-#{index}"}
+                name={"task_edits[#{index}][title]"}
+                type="text"
+                maxlength="255"
+                value={task.title}
+              />
+              <label for={"composer-task-body-#{index}"} class="ab-label">
+                {gettext("Description")}
+              </label>
+              <textarea
+                id={"composer-task-body-#{index}"}
+                name={"task_edits[#{index}][body]"}
+                rows="6"
+              >{task.body}</textarea>
+              <label for={"composer-task-acceptance-#{index}"} class="ab-label">
+                {gettext("Acceptance criteria, one per line")}
+              </label>
+              <textarea
+                id={"composer-task-acceptance-#{index}"}
+                name={"task_edits[#{index}][acceptance]"}
+                rows="4"
+              >{Enum.join(task.acceptance, "\n")}</textarea>
+            </details>
+          </div>
         </div>
+
+        <p
+          :if={@incomplete && !@busy}
+          id="composer-incomplete"
+          class="ab-compose__confirm"
+          role="status"
+        >
+          {gettext("Every chosen task needs a title, a description and a criterion.")}
+        </p>
 
         <p :if={@confirm && !@busy} id="composer-confirm" class="ab-compose__confirm">
           {@confirm}
@@ -289,7 +332,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           <button
             class="ab-btn ab-btn--primary"
             phx-disable-with={disable_label(@split, @status)}
-            disabled={submit_disabled?(@text, @split, @status, @selected_count, @busy)}
+            disabled={submit_disabled?(@text, @split, @status, @selected_count, @busy) or @incomplete}
           >
             {button_label(@split, @status, @selected_count)}<.kbd key="⌘↵" />
           </button>
@@ -297,6 +340,73 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       </form>
     </div>
     """
+  end
+
+  attr :spec, :map, required: true
+
+  # What the split rests on: the questions stay in sight, the rest is one
+  # click away. All of it goes into each issue.
+  defp understood(assigns) do
+    assigns = assign(assigns, :open, assigns.spec["open_questions"] || [])
+
+    ~H"""
+    <div class="ab-split-note">
+      <div :if={@open != []} id="composer-open-questions">
+        <p class="ab-meta">
+          {gettext(
+            "Still open. These go in each issue; if one changes the work, edit the request and split again."
+          )}
+        </p>
+        <ul>
+          <li :for={question <- @open}>{question}</li>
+        </ul>
+      </div>
+      <details
+        id="composer-understood"
+        class="ab-split__detail"
+        phx-mounted={JS.ignore_attributes(["open"])}
+      >
+        <summary>{gettext("What the AI understood")}</summary>
+        <p :if={@spec["goal"] not in [nil, ""]}>{@spec["goal"]}</p>
+        <.spec_list title={gettext("Constraints")} items={@spec["constraints"]} />
+        <.spec_list title={gettext("Out of scope")} items={@spec["non_goals"]} />
+        <.spec_list title={gettext("Assumptions")} items={@spec["assumptions"]} />
+      </details>
+    </div>
+    """
+  end
+
+  attr :title, :string, required: true
+  attr :items, :list, default: nil
+
+  defp spec_list(assigns) do
+    ~H"""
+    <div :if={@items not in [nil, []]}>
+      <p class="ab-label">{@title}</p>
+      <ul>
+        <li :for={item <- @items}>{item}</li>
+      </ul>
+    </div>
+    """
+  end
+
+  defp clarifying_questions(spec) do
+    case spec["blocking_questions"] do
+      [_ | _] = questions -> questions
+      _none -> spec["open_questions"] || []
+    end
+  end
+
+  defp incomplete?(tasks, selected) do
+    tasks
+    |> Enum.with_index()
+    |> Enum.any?(fn {task, index} -> index in selected and not Intake.complete?(task) end)
+  end
+
+  defp dependency_label([]), do: gettext("No dependency: can run alongside the others")
+
+  defp dependency_label(positions) do
+    gettext("Depends on %{tasks}", tasks: Enum.map_join(positions, ", ", &(&1 + 1)))
   end
 
   defp step(receipt, _status, _job) when not is_nil(receipt), do: 3
@@ -435,7 +545,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   defp job_label(_job), do: gettext("Working…")
 
   defp split_head(:ready, tasks),
-    do: gettext("This will become %{count} tasks, in this order", count: length(tasks))
+    do: gettext("This will become %{count} tasks", count: length(tasks))
 
   defp split_head(:needs_clarification, _tasks), do: gettext("AI needs answers before splitting")
   defp split_head(:no_tasks, _tasks), do: gettext("AI did not propose tasks")

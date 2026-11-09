@@ -17,6 +17,7 @@ defmodule AgentBoard.AI.Registry do
       "non_goals" => %{"type" => "array", "items" => %{"type" => "string"}},
       "risks" => %{"type" => "array", "items" => %{"type" => "string"}},
       "open_questions" => %{"type" => "array", "items" => %{"type" => "string"}},
+      "blocking_questions" => %{"type" => "array", "items" => %{"type" => "string"}},
       "assumptions" => %{"type" => "array", "items" => %{"type" => "string"}},
       "ready" => %{"type" => "boolean"},
       "language" => %{"type" => "string", "enum" => ["pt", "en"]}
@@ -27,6 +28,7 @@ defmodule AgentBoard.AI.Registry do
       "non_goals",
       "risks",
       "open_questions",
+      "blocking_questions",
       "assumptions",
       "ready",
       "language"
@@ -324,8 +326,12 @@ defmodule AgentBoard.AI.Registry do
       Reply with JSON only, matching the schema.
       Do not invent requirements. Ask in open_questions only what changes what
       would be built; a choice you can make yourself goes in assumptions.
+      blocking_questions holds what only the owner can answer and decides what
+      gets built: the request names something you cannot identify, or two
+      readings lead to different work. With a reasonable default, state it in
+      assumptions instead. A question goes in one list only.
       Set ready to true when the goal, the constraints and the first step are
-      clear enough to split into tasks, even if secondary questions remain.
+      clear enough to split into tasks, even if open_questions remain.
       goal is one sentence: the result the user wants.
       """,
       json_schema: @refine_schema

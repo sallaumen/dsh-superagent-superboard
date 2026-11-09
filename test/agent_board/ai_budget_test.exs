@@ -34,7 +34,7 @@ defmodule AgentBoard.AIBudgetTest do
         %{
           "message" => %{
             "content" =>
-              ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
+              ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
           }
         }
       ],

@@ -159,7 +159,7 @@ defmodule AgentBoardWeb.IntakeUITest do
         if Enum.any?(payload["messages"], &String.contains?(&1["content"], "Specification")) do
           ~s({"tasks":[{"title":"medir o tempo","body":"mede","kind":"bug","acceptance":["p95"],"depends_on":[],"size":"S"}]})
         else
-          ~s({"goal":"o board responde rapido","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
+          ~s({"goal":"o board responde rapido","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
         end
 
       Req.Test.json(conn, answer(content))
@@ -192,7 +192,7 @@ defmodule AgentBoardWeb.IntakeUITest do
       Req.Test.json(
         conn,
         answer(
-          ~s({"goal":"Melhorar o board","constraints":[],"non_goals":[],"risks":[],"open_questions":["Qual parte?"],"assumptions":[],"ready":false,"language":"pt"})
+          ~s({"goal":"Melhorar o board","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":["Qual parte?"],"assumptions":[],"ready":false,"language":"pt"})
         )
       )
     end)
@@ -217,7 +217,7 @@ defmodule AgentBoardWeb.IntakeUITest do
         if Enum.any?(payload["messages"], &String.contains?(&1["content"], "Specification")) do
           ~s({"tasks":[]})
         else
-          ~s({"goal":"Melhorar o board","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
+          ~s({"goal":"Melhorar o board","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
         end
 
       Req.Test.json(conn, answer(content))
@@ -255,7 +255,7 @@ defmodule AgentBoardWeb.IntakeUITest do
           Req.Test.json(
             conn,
             answer(
-              ~s({"goal":"Fazer A","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
+              ~s({"goal":"Fazer A","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
             )
           )
       end

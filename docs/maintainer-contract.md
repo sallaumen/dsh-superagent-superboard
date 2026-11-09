@@ -1174,6 +1174,13 @@ records are the `ai_calls` rows (the split) and the tasks with their
   opens it with the link. A blocker left out in the review is no dependency; a
   cycle is broken in list order. This orders the **creation** only: the mention
   still starts every task at once.
+- **The review is the last word.** Each proposed task shows its dependencies
+  and opens to edit title, description and acceptance; a chosen task left
+  empty holds the send, on the server too. The request key reads the title
+  the model proposed (`source_title`), so an edited task is the same request
+  on a retry. A blocker left out hands its own dependencies to the tasks after
+  it. `blocking_questions` from the refine stop the split even with
+  `ready: true`; `open_questions` stay visible and go in each issue.
 - **The title is the first sentence**, cut at a clause boundary
   (`Titles.from_request/1`), shown and editable before the submit. Only a
   change of the title field itself (the change's `_target`) is the owner's
