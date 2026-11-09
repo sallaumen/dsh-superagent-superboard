@@ -63,7 +63,7 @@ defmodule AgentBoard.TicketPoller do
     for ticket <- tickets,
         AgentState.same_repository?(ticket, repo),
         raw <- ticket["numbers"] || [] do
-      overlay_ticket(repo, ticket, if(is_binary(raw), do: String.to_integer(raw), else: raw))
+      overlay_ticket(repo, ticket, raw)
     end
 
     :ok

@@ -202,7 +202,8 @@ defmodule AgentBoard.LocalCI do
   defp pr_numbers(report) do
     @pr
     |> Regex.scan(report["summary"] || "")
-    |> Enum.map(fn [_, number] -> String.to_integer(number) end)
+    |> Enum.map(fn [_, number] -> AgentBoard.GitHub.number(number) end)
+    |> Enum.reject(&is_nil/1)
   end
 
   defp local_state(summary) do

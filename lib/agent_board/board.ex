@@ -18,7 +18,7 @@ defmodule AgentBoard.Board do
     Task
   }
 
-  alias AgentBoard.{Repo, Workpad}
+  alias AgentBoard.{GitHub, Repo, Workpad}
 
   @merged_page_size 50
   @task_page_size 50
@@ -709,7 +709,7 @@ defmodule AgentBoard.Board do
 
   defp pull_number(text) do
     case Regex.run(~r{https://github\.com/[^/\s]+/[^/\s]+/pull/(\d+)}, text) do
-      [_, number] -> String.to_integer(number)
+      [_, number] -> GitHub.number(number)
       _ -> nil
     end
   end

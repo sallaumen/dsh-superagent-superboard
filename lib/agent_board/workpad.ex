@@ -198,7 +198,8 @@ defmodule AgentBoard.Workpad do
   defp pull_requests(text) do
     @pr
     |> Regex.scan(text)
-    |> Enum.map(fn [_, number] -> String.to_integer(number) end)
+    |> Enum.map(fn [_, number] -> AgentBoard.GitHub.number(number) end)
+    |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
   end
 end

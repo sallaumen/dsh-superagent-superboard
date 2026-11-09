@@ -89,7 +89,8 @@ defmodule AgentBoard.Attribution do
         _ -> []
       end
     end)
-    |> Enum.map(&String.to_integer/1)
+    |> Enum.map(&AgentBoard.GitHub.number/1)
+    |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
   end
 

@@ -1,5 +1,5 @@
 defmodule AgentBoard.AgentState do
-  alias AgentBoard.Superagents
+  alias AgentBoard.{GitHub, Superagents}
 
   @moduledoc """
   The runner's state, read-only: the tickets, the heartbeat and the paths.
@@ -195,15 +195,13 @@ defmodule AgentBoard.AgentState do
   @doc "The numbers a ticket maps to, from its mandate and channels."
   @spec ticket_numbers(map()) :: [integer()]
   def ticket_numbers(ticket) do
-    scope = get_in(ticket, ["mandate", "basis", "scope"]) || %{}
-    base = if is_integer(scope["number"]), do: [scope["number"]], else: []
+    scope = ticket |> nested(["mandate", "basis", "scope"]) |> object()
+    base = scope["number"] |> GitHub.number() |> List.wrap()
 
-    # The parens matter: |> binds tighter than ||, so without them the
-    # pipeline would apply only to the [] fallback and leave the real channel
-    # entries unmapped (numbers as maps instead of integers).
     base ++
-      ((ticket["channels"] || [])
-       |> Enum.map(&to_int(get_in(&1, ["address", "number"])))
+      (ticket
+       |> channels()
+       |> Enum.map(&GitHub.number(nested(&1, ["address", "number"])))
        |> Enum.reject(&is_nil/1))
   end
 
@@ -213,13 +211,14 @@ defmodule AgentBoard.AgentState do
     numbers = ticket_numbers(ticket)
 
     channel_urls =
-      (ticket["channels"] || [])
-      |> Enum.map(&get_in(&1, ["address", "url"]))
+      ticket
+      |> channels()
+      |> Enum.map(&nested(&1, ["address", "url"]))
       |> Enum.filter(&is_binary/1)
 
-    last = List.last(ticket["assignments"] || []) || %{}
-    report = last["report"] || %{}
-    ended = ticket["ended"] || %{}
+    last = ticket |> assignment_objects() |> List.last() |> object()
+    report = object(last["report"])
+    ended = object(ticket["ended"])
 
     %{
       "id" => ticket["id"],
@@ -227,7 +226,7 @@ defmodule AgentBoard.AgentState do
       "assignment" => last["state"],
       "assignment_id" => last["id"],
       "report" => report["state"],
-      "report_summary" => report["summary"],
+      "report_summary" => text(report["summary"]),
       "report_at" => parse(report["at"]),
       "started_at" => parse(last["startedAt"]),
       "idle_at" => parse(last["idleAt"]),
@@ -236,8 +235,8 @@ defmodule AgentBoard.AgentState do
       "ended_at" => parse(ended["at"]),
       "stopped" => ticket["stopped"] || false,
       "archived" => ticket["archived"] || false,
-      "execution" => ticket["execution"] || %{},
-      "title" => ticket["title"],
+      "execution" => object(ticket["execution"]),
+      "title" => text(ticket["title"]),
       "channel_urls" => channel_urls,
       "repository" => repository_from(channel_urls),
       "own_threads" => own_threads(ticket, numbers),
@@ -250,16 +249,16 @@ defmodule AgentBoard.AgentState do
   # policy counts the retries of a failure from them, and the detail lists
   # them as the attempts.
   defp assignments(ticket) do
-    (ticket["assignments"] || [])
-    |> Enum.filter(&is_map/1)
+    ticket
+    |> assignment_objects()
     |> Enum.map(fn assignment ->
-      report = if is_map(assignment["report"]), do: assignment["report"], else: %{}
+      report = object(assignment["report"])
 
       %{
         "id" => assignment["id"],
         "state" => assignment["state"],
         "report" => report["state"],
-        "summary" => report["summary"],
+        "summary" => text(report["summary"]),
         "report_at" => parse(report["at"]),
         "created_at" => parse(assignment["createdAt"]),
         "started_at" => parse(assignment["startedAt"]),
@@ -273,31 +272,27 @@ defmodule AgentBoard.AgentState do
   # it is waiting a review on. The issue it works for is a channel, not a
   # thread it owns, so it is left out even when the runner lists it.
   defp own_threads(ticket, numbers) do
-    (ticket["follows"] || [])
+    ticket["follows"]
+    |> list()
     |> Enum.filter(&(is_map(&1) and &1["own"] == true))
     |> Enum.map(&thread_number(&1["thread"]))
     |> Enum.reject(&(is_nil(&1) or &1 in numbers))
     |> Enum.uniq()
   end
 
-  defp thread_number("github:" <> rest) do
-    case Integer.parse(rest) do
-      {number, ""} -> number
-      _ -> nil
-    end
-  end
-
+  defp thread_number("github:" <> rest), do: GitHub.number(rest)
   defp thread_number(_other), do: nil
 
   defp reports(ticket) do
-    (ticket["assignments"] || [])
+    ticket
+    |> assignment_objects()
     |> Enum.flat_map(fn assignment ->
       case assignment["report"] do
         %{} = report ->
           [
             %{
               "state" => report["state"],
-              "summary" => report["summary"],
+              "summary" => text(report["summary"]),
               "at" => parse(report["at"])
             }
           ]
@@ -308,12 +303,32 @@ defmodule AgentBoard.AgentState do
     end)
   end
 
-  defp decode(value) do
+  defp decode(value) when is_binary(value) do
     case Jason.decode(value) do
       {:ok, ticket} when is_map(ticket) -> [ticket]
       _ -> []
     end
   end
+
+  defp decode(_value), do: []
+
+  # The runner owns this JSON and its shape moves with its version: a field in
+  # another shape reads as absent, one row never fails every board load.
+  defp channels(ticket), do: ticket["channels"] |> list() |> Enum.filter(&is_map/1)
+  defp assignment_objects(ticket), do: ticket["assignments"] |> list() |> Enum.filter(&is_map/1)
+
+  defp list(value) when is_list(value), do: value
+  defp list(_value), do: []
+
+  defp object(value) when is_map(value), do: value
+  defp object(_value), do: %{}
+
+  defp text(value) when is_binary(value), do: value
+  defp text(_value), do: nil
+
+  defp nested(value, []), do: value
+  defp nested(%{} = value, [key | keys]), do: nested(value[key], keys)
+  defp nested(_value, _keys), do: nil
 
   defp read_rows(conn, stmt, acc) do
     case Exqlite.Sqlite3.step(conn, stmt) do
@@ -322,11 +337,6 @@ defmodule AgentBoard.AgentState do
       other -> {:error, other}
     end
   end
-
-  defp to_int(nil), do: nil
-  defp to_int(n) when is_integer(n), do: n
-  defp to_int(s) when is_binary(s), do: String.to_integer(s)
-  defp to_int(_), do: nil
 
   defp parse(nil), do: nil
 
