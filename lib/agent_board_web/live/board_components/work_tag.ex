@@ -5,25 +5,27 @@ defmodule AgentBoardWeb.BoardComponents.WorkTag do
   give is left out; with neither, nothing renders.
   """
   use Phoenix.Component
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   @work_types %{
     "ui" => "UI",
     "backend" => "backend",
     "docs" => "docs",
     "bug" => "bug",
-    "research" => "pesquisa",
+    "research" => "research",
     "infra" => "infra"
   }
 
-  @sizes %{"S" => {"P", "pequena"}, "M" => {"M", "média"}, "L" => {"G", "grande"}}
+  @sizes %{"S" => {"S", "small"}, "M" => {"M", "medium"}, "L" => {"L", "large"}}
 
   @doc "The kind of work as the board says it; nil when unknown."
+  def work_type_label("research"), do: gettext("research")
   def work_type_label(work_type), do: Map.get(@work_types, work_type)
 
   @doc "The size as the board says it (P, M, G); nil when unknown."
   def size_label(size) do
     case Map.get(@sizes, size) do
-      {short, _long} -> short
+      {short, _long} -> if(pt?(), do: %{"S" => "P", "M" => "M", "L" => "G"}[short], else: short)
       nil -> nil
     end
   end
@@ -36,20 +38,33 @@ defmodule AgentBoardWeb.BoardComponents.WorkTag do
     assigns =
       assigns
       |> assign(:type_label, work_type_label(assigns.work_type))
-      |> assign(:size, Map.get(@sizes, assigns.size))
+      |> assign(:size, size_pair(assigns.size))
 
     ~H"""
     <span
       :if={@type_label || @size}
       class={["ab-work", @class]}
-      title="Tipo e tamanho que a divisão deu"
+      title={gettext("Type and size proposed by the split")}
     >
       <span :if={@type_label}>{@type_label}</span>
       <span :if={@type_label && @size} aria-hidden="true">·</span>
       <span :if={@size}>
-        <span aria-hidden="true">{elem(@size, 0)}</span><span class="ab-sr">tarefa {elem(@size, 1)}</span>
+        <span aria-hidden="true">{elem(@size, 0)}</span><span class="ab-sr">{gettext("task %{size}",
+          size: elem(@size, 1)
+        )}</span>
       </span>
     </span>
     """
   end
+
+  defp size_pair(size) do
+    case Map.get(@sizes, size) do
+      {_short, "small"} -> {size_label(size), gettext("small")}
+      {_short, "medium"} -> {size_label(size), gettext("medium")}
+      {_short, "large"} -> {size_label(size), gettext("large")}
+      nil -> nil
+    end
+  end
+
+  defp pt?, do: Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR"
 end

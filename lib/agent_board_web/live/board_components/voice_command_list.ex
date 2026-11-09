@@ -9,6 +9,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommandList do
   once. Saying "ajuda" opens this list.
   """
   use Phoenix.Component
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   alias AgentBoard.Voice.Commands
 
@@ -20,7 +21,8 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommandList do
     ~H"""
     <details id="voice-commands" class="voice-commands" open={@open}>
       <summary class="voice-commands-summary">
-        O que posso pedir <span class="voice-commands-hint">· ou diga "ajuda"</span>
+        {gettext("What can I ask?")}
+        <span class="voice-commands-hint">{gettext("· or say \"help\"")}</span>
       </summary>
       <div :for={group <- @groups} class="voice-commands-group">
         <h4 id={"voice-commands-#{group.id}"}>{group.title}</h4>
@@ -32,7 +34,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommandList do
               class="voice-command-say"
               phx-click="voice_turn"
               phx-value-text={item.say}
-              title="Enviar esta frase agora"
+              title={gettext("Send this phrase now")}
             >
               “{item.say}”
             </button>

@@ -73,7 +73,7 @@ defmodule AgentBoardWeb.BoardUrlParamsTest do
       {:ok, view, html} = live(conn, "/")
       assert html =~ "Nenhum repositório acompanhado"
 
-      view |> element(~s([phx-click=show_panel][phx-value-panel=settings])) |> render_click()
+      view |> element("#board-settings") |> render_click()
       assert_patch(view, "/?panel=settings")
       assert has_element?(view, "#board-page[data-panel=settings]")
 

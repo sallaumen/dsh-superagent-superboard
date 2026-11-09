@@ -1,6 +1,6 @@
 defmodule AgentBoardWeb.BoardComponents.NowLane do
   @moduledoc """
-  Agora: the real step of each running assignment, never a progress bar.
+  The current step of each running assignment, never a progress bar.
 
   A silent run keeps its place here (it is still running) and says so: the
   glyph stops pulsing, because motion that says "working" would misrepresent
@@ -14,7 +14,7 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
 
   import AgentBoardWeb.BoardComponents.Markup, only: [markup: 1]
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
-  alias AgentBoard.Time
+  alias AgentBoardWeb.Time
 
   attr :running, :list, required: true
   attr :frozen, :boolean, default: false
@@ -28,15 +28,16 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
     ~H"""
     <section id="sec-now" aria-labelledby="sec-now-title">
       <div class="ab-sec__head">
-        <h2 id="sec-now-title">Agora</h2>
+        <h2 id="sec-now-title">{gettext("Now")}</h2>
         <span class="ab-sec__count">
           {count(@running, @frozen, @sync_at, @tz_offset)}{retry_count(@retrying)}
         </span>
       </div>
 
       <div :if={@running == [] and @retrying == []} class="ab-sec__empty">
-        <.glyph kind={:queue} />Nenhum agente trabalhando.<span :if={@next_queued} class="ab-meta">
-          A próxima da fila é #{@next_queued}.
+        <.glyph kind={:queue} />{gettext("No agents working.")}
+        <span :if={@next_queued} class="ab-meta">
+          {gettext("Next in queue: %{task}.", task: @next_queued)}
         </span>
       </div>
 
@@ -52,17 +53,21 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
           phx-click="open"
           phx-value-id={task.id}
           data-panel-trigger
-          aria-label={"Abrir tarefa ##{task.number}: #{task.title}"}
+          aria-label={
+            gettext("Open task #%{number}: %{title}", number: task.number, title: task.title)
+          }
         >
           <div class="ab-run__status">
             <.glyph kind={:run} live={not @frozen and not task[:stalled]} />
-            <span>Rodando</span>
+            <span>{gettext("Running")}</span>
             <span class="ab-need__id">#{task.number}</span>
             <span class="ab-top__spacer"></span>
             <div :if={task.elapsed} class="ab-run__clock">
               <span :if={@frozen}>≥ {Time.duration(task.elapsed)}</span>
               <span :if={not @frozen} data-tick={task.elapsed}>{Time.duration(task.elapsed)}</span>
-              <small :if={@frozen and @sync_at}>visto às {Time.local_time(@sync_at, @tz_offset)}</small>
+              <small :if={@frozen and @sync_at}>{gettext("seen at %{time}",
+                time: Time.local_time(@sync_at, @tz_offset)
+              )}</small>
               <small :if={not @frozen and task.agent}>{task.agent}</small>
             </div>
           </div>
@@ -71,16 +76,16 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
 
           <div :if={task[:stalled]} class="ab-run__silence">
             <.glyph kind={:stalled} />
-            <span>sem sinal {Time.ago(task.silence.seconds)}</span>
+            <span>{gettext("no signal for %{duration}", duration: Time.duration(task.silence.seconds))}</span>
           </div>
 
           <div :if={task.step} class="ab-run__step">
-            <span class="ab-meta">{if @frozen, do: "último passo visto", else: "agora"}</span>
+            <span class="ab-meta">{if @frozen, do: gettext("last step seen"), else: gettext("now")}</span>
             <code>{task.step.code}</code>
             <span :if={task.step.note} class="ab-meta">{task.step.note}</span>
           </div>
 
-          <div :if={task.phases != []} class="ab-phases" aria-label="Etapas">
+          <div :if={task.phases != []} class="ab-phases" aria-label={gettext("Stages")}>
             <span
               :for={{name, state} <- task.phases}
               class={["ab-phase", state == "done" && "is-done", state == "now" && "is-now"]}
@@ -103,11 +108,13 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
           phx-click="open"
           phx-value-id={task.id}
           data-panel-trigger
-          aria-label={"Abrir tarefa ##{task.number}: #{task.title}"}
+          aria-label={
+            gettext("Open task #%{number}: %{title}", number: task.number, title: task.title)
+          }
         >
           <div class="ab-run__status">
             <.glyph kind={:retrying} />
-            <span>Nova tentativa</span>
+            <span>{gettext("New attempt")}</span>
             <span class="ab-need__id">#{task.number}</span>
           </div>
 
@@ -120,13 +127,17 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
   end
 
   defp retry_count([]), do: ""
-  defp retry_count(retrying), do: " · #{length(retrying)} em nova tentativa"
+  defp retry_count(retrying), do: gettext(" · %{count} retrying", count: length(retrying))
 
   defp count([], _frozen, _sync_at, _offset), do: "0"
 
   defp count(running, true, sync_at, offset) do
-    "≥#{length(running)} visto às #{Time.local_time(sync_at, offset)}"
+    gettext("≥%{count} seen at %{time}",
+      count: length(running),
+      time: Time.local_time(sync_at, offset)
+    )
   end
 
-  defp count(running, false, _sync_at, _offset), do: "#{length(running)} trabalhando"
+  defp count(running, false, _sync_at, _offset),
+    do: gettext("%{count} working", count: length(running))
 end

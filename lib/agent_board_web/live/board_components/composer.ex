@@ -67,23 +67,27 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       data-composer
       data-composer-state={state(@job, @receipt, @status, @error)}
     >
-      <h2 id="composer-title" class="ab-sr">Novo pedido</h2>
+      <h2 id="composer-title" class="ab-sr">{gettext("New request")}</h2>
 
       <div class="ab-compose__head">
-        <span class="ab-label">{if @split, do: "Dividir pedido", else: "Novo pedido"} em</span>
+        <span class="ab-label">{if @split, do: gettext("Split request"), else: gettext("New request")} {gettext(
+          "in"
+        )}</span>
         <span class="ab-chip">{@repo}</span>
         <span class="ab-top__spacer"></span>
-        <ol class="ab-steps" aria-label="Etapas do pedido">
-          <li class={@step == 1 && "is-on"}><span>1</span>Pedido</li>
-          <li :if={@split} class={@step == 2 && "is-on"}><span>2</span>Revisar</li>
-          <li class={@step == 3 && "is-on"}><span>{if @split, do: 3, else: 2}</span>Recibo</li>
+        <ol class="ab-steps" aria-label={gettext("Request stages")}>
+          <li class={@step == 1 && "is-on"}><span>1</span>{gettext("Request")}</li>
+          <li :if={@split} class={@step == 2 && "is-on"}><span>2</span>{gettext("Review")}</li>
+          <li class={@step == 3 && "is-on"}>
+            <span>{if @split, do: 3, else: 2}</span>{gettext("Receipt")}
+          </li>
         </ol>
         <.kbd key="Esc" />
         <button
           type="button"
           class="ab-btn ab-btn--icon ab-btn--sm"
           phx-click="close"
-          aria-label="Fechar (Esc)"
+          aria-label={gettext("Close (Esc)")}
         >
           <.ico name="close" />
         </button>
@@ -106,7 +110,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             phx-click="composer_retry"
             disabled={@busy}
           >
-            Tentar de novo
+            {gettext("Try again")}
           </button>
           <span :if={@retry && @retry_confirm} class="ab-compose__retry-confirm">{@retry_confirm}</span>
         </p>
@@ -114,15 +118,17 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
         <textarea
           id="composer-text"
           name="text"
-          aria-label="Descreva o pedido"
+          aria-label={gettext("Describe the request")}
           aria-describedby={@error && "composer-error"}
-          placeholder="Descreva o que o agente deve fazer. Pode colar um issue, um erro ou falar."
+          placeholder={
+            gettext("Describe what the agent should do. You can paste an issue, an error, or speak.")
+          }
           phx-hook="Composer"
           autofocus
         >{@text}</textarea>
 
         <div :if={!@split and String.trim(@text) != ""} class="ab-compose__title">
-          <label for="composer-issue-title" class="ab-label">Título da issue</label>
+          <label for="composer-issue-title" class="ab-label">{gettext("Issue title")}</label>
           <input
             id="composer-issue-title"
             name="title"
@@ -132,7 +138,9 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             aria-describedby="composer-title-hint"
           />
           <span id="composer-title-hint" class="ab-meta">
-            {if @title, do: "Editado por você.", else: "Da primeira frase do pedido; edite se quiser."}
+            {if @title,
+              do: gettext("Edited by you."),
+              else: gettext("From the request's first sentence; edit if you like.")}
           </span>
         </div>
 
@@ -151,7 +159,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             class="ab-btn ab-btn--sm ab-btn--quiet"
             phx-click="composer_cancel"
           >
-            Cancelar
+            {gettext("Cancel")}
           </button>
         </p>
 
@@ -160,32 +168,38 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
         </div>
 
         <div :if={@split && @status == :needs_clarification && !@busy} class="ab-split-note">
-          <p :if={@questions != []} class="ab-meta">A IA ainda tem perguntas antes de dividir:</p>
+          <p :if={@questions != []} class="ab-meta">
+            {gettext("The AI still has questions before splitting:")}
+          </p>
           <ul :if={@questions != []}>
             <li :for={question <- @questions}>{question}</li>
           </ul>
           <p :if={@questions == [] and @risks != []} class="ab-meta">
-            A IA achou o pedido ambíguo e apontou estes riscos:
+            {gettext("The AI found the request ambiguous and highlighted these risks:")}
           </p>
           <ul :if={@questions == [] and @risks != []}>
             <li :for={risk <- @risks}>{risk}</li>
           </ul>
-          <label for="composer-answers" class="ab-label">Responda aqui</label>
+          <label for="composer-answers" class="ab-label">{gettext("Respond here")}</label>
           <textarea
             id="composer-answers"
             name="answers"
             rows="3"
-            placeholder="Suas respostas entram no pedido e a IA divide de novo."
+            placeholder={
+              gettext("Your answers are added to the request before the AI splits it again.")
+            }
           >{@answers}</textarea>
-          <p class="ab-meta">Ou edite o pedido acima e divida de novo.</p>
+          <p class="ab-meta">{gettext("Or edit the request above and split again.")}</p>
         </div>
 
         <div :if={@split && @status == :no_tasks && !@busy} class="ab-split-note">
           <p class="ab-meta">
-            A IA não propôs nenhuma tarefa utilizável para este pedido. Tente de novo ou envie como um pedido único.
+            {gettext(
+              "The AI did not propose any usable task for this request. Try again or submit as a single request."
+            )}
           </p>
           <button type="button" class="ab-btn ab-btn--sm" phx-click="composer_single">
-            Enviar como pedido único
+            {gettext("Send as a single request")}
           </button>
         </div>
 
@@ -229,11 +243,13 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           <button
             type="button"
             class="ab-btn ab-btn--icon ab-btn--sm"
-            aria-label="Ditar por voz"
+            aria-label={gettext("Dictate by voice")}
             phx-click={JS.dispatch("board:voice-start")}
             disabled={not @voice_configured or @busy}
             title={
-              if @voice_configured, do: "Ditar por voz", else: "A transcrição não está configurada"
+              if @voice_configured,
+                do: gettext("Dictate by voice"),
+                else: gettext("Transcription is not configured")
             }
           >
             <.ico name="mic" />
@@ -241,11 +257,11 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
 
           <span id="composer-voice" class="ab-voice" data-phase="idle" hidden>
             <span class="ab-level" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-            <span data-voice-label>Ouvindo…</span>
+            <span data-voice-label>{gettext("Listening...")}</span>
             <button
               type="button"
               class="ab-btn ab-btn--icon ab-btn--sm ab-btn--quiet"
-              aria-label="Parar de ouvir"
+              aria-label={gettext("Stop listening")}
               phx-click={JS.dispatch("board:voice-stop")}
             >
               <.ico name="stop" />
@@ -261,11 +277,11 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             disabled={@ai_status == :not_configured or @busy}
             title={
               if @ai_status == :not_configured,
-                do: "A IA não está configurada",
-                else: "Dividir em tarefas"
+                do: gettext("AI is not configured"),
+                else: gettext("Split into tasks")
             }
           >
-            <span class="ab-toggle__track"></span>Dividir em tarefas
+            <span class="ab-toggle__track"></span>{gettext("Split into tasks")}
           </button>
 
           <span class="ab-top__spacer"></span>
@@ -325,7 +341,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
               target="_blank"
               rel="noopener noreferrer"
             >
-              Abrir issue<span class="ab-sr"> (abre o GitHub em nova aba)</span>
+              {gettext("Open issue")}<span class="ab-sr">{gettext("(opens GitHub in a new tab)")}</span>
             </a>
             <button
               type="button"
@@ -333,7 +349,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
               phx-click="open"
               phx-value-id={item.task.id}
             >
-              Ver no board
+              {gettext("View on board")}
             </button>
           </span>
         </li>
@@ -348,13 +364,13 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           class="ab-btn ab-btn--sm ab-btn--primary"
           phx-click="composer_retry"
         >
-          Tentar as {@failed} que falharam
+          {gettext("Retry the %{count} failed tasks", count: @failed)}
         </button>
         <button type="button" class="ab-btn ab-btn--sm" phx-click="composer_reset">
-          Novo pedido
+          {gettext("New request")}
         </button>
         <button type="button" class="ab-btn ab-btn--sm ab-btn--quiet" phx-click="close">
-          Fechar
+          {gettext("Close")}
         </button>
       </div>
     </section>
@@ -362,12 +378,13 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   end
 
   defp receipt_head(0, 0, failed),
-    do: "Nada entrou na fila: #{failed} #{plural(failed, "falhou", "falharam")}."
+    do: ngettext("Nothing queued: %{count} failed.", "Nothing queued: %{count} failed.", failed)
 
   defp receipt_head(created, existing, 0) do
     [
-      created > 0 && "#{created} #{plural(created, "pedido", "pedidos")} na fila",
-      existing > 0 && "#{existing} já #{plural(existing, "estava", "estavam")} na fila"
+      created > 0 && ngettext("%{count} request queued", "%{count} requests queued", created),
+      existing > 0 &&
+        ngettext("%{count} was already queued", "%{count} were already queued", existing)
     ]
     |> Enum.filter(& &1)
     |> Enum.join("; ")
@@ -377,15 +394,19 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   defp receipt_head(created, existing, failed) do
     done = created + existing
 
-    "#{done} de #{done + failed} na fila; #{failed} #{plural(failed, "falhou", "falharam")}."
+    gettext("%{done} of %{total} queued; %{failed} failed.",
+      done: done,
+      total: done + failed,
+      failed: failed
+    )
   end
 
   defp receipt_number(%{task: %{number: number}}) when is_integer(number), do: "##{number}"
   defp receipt_number(_item), do: "—"
 
-  defp outcome_label(:created), do: "na fila"
-  defp outcome_label(:existing), do: "já estava na fila"
-  defp outcome_label({:error, reason}), do: "falhou: " <> failure_reason(reason)
+  defp outcome_label(:created), do: gettext("queued")
+  defp outcome_label(:existing), do: gettext("Already in the queue")
+  defp outcome_label({:error, reason}), do: gettext("failed: ") <> failure_reason(reason)
 
   defp outcome_class(:created), do: "ab-tag--agent"
   defp outcome_class(:existing), do: nil
@@ -395,7 +416,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   def failure_reason(%{__exception__: true} = exception),
     do: exception |> Exception.message() |> String.slice(0, 120)
 
-  def failure_reason(:conflict), do: "a issue já existia com outro número"
+  def failure_reason(:conflict), do: gettext("The issue already existed with another number")
   def failure_reason(reason), do: reason |> inspect() |> String.slice(0, 120)
 
   defp state(job, _receipt, _status, _error) when not is_nil(job), do: to_string(job.kind)
@@ -404,14 +425,19 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   defp state(_job, _receipt, nil, _error), do: "draft"
   defp state(_job, _receipt, status, _error), do: to_string(status)
 
-  defp job_label(%{kind: :split}), do: "Dividindo o pedido em tarefas com a IA…"
-  defp job_label(%{kind: :enqueue, total: 1}), do: "Criando a issue no GitHub…"
-  defp job_label(%{kind: :enqueue, total: n}), do: "Criando #{n} issues no GitHub…"
-  defp job_label(_job), do: "Trabalhando…"
+  defp job_label(%{kind: :split}), do: gettext("Splitting the request into tasks with AI…")
+  defp job_label(%{kind: :enqueue, total: 1}), do: gettext("Creating the issue on GitHub…")
 
-  defp split_head(:ready, tasks), do: "Vai virar #{length(tasks)} tarefas, nesta ordem"
-  defp split_head(:needs_clarification, _tasks), do: "A IA precisa de respostas antes de dividir"
-  defp split_head(:no_tasks, _tasks), do: "A IA não propôs tarefas"
+  defp job_label(%{kind: :enqueue, total: n}),
+    do: gettext("Creating %{count} issues on GitHub…", count: n)
+
+  defp job_label(_job), do: gettext("Working…")
+
+  defp split_head(:ready, tasks),
+    do: gettext("This will become %{count} tasks, in this order", count: length(tasks))
+
+  defp split_head(:needs_clarification, _tasks), do: gettext("AI needs answers before splitting")
+  defp split_head(:no_tasks, _tasks), do: gettext("AI did not propose tasks")
   defp split_head(_status, _tasks), do: ""
 
   defp submit_disabled?(_text, _split, _status, _count, true), do: true
@@ -420,15 +446,12 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   defp submit_disabled?(_text, true, :ready, count, _busy), do: count == 0
   defp submit_disabled?(_text, true, _status, _count, _busy), do: false
 
-  defp button_label(false, _status, _count), do: "Pôr na fila"
-  defp button_label(true, :ready, count), do: "Pôr #{count} na fila"
-  defp button_label(true, :needs_clarification, _count), do: "Dividir com as respostas"
-  defp button_label(true, _status, _count), do: "Dividir pedido"
+  defp button_label(false, _status, _count), do: gettext("Add to queue")
+  defp button_label(true, :ready, count), do: gettext("Queue %{count}", count: count)
+  defp button_label(true, :needs_clarification, _count), do: gettext("Split with answers")
+  defp button_label(true, _status, _count), do: gettext("Split request")
 
-  defp disable_label(false, _status), do: "Enviando…"
-  defp disable_label(true, :ready), do: "Enviando…"
-  defp disable_label(true, _status), do: "Dividindo…"
-
-  defp plural(1, singular, _plural), do: singular
-  defp plural(_n, _singular, plural), do: plural
+  defp disable_label(false, _status), do: gettext("Sending…")
+  defp disable_label(true, :ready), do: gettext("Sending…")
+  defp disable_label(true, _status), do: gettext("Splitting…")
 end

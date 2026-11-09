@@ -10,6 +10,7 @@ defmodule AgentBoardWeb.Components.SystemPanel do
   """
 
   use Phoenix.Component
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   attr :version, :map, required: true
   attr :busy, :boolean, default: false
@@ -20,11 +21,11 @@ defmodule AgentBoardWeb.Components.SystemPanel do
     <section
       id="version-panel"
       class="version-panel"
-      aria-label="Versão"
+      aria-label={gettext("Version")}
       phx-hook="BoardRestart"
     >
       <h2 class="version-heading">
-        <span>Versão</span>
+        <span>{gettext("Version")}</span>
         <span class={["version-status", tone(@version.state)]}><span
           class="status-mark"
           aria-hidden="true"
@@ -39,16 +40,20 @@ defmodule AgentBoardWeb.Components.SystemPanel do
       >
         {if @version.state == :restart,
           do:
-            "O código novo já está no checkout, mas este processo ainda roda o commit antigo. Reinicie para aplicar; o board fica fora por alguns segundos.",
+            gettext(
+              "The new code is in the checkout, but this process still runs the old commit. Restart to apply it; the board will be unavailable for a few seconds."
+            ),
           else:
-            "Atualizar e reiniciar é manual. O board reinicia para carregar o código novo; o acompanhamento em tempo real e agentes em execução podem ser interrompidos por alguns segundos. Nada é atualizado sozinho."}
+            gettext(
+              "Update and restart is manual. The board restarts to load new code; live tracking and running agents may be interrupted for a few seconds. Nothing updates automatically."
+            )}
       </p>
 
       <ol
         :if={@progress != []}
         id="update-progress"
         class="version-progress"
-        aria-label="Progresso da atualização"
+        aria-label={gettext("Update progress")}
       >
         <li :for={step <- @progress} data-state={step.state}>
           <span class="version-progress__mark" aria-hidden="true"></span>
@@ -58,14 +63,14 @@ defmodule AgentBoardWeb.Components.SystemPanel do
 
       <div class="version-details">
         <span class="text-base-content/75">
-          rodando <code class="text-base-content">{@version.served || "unknown"}</code>
+          {gettext("running")} <code class="text-base-content">{@version.served || "unknown"}</code>
         </span>
 
         <span class="text-base-content/75">
           main <code class="text-base-content">{@version.available || "unknown"}</code>
         </span>
 
-        <span :if={@version.dirty} class="text-warning">alterações não commitadas</span>
+        <span :if={@version.dirty} class="text-warning">{gettext("uncommitted changes")}</span>
 
         <button
           type="button"
@@ -73,7 +78,7 @@ defmodule AgentBoardWeb.Components.SystemPanel do
           disabled={@busy}
           class="version-check"
         >
-          Verificar
+          {gettext("Check")}
         </button>
 
         <button
@@ -82,10 +87,12 @@ defmodule AgentBoardWeb.Components.SystemPanel do
           phx-click="update"
           disabled={@busy}
           aria-describedby="version-restart-warning"
-          title="Atualiza o checkout e reinicia o board; agentes em execução podem ser interrompidos."
+          title={
+            gettext("Updates the checkout and restarts the board; running agents may be interrupted.")
+          }
           class="version-update bg-warning text-warning-content hover:brightness-110"
         >
-          Atualizar e reiniciar
+          {gettext("Update and restart")}
         </button>
 
         <button
@@ -99,19 +106,22 @@ defmodule AgentBoardWeb.Components.SystemPanel do
               "version-update bg-warning text-warning-content hover:brightness-110"
           ]}
         >
-          {if @version.state == :restart, do: "Reiniciar para aplicar", else: "Reiniciar"}
+          {if @version.state == :restart, do: gettext("Restart to apply"), else: gettext("Restart")}
         </button>
       </div>
     </section>
     """
   end
 
-  defp label(%{state: :up_to_date}), do: "em dia"
-  defp label(%{state: :behind, behind: n}) when is_integer(n), do: "#{n} commit(s) atrás"
-  defp label(%{state: :behind}), do: "atrás"
-  defp label(%{state: :restart}), do: "atualização baixada; reinicie"
-  defp label(%{state: :ahead}), do: "à frente da main"
-  defp label(_version), do: "desconhecido"
+  defp label(%{state: :up_to_date}), do: gettext("up to date")
+
+  defp label(%{state: :behind, behind: n}) when is_integer(n),
+    do: ngettext("%{count} commit behind", "%{count} commits behind", n)
+
+  defp label(%{state: :behind}), do: gettext("behind")
+  defp label(%{state: :restart}), do: gettext("Update downloaded; restart")
+  defp label(%{state: :ahead}), do: gettext("ahead of main")
+  defp label(_version), do: gettext("unknown")
 
   defp tone(:up_to_date), do: "text-success"
   defp tone(:behind), do: "text-warning"

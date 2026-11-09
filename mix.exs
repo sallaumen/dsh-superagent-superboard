@@ -51,6 +51,7 @@ defmodule AgentBoard.MixProject do
       {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 4.1"},
+      {:gettext, "~> 1.0"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
       {:phoenix_live_view, "~> 1.2.0"},

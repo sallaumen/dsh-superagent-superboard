@@ -4,18 +4,12 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
-  @sections [
-    {"inspect", "Inspecionar"},
-    {"dispatch", "Despacho local"},
-    {"voice", "Voz"},
-    {"summary", "Resumo do dia"},
-    {"repositories", "Repositórios"},
-    {"appearance", "Aparência"},
-    {"version", "Versão"}
-  ]
+  @section_keys ~w(inspect dispatch voice summary repositories appearance language version)
 
   attr :dispatch_paused, :boolean, default: false
   attr :progress, :list, default: []
+  attr :board_locale, :string, default: "en"
+  attr :return_to, :string, default: "/"
 
   @impl true
   def mount(socket), do: {:ok, assign(socket, section: "dispatch")}
@@ -29,7 +23,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   @impl true
   def handle_event("select_section", %{"section" => section}, socket) do
-    allowed = Enum.any?(@sections, fn {key, _label} -> key == section end)
+    allowed = section in @section_keys
 
     section =
       if allowed and (socket.assigns[:repo] || section not in ~w(inspect dispatch)),
@@ -41,11 +35,11 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   @impl true
   def render(assigns) do
-    assigns = assign(assigns, :sections, @sections)
+    assigns = assign(assigns, :sections, sections())
 
     ~H"""
     <div id={@id} class="settings-layout">
-      <nav class="settings-nav" aria-label="Seções das configurações">
+      <nav class="settings-nav" aria-label={gettext("Settings sections")}>
         <button
           :for={{key, label} <- @sections}
           :if={@repo || key not in ~w(inspect dispatch)}
@@ -73,9 +67,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane"
           aria-labelledby="settings-inspect-title"
         >
-          <h3 id="settings-inspect-title">Inspecionar</h3>
+          <h3 id="settings-inspect-title">{gettext("Inspect")}</h3>
           <p class="settings-pane__intro">
-            Acompanhe o que o board fez e como cada executor está trabalhando.
+            {gettext("See what the board has done and how each executor is working.")}
           </p>
           <div class="settings-inspect-actions">
             <button
@@ -86,7 +80,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               data-panel-trigger
               aria-haspopup="dialog"
               aria-controls="panel-activity"
-            ><.icon name="hero-clock" class="size-4" />Atividade</button>
+            ><.icon name="hero-clock" class="size-4" />{gettext("Activity")}</button>
             <button
               id="open-ai"
               type="button"
@@ -95,7 +89,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               data-panel-trigger
               aria-haspopup="dialog"
               aria-controls="panel-ai"
-            ><.icon name="hero-cpu-chip" class="size-4" />Chamadas de IA</button>
+            ><.icon name="hero-cpu-chip" class="size-4" />{gettext("AI calls")}</button>
             <button
               id="open-executors"
               type="button"
@@ -104,7 +98,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               data-panel-trigger
               aria-haspopup="dialog"
               aria-controls="panel-executors"
-            ><.icon name="hero-bolt" class="size-4" />Executores</button>
+            ><.icon name="hero-bolt" class="size-4" />{gettext("Executors")}</button>
           </div>
         </section>
 
@@ -114,17 +108,19 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane settings-pane--dispatch"
           aria-labelledby="settings-dispatch-title"
         >
-          <h3 id="settings-dispatch-title">Despacho local</h3>
+          <h3 id="settings-dispatch-title">{gettext("Local dispatch")}</h3>
           <p class="settings-pane__intro">
-            Claude Code e Codex rodam nesta máquina. Cada executor usa seus próprios limites e sua própria forma de cobrança.
+            {gettext(
+              "Claude Code and Codex run on this machine. Each executor has its own limits and billing."
+            )}
           </p>
           <div class="settings-pause">
             <div>
-              <strong>Pausa global</strong>
+              <strong>{gettext("Global pause")}</strong>
               <p>
                 {if @dispatch_paused,
-                  do: "Nenhum despacho novo começa. Execuções em andamento continuam.",
-                  else: "Despachos novos podem começar após sua confirmação."}
+                  do: gettext("No new dispatch starts. Running tasks continue."),
+                  else: gettext("New dispatches can start after your confirmation.")}
               </p>
             </div>
             <button
@@ -132,7 +128,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               type="button"
               class="settings-pause__switch"
               role="switch"
-              aria-label="Pausa global do despacho local"
+              aria-label={gettext("Global pause for local dispatch")}
               aria-checked={to_string(@dispatch_paused)}
               phx-click="toggle_dispatch"
             ><span aria-hidden="true"></span></button>
@@ -149,16 +145,20 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane"
           aria-labelledby="settings-voice-title"
         >
-          <h3 id="settings-voice-title">Voz</h3>
+          <h3 id="settings-voice-title">{gettext("Voice")}</h3>
           <p class="settings-pane__intro">
-            Escolha como falar com o board e quando ele responde em voz.
+            {gettext("Choose how to speak with the board and when it replies aloud.")}
           </p>
           <VoicePanel.voice_panel voice={@voice} repo={@repo != nil} />
           <div class="settings-actions">
-            <button type="button" phx-click="speak"><.icon name="hero-speaker-wave" class="size-4" />Falar status</button>
+            <button type="button" phx-click="speak"><.icon name="hero-speaker-wave" class="size-4" />{gettext(
+              "Speak status"
+            )}</button>
           </div>
           <p class="settings-pane__note">
-            Aperte Espaço duas vezes para falar. Criar e parar tarefas esperam sua confirmação.
+            {gettext(
+              "Press Space twice to speak. Creating and stopping tasks wait for your confirmation."
+            )}
           </p>
         </section>
 
@@ -167,9 +167,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane"
           aria-labelledby="settings-summary-title"
         >
-          <h3 id="settings-summary-title">Resumo do dia</h3>
+          <h3 id="settings-summary-title">{gettext("Daily summary")}</h3>
           <p class="settings-pane__intro">
-            Escolha se o board prepara um resumo diário e em que horário.
+            {gettext("Choose whether the board prepares a daily summary and when.")}
           </p>
           <.live_component
             module={AgentBoardWeb.BoardComponents.DailySummarySettings}
@@ -183,12 +183,20 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane"
           aria-labelledby="settings-repositories-title"
         >
-          <h3 id="settings-repositories-title">Repositórios</h3>
-          <p class="settings-pane__intro">Acompanhe outro repositório neste board.</p>
+          <h3 id="settings-repositories-title">{gettext("Repositories")}</h3>
+          <p class="settings-pane__intro">{gettext("Track another repository on this board.")}</p>
           <form id="track-repo" phx-submit="add" class="settings-track-form">
-            <label><span>Dono</span><input name="owner" placeholder="sallaumen" required /></label>
-            <label><span>Repositório</span><input name="name" placeholder="nome-do-projeto" required /></label>
-            <button type="submit" phx-disable-with="Acompanhando…">Acompanhar</button>
+            <label><span>{gettext("Owner")}</span><input
+              name="owner"
+              placeholder="sallaumen"
+              required
+            /></label>
+            <label><span>{gettext("Repository")}</span><input
+              name="name"
+              placeholder={gettext("project-name")}
+              required
+            /></label>
+            <button type="submit" phx-disable-with={gettext("Tracking…")}>{gettext("Track")}</button>
           </form>
         </section>
 
@@ -197,9 +205,45 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane"
           aria-labelledby="settings-appearance-title"
         >
-          <h3 id="settings-appearance-title">Aparência</h3>
-          <p class="settings-pane__intro">Escolha o tema para este navegador.</p>
+          <h3 id="settings-appearance-title">{gettext("Appearance")}</h3>
+          <p class="settings-pane__intro">{gettext("Choose the theme for this browser.")}</p>
           <Layouts.theme_toggle />
+        </section>
+
+        <section
+          hidden={@section != "language"}
+          class="settings-pane"
+          aria-labelledby="settings-language-title"
+        >
+          <h3 id="settings-language-title">{gettext("Board language")}</h3>
+          <p class="settings-pane__intro">
+            {gettext(
+              "Choose the language used by this browser. Voice language is set separately under Voice."
+            )}
+          </p>
+          <.form
+            for={%{}}
+            action={~p"/language"}
+            method="post"
+            id="board-language-form"
+            class="settings-actions"
+            role="group"
+            aria-label={gettext("Board language")}
+          >
+            <input type="hidden" name="return_to" value={@return_to} />
+            <button
+              type="submit"
+              name="locale"
+              value="en"
+              aria-pressed={to_string(@board_locale == "en")}
+            >English</button>
+            <button
+              type="submit"
+              name="locale"
+              value="pt-BR"
+              aria-pressed={to_string(@board_locale == "pt-BR")}
+            >Português (Brasil)</button>
+          </.form>
         </section>
 
         <section
@@ -207,8 +251,10 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane"
           aria-labelledby="settings-version-title"
         >
-          <h3 id="settings-version-title">Versão</h3>
-          <p class="settings-pane__intro">Confira a versão do board e as atualizações disponíveis.</p>
+          <h3 id="settings-version-title">{gettext("Version")}</h3>
+          <p class="settings-pane__intro">
+            {gettext("Check the board version and available updates.")}
+          </p>
           <SystemPanel.version_panel version={@version} busy={@busy} progress={@progress} />
         </section>
       </div>
@@ -216,9 +262,22 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
     """
   end
 
-  defp version_summary(%{state: :behind}), do: "Atualização disponível"
-  defp version_summary(%{state: :restart}), do: "Reinício pendente"
-  defp version_summary(%{state: :up_to_date}), do: "Em dia"
-  defp version_summary(%{state: :ahead}), do: "À frente da main"
-  defp version_summary(_), do: "Status desconhecido"
+  defp sections do
+    [
+      {"inspect", gettext("Inspect")},
+      {"dispatch", gettext("Local dispatch")},
+      {"voice", gettext("Voice")},
+      {"summary", gettext("Daily summary")},
+      {"repositories", gettext("Repositories")},
+      {"appearance", gettext("Appearance")},
+      {"language", gettext("Language")},
+      {"version", gettext("Version")}
+    ]
+  end
+
+  defp version_summary(%{state: :behind}), do: gettext("Update available")
+  defp version_summary(%{state: :restart}), do: gettext("Restart pending")
+  defp version_summary(%{state: :up_to_date}), do: gettext("Up to date")
+  defp version_summary(%{state: :ahead}), do: gettext("Ahead of main")
+  defp version_summary(_), do: gettext("Unknown status")
 end

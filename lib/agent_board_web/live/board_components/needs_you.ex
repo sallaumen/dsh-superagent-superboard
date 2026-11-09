@@ -1,11 +1,11 @@
 defmodule AgentBoardWeb.BoardComponents.NeedsYou do
-  @moduledoc "Precisa de você: the work only the reader can unblock, in urgency order."
+  @moduledoc "Work only the reader can unblock, in urgency order."
   use AgentBoardWeb, :html
 
   import AgentBoardWeb.BoardComponents.Markup, only: [markup: 1]
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
-  alias AgentBoard.Time
   alias AgentBoardWeb.BoardComponents.AgentAction
+  alias AgentBoardWeb.Time
 
   attr :needs, :list, required: true
   attr :max, :integer, default: 5
@@ -35,18 +35,18 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
     ~H"""
     <section id="sec-needs" aria-labelledby="sec-needs-title">
       <div class="ab-sec__head">
-        <h2 id="sec-needs-title">Precisa de você</h2>
+        <h2 id="sec-needs-title">{gettext("Needs you")}</h2>
         <span class="ab-sec__count">{count(length(@needs), @frozen)}</span>
       </div>
 
       <div :if={@needs == []} class="ab-sec__empty">
-        <.glyph kind={:done} />Nada esperando por você.
+        <.glyph kind={:done} />{gettext("Nothing waiting for you.")}
       </div>
 
       <div :if={@needs != []} class="ab-needs">
         <div :for={{need, index} <- Enum.with_index(@shown)} class="ab-needs__item">
           <div :if={@since_at == index} class="ab-since" role="separator">
-            antes da sua última visita
+            {gettext("since your last visit")}
           </div>
 
           <article
@@ -67,7 +67,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
               <span :if={need.number} class="ab-need__id">#{need.number}</span>
               <span class="ab-top__spacer"></span>
               <span class="ab-need__side ab-meta">
-                <span :if={need.is_new} class="ab-new">novo</span>
+                <span :if={need.is_new} class="ab-new">{gettext("new")}</span>
                 <span :if={need.age_seconds}>{age(need.age_seconds, @frozen, @frozen_at, @tz_offset)}</span>
               </span>
             </div>
@@ -108,7 +108,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                   href={action.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                >{action.label}<span class="ab-sr"> (abre o GitHub em nova aba)</span></a>
+                >{action.label}<span class="ab-sr">{gettext("(opens GitHub in a new tab)")}</span></a>
                 <button
                   :if={action[:task_id]}
                   type="button"
@@ -136,13 +136,13 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   defp dom_id(%{id: id}) when not is_nil(id), do: "task-#{id}"
   defp dom_id(_need), do: nil
 
-  defp kind_label(:review), do: "Revisão"
+  defp kind_label(:review), do: gettext("Review")
   defp kind_label(:question), do: "Pergunta"
   defp kind_label(:blocked), do: "Bloqueado"
   defp kind_label(:cifail), do: "CI falhou"
   defp kind_label(:stalled), do: "Sem sinal"
   defp kind_label(:agent_down), do: "Agente fora do ar"
-  defp kind_label(_kind), do: "Atenção"
+  defp kind_label(_kind), do: gettext("Attention")
 
   defp tone(:agent_down), do: "is-halt"
   defp tone(:cifail), do: "is-halt"

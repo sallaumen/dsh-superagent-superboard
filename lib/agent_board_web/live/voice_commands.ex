@@ -1,5 +1,6 @@
 defmodule AgentBoardWeb.VoiceCommands do
   @moduledoc "Deterministic read-only commands against the board's saved snapshot."
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   alias AgentBoard.Board
   alias AgentBoardWeb.BoardNavigation
@@ -257,7 +258,7 @@ defmodule AgentBoardWeb.VoiceCommands do
   defp ask(%{conversation: nil}, _question) do
     reply(
       :error,
-      "Abra uma tarefa primeiro e faça a pergunta. Seu rascunho continua aqui."
+      gettext("Open a task first and ask the question. Your draft stays here.")
     )
   end
 

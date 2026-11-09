@@ -1,6 +1,6 @@
 defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
   @moduledoc """
-  The "Resumo do dia" fold of Configurações: the switch and the hour of the
+  The Daily Summary fold in Settings: the switch and the hour of the
   summary of the day (`AgentBoard.DailySummary.settings/0`). It saves on
   change, like every field of the menu, and reads the saved settings again
   when another tab changes them (`BoardLive` sends it an update on
@@ -44,7 +44,7 @@ defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
     >
       <summary>
         <span class="settings-fold-label">
-          Resumo do dia <small>{fold_summary(@settings)}</small>
+          {gettext("Daily Summary")} <small>{fold_summary(@settings)}</small>
         </span>
         <.icon name="hero-chevron-down" class="settings-fold-chevron size-4" />
       </summary>
@@ -65,10 +65,10 @@ defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
               name="enabled"
               value="true"
               checked={@settings.enabled}
-            /> Gerar o resumo uma vez por dia, no board e na voz
+            /> {gettext("Generate summary once a day on the board and via voice")}
           </label>
           <label class="daily-summary-at" for="daily-summary-at">
-            <span class="voice-field-label">Horário</span>
+            <span class="voice-field-label">{gettext("Schedule")}</span>
             <input
               id="daily-summary-at"
               type="time"
@@ -81,10 +81,12 @@ defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
             />
           </label>
           <p :if={@error} class="daily-summary-error" role="alert">
-            Horário inválido. Use horas e minutos, como 08:00.
+            {gettext("Invalid schedule. Use hours and minutes, such as 08:00.")}
           </p>
           <p id="daily-summary-hint">
-            Pelo relógio do Mac. Se ele estiver dormindo nesse horário, o resumo sai quando acordar, uma vez só.
+            {gettext(
+              "Based on the Mac clock. If it is asleep at that time, the summary is generated once when it wakes up."
+            )}
           </p>
         </form>
       </div>
@@ -92,6 +94,8 @@ defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
     """
   end
 
-  defp fold_summary(%{enabled: false}), do: "Desligado"
-  defp fold_summary(%{at: at}), do: "Todo dia às #{DailySummary.format_at(at)}"
+  defp fold_summary(%{enabled: false}), do: gettext("Off")
+
+  defp fold_summary(%{at: at}),
+    do: gettext("Every day at %{time}", time: DailySummary.format_at(at))
 end

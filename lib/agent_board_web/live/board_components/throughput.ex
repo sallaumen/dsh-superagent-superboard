@@ -1,6 +1,6 @@
 defmodule AgentBoardWeb.BoardComponents.Throughput do
   @moduledoc """
-  Vazão: the agent's throughput per hour, from what the board recorded.
+  The agent's throughput per hour, from what the board recorded.
 
   Eight tiles in one strip: five rates (done, opened, merged, commits, tickets),
   the queue depth, the cycle and the runner's parallelism. Every number is a
@@ -10,7 +10,8 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
   """
   use AgentBoardWeb, :html
 
-  alias AgentBoard.{Metrics, Orchestrator, Time}
+  alias AgentBoard.{Metrics, Orchestrator}
+  alias AgentBoardWeb.Time
 
   attr :flow, :map, required: true
   attr :tz_offset, :integer, default: 0
@@ -27,22 +28,30 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
       data-computed-at={DateTime.to_iso8601(@flow.computed_at)}
     >
       <div class="ab-sec__head">
-        <h2 id="sec-flow-title">Vazão</h2>
+        <h2 id="sec-flow-title">{gettext("Throughput")}</h2>
         <span class="ab-sec__count">
-          por hora · {if @frozen, do: "congelada às", else: "calculado às"} {Time.local_time(
-            @flow.computed_at,
-            @tz_offset
-          )}
+          {if @frozen,
+            do:
+              gettext("per hour · frozen at %{time}",
+                time: Time.local_time(@flow.computed_at, @tz_offset)
+              ),
+            else:
+              gettext("per hour · calculated at %{time}",
+                time: Time.local_time(@flow.computed_at, @tz_offset)
+              )}
         </span>
         <span
           :if={@superagents != []}
           class="ab-flow__agents"
-          title="Soma dos limites de agentes configurados em cada projeto"
+          title={gettext("Sum of agent limits configured per project")}
         >
-          {length(@superagents)} projetos · {Enum.sum(Enum.map(@superagents, & &1.max_workers))} agentes
+          {gettext("%{projects} projects · %{agents} agents",
+            projects: length(@superagents),
+            agents: Enum.sum(Enum.map(@superagents, & &1.max_workers))
+          )}
         </span>
       </div>
-      <ul class="ab-flow__grid" aria-label="Vazão por hora, 24 h e 7 dias">
+      <ul class="ab-flow__grid" aria-label={gettext("Throughput per hour, 24h, and 7 days")}>
         <li :for={tile <- @flow.tiles} id={"flow-#{tile.key}"} class="ab-flow__tile">
           <.tile
             tile={tile}
@@ -63,7 +72,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
 
   defp tile(%{tile: %{kind: kind}} = assigns) when kind in [:rate, :depth] do
     ~H"""
-    <span class="ab-flow__label">{@tile.label}</span>
+    <span class="ab-flow__label">{tile_label(@tile)}</span>
     <span class="ab-flow__now">
       <span
         class={["ab-flow__value", @tile.status == :unknown && "is-unknown"]}
@@ -75,13 +84,13 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
           @tile.hour
         )}
       </span>
-      <span class="ab-flow__unit">{if @tile.kind == :rate, do: "/h", else: "na fila"}</span>
+      <span class="ab-flow__unit">{if @tile.kind == :rate, do: "/h", else: gettext("in queue")}</span>
       <span
         :if={@tile.status != :unknown}
         class={["ab-tag", delta_tone(@tile)]}
         title={delta_title(@tile)}
       >
-        {Metrics.delta(@tile.delta)}<span class="ab-sr"> em relação à hora anterior</span>
+        {Metrics.delta(@tile.delta)}<span class="ab-sr">{gettext("compared to the previous hour")}</span>
       </span>
     </span>
     <.spark tile={@tile} buckets={@buckets} offset={@offset} />
@@ -100,21 +109,23 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
 
   defp tile(%{tile: %{kind: :cycle}} = assigns) do
     ~H"""
-    <span class="ab-flow__label">{@tile.label}</span>
+    <span class="ab-flow__label">{tile_label(@tile)}</span>
     <table class="ab-flow__cycle">
       <caption class="ab-sr">
-        Tempo médio de issue a PR e de PR a merge, sobre os tickets cujo PR foi mesclado na janela
+        {gettext(
+          "Average time from issue to PR and from PR to merge, for tickets whose PR was merged in the window"
+        )}
       </caption>
       <thead>
         <tr>
-          <th scope="col"><span class="ab-sr">etapa</span></th>
+          <th scope="col"><span class="ab-sr">{gettext("step")}</span></th>
           <th scope="col">24 h</th>
           <th scope="col">7 d</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <th scope="row">issue→PR</th>
+          <th scope="row">{gettext("Issue → PR")}</th>
           <td
             class="ab-flow__value ab-flow__value--small"
             data-key="cycle.issue_pr"
@@ -125,7 +136,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
           <td>{Metrics.duration(@tile.week.issue_to_pr)}</td>
         </tr>
         <tr>
-          <th scope="row">PR→merge</th>
+          <th scope="row">{gettext("PR → merge")}</th>
           <td
             class="ab-flow__value ab-flow__value--small"
             data-key="cycle.pr_merge"
@@ -136,7 +147,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
           <td>{Metrics.duration(@tile.week.pr_to_merge)}</td>
         </tr>
         <tr class="ab-flow__cycle-n">
-          <th scope="row">tickets</th>
+          <th scope="row">{gettext("tickets")}</th>
           <td>{@tile.day.n}</td>
           <td>{@tile.week.n}</td>
         </tr>
@@ -147,7 +158,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
 
   defp tile(%{tile: %{kind: :load}} = assigns) do
     ~H"""
-    <span class="ab-flow__label">{@tile.label}</span>
+    <span class="ab-flow__label">{tile_label(@tile)}</span>
     <span class="ab-flow__now">
       <span
         class={["ab-flow__value", @tile.status == :unknown && "is-unknown"]}
@@ -157,16 +168,18 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
       >
         {Metrics.count(@tile.running)}
       </span>
-      <span class="ab-flow__unit">de</span>
+      <span class="ab-flow__unit">{gettext("of")}</span>
       <.limit tile={@tile} />
-      <span class="ab-tag" title="tickets esperando no orquestrador">
-        {Metrics.count(@tile.queued)}<span class="ab-sr"> tickets</span> esperando
+      <span class="ab-tag" title={gettext("Tickets waiting in the orchestrator")}>
+        {Metrics.count(@tile.queued)}<span class="ab-sr">{gettext("tickets")}</span> {gettext(
+          "waiting"
+        )}
       </span>
     </span>
     <.capacity tile={@tile} />
     <dl class="ab-flow__win">
       <div>
-        <dt>fonte</dt>
+        <dt>{gettext("Source")}</dt>
         <dd>
           {if @tile.status == :measured,
             do: "orquestrador principal, agora",
@@ -193,8 +206,8 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
         phx-click="set_max_workers"
         phx-value-to={@tile.max - 1}
         disabled={@tile.max <= @min}
-        aria-label="Menos um agente"
-        title="Menos um agente em paralelo"
+        aria-label={gettext("Remove one agent")}
+        title={gettext("Remove one parallel agent")}
       >
         −
       </button>
@@ -205,8 +218,8 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
         phx-click="set_max_workers"
         phx-value-to={@tile.max + 1}
         disabled={@tile.max >= @max}
-        aria-label="Mais um agente"
-        title="Mais um agente em paralelo"
+        aria-label={gettext("Add one agent")}
+        title={gettext("Add one parallel agent")}
       >
         +
       </button>
@@ -256,7 +269,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
       viewBox="0 0 96 24"
       preserveAspectRatio="none"
       role="img"
-      aria-label={"#{@tile.label}: #{Metrics.reason(@tile.reason)}"}
+      aria-label={"#{tile_label(@tile)}: #{unknown_reason(@tile.reason)}"}
     >
       <line x1="0" y1="23.5" x2="96" y2="23.5" class="ab-flow__base" />
     </svg>
@@ -391,7 +404,13 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
       viewBox="0 0 96 24"
       preserveAspectRatio="none"
       role="img"
-      aria-label={"#{@tile.running} de #{@tile.max} vagas do orquestrador em uso, #{@tile.queued} esperando"}
+      aria-label={
+        gettext("%{running} of %{max} orchestrator slots in use, %{queued} waiting",
+          running: @tile.running,
+          max: @tile.max,
+          queued: @tile.queued
+        )
+      }
     >
       <rect
         :for={slot <- @slots}
@@ -407,12 +426,12 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
 
   # -- words ------------------------------------------------------------------
 
-  defp title(%{status: :unknown, reason: reason}), do: Metrics.reason(reason)
-  defp title(%{kind: :rate}), do: "nos últimos 60 minutos"
-  defp title(%{kind: :depth}), do: "tarefas na fila agora"
+  defp title(%{status: :unknown, reason: reason}), do: unknown_reason(reason)
+  defp title(%{kind: :rate}), do: gettext("in the last 60 minutes")
+  defp title(%{kind: :depth}), do: gettext("tasks in queue now")
 
   defp title(%{kind: :load}),
-    do: "vagas do orquestrador principal em uso agora; os superagentes têm limites próprios"
+    do: gettext("Main orchestrator slots in use now; superagents have their own limits")
 
   defp delta_tone(%{status: :unknown}), do: nil
   defp delta_tone(%{kind: :rate, delta: delta}) when delta > 0, do: "ab-tag--agent"
@@ -421,7 +440,11 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
   defp delta_title(%{status: :unknown}), do: nil
 
   defp delta_title(%{previous: previous, kind: kind}),
-    do: "hora anterior: #{previous}#{if kind == :rate, do: "/h", else: " na fila"}"
+    do:
+      gettext("previous hour: %{count}%{unit}",
+        count: previous,
+        unit: if(kind == :rate, do: "/h", else: gettext(" in queue"))
+      )
 
   defp load_value(%{status: :unknown}), do: "?"
 
@@ -432,12 +455,37 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
     do: "#{Time.local_time(from, offset)}–#{Time.local_time(to, offset)}"
 
   defp aria(%{kind: :depth} = tile, series) do
-    "#{tile.label} ao fim de cada hora nas últimas 24 h, da mais antiga à atual: " <>
+    gettext("%{label} at the end of each hour over the last 24 hours, oldest to newest: ",
+      label: tile_label(tile)
+    ) <>
       Enum.map_join(series, ", ", &Integer.to_string/1)
   end
 
   defp aria(tile, series) do
-    "#{tile.label} por hora nas últimas 24 h, da mais antiga à atual: " <>
+    gettext("%{label} per hour over the last 24 hours, oldest to newest: ",
+      label: tile_label(tile)
+    ) <>
       Enum.map_join(series, ", ", &Integer.to_string/1)
   end
+
+  defp tile_label(%{key: "done"}), do: gettext("Completed")
+  defp tile_label(%{key: "opened"}), do: gettext("Issues opened")
+  defp tile_label(%{key: "merged"}), do: gettext("PRs merged")
+  defp tile_label(%{key: "commits"}), do: gettext("Commits")
+  defp tile_label(%{key: "tickets"}), do: gettext("Tickets closed")
+  defp tile_label(%{key: "queue"}), do: gettext("Queue")
+  defp tile_label(%{key: "cycle"}), do: gettext("Cycle")
+  defp tile_label(%{key: "load"}), do: gettext("Parallelism")
+  defp tile_label(tile), do: tile.label
+
+  defp unknown_reason(:never_synced), do: gettext("no commit reading yet")
+  defp unknown_reason(:not_configured), do: gettext("orchestrator not configured")
+  defp unknown_reason(:unreachable), do: gettext("orchestrator unreachable")
+  defp unknown_reason(:malformed), do: gettext("orchestrator response lacks load")
+
+  defp unknown_reason({:http, status}),
+    do: gettext("orchestrator returned HTTP %{status}", status: status)
+
+  defp unknown_reason(:agent_unavailable), do: gettext("agent status unavailable")
+  defp unknown_reason(_), do: gettext("no observed data")
 end

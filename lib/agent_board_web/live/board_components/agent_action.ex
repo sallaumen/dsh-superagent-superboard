@@ -171,7 +171,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   # The gate refused: what the person confirmed is no longer what would run.
   def handle_async(:run, {:ok, {:error, {refusal, _phrase}}}, socket)
       when refusal in [:unconfirmed, :phrase_changed] do
-    text = "Nada foi feito: a ação mudou desde a confirmação. Confira e confirme de novo."
+    text =
+      gettext("Nothing happened: the action changed after confirmation. Check and confirm again.")
+
     {:noreply, assign(socket, step: :done, result: %{tone: :error, text: text})}
   end
 
@@ -179,7 +181,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     do: {:noreply, assign(socket, step: :done, result: %{tone: :error, text: text})}
 
   def handle_async(:run, {:exit, reason}, socket) do
-    text = "A ação não terminou: #{inspect(reason)}"
+    text = gettext("The action did not finish: %{reason}", reason: inspect(reason))
     {:noreply, assign(socket, step: :done, result: %{tone: :error, text: text})}
   end
 

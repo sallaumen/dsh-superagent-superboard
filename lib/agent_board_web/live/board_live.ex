@@ -73,7 +73,6 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The task actions a button may send, mapped explicitly (never to_atom).
   @task_actions %{"stop" => :stop_task, "archive" => :archive_task, "resume" => :resume_task}
-  @refused_text "Nada foi feito: a ação mudou desde a confirmação. Confira e confirme de novo."
   @max_resume_items 1000
   @version_check_interval 5 * 60 * 1000
 
@@ -540,30 +539,33 @@ defmodule AgentBoardWeb.BoardLive do
         |> load(socket.assigns.repo)
         |> put_flash(
           :error,
-          "As configurações do executor mudaram no painel do agente. Confira o limite e tente de novo."
+          gettext(
+            "Executor settings changed in the agent dashboard. Check the limit and try again."
+          )
         )
 
       {:error, reason} ->
         put_flash(
           socket,
           :error,
-          "Não foi possível mudar o limite do executor (#{limit_reason(reason)})."
+          gettext("Could not change the executor limit (%{reason}).",
+            reason: limit_reason(reason)
+          )
         )
     end
   end
 
-  defp agents(1), do: "1 agente"
-  defp agents(n), do: "#{n} agentes"
+  defp agents(n), do: ngettext("%{count} agent", "%{count} agents", n)
 
-  defp limit_reason(:out_of_range), do: "fica entre 1 e 16"
-  defp limit_reason(:not_configured), do: "API do orquestrador desligada"
-  defp limit_reason(:unreachable), do: "orquestrador fora do ar"
-  defp limit_reason(:timeout), do: "o orquestrador não respondeu"
+  defp limit_reason(:out_of_range), do: gettext("must be between 1 and 16")
+  defp limit_reason(:not_configured), do: gettext("orchestrator API is off")
+  defp limit_reason(:unreachable), do: gettext("orchestrator unreachable")
+  defp limit_reason(:timeout), do: gettext("orchestrator did not respond")
   defp limit_reason({:refused, message}) when is_binary(message), do: message
   defp limit_reason({:http, status}), do: "HTTP #{status}"
-  defp limit_reason(_reason), do: "resposta inesperada"
+  defp limit_reason(_reason), do: gettext("unexpected response")
 
-  # The ledger is read when the Execuções tab opens and reused while the
+  # The ledger is read when the Executions tab opens and reused while the
   # task and the tab stay the same: a board update does not query it again.
   defp inspector_executions(socket, task) do
     if socket.assigns.inspector_tab == "execucoes" do
@@ -869,7 +871,10 @@ defmodule AgentBoardWeb.BoardLive do
          socket
          |> cancel_composer_job()
          |> composer_error(
-           "#{job_name(kind)} não terminou em #{seconds} s. Nada foi confirmado; tente de novo.",
+           gettext("%{job} did not finish in %{seconds} s. Nothing was confirmed; try again.",
+             job: job_name(kind),
+             seconds: seconds
+           ),
            {kind, payload}
          )}
 
@@ -1093,7 +1098,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp superagent_gone(socket) do
     socket
     |> assign(:superagents, Superagents.list())
-    |> put_flash(:error, "Esse superagente não está mais no board.")
+    |> put_flash(:error, gettext("That superagent is no longer on the board."))
   end
 
   # A draft belongs to the task it was typed on; closing and reopening that
@@ -1193,10 +1198,10 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("sync_now", _params, socket) do
     case Actions.run(:sync_now, %{}, ui()) do
       {:ok, _job} ->
-        {:noreply, put_flash(socket, :info, "Sincronização pedida.")}
+        {:noreply, put_flash(socket, :info, gettext("Sync requested."))}
 
       {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, "Não foi possível pedir a sincronização.")}
+        {:noreply, put_flash(socket, :error, gettext("Unable to request synchronization."))}
     end
   end
 
@@ -1376,7 +1381,8 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, socket |> assign(:repos, repos) |> load(repo)}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Não foi possível acompanhar #{owner}/#{name}")}
+        {:noreply,
+         put_flash(socket, :error, gettext("Could not track %{repo}", repo: "#{owner}/#{name}"))}
     end
   end
 
@@ -1401,7 +1407,7 @@ defmodule AgentBoardWeb.BoardLive do
 
     case result do
       {:error, {refusal, _phrase}} when refusal in [:unconfirmed, :phrase_changed] ->
-        {:noreply, put_flash(socket, :error, @refused_text)}
+        {:noreply, put_flash(socket, :error, refused_text())}
 
       {:ok, _} ->
         {:noreply,
@@ -1411,7 +1417,7 @@ defmodule AgentBoardWeb.BoardLive do
          |> speak(Voice.task_summary(task.title, action, socket.assigns.voice.language))}
 
       _ ->
-        {:noreply, put_flash(socket, :error, "Não foi possível atualizar a tarefa")}
+        {:noreply, put_flash(socket, :error, gettext("Unable to update the task"))}
     end
   end
 
@@ -1426,16 +1432,19 @@ defmodule AgentBoardWeb.BoardLive do
           {:noreply,
            socket
            |> refresh_inspector_after_act(task.id)
-           |> put_flash(:info, "Execução parada; a tarefa ficou bloqueada para você decidir.")}
+           |> put_flash(
+             :info,
+             gettext("Execution stopped; the task is blocked until you decide what to do.")
+           )}
 
         {:error, {refusal, _phrase}} when refusal in [:unconfirmed, :phrase_changed] ->
-          {:noreply, put_flash(socket, :error, @refused_text)}
+          {:noreply, put_flash(socket, :error, refused_text())}
 
         {:error, text} ->
           {:noreply, put_flash(socket, :error, text)}
       end
     else
-      _ -> {:noreply, put_flash(socket, :error, "Execução não encontrada.")}
+      _ -> {:noreply, put_flash(socket, :error, gettext("Execution not found."))}
     end
   end
 
@@ -1489,7 +1498,8 @@ defmodule AgentBoardWeb.BoardLive do
        })}
     else
       _ ->
-        {:noreply, put_flash(socket, :error, "Confira repositório, origem, caminho e workers.")}
+        {:noreply,
+         put_flash(socket, :error, gettext("Check repository, origin, path, and workers."))}
     end
   end
 
@@ -1540,7 +1550,7 @@ defmodule AgentBoardWeb.BoardLive do
     else
       false -> {:noreply, socket}
       nil -> {:noreply, superagent_gone(socket)}
-      _ -> {:noreply, put_flash(socket, :error, "Não foi possível mudar o limite de sessões.")}
+      _ -> {:noreply, put_flash(socket, :error, gettext("Unable to change the session limit."))}
     end
   end
 
@@ -1567,7 +1577,7 @@ defmodule AgentBoardWeb.BoardLive do
            put_flash(
              socket,
              :error,
-             "A IA não está configurada; escreva a resposta ou crie a tarefa."
+             gettext("AI is not configured; write the response or create the task.")
            )}
         else
           socket = assign(socket, unblock_ai: :busy, unblock_suggestions: [])
@@ -1580,7 +1590,7 @@ defmodule AgentBoardWeb.BoardLive do
 
       _ ->
         {:noreply,
-         put_flash(socket, :error, "O agente ainda não registrou uma pergunta ou bloqueio.")}
+         put_flash(socket, :error, gettext("The agent has not yet logged a question or block."))}
     end
   end
 
@@ -1606,7 +1616,7 @@ defmodule AgentBoardWeb.BoardLive do
          )}
 
       _ ->
-        {:noreply, put_flash(socket, :error, "O agente ainda não registrou um bloqueio.")}
+        {:noreply, put_flash(socket, :error, gettext("The agent has not yet logged a block."))}
     end
   end
 
@@ -1630,7 +1640,7 @@ defmodule AgentBoardWeb.BoardLive do
        )}
     else
       _ ->
-        {:noreply, put_flash(socket, :error, "A tarefa precisa de título e corpo.")}
+        {:noreply, put_flash(socket, :error, gettext("The task needs a title and body."))}
     end
   end
 
@@ -1670,23 +1680,27 @@ defmodule AgentBoardWeb.BoardLive do
             {:noreply,
              socket
              |> assign(blocker_pending: nil, blocker_open: false)
-             |> put_flash(:error, @refused_text)}
+             |> put_flash(:error, refused_text())}
 
           {:error, reason} ->
             {:noreply,
-             put_flash(socket, :error, "Não foi possível criar a tarefa: #{inspect(reason)}")}
+             put_flash(
+               socket,
+               :error,
+               gettext("Could not create task: %{reason}", reason: inspect(reason))
+             )}
         end
 
       _ ->
         {:noreply,
-         put_flash(socket, :error, "Nada foi criado: a tarefa bloqueada não está aberta.")}
+         put_flash(socket, :error, gettext("Nothing created: the blocked task is not open."))}
     end
   end
 
   def handle_event("ask", %{"body" => body}, socket) do
     case {socket.assigns.conversation, String.trim(body)} do
       {nil, _body} ->
-        {:noreply, put_flash(socket, :error, "Abra uma tarefa primeiro")}
+        {:noreply, put_flash(socket, :error, gettext("Open a task first"))}
 
       {_task, ""} ->
         {:noreply, socket}
@@ -1714,7 +1728,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("ask_confirm", _params, socket) do
     case {socket.assigns.conversation, socket.assigns.ask_pending} do
       {nil, _pending} ->
-        {:noreply, put_flash(socket, :error, "Abra uma tarefa primeiro")}
+        {:noreply, put_flash(socket, :error, gettext("Open a task first"))}
 
       {_task, pending} when not is_map(pending) ->
         {:noreply, socket}
@@ -1725,7 +1739,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         case Actions.run(:ask_task, params, ui(), confirm: phrase) do
           {:error, {refusal, _phrase}} when refusal in [:unconfirmed, :phrase_changed] ->
-            {:noreply, socket |> assign(ask_draft: body) |> put_flash(:error, @refused_text)}
+            {:noreply, socket |> assign(ask_draft: body) |> put_flash(:error, refused_text())}
 
           {:ok, _} ->
             ask_in_background(task, body)
@@ -1742,7 +1756,7 @@ defmodule AgentBoardWeb.BoardLive do
             {:noreply,
              socket
              |> assign(ask_draft: body)
-             |> put_flash(:error, "A pergunta não chegou ao GitHub")}
+             |> put_flash(:error, gettext("The question did not reach GitHub"))}
         end
 
       {_task, _pending_for_another_task} ->
@@ -1757,7 +1771,12 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, assign(socket, version: Version.status())}
 
       {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Não consegui falar com a main: #{inspect(reason)}")}
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Could not reach main: %{reason}", reason: inspect(reason))
+         )}
     end
   end
 
@@ -1904,7 +1923,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, socket}
 
       is_nil(socket.assigns.repo) ->
-        {:noreply, composer_error(socket, "Escolha um repositório antes de enviar.")}
+        {:noreply, composer_error(socket, gettext("Select a repository before submitting."))}
 
       text == "" ->
         {:noreply, composer_error(socket, "Escreva o pedido antes de enviar.")}
@@ -1967,10 +1986,11 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, put_flash(socket, :error, "Select a repository before splitting.")}
 
       params["source_repo"] && params["source_repo"] != to_string(repo.id) ->
-        {:noreply, put_flash(socket, :error, "O repositório mudou. Revise o pedido de novo.")}
+        {:noreply,
+         put_flash(socket, :error, gettext("The repository changed. Review the request again."))}
 
       socket.assigns.ai_status == :not_configured ->
-        {:noreply, put_flash(socket, :error, "IA não configurada. Dividir fica indisponível.")}
+        {:noreply, put_flash(socket, :error, gettext("AI not configured. Split is unavailable."))}
 
       String.trim(text) == "" ->
         {:noreply, put_flash(socket, :error, "Add a request before splitting.")}
@@ -2010,7 +2030,7 @@ defmodule AgentBoardWeb.BoardLive do
            Actions.run(:create_tasks, action, ui(), confirm: params["confirm"]) do
       {:noreply, put_flash(socket, :info, "Task created: #{task.title}")}
     else
-      _ -> {:noreply, put_flash(socket, :error, "Não foi possível criar a tarefa")}
+      _ -> {:noreply, put_flash(socket, :error, gettext("Unable to create the task"))}
     end
   end
 
@@ -2107,7 +2127,10 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply,
          socket
          |> assign(voice: %{socket.assigns.voice | loading: false})
-         |> put_flash(:error, "Não foi possível listar as vozes: #{voice_reason(reason)}")}
+         |> put_flash(
+           :error,
+           gettext("Could not list voices: %{reason}", reason: voice_reason(reason))
+         )}
     end
   end
 
@@ -2137,7 +2160,7 @@ defmodule AgentBoardWeb.BoardLive do
          })}
 
       true ->
-        {:noreply, put_flash(socket, :error, "Não foi possível salvar a voz")}
+        {:noreply, put_flash(socket, :error, gettext("Voice could not be saved"))}
     end
   end
 
@@ -2158,7 +2181,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      socket
      |> assign(voice: refreshed_voice(socket.assigns.voice))
-     |> put_flash(:info, "Voz de volta ao padrão")}
+     |> put_flash(:info, gettext("Voice reset to default"))}
   end
 
   @impl true
@@ -2175,9 +2198,9 @@ defmodule AgentBoardWeb.BoardLive do
              model_source: ElevenLabs.tts_source()
          }
        )
-       |> put_flash(:info, "Modelo salvo: #{String.trim(model)}")}
+       |> put_flash(:info, gettext("Model saved: %{model}", model: String.trim(model)))}
     else
-      {:noreply, put_flash(socket, :error, "Modelo de fala desconhecido")}
+      {:noreply, put_flash(socket, :error, gettext("Unknown speech model"))}
     end
   end
 
@@ -2185,10 +2208,10 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("voice_try", %{"phrase" => phrase}, socket) do
     cond do
       String.trim(phrase) == "" ->
-        {:noreply, put_flash(socket, :error, "Digite uma frase para ouvir")}
+        {:noreply, put_flash(socket, :error, gettext("Enter a phrase to hear"))}
 
       not ElevenLabs.valid_text?(phrase) ->
-        {:noreply, put_flash(socket, :error, "A frase é longa demais para um pedido")}
+        {:noreply, put_flash(socket, :error, gettext("The phrase is too long for a request"))}
 
       true ->
         url = speech_url(phrase, socket.assigns.voice.id)
@@ -2219,7 +2242,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, say(socket, Phrases.language_switched(lang), kind: :confirm)}
 
       {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, "Idioma não suportado")}
+        {:noreply, put_flash(socket, :error, gettext("Unsupported language"))}
     end
   end
 
@@ -2328,7 +2351,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      socket
      |> assign(provisioning: false)
-     |> put_flash(:error, "O provisionamento não terminou.")}
+     |> put_flash(:error, gettext("Provisioning has not completed."))}
   end
 
   @impl true
@@ -2340,7 +2363,7 @@ defmodule AgentBoardWeb.BoardLive do
     do: {:noreply, put_flash(socket, :error, text)}
 
   def handle_async({:superagent_command, _id}, {:exit, _reason}, socket),
-    do: {:noreply, put_flash(socket, :error, "A ação do superagent não terminou.")}
+    do: {:noreply, put_flash(socket, :error, gettext("Superagent action did not complete."))}
 
   def handle_async({:superagent_scale, _id}, {:ok, {:ok, text}}, socket) do
     {:noreply, socket |> assign(:superagents, Superagents.list()) |> put_flash(:info, text)}
@@ -2350,7 +2373,7 @@ defmodule AgentBoardWeb.BoardLive do
     do: {:noreply, put_flash(socket, :error, text)}
 
   def handle_async({:superagent_scale, _id}, {:exit, _reason}, socket),
-    do: {:noreply, put_flash(socket, :error, "Não foi possível mudar o limite de sessões.")}
+    do: {:noreply, put_flash(socket, :error, gettext("Unable to change the session limit."))}
 
   @impl true
   def handle_async({:voice_turn, ref}, outcome, socket),
@@ -2399,7 +2422,7 @@ defmodule AgentBoardWeb.BoardLive do
         update_progress: push_update_step(socket.assigns.update_progress, :restart, :running)
       )
       |> push_event("restart", %{})
-      |> put_flash(:info, "Atualizado para #{sha}; reiniciando o servidor…")
+      |> put_flash(:info, gettext("Updated to %{sha}; restarting the server…", sha: sha))
 
     Actions.run(:restart_board, %{}, ui())
     {:noreply, socket}
@@ -2417,8 +2440,10 @@ defmodule AgentBoardWeb.BoardLive do
      |> assign(busy: false, update_progress: progress)
      |> put_flash(
        :error,
-       "A atualização parou no meio; o board continua no código antigo e nada foi reiniciado. " <>
-         inspect(reason)
+       gettext(
+         "The update stopped midway; the board still runs the old code and nothing was restarted. %{reason}",
+         reason: inspect(reason)
+       )
      )}
   end
 
@@ -2432,7 +2457,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      socket
      |> assign(busy: false, update_progress: progress)
-     |> put_flash(:error, "A atualização falhou: #{inspect(reason)}")}
+     |> put_flash(:error, gettext("The update failed: %{reason}", reason: inspect(reason)))}
   end
 
   def handle_async(:version_check, {:ok, {:ok, _sha}}, socket) do
@@ -2633,9 +2658,9 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp say(socket, _text, _opts), do: socket
 
-  defp voice_reason(:not_configured), do: "sem chave de API"
-  defp voice_reason(:auth_expired), do: "a chave foi recusada"
-  defp voice_reason(:usage_limit), do: "limite de uso atingido"
+  defp voice_reason(:not_configured), do: gettext("API key missing")
+  defp voice_reason(:auth_expired), do: gettext("the key was rejected")
+  defp voice_reason(:usage_limit), do: gettext("usage limit reached")
   defp voice_reason({:http, status}), do: "HTTP #{status}"
   defp voice_reason(reason), do: inspect(reason)
 
@@ -2672,7 +2697,7 @@ defmodule AgentBoardWeb.BoardLive do
          ) do
       {:ok, %{json: %{"answer" => text}}} -> {:ok, text}
       {:ok, _} -> {:ok, "The model answered, but not with text."}
-      {:error, :not_configured} -> {:error, "A IA não está configurada."}
+      {:error, :not_configured} -> {:error, gettext("AI is not configured.")}
       {:error, reason} -> {:error, "The AI did not answer: #{inspect(reason)}"}
     end
   end
@@ -2749,11 +2774,21 @@ defmodule AgentBoardWeb.BoardLive do
               />
             </div>
             <div :if={@repo == nil} class="ab-empty">
-              <h2>Nenhum repositório acompanhado.</h2>
+              <h2>{gettext("No repositories being tracked.")}</h2>
               <p>
-                Abra Configurações → Repositórios para acompanhar um repositório. O board mostra o
-                trabalho do agente, o que espera por você e o que mudou.
+                {gettext(
+                  "Open Settings → Repositories to track a repository. The board shows the agent's work, what awaits you, and what changed."
+                )}
               </p>
+              <button
+                type="button"
+                class="ab-btn ab-btn--primary"
+                phx-click="show_panel"
+                phx-value-panel="settings"
+                data-panel-trigger
+                aria-haspopup="dialog"
+                aria-controls="panel-settings"
+              >{gettext("Open Settings")}</button>
             </div>
 
             <.today_view
@@ -2776,7 +2811,7 @@ defmodule AgentBoardWeb.BoardLive do
                 <summary>
                   <span class="ab-mobilebar__repo">{@repo.name}</span>
                   <.ico name="menu" />
-                  <span class="ab-sr">Repositórios</span>
+                  <span class="ab-sr">{gettext("Repositories")}</span>
                 </summary>
                 <div class="ab-mobilebar__list">
                   <button
@@ -2786,7 +2821,7 @@ defmodule AgentBoardWeb.BoardLive do
                     phx-click="select"
                     phx-value-view="hoje"
                   >
-                    <span class="ab-repo__name">Hoje</span>
+                    <span class="ab-repo__name">{gettext("Today")}</span>
                   </button>
                   <button
                     :for={r <- @repos}
@@ -2809,7 +2844,7 @@ defmodule AgentBoardWeb.BoardLive do
                     aria-haspopup="dialog"
                     aria-controls="panel-superagents"
                   >
-                    <.ico name="grip" />Superagentes
+                    <.ico name="grip" />{gettext("Superagents")}
                   </button>
                   <button
                     id="mobile-panel-shortcuts"
@@ -2821,7 +2856,7 @@ defmodule AgentBoardWeb.BoardLive do
                     aria-haspopup="dialog"
                     aria-controls="panel-shortcuts"
                   >
-                    <.ico name="keys" />Atalhos
+                    <.ico name="keys" />{gettext("Shortcuts")}
                   </button>
                   <button
                     id="mobile-panel-logs"
@@ -2833,7 +2868,7 @@ defmodule AgentBoardWeb.BoardLive do
                     aria-haspopup="dialog"
                     aria-controls="panel-logs"
                   >
-                    <.ico name="log" />Logs
+                    <.ico name="log" />{gettext("Logs")}
                   </button>
                   <button
                     id="mobile-panel-voice"
@@ -2842,7 +2877,7 @@ defmodule AgentBoardWeb.BoardLive do
                     phx-click="show_panel"
                     phx-value-panel="voice"
                   >
-                    <.ico name="mic" />Conversa por voz
+                    <.ico name="mic" />{gettext("Voice conversation")}
                   </button>
                   <button
                     id="mobile-panel-settings"
@@ -2854,7 +2889,7 @@ defmodule AgentBoardWeb.BoardLive do
                     aria-haspopup="dialog"
                     aria-controls="panel-settings"
                   >
-                    <.ico name="cog" />Configurações
+                    <.ico name="cog" />{gettext("Settings")}
                   </button>
                 </div>
               </details>
@@ -2865,7 +2900,7 @@ defmodule AgentBoardWeb.BoardLive do
               <.beacon freshness={@freshness} tz_offset={@tz_offset} />
               <.version_badge version={@version} />
               <span class="ab-top__spacer"></span>
-              <div id="board-tools" class="ab-top__actions" aria-label="Ações do board">
+              <div id="board-tools" class="ab-top__actions" aria-label={gettext("Board Actions")}>
                 <button
                   id="open-intake"
                   type="button"
@@ -2876,7 +2911,7 @@ defmodule AgentBoardWeb.BoardLive do
                   aria-haspopup="dialog"
                   aria-controls="panel-composer"
                 >
-                  <.ico name="split" />Dividir pedido
+                  <.ico name="split" />{gettext("Split request")}
                 </button>
                 <button
                   id="open-create"
@@ -2888,7 +2923,7 @@ defmodule AgentBoardWeb.BoardLive do
                   aria-haspopup="dialog"
                   aria-controls="panel-composer"
                 >
-                  <.ico name="plus" />Novo pedido<.kbd key="N" />
+                  <.ico name="plus" />{gettext("New request")}<.kbd key="N" />
                 </button>
               </div>
             </header>
@@ -2903,7 +2938,7 @@ defmodule AgentBoardWeb.BoardLive do
                 :if={@objectives != []}
                 id="objectives"
                 class="ab-objectives"
-                aria-label="Objetivos"
+                aria-label={gettext("Objectives")}
               >
                 <article
                   :for={objective <- @objectives}
@@ -2911,21 +2946,26 @@ defmodule AgentBoardWeb.BoardLive do
                   data-done={to_string(objective.done?)}
                 >
                   <div class="ab-objective__head">
-                    <span class="ab-label">Objetivo</span>
+                    <span class="ab-label">{gettext("Objective")}</span>
                     <b>{objective.title}</b>
                     <span class="ab-objective__count">
-                      {objective.merged} de {objective.total}<span class="ab-sr"> tarefas mescladas</span>
+                      {gettext("%{merged} of %{total} tasks merged",
+                        merged: objective.merged,
+                        total: objective.total
+                      )}
                     </span>
-                    <span :if={objective.done?} class="ab-tag ab-tag--agent">concluído</span>
+                    <span :if={objective.done?} class="ab-tag ab-tag--agent">{gettext("completed")}</span>
                   </div>
-                  <p class="ab-meta">critério: {objective.done_criterion}</p>
+                  <p class="ab-meta">
+                    {gettext("criterion: %{criterion}", criterion: objective.done_criterion)}
+                  </p>
                   <div
                     class="ab-objective__bar"
                     role="progressbar"
                     aria-valuenow={objective.merged}
                     aria-valuemin="0"
                     aria-valuemax={objective.total}
-                    aria-label={"Progresso do objetivo #{objective.title}"}
+                    aria-label={gettext("Progress of objective %{title}", title: objective.title)}
                   >
                     <span style={"width: #{progress(objective)}%"}></span>
                   </div>
@@ -2941,8 +2981,8 @@ defmodule AgentBoardWeb.BoardLive do
                 phx-hook="BoardFold"
               >
                 <summary class="ab-fold__summary">
-                  <span>Resumo do dia</span>
-                  <span class="ab-meta">do board</span>
+                  <span>{gettext("Daily Summary")}</span>
+                  <span class="ab-meta">{gettext("from the board")}</span>
                 </summary>
                 <div class="ab-fold__body">
                   <.daily_summary entry={@daily_summary} tz_offset={@tz_offset} />
@@ -2953,15 +2993,19 @@ defmodule AgentBoardWeb.BoardLive do
             <div :if={@repo && @view != "hoje" && empty?(@board)} class="ab-empty">
               <h2>
                 {if @sync_snapshot.last_success,
-                  do: "Nada aconteceu aqui ainda.",
-                  else: "Sem dados ainda."}
+                  do: gettext("Nothing has happened here yet."),
+                  else: gettext("No data yet.")}
               </h2>
               <p>
                 {if @sync_snapshot.last_success,
                   do:
-                    "O agente observa este repositório, mas ainda não recebeu nenhuma tarefa. Escreva ou dite o primeiro pedido; ele entra na fila e aparece em Agora quando o agente pegar.",
+                    gettext(
+                      "The agent watches this repository but has not received a task yet. Write or dictate the first request; it enters the queue and appears in Now when the agent picks it up."
+                    ),
                   else:
-                    "Aguardando a primeira sincronia. Quando o GitHub responder, o board mostra as tarefas, os merges e o que espera por você."}
+                    gettext(
+                      "Waiting for the first sync. When GitHub responds, the board will show tasks, merges, and what needs your attention."
+                    )}
               </p>
               <button
                 type="button"
@@ -2972,7 +3016,7 @@ defmodule AgentBoardWeb.BoardLive do
                 aria-haspopup="dialog"
                 aria-controls="panel-composer"
               >
-                <.ico name="plus" />Novo pedido
+                <.ico name="plus" />{gettext("New request")}
               </button>
             </div>
 
@@ -3030,10 +3074,16 @@ defmodule AgentBoardWeb.BoardLive do
                   phx-hook="BoardFold"
                 >
                   <summary class="ab-fold__summary">
-                    <span>Vazão</span>
-                    <span class="ab-meta">por hora · {if @freshness.frozen?,
-                      do: "congelada",
-                      else: "calculado"} às {Time.local_time(@flow.computed_at, @tz_offset)}</span>
+                    <span>{gettext("Throughput")}</span>
+                    <span class="ab-meta">{if @freshness.frozen?,
+                      do:
+                        gettext("per hour · frozen at %{time}",
+                          time: Time.local_time(@flow.computed_at, @tz_offset)
+                        ),
+                      else:
+                        gettext("per hour · calculated at %{time}",
+                          time: Time.local_time(@flow.computed_at, @tz_offset)
+                        )}</span>
                   </summary>
                   <div class="ab-fold__body">
                     <.throughput
@@ -3048,7 +3098,11 @@ defmodule AgentBoardWeb.BoardLive do
             </div>
           </main>
 
-          <div :if={@repo && @view != "hoje"} class="ab-mobile-actions" aria-label="Ações do board">
+          <div
+            :if={@repo && @view != "hoje"}
+            class="ab-mobile-actions"
+            aria-label={gettext("Board Actions")}
+          >
             <button
               type="button"
               class="ab-btn ab-btn--primary"
@@ -3058,14 +3112,14 @@ defmodule AgentBoardWeb.BoardLive do
               aria-haspopup="dialog"
               aria-controls="panel-composer"
             >
-              Novo pedido
+              {gettext("New request")}
             </button>
             <button
               type="button"
               class="ab-btn ab-btn--icon"
               phx-click="show_panel"
               phx-value-panel="voice"
-              aria-label="Conversa por voz"
+              aria-label={gettext("Voice Conversation")}
             >
               <.ico name="mic" />
             </button>
@@ -3121,18 +3175,18 @@ defmodule AgentBoardWeb.BoardLive do
           phx-update="ignore"
           class="voice-wispr"
           role="dialog"
-          aria-label="Fale com o Wispr"
+          aria-label={gettext("Talk to Wispr")}
           hidden
         >
-          <label for="voice-wispr-text" class="voice-wispr-label">Fale com o Wispr</label>
+          <label for="voice-wispr-text" class="voice-wispr-label">{gettext("Talk to Wispr")}</label>
           <input
             id="voice-wispr-text"
             type="text"
             autocomplete="off"
-            placeholder="Segure a tecla do Wispr e fale…"
+            placeholder={gettext("Hold the Wispr key and speak...")}
           />
           <span class="voice-wispr-hint">
-            Envio sozinho quando o texto chegar · Enter envia · Esc fecha
+            {gettext("Auto-send when text arrives · Enter to send · Esc to cancel")}
           </span>
         </div>
 
@@ -3150,7 +3204,7 @@ defmodule AgentBoardWeb.BoardLive do
             type="button"
             class="ab-btn ab-btn--icon ab-btn--sm"
             phx-click="dismiss_toast"
-            aria-label="Fechar aviso"
+            aria-label={gettext("Close alert")}
           >
             <.ico name="close" />
           </button>
@@ -3195,7 +3249,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="shortcuts"
-          title="Atalhos"
+          title={gettext("Shortcuts")}
           active={@panel == "shortcuts"}
           flash={@flash}
         >
@@ -3204,7 +3258,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="history"
-          title="Histórico de merges"
+          title={gettext("Merge History")}
           active={@panel == "history"}
           flash={@flash}
         >
@@ -3219,7 +3273,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="activity"
-          title="Atividade"
+          title={gettext("Activity")}
           active={@panel == "activity"}
           flash={@flash}
         >
@@ -3233,7 +3287,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="intake"
-          title="Dividir pedido"
+          title={gettext("Split request")}
           active={@panel == "intake"}
           flash={@flash}
         >
@@ -3251,7 +3305,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="ai"
-          title="Chamadas de IA"
+          title={gettext("AI Calls")}
           active={@panel == "ai"}
           flash={@flash}
         >
@@ -3266,7 +3320,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="superagents"
-          title="Superagentes DeepSeek"
+          title={gettext("DeepSeek Superagents")}
           active={@panel == "superagents"}
           flash={@flash}
         >
@@ -3281,7 +3335,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="settings"
-          title="Configurações"
+          title={gettext("Settings")}
           active={@panel == "settings"}
           flash={@flash}
         >
@@ -3295,12 +3349,14 @@ defmodule AgentBoardWeb.BoardLive do
             voice={@voice}
             dispatch_paused={@dispatch_paused}
             active={@panel == "settings"}
+            board_locale={@board_locale}
+            return_to={BoardNavigation.path(@repo, "settings")}
           />
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
           name="executors"
-          title="Executores"
+          title={gettext("Executors")}
           active={@panel == "executors"}
           flash={@flash}
         >
@@ -3309,7 +3365,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="voice"
-          title="Conversa por voz"
+          title={gettext("Voice Conversation")}
           active={@panel == "voice"}
           flash={@flash}
         >
@@ -3323,9 +3379,11 @@ defmodule AgentBoardWeb.BoardLive do
               class="ab-btn ab-btn--primary"
               phx-click={Phoenix.LiveView.JS.dispatch("board:voice-start")}
             >
-              <.ico name="mic" />Falar<.kbd key="espaço 2×" />
+              <.ico name="mic" />{gettext("Speak")}<.kbd key={gettext("Space ×2")} />
             </button>
-            <span class="ab-meta">Fale e pare: o agente responde e espera seu “sim” antes de agir.</span>
+            <span class="ab-meta">{gettext(
+              "Speak and stop: the agent replies and waits for your confirmation before acting."
+            )}</span>
           </div>
           <BoardComponents.VoiceCommandList.list open={@voice_commands_open} />
           <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} />
@@ -3372,13 +3430,13 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
-  defp update_label(:fetch), do: "Buscando a main"
-  defp update_label(:deps), do: "Preparando dependências"
-  defp update_label(:compile), do: "Compilando o build novo"
-  defp update_label(:assets), do: "Gerando os assets"
-  defp update_label(:migrate), do: "Aplicando migrações"
-  defp update_label(:ready), do: "Build pronto"
-  defp update_label(:restart), do: "Reiniciando o board"
+  defp update_label(:fetch), do: gettext("Fetching main")
+  defp update_label(:deps), do: gettext("Preparing dependencies")
+  defp update_label(:compile), do: gettext("Compiling the new build")
+  defp update_label(:assets), do: gettext("Building assets")
+  defp update_label(:migrate), do: gettext("Applying migrations")
+  defp update_label(:ready), do: gettext("Build ready")
+  defp update_label(:restart), do: gettext("Restarting the board")
 
   # -- the composer lifecycle ---------------------------------------------------
   #
@@ -3427,11 +3485,11 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply,
          composer_error(
            socket,
-           "Responda as perguntas ou edite o pedido antes de dividir de novo."
+           gettext("Answer the questions or edit the request before splitting again.")
          )}
 
       answers ->
-        answered = text <> "\n\nRespostas:\n" <> answers
+        answered = text <> "\n\n" <> gettext("Answers:") <> "\n" <> answers
 
         socket
         |> assign(composer_text: answered, composer_answers: "", intake: nil)
@@ -3470,7 +3528,8 @@ defmodule AgentBoardWeb.BoardLive do
   defp start_single(socket, text, title, shown) do
     case single_requests(socket.assigns.repo, text, title) do
       [] ->
-        {:noreply, composer_error(socket, "A primeira linha vira o título; escreva algo.")}
+        {:noreply,
+         composer_error(socket, gettext("The first line becomes the title; write something."))}
 
       requests ->
         start_enqueue(socket, for_executor(requests, socket.assigns), shown)
@@ -3627,13 +3686,13 @@ defmodule AgentBoardWeb.BoardLive do
   defp start_split(socket, text) do
     cond do
       is_nil(socket.assigns.repo) ->
-        {:noreply, composer_error(socket, "Escolha um repositório antes de dividir.")}
+        {:noreply, composer_error(socket, gettext("Select a repository before splitting."))}
 
       socket.assigns.ai_status == :not_configured ->
         {:noreply,
          composer_error(
            socket,
-           "A IA não está configurada. Dividir fica indisponível; envie como pedido único."
+           gettext("AI is not configured. Splitting is unavailable; send as a single request.")
          )}
 
       true ->
@@ -3647,7 +3706,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp start_enqueue(socket, [], _shown),
-    do: {:noreply, composer_error(socket, "Escolha ao menos uma tarefa.")}
+    do: {:noreply, composer_error(socket, gettext("Choose at least one task."))}
 
   defp start_enqueue(socket, requests, shown) do
     repo = socket.assigns.repo
@@ -3660,7 +3719,7 @@ defmodule AgentBoardWeb.BoardLive do
         if socket.assigns.composer_split and length(requests) > 1 do
           Map.put(action, :objective, %{
             title: objective_title(socket.assigns.composer_text),
-            done_criterion: "Todas as tarefas mescladas."
+            done_criterion: gettext("All tasks merged.")
           })
         else
           action
@@ -3694,7 +3753,7 @@ defmodule AgentBoardWeb.BoardLive do
     |> String.trim()
     |> String.slice(0, 120)
     |> case do
-      "" -> "Objetivo do pedido"
+      "" -> gettext("Request objective")
       title -> title
     end
   end
@@ -3727,7 +3786,9 @@ defmodule AgentBoardWeb.BoardLive do
     socket
     |> assign(composer_job: nil)
     |> composer_error(
-      "Nada foi criado: o pedido mudou antes do envio. Confira a frase e envie de novo."
+      gettext(
+        "Nothing was created: the request changed before sending. Check the phrase and send again."
+      )
     )
   end
 
@@ -3771,10 +3832,14 @@ defmodule AgentBoardWeb.BoardLive do
   defp flash_receipt(socket, items, 0) do
     case items do
       [%{outcome: :created, task: %{number: number}}] when is_integer(number) ->
-        put_flash(socket, :info, "Pedido ##{number} na fila")
+        put_flash(socket, :info, gettext("Request #%{number} queued", number: number))
 
       [%{outcome: :existing, task: %{number: number}}] when is_integer(number) ->
-        put_flash(socket, :info, "Esse pedido já estava na fila: ##{number}")
+        put_flash(
+          socket,
+          :info,
+          gettext("This request was already queued: #%{number}", number: number)
+        )
 
       _ ->
         created = Enum.count(items, &(&1.outcome == :created))
@@ -3782,13 +3847,13 @@ defmodule AgentBoardWeb.BoardLive do
         put_flash(
           socket,
           :info,
-          "#{created} #{if created == 1, do: "tarefa", else: "tarefas"} na fila"
+          ngettext("%{count} task queued", "%{count} tasks queued", created)
         )
     end
   end
 
   defp flash_receipt(socket, items, failed) when failed == length(items),
-    do: put_flash(socket, :error, "Nada entrou na fila. Veja o recibo e tente de novo.")
+    do: put_flash(socket, :error, gettext("Nothing was queued. Check the receipt and try again."))
 
   defp flash_receipt(socket, items, failed) do
     done = length(items) - failed
@@ -3796,33 +3861,41 @@ defmodule AgentBoardWeb.BoardLive do
     put_flash(
       socket,
       :error,
-      "Criei #{done} de #{length(items)}. Veja o recibo e tente as restantes."
+      gettext("Created %{done} of %{total}. Check the receipt and retry the remaining tasks.",
+        done: done,
+        total: length(items)
+      )
     )
   end
 
-  defp job_name(:split), do: "A divisão"
-  defp job_name(:enqueue), do: "A criação das issues"
+  defp job_name(:split), do: gettext("The split")
+  defp job_name(:enqueue), do: gettext("Issue creation")
 
   defp split_failure(:malformed_output),
-    do: "A IA respondeu fora do formato esperado. Nada foi criado."
+    do: gettext("AI returned an unexpected format. Nothing was created.")
 
   defp split_failure(:not_configured),
-    do: "A IA não está configurada. Envie como pedido único."
+    do: gettext("AI is not configured. Send as a single request.")
 
-  defp split_failure(:auth_expired), do: "A chave da IA expirou ou foi recusada."
-  defp split_failure(:usage_limit), do: "A IA está sem cota agora."
-  defp split_failure(:budget_exhausted), do: "O orçamento de IA do board acabou."
-  defp split_failure(:no_provider), do: "Nenhum provedor de IA configurado."
+  defp split_failure(:auth_expired), do: gettext("The AI key expired or was rejected.")
+  defp split_failure(:usage_limit), do: gettext("AI is out of quota now.")
+  defp split_failure(:budget_exhausted), do: gettext("The board's AI budget is exhausted.")
+  defp split_failure(:no_provider), do: gettext("No AI provider configured.")
 
   defp split_failure(:audit_unavailable),
-    do: "A chamada não pôde ser registrada; nada foi criado."
+    do: gettext("The AI call could not be recorded; nothing was created.")
 
-  defp split_failure({:http, status}), do: "A IA respondeu HTTP #{status}."
+  defp split_failure({:http, status}), do: gettext("AI returned HTTP %{status}.", status: status)
 
   defp split_failure(%{__exception__: true} = exception),
-    do: "A IA não respondeu: " <> Exception.message(exception)
+    do: gettext("AI did not respond: ") <> Exception.message(exception)
 
-  defp split_failure(reason), do: "A IA não respondeu (#{inspect(reason)})."
+  defp split_failure(reason),
+    do: gettext("AI did not respond (%{reason}).", reason: inspect(reason))
+
+  defp refused_text,
+    do:
+      gettext("Nothing happened: the action changed after confirmation. Check and confirm again.")
 
   defp all_indices([]), do: MapSet.new()
   defp all_indices(tasks), do: MapSet.new(0..(length(tasks) - 1))

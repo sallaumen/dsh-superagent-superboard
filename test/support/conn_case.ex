@@ -33,6 +33,10 @@ defmodule AgentBoardWeb.ConnCase do
 
   setup tags do
     AgentBoard.DataCase.setup_sandbox(tags)
-    {:ok, conn: Phoenix.ConnTest.build_conn()}
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+    # Existing UI assertions describe the original Portuguese interface.
+    # Tests for the public default explicitly remove this browser preference.
+    {:ok,
+     conn: Phoenix.ConnTest.build_conn() |> Plug.Test.put_req_cookie("board_locale", "pt-BR")}
   end
 end

@@ -22,6 +22,9 @@ this board shows, asks, speaks, and dispatches.
   conversation creates, asks, and stops tasks with spoken confirmation.
 - **Exposes a JSON API** at `/api` — board, repositories, tasks, and voice;
   documented in [docs/api.md](docs/api.md).
+- **Offers an interface language choice** in Settings: English on the first
+  visit, with Brazilian Portuguese available by explicit choice. The choice is
+  stored in the browser and does not change the separate voice language.
 - **Counts the cost**: the board's AI calls, the spend of the three executors
   (DeepSeek, Claude Code, Codex — each in its own currency), voice (ElevenLabs),
   and the summary of the day.

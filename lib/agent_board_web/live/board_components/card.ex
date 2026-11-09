@@ -17,7 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.Card do
       <span class="item-number">{if @item.number, do: "##{@item.number}", else: "unknown"}</span>
       <div class="item-title">
         <a :if={@item.url} href={@item.url} target="_blank" rel="noopener noreferrer">{@item.title ||
-          "unknown"}<span class="sr-only"> (opens GitHub in a new tab)</span></a>
+          "unknown"}<span class="sr-only">{gettext("(opens GitHub in a new tab)")}</span></a>
         <span :if={is_nil(@item.url)}>{@item.title || "unknown"}</span>
       </div>
       <div :if={review_badge(@item) || checks_badge(@item)} class="item-signals">

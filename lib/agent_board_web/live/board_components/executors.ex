@@ -1,17 +1,13 @@
 defmodule AgentBoardWeb.BoardComponents.Executors do
   @moduledoc """
-  O painel "Executores": os últimos 7 ou 30 dias de Claude Code, Codex e
-  DeepSeek, cada um na sua moeda, lidos do livro de uso
-  (`AgentBoard.Usage.Report`).
-
-  Os tokens são medidos; o US$ é estimado e a cota do Codex é a leitura mais
-  recente. Um valor sem fonte é "desconhecido", nunca zero, e os executores
-  nunca são somados. O painel lê uma vez quando abre ou quando a janela
-  muda; um render não consulta o banco de novo.
+  Executor usage over seven or thirty days, read from the usage ledger.
+  Tokens are measured; USD is estimated; Codex quota uses its latest reading.
+  Unknown stays unknown, never zero, and executors are not summed. The panel
+  reads on open and when its window changes, not on every render.
   """
   use AgentBoardWeb, :html
 
-  alias AgentBoard.Time
+  alias AgentBoardWeb.Time
 
   @sources ["dsh", "claude_code", "codex"]
   @labels %{"dsh" => "DeepSeek", "claude_code" => "Claude Code", "codex" => "Codex"}
@@ -30,12 +26,12 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
     <section id="executors" class="ab-executors" aria-labelledby="executors-title">
       <header class="ab-executors__head">
         <div>
-          <p id="executors-title" class="ab-label">Últimos {@days} dias</p>
+          <p id="executors-title" class="ab-label">{gettext("Last %{count} days", count: @days)}</p>
           <p class="ab-meta">
-            Tokens medidos. Cada executor na sua moeda, nunca somados.
+            {gettext("Tokens measured. Each executor in its own currency, never summed.")}
           </p>
         </div>
-        <div class="ab-executors__range" role="group" aria-label="Janela do painel">
+        <div class="ab-executors__range" role="group" aria-label={gettext("Dashboard Window")}>
           <button
             :for={days <- [7, 30]}
             type="button"
@@ -47,7 +43,7 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
         </div>
       </header>
 
-      <div :if={is_nil(@report)} class="ab-sec__empty">Lendo o livro de uso…</div>
+      <div :if={is_nil(@report)} class="ab-sec__empty">{gettext("Reading the usage ledger…")}</div>
 
       <div :if={@report} class="ab-executors__cards">
         <article
@@ -65,25 +61,25 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
 
           <dl class="ab-exec-card__facts">
             <div>
-              <dt>Sessões</dt><dd>{executor.executions}</dd>
+              <dt>{gettext("Sessions")}</dt><dd>{executor.executions}</dd>
             </div>
             <div>
-              <dt>Tarefas</dt><dd>{executor.tasks_count}</dd>
+              <dt>{gettext("Tasks")}</dt><dd>{executor.tasks_count}</dd>
             </div>
             <div>
-              <dt>Requisições</dt><dd>{number(executor.requests)}</dd>
+              <dt>{gettext("Requests")}</dt><dd>{number(executor.requests)}</dd>
             </div>
             <div>
-              <dt>Entrada</dt><dd>{tokens(executor.input_tokens)}</dd>
+              <dt>{gettext("Input")}</dt><dd>{tokens(executor.input_tokens)}</dd>
             </div>
             <div>
-              <dt>Saída</dt><dd>{tokens(executor.output_tokens)}</dd>
+              <dt>{gettext("Output")}</dt><dd>{tokens(executor.output_tokens)}</dd>
             </div>
             <div>
-              <dt>Mescladas</dt><dd>{merged(executor.merged)}</dd>
+              <dt>{gettext("Merged tasks")}</dt><dd>{merged(executor.merged)}</dd>
             </div>
             <div>
-              <dt>Tempo até o merge</dt><dd>{hours(executor.merged.median_hours)}</dd>
+              <dt>{gettext("Time to merge")}</dt><dd>{hours(executor.merged.median_hours)}</dd>
             </div>
           </dl>
 
@@ -94,10 +90,10 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
             Fora do board: {names(executor.outside)}
           </p>
           <p :if={executor.unknown > 0} class="ab-meta">
-            Sem repositório: {executor.unknown}
+            {gettext("No repository: %{count}", count: executor.unknown)}
           </p>
           <p :if={executor.tasks != []} class="ab-meta">
-            Tarefas:
+            {gettext("Tasks:")}
             <button
               :for={task <- executor.tasks}
               type="button"
@@ -110,9 +106,9 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
       </div>
 
       <div :if={@report} class="ab-executors__days">
-        <h3 class="ab-label">Por dia</h3>
+        <h3 class="ab-label">{gettext("Per day")}</h3>
         <div :if={@days_data == []} class="ab-sec__empty">
-          Nenhuma linha no livro de uso nesta janela.
+          {gettext("No usage lines in this window's ledger.")}
         </div>
         <article :for={day <- @days_data} class="ab-exec-day">
           <header>
@@ -127,8 +123,9 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
           </dl>
         </article>
         <p class="ab-meta">
-          Dias UTC, como o livro. "—" é dia sem uso; "desconhecido" é fonte sem
-          leitura. A cota do Codex é a leitura mais recente, não um valor por dia.
+          {gettext(
+            "UTC days, as recorded in the usage ledger. \"—\" means no usage that day; \"unknown\" means the source could not be read. The Codex quota is the latest reading, not a daily value."
+          )}
         </p>
       </div>
     </section>
@@ -150,9 +147,9 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
 
   defp tag(%{source: source} = executor) do
     cond do
-      source == "codex" and executor.quota -> "medido"
-      source != "codex" and executor.cost -> "estimado"
-      true -> "desconhecido"
+      source == "codex" and executor.quota -> gettext("measured")
+      source != "codex" and executor.cost -> gettext("estimated")
+      true -> gettext("unknown")
     end
   end
 
@@ -162,32 +159,40 @@ defmodule AgentBoardWeb.BoardComponents.Executors do
 
   defp value(%{source: "codex"} = executor) do
     case executor.quota do
-      %{used_percent: percent} -> "#{percent(percent)}% da cota semanal"
-      nil -> "desconhecido"
+      %{used_percent: percent} ->
+        gettext("%{percent}% of weekly quota", percent: percent(percent))
+
+      nil ->
+        gettext("unknown")
     end
   end
 
-  defp value(%{cost: nil}), do: "desconhecido"
+  defp value(%{cost: nil}), do: gettext("unknown")
   defp value(%{cost: %{micros: micros, complete?: true, unknown: 0}}), do: "≈ #{money(micros)}"
   defp value(%{cost: %{micros: micros}}), do: "≥ #{money(micros)}"
 
   defp subtitle(%{source: "dsh"}),
-    do: "Estimado em US$ pela tabela do board; cache sem preço deixa um mínimo."
+    do:
+      gettext(
+        "Estimated in US$ using board prices; unpriced cache reads make this a lower bound."
+      )
 
   defp subtitle(%{source: "claude_code"}),
     do:
-      "Estimado a preço de lista da assinatura Max: referência, não fatura. A cota real é desconhecida."
+      gettext(
+        "Estimated at the Max subscription list price: reference only, not billed. Actual quota is unknown."
+      )
 
   defp subtitle(%{source: "codex"}),
-    do: "Medido na janela semanal do plano ChatGPT; não há valor em US$ para o Codex."
+    do: gettext("Measured within the weekly window of the ChatGPT plan; no USD value for Codex.")
 
   defp day_value(nil, _source), do: "—"
 
   defp day_value(row, source) do
     cost =
       cond do
-        source == "codex" -> "desconhecido"
-        is_nil(row.cost) -> "desconhecido"
+        source == "codex" -> gettext("unknown")
+        is_nil(row.cost) -> gettext("unknown")
         row.cost.complete? -> "≈ " <> money(row.cost.micros)
         true -> "≥ " <> money(row.cost.micros)
       end

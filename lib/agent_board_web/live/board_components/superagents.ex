@@ -39,63 +39,61 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
               @has_errors && "is-error",
               @ready_agents == length(@superagents) && "is-all-ready"
             ]}>
-              {@ready_agents}/{length(@superagents)} {if length(@superagents) == 1,
-                do: "ligado",
-                else: "ligados"}
+              {@ready_agents}/{length(@superagents)} {gettext("on")}
             </span>
-            <span title="Soma dos limites de agentes configurados em cada projeto">
-              {@total_agents} {if @total_agents == 1,
-                do: "agente configurado",
-                else: "agentes configurados"}
+            <span title={gettext("Sum of agent limits configured per project")}>
+              {ngettext("%{count} agent configured", "%{count} agents configured", @total_agents)}
             </span>
           </div>
           <p :if={@superagents != []} class="ab-meta">
-            Cada projeto tem seu próprio limite de agentes.
+            {gettext("Each project has its own agent limit.")}
           </p>
         </div>
         <a :if={@available_repos != []} href="#superagent-add" class="ab-btn ab-btn--primary">
-          <.ico name="plus" />Adicionar projeto
+          <.ico name="plus" />{gettext("Add project")}
         </a>
       </header>
 
       <p :if={@superagents == []} class="ab-empty ab-superagents__empty">
-        Nenhum superagente registrado. Adicione um repositório para começar.
+        {gettext("No superagents registered. Add a repository to get started.")}
       </p>
 
       <div :if={@superagents != []} class="ab-table-wrap ab-superagents__table-wrap">
         <table class="ab-superagent-table">
-          <caption class="ab-sr">Superagentes por projeto, estado, agentes e última leitura</caption>
+          <caption class="ab-sr">
+            {gettext("Superagents by project, status, agents, and last read")}
+          </caption>
           <thead>
             <tr>
-              <th scope="col">Projeto</th>
-              <th scope="col">Estado</th>
-              <th scope="col">Agentes</th>
-              <th scope="col">Profile · porta</th>
-              <th scope="col">Última leitura</th>
-              <th scope="col"><span class="ab-sr">Ações</span></th>
+              <th scope="col">{gettext("Project")}</th>
+              <th scope="col">{gettext("Status")}</th>
+              <th scope="col">{gettext("Agents")}</th>
+              <th scope="col">{gettext("Profile · port")}</th>
+              <th scope="col">{gettext("Last read")}</th>
+              <th scope="col"><span class="ab-sr">{gettext("Actions")}</span></th>
             </tr>
           </thead>
           <tbody>
             <tr :for={superagent <- @superagents} id={"superagent-#{superagent.id}"}>
-              <td class="ab-superagent-table__project" data-label="Projeto">
+              <td class="ab-superagent-table__project" data-label={gettext("Project")}>
                 <b>
                   {if superagent.repository,
                     do: "#{superagent.repository.owner}/#{superagent.repository.name}",
-                    else: "repositório removido"}
+                    else: gettext("repository removed")}
                 </b>
                 <details class="ab-superagent-table__details">
-                  <summary>Pasta de estado</summary>
+                  <summary>{gettext("State folder")}</summary>
                   <code class="ab-superagent-table__path">{superagent.state_dir}</code>
                 </details>
               </td>
-              <td class="ab-superagent-table__state" data-label="Estado">
+              <td class="ab-superagent-table__state" data-label={gettext("Status")}>
                 <span class={["ab-status", state_status(superagent.observed_state)]}>
                   <.glyph kind={state_glyph(superagent.observed_state)} />
                   {state_label(superagent.observed_state)}
                 </span>
                 <span class="ab-meta">{state_line(superagent)}</span>
               </td>
-              <td class="ab-superagent-table__agents" data-label="Agentes">
+              <td class="ab-superagent-table__agents" data-label={gettext("Agents")}>
                 <span class="ab-superagent__workers">
                   <button
                     type="button"
@@ -107,12 +105,12 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
                     disabled={superagent.max_workers <= 1}
                   >−</button>
                   <span title={"#{superagent.max_workers} agentes configurados neste projeto"}>
-                    {superagent.max_workers}<span class="ab-sr"> agentes</span>
+                    {superagent.max_workers}<span class="ab-sr">{gettext("agents")}</span>
                   </span>
                   <button
                     type="button"
                     class="ab-btn ab-btn--sm"
-                    aria-label={"Mais um agente em #{repo_name(superagent)}"}
+                    aria-label={gettext("One more agent in %{repo}", repo: repo_name(superagent))}
                     phx-click="superagent_scale"
                     phx-value-id={superagent.id}
                     phx-value-delta="1"
@@ -120,15 +118,15 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
                   >+</button>
                 </span>
               </td>
-              <td class="ab-superagent-table__profile" data-label="Profile · porta">
+              <td class="ab-superagent-table__profile" data-label={gettext("Profile · port")}>
                 <code>{superagent.profile}</code>
                 <span class="ab-data-sm ab-faint">{superagent.port}</span>
               </td>
-              <td class="ab-superagent-table__read" data-label="Última leitura">
+              <td class="ab-superagent-table__read" data-label={gettext("Last read")}>
                 <span class="ab-data-sm">{observed_at(superagent.observed_at, @tz_offset)}</span>
                 <span class="ab-meta">{observed_age(superagent.observed_at)}</span>
               </td>
-              <td class="ab-superagent-table__actions" data-label="Ações">
+              <td class="ab-superagent-table__actions" data-label={gettext("Actions")}>
                 <button
                   :if={superagent.observed_state == "ready"}
                   type="button"
@@ -137,7 +135,7 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
                   phx-value-id={superagent.id}
                   phx-value-action="pause"
                 >
-                  Pausar
+                  {gettext("Pause")}
                 </button>
                 <button
                   :if={superagent.observed_state == "paused"}
@@ -147,7 +145,7 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
                   phx-value-id={superagent.id}
                   phx-value-action="resume"
                 >
-                  Retomar
+                  {gettext("Resume")}
                 </button>
 
                 <.live_component
@@ -163,12 +161,14 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
                 />
 
                 <details class="ab-superagent-menu">
-                  <summary class="ab-btn ab-btn--icon ab-btn--sm" aria-label="Mais ações">
+                  <summary class="ab-btn ab-btn--icon ab-btn--sm" aria-label={gettext("More Actions")}>
                     <.ico name="grip" />
                   </summary>
                   <div class="ab-superagent-menu__body">
                     <p class="ab-superagent-menu__hint">
-                      Para o processo e arquiva profile e state em <code>~/.agent_board/archived-superagents</code>. Nada é apagado.
+                      {gettext("Stops the process and archives the profile and state in")} <code>{gettext("~/.agent_board/archived-superagents")}</code>{gettext(
+                        ". Nothing is deleted."
+                      )}
                     </p>
                     <.live_component
                       module={AgentAction}
@@ -199,16 +199,16 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
           <b>{superagent.repository && superagent.repository.name}:</b>
           {error_summary(superagent.last_error)}
           <details :if={error_details?(superagent.last_error)}>
-            <summary>Detalhes técnicos</summary>
+            <summary>{gettext("Technical details")}</summary>
             <code>{superagent.last_error}</code>
           </details>
         </span>
       </div>
 
       <div :if={@superagents != [] and @available_repos == []} class="ab-superagents__complete">
-        <span>Todos os repositórios acompanhados já têm um superagente.</span>
+        <span>{gettext("All monitored repositories already have a superagent.")}</span>
         <button type="button" class="ab-btn" phx-click="show_panel" phx-value-panel="settings">
-          Adicionar repositório nas Configurações
+          {gettext("Add repository in Settings")}
         </button>
       </div>
 
@@ -218,28 +218,29 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
         class="ab-superagent-add"
         aria-labelledby="superagent-add-title"
       >
-        <h3 id="superagent-add-title">Adicionar projeto</h3>
+        <h3 id="superagent-add-title">{gettext("Add project")}</h3>
         <p class="ab-meta">
-          Escolha um repositório acompanhado, um profile de origem e o checkout local.
-          Você revisará os dados antes de iniciar o agente.
+          {gettext(
+            "Select a repository, source profile, and local checkout. You will review the data before starting the agent."
+          )}
         </p>
         <form
           phx-submit="provision_review"
           class="ab-superagent-add__form"
         >
           <label>
-            <span>Repositório</span>
+            <span>{gettext("Repository")}</span>
             <select name="repository_id" required>
-              <option value="">Escolha o repositório</option>
+              <option value="">{gettext("Choose repository")}</option>
               <option :for={repo <- @available_repos} value={repo.id}>
                 {repo.owner}/{repo.name}
               </option>
             </select>
           </label>
           <label>
-            <span>Origem (profile que já funciona)</span>
+            <span>{gettext("Source (working profile)")}</span>
             <select name="source_id" required>
-              <option value="">Escolha o profile de origem</option>
+              <option value="">{gettext("Choose source profile")}</option>
               <option :for={source <- @superagents} value={source.id}>
                 {source.profile} · {source.repository &&
                   "#{source.repository.owner}/#{source.repository.name}"}
@@ -247,21 +248,22 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
             </select>
           </label>
           <label>
-            <span>Checkout local</span>
-            <input name="path" required placeholder="~/projects/nome-do-projeto" />
+            <span>{gettext("Local checkout")}</span>
+            <input name="path" required placeholder={gettext("~/projects/project-name")} />
           </label>
           <label>
-            <span>Agentes iniciais</span>
+            <span>{gettext("Initial Agents")}</span>
             <input name="workers" type="number" min="1" max="32" step="1" value="3" required />
           </label>
-          <button type="submit" class="ab-btn ab-btn--sm ab-btn--primary">Revisar</button>
+          <button type="submit" class="ab-btn ab-btn--sm ab-btn--primary">{gettext("Review")}</button>
         </form>
 
         <div :if={@provision_preview} class="ab-superagent-add__preview">
           <p>{@provision_preview.phrase}</p>
           <p class="ab-meta">
-            Agentes iniciais: <b>{@provision_preview.params.workers}</b>.
-            Você poderá mudar o limite depois, projeto a projeto.
+            {gettext("Initial Agents:")} <b>{@provision_preview.params.workers}</b>{gettext(
+              ". You can change the limit later, project by project."
+            )}
           </p>
           <div class="ab-act__buttons">
             <button
@@ -277,7 +279,7 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
               class="ab-btn ab-btn--sm ab-btn--quiet"
               phx-click="provision_cancel"
             >
-              Cancelar
+              {gettext("Cancel")}
             </button>
           </div>
         </div>
@@ -295,7 +297,7 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
         "O GitHub atingiu o limite de consultas. Aguarde a cota renovar e confira novamente."
 
       String.length(error) > 160 ->
-        "O agente relatou uma falha. Abra os detalhes técnicos para ver a causa."
+        gettext("The agent reported an error. Open technical details to see the cause.")
 
       true ->
         error
@@ -340,29 +342,29 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
   defp state_glyph("error"), do: :blocked
   defp state_glyph(_state), do: :queue
 
-  defp state_label("ready"), do: "ligado"
-  defp state_label("starting"), do: "iniciando"
-  defp state_label("paused"), do: "pausado"
-  defp state_label("stopped"), do: "parado"
-  defp state_label("error"), do: "erro"
-  defp state_label(_), do: "sem leitura"
+  defp state_label("ready"), do: gettext("on")
+  defp state_label("starting"), do: gettext("starting")
+  defp state_label("paused"), do: gettext("paused")
+  defp state_label("stopped"), do: gettext("stopped")
+  defp state_label("error"), do: gettext("error")
+  defp state_label(_), do: gettext("no reading")
 
   defp state_status("ready"), do: "ab-status--run"
   defp state_status("paused"), do: "ab-status--stale"
   defp state_status("error"), do: "ab-status--halt"
   defp state_status(_), do: "ab-status--queue"
 
-  defp desired_label("running"), do: "ligado"
-  defp desired_label("paused"), do: "pausado"
-  defp desired_label("stopped"), do: "parado"
+  defp desired_label("running"), do: gettext("on")
+  defp desired_label("paused"), do: gettext("paused")
+  defp desired_label("stopped"), do: gettext("stopped")
   defp desired_label(value), do: value
 
-  defp observed_at(nil, _offset), do: "nunca"
-  defp observed_at(%DateTime{} = at, offset), do: AgentBoard.Time.local_time(at, offset)
+  defp observed_at(nil, _offset), do: gettext("never")
+  defp observed_at(%DateTime{} = at, offset), do: AgentBoardWeb.Time.local_time(at, offset)
 
-  defp observed_age(nil), do: "sem leitura"
+  defp observed_age(nil), do: gettext("no reading")
 
   defp observed_age(%DateTime{} = at) do
-    AgentBoard.Time.ago(AgentBoard.Time.age_seconds(at, DateTime.utc_now()))
+    AgentBoardWeb.Time.ago(AgentBoardWeb.Time.age_seconds(at, DateTime.utc_now()))
   end
 end

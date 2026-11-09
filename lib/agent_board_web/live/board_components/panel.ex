@@ -15,12 +15,19 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
     <dialog id={"panel-#{@name}"} aria-labelledby={"panel-title-#{@name}"} class="board-dialog">
       <header class="panel-heading">
         <h2 id={"panel-title-#{@name}"} tabindex="-1">{@title}</h2>
-        <button type="button" phx-click="close" aria-label={"Fechar #{@title}"} class="panel-close"><.icon
+        <button
+          type="button"
+          phx-click="close"
+          aria-label={gettext("Close %{title}", title: @title)}
+          class="panel-close"
+        ><.icon
           name="hero-x-mark"
           class="size-4 shrink-0"
-        />Fechar</button>
+        />{gettext("Close")}</button>
       </header>
-      <p class="panel-reconnect text-warning" role="status">Reconnecting · showing saved data</p>
+      <p class="panel-reconnect text-warning" role="status">
+        {gettext("Reconnecting · showing saved data")}
+      </p>
       <div :if={@active} class="panel-flashes">
         <.flash
           :for={kind <- [:info, :error]}

@@ -9,25 +9,27 @@ defmodule AgentBoardWeb.BoardComponents.Shortcuts do
     <div class="panel-shortcuts">
       <dl class="ab-keys">
         <dt><.kbd key="J" /><.kbd key="K" /></dt>
-        <dd>Próxima / anterior</dd>
+        <dd>{gettext("Next / Previous")}</dd>
         <dt><.kbd key="↵" /></dt>
-        <dd>Abrir no painel</dd>
+        <dd>{gettext("Open in dashboard")}</dd>
         <dt><.kbd key="Esc" /></dt>
-        <dd>Fechar painel ou camada</dd>
+        <dd>{gettext("Close panel or layer")}</dd>
         <dt><.kbd key="N" /></dt>
-        <dd>Novo pedido</dd>
-        <dt><.kbd key="Espaço" /><.kbd key="Espaço" /></dt>
+        <dd>{gettext("New request")}</dd>
+        <dt><.kbd key={gettext("Space")} /><.kbd key={gettext("Space")} /></dt>
         <dd>
-          Conversar com o agente: fale e pare, ele envia sozinho. Diga "ajuda" para a lista do que pedir
+          {gettext(
+            "Chat with the agent: speak and pause; it sends automatically. Say \"help\" for the request list."
+          )}
         </dd>
         <dt><.kbd key="Esc" /></dt>
-        <dd>Cancelar a fala ou a resposta em andamento</dd>
+        <dd>{gettext("Cancel ongoing speech or response")}</dd>
         <dt><.kbd key="V" /></dt>
-        <dd>Ditar um pedido no composer</dd>
+        <dd>{gettext("Dictate a request in the composer")}</dd>
         <dt><.kbd key="1" />–<.kbd key="5" /></dt>
-        <dd>Trocar aba do painel</dd>
+        <dd>{gettext("Switch panel tab")}</dd>
         <dt><.kbd key="?" /></dt>
-        <dd>Esta lista</dd>
+        <dd>{gettext("This list")}</dd>
       </dl>
     </div>
     """

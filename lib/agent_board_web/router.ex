@@ -4,6 +4,7 @@ defmodule AgentBoardWeb.Router do
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
+    plug AgentBoardWeb.Locale
     plug :fetch_live_flash
     plug :put_root_layout, html: {AgentBoardWeb.Layouts, :root}
     plug :protect_from_forgery
@@ -29,7 +30,11 @@ defmodule AgentBoardWeb.Router do
   scope "/", AgentBoardWeb do
     pipe_through :browser
 
-    live "/", BoardLive
+    post "/language", LocaleController, :update
+
+    live_session :board, on_mount: {AgentBoardWeb.Locale, :default} do
+      live "/", BoardLive
+    end
   end
 
   scope "/api", AgentBoardWeb do
