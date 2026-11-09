@@ -456,7 +456,7 @@ defmodule AgentBoard.Lanes do
 
         %{
           date: date,
-          label: Time.short_day_label(date, today),
+          label: Time.day_label(date, today),
           n: length(day_pulls),
           fail: Enum.count(day_pulls, &(local_state(&1, local_ci) == :fail)),
           ok: Enum.count(day_pulls, &(local_state(&1, local_ci) == :pass)),
@@ -477,6 +477,7 @@ defmodule AgentBoard.Lanes do
         shown = Enum.take(day_pulls, @day_limit)
 
         %{
+          date: day.date,
           label: Time.day_label(day.date, today),
           n: length(day_pulls),
           more: max(length(day_pulls) - @day_limit, 0),
