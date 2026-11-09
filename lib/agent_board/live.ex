@@ -7,10 +7,8 @@ defmodule AgentBoard.Live do
   """
   use GenServer
 
-  import Ecto.Query, warn: false
-
-  alias AgentBoard.{AgentState, Board, Sync}
-  alias AgentBoard.Board.{Repository, Task}
+  alias AgentBoard.{AgentState, Board, Sync, TicketOverlay}
+  alias AgentBoard.Board.Repository
   alias AgentBoard.Repo
 
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -83,25 +81,6 @@ defmodule AgentBoard.Live do
     end
   end
 
-  defp overlay_number(repo, number, overlay, started_at) do
-    base =
-      from(t in Task,
-        where:
-          t.repository_id == ^repo.id and t.number == ^number and
-            not t.stopped and not t.archived and t.state not in ["done", "closed"]
-      )
-
-    now = DateTime.utc_now()
-
-    Repo.update_all(from(t in base, where: t.state != ^overlay),
-      set: [state: overlay, state_changed_at: now, updated_at: now]
-    )
-
-    if started_at do
-      Repo.update_all(
-        from(t in base, where: is_nil(t.started_at) or t.started_at < ^started_at),
-        set: [started_at: started_at]
-      )
-    end
-  end
+  defp overlay_number(repo, number, overlay, started_at),
+    do: TicketOverlay.apply(repo, number, overlay, started_at)
 end
