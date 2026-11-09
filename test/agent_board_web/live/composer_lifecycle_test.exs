@@ -444,6 +444,42 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "#composer-form button.ab-btn--primary[disabled]")
   end
 
+  test "two tasks with the same title open two issues and keep their links", %{conn: conn} do
+    github()
+
+    task = fn title, body, depends_on ->
+      %{
+        "title" => title,
+        "body" => body,
+        "kind" => "bug",
+        "acceptance" => ["ok"],
+        "depends_on" => depends_on,
+        "size" => "S"
+      }
+    end
+
+    tasks = [
+      task.("Adicionar testes", "Testes do menu.", []),
+      task.("Adicionar testes", "Testes da loja.", []),
+      task.("Validar", "Conferir.", [1])
+    ]
+
+    script(fn
+      %{name: :refine_request} -> Scripted.answer(@refined)
+      %{name: :propose_tasks} -> Scripted.answer(%{"tasks" => tasks})
+    end)
+
+    view = open_composer(conn, true)
+    type(view, "O board está lento")
+    submit(view, %{"text" => "O board está lento"})
+    submit(view, %{"text" => "O board está lento", "tasks" => ["0", "1", "2"]})
+
+    assert Repo.aggregate(Task, :count) == 3
+    assert %Task{number: 102, body: loja} = Repo.get_by!(Task, number: 102)
+    assert loja =~ "Testes da loja."
+    assert String.starts_with?(Repo.get_by!(Task, title: "Validar").body, "**Depende de:** #102")
+  end
+
   test "the review shows what each task says and what the AI left open", %{conn: conn} do
     github()
 

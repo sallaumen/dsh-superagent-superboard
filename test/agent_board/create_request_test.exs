@@ -227,6 +227,42 @@ defmodule AgentBoard.CreateRequestTest do
              Board.Requests.create_requests(repo, requests, client())
   end
 
+  test "a claim left by a process that died does not hold the request forever", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+    record_issues(counter)
+    long_ago = DateTime.utc_now() |> DateTime.add(-600, :second) |> DateTime.truncate(:second)
+
+    Repo.insert!(%Task{
+      repository_id: repo.id,
+      kind: "issue",
+      title: "Dados",
+      body: "Corpo de Dados",
+      state: "draft",
+      request_key: key(repo, "Dados"),
+      inserted_at: long_ago,
+      updated_at: long_ago
+    })
+
+    requests = [linked(repo, "Dados"), linked(repo, "Tela", ["Dados"])]
+
+    assert [{_, {:ok, %Task{number: 1}, :created}}, {_, {:ok, %Task{number: 2}, :created}}] =
+             Board.Requests.create_requests(repo, requests, client())
+  end
+
+  test "a task outside a cycle still names the task of the cycle it waits for", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+    record_issues(counter)
+
+    requests = [linked(repo, "C", ["A"]), linked(repo, "A", ["B"]), linked(repo, "B", ["A"])]
+
+    assert [{_, {:ok, %Task{}, :created}} | _] =
+             Board.Requests.create_requests(repo, requests, client())
+
+    assert_received {:issue, 1, "A", _first}
+    assert_received {:issue, _number, "C", waiting}
+    assert waiting =~ "**Depende de:** #1"
+  end
+
   test "a claim already in progress is not a second issue", %{repo: repo} do
     Req.Test.stub(@stub, fn _conn -> flunk("GitHub must not be called") end)
 
