@@ -81,6 +81,16 @@ defmodule AgentBoard.Sync do
   defp error_payload(exception), do: %{"reason" => Exception.message(exception)}
 
   defp do_sync(client, repository) do
+    # Errors from earlier runs are history, not this run's outcome. Take the
+    # last event id before the first read; the summary counts only rows above
+    # it, so a transient failure is not repeated on every later sync.
+    run_start_id =
+      Repo.one(
+        from e in AgentBoard.Board.Event,
+          where: e.repository_id == ^repository.id,
+          select: max(e.id)
+      ) || 0
+
     # A repository can have Issues disabled (404). That is not a sync failure:
     # the pulls still matter.
     issues =
@@ -135,7 +145,7 @@ defmodule AgentBoard.Sync do
     summary = %{
       "issues" => length(issues),
       "pulls" => length(pulls),
-      "errors" => error_count(repository)
+      "errors" => error_count(repository, run_start_id)
     }
 
     summary =
@@ -149,13 +159,13 @@ defmodule AgentBoard.Sync do
     Board.broadcast(repository.id)
   end
 
-  # The events written by one sync run. A single query keeps the summary
+  # The errors written by this sync run. A single query keeps the summary
   # honest without threading counters through every branch.
-  defp error_count(repository) do
+  defp error_count(repository, after_id) do
     Repo.aggregate(
       from(e in AgentBoard.Board.Event,
         where:
-          e.repository_id == ^repository.id and
+          e.repository_id == ^repository.id and e.id > ^after_id and
             e.kind in ["issue_error", "pull_error", "comment_error", "commit_error"]
       ),
       :count
