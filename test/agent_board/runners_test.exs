@@ -299,7 +299,13 @@ defmodule AgentBoard.RunnersTest do
   end
 
   test "a tick from a new boot observes an execution it did not start", %{task: task} do
-    run_dir = Path.join(System.tmp_dir!(), "runner-restart-#{System.unique_integer([:positive])}")
+    run_dir =
+      Path.join(
+        System.tmp_dir!(),
+        "runner-restart-#{System.pid()}-#{System.unique_integer([:positive])}"
+      )
+
+    on_exit(fn -> File.rm_rf(run_dir) end)
     File.mkdir_p!(run_dir)
     File.write!(Path.join(run_dir, "status"), "done")
     File.write!(Path.join(run_dir, "session_id"), "old-session")
