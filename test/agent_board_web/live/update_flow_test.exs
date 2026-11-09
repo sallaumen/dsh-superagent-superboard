@@ -5,12 +5,28 @@ defmodule AgentBoardWeb.UpdateFlowTest do
   import Phoenix.LiveViewTest
 
   alias AgentBoard.Board
+  alias AgentBoard.System.UpdateRun
 
   defmodule UpdaterStub do
     def pull, do: result(:updater_result)
 
     def prepare do
       notify(:prepare_called)
+
+      case Application.get_env(:agent_board, :updater_prepare_wait) do
+        nil ->
+          :ok
+
+        pid ->
+          send(pid, {:prepare_waiting, self()})
+
+          receive do
+            :continue -> :ok
+          after
+            5_000 -> :ok
+          end
+      end
+
       result(:updater_prepare_result)
     end
 
@@ -58,12 +74,17 @@ defmodule AgentBoardWeb.UpdateFlowTest do
             :updater_assets_result,
             :updater_migrate_result,
             :updater_mark_result,
+            :updater_prepare_wait,
             :board_stopper
           ],
           into: %{},
           do: {key, Application.get_env(:agent_board, key)}
 
     test_pid = self()
+
+    UpdateRun.subscribe()
+    UpdateRun.release_reload()
+    on_exit(&UpdateRun.release_reload/0)
 
     Application.put_env(:agent_board, :updater, UpdaterStub)
     Application.put_env(:agent_board, :update_restart_delay_ms, 60_000)
@@ -88,8 +109,7 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     {:ok, _} = Board.add_repository("fixture", "update")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update")
 
-    html = render_hook(view, "update", %{})
-    html = render_async(view) || html
+    html = run_update(view)
 
     assert html =~ "Atualizado para abc123"
     assert html =~ "reiniciando o servidor"
@@ -112,8 +132,10 @@ defmodule AgentBoardWeb.UpdateFlowTest do
           :restart_called,
           :stopped
         ] do
-      assert_received ^message
+      assert_receive ^message
     end
+
+    finished()
   end
 
   test "a dependency failure keeps the old board up", %{conn: conn} do
@@ -122,8 +144,7 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     {:ok, _} = Board.add_repository("fixture", "update-prepare-failed")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-prepare-failed")
 
-    html = render_hook(view, "update", %{})
-    html = render_async(view) || html
+    html = run_update(view)
 
     assert html =~ "A atualização parou no meio"
     assert html =~ "o board continua no código antigo"
@@ -138,8 +159,7 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     {:ok, _} = Board.add_repository("fixture", "update-compile-failed")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-compile-failed")
 
-    html = render_hook(view, "update", %{})
-    html = render_async(view) || html
+    html = run_update(view)
 
     assert html =~ "A atualização parou no meio"
     refute_received :restart_called
@@ -151,12 +171,75 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     {:ok, _} = Board.add_repository("fixture", "update-failed")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-failed")
 
-    html = render_hook(view, "update", %{})
-    html = render_async(view) || html
+    html = run_update(view)
 
     assert html =~ "A atualização parou no meio"
     refute html =~ "reiniciando o servidor"
     refute_received :restart_called
+  end
+
+  test "the update finishes after the page that asked for it is gone", %{conn: conn} do
+    Application.put_env(:agent_board, :updater_result, {:ok, "abc123"})
+    Application.put_env(:agent_board, :updater_prepare_wait, self())
+    {:ok, _} = Board.add_repository("fixture", "update-page-gone")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-page-gone")
+
+    render_hook(view, "update", %{})
+    assert_receive {:prepare_waiting, flow}
+
+    # The fast-forward's live reload does this to the page.
+    Process.flag(:trap_exit, true)
+    ref = Process.monitor(view.pid)
+    Process.exit(view.pid, :kill)
+    assert_receive {:DOWN, ^ref, :process, _pid, _reason}
+
+    send(flow, :continue)
+
+    for message <- [:build_called, :mark_called, :restart_called, :stopped] do
+      assert_receive ^message
+    end
+
+    finished()
+  end
+
+  test "a page opened during the update joins it", %{conn: conn} do
+    Application.put_env(:agent_board, :updater_result, {:ok, "abc123"})
+    Application.put_env(:agent_board, :updater_prepare_wait, self())
+    {:ok, _} = Board.add_repository("fixture", "update-join")
+    {:ok, first, _html} = live(conn, ~p"/?repo=fixture/update-join")
+
+    render_hook(first, "update", %{})
+    assert_receive {:prepare_waiting, flow}
+
+    {:ok, second, _html} = live(conn, ~p"/?repo=fixture/update-join")
+    assert render(second) =~ "Buscando a main"
+    assert UpdateRun.reload_held?()
+
+    send(flow, :continue)
+    assert_receive :stopped
+    assert eventually(second, "Atualizado para abc123")
+    finished()
+  end
+
+  test "a failure after the pull keeps the reload held; a failed pull does not", %{conn: conn} do
+    {:ok, _} = Board.add_repository("fixture", "update-held")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-held")
+
+    Application.put_env(:agent_board, :updater_result, {:error, :no_network})
+    run_update(view)
+    refute UpdateRun.reload_held?()
+
+    Application.put_env(:agent_board, :updater_result, {:ok, "abc123"})
+    Application.put_env(:agent_board, :updater_build_result, {:error, {:mix, 1, "boom"}})
+    run_update(view)
+    assert UpdateRun.reload_held?()
+  end
+
+  test "while the reload is held the dev checks leave the request alone" do
+    conn = Phoenix.ConnTest.build_conn()
+
+    :persistent_term.put({UpdateRun, :reload_held}, true)
+    assert AgentBoardWeb.DevReload.call(conn, AgentBoardWeb.DevReload.init([])) == conn
   end
 
   test "the explicit restart button schedules the same path", %{conn: conn} do
@@ -167,5 +250,38 @@ defmodule AgentBoardWeb.UpdateFlowTest do
 
     assert html =~ "Reiniciando o servidor"
     assert html =~ "Reiniciando o board"
+  end
+
+  defp run_update(view) do
+    render_hook(view, "update", %{})
+    assert_receive {:update_finished, result}
+    finished()
+
+    case result do
+      {:ok, sha} -> eventually(view, "Atualizado para #{sha}")
+      {:error, _reason} -> eventually(view, "A atualização parou no meio")
+    end
+
+    render(view)
+  end
+
+  defp finished do
+    if UpdateRun.running?() do
+      Process.sleep(10)
+      finished()
+    end
+  end
+
+  # The test and the page get the same broadcast; the page may be a step behind.
+  defp eventually(view, text, tries \\ 40)
+  defp eventually(view, text, 0), do: flunk("never rendered #{text}: #{render(view)}")
+
+  defp eventually(view, text, tries) do
+    if render(view) =~ text do
+      true
+    else
+      Process.sleep(25)
+      eventually(view, text, tries - 1)
+    end
   end
 end

@@ -18,6 +18,7 @@ defmodule AgentBoard.Application do
       AgentBoard.DailySummary,
       AgentBoard.Runners.Ticker,
       {Task.Supervisor, name: AgentBoard.Superagents.TaskSupervisor},
+      {Task.Supervisor, name: AgentBoard.System.TaskSupervisor},
       AgentBoard.Superagents.Ticker,
       AgentBoard.ElevenLabs.SpeechCache,
       {DNSCluster, query: Application.get_env(:agent_board, :dns_cluster_query) || :ignore},
