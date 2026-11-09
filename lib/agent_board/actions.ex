@@ -772,7 +772,7 @@ defmodule AgentBoard.Actions do
       evidence: what[:evidence],
       phrase: what[:phrase],
       words: words && String.slice(words, 0, 500),
-      subject: subject(name, params),
+      subject: name |> subject(params) |> clip_subject(),
       repository_id: repository_id(params),
       detail: what[:detail]
     })
@@ -853,6 +853,10 @@ defmodule AgentBoard.Actions do
   defp describe(text) when is_binary(text), do: text
   defp describe(%Ecto.Changeset{errors: errors}), do: inspect(errors)
   defp describe(other), do: inspect(other)
+
+  # The record of a refusal has to fit whatever was refused.
+  defp clip_subject(nil), do: nil
+  defp clip_subject(subject), do: String.slice(subject, 0, 255)
 
   defp subject(_name, %{superagent: %AgentBoard.Superagents.Superagent{profile: profile}}),
     do: profile

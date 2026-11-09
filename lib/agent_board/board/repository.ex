@@ -21,6 +21,8 @@ defmodule AgentBoard.Board.Repository do
     repository
     |> cast(attrs, [:owner, :name, :active])
     |> validate_required([:owner, :name])
+    |> validate_length(:owner, max: 255)
+    |> validate_length(:name, max: 255)
     |> validate_format(:owner, ~r/^[^\/\s]+$/, message: "must not contain a slash")
     |> validate_format(:name, ~r/^[^\/\s]+$/, message: "must not contain a slash")
     |> unique_constraint([:owner, :name])

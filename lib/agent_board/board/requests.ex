@@ -18,6 +18,12 @@ defmodule AgentBoard.Board.Requests do
   alias AgentBoard.{Board, Executors, Repo, Routing}
   alias AgentBoard.Board.{Repository, Task}
 
+  # The column holds 255; past that Postgres raises instead of refusing, and
+  # GitHub stops at 256. A title comes from a person or a model.
+  @title_limit 255
+  defp clip_title(title) when is_binary(title), do: String.slice(title, 0, @title_limit)
+  defp clip_title(title), do: title
+
   @doc """
   Create a task by opening its issue.
 
@@ -28,6 +34,7 @@ defmodule AgentBoard.Board.Requests do
   given and no executor is recorded.
   """
   def create_task(repository, title, body, client, opts \\ []) do
+    title = clip_title(title)
     executor = Keyword.get(opts, :executor)
     claim = Keyword.get(opts, :claim)
     body = if executor, do: Executors.issue_body(body, executor), else: body
@@ -133,6 +140,7 @@ defmodule AgentBoard.Board.Requests do
     do: do_create_request(repository, request, client)
 
   defp do_create_request(repository, %{title: title, body: body, key: key} = request, client) do
+    title = clip_title(title)
     # The body the issue will carry, so a repeat matches the stored task.
     body =
       case Map.get(request, :executor) do
@@ -140,7 +148,7 @@ defmodule AgentBoard.Board.Requests do
         executor -> Executors.issue_body(body, executor)
       end
 
-    request = %{request | body: body}
+    request = %{request | title: title, body: body}
 
     case existing_request(repository, key, title, body) do
       %Task{number: nil} -> {:error, :in_progress}

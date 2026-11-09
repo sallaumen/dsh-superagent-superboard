@@ -382,4 +382,35 @@ defmodule AgentBoard.CreateRequestTest do
 
     assert Repo.get(Task, task.id).origin_task_id == origin.id
   end
+
+  test "a title past what the column holds opens the issue with it clipped", %{repo: repo} do
+    title = String.duplicate("t", 300)
+    test_pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, raw, conn} = Plug.Conn.read_body(conn)
+      send(test_pid, {:issue_title, Jason.decode!(raw)["title"]})
+
+      Req.Test.json(conn, %{"number" => 77, "html_url" => "https://github.com/x/y/issues/77"})
+    end)
+
+    request = %{title: title, body: "corpo", key: "long-title"}
+
+    assert {:ok, %Task{} = task, :created} =
+             Board.Requests.create_request(repo, request, client())
+
+    assert String.length(task.title) == 255
+    assert_receive {:issue_title, sent}
+    assert String.length(sent) == 255
+
+    assert {:ok, %Task{id: same}, _repeat} =
+             Board.Requests.create_request(repo, request, client())
+
+    assert same == task.id
+  end
+
+  test "an event subject past the column is clipped, not an error", %{repo: repo} do
+    assert {:ok, event} = Board.log_event(repo.id, "create_error", String.duplicate("s", 300))
+    assert String.length(event.subject) == 255
+  end
 end

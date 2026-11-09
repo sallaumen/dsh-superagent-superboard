@@ -1142,6 +1142,13 @@ defmodule AgentBoardWeb.BoardLive do
     |> put_flash(:error, gettext("That superagent is no longer on the board."))
   end
 
+  # Dictation continues the draft: it arrives whole and has no undo.
+  defp with_dictated(draft, dictated) do
+    if String.trim(draft || "") == "",
+      do: dictated,
+      else: String.trim_trailing(draft) <> "\n" <> dictated
+  end
+
   # A draft belongs to the task it was typed on; closing and reopening that
   # task keeps it.
   defp forget_ask_draft_of_another_task(%{assigns: %{conversation: %Task{id: id}}} = socket) do
@@ -2102,6 +2109,8 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, socket}
 
       socket.assigns.panel == "composer" ->
+        text = with_dictated(socket.assigns.composer_text, text)
+
         {:noreply,
          assign(socket, composer_text: text, composer_error: nil)
          |> invalidate_intake_if_changed(text)}

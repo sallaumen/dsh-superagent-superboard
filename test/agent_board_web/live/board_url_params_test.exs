@@ -69,6 +69,19 @@ defmodule AgentBoardWeb.BoardUrlParamsTest do
       :ok
     end
 
+    for panel <- ["shortcuts", "superagents"] do
+      test "#{panel} opens, because its button is on the empty board", %{conn: conn} do
+        {:ok, view, _html} = live(conn, "/")
+
+        view
+        |> element(~s(.ab-rail [phx-click=show_panel][phx-value-panel=#{unquote(panel)}]))
+        |> render_click()
+
+        assert_patch(view, "/?panel=#{unquote(panel)}")
+        assert has_element?(view, "#board-page[data-panel=#{unquote(panel)}]")
+      end
+    end
+
     test "Settings opens, because that is where the first repository is added", %{conn: conn} do
       {:ok, view, html} = live(conn, "/")
       assert html =~ "Nenhum repositório acompanhado"

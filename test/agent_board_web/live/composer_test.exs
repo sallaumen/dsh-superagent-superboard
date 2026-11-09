@@ -84,6 +84,17 @@ defmodule AgentBoardWeb.ComposerTest do
     assert render(view) =~ "deixe a fila menor"
   end
 
+  test "dictating adds to what was already written", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/composer")
+    view |> element("#open-create") |> render_click()
+    view |> element("#composer-form") |> render_change(%{"text" => "Primeira parte"})
+
+    render_hook(view, "voice_transcript", %{"text" => "segunda parte"})
+
+    assert view |> element("#composer-form textarea[name=text]") |> render() =~
+             "Primeira parte\nsegunda parte"
+  end
+
   test "unchecking every proposed task leaves nothing to enqueue", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/composer")
     view |> element("#open-create") |> render_click()
