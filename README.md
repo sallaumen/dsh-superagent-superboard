@@ -1,219 +1,111 @@
-# dsh-supergent-superboard
+# DSH Super Agent Board
 
-The board for the agent's work, in Elixir: **Ecto** for the data, **Oban** for
-durable sync, **LiveView** for the real-time UI, and **Req** for GitHub. It is
-the data source and the operations desk of the
-[DeepSeek Super Agent](docs/agent/how-it-works.md): the agent does the work;
-this board shows, asks, speaks, and dispatches.
+A live operations desk for work that starts on GitHub. The external **DeepSeek
+Super Agent** executes tickets; this Elixir board makes the work visible, keeps
+the human in control of consequential actions, and connects GitHub, local
+executors, voice, and usage in one place.
 
-## What it does
+![System illustration: GitHub work flows through a separate agent and into the board, with a confirmation gate for local actions](docs/assets/architecture-hero.png)
 
-- **Mirrors the agent** (`dsh-superagent`, a separate process): GitHub sync
-  every 5 minutes (issues, PRs, reviews, checks, comments) and ticket reads
-  every 10 s, with the live state over the issue (running, ready, blocked)
-  while it is open.
-- **Creates and stops tasks**: open an issue that mentions the agent, stop,
-  archive, resume. Every write goes through the action log, with the
-  confirmation phrase on screen, in voice, and in the API.
-- **Dispatches local executors**: Claude Code and Codex, with ceilings and the
-  owner's decision, recorded in `runner_executions`.
-- **Speaks**: the board summary, answers to questions, and the announcement of
-  what changed — Web Speech in the browser and ElevenLabs on the server. Voice
-  conversation creates, asks, and stops tasks with spoken confirmation.
-- **Exposes a JSON API** at `/api` — board, repositories, tasks, and voice;
-  documented in [docs/api.md](docs/api.md).
-- **Offers an interface language choice** in Settings: English on the first
-  visit, with Brazilian Portuguese available by explicit choice. The choice is
-  stored in the browser and does not change the separate voice language.
-- **Counts the cost**: the board's AI calls, the spend of the three executors
-  (DeepSeek, Claude Code, Codex — each in its own currency), voice (ElevenLabs),
-  and the summary of the day.
+*Architectural illustration. The screen is a stylized preview of the board;
+[real interface captures](docs/ui-audit/README.md) are kept with the UI audits.*
 
-## The system in one figure
+[![CI](https://github.com/sallaumen/dsh-superagent-superboard/actions/workflows/ci.yml/badge.svg)](https://github.com/sallaumen/dsh-superagent-superboard/actions/workflows/ci.yml)
+[![Elixir 1.19](https://img.shields.io/badge/Elixir-1.19-6e4a7e?style=flat-square)](.github/workflows/ci.yml)
+[![Erlang OTP 27](https://img.shields.io/badge/OTP-27-8b2555?style=flat-square)](.github/workflows/ci.yml)
+[![Phoenix 1.8.16](https://img.shields.io/badge/Phoenix-1.8.16-d65d45?style=flat-square)](mix.lock)
+[![LiveView 1.2.13](https://img.shields.io/badge/LiveView-1.2.13-315696?style=flat-square)](mix.lock)
+[![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square)](.github/workflows/ci.yml)
+[![Oban 2.24.2](https://img.shields.io/badge/Oban-2.24.2-2c6a4d?style=flat-square)](mix.lock)
+
+The version badges reflect the CI toolchain and the checked-in dependency lockfile; update them when those change.
+
+## What you can do
+
+| In the board | Why it matters |
+|---|---|
+| Follow issues, pull requests, reviews, checks, and agent tickets across repositories | See what is running, queued, blocked, or waiting for you without piecing together several screens |
+| Turn a request into GitHub tasks and coordinate Claude Code or Codex locally | Keep the chosen executor, spending limits, and confirmation in the same workflow |
+| Ask questions, dictate requests, and hear status | Use browser speech or optional ElevenLabs voice, with confirmation before consequential actions |
+| Review daily summaries, activity, and usage by source | Understand what changed and where time and model usage went |
+
+The board starts in English. **Settings → Language** switches this browser to
+Brazilian Portuguese; spoken language is a separate preference.
+
+## How the pieces fit
 
 ```mermaid
 flowchart LR
-    GH[(GitHub)]
-    A[dsh-superagent<br/>orchestrator + worktrees]
-    B[agent-board<br/>Elixir panel :4099]
-    E[Claude Code / Codex<br/>local dispatch]
-    V[Voice<br/>ElevenLabs / browser]
-
-    GH -- "mention @sallaumen-agent" --> A
-    A -- "ticket → PR → merge" --> GH
-    B -- "sync (5 min) · creates issues · JSON API" --> GH
-    B -- "reads tickets (10 s) · retry and ceiling (API)" --> A
-    B -- "dispatches (red action)" --> E
-    E -- "PR with Closes #n" --> GH
-    B -- "speaks and transcribes" --> V
+    H["Human"] -->|"request or confirmation"| B["Board<br/>Phoenix LiveView"]
+    G["GitHub<br/>issues · PRs · checks"] -->|"mention"| A["DeepSeek Super Agent<br/>separate process + worktrees"]
+    A -->|"ticket reports and PRs"| G
+    B -->|"syncs work"| G
+    B -->|"reads ticket state"| A
+    B -->|"confirmed dispatch"| E["Claude Code / Codex"]
+    E -->|"PR"| G
 ```
 
-The agent **does not live in this repository**; the board only mirrors it —
-stopping the board does not stop the agent. The details are in
-[docs/agent/how-it-works.md](docs/agent/how-it-works.md) and the full map of the
-documentation is in [docs/README.md](docs/README.md).
+**GitHub is the shared record.** The agent watches mentions, works in isolated
+worktrees, and reports back through issues and PRs. The board mirrors that work,
+offers actions through a recorded confirmation gate, and can dispatch local
+executors. Stopping the board does not stop the separate agent. See
+[the agent loop](docs/agent/how-it-works.md) and the
+[architecture map](docs/architecture/README.md).
 
-## Run
+## Quick start
+
+The project uses **Elixir 1.19 / Erlang OTP 27** in CI and **PostgreSQL 16**.
+The development database is configured at `127.0.0.1:5434` with user `board`,
+password `board`, and database `agent_board_dev`.
+
+If you need a local PostgreSQL instance, one option is:
 
 ```sh
-mix setup            # deps, database, assets
-PORT=4002 mix phx.server  # http://127.0.0.1:4002
+docker run --name dsh-board-postgres \
+  -e POSTGRES_USER=board -e POSTGRES_PASSWORD=board \
+  -e POSTGRES_DB=agent_board_dev -p 5434:5432 -d postgres:16
 ```
 
-The explicit `PORT` keeps the URL deterministic; the runtime configuration uses
-the environment or the default itself. The development database is the local
-Postgres at `127.0.0.1:5434`.
-
-## Run as a service
-
-The board is built to stay up. [ops/com.agentboard.plist](ops/com.agentboard.plist)
-is an example launchd file with absolute paths from a checkout; before loading
-it, adjust `ProgramArguments`, `WorkingDirectory`, the log paths, and the `PATH`
-of your machine's toolchain. It runs
-[scripts/service.sh](scripts/service.sh), whose defaults and overrides are in the
-[script matrix](PIPELINES.md#script-matrix).
+Then:
 
 ```sh
-mkdir -p ~/Library/LaunchAgents
-cp ops/com.agentboard.plist ~/Library/LaunchAgents/com.agentboard.plist
-# Edit the copy with the paths described above before loading.
-launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.agentboard.plist
+git clone https://github.com/sallaumen/dsh-superagent-superboard.git
+cd dsh-superagent-superboard
+cp .env .env.local
+# Add a GITHUB_TOKEN to .env.local for repositories you want to sync.
+mix setup
+PORT=4002 mix phx.server
 ```
 
-`KeepAlive` restarts the board after a crash or update; `RunAtLoad` starts it
-with the system. The plist names the log in `AGENT_BOARD_LOG`; on every start
-`scripts/service.sh` rotates the log to `<log>.1` when it exceeds 50 MB
-(`AGENT_BOARD_LOG_MAX_BYTES`), keeping one old copy, and reopens it. The plist's
-`StandardOutPath` only captures what fails before that; a manual run without
-`AGENT_BOARD_LOG` writes to the terminal.
+Open **http://127.0.0.1:4002**. `mix setup` installs dependencies, creates and
+migrates the development database, seeds it, and builds assets. AI and ElevenLabs
+keys in `.env.local` are optional; without a configured AI provider, AI requests
+report `:not_configured`. The board can start without the external agent, but
+live ticket state requires it. Follow the
+[agent learning path](docs/agent/learning-path.md) to set up that separate
+process.
 
-The board does not start without the Postgres at `127.0.0.1:5434`, and launchd
-starts the script before Docker brings the containers back. If that Postgres
-runs in Docker, give the container a restart policy (`restart: unless-stopped` in
-the compose file, or `docker update --restart unless-stopped <container>`):
-without it Docker leaves it stopped after a reboot and the board never comes
-back. `scripts/service.sh` waits for the database before migrating, for up to
-`AGENT_BOARD_DB_WAIT` seconds (300), and then exits so launchd tries again. The
-**Atualizar e reiniciar** (Update and restart) button is in **Configurações →
-Versão** (Settings → Version) and appears after **Verificar** (Check) when the
-checkout is behind; the service log records the deps/migrate/boot sequence.
+For a long-running launchd service, environment loading, logs, and
+troubleshooting, use the [operations guide](docs/operations.md). Never commit
+`.env.local`.
 
-```sh
-launchctl bootout "gui/$(id -u)/com.agentboard"   # stop for good
-launchctl kickstart -k "gui/$(id -u)/com.agentboard"  # restart now
-```
+## Explore further
 
-`ProcessType` is `Interactive`: without it launchd applies the light limits to
-the job (`launchctl print "gui/$(id -u)/com.agentboard"` would say
-`spawn type = daemon`) and the board responds several times slower.
-`kickstart` restarts the process with the plist launchd already has; changing
-the plist itself requires updating the copy in `~/Library/LaunchAgents`,
-`bootout`, waiting for `launchctl print` to no longer find the job, and
-`bootstrap` (`bootstrap` returns error 5 while the job is still loaded).
+| Goal | Start here |
+|---|---|
+| Understand the agent and its setup | [How the agent works](docs/agent/how-it-works.md) · [Setup](docs/agent/setup.md) |
+| Integrate with the board | [JSON API](docs/api.md) · [Architecture](docs/architecture/README.md) |
+| Use voice and understand its costs | [Voice conversation](docs/voice-conversation.md) |
+| Find implementation rules and design decisions | [Maintainer contract](docs/maintainer-contract.md) · [Documentation index](docs/README.md) |
+| Contribute and validate | [Contributing](CONTRIBUTING.md) · [Pipeline matrix](PIPELINES.md) |
 
-**Nothing here updates on a timer**: the board watches agents, and a restart
-would interrupt them. Updating is a button. In a checkout already running the
-new code, **Atualizar e reiniciar** fast-forwards to `origin/main` and restarts;
-under `scripts/service.sh` the updater uses `AGENT_BOARD_RESTART_MODE=supervised`,
-stops the service, and lets launchd start the new code (the script refreshes
-deps and migrations first). A standalone `mix phx.server` starts a detached
-shell and logs to `agent-board-update-restart.log` in the system temp
-directory. The page keeps the old assets until you accept the **Recarregar**
-(Reload) prompt, so a restart does not leave the browser in a dead navigation.
+The board is eventually consistent: ticket state is polled about every 10
+seconds and GitHub sync runs about every five minutes. The
+[operations guide](docs/operations.md#the-limits) documents the other boundaries.
 
-## Logs
+## Contributing
 
-The board logs a timestamp on every line. `LOG_LEVEL=debug|info|warning|error`
-chooses the level (the 4099 service runs at `info`; dev uses `debug`, which logs
-every SQL query). Voice pipeline lines start with `voice stage=`; the same
-events appear live in the voice panel. See
-[docs/voice-conversation.md](docs/voice-conversation.md#diagnosis-logs-and-backstage).
-
-## Local secrets
-
-`.env.local` feeds the environment before any config: `KEY=value` lines,
-comments with `#`, and a variable already defined in the shell is left alone. It
-is gitignored. `.env` is the committed list of variables — copy what you need.
-
-```sh
-cp .env .env.local        # then fill in DEEPSEEK_API_KEY, GEMINI_API_KEY or OPENAI_API_KEY
-```
-
-The app uses the first provider with a key; `AI_PROVIDER` pins one. Without a
-key, AI answers `:not_configured`, and `AI_REHEARSAL=1` runs the whole panel
-against free fixtures. Tests never read `.env.local`. `AGENT_BOARD_ENV_FILE`
-chooses another file (for example, in a worktree). The loader lives in
-[config/runtime.exs](config/runtime.exs).
-
-## What it costs
-
-- **The sync** reads a bounded window of issues and PRs updated per repository,
-  plus reviews/checks for each PR and the comments of active tasks — GitHub API
-  traffic per scheduled run. The window lives in
-  [AgentBoard.GitHub](lib/agent_board/github.ex) and comment selection in
-  [AgentBoard.Sync](lib/agent_board/sync.ex); check those limits when estimating
-  a deploy's traffic.
-- **The 10 s poller does not touch GitHub**: it reads the agent's sqlite and
-  only broadcasts when the ticket hash changed.
-
-## Where the documentation is
-
-The full map is in [docs/README.md](docs/README.md): binding contracts
-(maintainer-contract, API, motion), operational guides (agent, agent
-collaboration, voice), the agent prompts, the decisions (ADRs), research and
-product plans, historical plans, and the evidence (UI evaluations and audits).
-
-## Validation and contribution
-
-[PIPELINES.md](PIPELINES.md) has the script matrix, the local checks, and the
-[procedure when CI cannot run](PIPELINES.md#if-ci-cannot-run-no-token-billing-or-runner).
-Branch and PR in [CONTRIBUTING.md](CONTRIBUTING.md). More than one agent writes
-to this repository: the two rules that prevent accidents are in
-[docs/agent/collaboration.md](docs/agent/collaboration.md).
-
-## When something is wrong
-
-| Symptom | Cause | Fix |
-|---|---|---|
-| `no sync yet` in the header | no sync outcome recorded | wait for the next sync and check the Activity |
-| `sync failed … · showing saved data` | the repository's last sync failed | open the Activity from the health row; `sync_error` names the cause |
-| a repo with Issues disabled | GitHub answers 404 | handled: issues are optional, PRs keep syncing |
-| `No task is running.` | the runner has no active ticket | not an error; it is the empty state |
-| every card says `no review` / `no ci` | the repo has no reviews or CI | correct, not a bug |
-| CI red on every PR | GitHub Billing: payment failed / spending limit | fix it in Billing & plans; no code makes this green |
-| `sync_error` with 401/403 | `GITHUB_TOKEN` missing, expired, or rate limited | export a new token (`gh auth token`) |
-
-## The tests
-
-`mix test` covers every layer: state mapping (ticket overlay, review and check
-rollups), the spoken summary, the ElevenLabs client (stubbed, no network), sync
-against a fake GitHub (no network), the JSON API controllers (board and voice),
-the LiveView (columns, empty state, voice events, PubSub broadcast), and the
-pipeline contract.
-
-## The limits
-
-- The board is **eventually consistent**: the poller reads the runner every 10 s
-  and the GitHub sync runs every 5 min — a merged PR can take that long to
-  appear.
-- **The poller is one shot per tick**: `handle_info(:poll)` reschedules before
-  polling, so a slow poll delays the next one instead of stacking them (the
-  interval is a floor, not a guarantee).
-- **Stop** is the board flag plus closing the issue. A worker already running
-  finishes the current ticket: the Super-Agent API has no cancellation.
-- The board **reads** the agent's state; it never writes to it.
-- The spoken summary uses the browser's Web Speech API; server TTS and STT
-  (ElevenLabs) live behind `/api/voice` and answer with a reason on failure,
-  never with an exception.
-
-## Shared practices
-
-The board consumes the [Elixir Agent Kit](https://github.com/sallaumen/elixir-agent-kit)
-through a tag pinned in `mix.exs` (v0.8.0 today), only in dev/test. After
-`mix deps.get`, use [.elixir-agent-kit/START.md](.elixir-agent-kit/START.md):
-it points to the dependency's contract and workflows. Only the small index, the
-ownership state, and the references in `AGENTS.md`/`CLAUDE.md` stay in this
-project — there are no workflow copies. `mix agent_kit.check` validates the
-installation (inside `mix gate`); `mix agent_kit.outdated` warns when a new tag
-exists. Reusable improvements go to the kit; local rules stay here — the details
-are in [docs/agent/practices.md](docs/agent/practices.md).
+Create a branch, make a focused change, and open a pull request to `main`. Run
+`scripts/ci-local.sh all` before opening the PR; the repository's
+[contribution guide](CONTRIBUTING.md) and [pipeline matrix](PIPELINES.md)
+explain the checks and shared-worktree rules.
