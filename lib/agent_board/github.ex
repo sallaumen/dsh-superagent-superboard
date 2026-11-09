@@ -120,6 +120,23 @@ defmodule AgentBoard.GitHub do
     |> body!()
   end
 
+  @doc "One page of recently updated issue comments across a repository."
+  def repository_issue_comments(client, owner, repo, since, page \\ 1) do
+    response =
+      Req.get!(client,
+        url: "/repos/#{owner}/#{repo}/issues/comments",
+        params: [
+          since: DateTime.to_iso8601(since),
+          sort: "updated",
+          direction: "asc",
+          per_page: 100,
+          page: page
+        ]
+      )
+
+    {body!(response), next_page?(response)}
+  end
+
   @doc "Comment on an issue."
   def create_comment(client, owner, repo, number, body) do
     client

@@ -45,6 +45,7 @@ config :agent_board, Oban, testing: :manual
 # keeps it alive but silent; ticket_poller_test overrides the knob for the schedule
 # test.
 config :agent_board, ticket_poll_interval: 3_600_000
+config :agent_board, message_poll_interval: 3_600_000
 
 # The automatic retry ticks on the same schedule rule: the suite calls
 # AutoRetry.tick/1 itself.

@@ -224,6 +224,17 @@ that already worked).
   (`ticket_poller_test.exs`). The interval is the `:ticket_poll_interval` knob; the test
   environment stretches it to an hour so the supervised poller never ticks
   into the sandboxed database mid-suite.
+- `AgentBoard.MessagePoller` reads recently updated GitHub issue comments once
+  per active repository every 30s when a GitHub token is configured. It follows
+  pagination, stores only comments for tracked tasks, broadcasts only for new
+  or edited content, and keeps its cursor and last good messages on failure.
+  GitHub's rate-limit response delays that repository's next read. The normal
+  five-minute sync remains the fallback, including without a token.
+- The top-right message window reads the newest agent reply per task from the
+  board's comments and uses a browser-local read version. Editing a workpad
+  therefore marks that conversation new again. The separate bell counts active
+  blocked, question and review tasks across projects; it is a pending-work
+  count, not an unread count. Both lists follow the board's PubSub broadcasts.
 - Never poll the database from the browser; push.
 - The board is read once per render of the page (in `handle_params/3`, never
   also in `mount/3`), again on every `:board_updated` and task action, and
