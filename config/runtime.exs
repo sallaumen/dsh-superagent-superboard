@@ -70,6 +70,12 @@ if System.get_env("AGENT_BOARD_AUTO_RETRY") in ~w(0 false) do
   config :agent_board, auto_retry: false
 end
 
+# Calling the agent on a task whose dependencies finished (AgentBoard.Release)
+# comments on GitHub. AGENT_BOARD_AUTO_RELEASE=0 keeps a second board from it.
+if System.get_env("AGENT_BOARD_AUTO_RELEASE") in ~w(0 false) do
+  config :agent_board, auto_release: false
+end
+
 # A dev server from a worktree shares Postgres with the live board on 4099.
 # AGENT_BOARD_DATABASE points it at another database (a copy, say), so that its
 # migrations and clicks stay away from the board the owner is using.

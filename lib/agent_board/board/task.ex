@@ -37,6 +37,8 @@ defmodule AgentBoard.Board.Task do
     field :size, :string
     field :executor, :string
     field :blocker_for_task_id, :integer
+    field :held, :boolean, default: false
+    field :released_at, :utc_datetime
 
     belongs_to :repository, AgentBoard.Board.Repository
     belongs_to :origin_task, AgentBoard.Board.Task
@@ -68,7 +70,9 @@ defmodule AgentBoard.Board.Task do
       :size,
       :executor,
       :blocker_for_task_id,
-      :objective_id
+      :objective_id,
+      :held,
+      :released_at
     ])
     |> validate_required([:title, :repository_id])
     |> validate_inclusion(:state, @states)
