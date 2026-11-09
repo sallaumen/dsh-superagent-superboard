@@ -305,6 +305,113 @@ defmodule AgentBoard.SyncRepoTest do
       assert_received {:read, :checks, _path}
       refute stored(9).checks_state == "pending"
     end
+
+    test "a merged pull whose read failed is read again", %{repo: repo} do
+      pulls = [recent_pull(9, "abc", merged_at())]
+
+      stub_github(fn conn ->
+        cond do
+          conn.request_path == "/repos/sallaumen/arena-rogue/pulls" ->
+            Req.Test.json(conn, pulls)
+
+          String.ends_with?(conn.request_path, "/check-runs") ->
+            Plug.Conn.send_resp(conn, 500, "{}")
+
+          true ->
+            Req.Test.json(conn, [])
+        end
+      end)
+
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == nil
+
+      stub_pulls(pulls, @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert_received {:read, :checks, _path}
+      assert stored(9).checks_state == "success"
+    end
+
+    test "a merged pull with no checks at all is not read again", %{repo: repo} do
+      stub_pulls([recent_pull(9, "abc", merged_at())], [])
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == "none"
+      flush_reads()
+
+      assert Sync.sync_repo(client(), repo) == :ok
+      refute_received {:read, _kind, _path}
+    end
+
+    defp stub_failing_read(pulls, failing, runs) do
+      stub_github(fn conn ->
+        cond do
+          conn.request_path == "/repos/sallaumen/arena-rogue/pulls" ->
+            Req.Test.json(conn, pulls)
+
+          String.ends_with?(conn.request_path, failing) ->
+            Plug.Conn.send_resp(conn, 500, "{}")
+
+          String.ends_with?(conn.request_path, "/check-runs") ->
+            Req.Test.json(conn, %{"check_runs" => runs})
+
+          true ->
+            Req.Test.json(conn, [])
+        end
+      end)
+    end
+
+    test "an open pull keeps good checks when only its reviews could not be read",
+         %{repo: repo} do
+      stub_failing_read([recent_pull(9, "abc", nil)], "/reviews", @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == "success"
+    end
+
+    test "an open pull keeps what it knew when its checks could not be read", %{repo: repo} do
+      stub_pulls([recent_pull(9, "abc", nil)], @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      first = stored(9)
+      assert first.checks_state == "success"
+
+      stub_failing_read([recent_pull(9, "abc", nil)], "/check-runs", @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      second = stored(9)
+      assert second.checks_state == "success"
+      assert second.checks_changed_at == first.checks_changed_at
+    end
+
+    test "an open pull does not lend the old commit's checks to a new one", %{repo: repo} do
+      stub_pulls([recent_pull(9, "abc", nil)], @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == "success"
+
+      stub_failing_read([recent_pull(9, "def", nil)], "/check-runs", @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == nil
+    end
+
+    test "a merged pull whose reviews could not be read is read again", %{repo: repo} do
+      pulls = [recent_pull(9, "abc", merged_at())]
+      stub_failing_read(pulls, "/reviews", @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == nil
+
+      stub_pulls(pulls, @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert_received {:read, :reviews, _path}
+      assert stored(9).checks_state == "success"
+    end
+
+    test "a pull closed long ago without merging is not read", %{repo: repo} do
+      closed_at = DateTime.utc_now() |> DateTime.add(-40, :day) |> DateTime.to_iso8601()
+
+      pull =
+        recent_pull(9, "abc", nil) |> Map.merge(%{"state" => "closed", "closed_at" => closed_at})
+
+      stub_pulls([pull], @done)
+
+      assert Sync.sync_repo(client(), repo) == :ok
+      refute_received {:read, _kind, _path}
+    end
   end
 
   test "an old merged pull skips its reviews", %{repo: repo} do

@@ -462,12 +462,12 @@ defmodule AgentBoard.Sync do
         {nil, nil, nil}
 
       true ->
-        rollups(client, repository, pull)
+        rollups(client, repository, pull, existing)
     end
   end
 
   defp settled?(%PullRequest{state: state, checks_state: checks} = existing, pull, state)
-       when state in ["merged", "closed"] and checks != "pending",
+       when state in ["merged", "closed"] and checks not in ["pending", nil],
        do: existing.head_sha == get_in(pull, ["head", "sha"])
 
   defp settled?(_existing, _pull, _state), do: false
@@ -475,13 +475,13 @@ defmodule AgentBoard.Sync do
   @stale_days 30
 
   defp stale?(pull) do
-    case to_dt(pull["merged_at"]) do
+    case to_dt(pull["merged_at"] || pull["closed_at"]) do
       nil -> false
-      merged_at -> DateTime.diff(DateTime.utc_now(), merged_at, :day) > @stale_days
+      ended_at -> DateTime.diff(DateTime.utc_now(), ended_at, :day) > @stale_days
     end
   end
 
-  defp rollups(client, repository, pull) do
+  defp rollups(client, repository, pull, existing) do
     # A failing review/check fetch must not abort the PR insert: the PR is
     # stored with the rollups it can get, and the failure is logged.
     reviews =
@@ -489,7 +489,7 @@ defmodule AgentBoard.Sync do
         GitHub.reviews(client, repository.owner, repository.name, pull["number"])
       end)
 
-    Enum.each(reviews, &upsert_review(repository, pull["number"], &1))
+    Enum.each(reviews || [], &upsert_review(repository, pull["number"], &1))
 
     checks =
       safe_fetch(repository, "check_error", pull, fn ->
@@ -501,10 +501,30 @@ defmodule AgentBoard.Sync do
         )
       end)
 
-    {checks_state, checks_failed} = checks_rollup(checks)
-
-    {review_rollup(reviews), checks_state, checks_failed}
+    {checks_state, checks_failed} = read_checks(checks, reviews, pull, existing)
+    {read_reviews(reviews, pull, existing), checks_state, checks_failed}
   end
+
+  # What a failed read leaves depends on whether the pull comes back. An open
+  # pull is read on every sync, so it keeps what was known until the next one.
+  # An ended pull stores nil, "not read", so it is read again; "none" means
+  # GitHub answered that there are no checks, and that one is settled.
+  defp read_checks(
+         nil,
+         _reviews,
+         %{"state" => "open", "head" => %{"sha" => sha}},
+         %PullRequest{head_sha: sha} = existing
+       ),
+       do: {existing.checks_state, existing.checks_failed}
+
+  defp read_checks(nil, _reviews, _pull, _existing), do: {nil, nil}
+  defp read_checks(_checks, nil, %{"state" => "closed"}, _existing), do: {nil, nil}
+  defp read_checks(checks, _reviews, _pull, _existing), do: checks_rollup(checks)
+
+  defp read_reviews(nil, %{"state" => "open"}, %PullRequest{} = existing),
+    do: existing.review_state
+
+  defp read_reviews(reviews, _pull, _existing), do: review_rollup(reviews || [])
 
   defp safe_fetch(repository, kind, pull, fun) do
     fun.()
@@ -517,7 +537,7 @@ defmodule AgentBoard.Sync do
         "reason" => Exception.message(exception)
       })
 
-      []
+      nil
   end
 
   defp upsert_review(repository, number, review) do
