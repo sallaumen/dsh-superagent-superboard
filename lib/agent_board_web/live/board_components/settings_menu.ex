@@ -6,14 +6,16 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   import AgentBoardWeb.BoardComponents.Superagents, only: [superagents: 1]
 
+  alias AgentBoardWeb.BoardComponents.AgentAccessPanel
   alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
-  @section_keys ~w(inspect dispatch voice summary repositories superagents appearance language version)
+  @section_keys ~w(inspect dispatch voice summary repositories superagents access appearance language version)
 
   attr :dispatch_paused, :boolean, default: false
   attr :progress, :list, default: []
   attr :superagents, :list, default: []
+  attr :access_waiting, :integer, default: 0
   attr :repos, :list, default: []
   attr :sources, :list, default: []
   attr :provision_preview, :any, default: nil
@@ -81,6 +83,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
             class="settings-nav__notice"
             aria-label={version_summary(@version)}
           ></span>
+          <span :if={key == "access" and @access_waiting > 0} class="settings-nav__count">
+            {@access_waiting}<span class="ab-sr">{gettext("waiting for access")}</span>
+          </span>
         </button>
       </nav>
 
@@ -309,6 +314,26 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
         </section>
 
         <section
+          hidden={@section != "access"}
+          class="settings-pane"
+          aria-labelledby="settings-access-title"
+        >
+          <h3 id="settings-access-title">{gettext("Agent access")}</h3>
+          <p class="settings-pane__intro">
+            {gettext(
+              "Who can put each project's agent to work by mentioning the bot, and who asked without being allowed."
+            )}
+          </p>
+          <.live_component
+            module={AgentAccessPanel}
+            id="settings-agent-access"
+            superagents={@superagents}
+            visible={@active == true and @section == "access"}
+            tz_offset={@tz_offset}
+          />
+        </section>
+
+        <section
           hidden={@section != "appearance"}
           class="settings-pane"
           aria-labelledby="settings-appearance-title"
@@ -378,6 +403,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
       {"summary", gettext("Daily summary")},
       {"repositories", gettext("Repositories")},
       {"superagents", gettext("Superagents")},
+      {"access", gettext("Agent access")},
       {"appearance", gettext("Appearance")},
       {"language", gettext("Language")},
       {"version", gettext("Version")}

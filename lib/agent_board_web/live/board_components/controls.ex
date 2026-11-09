@@ -9,6 +9,8 @@ defmodule AgentBoardWeb.BoardComponents.Controls do
     ~H"""
     <svg class="ab-ico" viewBox="0 0 16 16" aria-hidden="true">
       <%= case @name do %>
+        <% "check" -> %>
+          <path d="M3 8.5l3.5 3.5L13 4.5" />
         <% "plus" -> %>
           <path d="M8 3v10M3 8h10" />
         <% "split" -> %>

@@ -11,7 +11,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   # The rail shows these on a board with no repository: Settings is where the
   # first one is added, and the others do not depend on one.
   @panels_without_repo ~w(voice logs settings shortcuts superagents)
-  @settings_sections ~w(inspect dispatch voice summary repositories superagents appearance language version)
+  @settings_sections ~w(inspect dispatch voice summary repositories superagents access appearance language version)
 
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
