@@ -93,7 +93,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert Settings.get("elevenlabs_voice_id") == "abc"
     assert Settings.get("elevenlabs_voice_name") == "Rachel"
     assert render(view) =~ "Voz salva: Rachel"
-    refute has_element?(view, "button", "Salvar")
+    refute has_element?(view, "#voice-panel button", "Salvar")
 
     assert_push_event(
       view,

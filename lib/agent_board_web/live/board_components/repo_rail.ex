@@ -108,7 +108,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           class="ab-btn ab-btn--quiet ab-btn--sm ab-rail__access"
           phx-click="show_panel"
           phx-value-panel="settings"
-          phx-value-section="access"
+          phx-value-section="projects"
           data-panel-trigger
           aria-haspopup="dialog"
           aria-controls="panel-settings"
@@ -125,7 +125,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
           phx-value-panel="settings"
-          phx-value-section="superagents"
+          phx-value-section="projects"
           aria-label={
             gettext("Superagents: %{agents} · projects: %{projects}",
               agents: @agent_total,

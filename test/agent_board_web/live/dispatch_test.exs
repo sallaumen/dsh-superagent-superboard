@@ -187,6 +187,7 @@ defmodule AgentBoardWeb.DispatchTest do
     :ok = Settings.put("dispatch_monthly_usd", "123")
 
     view |> element("#board-settings") |> render_click()
+    view |> element(".settings-nav__item[phx-value-section=execution]") |> render_click()
 
     assert has_element?(
              view,

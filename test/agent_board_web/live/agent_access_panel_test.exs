@@ -177,7 +177,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
     assert html =~ "@amiga"
     assert html =~ "#1476"
     assert html =~ "Uma issue"
-    assert has_element?(view, ".settings-nav__count", "1")
+    assert has_element?(view, ".settings-nav__mark--you", "1")
 
     id = "access-grant-run-#{superagent.id}-amiga"
     view |> element("##{id}-trigger") |> render_click()
@@ -192,7 +192,7 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
 
     assert cleared(superagent) == ["fixture", "amiga"]
     assert FakeManager.requeued(superagent.id) == ["trigger-1"]
-    refute has_element?(view, ".settings-nav__count")
+    refute has_element?(view, ".settings-nav__mark--you")
     assert html =~ "liberado"
     assert %Decision{action: "grant_agent_access", outcome: "ok"} = last_decision()
   end
