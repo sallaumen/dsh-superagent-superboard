@@ -182,6 +182,7 @@ defmodule AgentBoardWeb.BoardLive do
         ai_status: AI.status(),
         version: Version.status(),
         busy: false,
+        update_progress: [],
         voice: current_voice(),
         spoken_text: nil,
         spoken_at: 0,
@@ -857,6 +858,13 @@ defmodule AgentBoardWeb.BoardLive do
     else
       {:noreply, start_async(socket, :version_check, fn -> Version.refresh() end)}
     end
+  end
+
+  def handle_info({:update_step, id, state}, socket) do
+    {:noreply,
+     assign(socket,
+       update_progress: push_update_step(socket.assigns.update_progress, id, state)
+     )}
   end
 
   def handle_info(:restart_server, socket) do
@@ -1645,37 +1653,44 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("update", _params, socket) do
-    # The button only appears when the panel already knows the checkout is
-    # behind. A successful fast-forward is therefore always followed by a
-    # restart, even when the short-sha comparison races the fetch.
-    case Actions.run(:update_board, %{}, ui()) do
-      {:ok, sha} ->
-        # Fetch dependencies while the old node still answers. If Hex or the
-        # network fails, do not stop: the board keeps serving the old code
-        # and the person can retry. Only a prepared checkout is stopped.
-        case updater().prepare() do
-          :ok ->
-            socket =
-              socket
-              |> assign(:busy, true)
-              |> push_event("restart", %{})
-              |> put_flash(:info, "Atualizado para #{sha}; reiniciando o servidor…")
+    if socket.assigns.busy do
+      {:noreply, socket}
+    else
+      parent = self()
 
-            Actions.run(:restart_board, %{}, ui())
-            {:noreply, socket}
+      socket =
+        assign(socket,
+          busy: true,
+          update_progress: [update_step(:fetch, :running)]
+        )
 
-          {:error, reason} ->
-            {:noreply,
-             put_flash(
-               socket,
-               :error,
-               "Atualização baixada, mas o preparo das dependências falhou. " <>
-                 "O board continua no código antigo; nada foi reiniciado. " <> inspect(reason)
-             )}
-        end
+      {:noreply,
+       start_async(socket, :update_flow, fn ->
+         step = fn id, fun ->
+           send(parent, {:update_step, id, :running})
 
-      {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "A atualização falhou: #{inspect(reason)}")}
+           try do
+             result = fun.()
+             send(parent, {:update_step, id, if(result == :ok, do: :done, else: :error)})
+             result
+           rescue
+             exception ->
+               send(parent, {:update_step, id, :error})
+               reraise exception, __STACKTRACE__
+           end
+         end
+
+         with {:ok, sha} <- Actions.run(:update_board, %{}, ui()),
+              :ok <- step.(:deps, fn -> updater().prepare() end),
+              :ok <- step.(:compile, fn -> updater().prepare_build() end),
+              :ok <- step.(:assets, fn -> updater().prepare_assets() end),
+              :ok <- step.(:migrate, fn -> updater().migrate() end),
+              :ok <- step.(:ready, fn -> updater().mark_ready() end) do
+           {:ok, sha}
+         else
+           error -> {:error, error}
+         end
+       end)}
     end
   end
 
@@ -2271,6 +2286,49 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_async({:unblock_ai, _id}, _outcome, socket), do: {:noreply, socket}
 
+  def handle_async(:update_flow, {:ok, {:ok, sha}}, socket) do
+    socket =
+      socket
+      |> assign(
+        update_progress: push_update_step(socket.assigns.update_progress, :restart, :running)
+      )
+      |> push_event("restart", %{})
+      |> put_flash(:info, "Atualizado para #{sha}; reiniciando o servidor…")
+
+    Actions.run(:restart_board, %{}, ui())
+    {:noreply, socket}
+  end
+
+  def handle_async(:update_flow, {:ok, {:error, reason}}, socket) do
+    progress =
+      socket.assigns.update_progress
+      |> Enum.map(fn step ->
+        if step.state == :running, do: %{step | state: :error}, else: step
+      end)
+
+    {:noreply,
+     socket
+     |> assign(busy: false, update_progress: progress)
+     |> put_flash(
+       :error,
+       "A atualização parou no meio; o board continua no código antigo e nada foi reiniciado. " <>
+         inspect(reason)
+     )}
+  end
+
+  def handle_async(:update_flow, {:exit, reason}, socket) do
+    progress =
+      socket.assigns.update_progress
+      |> Enum.map(fn step ->
+        if step.state == :running, do: %{step | state: :error}, else: step
+      end)
+
+    {:noreply,
+     socket
+     |> assign(busy: false, update_progress: progress)
+     |> put_flash(:error, "A atualização falhou: #{inspect(reason)}")}
+  end
+
   def handle_async(:version_check, {:ok, {:ok, _sha}}, socket) do
     {:noreply, assign(socket, version: Version.status())}
   end
@@ -2573,8 +2631,6 @@ defmodule AgentBoardWeb.BoardLive do
             overview={@repo_overview}
             live={@freshness.live?}
             version={@version}
-            busy={@busy}
-            voice={@voice}
             superagents={@superagents}
           />
 
@@ -3122,6 +3178,7 @@ defmodule AgentBoardWeb.BoardLive do
             repo={@repo}
             version={@version}
             busy={@busy}
+            progress={@update_progress}
             voice={@voice}
             dispatch_paused={@dispatch_paused}
             active={@panel == "settings"}
@@ -3178,10 +3235,37 @@ defmodule AgentBoardWeb.BoardLive do
     Process.send_after(self(), :restart_server, delay)
 
     socket
-    |> assign(:busy, true)
+    |> assign(busy: true, update_progress: [update_step(:restart, :running)])
     |> push_event("restart", %{})
     |> put_flash(:info, message)
   end
+
+  # One entry per stage the version panel renders while the update runs.
+  defp update_step(id, state) do
+    %{id: id, state: state, label: update_label(id)}
+  end
+
+  # A new running stage closes the previous one; an update to the same stage
+  # replaces it, so the list is exactly the pipeline the person watches.
+  defp push_update_step(progress, id, state) do
+    progress =
+      Enum.map(progress, fn step ->
+        if step.state == :running, do: %{step | state: :done}, else: step
+      end)
+
+    case Enum.split_with(progress, &(&1.id == id)) do
+      {[], rest} -> rest ++ [update_step(id, state)]
+      {[step], rest} -> rest ++ [%{step | state: state}]
+    end
+  end
+
+  defp update_label(:fetch), do: "Buscando a main"
+  defp update_label(:deps), do: "Preparando dependências"
+  defp update_label(:compile), do: "Compilando o build novo"
+  defp update_label(:assets), do: "Gerando os assets"
+  defp update_label(:migrate), do: "Aplicando migrações"
+  defp update_label(:ready), do: "Build pronto"
+  defp update_label(:restart), do: "Reiniciando o board"
 
   # -- the composer lifecycle ---------------------------------------------------
   #

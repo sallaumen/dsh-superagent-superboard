@@ -27,6 +27,27 @@ defmodule AgentBoard.System.UpdaterTest do
     assert Updater.restart() == :ok
   end
 
+  test "the restart script promotes the staged build before booting" do
+    script = Updater.restart_script("/tmp/agent board", "4242")
+
+    assert script =~ ".agent-board-next-build"
+    assert script =~ "mv \"$next_build\" _build"
+    assert script =~ "_build/prev"
+  end
+
+  test "marks, reads and clears the staged build" do
+    dir = Path.join(System.tmp_dir!(), "updater-stage-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(dir)
+
+    on_exit(fn -> File.rm_rf!(dir) end)
+
+    assert Updater.pending_build(dir) == nil
+    assert Updater.mark_ready(dir) == :ok
+    assert Updater.pending_build(dir) == "_build/next"
+    assert Updater.clear_marker(dir) == :ok
+    assert Updater.pending_build(dir) == nil
+  end
+
   test "quotes a root with a single quote" do
     script = Updater.restart_script("/tmp/it's board", "7")
 

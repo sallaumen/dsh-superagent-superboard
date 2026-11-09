@@ -42,6 +42,30 @@ defmodule AgentBoardWeb.Components.SystemPanelTest do
     refute html =~ "Atualizar e reiniciar"
   end
 
+  test "the staged pipeline renders its steps" do
+    html =
+      render_component(&SystemPanel.version_panel/1, %{
+        version: %{
+          state: :behind,
+          behind: 1,
+          served: "abc1234",
+          available: "def5678",
+          dirty: false
+        },
+        busy: true,
+        progress: [
+          %{id: :fetch, state: :done, label: "Buscando a main"},
+          %{id: :compile, state: :running, label: "Compilando o build novo"}
+        ]
+      })
+
+    assert html =~ "update-progress"
+    assert html =~ "Buscando a main"
+    assert html =~ "Compilando o build novo"
+    assert html =~ ~s(data-state="done")
+    assert html =~ ~s(data-state="running")
+  end
+
   test "an up-to-date checkout has no update or warning" do
     html =
       render_component(&SystemPanel.version_panel/1, %{

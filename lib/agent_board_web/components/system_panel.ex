@@ -13,6 +13,7 @@ defmodule AgentBoardWeb.Components.SystemPanel do
 
   attr :version, :map, required: true
   attr :busy, :boolean, default: false
+  attr :progress, :list, default: []
 
   def version_panel(assigns) do
     ~H"""
@@ -42,6 +43,18 @@ defmodule AgentBoardWeb.Components.SystemPanel do
           else:
             "Atualizar e reiniciar é manual. O board reinicia para carregar o código novo; o acompanhamento em tempo real e agentes em execução podem ser interrompidos por alguns segundos. Nada é atualizado sozinho."}
       </p>
+
+      <ol
+        :if={@progress != []}
+        id="update-progress"
+        class="version-progress"
+        aria-label="Progresso da atualização"
+      >
+        <li :for={step <- @progress} data-state={step.state}>
+          <span class="version-progress__mark" aria-hidden="true"></span>
+          <span>{step.label}</span>
+        </li>
+      </ol>
 
       <div class="version-details">
         <span class="text-base-content/75">
