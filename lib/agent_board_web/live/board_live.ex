@@ -120,6 +120,8 @@ defmodule AgentBoardWeb.BoardLive do
         today_spend: nil,
         objectives: [],
         superagents: [],
+        superagent_sources: Superagents.profiles_on_disk(),
+        project_pending: nil,
         provision_preview: nil,
         provisioning: false,
         resume: resume,
@@ -1014,7 +1016,10 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_info(:superagents_changed, socket) do
-    socket = assign(socket, :superagents, Superagents.list())
+    socket =
+      socket
+      |> assign(:superagents, Superagents.list())
+      |> assign(:superagent_sources, Superagents.profiles_on_disk())
 
     # A new profile becomes a new source while the sheet is open; the old
     # entries stay in the buffer and the new file is read from its tail.
@@ -1589,10 +1594,10 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_event("provision_review", params, socket) do
     with {repository_id, ""} <- Integer.parse(params["repository_id"] || ""),
-         {source_id, ""} <- Integer.parse(params["source_id"] || ""),
-         %AgentBoard.Board.Repository{} = repository <-
-           Board.repository(repository_id),
-         %AgentBoard.Superagents.Superagent{} = source <- Superagents.get(source_id),
+         %AgentBoard.Board.Repository{} = repository <- Board.repository(repository_id),
+         source_name when is_binary(source_name) and source_name != "" <-
+           String.trim(params["source_profile"] || ""),
+         {:ok, source} <- Superagents.source_by_profile(source_name),
          path when is_binary(path) and path != "" <- String.trim(params["path"] || ""),
          path = Path.expand(path),
          {workers, ""} <- Integer.parse(params["workers"] || "3") do
@@ -1606,9 +1611,93 @@ defmodule AgentBoardWeb.BoardLive do
     else
       _ ->
         {:noreply,
-         put_flash(socket, :error, gettext("Check repository, origin, path, and workers."))}
+         put_flash(
+           socket,
+           :error,
+           gettext("Check repository, source profile, path, and workers.")
+         )}
     end
   end
+
+  def handle_event("add_project", %{"owner" => owner, "name" => name} = params, socket) do
+    owner = String.trim(owner)
+    name = String.trim(name)
+    path = String.trim(params["path"] || "")
+    path = if path == "", do: default_checkout_path(name), else: Path.expand(path)
+
+    with {:ok, _} <- Actions.run(:add_repository, %{owner: owner, name: name}, ui()),
+         repository when not is_nil(repository) <- Board.repository_by_slug("#{owner}/#{name}"),
+         {:ok, source} <- Superagents.default_source(),
+         {:ok, preview} <-
+           Superagents.preview(repository, source, %{path: path, workers: 3}) do
+      phrase =
+        Actions.phrase(:provision_superagent, %{
+          repository: repository,
+          source: source,
+          path: path
+        })
+
+      {:noreply,
+       socket
+       |> assign(:repos, Board.list_repositories())
+       |> assign(:project_pending, %{
+         params: %{repository: repository, source: source, path: path, workers: preview.workers},
+         phrase: phrase
+       })}
+    else
+      {:error, :no_working_profile} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext(
+             "No DSH working profile on this machine. Run dsh once to create the superagent profile."
+           )
+         )}
+
+      {:error, reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Could not prepare the project: %{reason}", reason: inspect(reason))
+         )}
+    end
+  end
+
+  def handle_event("add_track", %{"owner" => owner, "name" => name}, socket) do
+    owner = String.trim(owner)
+    name = String.trim(name)
+
+    case Actions.run(:add_repository, %{owner: owner, name: name}, ui()) do
+      {:ok, _} ->
+        repos = Board.list_repositories()
+        repo = Enum.find(repos, &(&1.owner == owner and &1.name == name))
+        {:noreply, socket |> assign(:repos, repos) |> load(repo)}
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("Could not track %{repo}", repo: "#{owner}/#{name}"))}
+    end
+  end
+
+  def handle_event("add_project_confirm", _params, socket) do
+    case socket.assigns.project_pending do
+      %{params: params, phrase: phrase} ->
+        {:noreply,
+         socket
+         |> assign(project_pending: nil, provisioning: true)
+         |> start_async(:provision, fn ->
+           Actions.run(:provision_superagent, params, ui(), confirm: phrase)
+         end)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("add_project_cancel", _params, socket),
+    do: {:noreply, assign(socket, :project_pending, nil)}
 
   def handle_event("provision_cancel", _params, socket),
     do: {:noreply, assign(socket, :provision_preview, nil)}
@@ -2421,14 +2510,22 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_async(:provision, {:ok, {:ok, text}}, socket) do
     {:noreply,
      socket
-     |> assign(superagents: Superagents.list(), provisioning: false)
+     |> assign(
+       superagents: Superagents.list(),
+       superagent_sources: Superagents.profiles_on_disk(),
+       provisioning: false
+     )
      |> put_flash(:info, text)}
   end
 
   def handle_async(:provision, {:ok, {:error, text}}, socket) do
     {:noreply,
      socket
-     |> assign(superagents: Superagents.list(), provisioning: false)
+     |> assign(
+       superagents: Superagents.list(),
+       superagent_sources: Superagents.profiles_on_disk(),
+       provisioning: false
+     )
      |> put_flash(:error, text)}
   end
 
@@ -2611,6 +2708,14 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp save_setting(setting, value),
     do: Actions.run(:change_setting, %{setting: setting, value: value}, ui())
+
+  defp default_checkout_path(name) do
+    candidate = Path.expand("~/projects/#{name}")
+
+    if File.dir?(candidate) and File.exists?(Path.join(candidate, ".git")),
+      do: candidate,
+      else: candidate
+  end
 
   defp ui, do: Actions.owner(:ui)
 
@@ -2916,10 +3021,11 @@ defmodule AgentBoardWeb.BoardLive do
                     type="button"
                     class="ab-btn ab-btn--quiet ab-btn--sm"
                     phx-click="show_panel"
-                    phx-value-panel="superagents"
+                    phx-value-panel="settings"
+                    phx-value-section="superagents"
                     data-panel-trigger
                     aria-haspopup="dialog"
-                    aria-controls="panel-superagents"
+                    aria-controls="panel-settings"
                   >
                     <.ico name="grip" />{gettext("Superagents")}
                   </button>
@@ -3397,21 +3503,6 @@ defmodule AgentBoardWeb.BoardLive do
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
-          name="superagents"
-          title={gettext("DeepSeek Superagents")}
-          active={@panel == "superagents"}
-          flash={@flash}
-        >
-          <BoardComponents.Superagents.superagents
-            superagents={@superagents}
-            repos={@repos}
-            provision_preview={@provision_preview}
-            provisioning={@provisioning}
-            tz_offset={@tz_offset}
-          />
-        </BoardComponents.Panel.shell>
-
-        <BoardComponents.Panel.shell
           name="settings"
           title={gettext("Settings")}
           active={@panel == "settings"}
@@ -3428,6 +3519,13 @@ defmodule AgentBoardWeb.BoardLive do
             dispatch_paused={@dispatch_paused}
             active={@panel == "settings"}
             section={@settings_section}
+            superagents={@superagents}
+            repos={@repos}
+            sources={@superagent_sources}
+            provision_preview={@provision_preview}
+            provisioning={@provisioning}
+            tz_offset={@tz_offset}
+            project_pending={@project_pending}
             board_locale={@board_locale}
             return_to={BoardNavigation.path(@repo, "settings")}
           />

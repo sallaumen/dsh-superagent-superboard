@@ -6,12 +6,12 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.Board
   alias AgentBoard.Board.Task
 
-  @panels ~w(activity intake ai conversation voice history composer shortcuts executors settings superagents logs)
+  @panels ~w(activity intake ai conversation voice history composer shortcuts executors settings logs)
 
   # The rail shows these on a board with no repository: Settings is where the
   # first one is added, and the others do not depend on one.
   @panels_without_repo ~w(voice logs settings shortcuts superagents)
-  @settings_sections ~w(inspect dispatch voice summary repositories appearance language version)
+  @settings_sections ~w(inspect dispatch voice summary repositories superagents appearance language version)
 
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
@@ -117,8 +117,10 @@ defmodule AgentBoardWeb.BoardNavigation do
       else: socket
   end
 
-  def open_panel(socket, panel) when panel in ["shortcuts", "superagents"],
-    do: push_patch(socket, to: path(socket.assigns.repo, panel))
+  def open_panel(socket, "shortcuts"),
+    do: push_patch(socket, to: path(socket.assigns.repo, "shortcuts"))
+
+  def open_panel(socket, "superagents"), do: open_panel(socket, "settings", "superagents")
 
   def open_panel(socket, "settings"), do: open_panel(socket, "settings", nil)
 

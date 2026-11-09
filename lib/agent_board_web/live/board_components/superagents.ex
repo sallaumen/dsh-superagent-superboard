@@ -12,6 +12,7 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
   attr :provision_preview, :any, default: nil
   attr :provisioning, :boolean, default: false
   attr :tz_offset, :integer, default: 0
+  attr :sources, :list, default: []
 
   def superagents(assigns) do
     total_agents = Enum.sum(Enum.map(assigns.superagents, & &1.max_workers))
@@ -239,11 +240,10 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
           </label>
           <label>
             <span>{gettext("Source (working profile)")}</span>
-            <select name="source_id" required>
+            <select name="source_profile" required>
               <option value="">{gettext("Choose source profile")}</option>
-              <option :for={source <- @superagents} value={source.id}>
-                {source.profile} · {source.repository &&
-                  "#{source.repository.owner}/#{source.repository.name}"}
+              <option :for={source <- @sources} value={source.name}>
+                {source.name} · {gettext("port")} {source.port || "?"}
               </option>
             </select>
           </label>

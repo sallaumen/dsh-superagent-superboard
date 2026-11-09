@@ -11,6 +11,7 @@ defmodule AgentBoard.Superagents do
   alias AgentBoard.Superagents.{Manager, Provisioner, Superagent, SuperagentEvent}
 
   @dsh_state Path.expand("~/.dsh/state")
+  @dsh_profiles Path.expand("~/.dsh/profiles")
   @archive_root Path.expand("~/.agent_board/archived-superagents")
 
   @topic "superagents"
@@ -40,6 +41,100 @@ defmodule AgentBoard.Superagents do
     Repo.all(from s in Superagent, order_by: [asc: s.id], select: s.state_dir)
   end
 
+  @doc "The directory the DSH profiles live in; overridable in tests."
+  def profiles_root, do: Application.get_env(:agent_board, :dsh_profiles_dir, @dsh_profiles)
+
+  @doc """
+  Every DSH working profile on disk, with the port its `cordis.patch.yml`
+  declares. The provisioner clones one of these; a profile without a patch
+  port is listed without a port and cannot serve as a source.
+  """
+  def profiles_on_disk(root \\ profiles_root()) do
+    case File.ls(root) do
+      {:ok, names} ->
+        names
+        |> Enum.sort()
+        |> Enum.map(&profile_entry(root, &1))
+        |> Enum.reject(&is_nil/1)
+
+      {:error, _} ->
+        []
+    end
+  end
+
+  defp profile_entry(root, name) do
+    dir = Path.join(root, name)
+    if File.dir?(dir), do: %{name: name, dir: dir, port: patch_port(dir)}
+  end
+
+  @doc """
+  The default source for a new project: the machine's main `superagent`
+  profile when it exists, else the first profile on disk. `{:error,
+  :no_working_profile}` means dsh has never created a profile here.
+  """
+  def default_source do
+    case Enum.find(profiles_on_disk(), &(&1.name == "superagent")) ||
+           List.first(profiles_on_disk()) do
+      nil -> {:error, :no_working_profile}
+      %{name: name, port: port} when is_integer(port) -> {:ok, source_struct(name, port)}
+      %{name: name} -> {:error, {:profile_port_missing, name}}
+    end
+  end
+
+  @doc "A source by working-profile name, ready for `provision/4`."
+  def source_by_profile(name) when is_binary(name) do
+    case Enum.find(profiles_on_disk(), &(&1.name == name)) do
+      %{name: name, port: port} when is_integer(port) -> {:ok, source_struct(name, port)}
+      %{name: name} -> {:error, {:profile_port_missing, name}}
+      nil -> {:error, :profile_missing}
+    end
+  end
+
+  @doc """
+  The values a new project will use, without writing anything: the sentence
+  the owner confirms shows these before the provisioner runs.
+  """
+  def preview(repository, source, attrs) do
+    with {:ok, source} <- normalize_source(source),
+         {:ok, profile} <- next_profile(repository),
+         {:ok, port} <- port_for(attrs) do
+      {:ok,
+       %{
+         profile: profile,
+         port: port,
+         state_dir: Path.join(@dsh_state, profile),
+         workers: Map.get(attrs, :workers, 3),
+         source_profile: source.profile
+       }}
+    end
+  end
+
+  defp source_struct(name, port), do: %Superagent{profile: name, port: port}
+
+  defp normalize_source(%Superagent{} = source), do: {:ok, source}
+  defp normalize_source(name) when is_binary(name), do: source_by_profile(name)
+  defp normalize_source(nil), do: {:error, :source_required}
+
+  defp port_for(attrs) do
+    case Map.get(attrs, :port) do
+      port when is_integer(port) -> {:ok, port}
+      _ -> free_port()
+    end
+  end
+
+  defp patch_port(dir) do
+    case :file.read_file(Path.join(dir, "cordis.patch.yml")) do
+      {:ok, text} ->
+        case Regex.run(~r/^\s*port:\s*(\d+)/m, text, capture: :all_but_first) do
+          [port] -> String.to_integer(port)
+          _ -> nil
+        end
+
+      {:error, _} ->
+        nil
+    end
+  end
+
   @doc """
   Reserve one row and ask the provisioner to create the external profile,
   port, state and setup. A failure keeps the row in `error` with the reason so
@@ -47,8 +142,9 @@ defmodule AgentBoard.Superagents do
   """
   def provision(repository, source, attrs, provisioner \\ Provisioner.impl()) do
     with nil <- get_by_repository(repository),
+         {:ok, source} <- normalize_source(source),
          {:ok, profile} <- next_profile(repository),
-         {:ok, port} <- free_port(),
+         {:ok, port} <- port_for(attrs),
          state_dir = Path.join(@dsh_state, profile),
          {:ok, superagent} <-
            create(%{

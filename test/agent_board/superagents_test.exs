@@ -281,6 +281,88 @@ defmodule AgentBoard.SuperagentsTest do
            ]
   end
 
+  defp with_profiles(tmp, fun) do
+    File.mkdir_p!(Path.join(tmp, "superagent"))
+    File.mkdir_p!(Path.join(tmp, "desktop"))
+    File.write!(Path.join([tmp, "superagent", "cordis.patch.yml"]), "webserver:\n  port: 3082\n")
+    File.write!(Path.join([tmp, "desktop", "cordis.patch.yml"]), "webserver:\n  port: 3083\n")
+
+    previous = Application.get_env(:agent_board, :dsh_profiles_dir)
+    Application.put_env(:agent_board, :dsh_profiles_dir, tmp)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:agent_board, :dsh_profiles_dir, previous),
+        else: Application.delete_env(:agent_board, :dsh_profiles_dir)
+
+      File.rm_rf!(tmp)
+    end)
+
+    fun.()
+  end
+
+  test "profiles on disk carry their patch ports and the main profile is the default" do
+    tmp = Path.join(System.tmp_dir!(), "dsh-profiles-#{System.unique_integer([:positive])}")
+
+    with_profiles(tmp, fn ->
+      profiles = Superagents.profiles_on_disk()
+      assert Enum.map(profiles, & &1.name) == ["desktop", "superagent"]
+      assert Enum.find(profiles, &(&1.name == "superagent")).port == 3082
+
+      assert {:ok, source} = Superagents.default_source()
+      assert source.profile == "superagent"
+      assert source.port == 3082
+
+      assert {:ok, other} = Superagents.source_by_profile("desktop")
+      assert other.port == 3083
+      assert {:error, :profile_missing} = Superagents.source_by_profile("nope")
+    end)
+  end
+
+  test "without any profile on disk the default source is an error" do
+    tmp = Path.join(System.tmp_dir!(), "dsh-profiles-empty-#{System.unique_integer([:positive])}")
+
+    with_profiles(tmp, fn ->
+      File.rm_rf!(tmp)
+      File.mkdir_p!(tmp)
+      assert {:error, :no_working_profile} = Superagents.default_source()
+    end)
+  end
+
+  test "preview names the profile, port and state dir without writing", %{repo: repo} do
+    tmp = Path.join(System.tmp_dir!(), "dsh-profiles-#{System.unique_integer([:positive])}")
+
+    with_profiles(tmp, fn ->
+      {:ok, source} = Superagents.default_source()
+      assert {:ok, preview} = Superagents.preview(repo, source, %{workers: 4})
+      assert preview.source_profile == "superagent"
+      assert preview.profile =~ "superagent-superagent"
+      assert preview.port in 3090..3199
+      assert preview.workers == 4
+      assert preview.state_dir == Path.expand("~/.dsh/state/#{preview.profile}")
+      refute Superagents.get_by_repository(repo)
+    end)
+  end
+
+  test "provision accepts a working-profile name as the source", %{repo: repo} do
+    tmp = Path.join(System.tmp_dir!(), "dsh-profiles-#{System.unique_integer([:positive])}")
+
+    with_profiles(tmp, fn ->
+      assert {:ok, superagent} =
+               Superagents.provision(
+                 repo,
+                 "superagent",
+                 %{path: "/tmp/checkout", workers: 2},
+                 FakeProvisioner
+               )
+
+      assert superagent.profile =~ "superagent-superagent"
+      assert {_row, source, _attrs} = Process.get({FakeProvisioner, :last})
+      assert source.profile == "superagent"
+      assert source.port == 3082
+    end)
+  end
+
   describe "the manager's /state in a shape the board did not expect" do
     alias AgentBoard.Superagents.DshManager
 
