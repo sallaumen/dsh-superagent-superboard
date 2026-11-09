@@ -56,6 +56,7 @@ defmodule AgentBoardWeb.BoardLive do
   import AgentBoardWeb.BoardComponents.LogsSheet, only: [logs_sheet: 1]
   import AgentBoardWeb.BoardComponents.MergeLog, only: [merge_log: 1]
   import AgentBoardWeb.BoardComponents.NeedsYou, only: [needs_you: 1]
+  import AgentBoardWeb.BoardComponents.ObjectiveTree, only: [objective_tree: 1]
   import AgentBoardWeb.BoardComponents.NowLane, only: [now_lane: 1]
   import AgentBoardWeb.BoardComponents.QueueList, only: [queue_list: 1]
   import AgentBoardWeb.BoardComponents.Shortcuts, only: [shortcuts: 1]
@@ -3210,6 +3211,7 @@ defmodule AgentBoardWeb.BoardLive do
                   >
                     <span style={"width: #{progress(objective)}%"}></span>
                   </div>
+                  <.objective_tree :if={objective.edges != []} objective={objective} />
                 </article>
               </section>
 

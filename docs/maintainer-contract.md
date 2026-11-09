@@ -1132,6 +1132,11 @@ computed from the tasks, never a second project manager.
   are the record: a mirror GitHub refuses is a `link_error` event and undoes
   nothing. The sync keeps that label out of the queue. A retry finds the same
   objective by `request_key`.
+- **The tree** (`BoardComponents.ObjectiveTree`) draws an objective with
+  edges: each task one column after the deepest task it waits for. Its text
+  repeats the lines, so a phone and a screen reader lose nothing, and it says
+  only what is true: until the release step exists, a dependency still open
+  does not stop the agent.
 - **It does not replace the board's lanes.** Attaching or finishing a task is
   the same write and the same sync; no separate status is written.
 - The tests: `objectives_test.exs` (the criterion, progress, one task is not a
