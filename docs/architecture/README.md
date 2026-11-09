@@ -76,11 +76,15 @@ flowchart LR
     SYNC["Sync\n5 min"] --> GH
     SYNC --> BOARD["Board"]
     SYNC --> OVERLAY["TicketOverlay"]
-    SYNC --> AUTORETRY["AutoRetry"]
+    SYNC --> TICKETS["Tickets"]
 
     POLL["TicketPoller\n10 s"] --> AGENT
+    POLL --> TICKETS
     POLL --> OVERLAY
     POLL --> BOARD
+
+    TICKETS --> PLAN["AutoRetry.Plan"]
+    AUTORETRY["AutoRetry"] --> PLAN
 
     OVERLAY --> BOARD
     RUNNERS["Runners"] --> FILES
@@ -175,6 +179,7 @@ evento (uma retentativa abriria um segundo issue).
 | visão Hoje (esta rodada) | a visão "Hoje" (cross-repo) morava no contexto de um repositório | `AgentBoard.Overview` para `today/0` e `repo_overview/0` | testes de overview/board e orçamento de queries verdes |
 | uso do Harness (esta rodada) | `ExecutorUsage` não dizia qual fonte lia e morava fora de `Usage` | `AgentBoard.Usage.Harness`; leitor por tarefa separado do Ledger/Report | testes de harness, ledger e report verdes |
 | criação de pedido (esta rodada) | `create_request`, `create_task` e o claim viviam no `Board` junto das leituras | `AgentBoard.Board.Requests`; o `Board` chama de volta só para persistir, registrar e broadcastar | testes de requests e de fronteira verdes |
+| estado do ticket (esta rodada) | `Sync` era dono da regra de estado e o poller dependia dele; o plano de retry misturava decisão e efeito | `AgentBoard.Tickets` para a regra; `AutoRetry.Plan` para a decisão pura; poller lê o `AgentState` direto | `mix xref`: nenhum ciclo de domínio restante; testes de sync/ticket/retry verdes |
 
 ### Antes e depois do acoplamento
 
@@ -200,12 +205,11 @@ flowchart LR
 ```
 
 `mix xref graph --format cycles` antes: 6 ciclos, o de domínio com 11 módulos.
-Depois: 6 ciclos; o SCC de 11 não existe mais e sobrou **um** ciclo de domínio,
-`Actions/AutoRetry/Sync/Worker` (4). O ciclo da web (36) é a direção
-router/endpoint do Phoenix, o dos schemas (6) são associações Ecto e os três
-pares de `Superagents` são behaviour ↔ implementação; nenhum tem aresta de
-compilação (`--label compile-connected` continua sem ciclos). O ciclo de
-orquestração que sobrou está em [Limites](#9-limites-e-próximos-passos).
+Depois: 5 ciclos; o SCC de 11 não existe mais e **não sobrou ciclo de
+domínio**. O ciclo da web (36) é a direção router/endpoint do Phoenix, o dos
+schemas (6) são associações Ecto e os três pares de `Superagents` são
+behaviour ↔ implementação; nenhum tem aresta de compilação (`--label
+compile-connected` continua sem ciclos).
 
 ## 6. Decisões, com o porquê
 
@@ -382,7 +386,34 @@ continuam no contexto.
 call site em `Actions`; o teste de fronteira precisou apontar para o novo
 módulo.
 
-### 6.9 O que foi mantido de propósito
+### 6.9 O estado do ticket e a decisão de retry saem do `Sync`
+
+**Problema.** `Sync.ticket_state/2` era a regra de estado do ticket, mas quem
+mais a usava era o poller de 10 s — que, por isso, dependia do contexto do
+sync. E `AutoRetry` misturava a decisão (`plan/2`, pura) com o tick, o claim
+e a escrita.
+
+**Evidência.** `TicketPoller` chamava `Sync.ticket_state/2` e
+`Sync.normalized_tickets/0`; `Sync` chamava `AutoRetry.plan/1` e
+`queued_retry?/1` só para decidir `retrying`; o `mix xref` mostrava o ciclo
+`Actions/AutoRetry/Sync/Worker`.
+
+**Alternativas.** (a) deixar o ciclo documentado; (b) mover a regra para o
+poller, duplicando-a; (c) dar um dono à regra e outro à decisão.
+
+**Escolha.** (c): `AgentBoard.Tickets.state/2` é a regra (recebe o workpad e
+o `asked?` como valores/funções, não lê o board); `AutoRetry.Plan` é a
+decisão pura, sem `Actions`; `AutoRetry` continua com o tick, o claim e o
+efeito. O poller lê `AgentState.tickets/0` e `Tickets.state/2` direto; `Sync`
+mantém `ticket_state/2` como delegado para não quebrar chamadores antigos.
+`Sync` não chama mais `AutoRetry`.
+
+**Ganho.** O poller deixa de depender do sync e o último ciclo de domínio
+some; a decisão de retry é testável sem banco/rede. **Custo.** Dois módulos
+novos e um delegado de compatibilidade em `Sync` (mantido porque o teste e o
+contrato ainda o nomeiam; pode sair quando ninguém mais o usar).
+
+### 6.10 O que foi mantido de propósito
 
 - **`Board` continua um contexto só.** As tabelas de tarefa, comentário e PR
   compartilham invariantes (o estado de duas camadas, o `request_key`, a
@@ -408,16 +439,16 @@ não são idempotentes por si. A adaptação ao projeto:
 | Nível | Exemplos | Regra |
 |---|---|---|
 | Dados | structs `Board.Task`, `Routing.Decision`, mapas de ticket | sem efeito; o formato é o contrato |
-| Cálculos | `Routing.suggest/2`, `Routing.plan/5`, `Routing.snapshot/1`, `Metrics.throughput/3`, `AgentBlock`, `AgentFailure`, `Workpad.parse/1`, `Freshness.snapshot/1`, `Announcer` | testáveis sem banco/rede; erro é valor |
+| Cálculos | `Routing.suggest/2`, `Routing.plan/5`, `Routing.snapshot/1`, `Tickets.state/2`, `AutoRetry.Plan.plan/2`, `Metrics.throughput/3`, `AgentBlock`, `AgentFailure`, `Workpad.parse/1`, `Freshness.snapshot/1`, `Announcer` | testáveis sem banco/rede; erro é valor |
 | Leituras | `Board.board/3`, `Overview.today/0`, `Overview.repo_overview/0`, `Lanes.needs/3`, `Metrics.Observations`, `Usage.Report`, `AgentSignal`, `AgentWorktree` | leem banco, git ou arquivos; podem ser cacheadas, mas não decidem escrita |
 | Ações | `Actions.run/4`, `Sync.sync_repo/2`, `TicketPoller.poll/1`, `Runners.dispatch/3`, `AI.call`, `ElevenLabs`, `Superagents` | efeito nas bordas; decisão antes do efeito; falha vira motivo, não resposta inventada |
 
 Dois exemplos concretos:
 
 - `TicketOverlay.apply/5` é ação (escreve), mas a decisão "que estado o ticket
-  impõe" é `Sync.ticket_state/2`; `TicketPoller` e `Sync` só orquestram. A
-  decisão é quase toda cálculo, com uma leitura opcional de filesystem: quando
-  o relatório é uma falha de prepare, `AutoRetry.plan/2` olha se sobraram
+  impõe" é `Tickets.state/2`; `TicketPoller` e `Sync` só orquestram. A decisão
+  é quase toda cálculo, com uma leitura opcional de filesystem: quando o
+  relatório é uma falha de prepare, `AutoRetry.Plan.plan/2` olha se sobraram
   arquivos no diretório da execução. Isso permite testar a regra com um mapa e
   a escrita com uma tarefa só.
 - `Board.Requests.create_request/3` mistura níveis de propósito: é a fronteira
@@ -454,10 +485,8 @@ Dois exemplos concretos:
 
 ## 9. Limites e próximos passos
 
-- **O ciclo `Actions ↔ AutoRetry ↔ Sync/Worker`** permanece. É orquestração
-  (a ação enfileira o sync; o sync usa a retentativa; a retentativa chama uma
-  ação). Cortar exigiria um evento ou callback no lugar da chamada; o ganho
-  ainda não paga o desenho.
+- **Nenhum ciclo de domínio restante.** O `xref` só mostra a web, as
+  associações Ecto e os pares behaviour ↔ implementação de `Superagents`.
 - **`BoardLive` tem ~3 mil linhas.** Ainda não é o gargalo; o próximo corte, se
   necessário, é por painel (mover os `handle_event` para o componente), com
   teste de renderização por painel.
@@ -467,14 +496,15 @@ Dois exemplos concretos:
 
 ## 10. Evidência de validação
 
-- `MIX_ENV=test mix gate` no commit final: 980 testes, 0 falhas; compilação com
+- `MIX_ENV=test mix gate` no commit final: 982 testes, 0 falhas; compilação com
   warnings como erro, formato, credo e `agent_kit.check` verdes.
 - `mix xref graph --format cycles` antes/depois (seção 5) e
   `mix xref graph --format cycles --label compile-connected`: sem ciclos de
   compilação.
 - PRs: #401, #402, #404, #406, #409, a entrega de roteamento, a extração da
   visão Hoje, a renomeação de `Usage.Harness`, a extração de
-  `Board.Requests` e este documento. Cada um passou a CI
+  `Board.Requests`, a extração de `Tickets`/`AutoRetry.Plan` e este documento.
+  Cada um passou a CI
   (backend em quatro partições, gates, frontend, biblioteca, release).
 - O defeito de teste de #406 foi encontrado validando os PRs e tratado em
   separado; nenhum comportamento de produto mudou nesta revisão.

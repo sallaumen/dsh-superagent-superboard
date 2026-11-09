@@ -7,7 +7,7 @@ defmodule AgentBoard.TicketPoller do
   """
   use GenServer
 
-  alias AgentBoard.{AgentState, Board, Sync, TicketOverlay}
+  alias AgentBoard.{AgentState, Board, TicketOverlay, Tickets}
   alias AgentBoard.Board.Repository
   alias AgentBoard.Repo
 
@@ -43,7 +43,7 @@ defmodule AgentBoard.TicketPoller do
   end
 
   defp poll_tickets(state) do
-    tickets = Sync.normalized_tickets()
+    tickets = AgentState.tickets()
 
     Repo.all(Repository)
     |> Enum.reduce(state, fn repo, acc ->
@@ -70,9 +70,9 @@ defmodule AgentBoard.TicketPoller do
   end
 
   # The workpad and the question check read the conversation only for a
-  # waiting ticket: Sync.ticket_state calls them lazily.
+  # waiting ticket: Tickets.state calls them lazily.
   defp overlay_ticket(repo, ticket, number) do
-    case Sync.ticket_state(ticket,
+    case Tickets.state(ticket,
            workpad: fn -> Board.agent_workpad(repo.id, number) end,
            asked?: fn -> Board.agent_asked?(repo.id, number) end
          ) do

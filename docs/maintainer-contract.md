@@ -17,12 +17,13 @@ differ. Change a general rule upstream, not here.
 | `AgentBoard.Board` | the context: repositories, tasks, comments, events, broadcast |
 | `AgentBoard.Board.Requests` | opens a board request once: claim, receipt, issue, router line |
 | `AgentBoard.Sync` | the GitHub sync: issues, pulls, reviews, checks, comments |
+| `AgentBoard.Tickets` | what a runner ticket says about the task: the live state rule, pure but for the prepare-directory check |
 | `AgentBoard.Sync.Worker` | the Oban job that runs the sync |
 | `AgentBoard.TicketPoller` | the 10s poller that reads the runner's tickets |
 | `AgentBoard.GitHub` | the HTTP client (`body!/1`, rate limits) |
 | `AgentBoard.Orchestrator` | the runner's HTTP API: the load (`running`, `queued`, `maxWorkers`) and its two writes, `retry/2` and `set_max_workers/2` |
 | `AgentBoard.AgentFailure` | what a `failed` report means: transient (network, provider) or a person's, pure |
-| `AgentBoard.AutoRetry` | the automatic retry of a transient failure: `plan/2` (pure, what the board shows) and the 30 s tick |
+| `AgentBoard.AutoRetry` | the automatic retry of a transient failure: `AutoRetry.Plan` (pure decision), the claim and the 30 s tick |
 | `AgentBoard.AgentBlock` | what the board says about a failed ticket: the card line, what the system does, what is left to the owner, the attempts; pure |
 | `AgentBoard.AgentControl` | the owner's two confirmed asks, run by `Actions`: "Tentar de novo" (`retry/2`) and "Religar o agente" (`start_agent/1`) |
 | `AgentBoard.Metrics` | the throughput arithmetic, pure; `Metrics.Observations` reads what it counts |
@@ -322,8 +323,8 @@ one the gate knows ("Board actions" above): it covers the actor
 **What the board shows** (`AgentBoard.AgentBlock`, one source for the card,
 Agora and the detail):
 
-- A ticket the board retries by itself is `retrying` (`Sync.ticket_state/2`
-  asks `AutoRetry.plan/2`; a retry still waiting for a worker is
+- A ticket the board retries by itself is `retrying` (`Tickets.state/2`
+  asks `AutoRetry.Plan.plan/2`; a retry still waiting for a worker is
   `retrying` too). It is a row in **Agora**, after the running cards, not an
   item in Precisa de você: nobody has to act, the system is on it, and
   Agora is where the board says what is happening now. The row says what
