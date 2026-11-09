@@ -57,6 +57,11 @@ config :agent_board, daily_summary_interval: 3_600_000
 # The runner ticker reads status files; the suite calls Runners.tick/0 itself.
 config :agent_board, runner_tick_interval: 3_600_000
 
+# The superagent ticker reads the manager; :manual means it never schedules
+# a tick, so the suite drives it (and a sandboxed row cannot be touched by a
+# process outside the test).
+config :agent_board, superagent_tick_interval: :manual
+
 # The voices cache would leak between tests through the persistent term;
 # the client goes to the stub every time.
 config :agent_board, voice_voices_ttl: 0
