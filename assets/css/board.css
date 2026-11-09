@@ -2526,3 +2526,85 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
   dialog#panel-logs.board-sheet[open] { animation: sheet-enter var(--motion-enter) var(--ease-enter); }
 }
 @keyframes sheet-enter { from { opacity: 0; transform: translateY(14px); } }
+
+/* ---------- unblocking a stopped task ---------- */
+.ab-unblock {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper-sunk);
+  max-height: min(52vh, 32rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.ab-unblock__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.ab-unblock__head strong { font-size: 13px; color: var(--ink); }
+.ab-unblock__quote {
+  display: grid;
+  gap: 2px;
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--line-strong);
+}
+.ab-unblock__quote p {
+  margin: 0;
+  max-height: 7.5rem;
+  overflow: auto;
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 18px;
+  white-space: pre-wrap;
+}
+.ab-unblock__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+}
+.ab-unblock__links a {
+  color: var(--agent);
+  font-size: 12px;
+  text-underline-offset: 2px;
+}
+.ab-unblock__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ab-unblock__error { margin: 0; color: var(--halt); font-size: 12px; }
+.ab-unblock__suggestions { display: grid; gap: var(--space-1); }
+.ab-unblock__suggestion {
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 18px;
+  text-align: left;
+  cursor: pointer;
+}
+.ab-unblock__suggestion:hover { border-color: var(--line-strong); }
+.ab-unblock__suggestion:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.ab-unblock__form form { display: grid; gap: var(--space-1); }
+.ab-unblock__form label { font-size: 11px; font-weight: 600; color: var(--ink-muted); }
+.ab-unblock__form input,
+.ab-unblock__form textarea {
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+}
+.ab-unblock__form textarea { resize: vertical; min-height: 7rem; }
+.ab-unblock__form-actions { display: flex; gap: var(--space-2); margin-top: var(--space-1); }

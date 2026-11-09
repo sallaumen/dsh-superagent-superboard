@@ -295,6 +295,20 @@ defmodule AgentBoard.AITest do
     assert call.error =~ "500"
   end
 
+  test "the unblock suggestion is registered and returns sendable options" do
+    Application.put_env(:agent_board, :ai_rehearsal, true)
+    on_exit(fn -> Application.delete_env(:agent_board, :ai_rehearsal) end)
+
+    assert {:ok, %{json: %{"suggestions" => [_ | _] = suggestions}}} =
+             AI.call(:suggest_unblock, %{
+               question: "Entrego sem perfis?",
+               blockage: "Falta o mapa"
+             })
+
+    assert Enum.all?(suggestions, &is_binary/1)
+    assert Repo.one(Call).name == "suggest_unblock"
+  end
+
   test "rehearsal answers without a key or a network" do
     Application.put_env(:agent_board, :ai_api_key, "")
     Application.put_env(:agent_board, :ai_rehearsal, true)

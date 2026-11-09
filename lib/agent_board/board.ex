@@ -413,6 +413,16 @@ defmodule AgentBoard.Board do
     Repo.all(from c in Comment, where: c.task_id == ^task.id, order_by: [asc: c.inserted_at])
   end
 
+  @doc "Open prerequisite tasks that point at this blocked task, oldest first."
+  @spec blockers_for(Task.t()) :: [Task.t()]
+  def blockers_for(%Task{id: id}) when is_integer(id) do
+    Repo.all(
+      from t in Task,
+        where: t.blocker_for_task_id == ^id and t.state not in ["done", "closed"],
+        order_by: [asc: t.inserted_at, asc: t.id]
+    )
+  end
+
   @doc "Ask the agent: post a comment on the task's issue that mentions the agent."
   def ask(task, body, client) do
     # The caller may hand us a bare task (a Repo.get); preload is idempotent.

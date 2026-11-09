@@ -47,6 +47,37 @@ defmodule AgentBoard.CreateRequestTest do
     end)
   end
 
+  test "a blocker request keeps the link to the blocked task", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+    count_issues(counter)
+
+    blocked =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 1417,
+        title: "Menu central",
+        state: "blocked"
+      })
+      |> Repo.insert!()
+
+    request =
+      routed(repo, %{
+        title: "Desbloquear #1417",
+        body: "Corpo\n\n@sallaumen-agent",
+        key: Board.request_key(repo, "unblock", ["Desbloquear #1417", "Corpo"]),
+        executor: "dsh",
+        origin_task_id: blocked.id,
+        blocker_for_task_id: blocked.id
+      })
+
+    assert {:ok, blocker, :created} = Board.Requests.create_request(repo, request, client())
+    assert blocker.blocker_for_task_id == blocked.id
+    assert blocker.origin_task_id == blocked.id
+    assert [^blocker] = Board.blockers_for(blocked)
+  end
+
   test "the same request submitted twice opens one issue", %{repo: repo} do
     {:ok, counter} = Agent.start_link(fn -> 0 end)
     count_issues(counter)

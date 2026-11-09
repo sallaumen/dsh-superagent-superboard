@@ -42,6 +42,12 @@ defmodule AgentBoard.AI.Engines.Rehearsal do
         }
       ]
     },
+    suggest_unblock: %{
+      "suggestions" => [
+        "Responda com a decisão que você já tem e deixe a tarefa seguir; não espere um mapa que não existe.",
+        "Abra uma tarefa separada para o pré-requisito e retome esta quando ela fechar."
+      ]
+    },
     answer_question: %{
       "answer" => "Modo de ensaio: esta é uma resposta de fixture, sem modelo."
     },

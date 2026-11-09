@@ -203,6 +203,50 @@ defmodule AgentBoardWeb.InspectorTest do
     assert call.task_id == task.id
   end
 
+  test "a blocked task offers a suggested answer and a linked blocker task", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-unblock")
+    task = task(repo, 1417, "Menu central do Ateliê", "blocked")
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: task.id,
+      github_id: 3,
+      author: "sallaumen-agent",
+      kind: "agent",
+      body: """
+      ## Relatório do agente
+
+      ### Pergunta
+      Devo entregar o menu restrito ao operador?
+
+      ### Bloqueio
+      O mapa da #1416 ainda não foi entregue.
+      """
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", task.id))
+
+    assert has_element?(view, "#unblock-panel", "Devo entregar o menu restrito")
+    assert has_element?(view, "#unblock-panel", "O mapa da #1416")
+    assert has_element?(view, "#suggest-unblock", "Sugerir resposta")
+    assert has_element?(view, "#open-blocker", "Criar tarefa bloqueadora")
+
+    view |> element("#open-blocker") |> render_click()
+    assert has_element?(view, "#blocker-form")
+    assert has_element?(view, "#blocker-title")
+
+    view
+    |> element("#blocker-form")
+    |> render_submit(%{
+      "title" => "Desbloquear #1417: decidir perfis",
+      "body" => "Resolver #1416."
+    })
+
+    assert has_element?(view, "#blocker-confirm", "Desbloquear #1417: decidir perfis")
+    assert has_element?(view, "#blocker-confirm", "Criar tarefa")
+  end
+
   defp task(repo, number, title, state) do
     %Task{}
     |> Task.changeset(%{

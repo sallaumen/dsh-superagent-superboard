@@ -318,13 +318,18 @@ defmodule AgentBoard.Lanes do
       Repo.all(
         from t in Task,
           where: t.repository_id == ^repository.id and t.state == "queued",
-          order_by: [asc: t.inserted_at, asc: t.id],
+          order_by: [
+            desc: fragment("? IS NOT NULL", t.blocker_for_task_id),
+            asc: t.inserted_at,
+            asc: t.id
+          ],
           select: %{
             id: t.id,
             number: t.number,
             title: t.title,
             inserted_at: t.inserted_at,
-            origin_task_id: t.origin_task_id
+            origin_task_id: t.origin_task_id,
+            blocker_for_task_id: t.blocker_for_task_id
           }
       )
 
@@ -336,7 +341,8 @@ defmodule AgentBoard.Lanes do
       )
 
     origins = origin_numbers(rows)
-    items = Enum.map(rows, &queue_item(&1, merged, origins, now, last_visit))
+    blockers = blocker_numbers(rows)
+    items = Enum.map(rows, &queue_item(&1, merged, origins, blockers, now, last_visit))
     counts = queue_counts(items)
 
     filtered = filter_items(items, filter)
@@ -352,8 +358,15 @@ defmodule AgentBoard.Lanes do
     }
   end
 
-  defp queue_item(row, merged, origins, now, last_visit) do
+  defp queue_item(row, merged, origins, blockers, now, last_visit) do
     duplicate = Titles.duplicate(row.title, merged)
+
+    sub =
+      case {Map.get(blockers, row.blocker_for_task_id), Map.get(origins, row.origin_task_id)} do
+        {number, _origin} when is_integer(number) -> "desbloqueia ##{number}"
+        {nil, number} when is_integer(number) -> "dividido de ##{number}"
+        _ -> nil
+      end
 
     %{
       key: "task-#{row.id}",
@@ -362,13 +375,23 @@ defmodule AgentBoard.Lanes do
       title: row.title,
       age_seconds: Time.age_seconds(row.inserted_at, now),
       is_new: new?(row.inserted_at, last_visit),
-      sub:
-        case Map.get(origins, row.origin_task_id) do
-          nil -> nil
-          number -> "dividido de ##{number}"
-        end,
+      sub: sub,
       note: duplicate && "Parece repetir ##{duplicate.number}, já mesclado"
     }
+  end
+
+  defp blocker_numbers(rows) do
+    ids =
+      rows
+      |> Enum.map(& &1.blocker_for_task_id)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    if ids == [] do
+      %{}
+    else
+      Repo.all(from t in Task, where: t.id in ^ids, select: {t.id, t.number}) |> Map.new()
+    end
   end
 
   defp origin_numbers(rows) do
