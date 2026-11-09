@@ -11,6 +11,22 @@ defmodule AgentBoardWeb.InspectorTest do
   alias AgentBoardWeb.BoardComponents.Inspector
   alias AgentBoardWeb.BoardNavigation
 
+  test "the English task conversation keeps writing in place", %{conn: _conn} do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-english")
+    task = task(repo, 26, "Review the result", "done")
+
+    {:ok, view, _html} =
+      live(Phoenix.ConnTest.build_conn(), BoardNavigation.path(repo, "conversation", task.id))
+
+    assert has_element?(view, "#conversation[aria-label='Task #26 details']")
+    assert has_element?(view, "#conversation .ab-status", "Merged")
+    assert has_element?(view, "#inspector-tab-conversa", "Conversation")
+    assert has_element?(view, "#inspector-tab-atividade", "Activity")
+    assert has_element?(view, "#inspector-tab-chamadas", "AI calls")
+    assert has_element?(view, "#ask-agent textarea[aria-label='Message to the agent']")
+    refute has_element?(view, "#ask-agent button[aria-label='Dictate by voice']")
+  end
+
   test "the tabs switch in place and the calls are the task's own", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "inspector")
     task = task(repo, 25, "Salvar replays", "ready")
