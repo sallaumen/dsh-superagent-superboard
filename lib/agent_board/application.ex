@@ -31,7 +31,9 @@ defmodule AgentBoard.Application do
     # See https://elixir.hexdocs.pm/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: AgentBoard.Supervisor]
-    Supervisor.start_link(children, opts)
+    result = Supervisor.start_link(children, opts)
+    AgentBoard.ObanRescue.rescue_orphans()
+    result
   end
 
   # Tell Phoenix to update the endpoint configuration
