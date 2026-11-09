@@ -8,6 +8,7 @@ defmodule AgentBoardWeb.InspectorTest do
   alias AgentBoard.{AI, Board, Repo}
   alias AgentBoard.AI.Call
   alias AgentBoard.Board.{Comment, PullRequest, Task}
+  alias AgentBoard.Intake.IssueBody
   alias AgentBoardWeb.BoardComponents.Inspector
   alias AgentBoardWeb.BoardNavigation
 
@@ -177,6 +178,38 @@ defmodule AgentBoardWeb.InspectorTest do
       tz_offset: 0,
       live: false
     })
+  end
+
+  test "the task shows its images and links its other files, not the commands", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-files")
+    hash = String.duplicate("c", 64)
+
+    body =
+      IssueBody.with_attachments(
+        "Refazer o login.",
+        [%{name: "a.png", path: "#{hash}/a.png"}, %{name: "m.html", path: "#{hash}/m.html"}],
+        repo,
+        "pt"
+      )
+
+    task = task(repo, 40, "Com anexos", "ready")
+    task |> Ecto.Changeset.change(body: body) |> Repo.update!()
+
+    {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", task.id))
+
+    assert has_element?(
+             view,
+             "#task-attachments img[src='/attachments/#{repo.id}/#{hash}/a.png']"
+           )
+
+    assert has_element?(
+             view,
+             "#task-attachments a[href='/attachments/#{repo.id}/#{hash}/m.html']",
+             "m.html"
+           )
+
+    assert has_element?(view, "#conversation", "Refazer o login.")
+    refute view |> element("#conversation") |> render() =~ "gh api"
   end
 
   test "hidden executor markers never reach the conversation", %{conn: conn} do

@@ -81,6 +81,27 @@ defmodule AgentBoard.AttachmentsTest do
     assert Attachments.safe_name("...") == "file"
   end
 
+  describe "reading an issue back" do
+    @hash String.duplicate("b", 64)
+
+    test "finds each file once, and tells images from the rest" do
+      body = """
+      ![a.png](https://github.com/o/r/blob/board-attachments/#{@hash}/a.png?raw=true) `gh api "repos/o/r/contents/#{@hash}/a.png?ref=board-attachments"`
+      [m.html](https://github.com/o/r/blob/board-attachments/#{@hash}/m.html) `gh api "repos/o/r/contents/#{@hash}/m.html?ref=board-attachments"`
+      """
+
+      assert [
+               %{hash: @hash, name: "a.png", image?: true},
+               %{hash: @hash, name: "m.html", image?: false}
+             ] = Attachments.in_body(body)
+    end
+
+    test "a body without files has none" do
+      assert Attachments.in_body("Corpo") == []
+      assert Attachments.in_body(nil) == []
+    end
+  end
+
   defp create(repo, attachments) do
     params = %{
       repository: repo,

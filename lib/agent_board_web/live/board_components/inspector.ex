@@ -7,6 +7,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [status_mark: 1]
   import AgentBoardWeb.BoardComponents.WorkTag, only: [work_tag: 1]
 
+  alias AgentBoard.Board.Attachments
+  alias AgentBoard.Intake.IssueBody
   alias AgentBoardWeb.BoardComponents.AgentAction
   alias AgentBoardWeb.Time
 
@@ -535,7 +537,25 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           {gettext("Task")}
           <span class="ab-data-sm">{Time.local_time(@task.inserted_at, @offset)}</span>
         </div>
-        <p>{clean_body(@task.body)}</p>
+        <p>{@task.body |> IssueBody.without_attachments() |> clean_body()}</p>
+        <div :if={Attachments.in_body(@task.body) != []} id="task-attachments" class="ab-gallery">
+          <a
+            :for={file <- Attachments.in_body(@task.body)}
+            href={~p"/attachments/#{@task.repository_id}/#{file.hash}/#{file.name}"}
+            target="_blank"
+            rel="noopener noreferrer"
+            class={if(file.image?, do: "ab-gallery__image", else: "ab-chip")}
+            aria-label={gettext("Open %{name}", name: file.name)}
+          >
+            <img
+              :if={file.image?}
+              src={~p"/attachments/#{@task.repository_id}/#{file.hash}/#{file.name}"}
+              alt={file.name}
+              loading="lazy"
+            />
+            <span :if={!file.image?}>{file.name}</span>
+          </a>
+        </div>
       </div>
 
       <div

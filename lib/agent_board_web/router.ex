@@ -31,6 +31,7 @@ defmodule AgentBoardWeb.Router do
     pipe_through :browser
 
     post "/language", LocaleController, :update
+    get "/attachments/:repo_id/:hash/:name", AttachmentController, :show
 
     live_session :board, on_mount: {AgentBoardWeb.Locale, :default} do
       live "/", BoardLive
