@@ -162,7 +162,7 @@ defmodule AgentBoard.Superagents.DshProvisionerTest do
 
     project = project(context)
 
-    assert {:error, {:still_running, "@bot cannot push to owner/name."}} =
+    assert {:error, {:still_running, "@bot cannot push to owner/name.", {:manager, 1, _output}}} =
              DshProvisioner.provision(project, source(context), %{path: context.checkout})
 
     assert File.dir?(Path.join(context.profiles, "new"))

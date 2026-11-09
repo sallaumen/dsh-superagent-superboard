@@ -7,6 +7,7 @@ defmodule AgentBoard.Superagents do
   """
   import Ecto.Query, warn: false
 
+  alias AgentBoard.Board
   alias AgentBoard.Repo
   alias AgentBoard.Superagents.{Manager, Provisioner, Superagent, SuperagentEvent}
 
@@ -175,20 +176,24 @@ defmodule AgentBoard.Superagents do
           event(superagent, "provision", nil, "starting", "owner", profile)
           {:ok, superagent}
 
-        {:error, {:still_running, reason}} ->
+        {:error, {:still_running, reason, stop_failure}} ->
           # The agent would not stop, so its files stayed and it still needs a
           # card to be stopped or removed from; the board must not restart it.
+          detail = "#{reason_text(reason)}; the agent did not stop: #{reason_text(stop_failure)}"
           {:ok, stopped} = set_desired(superagent, "stopped")
-          event(stopped, "provision", "starting", "error", "owner", inspect(reason))
-          observe(stopped, %{state: "error", detail: inspect(reason)})
-          {:error, reason}
+          event(stopped, "provision", "starting", "error", "owner", detail)
+          observe(stopped, %{state: "error", detail: detail})
+          log_provision_error(repository, profile, detail)
+          {:error, detail}
 
         {:error, reason} ->
           # The provisioner undid its work. A row left behind would point at
           # nothing, restart an empty agent and keep the repository from being
-          # tried again; the reason goes back to the person who asked.
+          # tried again. The page that asked may be gone, so the reason is also
+          # kept in the repository's activity.
           {:ok, _} = Repo.delete(superagent)
           broadcast()
+          log_provision_error(repository, profile, reason_text(reason))
           {:error, reason}
       end
     else
@@ -196,6 +201,13 @@ defmodule AgentBoard.Superagents do
       {:error, reason} -> {:error, reason}
     end
   end
+
+  defp log_provision_error(repository, profile, text) do
+    Board.log_event(repository.id, "provision_error", profile, %{"reason" => text})
+  end
+
+  defp reason_text(text) when is_binary(text), do: text
+  defp reason_text(other), do: inspect(other)
 
   defp next_profile(repository) do
     base =

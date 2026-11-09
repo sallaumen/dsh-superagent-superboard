@@ -307,8 +307,8 @@ defmodule AgentBoard.Superagents.DshProvisioner do
         unless state_existed?, do: remove_tree(superagent.state_dir)
         {:error, reason}
 
-      {:error, _stop_failure} ->
-        {:error, {:still_running, reason}}
+      {:error, stop_failure} ->
+        {:error, {:still_running, reason, stop_failure}}
     end
   end
 

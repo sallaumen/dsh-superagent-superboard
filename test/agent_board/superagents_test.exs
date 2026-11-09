@@ -284,6 +284,9 @@ defmodule AgentBoard.SuperagentsTest do
 
     assert Superagents.get_by_repository(repo) == nil
 
+    assert [%{kind: "provision_error", payload: %{"reason" => "the bot cannot push"}}] =
+             Board.events(repo) |> Enum.filter(&(&1.kind == "provision_error"))
+
     assert {:ok, %Superagent{}} =
              Superagents.provision(repo, source, %{path: "/tmp/checkout"}, FakeProvisioner)
   end
@@ -299,18 +302,21 @@ defmodule AgentBoard.SuperagentsTest do
         state_dir: "/tmp/source-superagent-stuck"
       })
 
-    assert {:error, "the bot cannot push"} =
+    assert {:error, message} =
              Superagents.provision(
                repo,
                source,
-               %{path: "/tmp/checkout", fail: {:still_running, "the bot cannot push"}},
+               %{path: "/tmp/checkout", fail: {:still_running, "the bot cannot push", "stuck"}},
                FakeProvisioner
              )
+
+    assert message =~ "the bot cannot push"
+    assert message =~ "the agent did not stop: stuck"
 
     superagent = Superagents.get_by_repository(repo)
     assert superagent.desired_state == "stopped"
     assert superagent.observed_state == "error"
-    assert superagent.last_error =~ "the bot cannot push"
+    assert superagent.last_error =~ "did not stop"
   end
 
   test "a detached job finishes after the caller is killed" do
