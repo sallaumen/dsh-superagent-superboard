@@ -1724,7 +1724,9 @@ defmodule AgentBoardWeb.BoardLive do
          socket
          |> assign(project_pending: nil, provisioning: true)
          |> start_async(:provision, fn ->
-           Actions.run(:provision_superagent, params, ui(), confirm: phrase)
+           Superagents.detached(fn ->
+             Actions.run(:provision_superagent, params, ui(), confirm: phrase)
+           end)
          end)}
 
       _ ->
@@ -1747,7 +1749,9 @@ defmodule AgentBoardWeb.BoardLive do
      socket
      |> assign(provision_preview: nil, provisioning: true)
      |> start_async(:provision, fn ->
-       Actions.run(:provision_superagent, params, ui(), confirm: phrase)
+       Superagents.detached(fn ->
+         Actions.run(:provision_superagent, params, ui(), confirm: phrase)
+       end)
      end)}
   end
 

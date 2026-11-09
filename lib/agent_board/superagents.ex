@@ -41,6 +41,18 @@ defmodule AgentBoard.Superagents do
     Repo.all(from s in Superagent, order_by: [asc: s.id], select: s.state_dir)
   end
 
+  @doc """
+  Run `fun` to its end even if the caller dies, and return its result.
+
+  Provisioning takes minutes and is started from a page; a reload must not cut
+  it in half, because the half is what leaves an empty agent behind.
+  """
+  def detached(fun) when is_function(fun, 0) do
+    AgentBoard.Superagents.TaskSupervisor
+    |> Task.Supervisor.async_nolink(fun)
+    |> Task.await(:infinity)
+  end
+
   @doc "The directory the DSH profiles live in; overridable in tests."
   def profiles_root, do: Application.get_env(:agent_board, :dsh_profiles_dir, @dsh_profiles)
 
@@ -137,8 +149,9 @@ defmodule AgentBoard.Superagents do
 
   @doc """
   Reserve one row and ask the provisioner to create the external profile,
-  port, state and setup. A failure leaves nothing behind and returns the reason,
-  so the owner sees what happened and can try the same repository again.
+  port, state and setup. A failure the provisioner could undo leaves no row and
+  returns the reason, so the owner sees what happened and can try the same
+  repository again. An agent that would not stop keeps its row in `error`.
   """
   def provision(repository, source, attrs, provisioner \\ Provisioner.impl()) do
     with nil <- get_by_repository(repository),
@@ -161,6 +174,14 @@ defmodule AgentBoard.Superagents do
         {:ok, _} ->
           event(superagent, "provision", nil, "starting", "owner", profile)
           {:ok, superagent}
+
+        {:error, {:still_running, reason}} ->
+          # The agent would not stop, so its files stayed and it still needs a
+          # card to be stopped or removed from; the board must not restart it.
+          {:ok, stopped} = set_desired(superagent, "stopped")
+          event(stopped, "provision", "starting", "error", "owner", inspect(reason))
+          observe(stopped, %{state: "error", detail: inspect(reason)})
+          {:error, reason}
 
         {:error, reason} ->
           # The provisioner undid its work. A row left behind would point at

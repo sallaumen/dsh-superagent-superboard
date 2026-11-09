@@ -288,6 +288,52 @@ defmodule AgentBoard.SuperagentsTest do
              Superagents.provision(repo, source, %{path: "/tmp/checkout"}, FakeProvisioner)
   end
 
+  test "an agent that would not stop keeps its card and is not restarted", %{repo: repo} do
+    {:ok, source_repo} = Board.add_repository("fixture", "source")
+
+    {:ok, source} =
+      Superagents.create(%{
+        repository_id: source_repo.id,
+        profile: "superagent-source",
+        port: 3194,
+        state_dir: "/tmp/source-superagent-stuck"
+      })
+
+    assert {:error, "the bot cannot push"} =
+             Superagents.provision(
+               repo,
+               source,
+               %{path: "/tmp/checkout", fail: {:still_running, "the bot cannot push"}},
+               FakeProvisioner
+             )
+
+    superagent = Superagents.get_by_repository(repo)
+    assert superagent.desired_state == "stopped"
+    assert superagent.observed_state == "error"
+    assert superagent.last_error =~ "the bot cannot push"
+  end
+
+  test "a detached job finishes after the caller is killed" do
+    test = self()
+
+    caller =
+      spawn(fn ->
+        Superagents.detached(fn ->
+          send(test, {:job, self()})
+
+          receive do
+            :finish -> send(test, :finished)
+          end
+        end)
+      end)
+
+    assert_receive {:job, job}
+    Process.exit(caller, :kill)
+    refute Process.alive?(caller)
+    send(job, :finish)
+    assert_receive :finished
+  end
+
   test "AgentState uses the registered state paths", %{repo: repo} do
     {:ok, _} =
       Superagents.create(%{

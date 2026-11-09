@@ -102,4 +102,69 @@ defmodule AgentBoard.Superagents.DshProvisionerTest do
     refute File.exists?(state_dir)
     assert File.read!(Path.join([context.root, "package-store", "kept"])) == "kept"
   end
+
+  defp project(context) do
+    %Superagent{
+      profile: "new",
+      port: context.port,
+      state_dir: Path.join(context.states, "new"),
+      repository_id: 1,
+      repository: %Repository{id: 1, owner: "owner", name: "name"}
+    }
+  end
+
+  defp source(context), do: %Superagent{profile: "source", port: context.port, state_dir: "/x"}
+
+  test "a profile this attempt did not create is left alone", context do
+    project = project(context)
+    profile = Path.join(context.profiles, "new")
+    File.mkdir_p!(profile)
+    File.mkdir_p!(project.state_dir)
+    File.write!(Path.join(project.state_dir, "orchestrator.sqlite"), "tickets")
+
+    assert {:error, :profile_exists} =
+             DshProvisioner.provision(project, source(context), %{path: context.checkout})
+
+    assert File.dir?(profile)
+    assert File.read!(Path.join(project.state_dir, "orchestrator.sqlite")) == "tickets"
+  end
+
+  test "a checkout that does not exist touches nothing", context do
+    project = project(context)
+    profile = Path.join(context.profiles, "new")
+    File.mkdir_p!(profile)
+
+    assert {:error, :checkout_missing} =
+             DshProvisioner.provision(project, source(context), %{path: "/does/not/exist"})
+
+    assert File.dir?(profile)
+  end
+
+  test "a state directory that was already there survives a refusal", context do
+    project = project(context)
+    File.mkdir_p!(project.state_dir)
+    File.write!(Path.join(project.state_dir, "orchestrator.sqlite"), "kept from a removal")
+
+    assert {:error, _reason} =
+             DshProvisioner.provision(project, source(context), %{path: context.checkout})
+
+    refute File.exists?(Path.join(context.profiles, "new"))
+
+    assert File.read!(Path.join(project.state_dir, "orchestrator.sqlite")) ==
+             "kept from a removal"
+  end
+
+  test "an agent that will not stop keeps its files and says so", context do
+    File.write!(
+      Path.join(context.root, "manager.py"),
+      "import sys\nsys.exit(1 if sys.argv[-1] == 'stop' else 0)\n"
+    )
+
+    project = project(context)
+
+    assert {:error, {:still_running, "@bot cannot push to owner/name."}} =
+             DshProvisioner.provision(project, source(context), %{path: context.checkout})
+
+    assert File.dir?(Path.join(context.profiles, "new"))
+  end
 end
