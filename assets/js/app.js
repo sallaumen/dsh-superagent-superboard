@@ -93,13 +93,19 @@ window.addEventListener("pagehide", () => {
   try { localStorage.setItem("ab:last-visit", new Date().toISOString()) } catch (_) {}
 })
 
-window.addEventListener("phx:message_seen", ({detail}) => {
+const rememberMessageSeen = (versions) => {
   try {
     const seen = JSON.parse(localStorage.getItem("ab:message-seen") || "{}")
-    const key = String(detail.task_id)
-    seen[key] = String(detail.version)
-    localStorage.setItem("ab:message-seen", JSON.stringify(seen))
+    localStorage.setItem("ab:message-seen", JSON.stringify({...seen, ...versions}))
   } catch (_) {}
+}
+
+window.addEventListener("phx:message_seen", ({detail}) => {
+  rememberMessageSeen({[String(detail.task_id)]: String(detail.version)})
+})
+
+window.addEventListener("phx:messages_seen", ({detail}) => {
+  rememberMessageSeen(detail.versions)
 })
 
 // connect if there are any LiveViews on the page

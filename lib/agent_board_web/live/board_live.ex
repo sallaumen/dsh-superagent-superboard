@@ -90,6 +90,7 @@ defmodule AgentBoardWeb.BoardLive do
         repos: repos,
         last_visit: last_visit,
         message_seen: message_seen,
+        inbox_filter: "all",
         inbox: %{messages: [], alerts: []},
         tz_offset: tz_offset,
         work: empty_work(),
@@ -1337,6 +1338,31 @@ defmodule AgentBoardWeb.BoardLive do
        )}
     else
       _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("filter_inbox", %{"filter" => filter}, socket)
+      when filter in ["all", "unread"] do
+    {:noreply, assign(socket, :inbox_filter, filter)}
+  end
+
+  def handle_event("filter_inbox", _params, socket), do: {:noreply, socket}
+
+  def handle_event("mark_messages_seen", _params, socket) do
+    versions =
+      Map.new(socket.assigns.inbox.messages, fn item ->
+        {Integer.to_string(item.task_id), item.version}
+      end)
+
+    seen = Map.merge(socket.assigns.message_seen, versions)
+
+    if seen == socket.assigns.message_seen do
+      {:noreply, socket}
+    else
+      {:noreply,
+       socket
+       |> assign(:message_seen, seen)
+       |> push_event("messages_seen", %{versions: versions})}
     end
   end
 
@@ -2770,6 +2796,7 @@ defmodule AgentBoardWeb.BoardLive do
                 messages={@inbox.messages}
                 alerts={@inbox.alerts}
                 seen={@message_seen}
+                filter={@inbox_filter}
               />
             </div>
             <div :if={@repo == nil} class="ab-empty">
