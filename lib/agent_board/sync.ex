@@ -337,7 +337,7 @@ defmodule AgentBoard.Sync do
     %Task{repository_id: repository.id, kind: "issue", number: issue["number"]}
     |> Task.changeset(%{
       title: title(issue["title"]),
-      body: String.slice(issue["body"] || "", 0, 4000),
+      body: issue["body"] || "",
       state: if(closed, do: "done", else: "queued"),
       state_changed_at: DateTime.utc_now(),
       url: issue["html_url"],

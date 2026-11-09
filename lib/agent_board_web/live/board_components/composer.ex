@@ -414,6 +414,10 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
 
   @doc "The human reason for a failed creation."
   def failure_reason(:conflict), do: gettext("The issue already existed with another number")
+
+  def failure_reason(:dependency_failed),
+    do: gettext("A task it depends on was not created; try again")
+
   def failure_reason(reason), do: AgentBoardWeb.FailureText.text(reason)
 
   defp state(job, _receipt, _status, _error) when not is_nil(job), do: to_string(job.kind)

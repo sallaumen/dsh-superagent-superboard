@@ -130,6 +130,103 @@ defmodule AgentBoard.CreateRequestTest do
     assert objective.merged == 0
   end
 
+  # Issues are numbered in the order they reach GitHub. Every title and body
+  # is sent to the test; a title in `refuse` answers 500.
+  defp record_issues(counter, refuse \\ fn _title -> false end) do
+    test_pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, raw, conn} = Plug.Conn.read_body(conn)
+      %{"title" => title, "body" => body} = Jason.decode!(raw)
+
+      if refuse.(title) do
+        Plug.Conn.send_resp(conn, 500, "boom")
+      else
+        number = Agent.get_and_update(counter, &{&1 + 1, &1 + 1})
+        send(test_pid, {:issue, number, title, body})
+        Req.Test.json(conn, %{"number" => number, "html_url" => "https://x/#{number}"})
+      end
+    end)
+  end
+
+  defp linked(repo, title, depends_on \\ []) do
+    %{
+      title: title,
+      body: "Corpo de #{title}",
+      key: key(repo, title),
+      language: "pt",
+      depends_on: Enum.map(depends_on, &key(repo, &1))
+    }
+  end
+
+  defp key(repo, title), do: Board.request_key(repo, "split", [title])
+
+  test "a task is opened after what it depends on and names its number", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 40 end)
+    record_issues(counter)
+
+    requests = [linked(repo, "Tela", ["Dados"]), linked(repo, "Dados")]
+
+    results = Board.Requests.create_requests(repo, requests, client())
+
+    assert_received {:issue, 41, "Dados", dados}
+    refute dados =~ "Depende de"
+    assert_received {:issue, 42, "Tela", tela}
+    assert String.starts_with?(tela, "**Depende de:** #41")
+
+    # The receipt keeps the order the owner reviewed.
+    assert [{%{title: "Tela"}, {:ok, %Task{number: 42}, :created}}, {%{title: "Dados"}, _}] =
+             results
+  end
+
+  test "a blocker that failed holds its dependent back, and the retry opens it", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+    {:ok, down} = Agent.start_link(fn -> true end)
+    record_issues(counter, fn title -> title == "Dados" and Agent.get(down, & &1) end)
+
+    requests = [linked(repo, "Dados"), linked(repo, "Tela", ["Dados"])]
+
+    assert [{_, {:error, _reason}}, {_, {:error, :dependency_failed}}] =
+             Board.Requests.create_requests(repo, requests, client())
+
+    refute_received {:issue, _, _, _}
+    assert Repo.aggregate(Task, :count) == 0
+
+    Agent.update(down, fn _ -> false end)
+
+    assert [{_, {:ok, %Task{number: 1}, :created}}, {_, {:ok, %Task{number: 2}, :created}}] =
+             Board.Requests.create_requests(repo, requests, client())
+
+    assert_received {:issue, 2, "Tela", tela}
+    assert tela =~ "#1"
+  end
+
+  test "a cycle from the model still opens every task", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+    record_issues(counter)
+
+    requests = [linked(repo, "A", ["B"]), linked(repo, "B", ["A"])]
+
+    assert [{_, {:ok, %Task{}, :created}}, {_, {:ok, %Task{}, :created}}] =
+             Board.Requests.create_requests(repo, requests, client())
+
+    # A was opened first, when B had no number to name.
+    assert_received {:issue, 1, "A", first}
+    refute first =~ "Depende de"
+    assert_received {:issue, 2, "B", second}
+    assert second =~ "**Depende de:** #1"
+  end
+
+  test "two tasks with the same title each get their own receipt", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+    record_issues(counter)
+
+    requests = [linked(repo, "Igual"), linked(repo, "Igual")]
+
+    assert [{_, {:ok, %Task{number: 1}, :created}}, {_, {:ok, %Task{number: 1}, :existing}}] =
+             Board.Requests.create_requests(repo, requests, client())
+  end
+
   test "a claim already in progress is not a second issue", %{repo: repo} do
     Req.Test.stub(@stub, fn _conn -> flunk("GitHub must not be called") end)
 

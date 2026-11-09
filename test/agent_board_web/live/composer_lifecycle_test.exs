@@ -301,11 +301,40 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert task.title == "Corrigir o gargalo"
     assert task.body =~ "Atacar a causa"
     assert task.body =~ "@sallaumen-agent"
+    # Its blocker was left out, so there is no number to name.
+    refute task.body =~ "Depende de"
     assert Agent.get(counter, & &1) == 101
 
     # The classification is stored on the task and read back in the receipt.
     assert {task.work_type, task.size} == {"bug", "M"}
     assert has_element?(view, "#composer-receipt .ab-work", "bug")
+  end
+
+  test "split issues carry the request's context and link what they depend on", %{conn: conn} do
+    github()
+
+    script(fn
+      %{name: :refine_request} ->
+        Scripted.answer(%{@refined | "constraints" => ["Sem quebrar o sync"]})
+
+      %{name: :propose_tasks} ->
+        Scripted.answer(@tasks)
+    end)
+
+    view = open_composer(conn, true)
+    type(view, "O board está lento")
+    submit(view, %{"text" => "O board está lento"})
+    submit(view, %{"text" => "O board está lento", "tasks" => ["0", "1"]})
+
+    first = Repo.get_by!(Task, title: "Medir o carregamento")
+    second = Repo.get_by!(Task, title: "Corrigir o gargalo")
+
+    assert first.number == 101
+    assert first.body =~ "## Critérios de aceite\n- p95 medido"
+    assert first.body =~ "**Objetivo:** o board mostra o pedido"
+    assert first.body =~ "### Restrições\n- Sem quebrar o sync"
+    assert String.starts_with?(second.body, "**Depende de:** #101")
+    assert String.ends_with?(second.body, "@sallaumen-agent")
   end
 
   test "the composer suggests an executor, says why, and records the person's choice",

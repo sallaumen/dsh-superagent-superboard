@@ -129,8 +129,9 @@ Prompt rule: do not invent a requirement. Whatever is missing goes in
 }
 ```
 
-Rules: each task closes on its own; a dependency only when there is a real order;
-`size` L is almost always two tasks. The prompt asks the list to cover the goal;
+Rules: each task closes on its own, with a body written for someone who has not
+read the request (up to 1200 characters, so the list fits one answer); a dependency
+only when there is a real order; `size` L is almost always two tasks. The prompt asks the list to cover the goal;
 local validation discards tasks without a title, body or acceptance criteria.
 
 ### The pipeline

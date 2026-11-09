@@ -1164,6 +1164,16 @@ records are the `ai_calls` rows (the split) and the tasks with their
   (`:malformed_output`, `:usage_limit`, `{:http, status}`, a timeout) maps to
   a sentence and a way out (retry, answer the questions, send as a single
   request).
+- **A split issue is whole** (`AgentBoard.Intake.IssueBody`): the task's body
+  and acceptance, then the goal, constraints, non-goals, assumptions and open
+  questions of the request, because the agent reads one issue and nothing
+  else. The headings follow the request's language.
+- **What the model says depends is kept** (`Board.Requests.create_requests/3`):
+  tasks open blockers first and the body starts with "Depende de #N". A blocker
+  that failed holds its dependent back (`:dependency_failed`), and the retry
+  opens it with the link. A blocker left out in the review is no dependency; a
+  cycle is broken in list order. This orders the **creation** only: the mention
+  still starts every task at once.
 - **The title is the first sentence**, cut at a clause boundary
   (`Titles.from_request/1`), shown and editable before the submit. Only a
   change of the title field itself (the change's `_target`) is the owner's

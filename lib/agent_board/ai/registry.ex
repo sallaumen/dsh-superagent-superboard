@@ -318,7 +318,7 @@ defmodule AgentBoard.AI.Registry do
     refine_request: %{
       name: :refine_request,
       tier: :fast,
-      output_cap: 1024,
+      output_cap: 2048,
       system: """
       You turn a rough software request into a precise specification.
       Reply with JSON only, matching the schema.
@@ -333,12 +333,14 @@ defmodule AgentBoard.AI.Registry do
     propose_tasks: %{
       name: :propose_tasks,
       tier: :fast,
-      output_cap: 4096,
+      output_cap: 8192,
       system: """
       You split a refined specification into independent tasks.
       Reply with JSON only, matching the schema.
       Each task must close on its own: title, body, acceptance criteria.
-      depends_on uses indices of this list, only when there is a real order.
+      depends_on uses zero-based indices of this list, only when there is a
+      real order: a task that needs another's code, decision or document
+      depends on it.
       kind is where the work lands: ui (screens, components, styles, copy),
       backend (server logic, data, APIs, jobs), docs (only documentation),
       bug (a defect in behavior that exists), research (investigate, measure
@@ -346,7 +348,12 @@ defmodule AgentBoard.AI.Registry do
       size is the effort: S up to half a day, M one or two days, L more.
       A size L task is almost always two tasks.
       Keep every constraint and non_goal; a task that violates one is wrong.
-      Keep each body under 400 characters: the whole list must fit one answer.
+      Write each body for a developer who has not read the request: what to
+      change, why, and what it needs from the tasks it depends on. State no
+      requirement the specification does not. The board adds the goal,
+      constraints, non_goals, assumptions and open_questions to every issue,
+      so do not repeat them. A body has up to 1200 characters, fewer when the
+      task is simple: the whole list must fit one answer.
       """,
       json_schema: @tasks_schema
     }
