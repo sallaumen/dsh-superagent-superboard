@@ -107,12 +107,25 @@ defmodule AgentBoardWeb.BoardActionsTest do
 
   test "a failed unblock reply restores the draft and the unblock request", %{conn: conn} = c do
     task = blocked_workpad(c.task)
-    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, %{}) end)
+    parent = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      send(parent, {:request_started, self()})
+
+      receive do
+        :release_request -> :ok
+      end
+
+      Req.Test.json(conn, %{})
+    end)
+
     {view, _task} = open(conn, task)
 
     view |> element("#ask-agent") |> render_submit(%{"body" => "Use o menu restrito."})
+    assert_receive {:request_started, request_pid}, 2_000
     refute has_element?(view, "#unblock-panel")
 
+    send(request_pid, :release_request)
     render_async(view, 2_000)
     assert has_element?(view, "#unblock-panel")
     assert has_element?(view, "#ask-body", "Use o menu restrito.")
