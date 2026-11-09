@@ -509,8 +509,13 @@ defmodule AgentBoard.Sync do
   # pull is read on every sync, so it keeps what was known until the next one.
   # An ended pull stores nil, "not read", so it is read again; "none" means
   # GitHub answered that there are no checks, and that one is settled.
-  defp read_checks(nil, _reviews, %{"state" => "open"}, %PullRequest{} = existing),
-    do: {existing.checks_state, existing.checks_failed}
+  defp read_checks(
+         nil,
+         _reviews,
+         %{"state" => "open", "head" => %{"sha" => sha}},
+         %PullRequest{head_sha: sha} = existing
+       ),
+       do: {existing.checks_state, existing.checks_failed}
 
   defp read_checks(nil, _reviews, _pull, _existing), do: {nil, nil}
   defp read_checks(_checks, nil, %{"state" => "closed"}, _existing), do: {nil, nil}

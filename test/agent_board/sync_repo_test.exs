@@ -379,6 +379,16 @@ defmodule AgentBoard.SyncRepoTest do
       assert second.checks_changed_at == first.checks_changed_at
     end
 
+    test "an open pull does not lend the old commit's checks to a new one", %{repo: repo} do
+      stub_pulls([recent_pull(9, "abc", nil)], @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == "success"
+
+      stub_failing_read([recent_pull(9, "def", nil)], "/check-runs", @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == nil
+    end
+
     test "a merged pull whose reviews could not be read is read again", %{repo: repo} do
       pulls = [recent_pull(9, "abc", merged_at())]
       stub_failing_read(pulls, "/reviews", @done)
