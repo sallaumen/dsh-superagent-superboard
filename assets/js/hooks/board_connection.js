@@ -13,6 +13,13 @@ export const BoardConnection = {
     }
 
     this.reloadIfRestarted()
+
+    // LiveView 1.2 hooks register server events through the core handleEvent
+    // method; defining a handleEvent property overwrote it and warned on every
+    // connect. The restart event only marks the tab for a reload after boot.
+    this.handleEvent("restart", () => {
+      sessionStorage.setItem("ab:reload-after-restart", "1")
+    })
   },
   disconnected() {
     const page = document.querySelector("#board-page")
@@ -35,9 +42,7 @@ export const BoardConnection = {
     this.pushEvent("board_reconnected", {since: this.frozenAt || null})
     this.reloadIfRestarted()
   },
-  handleEvent(event) {
-    if (event === "restart") sessionStorage.setItem("ab:reload-after-restart", "1")
-  },
+
   // A reload can catch a socket that is still closing and leave the browser
   // on chrome-error. The new server has already answered the LiveView; give
   // the person the explicit reload that also fetches the new assets.
