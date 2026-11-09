@@ -137,6 +137,58 @@ defmodule AgentBoardWeb.MessageInboxTest do
     refute has_element?(view, "#message-inbox .ab-hub-item", "Primeira resposta")
   end
 
+  test "one reply can be marked seen without opening its task or clearing another reply", %{
+    conn: conn
+  } do
+    {:ok, first} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, second} = Board.add_repository("sallaumen", "o_colmex")
+    first_task = task(first, 83, "Primeiro diálogo", "running")
+    second_task = task(second, 84, "Segundo diálogo", "question")
+    comment(first_task, 5001, "Primeira resposta")
+    comment(second_task, 5002, "Segunda resposta")
+
+    version =
+      Board.inbox().messages |> Enum.find(&(&1.task_id == first_task.id)) |> Map.fetch!(:version)
+
+    {:ok, view, _html} = live(conn, "/?repo=#{first.owner}/#{first.name}")
+
+    view
+    |> element("#message-inbox .ab-hub-row__read[phx-value-id='#{first_task.id}']")
+    |> render_click()
+
+    task_id = first_task.id
+    assert_push_event(view, "message_seen", %{task_id: ^task_id, version: ^version, quick: true})
+    assert has_element?(view, "#message-inbox summary[aria-label='Mensagens da Yasme, 1 nova']")
+    refute has_element?(view, "#message-inbox .ab-hub-row__read[phx-value-id='#{first_task.id}']")
+
+    assert has_element?(
+             view,
+             "#message-inbox .ab-hub-row__read[phx-value-id='#{second_task.id}']"
+           )
+
+    assert has_element?(view, "#attention-inbox .ab-hub-item", "Segundo diálogo")
+    refute has_element?(view, "#conversation")
+  end
+
+  test "an outdated read action keeps the edited reply unread", %{conn: conn} do
+    {:ok, repository} = Board.add_repository("sallaumen", "o_colmex")
+    task = task(repository, 85, "Resposta que mudou", "running")
+    comment(task, 5003, "Resposta inicial")
+    old_version = Board.inbox().messages |> hd() |> Map.fetch!(:version)
+    {:ok, view, _html} = live(conn, "/?repo=#{repository.owner}/#{repository.name}")
+
+    comment(task, 5003, "Resposta editada")
+
+    render_click(view, "mark_inbox_message_seen", %{
+      "id" => Integer.to_string(task.id),
+      "version" => old_version
+    })
+
+    assert has_element?(view, "#message-inbox .ab-hub-menu__notice", "A resposta mudou")
+    assert has_element?(view, "#message-inbox summary[aria-label='Mensagens da Yasme, 1 nova']")
+    assert has_element?(view, "#message-inbox .ab-hub-item", "Resposta editada")
+  end
+
   defp task(repository, number, title, state) do
     %Task{}
     |> Task.changeset(%{

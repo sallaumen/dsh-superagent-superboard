@@ -257,7 +257,10 @@ that already worked).
   therefore marks that conversation new again. “Marcar todas como vistas” saves
   the versions of the conversations currently in its 30-item window; the unread
   filter follows that same browser-local state. This action does not change
-  comments or task status. The separate bell counts active
+  comments or task status. Each unread row also has a quick read action that
+  checks the latest reply and accepts only the version shown when clicked, so
+  an edited reply stays unread. The header controls remain reachable while
+  scrolling the board. The separate bell counts active
   blocked, question and review tasks across projects; it is a pending-work
   count, not an unread count. Both lists follow the board's PubSub broadcasts.
 - Never poll the database from the browser; push.

@@ -102,6 +102,15 @@ const rememberMessageSeen = (versions) => {
 
 window.addEventListener("phx:message_seen", ({detail}) => {
   rememberMessageSeen({[String(detail.task_id)]: String(detail.version)})
+  if (detail.quick) {
+    requestAnimationFrame(() => {
+      const inbox = document.querySelector("#message-inbox")
+      if (!inbox?.open) return
+      const next = inbox.querySelector(".ab-hub-row__read") ||
+        inbox.querySelector(".ab-hub-menu__filters button[aria-pressed='true']")
+      next?.focus({preventScroll: true})
+    })
+  }
 })
 
 window.addEventListener("phx:messages_seen", ({detail}) => {
