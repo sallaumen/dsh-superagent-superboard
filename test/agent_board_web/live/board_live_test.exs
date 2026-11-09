@@ -1314,17 +1314,18 @@ defmodule AgentBoardWeb.BoardShellTest do
     assert has_element?(view, "#conversation .ab-tab[aria-selected=true]", "PR")
   end
 
-  test "a reconnect notice counts what changed since the last render", %{conn: conn} do
+  test "a reconnect refreshes without a notice", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "reconnect")
     Board.log_event(repo.id, "sync", "sallaumen/reconnect", %{"errors" => 0})
     insert_task(repo, 1, "ready")
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/reconnect")
 
-    insert_task(repo, 2, "running")
+    task = insert_task(repo, 2, "running")
     render_hook(view, "board_reconnected", %{})
 
-    assert has_element?(view, ".ab-toast[role=status]", "Reconectado. 1 mudança")
+    refute has_element?(view, ".ab-toast")
+    assert has_element?(view, "#task-#{task.id}")
   end
 
   test "a frozen board shows the saved-data banner and stops calling itself live", %{conn: conn} do
@@ -1384,26 +1385,28 @@ defmodule AgentBoardWeb.ReconnectSinceTest do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.Task
 
-  test "the notice counts changes after the frozen time sent by the client", %{conn: conn} do
+  test "a reconnect after the frozen time refreshes without a notice", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "reconnect-since")
     Board.log_event(repo.id, "sync", "fixture/reconnect-since", %{"errors" => 0})
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/reconnect-since")
     since = DateTime.utc_now() |> DateTime.add(-2, :second)
 
-    %Task{}
-    |> Task.changeset(%{
-      repository_id: repo.id,
-      kind: "issue",
-      number: 1,
-      title: "Arrived while away",
-      state: "queued",
-      state_changed_at: DateTime.utc_now()
-    })
-    |> Repo.insert!()
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 1,
+        title: "Arrived while away",
+        state: "queued",
+        state_changed_at: DateTime.utc_now()
+      })
+      |> Repo.insert!()
 
     render_hook(view, "board_reconnected", %{"since" => DateTime.to_iso8601(since)})
 
-    assert has_element?(view, ".ab-toast", "1 mudança")
+    refute has_element?(view, ".ab-toast")
+    assert has_element?(view, "#task-#{task.id}")
   end
 end

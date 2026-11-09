@@ -918,31 +918,10 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("board_reconnected", params, socket) do
-    old_board = socket.assigns.board
-    old_snapshot = socket.assigns.sync_snapshot
-    socket = load(socket, socket.assigns.repo)
-
-    {changes, at} =
-      case parse_last_visit(params["since"]) do
-        %DateTime{} = since ->
-          {Board.changes_since(socket.assigns.repo, since), since}
-
-        nil ->
-          {Board.change_count(old_board, socket.assigns.board),
-           old_snapshot.last_success && old_snapshot.last_success.inserted_at}
-      end
-
-    since = if at, do: Time.local_time(at, socket.assigns.tz_offset), else: "antes da queda"
-
-    text =
-      case changes do
-        0 -> "Reconectado. Nada mudou desde #{since}."
-        1 -> "Reconectado. 1 mudança desde #{since}."
-        n -> "Reconectado. #{n} mudanças desde #{since}."
-      end
-
-    {:noreply, assign(socket, toast: %{text: text, action: nil, changes: changes})}
+  def handle_event("board_reconnected", _params, socket) do
+    # A reconnect refreshes the board, but it is routine transport noise; it
+    # must not put a toast in front of the owner.
+    {:noreply, socket |> load(socket.assigns.repo) |> assign(:toast, nil)}
   end
 
   @impl true
