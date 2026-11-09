@@ -21,6 +21,7 @@ defmodule AgentBoardWeb.BoardLive do
     Intake,
     Lanes,
     LocalCI,
+    Logs,
     Metrics,
     Orchestrator,
     Overview,
@@ -49,6 +50,7 @@ defmodule AgentBoardWeb.BoardLive do
   import AgentBoardWeb.BoardComponents.FreshnessBeacon, only: [beacon: 1]
   import AgentBoardWeb.BoardComponents.FrozenBanner, only: [frozen_banner: 1]
   import AgentBoardWeb.BoardComponents.Inspector, only: [inspector: 1]
+  import AgentBoardWeb.BoardComponents.LogsSheet, only: [logs_sheet: 1]
   import AgentBoardWeb.BoardComponents.MergeLog, only: [merge_log: 1]
   import AgentBoardWeb.BoardComponents.NeedsYou, only: [needs_you: 1]
   import AgentBoardWeb.BoardComponents.NowLane, only: [now_lane: 1]
@@ -113,6 +115,12 @@ defmodule AgentBoardWeb.BoardLive do
         toast: nil,
         highlight_changes: false,
         panel: nil,
+        logs_sources: [],
+        logs_entries: [],
+        logs_state: Logs.empty_state(),
+        logs_status: %{},
+        logs_timer: nil,
+        logs_paused: false,
         conversation: nil,
         comments: [],
         ask_pending: nil,
@@ -829,7 +837,30 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_info(:superagents_changed, socket) do
-    {:noreply, assign(socket, :superagents, Superagents.list())}
+    socket = assign(socket, :superagents, Superagents.list())
+
+    # A new profile becomes a new source while the sheet is open; the old
+    # entries stay in the buffer and the new file is read from its tail.
+    socket =
+      if socket.assigns.panel == "logs" do
+        socket = assign(:logs_sources, Logs.sources(socket.assigns.superagents))
+        if socket.assigns.logs_paused, do: socket, else: read_logs_once(socket)
+      else
+        socket
+      end
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:logs_tick, token}, socket) do
+    current = socket.assigns.logs_timer
+
+    if socket.assigns.panel == "logs" and not socket.assigns.logs_paused and
+         match?(%{token: ^token}, current) do
+      {:noreply, socket |> read_logs_once() |> schedule_logs_tick()}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info(:board_updated, socket) do
@@ -876,12 +907,14 @@ defmodule AgentBoardWeb.BoardLive do
     # changes only the panel: the board is already loaded and every change
     # to it arrives as :board_updated.
     previous_view = socket.assigns.view
+    previous_panel = socket.assigns.panel
     was_showing = showing?(socket, repo)
     socket = if was_showing, do: socket, else: load(socket, repo)
 
     socket =
       socket
       |> BoardNavigation.apply_params(params)
+      |> sync_logs_panel(previous_panel)
       |> load_inspector()
       |> load_panel()
       |> load_composer_routing()
@@ -895,6 +928,79 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply, socket}
   end
+
+  # -- the logs sheet ---------------------------------------------------------
+  #
+  # The sheet owns a timer only while its panel is the routed one. Opening
+  # reads once from the tail of each source; every tick reads at most 64 KiB
+  # per source and schedules the next tick only after the read returns, so a
+  # slow file never queues work. Closing cancels the timer; a tick that arrives
+  # after the panel changed is ignored by its token.
+
+  defp sync_logs_panel(%{assigns: %{panel: "logs"}} = socket, "logs"), do: socket
+
+  defp sync_logs_panel(%{assigns: %{panel: "logs"}} = socket, _previous),
+    do: open_logs_panel(socket)
+
+  defp sync_logs_panel(socket, "logs"), do: close_logs_panel(socket)
+  defp sync_logs_panel(socket, _previous), do: socket
+
+  defp open_logs_panel(socket) do
+    sources = Logs.sources(socket.assigns.superagents)
+
+    socket =
+      assign(socket,
+        logs_sources: sources,
+        logs_entries: [],
+        logs_state: Logs.empty_state(),
+        logs_status: %{},
+        logs_paused: false
+      )
+
+    if connected?(socket) do
+      socket
+      |> read_logs_once()
+      |> schedule_logs_tick()
+    else
+      socket
+    end
+  end
+
+  defp close_logs_panel(socket) do
+    cancel_logs_timer(socket)
+    assign(socket, logs_timer: nil, logs_paused: false)
+  end
+
+  defp read_logs_once(socket) do
+    %{entries: entries, state: state, statuses: statuses} =
+      Logs.read(socket.assigns.logs_sources, socket.assigns.logs_state)
+
+    assign(socket,
+      logs_entries: Logs.append(socket.assigns.logs_entries, entries),
+      logs_state: state,
+      logs_status: statuses
+    )
+  rescue
+    # The observer never takes the board down and never logs into the file it
+    # is reading: the unreadable state is the whole failure surface.
+    _exception ->
+      assign(socket, logs_status: Map.new(socket.assigns.logs_sources, &{&1.id, :unreadable}))
+  end
+
+  defp schedule_logs_tick(%{assigns: %{logs_paused: true}} = socket), do: socket
+
+  defp schedule_logs_tick(socket) do
+    token = make_ref()
+    ref = Process.send_after(self(), {:logs_tick, token}, logs_tick_interval())
+    assign(socket, :logs_timer, %{ref: ref, token: token})
+  end
+
+  defp cancel_logs_timer(%{assigns: %{logs_timer: %{ref: ref}}}) when is_reference(ref),
+    do: Process.cancel_timer(ref)
+
+  defp cancel_logs_timer(_socket), do: :ok
+
+  defp logs_tick_interval, do: Application.get_env(:agent_board, :logs_tick_interval, 2_000)
 
   defp showing?(%{assigns: %{repo: %{id: id}}}, %{id: id}), do: true
   defp showing?(_socket, _repo), do: false
@@ -1560,6 +1666,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      socket
      |> settle_composer()
+     |> close_logs_panel()
      |> assign(
        panel: nil,
        conversation: nil,
@@ -1800,6 +1907,31 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("voice_replies", %{"replies" => value}, socket),
     do: {:noreply, save_voice_pref(socket, save_setting("replies", value))}
+
+  # The logs sheet: clear the visible buffer without moving the read offset,
+  # and pause/resume the timer. A closed sheet ignores both.
+  @impl true
+  def handle_event("logs_clear", _params, %{assigns: %{panel: "logs"}} = socket),
+    do: {:noreply, assign(socket, :logs_entries, [])}
+
+  def handle_event("logs_pause", _params, %{assigns: %{panel: "logs"}} = socket) do
+    cancel_logs_timer(socket)
+    {:noreply, assign(socket, logs_timer: nil, logs_paused: true)}
+  end
+
+  def handle_event("logs_resume", _params, %{assigns: %{panel: "logs"}} = socket) do
+    socket = assign(socket, :logs_paused, false)
+
+    if socket.assigns.logs_timer do
+      {:noreply, socket}
+    else
+      {:noreply, socket |> read_logs_once() |> schedule_logs_tick()}
+    end
+  end
+
+  def handle_event("logs_clear", _params, socket), do: {:noreply, socket}
+  def handle_event("logs_pause", _params, socket), do: {:noreply, socket}
+  def handle_event("logs_resume", _params, socket), do: {:noreply, socket}
 
   # A browser error the owner saw (microphone, playback, transcription):
   # it reaches the log and the live feed instead of staying in one tab.
@@ -2263,6 +2395,18 @@ defmodule AgentBoardWeb.BoardLive do
                     aria-controls="panel-shortcuts"
                   >
                     <.ico name="keys" />Atalhos
+                  </button>
+                  <button
+                    id="mobile-panel-logs"
+                    type="button"
+                    class="ab-btn ab-btn--quiet ab-btn--sm"
+                    phx-click="show_panel"
+                    phx-value-panel="logs"
+                    data-panel-trigger
+                    aria-haspopup="dialog"
+                    aria-controls="panel-logs"
+                  >
+                    <.ico name="log" />Logs
                   </button>
                   <button
                     id="mobile-panel-voice"
@@ -2749,6 +2893,14 @@ defmodule AgentBoardWeb.BoardLive do
           <BoardComponents.VoiceCommandList.list open={@voice_commands_open} />
           <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} />
         </BoardComponents.Panel.shell>
+
+        <.logs_sheet
+          sources={@logs_sources}
+          entries={@logs_entries}
+          status={@logs_status}
+          paused={@logs_paused}
+          timer={@logs_timer != nil}
+        />
       </div>
     </Layouts.app>
     """

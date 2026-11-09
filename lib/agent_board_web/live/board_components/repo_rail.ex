@@ -131,6 +131,19 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           <.ico name="keys" /><span>Atalhos</span><.kbd key="?" />
         </button>
         <button
+          id="open-logs"
+          type="button"
+          class="ab-btn ab-btn--quiet ab-btn--sm"
+          phx-click="show_panel"
+          phx-value-panel="logs"
+          data-panel-trigger
+          aria-haspopup="dialog"
+          aria-controls="panel-logs"
+          aria-label="Logs de avisos e erros"
+        >
+          <.ico name="log" /><span>Logs</span>
+        </button>
+        <button
           type="button"
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
