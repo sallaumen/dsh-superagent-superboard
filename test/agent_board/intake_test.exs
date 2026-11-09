@@ -32,7 +32,7 @@ defmodule AgentBoard.IntakeTest do
     }
   end
 
-  @refined ~s({"goal":"o board responde rapido","constraints":["sem quebrar o sync"],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
+  @refined ~s({"goal":"o board responde rapido","constraints":["sem quebrar o sync"],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
 
   test "refine returns the specification" do
     Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(@refined)) end)
@@ -83,6 +83,21 @@ defmodule AgentBoard.IntakeTest do
     Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(tasks)) end)
 
     assert {:ok, [%{depends_on: []}, %{depends_on: [0]}]} = Intake.propose(%{"goal" => "x"})
+  end
+
+  test "a cycle from the model loses the edge that closes it" do
+    tasks = """
+    {"tasks":[
+      {"title":"a","body":"a","kind":"bug","acceptance":["a"],"depends_on":[2],"size":"S"},
+      {"title":"b","body":"b","kind":"bug","acceptance":["b"],"depends_on":[0],"size":"S"},
+      {"title":"c","body":"c","kind":"bug","acceptance":["c"],"depends_on":[1],"size":"S"}
+    ]}
+    """
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(tasks)) end)
+
+    assert {:ok, [%{depends_on: [2]}, %{depends_on: [0]}, %{depends_on: []}]} =
+             Intake.propose(%{"goal" => "x"})
   end
 
   test "propose keeps the split's kind of work and size" do
@@ -148,7 +163,7 @@ defmodule AgentBoard.IntakeTest do
 
   test "run stops after refinement when the request is not ready" do
     refined =
-      ~s({"goal":"Melhorar o board","constraints":[],"non_goals":[],"risks":[],"open_questions":["Qual parte?"],"assumptions":[],"ready":false,"language":"pt"})
+      ~s({"goal":"Melhorar o board","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":["Qual parte?"],"assumptions":[],"ready":false,"language":"pt"})
 
     Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(refined)) end)
 
@@ -157,6 +172,41 @@ defmodule AgentBoard.IntakeTest do
 
     assert spec["open_questions"] == ["Qual parte?"]
     assert AgentBoard.Repo.aggregate(AgentBoard.AI.Call, :count, :id) == 1
+  end
+
+  test "a question only the owner can answer stops the split even when ready" do
+    refined =
+      ~s({"goal":"g","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"blocking_questions":["Quais telas?"],"ready":true,"language":"pt"})
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(refined)) end)
+
+    assert {:ok, %{status: :needs_clarification, tasks: []}} = Intake.run("arruma as telas")
+  end
+
+  test "an edit changes the task and an empty acceptance line is not a criterion" do
+    task = %{title: "t", body: "b", acceptance: ["a"], depends_on: [], source_title: "t"}
+
+    assert [%{title: "novo", body: "corpo", acceptance: ["um", "dois"], source_title: "t"}, ^task] =
+             Intake.edit_tasks([task, task], %{
+               "0" => %{"title" => "novo", "body" => "corpo", "acceptance" => "um\n\n dois \n"}
+             })
+  end
+
+  test "a task needs a title, a body and an acceptance to be sent" do
+    whole = %{title: "t", body: "b", acceptance: ["a"]}
+
+    assert Intake.complete?(whole)
+    refute Intake.complete?(%{whole | title: "  "})
+    refute Intake.complete?(%{whole | body: ""})
+    refute Intake.complete?(%{whole | acceptance: []})
+  end
+
+  test "leaving a task out passes its dependencies to the tasks after it" do
+    tasks = [%{depends_on: []}, %{depends_on: [0]}, %{depends_on: [1]}]
+
+    assert Intake.dependencies_within(tasks, 2, MapSet.new([0, 2])) == [0]
+    assert Intake.dependencies_within(tasks, 2, MapSet.new([0, 1, 2])) == [1]
+    assert Intake.dependencies_within(tasks, 2, MapSet.new([2])) == []
   end
 
   test "run does not call an empty proposal ready" do

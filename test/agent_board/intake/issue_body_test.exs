@@ -11,6 +11,7 @@ defmodule AgentBoard.Intake.IssueBodyTest do
     "constraints" => ["Sem reescrever o contexto"],
     "non_goals" => ["Trocar a identidade visual"],
     "assumptions" => ["Há um layout compartilhado"],
+    "blocking_questions" => [],
     "open_questions" => ["Quais são as telas duplicadas?"],
     "risks" => ["Links salvos podem quebrar"],
     "language" => "pt"

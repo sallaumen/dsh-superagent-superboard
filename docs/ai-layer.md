@@ -103,6 +103,7 @@ does not depend on itself. The architecture around them remains historical.
   "non_goals": ["Alterar o código da aplicação"],
   "risks": [],
   "open_questions": [],
+  "blocking_questions": [],
   "assumptions": [],
   "ready": true,
   "language": "pt"

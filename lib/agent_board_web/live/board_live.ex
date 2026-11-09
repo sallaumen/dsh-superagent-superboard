@@ -2049,6 +2049,7 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply,
      socket
+     |> with_task_edits(params)
      |> assign(
        composer_text: text,
        composer_title: edited_title(params, text, socket.assigns.composer_title),
@@ -2083,7 +2084,13 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("composer_submit", params, socket) do
     text = String.trim(params["text"] || socket.assigns.composer_text)
-    socket = socket |> choose_executor(params["executor"]) |> ensure_composer_routing()
+
+    socket =
+      socket
+      |> with_task_edits(params)
+      |> choose_executor(params["executor"])
+      |> ensure_composer_routing()
+
     # The sentence the composer showed when the person pressed send.
     shown = composer_phrase(socket.assigns)
 
@@ -3709,12 +3716,22 @@ defmodule AgentBoardWeb.BoardLive do
   defp submit_split(socket, text, params, shown) do
     case socket.assigns.intake do
       %{status: :ready, text: ^text, tasks: tasks, spec: spec} when tasks != [] ->
-        requests =
-          socket.assigns.repo
-          |> split_requests(text, spec, tasks, selected_from(params, socket))
-          |> for_executor(socket.assigns)
+        selected = selected_from(params, socket)
 
-        start_enqueue(socket, requests, shown)
+        if chosen_complete?(tasks, selected) do
+          requests =
+            socket.assigns.repo
+            |> split_requests(text, spec, tasks, selected)
+            |> for_executor(socket.assigns)
+
+          start_enqueue(socket, requests, shown)
+        else
+          {:noreply,
+           composer_error(
+             socket,
+             gettext("Every chosen task needs a title, a description and a criterion.")
+           )}
+        end
 
       %{status: :needs_clarification, text: ^text} ->
         answer_and_split(socket, text)
@@ -3744,6 +3761,24 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  # The owner's edits live with the proposal until the send. A proposal that
+  # new words invalidated has no tasks to edit.
+  defp with_task_edits(%{assigns: %{intake: %{tasks: tasks} = intake}} = socket, %{
+         "task_edits" => edits
+       })
+       when is_map(edits),
+       do: assign(socket, :intake, %{intake | tasks: Intake.edit_tasks(tasks, edits)})
+
+  defp with_task_edits(socket, _params), do: socket
+
+  defp chosen_complete?(tasks, selected) do
+    tasks
+    |> Enum.with_index()
+    |> Enum.all?(fn {task, index} ->
+      not MapSet.member?(selected, index) or Intake.complete?(task)
+    end)
+  end
+
   defp selected_from(params, socket) do
     case params do
       %{"tasks" => values} when is_list(values) -> selected_indices(values)
@@ -3758,15 +3793,16 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   # A dependency names its request by key: the positions change when the
-  # owner leaves a task out. A blocker that was left out is no dependency.
+  # owner leaves a task out. The key reads the title the model proposed, so
+  # an edited task is still the same request on a retry.
   defp split_requests(repo, text, spec, tasks, selected) do
-    key = fn task -> Board.request_key(repo, "split", [text, task.title]) end
+    key = fn task -> Board.request_key(repo, "split", [text, task.source_title]) end
 
     tasks
     |> Enum.with_index()
     |> Enum.filter(fn {_task, index} -> MapSet.member?(selected, index) end)
-    |> Enum.map(fn {task, _index} ->
-      chosen = Enum.filter(task.depends_on, &MapSet.member?(selected, &1))
+    |> Enum.map(fn {task, index} ->
+      chosen = Intake.dependencies_within(tasks, index, selected)
 
       %{
         title: task.title,

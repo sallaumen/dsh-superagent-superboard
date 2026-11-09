@@ -20,6 +20,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     "constraints" => [],
     "non_goals" => [],
     "risks" => [],
+    "blocking_questions" => [],
     "open_questions" => [],
     "assumptions" => [],
     "ready" => true,
@@ -337,6 +338,119 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert String.ends_with?(second.body, "@sallaumen-agent")
   end
 
+  test "the review shows what each task says and what the AI left open", %{conn: conn} do
+    github()
+
+    script(fn
+      %{name: :refine_request} ->
+        Scripted.answer(%{
+          @refined
+          | "open_questions" => ["Qual é o alvo de p95?"],
+            "assumptions" => ["Usa o Postgres atual"]
+        })
+
+      %{name: :propose_tasks} ->
+        Scripted.answer(@tasks)
+    end)
+
+    view = open_composer(conn, true)
+    type(view, "O board está lento")
+    submit(view, %{"text" => "O board está lento"})
+
+    assert has_element?(view, "#composer-open-questions", "Qual é o alvo de p95?")
+    assert has_element?(view, "#composer-understood", "Usa o Postgres atual")
+    assert has_element?(view, "textarea[name='task_edits[0][body]']", "Instrumentar o load.")
+    assert has_element?(view, "textarea[name='task_edits[1][acceptance]']", "p95 abaixo do alvo")
+    assert has_element?(view, "#composer-task-deps-0", "Sem dependência")
+    assert has_element?(view, "#composer-task-deps-1", "Depende de 1")
+  end
+
+  test "what the owner edits is what opens, and a retry does not duplicate it", %{conn: conn} do
+    github(refuse: ["Corrigir de verdade"])
+    happy_model()
+
+    view = open_composer(conn, true)
+    type(view, "O board está lento")
+    submit(view, %{"text" => "O board está lento"})
+
+    edits = %{
+      "0" => %{"title" => "Medir direito", "body" => "Medir o load todo.", "acceptance" => "x\ny"},
+      "1" => %{"title" => "Corrigir de verdade", "body" => "Atacar.", "acceptance" => "z"}
+    }
+
+    params = %{"text" => "O board está lento", "tasks" => ["0", "1"], "task_edits" => edits}
+    view |> element("#composer-form") |> render_change(params)
+    submit(view, params)
+
+    assert %Task{body: body} = Repo.get_by!(Task, title: "Medir direito")
+    assert body =~ "Medir o load todo."
+    assert body =~ "- x\n- y"
+
+    github(start: 200)
+    view |> element("button[phx-click=composer_retry]", "Tentar") |> render_click()
+    render_async(view, 2000)
+
+    assert Repo.aggregate(Task, :count) == 2
+    assert %Task{number: 201, body: fixed} = Repo.get_by!(Task, title: "Corrigir de verdade")
+    assert fixed =~ "#101"
+  end
+
+  test "a chosen task left empty holds the send", %{conn: conn} do
+    github()
+    happy_model()
+
+    view = open_composer(conn, true)
+    type(view, "O board está lento")
+    submit(view, %{"text" => "O board está lento"})
+
+    edits = %{"0" => %{"title" => " ", "body" => "b", "acceptance" => "a"}}
+    params = %{"text" => "O board está lento", "tasks" => ["0"], "task_edits" => edits}
+    view |> element("#composer-form") |> render_change(params)
+
+    assert has_element?(view, "#composer-incomplete")
+    assert has_element?(view, "#composer-form button.ab-btn--primary[disabled]")
+
+    view |> element("#composer-form") |> render_submit(params)
+    assert Repo.aggregate(Task, :count) == 0
+  end
+
+  test "a blocker left out passes its own dependencies on", %{conn: conn} do
+    github()
+
+    three = %{
+      "tasks" =>
+        @tasks["tasks"] ++
+          [
+            %{
+              "title" => "Validar",
+              "body" => "Conferir.",
+              "kind" => "bug",
+              "acceptance" => ["ok"],
+              "depends_on" => [1],
+              "size" => "S"
+            }
+          ]
+    }
+
+    script(fn
+      %{name: :refine_request} -> Scripted.answer(@refined)
+      %{name: :propose_tasks} -> Scripted.answer(three)
+    end)
+
+    view = open_composer(conn, true)
+    type(view, "O board está lento")
+    submit(view, %{"text" => "O board está lento"})
+
+    view
+    |> element("#composer-form")
+    |> render_change(%{"text" => "O board está lento", "tasks" => ["0", "2"]})
+
+    submit(view, %{"text" => "O board está lento", "tasks" => ["0", "2"]})
+
+    assert %Task{number: 101} = Repo.get_by!(Task, title: "Medir o carregamento")
+    assert String.starts_with?(Repo.get_by!(Task, title: "Validar").body, "**Depende de:** #101")
+  end
+
   test "the composer suggests an executor, says why, and records the person's choice",
        %{conn: conn, repo: repo} do
     test_pid = self()
@@ -465,6 +579,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
           Scripted.answer(%{
             @refined
             | "ready" => false,
+              "blocking_questions" => [],
               "open_questions" => ["Dois testes automatizados ou duas tarefas?"]
           })
         end

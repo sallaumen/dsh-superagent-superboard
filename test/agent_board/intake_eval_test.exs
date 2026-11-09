@@ -54,7 +54,7 @@ defmodule AgentBoard.IntakeEvalTest do
 
   test "a concrete request becomes a goal and a task list" do
     stub_responses(
-      ~s({"goal":"Tornar o board rápido e confiável","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"}),
+      ~s({"goal":"Tornar o board rápido e confiável","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"}),
       ~s({"tasks":[{"title":"Medir baseline","body":"mede","kind":"bug","acceptance":["p95"],"depends_on":[],"size":"S"},{"title":"Corrigir gargalo","body":"corrige","kind":"bug","acceptance":["teste"],"depends_on":[0],"size":"M"}]})
     )
 
@@ -66,7 +66,7 @@ defmodule AgentBoard.IntakeEvalTest do
 
   test "a vague request keeps its open questions instead of inventing scope" do
     stub_responses(
-      ~s({"goal":"Definir uma especificação clara","constraints":[],"non_goals":[],"risks":[],"open_questions":["Qual é o software?","O que significa funcionar?"],"assumptions":[],"ready":false,"language":"pt"}),
+      ~s({"goal":"Definir uma especificação clara","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":["Qual é o software?","O que significa funcionar?"],"assumptions":[],"ready":false,"language":"pt"}),
       ~s({"tasks":[]})
     )
 
@@ -80,7 +80,7 @@ defmodule AgentBoard.IntakeEvalTest do
 
   test "a task with a missing acceptance criterion is dropped" do
     stub_responses(
-      ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"}),
+      ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"}),
       ~s({"tasks":[{"title":"boa","body":"b","kind":"bug","acceptance":["a"],"depends_on":[],"size":"S"},{"title":"ruim","body":"b","kind":"bug","acceptance":[],"depends_on":[],"size":"M"}]})
     )
 
@@ -90,7 +90,7 @@ defmodule AgentBoard.IntakeEvalTest do
 
   test "a structurally invalid task list returns an error without creating a proposal" do
     stub_responses(
-      ~s({"goal":"Corrigir o board","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"}),
+      ~s({"goal":"Corrigir o board","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"}),
       ~s({"tasks":[42]})
     )
 

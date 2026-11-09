@@ -33,6 +33,7 @@ defmodule AgentBoard.AITest do
       "constraints" => [],
       "non_goals" => [],
       "risks" => [],
+      "blocking_questions" => [],
       "open_questions" => [],
       "assumptions" => [],
       "ready" => true,
@@ -55,7 +56,7 @@ defmodule AgentBoard.AITest do
       Req.Test.json(
         conn,
         answer(
-          ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"language":"pt"})
+          ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"language":"pt"})
         )
       )
     end)
@@ -122,7 +123,7 @@ defmodule AgentBoard.AITest do
                   "function" => %{
                     "name" => "respond",
                     "arguments" =>
-                      ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
+                      ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
                   }
                 }
               ]
