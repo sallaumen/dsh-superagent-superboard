@@ -27,8 +27,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :tz_offset, :integer, default: 0
   attr :live, :boolean, default: false
   attr :failure, :map, default: nil
-  attr :ask_pending, :map, default: nil
   attr :ask_draft, :string, default: ""
+  attr :ask_sending, :map, default: nil
+  attr :ask_error, :string, default: nil
   attr :ai_status, :atom, default: :not_configured
   attr :unblock, :any, default: nil
   attr :unblock_suggestions, :list, default: []
@@ -56,7 +57,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       |> assign(:totals, call_totals(assigns.calls))
 
     ~H"""
-    <aside id="conversation" class="ab-insp" aria-label={"Detalhes da tarefa ##{@task.number}"}>
+    <aside
+      id="conversation"
+      class="ab-insp"
+      phx-hook="TaskConversation"
+      data-task-id={@task.id}
+      aria-label={"Detalhes da tarefa ##{@task.number}"}
+    >
       <div class="ab-insp__head">
         <div class="ab-insp__bar">
           <.status_mark
@@ -274,15 +281,22 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <% "pr" -> %>
             <.pr_tab pr={@pr} ci={@ci} offset={@tz_offset} />
           <% _ -> %>
-            <.conversation_tab task={@task} comments={@comments} offset={@tz_offset} />
+            <.conversation_tab
+              task={@task}
+              comments={@comments}
+              ask_sending={@ask_sending}
+              offset={@tz_offset}
+            />
         <% end %>
       </div>
 
       <div :if={@tab == "conversa"} class="ab-insp__foot">
-        <%!-- A question posts on GitHub (red, AgentBoard.Actions): the
-             sentence comes first, and only "Mandar" sends it. --%>
+        <%!-- The typed text and submit authorize the inline GitHub comment. --%>
         <div
-          :if={@unblock || @inspector_blockers != []}
+          :if={
+            (@unblock || @inspector_blockers != []) &&
+              !(@ask_sending && @ask_sending.task_id == @task.id)
+          }
           id="unblock-panel"
           class="ab-unblock"
           aria-label={gettext("Unlock Task")}
@@ -415,41 +429,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           </div>
         </div>
 
-        <div
-          :if={@ask_pending && @ask_pending.task_id == @task.id}
-          id="ask-confirm"
-          class="ab-act__confirm"
-          role="group"
-          aria-labelledby="ask-confirm-q"
-        >
-          <p id="ask-confirm-q" class="ab-act__question">{@ask_pending.phrase}</p>
-          <div class="ab-act__buttons">
-            <button
-              id="ask-confirm-go"
-              type="button"
-              class="ab-btn ab-btn--sm ab-btn--primary"
-              phx-click="ask_confirm"
-              phx-disable-with={gettext("Sending...")}
-              phx-mounted={Phoenix.LiveView.JS.focus()}
-            >
-              {gettext("Send the question")}
-            </button>
-            <button
-              id="ask-confirm-cancel"
-              type="button"
-              class="ab-btn ab-btn--sm ab-btn--quiet"
-              phx-click="ask_cancel"
-            >
-              {gettext("Back and edit")}
-            </button>
-          </div>
-        </div>
-        <form
-          :if={!(@ask_pending && @ask_pending.task_id == @task.id)}
-          id="ask-agent"
-          phx-change="ask_change"
-          phx-submit="ask"
-        >
+        <form id="ask-agent" phx-change="ask_change" phx-submit="ask">
           <div class="ab-compose ab-compose--inline">
             <textarea
               id="ask-body"
@@ -458,6 +438,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               phx-debounce="300"
               aria-label={gettext("Message to the agent")}
               placeholder={gettext("Respond to agent...")}
+              disabled={@ask_sending && @ask_sending.task_id == @task.id}
               required
             >{@ask_draft}</textarea>
             <div class="ab-compose__bar">
@@ -473,11 +454,22 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               <span class="ab-top__spacer"></span>
               <button
                 class="ab-btn ab-btn--primary ab-btn--sm"
-                phx-disable-with={gettext("Sending...")}
+                disabled={@ask_sending && @ask_sending.task_id == @task.id}
+                phx-disable-with={gettext("Sending…")}
               >
-                {gettext("Send")} <.kbd key="⌘↵" />
+                {if @ask_sending && @ask_sending.task_id == @task.id,
+                  do: gettext("Sending…"),
+                  else: gettext("Send")}
+                <.kbd :if={is_nil(@ask_sending)} key="↵" />
               </button>
             </div>
+            <p class="ab-compose__hint">
+              {gettext(
+                "This message is posted on GitHub issue #%{number} and mentions the agent when you send it.",
+                number: @task.number
+              )}
+            </p>
+            <p :if={@ask_error} class="ab-compose__error" role="alert">{@ask_error}</p>
           </div>
         </form>
       </div>
@@ -531,7 +523,11 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp conversation_tab(assigns) do
     ~H"""
     <div class="ab-conversation">
-      <div :if={@task.body not in [nil, ""]} class="ab-msg ab-msg--you">
+      <div
+        :if={@task.body not in [nil, ""]}
+        class="ab-msg ab-msg--you"
+        data-message-id={"task-#{@task.id}"}
+      >
         <div class="ab-msg__who">
           {gettext("Task")}
           <span class="ab-data-sm">{Time.local_time(@task.inserted_at, @offset)}</span>
@@ -544,17 +540,42 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         class={[
           "ab-msg",
           comment.kind == "agent" && "ab-msg--agent",
-          comment.kind != "agent" && "ab-msg--you"
+          comment.kind != "agent" && "ab-msg--you",
+          sending_comment?(comment, @ask_sending, @task.id) && "ab-msg--sending"
         ]}
+        data-message-id={"comment-#{comment.id}"}
+        data-message-sending={sending_comment?(comment, @ask_sending, @task.id)}
       >
         <div class="ab-msg__who">
           {if comment.kind == "agent", do: comment.author || gettext("Agent"), else: gettext("You")}
           <span class="ab-data-sm">{Time.local_time(comment.inserted_at, @offset)}</span>
         </div>
         <p><.markup text={clean_body(comment.body)} /></p>
+        <span
+          :if={sending_comment?(comment, @ask_sending, @task.id)}
+          class="ab-msg__delivery"
+          role="status"
+        >{gettext("Sending…")}</span>
       </div>
 
-      <div :if={@comments == [] and @task.body in [nil, ""]} class="ab-sec__empty">
+      <div
+        :if={sending_placeholder?(@ask_sending, @comments, @task.id)}
+        class="ab-msg ab-msg--you ab-msg--sending"
+        data-message-id="sending"
+        data-message-sending="true"
+      >
+        <div class="ab-msg__who">{gettext("You")}</div>
+        <p>{@ask_sending.body}</p>
+        <span class="ab-msg__delivery" role="status">{gettext("Sending…")}</span>
+      </div>
+
+      <div
+        :if={
+          @comments == [] and @task.body in [nil, ""] and
+            !sending_placeholder?(@ask_sending, @comments, @task.id)
+        }
+        class="ab-sec__empty"
+      >
         {gettext("No conversation in this task.")}
       </div>
 
@@ -564,6 +585,16 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     </div>
     """
   end
+
+  defp sending_comment?(comment, %{task_id: task_id, body: body}, task_id),
+    do: comment.github_id < 0 and clean_body(comment.body) == body
+
+  defp sending_comment?(_comment, _sending, _task_id), do: false
+
+  defp sending_placeholder?(%{task_id: task_id} = sending, comments, task_id),
+    do: not Enum.any?(comments, &sending_comment?(&1, sending, task_id))
+
+  defp sending_placeholder?(_sending, _comments, _task_id), do: false
 
   defp activity_tab(assigns) do
     ~H"""

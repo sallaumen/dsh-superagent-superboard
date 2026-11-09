@@ -167,7 +167,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> element("#ask-agent")
     |> render_submit(%{"body" => "hi"})
 
-    view |> element("#ask-confirm-go") |> render_click()
+    render_async(view, 2_000)
 
     assert render(view) =~ "não chegou ao GitHub"
     # The text comes back to the box, so nothing typed is lost.

@@ -16,9 +16,9 @@ defmodule AgentBoard.Voice do
       `normal` (default) or `long`
     * `voice_earcons` - `"0"` silences the sounds that mark the microphone
       opening and closing
-    * `voice_input` - how the owner's speech becomes text: `wispr` (default:
-      the owner's WisprFlow app types into the board, no transcription cost)
-      or `microphone` (the board records and ElevenLabs Scribe transcribes)
+    * `voice_input` - how the owner enters a voice turn: `text` (default,
+      focuses an existing field), `wispr` (an external dictation app types into
+      the board) or `microphone` (ElevenLabs Scribe transcribes a recording)
     * `voice_engine` - who speaks: `browser` (default, free), `mixed`
       (ElevenLabs for the calls for attention and the coding agent's
       replies, the browser for the rest) or `elevenlabs` (everything)
@@ -160,12 +160,12 @@ defmodule AgentBoard.Voice do
   def put_earcons(on?) when is_boolean(on?),
     do: Settings.put("voice_earcons", if(on?, do: "", else: "0"))
 
-  @inputs ~w(wispr microphone)
+  @inputs ~w(text wispr microphone)
   @engines ~w(browser mixed elevenlabs)
   @replies ~w(short full)
 
-  @doc "How the owner's speech becomes text: `wispr` (default) or `microphone`."
-  def input, do: choice("voice_input", @inputs, "wispr")
+  @doc "How the owner enters a turn: text by default, external dictation or the board microphone."
+  def input, do: choice("voice_input", @inputs, "text")
 
   @doc "Saves the input method."
   def put_input(value), do: put_choice("voice_input", @inputs, value, :invalid_input)

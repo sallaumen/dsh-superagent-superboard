@@ -51,8 +51,8 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           class="voice-field"
         >
           <label for="voice-input" class="voice-field-label">
-            {gettext("Your voice to the agent")}
-            <span class="voice-source-note">{gettext("· press Space twice to start input")}</span>
+            {gettext("Input for talking with the agent")}
+            <span class="voice-source-note">{gettext("· press Space twice to use the selected method")}</span>
           </label>
           <div class="settings-actions">
             <select id="voice-input" name="input" class="voice-select">
@@ -395,8 +395,9 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
   defp inputs,
     do: [
-      {"wispr", gettext("WisprFlow (types into the board, free)")},
-      {"microphone", gettext("Board microphone (ElevenLabs transcription, paid)")}
+      {"text", gettext("Text (uses an open field)")},
+      {"wispr", gettext("External dictation (Wispr Flow)")},
+      {"microphone", gettext("Board microphone (ElevenLabs, paid)")}
     ]
 
   defp engines,

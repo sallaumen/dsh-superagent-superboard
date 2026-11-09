@@ -162,7 +162,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
         >
           <h3 id="settings-voice-title">{gettext("Voice")}</h3>
           <p class="settings-pane__intro">
-            {gettext("Choose how to speak with the board and when it replies aloud.")}
+            {gettext("Choose how to send messages to the board and when it replies aloud.")}
           </p>
           <VoicePanel.voice_panel voice={@voice} repo={@repo != nil} />
           <div class="settings-actions">
@@ -171,9 +171,15 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
             )}</button>
           </div>
           <p class="settings-pane__note">
-            {gettext(
-              "Press Space twice to speak. Creating and stopping tasks wait for your confirmation."
-            )}
+            {if @voice.input == "text",
+              do:
+                gettext(
+                  "Press Space twice to focus an open text field. Creating and stopping tasks wait for your confirmation."
+                ),
+              else:
+                gettext(
+                  "Press Space twice to start the selected input. Creating and stopping tasks wait for your confirmation."
+                )}
           </p>
         </section>
 
