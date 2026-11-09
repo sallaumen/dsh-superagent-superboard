@@ -59,6 +59,23 @@ defmodule AgentBoard.Intake.IssueBodyTest do
     assert String.ends_with?(body, "Trocar o menu.")
   end
 
+  test "the files' section can be taken back out, and only it" do
+    files = [%{name: "a.png", path: "abc/a.png"}, %{name: "m.html", path: "abc/m.html"}]
+
+    body =
+      IssueBody.with_attachments(
+        "Trocar o menu.\n\n- item meu",
+        files,
+        %{owner: "o", name: "r"},
+        "pt"
+      )
+
+    assert IssueBody.without_attachments(body) == "Trocar o menu.\n\n- item meu"
+    assert IssueBody.without_attachments("**Depende de:** #1\n\n" <> body) =~ "**Depende de:** #1"
+    refute IssueBody.without_attachments("**Depende de:** #1\n\n" <> body) =~ "gh api"
+    assert IssueBody.without_attachments("Sem anexos") == "Sem anexos"
+  end
+
   test "no dependency leaves the body as it was" do
     assert IssueBody.with_dependencies("Trocar o menu.", [], "pt") == "Trocar o menu."
   end

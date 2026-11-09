@@ -46,6 +46,10 @@ defmodule AgentBoard.Intake.IssueBody do
     }
   }
 
+  alias AgentBoard.Board.Attachments
+
+  @attachments_section ~r/^## (?:Anexos|Attachments)\n.*\n.*\n\n(?:- .*board-attachments.*\n)+\n?/m
+
   @lists ~w(constraints non_goals assumptions open_questions)a
 
   @doc "The body of one task, with the decisions of the request it came from."
@@ -72,6 +76,10 @@ defmodule AgentBoard.Intake.IssueBody do
     |> Enum.reject(&is_nil/1)
     |> Enum.join("\n\n")
   end
+
+  @doc "The body as a person reads it on the board, which shows the files itself."
+  @spec without_attachments(String.t()) :: String.t()
+  def without_attachments(body), do: String.replace(body, @attachments_section, "")
 
   @doc "The comment that calls the agent on a task that was waiting."
   @spec release_comment(String.t() | nil) :: String.t()
@@ -101,7 +109,7 @@ defmodule AgentBoard.Intake.IssueBody do
     blob = "https://github.com/#{slug}/blob/board-attachments/#{path}"
     command = "`gh api \"repos/#{slug}/contents/#{path}?ref=board-attachments\"`"
 
-    if Path.extname(name) in ~w(.png .jpg .jpeg .webp .gif),
+    if Attachments.image?(name),
       do: "- ![#{name}](#{blob}?raw=true) #{command}",
       else: "- [#{name}](#{blob}) #{command}"
   end
