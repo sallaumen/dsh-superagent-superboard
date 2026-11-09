@@ -71,6 +71,20 @@ defmodule AgentBoard.AI.Registry do
     "required" => ["summary"]
   }
 
+  @unblock_schema %{
+    "type" => "object",
+    "additionalProperties" => false,
+    "properties" => %{
+      "suggestions" => %{
+        "type" => "array",
+        "minItems" => 1,
+        "maxItems" => 3,
+        "items" => %{"type" => "string"}
+      }
+    },
+    "required" => ["suggestions"]
+  }
+
   @voice_agent_schema %{
     "type" => "object",
     "additionalProperties" => false,
@@ -251,6 +265,22 @@ defmodule AgentBoard.AI.Registry do
       then what is running.
       """,
       json_schema: @summary_schema
+    },
+    suggest_unblock: %{
+      name: :suggest_unblock,
+      tier: :fast,
+      output_cap: 768,
+      system: """
+      You help the owner unblock an agent that stopped on a task.
+      Reply with JSON only, matching the schema.
+      Give two or three complete, concise replies the owner can send to the
+      agent, in the language of the question. Use only the supplied question,
+      blockage and task; do not invent decisions, files, people or facts.
+      Each suggestion must either answer the question or propose one concrete
+      next step. Do not claim that code was changed or that a decision was
+      already made. Keep every suggestion sendable as written.
+      """,
+      json_schema: @unblock_schema
     },
     answer_question: %{
       name: :answer_question,

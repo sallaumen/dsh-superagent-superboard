@@ -29,6 +29,15 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :failure, :map, default: nil
   attr :ask_pending, :map, default: nil
   attr :ask_draft, :string, default: ""
+  attr :ai_status, :atom, default: :not_configured
+  attr :unblock, :any, default: nil
+  attr :unblock_suggestions, :list, default: []
+  attr :unblock_ai, :atom, default: :idle
+  attr :inspector_blockers, :list, default: []
+  attr :blocker_open, :boolean, default: false
+  attr :blocker_title, :string, default: ""
+  attr :blocker_body, :string, default: ""
+  attr :blocker_pending, :any, default: nil
 
   def inspector(assigns) do
     tabs = [
@@ -267,6 +276,135 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       <div :if={@tab == "conversa"} class="ab-insp__foot">
         <%!-- A question posts on GitHub (red, AgentBoard.Actions): the
              sentence comes first, and only "Mandar" sends it. --%>
+        <div
+          :if={@unblock || @inspector_blockers != []}
+          id="unblock-panel"
+          class="ab-unblock"
+          aria-label="Desbloquear a tarefa"
+        >
+          <div class="ab-unblock__head">
+            <strong>Desbloquear</strong>
+            <span class="ab-meta">O agente parou e pediu uma decisão sua.</span>
+          </div>
+
+          <div :if={@unblock && @unblock.question} class="ab-unblock__quote">
+            <span class="ab-meta">Pergunta</span>
+            <p>{@unblock.question}</p>
+          </div>
+
+          <div :if={@unblock && @unblock.blockage} class="ab-unblock__quote">
+            <span class="ab-meta">Bloqueio</span>
+            <p>{@unblock.blockage}</p>
+          </div>
+
+          <div :if={@inspector_blockers != []} class="ab-unblock__links">
+            <span class="ab-meta">Tarefa de desbloqueio</span>
+            <a
+              :for={blocker <- @inspector_blockers}
+              href={blocker.url || "#"}
+              target="_blank"
+              rel="noopener"
+            >
+              #{blocker.number} — {blocker.title} ({blocker.state})
+            </a>
+          </div>
+
+          <div :if={@unblock} class="ab-unblock__actions">
+            <button
+              id="suggest-unblock"
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="suggest_unblock"
+              disabled={@unblock_ai == :busy or @ai_status == :not_configured}
+            >
+              {if @unblock_ai == :busy, do: "Gerando sugestões…", else: "Sugerir resposta"}
+            </button>
+            <button
+              id="open-blocker"
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="open_blocker"
+            >
+              Criar tarefa bloqueadora
+            </button>
+          </div>
+
+          <p :if={@ai_status == :not_configured} class="ab-meta">
+            IA não configurada; escreva a resposta abaixo ou crie a tarefa bloqueadora.
+          </p>
+
+          <p :if={@unblock_ai == :error} class="ab-unblock__error" role="status">
+            Não foi possível gerar sugestões. Escreva a resposta ou crie a tarefa bloqueadora.
+          </p>
+
+          <div :if={@unblock_suggestions != []} class="ab-unblock__suggestions" aria-live="polite">
+            <span class="ab-meta">Sugestões — clique para editar antes de enviar</span>
+            <button
+              :for={suggestion <- @unblock_suggestions}
+              type="button"
+              class="ab-unblock__suggestion"
+              phx-click="use_unblock_suggestion"
+              phx-value-text={suggestion}
+            >
+              {suggestion}
+            </button>
+          </div>
+
+          <div :if={@blocker_open} class="ab-unblock__form">
+            <form id="blocker-form" phx-submit="blocker_prepare">
+              <label for="blocker-title">Título da tarefa</label>
+              <input
+                id="blocker-title"
+                name="title"
+                type="text"
+                value={@blocker_title}
+                required
+              />
+              <label for="blocker-body">O que precisa ser resolvido</label>
+              <textarea id="blocker-body" name="body" rows="8" required>{@blocker_body}</textarea>
+              <div class="ab-unblock__form-actions">
+                <button type="submit" class="ab-btn ab-btn--sm ab-btn--primary">
+                  Preparar tarefa
+                </button>
+                <button
+                  type="button"
+                  class="ab-btn ab-btn--sm ab-btn--quiet"
+                  phx-click="close_blocker"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div
+            :if={@blocker_pending}
+            id="blocker-confirm"
+            class="ab-act__confirm"
+            role="group"
+            aria-labelledby="blocker-confirm-q"
+          >
+            <p id="blocker-confirm-q" class="ab-act__question">{@blocker_pending.phrase}</p>
+            <div class="ab-act__buttons">
+              <button
+                type="button"
+                class="ab-btn ab-btn--sm ab-btn--primary"
+                phx-click="blocker_confirm"
+                phx-disable-with="Criando…"
+              >
+                Criar tarefa
+              </button>
+              <button
+                type="button"
+                class="ab-btn ab-btn--sm ab-btn--quiet"
+                phx-click="blocker_cancel"
+              >
+                Voltar e editar
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div
           :if={@ask_pending && @ask_pending.task_id == @task.id}
           id="ask-confirm"

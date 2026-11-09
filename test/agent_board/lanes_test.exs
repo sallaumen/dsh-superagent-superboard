@@ -399,6 +399,25 @@ defmodule AgentBoard.LanesTest do
     assert queue.counts.dupes == 1
   end
 
+  test "a linked blocker comes first and names the task it unblocks" do
+    {:ok, repo} = Board.add_repository("fixture", "queue-blocker")
+    now = ~U[2026-11-06 15:00:00Z]
+
+    blocked = task(repo, 20, "Blocked work", "queued", DateTime.add(now, -3600, :second))
+    normal = task(repo, 21, "Normal work", "queued", DateTime.add(now, -3600, :second))
+
+    blocker =
+      task(repo, 22, "Desbloquear #20", "queued", now)
+      |> Task.changeset(%{blocker_for_task_id: blocked.id})
+      |> Repo.update!()
+
+    queue = Lanes.queue(repo, %{}, now: now)
+
+    assert Enum.map(queue.items, & &1.id) == [blocker.id, blocked.id, normal.id]
+    assert hd(queue.items).sub == "desbloqueia #20"
+    refute Enum.at(queue.items, 1).sub
+  end
+
   test "the merge log groups the last seven days and counts every PR" do
     {:ok, repo} = Board.add_repository("fixture", "log")
     today = ~U[2026-11-06 15:00:00Z]

@@ -63,6 +63,12 @@ differ. Change a general rule upstream, not here.
   is stopped or archived (`Sync.close_task/2`). Before this, an issue closed
   after it entered the board stayed in Fila (the queue) while the runner had
   nothing to do (`sync_repo_test.exs`). A reopened issue is not moved back yet.
+- A **blocker task** points at the task it unblocks through
+  `tasks.blocker_for_task_id`. It is created through the same `create_tasks`
+  action as any request, with the agent's mention and the link; the queue
+  puts it ahead of ordinary queued work and the board shows "desbloqueia #N".
+  The blocked task stays blocked until a person answers or the agent retries;
+  the blocker task is a separate issue, not a state change on the original.
 - A review rollup is the strongest review (`changes_requested` beats `approved`);
   a check rollup names the failing check.
 

@@ -54,6 +54,7 @@ defmodule AgentBoard.Board.Requests do
         author: "board",
         request_key: Keyword.get(opts, :request_key),
         origin_task_id: Keyword.get(opts, :origin_task_id),
+        blocker_for_task_id: Keyword.get(opts, :blocker_for_task_id),
         work_type: Keyword.get(opts, :work_type),
         size: Keyword.get(opts, :size),
         executor: executor
@@ -170,6 +171,7 @@ defmodule AgentBoard.Board.Requests do
       request_key: key,
       executor: Map.get(request, :executor),
       origin_task_id: Map.get(request, :origin_task_id),
+      blocker_for_task_id: Map.get(request, :blocker_for_task_id),
       work_type: Map.get(request, :work_type),
       size: Map.get(request, :size)
     }
@@ -199,6 +201,7 @@ defmodule AgentBoard.Board.Requests do
       create_task(repository, title, body, client,
         request_key: key,
         origin_task_id: Map.get(request, :origin_task_id),
+        blocker_for_task_id: Map.get(request, :blocker_for_task_id),
         work_type: Map.get(request, :work_type),
         size: Map.get(request, :size),
         executor: Map.get(request, :executor),

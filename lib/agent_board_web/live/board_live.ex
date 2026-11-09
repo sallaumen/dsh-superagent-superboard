@@ -30,6 +30,7 @@ defmodule AgentBoardWeb.BoardLive do
     Superagents,
     Time,
     Titles,
+    Unblock,
     Voice
   }
 
@@ -139,6 +140,15 @@ defmodule AgentBoardWeb.BoardLive do
         inspector_pr: nil,
         inspector_ci: nil,
         inspector_failure: nil,
+        inspector_blockers: [],
+        unblock: nil,
+        unblock_for: nil,
+        unblock_suggestions: [],
+        unblock_ai: :idle,
+        blocker_open: false,
+        blocker_title: "",
+        blocker_body: "",
+        blocker_pending: nil,
         intake: nil,
         intake_draft: nil,
         composer_text: "",
@@ -389,7 +399,16 @@ defmodule AgentBoardWeb.BoardLive do
           inspector_usage: nil,
           inspector_pr: nil,
           inspector_ci: nil,
-          inspector_failure: nil
+          inspector_failure: nil,
+          inspector_blockers: [],
+          unblock: nil,
+          unblock_for: nil,
+          unblock_suggestions: [],
+          unblock_ai: :idle,
+          blocker_open: false,
+          blocker_title: "",
+          blocker_body: "",
+          blocker_pending: nil
         )
 
       task ->
@@ -400,29 +419,48 @@ defmodule AgentBoardWeb.BoardLive do
         executions = inspector_executions(socket, task)
         runner_executions = Runners.for_task(task.id)
 
-        assign(socket,
-          inspector_activity: Board.task_activity(task, pr),
-          inspector_calls: AI.recent_for_task(task.id),
-          inspector_executions: executions,
-          inspector_executions_for:
-            if(socket.assigns.inspector_tab == "execucoes", do: task.id, else: nil),
-          inspector_runner_executions: runner_executions,
-          inspector_dispatch_paused: Runners.paused?(),
-          inspector_dispatch_active:
-            Enum.any?(runner_executions, &(&1.status in ["starting", "running"])),
-          inspector_dispatch_ceiling: Runners.task_ceiling_usd(task.executor),
-          inspector_dispatch_fallback:
-            case List.first(runner_executions) do
-              nil -> nil
-              execution -> Runners.fallback(execution)
-            end,
-          inspector_usage: executor_usage(socket, task),
-          inspector_pr: pr,
-          inspector_ci: ci,
-          inspector_failure: inspector_failure(socket, task),
-          inspector_tab: socket.assigns.inspector_tab || "conversa"
+        assign(
+          socket,
+          [
+            inspector_activity: Board.task_activity(task, pr),
+            inspector_calls: AI.recent_for_task(task.id),
+            inspector_executions: executions,
+            inspector_executions_for:
+              if(socket.assigns.inspector_tab == "execucoes", do: task.id, else: nil),
+            inspector_runner_executions: runner_executions,
+            inspector_dispatch_paused: Runners.paused?(),
+            inspector_dispatch_active:
+              Enum.any?(runner_executions, &(&1.status in ["starting", "running"])),
+            inspector_dispatch_ceiling: Runners.task_ceiling_usd(task.executor),
+            inspector_dispatch_fallback:
+              case List.first(runner_executions) do
+                nil -> nil
+                execution -> Runners.fallback(execution)
+              end,
+            inspector_usage: executor_usage(socket, task),
+            inspector_pr: pr,
+            inspector_ci: ci,
+            inspector_failure: inspector_failure(socket, task),
+            inspector_tab: socket.assigns.inspector_tab || "conversa"
+          ] ++ unblock_assigns(socket, task)
         )
     end
+  end
+
+  # The unblock inputs belong to the open task: a board update must not erase
+  # an AI suggestion or a confirmation the person is editing.
+  defp unblock_assigns(socket, task) do
+    same? = socket.assigns[:unblock_for] == task.id
+
+    [
+      inspector_blockers: Board.blockers_for(task),
+      unblock: Unblock.context(socket.assigns.comments),
+      unblock_for: task.id,
+      unblock_suggestions: if(same?, do: socket.assigns[:unblock_suggestions], else: []),
+      unblock_ai: if(same?, do: socket.assigns[:unblock_ai], else: :idle),
+      blocker_open: if(same?, do: socket.assigns[:blocker_open], else: false),
+      blocker_pending: if(same?, do: socket.assigns[:blocker_pending], else: nil)
+    ]
   end
 
   # The failure block of the open task: the same words as its card, with
@@ -1354,6 +1392,120 @@ defmodule AgentBoardWeb.BoardLive do
   # A question to the agent is red (it posts on GitHub): the first submit
   # shows the sentence, only "Mandar" posts it, Cancelar records the no.
   @impl true
+  # -- unblocking a stopped task ---------------------------------------------
+  #
+  # The buttons live next to the draft, so the owner can ask the model for a
+  # suggestion, edit it and send the same `:ask_task` action as before. A
+  # prerequisite is a normal `:create_tasks` request linked to the blocked
+  # task; the queue puts it first and the agent picks it like any other issue.
+
+  def handle_event("suggest_unblock", _params, socket) do
+    case {socket.assigns.conversation, socket.assigns.repo, socket.assigns.unblock} do
+      {%Task{} = task, %{} = repo, %{} = unblock} ->
+        if socket.assigns.ai_status == :not_configured do
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             "A IA não está configurada; escreva a resposta ou crie a tarefa."
+           )}
+        else
+          socket = assign(socket, unblock_ai: :busy, unblock_suggestions: [])
+
+          {:noreply,
+           start_async(socket, {:unblock_ai, task.id}, fn ->
+             AI.call(:suggest_unblock, Unblock.ai_inputs(task, repo, unblock), task_id: task.id)
+           end)}
+        end
+
+      _ ->
+        {:noreply,
+         put_flash(socket, :error, "O agente ainda não registrou uma pergunta ou bloqueio.")}
+    end
+  end
+
+  def handle_event("use_unblock_suggestion", %{"text" => text}, socket) do
+    {:noreply, assign(socket, ask_draft: text)}
+  end
+
+  def handle_event("open_blocker", _params, socket) do
+    case {socket.assigns.conversation, socket.assigns.unblock} do
+      {%Task{} = task, %{} = unblock} ->
+        {:noreply,
+         assign(socket,
+           blocker_open: true,
+           blocker_pending: nil,
+           blocker_title: Unblock.blocker_title(task, unblock),
+           blocker_body: Unblock.blocker_body(task, unblock)
+         )}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "O agente ainda não registrou um bloqueio.")}
+    end
+  end
+
+  def handle_event("close_blocker", _params, socket),
+    do: {:noreply, assign(socket, blocker_open: false, blocker_pending: nil)}
+
+  def handle_event("blocker_prepare", %{"title" => title, "body" => body}, socket) do
+    with %Task{} = task <- socket.assigns.conversation,
+         %{} = repo <- socket.assigns.repo,
+         title when title != "" <- String.trim(title),
+         body when body != "" <- String.trim(body) do
+      request = Unblock.request(repo, task, title, body)
+      phrase = Actions.phrase(:create_tasks, %{repository: repo, requests: [request]})
+
+      {:noreply,
+       assign(socket,
+         blocker_open: false,
+         blocker_pending: %{request: request, phrase: phrase}
+       )}
+    else
+      _ ->
+        {:noreply, put_flash(socket, :error, "A tarefa precisa de título e corpo.")}
+    end
+  end
+
+  def handle_event("blocker_cancel", _params, socket),
+    do: {:noreply, assign(socket, blocker_pending: nil, blocker_open: false)}
+
+  def handle_event("blocker_confirm", _params, socket) do
+    case {socket.assigns.conversation, socket.assigns.repo, socket.assigns.blocker_pending} do
+      {%Task{}, %{} = repo, %{request: request, phrase: phrase}} ->
+        case Actions.run(:create_tasks, %{repository: repo, requests: [request]}, ui(),
+               confirm: phrase
+             ) do
+          {:ok, [{_request, {:ok, created, _outcome}}]} when is_map(created) ->
+            {:noreply,
+             socket
+             |> assign(blocker_pending: nil, blocker_open: false)
+             |> put_flash(:info, "Tarefa de desbloqueio ##{created.number} criada e priorizada.")
+             |> load_inspector()}
+
+          {:ok, _other} ->
+            {:noreply,
+             socket
+             |> assign(blocker_pending: nil, blocker_open: false)
+             |> put_flash(:info, "Tarefa de desbloqueio criada.")
+             |> load_inspector()}
+
+          {:error, {refusal, _phrase}} when refusal in [:unconfirmed, :phrase_changed] ->
+            {:noreply,
+             socket
+             |> assign(blocker_pending: nil, blocker_open: false)
+             |> put_flash(:error, @refused_text)}
+
+          {:error, reason} ->
+            {:noreply,
+             put_flash(socket, :error, "Não foi possível criar a tarefa: #{inspect(reason)}")}
+        end
+
+      _ ->
+        {:noreply,
+         put_flash(socket, :error, "Nada foi criado: a tarefa bloqueada não está aberta.")}
+    end
+  end
+
   def handle_event("ask", %{"body" => body}, socket) do
     case {socket.assigns.conversation, String.trim(body)} do
       {nil, _body} ->
@@ -2018,6 +2170,27 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  def handle_async(
+        {:unblock_ai, id},
+        {:ok, {:ok, %{json: %{"suggestions" => suggestions}}}},
+        %{assigns: %{conversation: %Task{id: task_id}}} = socket
+      )
+      when is_list(suggestions) and id == task_id do
+    suggestions = suggestions |> Enum.filter(&is_binary/1) |> Enum.take(3)
+    {:noreply, assign(socket, unblock_ai: :idle, unblock_suggestions: suggestions)}
+  end
+
+  def handle_async(
+        {:unblock_ai, id},
+        _outcome,
+        %{assigns: %{conversation: %Task{id: task_id}}} = socket
+      )
+      when id == task_id do
+    {:noreply, assign(socket, unblock_ai: :error, unblock_suggestions: [])}
+  end
+
+  def handle_async({:unblock_ai, _id}, _outcome, socket), do: {:noreply, socket}
+
   def handle_async({:composer, ref}, outcome, socket) do
     case socket.assigns.composer_job do
       %{ref: ^ref} = job -> {:noreply, finish_composer_job(socket, job, outcome)}
@@ -2664,6 +2837,15 @@ defmodule AgentBoardWeb.BoardLive do
             live={@freshness.live?}
             ask_pending={@ask_pending}
             ask_draft={@ask_draft}
+            ai_status={@ai_status}
+            unblock={@unblock}
+            unblock_suggestions={@unblock_suggestions}
+            unblock_ai={@unblock_ai}
+            inspector_blockers={@inspector_blockers}
+            blocker_open={@blocker_open}
+            blocker_title={@blocker_title}
+            blocker_body={@blocker_body}
+            blocker_pending={@blocker_pending}
           />
         </div>
 

@@ -36,6 +36,7 @@ defmodule AgentBoard.Board.Task do
     field :work_type, :string
     field :size, :string
     field :executor, :string
+    field :blocker_for_task_id, :integer
 
     belongs_to :repository, AgentBoard.Board.Repository
     belongs_to :origin_task, AgentBoard.Board.Task
@@ -66,6 +67,7 @@ defmodule AgentBoard.Board.Task do
       :work_type,
       :size,
       :executor,
+      :blocker_for_task_id,
       :objective_id
     ])
     |> validate_required([:title, :repository_id])
@@ -73,6 +75,7 @@ defmodule AgentBoard.Board.Task do
     |> validate_inclusion(:work_type, @work_types)
     |> validate_inclusion(:size, @sizes)
     |> validate_inclusion(:executor, AgentBoard.Executors.all())
+    |> foreign_key_constraint(:blocker_for_task_id)
     |> unique_constraint([:repository_id, :kind, :number])
     |> unique_constraint([:repository_id, :request_key])
   end
