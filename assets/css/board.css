@@ -1184,11 +1184,14 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 #panel-superagents.board-dialog { width: min(60rem, 100vw - 2rem); }
 
 /* ---------- superagents por projeto ---------- */
-.ab-superagents { display: grid; gap: var(--space-4); }
-.ab-superagents__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
-.ab-superagents__head h2 { margin: 0; font-size: 18px; }
-.ab-superagents__title { display: flex; align-items: baseline; gap: var(--space-2); }
+.ab-superagents { display: grid; gap: var(--space-5); padding: var(--space-5) var(--space-6) var(--space-6); }
+.ab-superagents__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
 .ab-superagents__head p { margin: var(--space-1) 0 0; }
+.ab-superagents__summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); font-size: 13px; font-weight: 500; }
+.ab-superagents__summary > span + span::before { content: "·"; margin-right: var(--space-3); color: var(--ink-faint); }
+.ab-superagents__summary-state { color: var(--ink-muted); }
+.ab-superagents__summary-state.is-all-ready { color: var(--agent); }
+.ab-superagents__summary-state.is-error { color: var(--halt); }
 .ab-superagents__empty { margin: 0; padding: 0; max-width: none; }
 .ab-superagents__list { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }
 .ab-superagent {
@@ -1690,18 +1693,17 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 /* Superagentes: one row per project, so two projects compare side by side. */
 .ab-superagents__table-wrap {
   overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .ab-superagent-table {
   width: 100%;
   min-width: 760px;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 .ab-superagent-table th {
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--line);
   color: var(--ink-muted);
   font-size: 12px;
@@ -1710,20 +1712,28 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   white-space: nowrap;
 }
 .ab-superagent-table td {
-  padding: 10px 12px;
+  padding: 14px 12px;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
   color: var(--ink);
 }
 .ab-superagent-table tr:last-child td { border-bottom: 0; }
-.ab-superagent-table__project b { display: block; font-size: 13.5px; font-weight: 500; }
-.ab-superagent-table__path { display: block; color: var(--ink-faint); font-size: 11px; }
+.ab-superagent-table__project b { display: block; font-size: 14px; font-weight: 600; }
+.ab-superagent-table__details { margin-top: 3px; color: var(--ink-muted); font-size: 11.5px; }
+.ab-superagent-table__details summary { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; list-style: none; cursor: pointer; }
+.ab-superagent-table__details summary::-webkit-details-marker { display: none; }
+.ab-superagent-table__details summary::before { content: ""; width: 6px; height: 6px; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(-45deg); }
+.ab-superagent-table__details[open] summary::before { transform: rotate(45deg); }
+.ab-superagent-table__path { display: block; max-width: 30ch; margin-top: 4px; overflow-wrap: anywhere; color: var(--ink-muted); font-size: 11.5px; }
 .ab-superagent-table td code { font-family: var(--font-mono); font-size: 12px; }
 .ab-superagent-table .ab-status { display: flex; align-items: center; gap: 6px; }
 .ab-superagent-table .ab-meta { display: block; font-size: 11.5px; line-height: 16px; }
 .ab-superagent-table__actions { text-align: right; white-space: nowrap; }
 .ab-superagent-table__actions > * { margin-left: 4px; }
 .ab-superagent-table__actions .ab-act { display: inline-flex; vertical-align: middle; }
+.ab-superagent-table__actions .ab-act > .ab-btn--halt { border-color: var(--halt); padding: 0 10px; }
+.ab-superagent-table__actions .ab-btn,
+.ab-superagent-menu > summary { min-height: 36px; }
 .ab-superagent-table .ab-superagent__workers { margin: 0; }
 .ab-superagent-menu { position: relative; display: inline-block; }
 .ab-superagent-menu > summary { list-style: none; cursor: pointer; }
@@ -1744,15 +1754,20 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-superagent-menu__body .ab-act { display: flex; }
 .ab-superagents__errors {
   display: grid;
-  gap: 2px;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--space-2);
   margin: 0;
-  padding: 8px 10px;
+  padding: var(--space-3);
   border-left: 3px solid var(--halt);
   background: var(--halt-wash);
-  font-size: 12px;
-  line-height: 17px;
+  font-size: 13px;
+  line-height: 19px;
 }
-.ab-superagent-add { display: grid; gap: var(--space-3); padding: var(--space-4); border-top: 1px solid var(--line); }
+.ab-superagents__errors > span { grid-column: 2; min-width: 0; }
+.ab-superagents__errors details { margin-top: var(--space-1); }
+.ab-superagents__errors summary { width: max-content; cursor: pointer; font-size: 12px; }
+.ab-superagents__errors code { display: block; max-height: 160px; margin-top: var(--space-2); overflow: auto; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 11.5px; white-space: pre-wrap; }
+.ab-superagent-add { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-md); }
 .ab-superagent-add h3 { margin: 0; font-size: 16px; line-height: 22px; }
 .ab-superagent-add > p { margin: 0; }
 
@@ -2175,24 +2190,11 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   }
 }
 
-/* Superagentes: the per-project pool is visible as a stack, and the header
-   sums the configured agents across projects. */
-.ab-superagents__head { align-items: flex-start; }
-.ab-superagents__title { flex-wrap: wrap; gap: var(--space-2); }
-.ab-superagents__title h2 { margin-right: var(--space-2); }
+/* Superagentes: one project per row, with the current state before controls. */
 .ab-superagents__head > .ab-btn { flex: none; }
-.ab-superagent-table__agents { min-width: 150px; }
-.ab-agent-stack {
-  display: flex;
-  gap: 1px;
-  width: 96px;
-  height: 6px;
-  margin-bottom: 5px;
-}
-.ab-agent-stack i { flex: 1; min-width: 1px; border-radius: 1px; background: var(--line); }
-.ab-agent-stack i.is-on { background: var(--agent); }
-.ab-superagent-table__agents .ab-superagent__workers { margin: 0; gap: 4px; }
-.ab-superagent-table__agents .ab-superagent__workers > span { min-width: 1.5ch; text-align: center; }
+.ab-superagent-table__agents { min-width: 112px; }
+.ab-superagent-table__agents .ab-superagent__workers { margin: 0; gap: 6px; }
+.ab-superagent-table__agents .ab-superagent__workers > span { min-width: 2ch; text-align: center; color: var(--ink); font-family: var(--font-mono); font-size: 13px; }
 .ab-superagent-menu__hint {
   margin: 0 0 var(--space-2);
   padding: 0 var(--space-1);
@@ -2202,9 +2204,8 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 }
 .ab-superagent-menu__hint code { font-family: var(--font-mono); font-size: 10.5px; }
 .ab-superagent-add { scroll-margin-top: var(--space-5); }
-.ab-superagent-add__empty { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.ab-superagent-add__empty p { margin: 0; }
 .ab-superagent-add__preview .ab-act__buttons { align-items: center; }
+.ab-superagents__complete { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--line); color: var(--ink-muted); font-size: 12.5px; }
 
 .ab-rail__badge {
   margin-left: auto;
@@ -2219,15 +2220,6 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 }
 .ab-rail__foot .ab-btn:hover .ab-rail__badge { color: var(--ink); }
 
-.ab-superagents__note {
-  margin: 0;
-  padding: var(--space-2) 0 0;
-  border-top: 1px solid var(--line);
-  color: var(--ink-muted);
-  font-size: 12px;
-  line-height: 17px;
-}
-
 .ab-flow__agents {
   margin-left: auto;
   color: var(--ink-muted);
@@ -2237,65 +2229,74 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   white-space: nowrap;
 }
 
-.ab-superagent-table__agents .ab-btn { min-width: 28px; height: 28px; padding: 0 6px; }
+.ab-superagent-table__agents .ab-btn { min-width: 36px; height: 36px; padding: 0 8px; justify-content: center; }
 .ab-flow .ab-sec__head { flex-wrap: wrap; row-gap: 4px; }
 .ab-flow__agents { margin-left: auto; }
 
-.ab-superagent-table__mobile-agents { display: none; }
+/* Phone: project cards keep state, capacity and actions in the first glance. */
 @media (max-width: 39.999rem) {
-  .ab-superagent-table__mobile-agents {
-    display: block;
-    margin-top: 3px;
-    color: var(--agent);
-    font-family: var(--font-mono);
-    font-size: 11px;
-  }
-}
-
-/* Phone: a table row becomes a card, so Agentes, Pausar/Parar and ⋯ are in
-   reach without a horizontal scroll. */
-@media (max-width: 39.999rem) {
+  .ab-superagents { gap: var(--space-4); padding: var(--space-4); }
+  .ab-superagents__head { flex-wrap: wrap; }
+  .ab-superagents__head > .ab-btn { min-height: 44px; }
+  .ab-superagents__summary { gap: 2px var(--space-2); }
+  .ab-superagents__summary > span + span::before { margin-right: var(--space-2); }
   .ab-superagents__table-wrap { border: 0; background: none; overflow: visible; }
   .ab-superagent-table { min-width: 0; display: block; }
   .ab-superagent-table thead { display: none; }
   .ab-superagent-table tbody,
-  .ab-superagent-table tr,
-  .ab-superagent-table td { display: block; width: 100%; }
+  .ab-superagent-table tr { width: 100%; }
   .ab-superagent-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-3);
     margin-bottom: var(--space-3);
-    padding: 10px 12px;
+    padding: var(--space-4);
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
     background: var(--surface);
   }
   .ab-superagent-table td {
-    display: grid;
-    grid-template-columns: 104px minmax(0, 1fr);
-    gap: var(--space-2);
-    align-items: start;
-    padding: 5px 0;
+    display: block;
+    width: auto;
+    min-width: 0;
+    padding: 0;
     border: 0;
     white-space: normal;
   }
   .ab-superagent-table td::before {
-    content: attr(data-label);
+    display: block;
+    margin-bottom: 3px;
     color: var(--ink-muted);
     font-size: 11.5px;
-    line-height: 18px;
+    line-height: 16px;
     font-weight: 600;
   }
-  .ab-superagent-table td.ab-superagent-table__project { display: block; padding-bottom: 8px; }
-  .ab-superagent-table td.ab-superagent-table__project::before { display: none; }
+  .ab-superagent-table td.ab-superagent-table__project { grid-column: 1 / -1; }
+  .ab-superagent-table__project b { overflow-wrap: anywhere; }
+  .ab-superagent-table__state { grid-column: 1; align-self: center; }
+  .ab-superagent-table__agents { grid-column: 2; text-align: right; }
+  .ab-superagent-table__agents::before { content: "Agentes"; }
+  .ab-superagent-table__profile { grid-column: 1; }
+  .ab-superagent-table__profile::before { content: "Profile · porta"; }
+  .ab-superagent-table__read { grid-column: 2; text-align: right; }
+  .ab-superagent-table__read::before { content: "Última leitura"; }
   .ab-superagent-table td.ab-superagent-table__actions {
+    grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 6px;
-    padding-top: 8px;
+    gap: var(--space-2);
+    padding-top: var(--space-3);
     border-top: 1px solid var(--line);
   }
-  .ab-superagent-table td.ab-superagent-table__actions::before { flex-basis: 100%; }
+  .ab-superagent-table td.ab-superagent-table__actions::before { display: none; }
   .ab-superagent-table__actions .ab-act { display: inline-flex; }
+  .ab-superagent-table__actions .ab-btn,
+  .ab-superagent-menu > summary { min-height: 44px; }
+  .ab-superagent-table__agents .ab-btn { min-width: 44px; height: 44px; }
+  .ab-superagent-table__details summary,
+  .ab-superagents__errors summary { min-height: 40px; }
+  .ab-superagent-table__profile code { overflow-wrap: anywhere; }
+  .ab-superagents__complete .ab-btn { min-height: 44px; white-space: normal; text-align: left; }
   .ab-superagent-table__agents { min-width: 0; }
 }
 
