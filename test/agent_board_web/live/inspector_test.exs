@@ -196,7 +196,8 @@ defmodule AgentBoardWeb.InspectorTest do
     {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", task.id))
 
     assert has_element?(view, "#conversation", "Entendido.")
-    refute render(view) =~ "dsh-superagent"
+    # Only the conversation: the logs picker lists this machine's real runners.
+    refute view |> element("#conversation") |> render() =~ "dsh-superagent"
   end
 
   test "archiving from the inspector keeps the task reachable", %{conn: conn} do

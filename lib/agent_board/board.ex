@@ -15,7 +15,8 @@ defmodule AgentBoard.Board do
     PullRequest,
     Repository,
     Review,
-    Task
+    Task,
+    TaskDependency
   }
 
   alias AgentBoard.{GitHub, Repo, Workpad}
@@ -873,7 +874,8 @@ defmodule AgentBoard.Board do
         order_by: [desc: o.id],
         preload: [:tasks]
     )
-    |> Enum.map(fn objective ->
+    |> with_edges()
+    |> Enum.map(fn {objective, edges} ->
       total = length(objective.tasks)
       merged = Enum.count(objective.tasks, &(&1.state == "done"))
 
@@ -883,8 +885,27 @@ defmodule AgentBoard.Board do
         done_criterion: objective.done_criterion,
         total: total,
         merged: merged,
-        done?: total > 0 and merged == total
+        done?: total > 0 and merged == total,
+        issue_url: objective.issue_url,
+        tasks: Enum.map(objective.tasks, &Map.take(&1, [:id, :number, :title, :state])),
+        edges: edges
       }
+    end)
+  end
+
+  defp with_edges(objectives) do
+    ids = for objective <- objectives, task <- objective.tasks, do: task.id
+
+    edges =
+      Repo.all(
+        from d in TaskDependency,
+          where: d.task_id in ^ids,
+          select: {d.task_id, d.blocked_by_task_id}
+      )
+
+    Enum.map(objectives, fn objective ->
+      own = MapSet.new(objective.tasks, & &1.id)
+      {objective, Enum.filter(edges, fn {task, _blocker} -> task in own end)}
     end)
   end
 
