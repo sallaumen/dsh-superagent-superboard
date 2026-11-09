@@ -263,6 +263,82 @@ defmodule AgentBoard.SuperagentsTest do
              Superagents.provision(repo, source, %{path: "/tmp/checkout"}, FakeProvisioner)
   end
 
+  test "a failed provision keeps a row to retry and records the reason", %{repo: repo} do
+    {:ok, source_repo} = Board.add_repository("fixture", "source")
+
+    {:ok, source} =
+      Superagents.create(%{
+        repository_id: source_repo.id,
+        profile: "superagent-source",
+        port: 3193,
+        state_dir: "/tmp/source-superagent-retry"
+      })
+
+    assert {:error, "the bot cannot push"} =
+             Superagents.provision(
+               repo,
+               source,
+               %{path: "/tmp/checkout", fail: "the bot cannot push"},
+               FakeProvisioner
+             )
+
+    assert %Superagent{observed_state: "error", provision_failed_at: %DateTime{}} =
+             Superagents.get_by_repository(repo)
+
+    assert [%{kind: "provision_error", payload: %{"reason" => "the bot cannot push"}}] =
+             Board.events(repo) |> Enum.filter(&(&1.kind == "provision_error"))
+  end
+
+  test "an agent that would not stop keeps its card and is not restarted", %{repo: repo} do
+    {:ok, source_repo} = Board.add_repository("fixture", "source")
+
+    {:ok, source} =
+      Superagents.create(%{
+        repository_id: source_repo.id,
+        profile: "superagent-source",
+        port: 3194,
+        state_dir: "/tmp/source-superagent-stuck"
+      })
+
+    assert {:error, message} =
+             Superagents.provision(
+               repo,
+               source,
+               %{path: "/tmp/checkout", fail: {:still_running, "the bot cannot push", "stuck"}},
+               FakeProvisioner
+             )
+
+    assert message =~ "the bot cannot push"
+    assert message =~ "the agent did not stop: stuck"
+
+    superagent = Superagents.get_by_repository(repo)
+    assert superagent.desired_state == "stopped"
+    assert superagent.observed_state == "error"
+    assert superagent.last_error =~ "did not stop"
+    assert is_nil(superagent.provision_failed_at)
+  end
+
+  test "a detached job finishes after the caller is killed" do
+    test = self()
+
+    caller =
+      spawn(fn ->
+        Superagents.detached(fn ->
+          send(test, {:job, self()})
+
+          receive do
+            :finish -> send(test, :finished)
+          end
+        end)
+      end)
+
+    assert_receive {:job, job}
+    Process.exit(caller, :kill)
+    refute Process.alive?(caller)
+    send(job, :finish)
+    assert_receive :finished
+  end
+
   test "AgentState uses the registered state paths", %{repo: repo} do
     {:ok, _} =
       Superagents.create(%{
@@ -390,7 +466,7 @@ defmodule AgentBoard.SuperagentsTest do
   describe "a provisioning that failed" do
     defmodule FailingProvisioner do
       @behaviour AgentBoard.Superagents.Provisioner
-      def provision(_superagent, _source, _attrs), do: {:error, {:setup, "the bot cannot push"}}
+      def provision(_superagent, _source, _attrs), do: {:error, "the bot cannot push"}
     end
 
     setup %{repo: repo} do
@@ -416,7 +492,7 @@ defmodule AgentBoard.SuperagentsTest do
         File.rm_rf!(root)
       end)
 
-      assert {:error, {:setup, "the bot cannot push"}} =
+      assert {:error, "the bot cannot push"} =
                Superagents.provision(
                  repo,
                  source,
@@ -464,7 +540,7 @@ defmodule AgentBoard.SuperagentsTest do
     end
 
     test "a retry that fails stays retryable", %{failed: failed} do
-      assert {:error, {:setup, _}} = Superagents.retry_provision(failed, FailingProvisioner)
+      assert {:error, _} = Superagents.retry_provision(failed, FailingProvisioner)
       assert Repo.get!(Superagent, failed.id).provision_failed_at
     end
 

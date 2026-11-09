@@ -7,6 +7,7 @@ defmodule AgentBoard.Superagents do
   """
   import Ecto.Query, warn: false
 
+  alias AgentBoard.Board
   alias AgentBoard.Repo
   alias AgentBoard.Superagents.{Manager, Provisioner, Superagent, SuperagentEvent}
 
@@ -42,7 +43,20 @@ defmodule AgentBoard.Superagents do
   end
 
   @doc "The directory the DSH state lives in; overridable in tests."
-  def state_root, do: Application.get_env(:agent_board, :dsh_state_dir, @dsh_state)
+  def state_root,
+    do: Path.expand(Application.get_env(:agent_board, :dsh_state_root, @dsh_state))
+
+  @doc """
+  Run `fun` to its end even if the caller dies, and return its result.
+
+  Provisioning takes minutes and is started from a page; a reload must not cut
+  it in half, because the half is what leaves an empty agent behind.
+  """
+  def detached(fun) when is_function(fun, 0) do
+    AgentBoard.Superagents.TaskSupervisor
+    |> Task.Supervisor.async_nolink(fun)
+    |> Task.await(:infinity)
+  end
 
   @doc "The directory the DSH profiles live in; overridable in tests."
   def profiles_root, do: Application.get_env(:agent_board, :dsh_profiles_dir, @dsh_profiles)
@@ -140,8 +154,9 @@ defmodule AgentBoard.Superagents do
 
   @doc """
   Reserve one row and ask the provisioner to create the external profile,
-  port, state and setup. A failure keeps the row in `error` with the reason so
-  the owner sees what happened instead of a silent half-project.
+  port, state and setup. A failure the provisioner could undo leaves no row and
+  returns the reason, so the owner sees what happened and can try the same
+  repository again. An agent that would not stop keeps its row in `error`.
   """
   def provision(repository, source, attrs, provisioner \\ Provisioner.impl()) do
     with nil <- get_by_repository(repository),
@@ -224,8 +239,28 @@ defmodule AgentBoard.Superagents do
     |> tap(fn _ -> broadcast() end)
   end
 
+  # The agent would not stop, so its files stayed and it still needs a card to
+  # be stopped or removed from: an ordinary row, which the board must not
+  # restart and "Tentar de novo" could not rebuild.
+  defp settle_provision({:error, {:still_running, reason, stop_failure}}, superagent, _from) do
+    detail = "#{reason_text(reason)}; the agent did not stop: #{reason_text(stop_failure)}"
+
+    {:ok, stopped} =
+      superagent
+      |> Superagent.changeset(%{desired_state: "stopped", provision_failed_at: nil})
+      |> Repo.update()
+
+    event(stopped, "provision", "starting", "error", "owner", detail)
+    observe(stopped, %{state: "error", detail: detail})
+    log_provision_error(stopped, detail)
+    {:error, detail}
+  end
+
+  # The provisioner undid its work. The row stays, with what a retry needs, and
+  # the ticker keeps away from it. The page that asked may be gone, so the
+  # reason is also kept in the repository's activity.
   defp settle_provision({:error, reason}, superagent, _from) do
-    detail = provision_detail(reason)
+    detail = reason_text(reason)
     event(superagent, "provision", "starting", "error", "owner", detail)
 
     {:ok, failed} =
@@ -236,11 +271,19 @@ defmodule AgentBoard.Superagents do
       |> Repo.update()
 
     observe(failed, %{state: "error", detail: detail})
+    log_provision_error(failed, detail)
     {:error, reason}
   end
 
-  defp provision_detail({:setup, text}) when is_binary(text), do: text
-  defp provision_detail(reason), do: inspect(reason)
+  defp log_provision_error(superagent, text) do
+    Board.log_event(superagent.repository_id, "provision_error", superagent.profile, %{
+      "reason" => text
+    })
+  end
+
+  defp reason_text(text) when is_binary(text), do: text
+  defp reason_text({:setup, text}) when is_binary(text), do: text
+  defp reason_text(other), do: inspect(other)
 
   defp next_profile(repository) do
     base =

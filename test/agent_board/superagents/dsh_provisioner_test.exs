@@ -1,110 +1,226 @@
 defmodule AgentBoard.Superagents.DshProvisionerTest do
-  @moduledoc "A failed attempt undoes what it made, and only that."
-  use AgentBoard.DataCase, async: false
+  @moduledoc """
+  A provisioning the agent refuses, against a real HTTP agent and real
+  directories: the half-project goes away and the agent's own reason comes back.
+  """
+  use ExUnit.Case, async: false
 
+  alias AgentBoard.Board.Repository
   alias AgentBoard.Superagents.{DshProvisioner, Superagent}
 
+  defmodule RefusingAgent do
+    @moduledoc false
+    import Plug.Conn
+
+    @api "/orchestrator/api"
+
+    def init(options), do: options
+
+    def call(conn, _options) do
+      {:ok, _body, conn} = read_body(conn)
+      {status, body} = answer(conn.method, String.replace_prefix(conn.request_path, @api, ""))
+      conn |> put_resp_content_type("application/json") |> send_resp(status, Jason.encode!(body))
+    end
+
+    defp answer("GET", "/state"), do: {200, %{health: %{runtime: %{state: "ready"}}}}
+
+    defp answer("GET", "/settings") do
+      {200,
+       %{
+         sources: [%{id: "github", value: %{config: %{}}, revision: 0}],
+         blocks: %{executor: %{value: %{}, revision: 0}, policy: %{value: %{}, revision: 0}}
+       }}
+    end
+
+    defp answer("GET", "/prompts"), do: {200, %{current: %{config: %{}, revision: 0}}}
+
+    defp answer("PUT", "/settings/source:github"),
+      do: {400, %{error: "@bot cannot push to owner/name."}}
+
+    defp answer(_method, _path), do: {404, %{error: "unexpected"}}
+  end
+
+  defmodule AccountAgent do
+    @moduledoc false
+    import Plug.Conn
+
+    def init(options), do: options
+
+    def call(conn, _options) do
+      {:ok, _body, conn} = read_body(conn)
+
+      body =
+        if String.ends_with?(conn.request_path, "/state"),
+          do: %{setup: %{accounts: %{agent: "robo"}}},
+          else: %{sources: [%{id: "github", value: %{config: %{cli: "/bin/true"}}}]}
+
+      conn |> put_resp_content_type("application/json") |> send_resp(200, Jason.encode!(body))
+    end
+  end
+
   setup do
-    root = Path.join(System.tmp_dir!(), "provisioner-#{System.unique_integer([:positive])}")
+    root = Path.join(System.tmp_dir!(), "provisioner-#{System.pid()}-#{System.unique_integer()}")
     profiles = Path.join(root, "profiles")
-    state = Path.join(root, "state")
-    File.mkdir_p!(Path.join(profiles, "superagent"))
-    File.mkdir_p!(state)
-
-    File.write!(
-      Path.join([profiles, "superagent", "cordis.patch.yml"]),
-      "port: 1\nstateDir: /x\n"
-    )
-
-    # A manager that cannot start anything: the attempt fails after the copy.
-    manager = Path.join(root, "manager.py")
-    File.write!(manager, "import sys\nsys.exit(3)\n")
-
+    states = Path.join(root, "state")
     checkout = Path.join(root, "checkout")
+    File.mkdir_p!(Path.join(profiles, "source"))
     File.mkdir_p!(Path.join(checkout, ".git"))
+    File.mkdir_p!(states)
+    File.write!(Path.join([profiles, "source", "cordis.patch.yml"]), "port: 1\nstateDir: /x\n")
 
-    keys = [:dsh_profiles_dir, :dsh_state_dir, :superagent_manager_script]
-    previous = Map.new(keys, &{&1, Application.get_env(:agent_board, &1)})
-    Application.put_env(:agent_board, :dsh_profiles_dir, profiles)
-    Application.put_env(:agent_board, :dsh_state_dir, state)
-    Application.put_env(:agent_board, :superagent_manager_script, manager)
+    # A profile holds symlinks into a package store; removing it must not follow them.
+    outside = Path.join(root, "package-store")
+    File.mkdir_p!(outside)
+    File.write!(Path.join(outside, "kept"), "kept")
+    File.mkdir_p!(Path.join([profiles, "source", "node_modules"]))
+    File.ln_s!(outside, Path.join([profiles, "source", "node_modules", "package"]))
 
-    on_exit(fn ->
-      for {key, value} <- previous do
-        if value,
-          do: Application.put_env(:agent_board, key, value),
+    manager = Path.join(root, "manager.py")
+    File.write!(manager, "")
+
+    for {key, value} <- [
+          dsh_profiles_dir: profiles,
+          dsh_state_root: states,
+          superagent_manager_script: manager
+        ] do
+      previous = Application.get_env(:agent_board, key)
+      Application.put_env(:agent_board, key, value)
+
+      on_exit(fn ->
+        if previous,
+          do: Application.put_env(:agent_board, key, previous),
           else: Application.delete_env(:agent_board, key)
-      end
+      end)
+    end
 
-      File.rm_rf!(root)
-    end)
+    on_exit(fn -> File.rm_rf(root) end)
 
-    {:ok, repo} =
-      AgentBoard.Board.add_repository("fixture", "prov-#{System.unique_integer([:positive])}")
+    server = start_supervised!({Bandit, plug: RefusingAgent, port: 0, ip: :loopback})
+    {:ok, {_ip, port}} = ThousandIsland.listener_info(server)
 
-    row = %Superagent{
-      id: 1,
-      repository_id: repo.id,
-      profile: "superagent-new",
-      port: 1,
-      state_dir: Path.join(state, "superagent-new")
+    %{root: root, profiles: profiles, states: states, checkout: checkout, port: port}
+  end
+
+  test "a refused configuration undoes the project and says why", context do
+    source = %Superagent{profile: "source", port: context.port, state_dir: "/unused"}
+    state_dir = Path.join(context.states, "new")
+
+    project = %Superagent{
+      profile: "new",
+      port: context.port,
+      state_dir: state_dir,
+      repository_id: 1,
+      repository: %Repository{id: 1, owner: "owner", name: "name"}
     }
 
-    {:ok,
-     root: root,
-     profiles: profiles,
-     row: row,
-     source: %Superagent{profile: "superagent", port: 1},
-     attrs: %{path: checkout, workers: 1}}
+    assert {:error, "@bot cannot push to owner/name."} =
+             DshProvisioner.provision(project, source, %{path: context.checkout})
+
+    refute File.exists?(Path.join(context.profiles, "new"))
+    refute File.exists?(state_dir)
+    assert File.read!(Path.join([context.root, "package-store", "kept"])) == "kept"
   end
 
-  test "removes a directory and keeps what a link inside it points at", %{root: root} do
-    shared = Path.join(root, "prototype")
-    File.mkdir_p!(shared)
-    File.write!(Path.join(shared, "keep.txt"), "important")
-
-    profile = Path.join(root, "profile")
-    File.mkdir_p!(Path.join(profile, "node_modules"))
-    File.write!(Path.join(profile, "cordis.patch.yml"), "port: 1\n")
-    File.ln_s!(shared, Path.join([profile, "node_modules", "dsh-superagent"]))
-
-    DshProvisioner.remove_tree(profile)
-
-    refute File.exists?(profile)
-    assert File.read!(Path.join(shared, "keep.txt")) == "important"
+  defp project(context) do
+    %Superagent{
+      profile: "new",
+      port: context.port,
+      state_dir: Path.join(context.states, "new"),
+      repository_id: 1,
+      repository: %Repository{id: 1, owner: "owner", name: "name"}
+    }
   end
 
-  test "a path that is not there is fine", %{root: root} do
-    assert :ok = DshProvisioner.remove_tree(Path.join(root, "nothing"))
+  defp source(context), do: %Superagent{profile: "source", port: context.port, state_dir: "/x"}
+
+  test "a profile this attempt did not create is left alone", context do
+    project = project(context)
+    profile = Path.join(context.profiles, "new")
+    File.mkdir_p!(profile)
+    File.mkdir_p!(project.state_dir)
+    File.write!(Path.join(project.state_dir, "orchestrator.sqlite"), "tickets")
+
+    assert {:error, :profile_exists} =
+             DshProvisioner.provision(project, source(context), %{path: context.checkout})
+
+    assert File.dir?(profile)
+    assert File.read!(Path.join(project.state_dir, "orchestrator.sqlite")) == "tickets"
   end
 
-  test "a failed attempt removes the profile it copied", context do
-    %{row: row, source: source, attrs: attrs, profiles: profiles} = context
+  test "a checkout that does not exist touches nothing", context do
+    project = project(context)
+    profile = Path.join(context.profiles, "new")
+    File.mkdir_p!(profile)
 
-    assert {:error, _reason} = DshProvisioner.provision(row, source, attrs)
+    assert {:error, :checkout_missing} =
+             DshProvisioner.provision(project, source(context), %{path: "/does/not/exist"})
 
-    refute File.exists?(Path.join(profiles, "superagent-new"))
-    assert File.exists?(Path.join([profiles, "superagent", "cordis.patch.yml"]))
+    assert File.dir?(profile)
   end
 
-  test "a profile that was already there is left alone", context do
-    %{row: row, source: source, attrs: attrs, profiles: profiles} = context
-    theirs = Path.join([profiles, "superagent-new", "theirs.txt"])
-    File.mkdir_p!(Path.dirname(theirs))
-    File.write!(theirs, "not ours")
+  test "a state directory that was already there survives a refusal", context do
+    project = project(context)
+    File.mkdir_p!(project.state_dir)
+    File.write!(Path.join(project.state_dir, "orchestrator.sqlite"), "kept from a removal")
 
-    assert {:error, :profile_exists} = DshProvisioner.provision(row, source, attrs)
-    assert File.read!(theirs) == "not ours"
+    assert {:error, _reason} =
+             DshProvisioner.provision(project, source(context), %{path: context.checkout})
+
+    refute File.exists?(Path.join(context.profiles, "new"))
+
+    assert File.read!(Path.join(project.state_dir, "orchestrator.sqlite")) ==
+             "kept from a removal"
   end
 
-  test "state that was already there is left alone", context do
-    %{row: row, source: source, attrs: attrs, profiles: profiles} = context
-    theirs = Path.join(row.state_dir, "orchestrator.sqlite")
-    File.mkdir_p!(row.state_dir)
-    File.write!(theirs, "not ours")
+  test "an agent that will not stop keeps its files and says so", context do
+    File.write!(
+      Path.join(context.root, "manager.py"),
+      "import sys\nsys.exit(1 if sys.argv[-1] == 'stop' else 0)\n"
+    )
 
-    assert {:error, :state_exists} = DshProvisioner.provision(row, source, attrs)
-    assert File.read!(theirs) == "not ours"
-    refute File.exists?(Path.join(profiles, "superagent-new"))
+    project = project(context)
+
+    assert {:error, {:still_running, "@bot cannot push to owner/name.", {:manager, 1, _output}}} =
+             DshProvisioner.provision(project, source(context), %{path: context.checkout})
+
+    assert File.dir?(Path.join(context.profiles, "new"))
+  end
+
+  test "a bot the board cannot give access to stops before anything is created", context do
+    server =
+      start_supervised!({Bandit, plug: AccountAgent, port: 0, ip: :loopback}, id: :accounts)
+
+    {:ok, {_ip, port}} = ThousandIsland.listener_info(server)
+
+    previous = Application.get_env(:agent_board, :github_client)
+    Req.Test.set_req_test_to_shared(%{})
+
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(base_url: "https://api.github.test", plug: {Req.Test, __MODULE__}, retry: false)
+    end)
+
+    on_exit(fn ->
+      Req.Test.set_req_test_to_private(%{})
+
+      if previous,
+        do: Application.put_env(:agent_board, :github_client, previous),
+        else: Application.delete_env(:agent_board, :github_client)
+    end)
+
+    Req.Test.stub(__MODULE__, fn
+      %{method: "GET"} = conn ->
+        Req.Test.json(conn, %{"role_name" => "read"})
+
+      %{method: "PUT"} = conn ->
+        conn |> Plug.Conn.put_status(403) |> Req.Test.json(%{"message" => "no"})
+    end)
+
+    source = %Superagent{profile: "source", port: port, state_dir: "/x"}
+
+    assert {:error, text} =
+             DshProvisioner.provision(project(context), source, %{path: context.checkout})
+
+    assert text =~ "@robo"
+    refute File.exists?(Path.join(context.profiles, "new"))
   end
 end

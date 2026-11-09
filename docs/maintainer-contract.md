@@ -812,14 +812,18 @@ that watches one GitHub repository and picks the issues whose body mentions
   repository, a ready source profile, the local checkout and the initial
   workers. The red `provision_superagent` action reserves the row, copies the
   source profile/port/state (standard DSH location), starts the manager and
-  copies source/executor/policy/prompts through the DSH API; a failure keeps
-  the row in `error` with the reason and rolls the half-project back. The
-  rollback removes only what that attempt made and never follows a link (a
-  profile links to the agent's code). Before anything is created the board
-  gives the bot write access if it lacks it, as the source refuses a repository
-  it cannot push to (`BotAccess`); the owner's confirmation says so. A failed
-  project is not started by the ticker or by "Ligar": "Tentar de novo" runs it
-  again with the source and checkout stored on the row.
+  copies source/executor/policy/prompts through the DSH API. Before anything is
+  created the board gives the bot write access if it lacks it, as the source
+  refuses a repository it cannot push to (`BotAccess`); the owner's confirmation
+  says so. A failure undoes only what this attempt created (a profile already on
+  disk is refused, a state directory from before it stays, and a link into the
+  agent's code is never followed), keeps the row in `error` with the agent's own
+  reason, and records it in the repository's activity. A failed project is not
+  started by the ticker or by "Ligar": "Tentar de novo" runs it again with the
+  source and checkout stored on the row, one attempt at a time. An agent that
+  will not stop keeps its files and an ordinary row in `error`, desired
+  `stopped`. The work outlives the page that started it; a board restart in the
+  middle is not undone, and **Arquivar** clears what it leaves.
   `DshProvisioner` is the real adapter; `FakeProvisioner` covers the tests.
 - **Removal preserves the state.** `remove_superagent` stops the process and
   copies the state (and moves the profile) under

@@ -13,24 +13,24 @@ defmodule AgentBoard.Superagents.BotAccess do
 
   @doc "Make sure `bot` can push to the repository."
   @spec ensure(map(), String.t(), String.t(), Req.Request.t(), function()) ::
-          :ok | {:error, {:setup, String.t()}}
+          :ok | {:error, String.t()}
   def ensure(repository, bot, cli, client \\ GitHub.client(), runner \\ &run/3) do
     %{owner: owner, name: name} = repository
 
     case GitHub.collaborator_permission(client, owner, name, bot) do
       {:ok, role} when role in @writers -> :ok
       {:ok, _role} -> invite(repository, bot, cli, client, runner)
-      :not_found -> {:error, {:setup, not_found(repository, bot)}}
+      :not_found -> {:error, not_found(repository, bot)}
     end
   rescue
-    _exception -> {:error, {:setup, cannot_invite(repository, bot)}}
+    _exception -> {:error, cannot_invite(repository, bot)}
   end
 
   defp invite(%{owner: owner, name: name} = repository, bot, cli, client, runner) do
     case GitHub.invite_collaborator(client, owner, name, bot) do
       :already -> :ok
       {:invited, id} when is_integer(id) -> accept(repository, bot, cli, id, runner)
-      _other -> {:error, {:setup, cannot_invite(repository, bot)}}
+      _other -> {:error, cannot_invite(repository, bot)}
     end
   end
 
@@ -47,9 +47,8 @@ defmodule AgentBoard.Superagents.BotAccess do
 
       {_output, _code} ->
         {:error,
-         {:setup,
-          "@#{bot} foi convidado para #{slug(repository)}, mas não conseguiu aceitar o convite. " <>
-            "Aceite com a conta do bot e tente de novo."}}
+         "@#{bot} foi convidado para #{slug(repository)}, mas não conseguiu aceitar o convite. " <>
+           "Aceite com a conta do bot e tente de novo."}
     end
   end
 

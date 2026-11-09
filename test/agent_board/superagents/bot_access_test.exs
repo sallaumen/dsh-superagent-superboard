@@ -79,7 +79,7 @@ defmodule AgentBoard.Superagents.BotAccessTest do
   test "an owner who cannot invite is told where to do it", %{client: client} do
     stub("read", &status(&1, 403))
 
-    assert {:error, {:setup, text}} =
+    assert {:error, text} =
              BotAccess.ensure(@repo, "robo", "/bin/gh-robo", client, runner())
 
     assert text =~ "@robo"
@@ -89,7 +89,7 @@ defmodule AgentBoard.Superagents.BotAccessTest do
   test "an invitation the bot could not accept says so", %{client: client} do
     stub("read", &(&1 |> Plug.Conn.put_status(201) |> Req.Test.json(%{"id" => 77})))
 
-    assert {:error, {:setup, text}} =
+    assert {:error, text} =
              BotAccess.ensure(@repo, "robo", "/bin/gh-robo", client, runner({"token secret", 1}))
 
     assert text =~ "@robo"
@@ -99,7 +99,7 @@ defmodule AgentBoard.Superagents.BotAccessTest do
   test "a bot account GitHub does not have", %{client: client} do
     stub(nil, fn _conn -> flunk("must not invite") end)
 
-    assert {:error, {:setup, text}} =
+    assert {:error, text} =
              BotAccess.ensure(@repo, "robo", "/bin/gh-robo", client, runner())
 
     assert text =~ "@robo"
