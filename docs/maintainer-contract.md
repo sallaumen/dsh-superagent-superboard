@@ -26,7 +26,7 @@ differ. Change a general rule upstream, not here.
 | `AgentBoard.AgentControl` | the owner's two confirmed asks, run by `Actions`: "Tentar de novo" (`retry/2`) and "Religar o agente" (`start_agent/1`) |
 | `AgentBoard.Metrics` | the throughput arithmetic, pure; `Metrics.Observations` reads what it counts |
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
-| `AgentBoard.ExecutorUsage` | what the executor spent on a task, read from the harness transcripts; tokens measured, cost estimated |
+| `AgentBoard.Usage.Harness` | what the executor spent on a task, read from the harness transcripts; tokens measured, cost estimated |
 | `AgentBoard.Executors` | who a task is for (`dsh`, `claude`, `codex`): the label and the issue body each gets; pure |
 | `AgentBoard.Routing` | where a new task should go: `suggest/2` and `plan/5` (pure), `Signals` (what the door reads) and `record/3` (one `Decision` row per created task) |
 | `AgentBoard.Attribution` | which task a session or a PR worked for: exact, `pr-link`, branch, repository or outside; pure |
@@ -533,7 +533,7 @@ Agora and the detail):
 ## Executor usage (Executor do agente)
 
 - The board's own calls are rows in `ai_calls` (above). The **executor's**
-  calls are not the board's: `AgentBoard.ExecutorUsage` reads them from the
+  calls are not the board's: `AgentBoard.Usage.Harness` reads them from the
   harness transcripts, `~/.dsh/sessions/<ticket directory with / as ->/<session>/session.v4.jsonl.zstd`
   (`:dsh_sessions_dir`), one per worker and one per subagent. It only reads;
   nothing is stored in `tasks`, `ai_calls` or the runner's sqlite. The
@@ -810,7 +810,7 @@ read and cache write tokens, with the first and last time.
 |---|---|---|---|
 | `claude_code` | `~/.claude/projects/**/*.jsonl` (`:claude_projects_dir`) | `Usage.ClaudeCode` | one row per `message.id` across every file in `usage_messages`; a later copy merges by the largest count and keeps the session stored first |
 | `codex` | `~/.codex/sessions/**/rollout-*.jsonl[.zst]`, `~/.codex/archived_sessions` and `state_5.sqlite` (`:codex_sessions_dir`, `:codex_archived_dir`, `:codex_state_db`) | `Usage.Codex` | a day is the growth of the thread's cumulative total, read across all the thread's files (a long thread continues in `rollout-<time>-<thread>_<id>.jsonl`, counting on from the first file); input is `input_tokens − cached_input_tokens`; cwd, branch and model come from `threads` |
-| `dsh` | `~/.dsh/sessions/*/*/session.v4.jsonl.zstd` (`:dsh_sessions_dir`) | `ExecutorUsage.read_transcript/1` | one row per `data.message.id` (else `seq`) per session in `usage_messages` |
+| `dsh` | `~/.dsh/sessions/*/*/session.v4.jsonl.zstd` (`:dsh_sessions_dir`) | `Usage.Harness.read_transcript/1` | one row per `data.message.id` (else `seq`) per session in `usage_messages` |
 
 - **Only changed files are read.** `usage_files` keeps each path's size and
   mtime; a new run reads the files oldest by creation/rename (`ctime`), so a
@@ -883,7 +883,7 @@ read and cache write tokens, with the first and last time.
 - The tests: `ledger_test.exs` (the reader's groups, no change on a second
   read, a grown and a rewritten transcript, a copy that never counts twice,
   Codex days against `tokens_used`, the newest quota, the harness through
-  `ExecutorUsage`, an unreadable file, one row per source and day),
+  `Usage.Harness`, an unreadable file, one row per source and day),
   `claude_code_test.exs`, `codex_test.exs` and `report_test.exs` (the three
   currencies, the minimum and the unknown, the median, the window, the
   executor summary), and `executors_test.exs` (the panel and the tab).
@@ -955,7 +955,7 @@ slept is never recovered; this routine asks a question instead.
   of the window, the automatic retries the board asked for (`agent_retries`:
   sent, tasks, not accepted) and **each executor's spending apart, in its
   own currency, never summed**: DeepSeek from the harness transcripts
-  (`ExecutorUsage.window/2`: every session changed since the window start,
+  (`Usage.Harness.window/2`: every session changed since the window start,
   the orchestrator's included, counting the messages whose `time` falls in
   the window; US$, estimated, `≥` when a price or a file was missing), Claude
   Code from the usage ledger in US$ at the Max subscription's list price

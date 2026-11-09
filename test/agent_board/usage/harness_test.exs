@@ -1,8 +1,8 @@
-defmodule AgentBoard.ExecutorUsageTest do
+defmodule AgentBoard.Usage.HarnessTest do
   @moduledoc "What the coding agent's executor spent on a task, read from its local transcripts."
   use ExUnit.Case, async: false
 
-  alias AgentBoard.ExecutorUsage
+  alias AgentBoard.Usage.Harness
 
   @zstd System.find_executable("zstd")
 
@@ -35,7 +35,7 @@ defmodule AgentBoard.ExecutorUsageTest do
         "not json"
       ]
 
-      usage = ExecutorUsage.parse(Enum.join(lines, "\n"))
+      usage = Harness.parse(Enum.join(lines, "\n"))
 
       assert usage.requests == 2
       assert usage.input == 150
@@ -55,14 +55,14 @@ defmodule AgentBoard.ExecutorUsageTest do
         assistant_line("m2", 100, 10, 0)
       ]
 
-      usage = ExecutorUsage.parse(Enum.join(lines, "\n"))
+      usage = Harness.parse(Enum.join(lines, "\n"))
 
       assert usage.model == nil
-      assert ExecutorUsage.cost([usage]) == nil
+      assert Harness.cost([usage]) == nil
     end
 
     test "a delegated session is a subagent" do
-      usage = ExecutorUsage.parse(session_line("9d07fa0a", 1))
+      usage = Harness.parse(session_line("9d07fa0a", 1))
       assert usage.subagent? == true
       assert usage.requests == 0
     end
@@ -72,7 +72,7 @@ defmodule AgentBoard.ExecutorUsageTest do
     test "encodes the ticket directory the way the harness names its session folder", %{
       root: root
     } do
-      assert ExecutorUsage.transcript_dir("/Users/me/.dsh/state/superagent/work/audio-1a2b") ==
+      assert Harness.transcript_dir("/Users/me/.dsh/state/superagent/work/audio-1a2b") ==
                Path.join(root, "--Users-me-.dsh-state-superagent-work-audio-1a2b--")
     end
   end
@@ -80,7 +80,7 @@ defmodule AgentBoard.ExecutorUsageTest do
   describe "cost/1" do
     test "prices input and output and says the total is a minimum when cache reads have no price" do
       cost =
-        ExecutorUsage.cost([
+        Harness.cost([
           %{
             model: "deepseek-flash",
             input: 1_000_000,
@@ -96,7 +96,7 @@ defmodule AgentBoard.ExecutorUsageTest do
 
     test "is complete when nothing needs an unknown price" do
       cost =
-        ExecutorUsage.cost([
+        Harness.cost([
           %{model: "deepseek-flash", input: 1_000_000, output: 0, cache_read: 0, cache_write: 0}
         ])
 
@@ -104,14 +104,14 @@ defmodule AgentBoard.ExecutorUsageTest do
     end
 
     test "an unpriced model is unknown, never zero" do
-      assert ExecutorUsage.cost([
+      assert Harness.cost([
                %{model: "mystery-1", input: 10, output: 10, cache_read: 0, cache_write: 0}
              ]) == nil
     end
 
     test "a priced session still counts beside an unpriced one, as a minimum" do
       cost =
-        ExecutorUsage.cost([
+        Harness.cost([
           %{model: "deepseek-flash", input: 1_000_000, output: 0, cache_read: 0, cache_write: 0},
           %{model: nil, input: 10, output: 10, cache_read: 0, cache_write: 0}
         ])
@@ -122,14 +122,14 @@ defmodule AgentBoard.ExecutorUsageTest do
 
   describe "for_tickets/2" do
     test "a ticket without transcripts has nothing to measure" do
-      assert ExecutorUsage.for_tickets([ticket("/nowhere/at-all")]).status == :none
-      assert ExecutorUsage.for_tickets([]).status == :none
+      assert Harness.for_tickets([ticket("/nowhere/at-all")]).status == :none
+      assert Harness.for_tickets([]).status == :none
     end
 
     @tag skip: is_nil(@zstd) && "zstd is not installed"
     test "adds the worker and its subagents and reuses an unchanged reading" do
       dir = "/tmp/work/menu-copy-5e09"
-      folder = ExecutorUsage.transcript_dir(dir)
+      folder = Harness.transcript_dir(dir)
 
       write_transcript(folder, "worker-5e09", [
         session_line("worker-5e09", 0),
@@ -143,7 +143,7 @@ defmodule AgentBoard.ExecutorUsageTest do
         assistant_line("b", 0, 1_000_000, 0)
       ])
 
-      usage = ExecutorUsage.for_tickets([ticket(dir)])
+      usage = Harness.for_tickets([ticket(dir)])
 
       assert usage.status == :measured
       assert usage.workers == 1
@@ -155,7 +155,7 @@ defmodule AgentBoard.ExecutorUsageTest do
       assert usage.models == ["deepseek-flash"]
       assert usage.cost == %{micros: 700_000, complete?: false}
 
-      assert ExecutorUsage.for_tickets([ticket(dir)], usage) == usage
+      assert Harness.for_tickets([ticket(dir)], usage) == usage
     end
 
     test "without zstd the transcripts are unreadable, not empty", %{root: root} do
@@ -167,7 +167,7 @@ defmodule AgentBoard.ExecutorUsageTest do
       System.put_env("PATH", root)
       on_exit(fn -> System.put_env("PATH", path) end)
 
-      usage = ExecutorUsage.for_tickets([ticket("/tmp/work/x")])
+      usage = Harness.for_tickets([ticket("/tmp/work/x")])
       assert usage.status == :unavailable
       assert usage.reason == :zstd_missing
     end
@@ -183,7 +183,7 @@ defmodule AgentBoard.ExecutorUsageTest do
         assistant_line("untimed", 7, 7, 0)
       ]
 
-      usage = ExecutorUsage.parse(Enum.join(lines, "\n"), window: {2_000, 9_000})
+      usage = Harness.parse(Enum.join(lines, "\n"), window: {2_000, 9_000})
 
       assert usage.requests == 1
       assert usage.input == 50
@@ -217,7 +217,7 @@ defmodule AgentBoard.ExecutorUsageTest do
       old = stale |> Path.join("worker-old/session.v4.jsonl.zstd")
       File.touch!(old, ~U[2026-11-05 00:00:00Z] |> DateTime.to_unix())
 
-      usage = ExecutorUsage.window(since, until)
+      usage = Harness.window(since, until)
 
       assert usage.status == :measured
       assert usage.requests == 2
@@ -227,7 +227,7 @@ defmodule AgentBoard.ExecutorUsageTest do
     end
 
     test "window/2 with no session changed has nothing to measure" do
-      assert ExecutorUsage.window(~U[2026-11-06 11:00:00Z], ~U[2026-11-07 11:00:00Z]).status ==
+      assert Harness.window(~U[2026-11-06 11:00:00Z], ~U[2026-11-07 11:00:00Z]).status ==
                :none
     end
   end

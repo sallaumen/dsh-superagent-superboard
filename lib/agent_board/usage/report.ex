@@ -19,8 +19,8 @@ defmodule AgentBoard.Usage.Report do
 
   import Ecto.Query
 
-  alias AgentBoard.{Attribution, Board, ExecutorUsage, Repo}
-  alias AgentBoard.Usage.{Costs, Ledger}
+  alias AgentBoard.{Attribution, Board, Repo}
+  alias AgentBoard.Usage.{Costs, Harness, Ledger}
 
   @default_days 30
   @source_order %{"dsh" => 0, "claude_code" => 1, "codex" => 2}
@@ -517,7 +517,7 @@ defmodule AgentBoard.Usage.Report do
     directory = get_in(ticket, ["execution", "directory"])
 
     if is_binary(directory) and
-         Path.basename(ExecutorUsage.transcript_dir(directory)) == row.execution_id do
+         Path.basename(Harness.transcript_dir(directory)) == row.execution_id do
       task_ids(ticket, row)
     else
       []

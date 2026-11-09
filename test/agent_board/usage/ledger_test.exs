@@ -6,8 +6,7 @@ defmodule AgentBoard.Usage.LedgerTest do
   # An unreadable file logs a warning; the tests assert the row instead.
   @moduletag :capture_log
 
-  alias AgentBoard.ExecutorUsage
-  alias AgentBoard.Usage.{ClaudeCode, Ledger, Worker}
+  alias AgentBoard.Usage.{ClaudeCode, Harness, Ledger, Worker}
 
   @zstd System.find_executable("zstd")
   @thread "01a1ab5d-868b-7992-8c07-03ac39510001"
@@ -256,7 +255,7 @@ defmodule AgentBoard.Usage.LedgerTest do
 
   describe "the harness" do
     @tag skip: is_nil(@zstd) && "zstd is not installed"
-    test "a ticket's sessions are one execution, counted by ExecutorUsage's parser", %{dsh: dir} do
+    test "a ticket's sessions are one execution, counted by Harness's parser", %{dsh: dir} do
       folder = "--Users-me-.dsh-state-superagent-work-audio-1a2b--"
 
       worker = [
@@ -284,8 +283,8 @@ defmodule AgentBoard.Usage.LedgerTest do
                {^folder, ~D[2026-11-08], _, nil, "deepseek-flash", 1, 50, 5, _, _}
              ] = ledger("dsh")
 
-      {:ok, w} = ExecutorUsage.read_file(worker_path)
-      {:ok, s} = ExecutorUsage.read_file(sub_path)
+      {:ok, w} = Harness.read_file(worker_path)
+      {:ok, s} = Harness.read_file(sub_path)
       parsed = Enum.map(w.messages ++ s.messages, & &1.input) |> Enum.sum()
       assert parsed == "dsh" |> ledger() |> Enum.map(&elem(&1, 6)) |> Enum.sum()
     end
