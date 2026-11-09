@@ -152,7 +152,9 @@ defmodule AgentBoardWeb.BoardComponents.Today do
                 <tr>
                   <th scope="col">{gettext("Project")}</th><th scope="col">{gettext("Needs you")}</th><th scope="col">
                     {gettext("Running")}
-                  </th><th scope="col">{gettext("Queue")}</th><th scope="col">{gettext("PRs today")}</th><th scope="col">
+                  </th><th scope="col">{gettext("Queue")}</th><th scope="col">
+                    {gettext("PRs today")}
+                  </th><th scope="col">
                     {gettext("Reading")}
                   </th>
                 </tr>
@@ -167,9 +169,13 @@ defmodule AgentBoardWeb.BoardComponents.Today do
                       phx-value-repo={project.name}
                     >{project.name}</button>
                   </th>
-                  <td data-label={gettext("Needs you")}>{project.needs}</td><td data-label={gettext("Running")}>
+                  <td data-label={gettext("Needs you")}>{project.needs}</td><td data-label={
+                    gettext("Running")
+                  }>
                     {project.running}
-                  </td><td data-label={gettext("Queue")}>{project.queued}</td><td data-label={gettext("PRs today")}>
+                  </td><td data-label={gettext("Queue")}>{project.queued}</td><td data-label={
+                    gettext("PRs today")
+                  }>
                     {project.merged}
                   </td>
                   <td
@@ -242,7 +248,11 @@ defmodule AgentBoardWeb.BoardComponents.Today do
       %{
         count: point.count,
         label: Time.short_day_label(point.date, today),
-        description: gettext("%{day}: %{count} PRs merged", day: Time.day_label(point.date, today), count: point.count),
+        description:
+          gettext("%{day}: %{count} PRs merged",
+            day: Time.day_label(point.date, today),
+            count: point.count
+          ),
         height: round(point.count / top * 100)
       }
     end)
@@ -370,7 +380,8 @@ defmodule AgentBoardWeb.BoardComponents.Today do
 
   defp money(micros) do
     cents = div(micros + 5_000, 10_000)
+    separator = if Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR", do: ",", else: "."
 
-    "US$ #{div(cents, 100)},#{cents |> rem(100) |> Integer.to_string() |> String.pad_leading(2, "0")}"
+    "US$ #{div(cents, 100)}#{separator}#{cents |> rem(100) |> Integer.to_string() |> String.pad_leading(2, "0")}"
   end
 end

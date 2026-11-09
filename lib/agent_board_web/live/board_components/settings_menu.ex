@@ -110,7 +110,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
         >
           <h3 id="settings-dispatch-title">{gettext("Local dispatch")}</h3>
           <p class="settings-pane__intro">
-            {gettext("Claude Code and Codex run on this machine. Each executor has its own limits and billing.")}
+            {gettext(
+              "Claude Code and Codex run on this machine. Each executor has its own limits and billing."
+            )}
           </p>
           <div class="settings-pause">
             <div>
@@ -149,10 +151,14 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           </p>
           <VoicePanel.voice_panel voice={@voice} repo={@repo != nil} />
           <div class="settings-actions">
-            <button type="button" phx-click="speak"><.icon name="hero-speaker-wave" class="size-4" />{gettext("Speak status")}</button>
+            <button type="button" phx-click="speak"><.icon name="hero-speaker-wave" class="size-4" />{gettext(
+              "Speak status"
+            )}</button>
           </div>
           <p class="settings-pane__note">
-            {gettext("Press Space twice to speak. Creating and stopping tasks wait for your confirmation.")}
+            {gettext(
+              "Press Space twice to speak. Creating and stopping tasks wait for your confirmation."
+            )}
           </p>
         </section>
 
@@ -180,8 +186,16 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           <h3 id="settings-repositories-title">{gettext("Repositories")}</h3>
           <p class="settings-pane__intro">{gettext("Track another repository on this board.")}</p>
           <form id="track-repo" phx-submit="add" class="settings-track-form">
-            <label><span>{gettext("Owner")}</span><input name="owner" placeholder="sallaumen" required /></label>
-            <label><span>{gettext("Repository")}</span><input name="name" placeholder={gettext("project-name")} required /></label>
+            <label><span>{gettext("Owner")}</span><input
+              name="owner"
+              placeholder="sallaumen"
+              required
+            /></label>
+            <label><span>{gettext("Repository")}</span><input
+              name="name"
+              placeholder={gettext("project-name")}
+              required
+            /></label>
             <button type="submit" phx-disable-with={gettext("Tracking…")}>{gettext("Track")}</button>
           </form>
         </section>
@@ -203,12 +217,32 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
         >
           <h3 id="settings-language-title">{gettext("Board language")}</h3>
           <p class="settings-pane__intro">
-            {gettext("Choose the language used by this browser. Voice language is set separately under Voice.")}
+            {gettext(
+              "Choose the language used by this browser. Voice language is set separately under Voice."
+            )}
           </p>
-          <.form for={%{}} action={~p"/language"} method="post" id="board-language-form" class="settings-actions" role="group" aria-label={gettext("Board language")}>
+          <.form
+            for={%{}}
+            action={~p"/language"}
+            method="post"
+            id="board-language-form"
+            class="settings-actions"
+            role="group"
+            aria-label={gettext("Board language")}
+          >
             <input type="hidden" name="return_to" value={@return_to} />
-            <button type="submit" name="locale" value="en" aria-pressed={to_string(@board_locale == "en")}>English</button>
-            <button type="submit" name="locale" value="pt-BR" aria-pressed={to_string(@board_locale == "pt_BR")}>Português (Brasil)</button>
+            <button
+              type="submit"
+              name="locale"
+              value="en"
+              aria-pressed={to_string(@board_locale == "en")}
+            >English</button>
+            <button
+              type="submit"
+              name="locale"
+              value="pt-BR"
+              aria-pressed={to_string(@board_locale == "pt-BR")}
+            >Português (Brasil)</button>
           </.form>
         </section>
 
@@ -218,7 +252,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           aria-labelledby="settings-version-title"
         >
           <h3 id="settings-version-title">{gettext("Version")}</h3>
-          <p class="settings-pane__intro">{gettext("Check the board version and available updates.")}</p>
+          <p class="settings-pane__intro">
+            {gettext("Check the board version and available updates.")}
+          </p>
           <SystemPanel.version_panel version={@version} busy={@busy} progress={@progress} />
         </section>
       </div>

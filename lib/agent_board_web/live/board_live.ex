@@ -1657,7 +1657,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("ask", %{"body" => body}, socket) do
     case {socket.assigns.conversation, String.trim(body)} do
       {nil, _body} ->
-        {:noreply, put_flash(socket, :error, "Abra uma tarefa primeiro")}
+        {:noreply, put_flash(socket, :error, gettext("Open a task first"))}
 
       {_task, ""} ->
         {:noreply, socket}
@@ -1685,7 +1685,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("ask_confirm", _params, socket) do
     case {socket.assigns.conversation, socket.assigns.ask_pending} do
       {nil, _pending} ->
-        {:noreply, put_flash(socket, :error, "Abra uma tarefa primeiro")}
+        {:noreply, put_flash(socket, :error, gettext("Open a task first"))}
 
       {_task, pending} when not is_map(pending) ->
         {:noreply, socket}
@@ -2159,9 +2159,9 @@ defmodule AgentBoardWeb.BoardLive do
              model_source: ElevenLabs.tts_source()
          }
        )
-       |> put_flash(:info, "Modelo salvo: #{String.trim(model)}")}
+       |> put_flash(:info, gettext("Model saved: %{model}", model: String.trim(model)))}
     else
-      {:noreply, put_flash(socket, :error, "Modelo de fala desconhecido")}
+      {:noreply, put_flash(socket, :error, gettext("Unknown speech model"))}
     end
   end
 
@@ -2169,7 +2169,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("voice_try", %{"phrase" => phrase}, socket) do
     cond do
       String.trim(phrase) == "" ->
-        {:noreply, put_flash(socket, :error, "Digite uma frase para ouvir")}
+        {:noreply, put_flash(socket, :error, gettext("Enter a phrase to hear"))}
 
       not ElevenLabs.valid_text?(phrase) ->
         {:noreply, put_flash(socket, :error, gettext("The phrase is too long for a request"))}
@@ -2383,7 +2383,7 @@ defmodule AgentBoardWeb.BoardLive do
         update_progress: push_update_step(socket.assigns.update_progress, :restart, :running)
       )
       |> push_event("restart", %{})
-      |> put_flash(:info, "Atualizado para #{sha}; reiniciando o servidor…")
+      |> put_flash(:info, gettext("Updated to %{sha}; restarting the server…", sha: sha))
 
     Actions.run(:restart_board, %{}, ui())
     {:noreply, socket}
@@ -2401,8 +2401,10 @@ defmodule AgentBoardWeb.BoardLive do
      |> assign(busy: false, update_progress: progress)
      |> put_flash(
        :error,
-       "A atualização parou no meio; o board continua no código antigo e nada foi reiniciado. " <>
-         inspect(reason)
+       gettext(
+         "The update stopped midway; the board still runs the old code and nothing was restarted. %{reason}",
+         reason: inspect(reason)
+       )
      )}
   end
 
@@ -2416,7 +2418,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      socket
      |> assign(busy: false, update_progress: progress)
-     |> put_flash(:error, "A atualização falhou: #{inspect(reason)}")}
+     |> put_flash(:error, gettext("The update failed: %{reason}", reason: inspect(reason)))}
   end
 
   def handle_async(:version_check, {:ok, {:ok, _sha}}, socket) do
@@ -2722,7 +2724,6 @@ defmodule AgentBoardWeb.BoardLive do
             live={@freshness.live?}
             version={@version}
             superagents={@superagents}
-
           />
 
           <main id="board-work" class="ab-main">
@@ -3390,13 +3391,13 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
-  defp update_label(:fetch), do: "Buscando a main"
-  defp update_label(:deps), do: "Preparando dependências"
-  defp update_label(:compile), do: "Compilando o build novo"
-  defp update_label(:assets), do: "Gerando os assets"
-  defp update_label(:migrate), do: "Aplicando migrações"
-  defp update_label(:ready), do: "Build pronto"
-  defp update_label(:restart), do: "Reiniciando o board"
+  defp update_label(:fetch), do: gettext("Fetching main")
+  defp update_label(:deps), do: gettext("Preparing dependencies")
+  defp update_label(:compile), do: gettext("Compiling the new build")
+  defp update_label(:assets), do: gettext("Building assets")
+  defp update_label(:migrate), do: gettext("Applying migrations")
+  defp update_label(:ready), do: gettext("Build ready")
+  defp update_label(:restart), do: gettext("Restarting the board")
 
   # -- the composer lifecycle ---------------------------------------------------
   #
@@ -3445,11 +3446,11 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply,
          composer_error(
            socket,
-           "Responda as perguntas ou edite o pedido antes de dividir de novo."
+           gettext("Answer the questions or edit the request before splitting again.")
          )}
 
       answers ->
-        answered = text <> "\n\nRespostas:\n" <> answers
+        answered = text <> "\n\n" <> gettext("Answers:") <> "\n" <> answers
 
         socket
         |> assign(composer_text: answered, composer_answers: "", intake: nil)
@@ -3660,7 +3661,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp start_enqueue(socket, [], _shown),
-    do: {:noreply, composer_error(socket, "Escolha ao menos uma tarefa.")}
+    do: {:noreply, composer_error(socket, gettext("Choose at least one task."))}
 
   defp start_enqueue(socket, requests, shown) do
     repo = socket.assigns.repo
@@ -3673,7 +3674,7 @@ defmodule AgentBoardWeb.BoardLive do
         if socket.assigns.composer_split and length(requests) > 1 do
           Map.put(action, :objective, %{
             title: objective_title(socket.assigns.composer_text),
-            done_criterion: "Todas as tarefas mescladas."
+            done_criterion: gettext("All tasks merged.")
           })
         else
           action
@@ -3707,7 +3708,7 @@ defmodule AgentBoardWeb.BoardLive do
     |> String.trim()
     |> String.slice(0, 120)
     |> case do
-      "" -> "Objetivo do pedido"
+      "" -> gettext("Request objective")
       title -> title
     end
   end
@@ -3740,7 +3741,9 @@ defmodule AgentBoardWeb.BoardLive do
     socket
     |> assign(composer_job: nil)
     |> composer_error(
-      "Nada foi criado: o pedido mudou antes do envio. Confira a frase e envie de novo."
+      gettext(
+        "Nothing was created: the request changed before sending. Check the phrase and send again."
+      )
     )
   end
 

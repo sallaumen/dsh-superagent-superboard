@@ -1890,7 +1890,7 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   .ab-today__action { grid-area: action; justify-self: end; }
 }
 
-/* Configurações keeps one task in view; the rail holds navigation, not a long page. */
+/* Settings keeps one task in view; the rail holds navigation, not a long page. */
 #panel-settings.board-dialog[open] { display: flex; flex-direction: column; height: min(720px, calc(100dvh - 32px)); overflow: hidden; }
 #panel-settings .panel-heading { flex: none; }
 .settings-layout { display: grid; grid-template-columns: 184px minmax(0, 1fr); flex: 1; min-height: 0; }
@@ -1908,6 +1908,9 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .settings-pane h3 { margin: 0; color: var(--ink); font-size: 17px; line-height: 23px; font-weight: 600; }
 .settings-pane__intro { max-width: 62ch; margin: 6px 0 24px; color: var(--ink-muted); font-size: 13px; line-height: 20px; }
 .settings-pane__note { margin-top: 20px; color: var(--ink-muted); font-size: 12.5px; line-height: 19px; }
+#board-language-form button { min-height: 44px; border-color: var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+#board-language-form button[aria-pressed="true"] { border-color: var(--you); background: var(--you-wash); color: var(--you); font-weight: 600; }
+#board-language-form button:focus-visible { outline: 2px solid var(--you); outline-offset: 2px; }
 .settings-pause { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 88px; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
 .settings-pause strong { display: block; font-size: 13px; line-height: 18px; }
 .settings-pause p { max-width: 48ch; margin: 4px 0 0; color: var(--ink-muted); font-size: 12.5px; line-height: 18px; }

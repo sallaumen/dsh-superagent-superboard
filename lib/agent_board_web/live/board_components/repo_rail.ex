@@ -170,7 +170,9 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
         >
           <.ico name="cog" /><span>{gettext("Settings")}</span>
           <span :if={@version.state in [:behind, :restart]} class="ab-sr">
-            · {if @version.state == :restart, do: gettext("restart pending"), else: gettext("update available")}
+            · {if @version.state == :restart,
+              do: gettext("restart pending"),
+              else: gettext("update available")}
           </span>
         </button>
       </div>

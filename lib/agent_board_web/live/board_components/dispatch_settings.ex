@@ -98,12 +98,8 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
 
         <div :if={is_number(@snapshot.spent_usd)} class="dispatch-settings__usage">
           <div>
-            <span>{gettext("Claude Code · used this month")}</span><strong>{money(@snapshot.spent_usd)}{if @snapshot.monthly_usd >
-                                                                                             0,
-                                                                                           do:
-                                                                                             gettext(" of %{amount}", amount: money(@snapshot.monthly_usd)),
-                                                                                           else:
-                                                                                             gettext(" · no limit")}</strong>
+            <span>{gettext("Claude Code · used this month")}</span>
+            <strong>{money(@snapshot.spent_usd)}{monthly_limit(@snapshot.monthly_usd)}</strong>
           </div>
           <progress
             :if={@snapshot.monthly_usd > 0}
@@ -185,7 +181,9 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
 
       <div class="dispatch-settings__actions">
         <button type="reset" class="ab-btn">{gettext("Discard")}</button>
-        <button type="submit" class="ab-btn ab-btn--primary" phx-disable-with={gettext("Saving…")}>{gettext("Save limits")}</button>
+        <button type="submit" class="ab-btn ab-btn--primary" phx-disable-with={gettext("Saving…")}>{gettext(
+          "Save limits"
+        )}</button>
       </div>
     </form>
     """
@@ -235,22 +233,41 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
 
   defp float(value, label) do
     case Float.parse(to_string(value || "")) do
-      {number, _} when number >= 0 -> {:ok, number}
-      _ -> {:error, gettext("%{label} must be a number greater than or equal to zero.", label: label)}
+      {number, _} when number >= 0 ->
+        {:ok, number}
+
+      _ ->
+        {:error,
+         gettext("%{label} must be a number greater than or equal to zero.", label: label)}
     end
   end
 
   defp integer(value, label, min) do
     case Integer.parse(to_string(value || "")) do
-      {number, ""} when number >= min -> {:ok, number}
-      _ -> {:error, gettext("%{label} must be an integer greater than or equal to %{min}.", label: label, min: min)}
+      {number, ""} when number >= min ->
+        {:ok, number}
+
+      _ ->
+        {:error,
+         gettext("%{label} must be an integer greater than or equal to %{min}.",
+           label: label,
+           min: min
+         )}
     end
   end
 
   defp number(value) when is_float(value), do: :erlang.float_to_binary(value, decimals: 2)
   defp number(value), do: to_string(value)
 
-  defp money(value), do: "US$ " <> (value |> number() |> String.replace(".", ","))
+  defp monthly_limit(value) when value > 0,
+    do: gettext(" of %{amount}", amount: money(value))
+
+  defp monthly_limit(_value), do: gettext(" · no limit")
+
+  defp money(value) do
+    separator = if Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR", do: ",", else: "."
+    "US$ " <> (value |> number() |> String.replace(".", separator))
+  end
 
   defp percent(value) when is_float(value),
     do: value |> :erlang.float_to_binary(decimals: 0) |> String.replace(".", ",")

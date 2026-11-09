@@ -53,7 +53,7 @@ defmodule AgentBoardWeb.Components.SystemPanel do
         :if={@progress != []}
         id="update-progress"
         class="version-progress"
-        aria-label="Progresso da atualização"
+        aria-label={gettext("Update progress")}
       >
         <li :for={step <- @progress} data-state={step.state}>
           <span class="version-progress__mark" aria-hidden="true"></span>
