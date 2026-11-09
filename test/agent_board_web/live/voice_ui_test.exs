@@ -153,7 +153,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert has_element?(view, "#voice-picker-note", "a conversa usa a voz do navegador")
 
     :ok = Settings.put("voice_engine", "browser")
-    assert has_element?(view, "#voice-picker-note", "esta voz não é usada")
+    assert has_element?(view, "#voice-picker-note", "não usa esta voz")
   end
 
   test "reset puts the default voice back", %{conn: conn} do
@@ -229,9 +229,9 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    assert render(view) =~ "Falar status"
+    assert render(view) =~ "Falar o estado agora"
 
-    view |> element("button", "Falar status") |> render_click()
+    view |> element("#speak-status") |> render_click()
 
     assert_push_event(
       view,
@@ -509,10 +509,11 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert Settings.get("voice_speed") == "1.10"
     assert render(view) =~ "1,10×"
 
-    view |> element("#voice-style-form") |> render_change(%{"style" => "expressive"})
+    view |> element(~s(button[phx-value-style="expressive"])) |> render_click()
     assert Settings.get("voice_style") == "expressive"
 
-    view |> element("#voice-pause-form") |> render_change(%{"pause" => "long"})
+    view |> element("#voice-input-form") |> render_change(%{"input" => "microphone"})
+    view |> element(~s(button[phx-value-pause="long"])) |> render_click()
     assert render(view) =~ ~s(data-pause-ms="1800")
 
     view |> element("#voice-earcons-form") |> render_change(%{"earcons" => "false"})
@@ -596,10 +597,10 @@ defmodule AgentBoardWeb.VoiceUITest do
     view |> element("#voice-input-form") |> render_change(%{"input" => "microphone"})
     assert render(view) =~ ~s(data-input="microphone")
 
-    view |> element("#voice-engine-form") |> render_change(%{"engine" => "mixed"})
+    view |> element(~s(button[phx-value-engine="mixed"])) |> render_click()
     assert Settings.get("voice_engine") == "mixed"
 
-    view |> element("#voice-replies-form") |> render_change(%{"replies" => "full"})
+    view |> element(~s(button[phx-value-replies="full"])) |> render_click()
     assert Settings.get("voice_replies") == "full"
   end
 

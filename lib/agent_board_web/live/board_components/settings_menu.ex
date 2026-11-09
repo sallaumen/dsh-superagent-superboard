@@ -217,47 +217,48 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
         <section
           hidden={@section != "voice"}
-          class="settings-pane"
+          class="settings-pane settings-pane--voice"
           aria-labelledby="settings-voice-title"
         >
-          <h3 id="settings-voice-title">{gettext("Voice and summary")}</h3>
-          <p class="settings-pane__intro">
-            {gettext("How you talk to the board, when it answers aloud and the summary of the day.")}
-          </p>
-
-          <section class="settings-subpane" aria-labelledby="settings-voice-controls-title">
-            <h4 id="settings-voice-controls-title">{gettext("Voice")}</h4>
-            <VoicePanel.voice_panel voice={@voice} repo={@repo != nil} />
-            <div class="settings-actions">
-              <button type="button" phx-click="speak"><.icon
-                name="hero-speaker-wave"
-                class="size-4"
-              />{gettext("Speak status")}</button>
+          <header class="settings-pane__head">
+            <div>
+              <h3 id="settings-voice-title">{gettext("Voice and summary")}</h3>
+              <p class="settings-pane__intro">
+                {gettext(
+                  "How you talk to the board, when it answers aloud and the summary of the day."
+                )}
+              </p>
             </div>
-            <p class="settings-pane__note">
-              {if @voice.input == "text",
-                do:
-                  gettext(
-                    "Press Space twice to focus an open text field. Creating and stopping tasks wait for your confirmation."
-                  ),
-                else:
-                  gettext(
-                    "Press Space twice to start the selected input. Creating and stopping tasks wait for your confirmation."
-                  )}
-            </p>
-          </section>
+            <button
+              id="speak-status"
+              type="button"
+              class="ab-btn ab-btn--sm"
+              phx-click="speak"
+            ><.icon
+              name="hero-speaker-wave"
+              class="size-4"
+            />{gettext("Speak the state now")}</button>
+          </header>
 
-          <section class="settings-subpane" aria-labelledby="settings-summary-title">
-            <h4 id="settings-summary-title">{gettext("Daily summary")}</h4>
-            <p class="settings-pane__intro">
-              {gettext("Choose whether the board prepares a daily summary and when.")}
-            </p>
-            <.live_component
-              module={AgentBoardWeb.BoardComponents.DailySummarySettings}
-              id="settings-daily-summary-section"
-              expanded={true}
-            />
-          </section>
+          <div
+            id="voice-panel"
+            phx-hook="VoicePlayer"
+            class="voice-layout"
+            data-volume={@voice.volume}
+            data-lang={@voice.language}
+          >
+            <div class="voice-layout__column">
+              <VoicePanel.input_controls voice={@voice} repo={@repo != nil} />
+              <.live_component
+                module={AgentBoardWeb.BoardComponents.DailySummarySettings}
+                id="settings-daily-summary-section"
+                expanded={true}
+              />
+            </div>
+            <div class="voice-layout__column">
+              <VoicePanel.output_controls voice={@voice} repo={@repo != nil} />
+            </div>
+          </div>
         </section>
 
         <section

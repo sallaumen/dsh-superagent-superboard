@@ -17,29 +17,29 @@ msgid "AI calls"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:49
-#: lib/agent_board_web/live/board_components/settings_menu.ex:320
+#: lib/agent_board_web/live/board_components/settings_menu.ex:321
 #: lib/agent_board_web/live/board_live.ex:3523
 #, elixir-autogen, elixir-format
 msgid "Activity"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:373
-#: lib/agent_board_web/live/board_components/settings_menu.ex:379
+#: lib/agent_board_web/live/board_components/settings_menu.ex:374
+#: lib/agent_board_web/live/board_components/settings_menu.ex:380
 #, elixir-autogen, elixir-format
 msgid "Ahead of main"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:282
+#: lib/agent_board_web/live/board_components/settings_menu.ex:283
 #, elixir-autogen, elixir-format
 msgid "Appearance"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:301
+#: lib/agent_board_web/live/board_components/settings_menu.ex:302
 #, elixir-autogen, elixir-format
 msgid "Board language"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:251
+#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:39
 #, elixir-autogen, elixir-format
 msgid "Daily summary"
 msgstr ""
@@ -70,7 +70,7 @@ msgstr ""
 msgid "Repositories"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:377
+#: lib/agent_board_web/live/board_components/settings_menu.ex:378
 #, elixir-autogen, elixir-format
 msgid "Restart pending"
 msgstr ""
@@ -92,29 +92,23 @@ msgstr ""
 msgid "Settings sections"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:235
-#, elixir-autogen, elixir-format
-msgid "Speak status"
-msgstr ""
-
-#: lib/agent_board_web/live/board_components/settings_menu.ex:378
+#: lib/agent_board_web/live/board_components/settings_menu.ex:379
 #, elixir-autogen, elixir-format
 msgid "Up to date"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:376
+#: lib/agent_board_web/live/board_components/settings_menu.ex:377
 #, elixir-autogen, elixir-format
 msgid "Update available"
 msgstr ""
 
 #: lib/agent_board_web/components/system_panel.ex:24
 #: lib/agent_board_web/components/system_panel.ex:28
-#: lib/agent_board_web/live/board_components/settings_menu.ex:274
+#: lib/agent_board_web/live/board_components/settings_menu.ex:275
 #, elixir-autogen, elixir-format
 msgid "Version"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:229
 #: lib/agent_board_web/live/board_components/voice_presence.ex:27
 #: lib/agent_board_web/live/board_components/voice_presence.ex:28
 #, elixir-autogen, elixir-format
@@ -213,7 +207,7 @@ msgstr ""
 msgid "Back and edit"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:87
+#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:81
 #, elixir-autogen, elixir-format
 msgid "Based on the Mac clock. If it is asleep at that time, the summary is generated once when it wakes up."
 msgstr ""
@@ -322,7 +316,6 @@ msgid "Create task"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/daily_summary.ex:43
-#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:47
 #: lib/agent_board_web/live/board_live.ex:3222
 #, elixir-autogen, elixir-format
 msgid "Daily Summary"
@@ -343,7 +336,7 @@ msgstr ""
 msgid "Done"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:271
+#: lib/agent_board_web/components/voice_panel.ex:156
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs voice"
 msgstr ""
@@ -388,11 +381,6 @@ msgstr ""
 msgid "Forget conversation"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:68
-#, elixir-autogen, elixir-format
-msgid "Generate summary once a day on the board and via voice"
-msgstr ""
-
 #: lib/agent_board_web/live/board_components/freshness_beacon.ex:52
 #, elixir-autogen, elixir-format
 msgid "GitHub is checked every 5 minutes; the agent process, every 10 seconds."
@@ -420,12 +408,12 @@ msgstr ""
 msgid "Input"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:177
+#: lib/agent_board_web/components/voice_panel.ex:259
 #, elixir-autogen, elixir-format
 msgid "Intonation"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:84
+#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:78
 #, elixir-autogen, elixir-format
 msgid "Invalid schedule. Use hours and minutes, such as 08:00."
 msgstr ""
@@ -445,7 +433,7 @@ msgstr ""
 msgid "Latency"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:325
+#: lib/agent_board_web/components/voice_panel.ex:209
 #, elixir-autogen, elixir-format
 msgid "Listen"
 msgstr ""
@@ -483,11 +471,6 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/settings/execution.ex:483
 #, elixir-autogen, elixir-format
 msgid "Model"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:241
-#, elixir-autogen, elixir-format
-msgid "Narrate the rest: task start, queue, synchronization, and confirmations"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/needs_you.ex:38
@@ -620,11 +603,6 @@ msgstr ""
 msgid "Nothing yet. Every step of a speech appears here in real time: transcription, model, voice, retries, and errors."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:225
-#, elixir-autogen, elixir-format
-msgid "Notify me when a task needs me"
-msgstr ""
-
 #: lib/agent_board_web/live/board_components/now_lane.ex:31
 #, elixir-autogen, elixir-format
 msgid "Now"
@@ -696,17 +674,12 @@ msgstr ""
 msgid "Pause"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:198
-#, elixir-autogen, elixir-format
-msgid "Pause before sending"
-msgstr ""
-
 #: lib/agent_board_web/live/board_components/logs_sheet.ex:162
 #, elixir-autogen, elixir-format
 msgid "Paused: nothing is read until resumed."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:382
+#: lib/agent_board_web/components/voice_panel.ex:348
 #, elixir-autogen, elixir-format
 msgid "Play"
 msgstr ""
@@ -797,7 +770,7 @@ msgstr ""
 msgid "Requests"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:334
+#: lib/agent_board_web/components/voice_panel.ex:218
 #, elixir-autogen, elixir-format
 msgid "Reset to default"
 msgstr ""
@@ -845,11 +818,6 @@ msgstr ""
 msgid "Save limits"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:71
-#, elixir-autogen, elixir-format
-msgid "Schedule"
-msgstr ""
-
 #: lib/agent_board_web/live/board_components/archive.ex:47
 #, elixir-autogen, elixir-format
 msgid "Scroll to older PRs"
@@ -871,7 +839,7 @@ msgstr ""
 msgid "Sessions"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:253
+#: lib/agent_board_web/components/voice_panel.ex:117
 #, elixir-autogen, elixir-format
 msgid "Short sound when opening and closing the microphone"
 msgstr ""
@@ -914,13 +882,13 @@ msgstr ""
 msgid "Speak and stop: the agent replies and waits for your confirmation before acting."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:344
-#: lib/agent_board_web/components/voice_panel.ex:358
+#: lib/agent_board_web/components/voice_panel.ex:313
+#: lib/agent_board_web/components/voice_panel.ex:322
 #, elixir-autogen, elixir-format
 msgid "Speech model"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:154
+#: lib/agent_board_web/components/voice_panel.ex:294
 #, elixir-autogen, elixir-format
 msgid "Speed"
 msgstr ""
@@ -948,11 +916,6 @@ msgstr ""
 #: lib/agent_board_web/live/board_live.ex:3537
 #, elixir-autogen, elixir-format
 msgid "Split request"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:93
-#, elixir-autogen, elixir-format
-msgid "Spoken Responses"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/projects.ex:246
@@ -1008,7 +971,7 @@ msgstr ""
 msgid "Technical details"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:374
+#: lib/agent_board_web/components/voice_panel.ex:338
 #, elixir-autogen, elixir-format
 msgid "Test a phrase"
 msgstr ""
@@ -1149,17 +1112,17 @@ msgstr ""
 msgid "Voice draft. Review the text and repository before splitting."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:73
+#: lib/agent_board_web/components/voice_panel.ex:138
 #, elixir-autogen, elixir-format
 msgid "Voice engine"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:104
+#: lib/agent_board_web/components/voice_panel.ex:244
 #, elixir-autogen, elixir-format
 msgid "Voice language"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:130
+#: lib/agent_board_web/components/voice_panel.ex:275
 #, elixir-autogen, elixir-format
 msgid "Volume"
 msgstr ""
@@ -1184,16 +1147,6 @@ msgstr ""
 msgid "What the board did automatically"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:215
-#, elixir-autogen, elixir-format
-msgid "When to speak"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:260
-#, elixir-autogen, elixir-format
-msgid "Without a key, the agent speaks with the browser's voice (free). For ElevenLabs' voice, set"
-msgstr ""
-
 #: lib/agent_board_web/live/board_components/executor_picker.ex:78
 #, elixir-autogen, elixir-format
 msgid "Without mentioning the agent, DeepSeek won't pick up the request."
@@ -1207,11 +1160,6 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/settings/projects.ex:144
 #, elixir-autogen, elixir-format
 msgid "agents"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:265
-#, elixir-autogen, elixir-format
-msgid "and restart the board."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/throughput.ex:93
@@ -1230,7 +1178,6 @@ msgstr ""
 msgid "from the board"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:264
 #: lib/agent_board_web/live/board_components/composer.ex:77
 #, elixir-autogen, elixir-format
 msgid "in"
@@ -1300,24 +1247,14 @@ msgstr ""
 msgid "zstd"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:199
-#, elixir-autogen, elixir-format
-msgid "· how much silence ends your speech"
-msgstr ""
-
 #: lib/agent_board_web/live/board_components/voice_command_list.ex:25
 #, elixir-autogen, elixir-format
 msgid "· or say \"help\""
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:346
+#: lib/agent_board_web/components/voice_panel.ex:315
 #, elixir-autogen, elixir-format
 msgid "· set in .env.local"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:75
-#, elixir-autogen, elixir-format
-msgid "· without an ElevenLabs key, always use the browser voice"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:665
@@ -1414,7 +1351,7 @@ msgstr ""
 msgid "Dismiss daily summary"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:287
+#: lib/agent_board_web/components/voice_panel.ex:172
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs Voice"
 msgstr ""
@@ -1489,7 +1426,7 @@ msgstr ""
 msgid "Or type for the agent..."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:380
+#: lib/agent_board_web/components/voice_panel.ex:344
 #, elixir-autogen, elixir-format
 msgid "Phrase to speak"
 msgstr ""
@@ -1589,7 +1526,7 @@ msgstr ""
 msgid "Type and size proposed by the split"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:379
+#: lib/agent_board_web/components/voice_panel.ex:343
 #, elixir-autogen, elixir-format
 msgid "Type something to hear the agent..."
 msgstr ""
@@ -1816,11 +1753,6 @@ msgstr ""
 msgid "Attention"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:405
-#, elixir-autogen, elixir-format
-msgid "Browser for everything (free)"
-msgstr ""
-
 #: lib/agent_board_web/live/board_components/settings/execution.ex:161
 #, elixir-autogen, elixir-format
 msgid "Check the dispatch numbers."
@@ -1836,7 +1768,7 @@ msgstr ""
 msgid "Choose a Codex model."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:435
+#: lib/agent_board_web/components/voice_panel.ex:414
 #, elixir-autogen, elixir-format
 msgid "Choose from the saved list. This voice speaks everything."
 msgstr ""
@@ -1862,7 +1794,7 @@ msgstr ""
 msgid "Data is delayed"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:451
+#: lib/agent_board_web/components/voice_panel.ex:430
 #, elixir-autogen, elixir-format
 msgid "Default voice"
 msgstr ""
@@ -1956,11 +1888,6 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/throughput.ex:434
 #, elixir-autogen, elixir-format
 msgid "Main orchestrator slots in use now; superagents have their own limits"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:406
-#, elixir-autogen, elixir-format
-msgid "Mixed: ElevenLabs only for alerts"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/now_lane.ex:40
@@ -2106,7 +2033,7 @@ msgstr ""
 msgid "Select a repository before submitting."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:432
+#: lib/agent_board_web/components/voice_panel.ex:411
 #, elixir-autogen, elixir-format
 msgid "Set in .env.local (ELEVENLABS_VOICE_ID); to change here, remove the variable."
 msgstr ""
@@ -2127,7 +2054,7 @@ msgstr ""
 msgid "Space ×2"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:418
+#: lib/agent_board_web/components/voice_panel.ex:390
 #, elixir-autogen, elixir-format
 msgid "Stable"
 msgstr ""
@@ -3051,12 +2978,7 @@ msgstr ""
 msgid "Agent"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:445
-#, elixir-autogen, elixir-format
-msgid "Choose from the saved list. Browser mode does not use this voice; choose Mixed or ElevenLabs for everything in Voice engine."
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:439
+#: lib/agent_board_web/components/voice_panel.ex:418
 #, elixir-autogen, elixir-format
 msgid "Choose from the saved list. With Mixed mode, this voice speaks alerts and code-agent replies; conversation uses the browser voice."
 msgstr ""
@@ -3102,7 +3024,7 @@ msgstr ""
 msgid "Creating the issue on GitHub…"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:299
+#: lib/agent_board_web/components/voice_panel.ex:182
 #, elixir-autogen, elixir-format
 msgid "Current voice"
 msgstr ""
@@ -3112,12 +3034,7 @@ msgstr ""
 msgid "Edited by you."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:407
-#, elixir-autogen, elixir-format
-msgid "ElevenLabs for everything (paid)"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:420
+#: lib/agent_board_web/components/voice_panel.ex:392
 #, elixir-autogen, elixir-format
 msgid "Expressive"
 msgstr ""
@@ -3125,11 +3042,6 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/composer.ex:147
 #, elixir-autogen, elixir-format
 msgid "From the request's first sentence; edit if you like."
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:413
-#, elixir-autogen, elixir-format
-msgid "Full responses"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:354
@@ -3147,12 +3059,12 @@ msgstr ""
 msgid "GitHub Actions passed."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:319
+#: lib/agent_board_web/components/voice_panel.ex:203
 #, elixir-autogen, elixir-format
 msgid "List voices"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:318
+#: lib/agent_board_web/components/voice_panel.ex:202
 #, elixir-autogen, elixir-format
 msgid "Loading…"
 msgstr ""
@@ -3172,7 +3084,7 @@ msgstr ""
 msgid "Local CI passed: "
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:427
+#: lib/agent_board_web/components/voice_panel.ex:400
 #, elixir-autogen, elixir-format
 msgid "Long · 1.8 s"
 msgstr ""
@@ -3182,7 +3094,7 @@ msgstr ""
 msgid "Measured from local executor transcripts (%{models}). Cost uses the board's pricing table."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:419
+#: lib/agent_board_web/components/voice_panel.ex:391
 #, elixir-autogen, elixir-format
 msgid "Natural"
 msgstr ""
@@ -3202,7 +3114,7 @@ msgstr ""
 msgid "No remote checks configured."
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:426
+#: lib/agent_board_web/components/voice_panel.ex:399
 #, elixir-autogen, elixir-format
 msgid "Normal · 1.2 s"
 msgstr ""
@@ -3225,7 +3137,7 @@ msgstr[1] ""
 msgid "Queue %{count}"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:320
+#: lib/agent_board_web/components/voice_panel.ex:204
 #, elixir-autogen, elixir-format
 msgid "Refresh list"
 msgstr ""
@@ -3255,14 +3167,9 @@ msgstr ""
 msgid "Sending…"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:425
+#: lib/agent_board_web/components/voice_panel.ex:398
 #, elixir-autogen, elixir-format
 msgid "Short · 0.8 s"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:412
-#, elixir-autogen, elixir-format
-msgid "Short: speak the first sentence, write the rest"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/shortcuts.ex:19
@@ -3349,7 +3256,7 @@ msgstr ""
 msgid "browser"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:450
+#: lib/agent_board_web/components/voice_panel.ex:429
 #, elixir-autogen, elixir-format
 msgid "chosen here"
 msgstr ""
@@ -3420,7 +3327,7 @@ msgstr ""
 msgid "session %{id} · "
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:449
+#: lib/agent_board_web/components/voice_panel.ex:428
 #, elixir-autogen, elixir-format
 msgid "set in .env.local"
 msgstr ""
@@ -3465,7 +3372,7 @@ msgstr ""
 msgid "unknown model"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:273
+#: lib/agent_board_web/components/voice_panel.ex:158
 #, elixir-autogen, elixir-format
 msgid "unnamed"
 msgstr ""
@@ -3490,12 +3397,12 @@ msgstr ""
 msgid "voices"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:100
+#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:93
 #, elixir-autogen, elixir-format
 msgid "Every day at %{time}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:97
+#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:90
 #, elixir-autogen, elixir-format
 msgid "Off"
 msgstr ""
@@ -3675,24 +3582,19 @@ msgstr ""
 msgid "By project"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:276
+#: lib/agent_board_web/live/board_components/settings_menu.ex:277
 #, elixir-autogen, elixir-format
 msgid "Check the board version and available updates."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:290
+#: lib/agent_board_web/live/board_components/settings_menu.ex:291
 #, elixir-autogen, elixir-format
 msgid "Choose the language used by this browser. Voice language is set separately under Voice."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:283
+#: lib/agent_board_web/live/board_components/settings_menu.ex:284
 #, elixir-autogen, elixir-format
 msgid "Choose the theme for this browser."
-msgstr ""
-
-#: lib/agent_board_web/live/board_components/settings_menu.ex:253
-#, elixir-autogen, elixir-format
-msgid "Choose whether the board prepares a daily summary and when."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/execution.ex:414
@@ -3710,7 +3612,7 @@ msgstr ""
 msgid "Issues seen today"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:288
+#: lib/agent_board_web/live/board_components/settings_menu.ex:289
 #, elixir-autogen, elixir-format
 msgid "Language"
 msgstr ""
@@ -3777,7 +3679,7 @@ msgstr ""
 msgid "Today so far"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:380
+#: lib/agent_board_web/live/board_components/settings_menu.ex:381
 #, elixir-autogen, elixir-format
 msgid "Unknown status"
 msgstr ""
@@ -3937,39 +3839,9 @@ msgstr ""
 msgid "Unknown speech model"
 msgstr ""
 
-#: lib/agent_board_web/components/voice_panel.ex:400
-#, elixir-autogen, elixir-format
-msgid "Board microphone (ElevenLabs, paid)"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:399
-#, elixir-autogen, elixir-format
-msgid "External dictation (Wispr Flow)"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:54
-#, elixir-autogen, elixir-format
-msgid "Input for talking with the agent"
-msgstr ""
-
-#: lib/agent_board_web/live/board_components/settings_menu.ex:240
-#, elixir-autogen, elixir-format
-msgid "Press Space twice to focus an open text field. Creating and stopping tasks wait for your confirmation."
-msgstr ""
-
-#: lib/agent_board_web/live/board_components/settings_menu.ex:244
-#, elixir-autogen, elixir-format
-msgid "Press Space twice to start the selected input. Creating and stopping tasks wait for your confirmation."
-msgstr ""
-
 #: lib/agent_board_web/live/board_live.ex:2716
 #, elixir-autogen, elixir-format
 msgid "Question sent"
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:398
-#, elixir-autogen, elixir-format
-msgid "Text (uses an open field)"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:472
@@ -3985,11 +3857,6 @@ msgstr ""
 #: lib/agent_board_web/live/board_live.ex:3610
 #, elixir-autogen, elixir-format
 msgid "Write in the field above; the agent replies and waits for your confirmation before acting."
-msgstr ""
-
-#: lib/agent_board_web/components/voice_panel.ex:55
-#, elixir-autogen, elixir-format
-msgid "· press Space twice to use the selected method"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:108
@@ -4615,7 +4482,7 @@ msgstr ""
 msgid "Open %{name}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:367
+#: lib/agent_board_web/live/board_components/settings_menu.ex:368
 #, elixir-autogen, elixir-format
 msgid "%{count} commit behind main"
 msgid_plural "%{count} commits behind main"
@@ -4649,7 +4516,7 @@ msgstr ""
 msgid "Codex quota is close to its limit"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:374
+#: lib/agent_board_web/live/board_components/settings_menu.ex:375
 #, elixir-autogen, elixir-format
 msgid "Could not compare with main"
 msgstr ""
@@ -4660,24 +4527,24 @@ msgid "Each project is a repository, its DeepSeek agent and who can call it."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings_menu.ex:199
-#: lib/agent_board_web/live/board_components/settings_menu.ex:344
+#: lib/agent_board_web/live/board_components/settings_menu.ex:345
 #, elixir-autogen, elixir-format
 msgid "Execution"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:225
+#: lib/agent_board_web/live/board_components/settings_menu.ex:227
 #, elixir-autogen, elixir-format
 msgid "How you talk to the board, when it answers aloud and the summary of the day."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/projects.ex:86
 #: lib/agent_board_web/live/board_components/settings_menu.ex:178
-#: lib/agent_board_web/live/board_components/settings_menu.ex:343
+#: lib/agent_board_web/live/board_components/settings_menu.ex:344
 #, elixir-autogen, elixir-format
 msgid "Projects"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:370
+#: lib/agent_board_web/live/board_components/settings_menu.ex:371
 #, elixir-autogen, elixir-format
 msgid "Restart pending to apply the new code"
 msgstr ""
@@ -4687,24 +4554,24 @@ msgstr ""
 msgid "See update"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:268
-#: lib/agent_board_web/live/board_components/settings_menu.ex:346
+#: lib/agent_board_web/live/board_components/settings_menu.ex:269
+#: lib/agent_board_web/live/board_components/settings_menu.ex:347
 #, elixir-autogen, elixir-format
 msgid "System"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:270
+#: lib/agent_board_web/live/board_components/settings_menu.ex:271
 #, elixir-autogen, elixir-format
 msgid "The board version, how it appears in this browser and what it recorded."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:372
+#: lib/agent_board_web/live/board_components/settings_menu.ex:373
 #, elixir-autogen, elixir-format
 msgid "Up to date with main"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:223
-#: lib/agent_board_web/live/board_components/settings_menu.ex:345
+#: lib/agent_board_web/live/board_components/settings_menu.ex:225
+#: lib/agent_board_web/live/board_components/settings_menu.ex:346
 #, elixir-autogen, elixir-format
 msgid "Voice and summary"
 msgstr ""
@@ -5038,7 +4905,7 @@ msgstr ""
 msgid "Open Projects"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:333
+#: lib/agent_board_web/live/board_components/settings_menu.ex:334
 #, elixir-autogen, elixir-format
 msgid "Open activity"
 msgstr ""
@@ -5095,7 +4962,7 @@ msgstr ""
 msgid "The board's own AI calls"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings_menu.ex:322
+#: lib/agent_board_web/live/board_components/settings_menu.ex:323
 #, elixir-autogen, elixir-format
 msgid "The last 20 events the board recorded for this project."
 msgstr ""
@@ -5219,4 +5086,164 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/settings/execution.ex:224
 #, elixir-autogen, elixir-format
 msgid "Paused. Nothing new starts and running work finishes."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:372
+#, elixir-autogen, elixir-format
+msgid "Board microphone · ElevenLabs, paid"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:378
+#, elixir-autogen, elixir-format
+msgid "Browser for everything · free"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:424
+#, elixir-autogen, elixir-format
+msgid "Choose from the saved list. Browser mode does not use this voice; choose Mixed or ElevenLabs for everything."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:122
+#, elixir-autogen, elixir-format
+msgid "Creating and stopping tasks by voice always asks for your confirmation."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:379
+#, elixir-autogen, elixir-format
+msgid "ElevenLabs for alerts, browser for the rest"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:380
+#, elixir-autogen, elixir-format
+msgid "ElevenLabs for everything · paid"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:65
+#, elixir-autogen, elixir-format
+msgid "Every day at"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:371
+#, elixir-autogen, elixir-format
+msgid "External dictation · Wispr Flow"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:385
+#, elixir-autogen, elixir-format
+msgid "Full"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:239
+#, elixir-autogen, elixir-format
+msgid "Full: the whole response is spoken and written."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:38
+#, elixir-autogen, elixir-format
+msgid "How you send"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:28
+#, elixir-autogen, elixir-format
+msgid "How you send messages to the board and when it speaks."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:61
+#, elixir-autogen, elixir-format
+msgid "It appears on the board and is read aloud."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:74
+#, elixir-autogen, elixir-format
+msgid "Only applies to the board microphone."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:75
+#, elixir-autogen, elixir-format
+msgid "Only applies to the board microphone. Choose that input to change it."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/daily_summary_settings.ex:58
+#, elixir-autogen, elixir-format
+msgid "Prepare a summary every day"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:48
+#, elixir-autogen, elixir-format
+msgid "Press Space twice to use the selected method."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:225
+#, elixir-autogen, elixir-format
+msgid "Responses"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:385
+#, elixir-autogen, elixir-format
+msgid "Short"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:238
+#, elixir-autogen, elixir-format
+msgid "Short: the first sentence is spoken and the rest is written."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:54
+#, elixir-autogen, elixir-format
+msgid "Silence that ends your speech"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex:240
+#, elixir-autogen, elixir-format
+msgid "Speak the state now"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:370
+#, elixir-autogen, elixir-format
+msgid "Text, in whichever field is open"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:132
+#, elixir-autogen, elixir-format
+msgid "The board speaking"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:134
+#, elixir-autogen, elixir-format
+msgid "The engine, the voice and how the board sounds."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:104
+#, elixir-autogen, elixir-format
+msgid "The rest too: task start, queue, sync and confirmations"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:356
+#, elixir-autogen, elixir-format
+msgid "The speech model and the key come from .env.local. Change them there and restart the board."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:91
+#, elixir-autogen, elixir-format
+msgid "When a task needs me"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:80
+#, elixir-autogen, elixir-format
+msgid "When the board speaks"
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:360
+#, elixir-autogen, elixir-format
+msgid "Without a key, the agent speaks with the browser's voice (free). For ElevenLabs' voice, set ELEVENLABS_API_KEY in .env.local and restart the board."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:150
+#, elixir-autogen, elixir-format
+msgid "Without an ElevenLabs key, the board always uses the browser voice."
+msgstr ""
+
+#: lib/agent_board_web/components/voice_panel.ex:26
+#, elixir-autogen, elixir-format
+msgid "You speaking"
 msgstr ""
