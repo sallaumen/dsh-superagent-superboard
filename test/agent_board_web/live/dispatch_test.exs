@@ -145,17 +145,17 @@ defmodule AgentBoardWeb.DispatchTest do
   test "the settings panel saves the dispatch numbers and rejects an invalid reserve", %{
     conn: conn
   } do
-    {:ok, view, _html} = live(conn, "/?repo=fixture/dispatch&panel=settings")
+    {:ok, view, _html} =
+      live(conn, "/?repo=fixture/dispatch&panel=settings&section=execution")
 
     view
-    |> form("#dispatch-settings-form-dispatch-settings", %{
+    |> form("#execution-settings-form", %{
       "monthly_usd" => "100",
       "task_usd" => "2.50",
-      "codex_timeout_minutes" => "15",
+      "timeout_minutes" => "15",
       "reserve_percent" => "25",
       "claude_model" => "claude-test",
-      "codex_model" => "codex-test",
-      "dsh_repositories" => "sallaumen/arena-rogue, sallaumen/o_colmex"
+      "codex_model" => "codex-test"
     })
     |> render_submit()
 
@@ -165,13 +165,12 @@ defmodule AgentBoardWeb.DispatchTest do
     assert Settings.get("dispatch_reserve_percent") == "25"
     assert Settings.get("dispatch_claude_model") == "claude-test"
     assert Settings.get("dispatch_codex_model") == "codex-test"
-    assert Settings.get("dsh_repositories") == "sallaumen/arena-rogue, sallaumen/o_colmex"
 
     view
-    |> form("#dispatch-settings-form-dispatch-settings", %{
+    |> form("#execution-settings-form", %{
       "monthly_usd" => "100",
       "task_usd" => "2.50",
-      "codex_timeout_minutes" => "15",
+      "timeout_minutes" => "15",
       "reserve_percent" => "150",
       "claude_model" => "claude-test",
       "codex_model" => "codex-test"
@@ -179,7 +178,7 @@ defmodule AgentBoardWeb.DispatchTest do
     |> render_submit()
 
     assert Settings.get("dispatch_reserve_percent") == "25"
-    assert has_element?(view, "#dispatch-settings-form-dispatch-settings [role=alert]")
+    assert has_element?(view, "#execution-settings-form .ab-execution__dirty.is-error")
   end
 
   test "opening settings refreshes dispatch limits changed since the board loaded", %{conn: conn} do
@@ -191,7 +190,7 @@ defmodule AgentBoardWeb.DispatchTest do
 
     assert has_element?(
              view,
-             "#dispatch-settings-form-dispatch-settings input[name=monthly_usd][value='123.00']"
+             "#execution-settings-form input[name=monthly_usd][value='123.00']"
            )
   end
 

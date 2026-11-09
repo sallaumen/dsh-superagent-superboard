@@ -49,7 +49,6 @@ defmodule AgentBoardWeb.BoardLive do
   import AgentBoardWeb.BoardComponents.Composer, only: [composer: 1]
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1, kbd: 1]
   import AgentBoardWeb.BoardComponents.DailySummary, only: [daily_summary: 1]
-  import AgentBoardWeb.BoardComponents.Executors, only: [executors: 1]
   import AgentBoardWeb.BoardComponents.FreshnessBeacon, only: [beacon: 1]
   import AgentBoardWeb.BoardComponents.FrozenBanner, only: [frozen_banner: 1]
   import AgentBoardWeb.BoardComponents.Inspector, only: [inspector: 1]
@@ -187,9 +186,6 @@ defmodule AgentBoardWeb.BoardLive do
         composer_attachments: [],
         composer_routing: nil,
         composer_routing_for: nil,
-        executor_days: 7,
-        executor_report: nil,
-        executor_report_for: nil,
         composer_executor: nil,
         composer_executor_touched: false,
         ai_calls: [],
@@ -1686,11 +1682,6 @@ defmodule AgentBoardWeb.BoardLive do
       _ ->
         {:noreply, socket}
     end
-  end
-
-  def handle_event("executor_days", %{"days" => days}, socket) do
-    days = if days in ["7", "30"], do: String.to_integer(days), else: 7
-    {:noreply, load_executors(socket, days)}
   end
 
   @impl true
@@ -3560,21 +3551,6 @@ defmodule AgentBoardWeb.BoardLive do
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
-          name="ai"
-          title={gettext("AI Calls")}
-          active={@panel == "ai"}
-          flash={@flash}
-        >
-          <.live_component
-            :if={@repo}
-            module={BoardComponents.AI}
-            id="ai"
-            ai_calls={@ai_calls}
-            ai_status={@ai_status}
-          />
-        </BoardComponents.Panel.shell>
-
-        <BoardComponents.Panel.shell
           name="settings"
           title={gettext("Settings")}
           active={@panel == "settings"}
@@ -3595,21 +3571,15 @@ defmodule AgentBoardWeb.BoardLive do
             superagents={@superagents}
             access_waiting={@agent_access.count}
             access_projects={@agent_access_projects}
+            tickets={@agent_snapshot.tickets}
+            ai_calls={@ai_calls}
+            ai_status={@ai_status}
             provisioning={@provisioning}
             tz_offset={@tz_offset}
             project_pending={@project_pending}
             board_locale={@board_locale}
             return_to={BoardNavigation.path(@repo, "settings")}
           />
-        </BoardComponents.Panel.shell>
-
-        <BoardComponents.Panel.shell
-          name="executors"
-          title={gettext("Executors")}
-          active={@panel == "executors"}
-          flash={@flash}
-        >
-          <.executors report={@executor_report} days={@executor_days} />
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
@@ -3878,31 +3848,7 @@ defmodule AgentBoardWeb.BoardLive do
   # The router reads the runner once per opening of the composer in a
   # repository, never per render: a runner that does not answer costs the
   # orchestrator's timeouts in the background, not in the form.
-  defp load_panel(%{assigns: %{panel: "executors"}} = socket) do
-    if socket.assigns.executor_report_for == socket.assigns.executor_days,
-      do: socket,
-      else: load_executors(socket, socket.assigns.executor_days)
-  end
-
   defp load_panel(socket), do: socket
-
-  defp load_executors(socket, days) do
-    since = Report.since(days)
-
-    report = %{
-      executors: Report.executors(since, tickets: all_tickets(socket)),
-      daily: Report.daily(since)
-    }
-
-    assign(socket, executor_days: days, executor_report: report, executor_report_for: days)
-  end
-
-  defp all_tickets(socket) do
-    case socket.assigns[:agent_snapshot] do
-      %{tickets: tickets} -> tickets
-      _ -> []
-    end
-  end
 
   defp load_composer_routing(%{assigns: %{panel: "composer", repo: %{id: id}}} = socket) do
     if connected?(socket) and socket.assigns.composer_routing_for != id do

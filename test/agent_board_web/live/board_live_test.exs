@@ -460,14 +460,41 @@ defmodule AgentBoardWeb.BoardLiveTest do
     })
     |> Repo.insert!()
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/measurements")
+    {:ok, view, _html} =
+      live(conn, ~p"/?repo=fixture/measurements&panel=settings&section=execution")
 
-    assert has_element?(view, ".ai-call-metrics div:first-child", "Latênciadesconhecido")
-    assert has_element?(view, ".ai-call-metrics div:nth-child(2)", "Usodesconhecido")
-    assert has_element?(view, ".ai-call-metrics div:last-child", "Custo est.desconhecido")
-    assert has_element?(view, ".ai-call-reason", "Motivo não registrado")
-    refute has_element?(view, ".ai-call-metrics", "0ms")
-    refute has_element?(view, ".ai-call-metrics", "0 tokens")
+    assert has_element?(
+             view,
+             "#execution-settings-form .ab-execution__ai-table",
+             "refine_request"
+           )
+
+    assert has_element?(
+             view,
+             "#execution-settings-form .ab-execution__ai-table td:nth-child(2)",
+             "—"
+           )
+
+    assert has_element?(
+             view,
+             "#execution-settings-form .ab-execution__ai-table td:nth-child(3)",
+             "—"
+           )
+
+    assert has_element?(
+             view,
+             "#execution-settings-form .ab-execution__ai-table td:nth-child(4)",
+             "—"
+           )
+
+    assert has_element?(
+             view,
+             "#execution-settings-form .ab-execution__ai-error",
+             "Motivo não registrado"
+           )
+
+    refute has_element?(view, "#execution-settings-form .ab-execution__ai-table", "0ms")
+    refute has_element?(view, "#execution-settings-form .ab-execution__ai-table", "0 tokens")
   end
 
   test "the AI panel shows a recorded failure reason", %{conn: conn} do
@@ -482,8 +509,10 @@ defmodule AgentBoardWeb.BoardLiveTest do
     })
     |> Repo.insert!()
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/ai-failure&panel=ai")
-    assert has_element?(view, "#panel-ai .ai-call-reason", "malformed_output")
+    {:ok, view, _html} =
+      live(conn, ~p"/?repo=fixture/ai-failure&panel=settings&section=execution")
+
+    assert has_element?(view, "#settings-execution .ab-execution__ai-error", "malformed_output")
   end
 
   test "a merged pull shows its review badge", %{conn: conn} do
@@ -608,8 +637,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     view |> element(".settings-nav__item[phx-value-section=execution]") |> render_click()
     assert has_element?(view, ".settings-nav__item.is-current", "Execução")
-    assert has_element?(view, "#settings-dispatch-title", "Despacho local")
-    assert has_element?(view, "#settings-inspect-title", "Inspecionar")
+    assert has_element?(view, "#settings-execution-title")
+    assert has_element?(view, "#execution-settings-form")
 
     refute has_element?(
              view,
@@ -619,8 +648,10 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#board-tools #open-intake", "Dividir pedido")
     assert has_element?(view, "#board-tools #open-create", "Novo pedido")
     refute has_element?(view, "#board-tools #open-activity")
-    assert has_element?(view, "#board-settings-panel #open-activity", "Atividade")
-    assert has_element?(view, "#board-settings-panel #open-ai", "Chamadas de IA")
+    refute has_element?(view, "#board-settings-panel #open-ai")
+
+    view |> element(".settings-nav__item[phx-value-section=system]") |> render_click()
+    assert has_element?(view, "#settings-activity-title")
 
     view |> element("#open-activity") |> render_click()
     assert_patch(view, "/?panel=activity&repo=fixture%2Fsettings")
@@ -660,14 +691,37 @@ defmodule AgentBoardWeb.BoardLiveTest do
     })
     |> Repo.insert!()
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} =
+      live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings&section=execution")
 
-    assert html =~ "refine_request"
-    assert html =~ "deepseek"
-    assert html =~ "123ms"
-    assert html =~ "30 tokens"
-    assert html =~ "Custo est."
-    assert html =~ "$0.00112"
+    assert has_element?(
+             view,
+             "#execution-settings-form .ab-execution__ai-table",
+             "refine_request"
+           )
+
+    assert has_element?(
+             view,
+             "#execution-settings-form .ab-execution__ai-table code[title*='deepseek']"
+           )
+
+    assert has_element?(
+             view,
+             "#execution-settings-form .ab-execution__ai-table td:nth-child(2)",
+             "123 ms"
+           )
+
+    assert has_element?(
+             view,
+             "#execution-settings-form .ab-execution__ai-table td:nth-child(3)",
+             "30"
+           )
+
+    assert has_element?(
+             view,
+             "#execution-settings-form .ab-execution__ai-table td:nth-child(4)",
+             "US$ 0,00112"
+           )
   end
 
   test "the empty repository says there is nothing yet", %{conn: conn} do
@@ -1146,10 +1200,10 @@ defmodule AgentBoardWeb.BoardLiveTest do
     render_patch(view, "/?repo=fixture/panels&panel=conversation&task=invalid")
     refute has_element?(view, "#conversation")
     view |> element("#board-settings") |> render_click()
-    view |> element(".settings-nav__item[phx-value-section=execution]") |> render_click()
-    view |> element("#open-ai") |> render_click()
-    assert_patch(view, "/?panel=ai&repo=fixture%2Fpanels")
-    assert has_element?(view, "#board-page[data-panel=ai]")
+    view |> element(".settings-nav__item[phx-value-section=system]") |> render_click()
+    view |> element("#open-activity") |> render_click()
+    assert_patch(view, "/?panel=activity&repo=fixture%2Fpanels")
+    assert has_element?(view, "#board-page[data-panel=activity]")
 
     render_patch(view, "/?repo=#{repo.owner}/#{repo.name}")
     assert has_element?(view, "#board-page[data-panel='']")

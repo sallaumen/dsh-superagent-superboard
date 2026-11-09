@@ -6,7 +6,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.Board
   alias AgentBoard.Board.Task
 
-  @panels ~w(activity intake ai conversation voice history composer shortcuts executors settings logs)
+  @panels ~w(activity intake conversation voice history composer shortcuts settings logs)
 
   # The rail shows these on a board with no repository: Settings is where the
   # first one is added, and the others do not depend on one.
@@ -130,10 +130,8 @@ defmodule AgentBoardWeb.BoardNavigation do
       when panel in [
              "activity",
              "intake",
-             "ai",
              "history",
-             "composer",
-             "executors"
+             "composer"
            ] do
     if socket.assigns.repo,
       do: push_patch(socket, to: path(socket.assigns.repo, panel)),

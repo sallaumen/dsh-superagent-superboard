@@ -815,7 +815,7 @@ defmodule AgentBoard.Actions do
   defp execute(:change_setting, %{setting: setting, value: value})
        when setting in ~w(dispatch_paused dispatch_monthly_usd dispatch_task_usd
                           dispatch_codex_timeout_minutes dispatch_reserve_percent
-                          dispatch_claude_model dispatch_codex_model dsh_repositories),
+                          dispatch_claude_model dispatch_codex_model),
        do: Settings.put(setting, value)
 
   defp execute(:change_setting, %{setting: setting, value: value}) do
