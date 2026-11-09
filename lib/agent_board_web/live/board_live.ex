@@ -1619,8 +1619,19 @@ defmodule AgentBoardWeb.BoardLive do
     # restart, even when the short-sha comparison races the fetch.
     case Actions.run(:update_board, %{}, ui()) do
       {:ok, sha} ->
-        {:noreply,
-         restart_after_update(socket, "Atualizado para #{sha}; reiniciando o servidor…")}
+        # Stop immediately after the fast-forward. The old 1.2 s delay let the
+        # dev code reloader replace this LiveView with the new code and the
+        # scheduled :restart_server died with the old process: checkout on
+        # main, VM still on the old sha. The restart action stops this VM now;
+        # launchd (supervised) or the detached script boots the new code.
+        socket =
+          socket
+          |> assign(:busy, true)
+          |> push_event("restart", %{})
+          |> put_flash(:info, "Atualizado para #{sha}; reiniciando o servidor…")
+
+        Actions.run(:restart_board, %{}, ui())
+        {:noreply, socket}
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "A atualização falhou: #{inspect(reason)}")}

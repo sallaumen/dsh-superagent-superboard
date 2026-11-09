@@ -28,6 +28,17 @@ defmodule AgentBoardWeb.Components.VersionBadgeTest do
     refute html =~ "main avançou: 1 commits"
   end
 
+  test "says the code is downloaded but the board still needs a restart" do
+    html =
+      render_component(&VersionBadge.version_badge/1, %{
+        version: %{state: :restart, behind: 0}
+      })
+
+    assert html =~ "main baixada; reinicie"
+    assert html =~ "reiniciar"
+    assert html =~ ~s(id="version-behind")
+  end
+
   test "does not render when the board is up to date or unknown" do
     for version <- [%{state: :up_to_date, behind: 0}, %{state: :unknown, behind: nil}] do
       html = render_component(&VersionBadge.version_badge/1, %{version: version})

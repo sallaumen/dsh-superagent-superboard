@@ -25,6 +25,23 @@ defmodule AgentBoardWeb.Components.SystemPanelTest do
     assert html =~ ~s(aria-describedby="version-restart-warning")
   end
 
+  test "a downloaded checkout asks for a restart instead of another update" do
+    html =
+      render_component(&SystemPanel.version_panel/1, %{
+        version: %{
+          state: :restart,
+          behind: 0,
+          served: "abc1234",
+          available: "def5678",
+          dirty: false
+        }
+      })
+
+    assert html =~ "Reiniciar para aplicar"
+    assert html =~ "O código novo já está no checkout"
+    refute html =~ "Atualizar e reiniciar"
+  end
+
   test "an up-to-date checkout has no update or warning" do
     html =
       render_component(&SystemPanel.version_panel/1, %{
