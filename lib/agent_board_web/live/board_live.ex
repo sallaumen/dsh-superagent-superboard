@@ -101,7 +101,16 @@ defmodule AgentBoardWeb.BoardLive do
         view: nil,
         dispatch_paused: false,
         board: empty(),
-        today: %{repos: %{}, needs: [], running: []},
+        today: %{
+          repos: %{},
+          needs: [],
+          running: [],
+          queue: [],
+          projects: [],
+          merged_today: 0,
+          seen_today: 0,
+          trend: []
+        },
         today_spend: nil,
         objectives: [],
         superagents: [],
@@ -585,11 +594,31 @@ defmodule AgentBoardWeb.BoardLive do
   defp with_runner_running(today) do
     running = Runners.running_items()
     merged = (running ++ today.running) |> Enum.uniq_by(& &1.id)
-    Map.put(today, :running, merged)
+    running_ids = MapSet.new(Enum.map(merged, & &1.id))
+
+    projects =
+      Enum.map(today.projects, fn project ->
+        %{
+          project
+          | running: Enum.count(merged, &(&1.repository_id == project.id)),
+            queued:
+              Enum.count(
+                today.queue,
+                &(&1.repository_id == project.id and not MapSet.member?(running_ids, &1.id))
+              )
+        }
+      end)
+
+    %{
+      today
+      | running: merged,
+        queue: Enum.reject(today.queue, &MapSet.member?(running_ids, &1.id)),
+        projects: projects
+    }
   end
 
   defp load(socket, nil) do
-    today = Overview.today() |> with_runner_running()
+    today = Overview.today(socket.assigns.tz_offset) |> with_runner_running()
 
     socket
     |> assign(
@@ -626,7 +655,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp read_board(socket, repo) do
-    today = Overview.today() |> with_runner_running()
+    today = Overview.today(socket.assigns.tz_offset) |> with_runner_running()
     spend = Report.today(socket.assigns.tz_offset)
 
     # load/2 runs again on every reload: subscribing twice would deliver every
@@ -2553,6 +2582,7 @@ defmodule AgentBoardWeb.BoardLive do
               :if={@view == "hoje"}
               today={@today}
               spend={@today_spend}
+              daily_summary={@daily_summary}
               offset={@tz_offset}
               version={@version}
             />

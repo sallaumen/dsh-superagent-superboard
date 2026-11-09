@@ -1781,6 +1781,29 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-today__title-row { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
 .ab-today__title-row h1 { font-size: 26px; line-height: 32px; }
 .ab-today__date { color: var(--ink-muted); font-size: 14px; }
+.ab-today__scope { margin: 4px 0 0; }
+.ab-today__overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block: 1px solid var(--line); }
+.ab-today__metric { display: grid; align-content: start; gap: 4px; padding: 14px 18px; min-width: 0; }
+.ab-today__metric:first-child { padding-left: 0; }
+.ab-today__metric + .ab-today__metric { border-left: 1px solid var(--line); }
+.ab-today__metric strong { font: 600 28px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.ab-today__projects-wrap { overflow-x: auto; }
+.ab-today__projects { border-collapse: collapse; width: 100%; min-width: 650px; text-align: left; font-size: 12.5px; }
+.ab-today__projects th, .ab-today__projects td { border-bottom: 1px solid var(--line); padding: 9px 12px; }
+.ab-today__projects th:first-child { padding-left: 2px; }
+.ab-today__projects thead th { color: var(--ink-muted); font-weight: 500; font-size: 11px; }
+.ab-today__projects td:not(:last-child) { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.ab-today__project-link { border: 0; padding: 0; background: none; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; font: inherit; }
+.ab-today__project-link:hover { color: var(--you); }
+.ab-today__project-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+.ab-today__freshness { color: var(--agent); }
+.ab-today__freshness--unknown { color: var(--halt); }
+.ab-today__trend { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-2); list-style: none; padding: 0; margin: 0; min-height: 120px; }
+.ab-today__trend li { display: grid; grid-template-rows: auto 80px auto; gap: 4px; text-align: center; color: var(--ink-muted); font: 11px/16px var(--font-mono); }
+.ab-today__bar-track { display: flex; align-items: end; border-bottom: 1px solid var(--line-strong); }
+.ab-today__bar { display: block; width: min(32px, 80%); min-height: 0; margin-inline: auto; background: var(--agent); }
+.ab-today__bar-number { color: var(--ink); }
+.ab-today__note { margin: -5px 0 6px; }
 .ab-today__head .ab-label { margin: 0; }
 .ab-today__spend { align-items: baseline; gap: var(--space-2) var(--space-3); }
 .ab-today__money { border: 0; background: none; padding: 0; }
@@ -1810,8 +1833,21 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 }
 .ab-today__legend span { display: inline-flex; align-items: center; gap: 6px; }
 @media (max-width: 39.999rem) {
-  .ab-today__item { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "repo repo repo" "title title title" "state age action"; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 12px; }
+  .ab-today__overview { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ab-today__metric { padding: 12px 8px; }
+  .ab-today__metric strong { font-size: 22px; }
+  .ab-today__metric .ab-meta { font-size: 10px; line-height: 14px; }
+  .ab-today__projects { min-width: 0; display: block; }
+  .ab-today__projects thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .ab-today__projects tbody { display: grid; gap: var(--space-2); }
+  .ab-today__projects tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 12px; gap: 8px; }
+  .ab-today__projects th, .ab-today__projects td { display: grid; gap: 2px; border: 0; padding: 0; min-width: 0; }
+  .ab-today__projects th { grid-column: 1 / -1; }
+  .ab-today__projects td::before { content: attr(data-label); color: var(--ink-muted); font: 11px/15px var(--font-sans); }
+  .ab-today__projects td:last-child { grid-column: 1 / -1; }
+  .ab-today__item { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "repo repo num" "title title title" "state age action"; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 10px 12px; }
   .ab-today__repo { grid-area: repo; width: auto; }
+  .ab-today__num { grid-area: num; }
   .ab-today__title { grid-area: title; white-space: normal; }
   .ab-today__state { grid-area: state; justify-self: start; }
   .ab-today__age { grid-area: age; }

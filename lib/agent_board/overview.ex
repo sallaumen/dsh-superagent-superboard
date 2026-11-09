@@ -12,9 +12,9 @@ defmodule AgentBoard.Overview do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{Board, Freshness, Repo}
-  alias AgentBoard.Board.{Event, Repository, Task}
+  alias AgentBoard.Board.{Event, PullRequest, Repository, Task}
 
-  @today_states ~w(blocked question ready running)
+  @today_states ~w(blocked question ready running queued)
   @need_rank %{"blocked" => 0, "question" => 1, "ready" => 2}
 
   @doc """
@@ -86,8 +86,8 @@ defmodule AgentBoard.Overview do
   rail's per-repository summary. One read for the "Hoje" view
   (`docs/research/alfred.md`, F2.1): the same load, no query per render.
   """
-  @spec today() :: %{repos: map(), needs: [map()], running: [map()]}
-  def today do
+  @spec today(integer(), DateTime.t()) :: map()
+  def today(offset \\ 0, now \\ DateTime.utc_now()) do
     tasks =
       Repo.all(
         from t in Task,
@@ -109,12 +109,87 @@ defmodule AgentBoard.Overview do
       |> Enum.sort_by(&{Map.get(@need_rank, &1.state, 9), &1.state_changed_at || &1.updated_at})
 
     running = Enum.filter(tasks, &(&1.state == "running"))
+    queued = Enum.filter(tasks, &(&1.state == "queued"))
+    repos = repo_overview()
+
+    local_day = AgentBoard.Time.local_date(now, offset)
+    first_day = Date.add(local_day, -6)
+    start_at = day_start(first_day, offset)
+    tomorrow_at = day_start(Date.add(local_day, 1), offset)
+
+    merges =
+      Repo.all(
+        from p in PullRequest,
+          where: p.state == "merged" and p.merged_at >= ^start_at and p.merged_at < ^tomorrow_at,
+          select: {p.repository_id, p.merged_at}
+      )
+
+    merge_counts =
+      Enum.frequencies_by(merges, fn {repository_id, at} ->
+        {repository_id, AgentBoard.Time.local_date(at, offset)}
+      end)
+
+    daily_merges =
+      Enum.frequencies_by(merges, fn {_repository_id, at} ->
+        AgentBoard.Time.local_date(at, offset)
+      end)
+
+    seen_today =
+      Repo.all(
+        from t in Task,
+          where:
+            t.kind == "issue" and t.inserted_at >= ^day_start(local_day, offset) and
+              t.inserted_at < ^tomorrow_at,
+          group_by: t.repository_id,
+          select: {t.repository_id, count(t.id)}
+      )
+      |> Map.new()
+
+    active_needs = Enum.map(needs, &today_item/1)
+    active_running = Enum.map(running, &today_item/1)
+    active_queue = Enum.map(queued, &today_item/1)
+
+    projects =
+      repos
+      |> Map.values()
+      |> Enum.sort_by(& &1.name)
+      |> Enum.map(fn repo ->
+        %{
+          id: repo.id,
+          name: repo.name,
+          unknown: repo.unknown,
+          last_sync: repo.last_sync,
+          needs: Enum.count(active_needs, &(&1.repository_id == repo.id)),
+          running: Enum.count(active_running, &(&1.repository_id == repo.id)),
+          queued: Enum.count(active_queue, &(&1.repository_id == repo.id)),
+          merged: Map.get(merge_counts, {repo.id, local_day}, 0),
+          seen: Map.get(seen_today, repo.id, 0)
+        }
+      end)
+
+    trend =
+      Enum.map(0..6, fn day ->
+        date = Date.add(first_day, day)
+
+        %{date: date, count: Map.get(daily_merges, date, 0)}
+      end)
 
     %{
-      repos: repo_overview(),
-      needs: Enum.map(needs, &today_item/1),
-      running: Enum.map(running, &today_item/1)
+      repos: repos,
+      needs: active_needs,
+      running: active_running,
+      queue: active_queue,
+      projects: projects,
+      merged_today: Map.get(daily_merges, local_day, 0),
+      seen_today: seen_today |> Map.values() |> Enum.sum(),
+      trend: trend
     }
+  end
+
+  defp day_start(date, offset) do
+    date
+    |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+    |> DateTime.add(offset * 60, :second)
   end
 
   defp today_item(task) do
