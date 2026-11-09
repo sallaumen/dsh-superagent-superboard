@@ -4536,3 +4536,59 @@ msgstr ""
 msgctxt "task status"
 msgid "Merged"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The key for this service is not configured."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The service refused the key."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The service's usage limit was reached."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The service did not respond in time."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The service did not respond."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The service answered with an error (HTTP %{status})."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "GitHub is limiting calls; try again in %{minutes} min."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Could not reach the service; check the network."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The connection dropped before an answer."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "GitHub answered with an error (HTTP %{status})."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Something unexpected went wrong; the detail is in the log."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The AI did not answer: %{reason}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Rate limited"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "limiting calls; the board tries again by itself"
+msgstr ""

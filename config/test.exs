@@ -63,6 +63,9 @@ config :agent_board, runner_tick_interval: 3_600_000
 # process outside the test).
 config :agent_board, superagent_tick_interval: :manual
 
+# A stubbed 5xx must not cost the suite the real wait between GitHub retries.
+config :agent_board, github_retry_base_ms: 1
+
 # The voices cache would leak between tests through the persistent term;
 # the client goes to the stub every time.
 config :agent_board, voice_voices_ttl: 0

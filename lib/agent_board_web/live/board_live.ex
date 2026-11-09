@@ -62,6 +62,8 @@ defmodule AgentBoardWeb.BoardLive do
   import AgentBoardWeb.BoardComponents.Throughput, only: [throughput: 1]
   import AgentBoardWeb.Components.VersionBadge, only: [version_badge: 1]
 
+  alias AgentBoardWeb.FailureText
+
   alias AgentBoardWeb.{
     BoardComponents,
     BoardNavigation,
@@ -942,7 +944,7 @@ defmodule AgentBoardWeb.BoardLive do
        :error,
        gettext(
          "The update stopped midway; the board still runs the old code and nothing was restarted. %{reason}",
-         reason: inspect(reason)
+         reason: FailureText.text(reason)
        )
      )}
   end
@@ -1805,7 +1807,7 @@ defmodule AgentBoardWeb.BoardLive do
              put_flash(
                socket,
                :error,
-               gettext("Could not create task: %{reason}", reason: inspect(reason))
+               gettext("Could not create task: %{reason}", reason: FailureText.text(reason))
              )}
         end
 
@@ -1862,7 +1864,7 @@ defmodule AgentBoardWeb.BoardLive do
          put_flash(
            socket,
            :error,
-           gettext("Could not reach main: %{reason}", reason: inspect(reason))
+           gettext("Could not reach main: %{reason}", reason: FailureText.text(reason))
          )}
     end
   end
@@ -2057,7 +2059,10 @@ defmodule AgentBoardWeb.BoardLive do
           {:error, reason} ->
             {:noreply,
              socket
-             |> put_flash(:error, "The AI did not answer: #{inspect(reason)}")
+             |> put_flash(
+               :error,
+               gettext("The AI did not answer: %{reason}", reason: FailureText.text(reason))
+             )
              |> refresh_ai()}
         end
     end
@@ -2725,7 +2730,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp voice_reason(:auth_expired), do: gettext("the key was rejected")
   defp voice_reason(:usage_limit), do: gettext("usage limit reached")
   defp voice_reason({:http, status}), do: "HTTP #{status}"
-  defp voice_reason(reason), do: inspect(reason)
+  defp voice_reason(reason), do: FailureText.text(reason)
 
   defp speech_url(text, voice_id), do: VoiceSpeech.url(text, voice_id)
 
@@ -2758,10 +2763,17 @@ defmodule AgentBoardWeb.BoardLive do
            },
            task_id: task.id
          ) do
-      {:ok, %{json: %{"answer" => text}}} -> {:ok, text}
-      {:ok, _} -> {:ok, "The model answered, but not with text."}
-      {:error, :not_configured} -> {:error, gettext("AI is not configured.")}
-      {:error, reason} -> {:error, "The AI did not answer: #{inspect(reason)}"}
+      {:ok, %{json: %{"answer" => text}}} ->
+        {:ok, text}
+
+      {:ok, _} ->
+        {:ok, "The model answered, but not with text."}
+
+      {:error, :not_configured} ->
+        {:error, gettext("AI is not configured.")}
+
+      {:error, reason} ->
+        {:error, gettext("The AI did not answer: %{reason}", reason: FailureText.text(reason))}
     end
   end
 
@@ -3889,7 +3901,7 @@ defmodule AgentBoardWeb.BoardLive do
     socket
     |> assign(composer_job: nil)
     |> composer_error(
-      "#{job_name(kind)} parou de forma inesperada (#{inspect(reason)}). Nada mais foi feito.",
+      "#{job_name(kind)} parou de forma inesperada: #{FailureText.text(reason)} Nada mais foi feito.",
       {kind, payload}
     )
   end
@@ -3966,11 +3978,8 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp split_failure({:http, status}), do: gettext("AI returned HTTP %{status}.", status: status)
 
-  defp split_failure(%{__exception__: true} = exception),
-    do: gettext("AI did not respond: ") <> Exception.message(exception)
-
   defp split_failure(reason),
-    do: gettext("AI did not respond (%{reason}).", reason: inspect(reason))
+    do: gettext("AI did not respond: ") <> FailureText.text(reason)
 
   defp refused_text,
     do:

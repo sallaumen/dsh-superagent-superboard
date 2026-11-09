@@ -1233,6 +1233,26 @@ the 10 s poller), never on a browser timer, and says when it was computed.
   that reaches the caller is a bug — the test suite has a case for each.
 - Network failures never erase the board's last good state: the overlay is
   skipped, the previous tasks stay.
+- **What repeats by itself** depends on whether repeating can do harm:
+
+| Call | Repeats | Why |
+|---|---|---|
+| GitHub reads and closing an issue | up to 2 more, 0.3 s then 0.9 s, on a dropped connection or a 500/502/503/504 (`GitHub.retry_options/0`) | the same request has the same effect |
+| GitHub creating an issue or a comment | only if the connection never opened | a timeout or a 5xx may have created it: the owner retries, and the composer offers it |
+| A sync that failed | Oban, 3 attempts with backoff | `Sync.Worker` returns the failure |
+| A sync rate limited | waits as long as GitHub asked (`{:snooze, seconds}`, 60 s to 1 h) | the run stops at the first refusal: the quota is the account's |
+| ElevenLabs | up to 2 more, see "The voice" | only what produced nothing to pay for |
+| Model calls | never, see "AI calls" | a retried paid request is a second charge |
+| The runner's API | never; the next tick or the owner's click | 1 s reads on loopback, and a retry there runs an execution |
+
+- **A 403 is a rate limit only when GitHub says so** (`x-ratelimit-remaining: 0`,
+  `Retry-After` or the message); otherwise it is a refused token and is said as one.
+- **The panel says what happened in one sentence** (`AgentBoardWeb.FailureText`): no
+  Elixir term reaches the screen. A rate limit is `Atrasado`, with the source
+  `Limitado`, never "no connection": the board is handling it.
+- **A server with no `GITHUB_TOKEN` does not sync** (`{:cancel, ...}`). On the shared
+  development database, a worktree without a token used to write `sync_error` rows
+  that told the live board GitHub was down.
 
 ## Sync isolation
 
@@ -1245,6 +1265,7 @@ The sync is isolated **per item**, not per repository:
 | a task's comments fail | `comment_error` | continues |
 | the commit read fails | `commit_error` | continues, without a `commits` count in the `sync` event |
 | the repository itself fails | `sync_error` | returns `{:error, exception}` and Oban retries |
+| any call is rate limited | `sync_error` with `rate_limited` | stops, and the job waits as long as GitHub asked |
 
 ```mermaid
 flowchart TB

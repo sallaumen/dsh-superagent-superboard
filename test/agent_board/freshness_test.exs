@@ -111,4 +111,18 @@ defmodule AgentBoard.FreshnessTest do
     assert agent.kind == :stale
     assert agent.word == "Sem sinal"
   end
+
+  test "a rate limit is a delay that lifts by itself, not a lost connection" do
+    limited = %Event{
+      kind: "sync_error",
+      inserted_at: DateTime.add(@now, -60, :second),
+      payload: %{"reason" => "GitHub rate limited", "rate_limited" => true, "retry_after" => 300}
+    }
+
+    snap = snapshot(last_attempt: limited, last_success: event("sync", 300))
+
+    assert snap.state == :delayed
+    refute snap.frozen?
+    assert [%{code: :github_rate_limited, retry_after: 300} | _] = snap.sources
+  end
 end

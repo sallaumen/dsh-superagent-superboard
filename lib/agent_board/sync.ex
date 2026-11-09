@@ -26,11 +26,27 @@ defmodule AgentBoard.Sync do
   alias AgentBoard.Board.{Comment, Commit, PullRequest, Repository, Review, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
-  def all(client \\ GitHub.client()) do
+  def all(client \\ GitHub.client()), do: client |> run() |> length()
+
+  @doc """
+  Sync the active repositories and return each result. A rate limit ends the
+  run: the quota is the account's, so the next repository would be refused too.
+  """
+  @spec run(Req.Request.t()) :: [term()]
+  def run(client \\ GitHub.client()) do
     Repo.all(from r in Repository, where: r.active)
-    |> Enum.map(&sync_repo(client, &1))
-    |> length()
+    |> Enum.reduce_while([], fn repository, results ->
+      case sync_repo(client, repository) do
+        {:error, %GitHub.RateLimited{}} = limited -> {:halt, [limited | results]}
+        result -> {:cont, [result | results]}
+      end
+    end)
+    |> Enum.reverse()
   end
+
+  @doc "Whether there is any repository to sync."
+  @spec repositories?() :: boolean()
+  def repositories?, do: Repo.exists?(from r in Repository, where: r.active)
 
   @doc """
   Sync one repository.
@@ -43,13 +59,26 @@ defmodule AgentBoard.Sync do
     do_sync(client, repository)
   rescue
     exception ->
-      Board.log_event(repository.id, "sync_error", "#{repository.owner}/#{repository.name}", %{
-        "reason" => Exception.message(exception)
-      })
+      Board.log_event(
+        repository.id,
+        "sync_error",
+        "#{repository.owner}/#{repository.name}",
+        error_payload(exception)
+      )
 
       Board.broadcast(repository.id)
       {:error, exception}
   end
+
+  defp error_payload(%GitHub.RateLimited{retry_after: seconds} = exception) do
+    %{
+      "reason" => Exception.message(exception),
+      "rate_limited" => true,
+      "retry_after" => seconds
+    }
+  end
+
+  defp error_payload(exception), do: %{"reason" => Exception.message(exception)}
 
   defp do_sync(client, repository) do
     # A repository can have Issues disabled (404). That is not a sync failure:
@@ -58,6 +87,9 @@ defmodule AgentBoard.Sync do
       try do
         GitHub.issues(client, repository.owner, repository.name)
       rescue
+        error in GitHub.RateLimited ->
+          reraise error, __STACKTRACE__
+
         exception ->
           Board.log_event(
             repository.id,
@@ -79,6 +111,9 @@ defmodule AgentBoard.Sync do
       try do
         upsert_pull(client, repository, pull)
       rescue
+        error in GitHub.RateLimited ->
+          reraise error, __STACKTRACE__
+
         exception ->
           Board.log_event(repository.id, "pull_error", "##{pull["number"]}", %{
             "reason" => Exception.message(exception)
@@ -137,6 +172,9 @@ defmodule AgentBoard.Sync do
     since = commits_since(repository)
     {:ok, store_commit_pages(client, repository, since, 1, 0)}
   rescue
+    error in GitHub.RateLimited ->
+      reraise error, __STACKTRACE__
+
     exception ->
       Board.log_event(
         repository.id,
@@ -247,6 +285,9 @@ defmodule AgentBoard.Sync do
             :ok
         end
       rescue
+        error in GitHub.RateLimited ->
+          reraise error, __STACKTRACE__
+
         exception ->
           Board.log_event(repository.id, "comment_error", "##{task.number}", %{
             "reason" => Exception.message(exception)
@@ -448,6 +489,9 @@ defmodule AgentBoard.Sync do
   defp safe_fetch(repository, kind, pull, fun) do
     fun.()
   rescue
+    error in GitHub.RateLimited ->
+      reraise error, __STACKTRACE__
+
     exception ->
       Board.log_event(repository.id, kind, "##{pull["number"]}", %{
         "reason" => Exception.message(exception)

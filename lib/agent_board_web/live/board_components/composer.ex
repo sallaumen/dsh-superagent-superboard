@@ -413,11 +413,8 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   defp outcome_class({:error, _}), do: "ab-tag--halt"
 
   @doc "The human reason for a failed creation."
-  def failure_reason(%{__exception__: true} = exception),
-    do: exception |> Exception.message() |> String.slice(0, 120)
-
   def failure_reason(:conflict), do: gettext("The issue already existed with another number")
-  def failure_reason(reason), do: reason |> inspect() |> String.slice(0, 120)
+  def failure_reason(reason), do: AgentBoardWeb.FailureText.text(reason)
 
   defp state(job, _receipt, _status, _error) when not is_nil(job), do: to_string(job.kind)
   defp state(_job, receipt, _status, _error) when not is_nil(receipt), do: "receipt"

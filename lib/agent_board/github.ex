@@ -1,6 +1,10 @@
 defmodule AgentBoard.GitHub do
   @moduledoc "The GitHub client: read-only for the sync, plus the board's writes."
 
+  @transient_statuses [500, 502, 503, 504]
+  @repeatable_methods [:get, :head, :patch]
+  @never_sent [:econnrefused, :nxdomain, :ehostunreach, :enetunreach]
+
   # tasks.number and pull_requests.number are int4: past this, Postgrex raises
   # instead of finding nothing, and the query runs on every board load.
   @max_number 2_147_483_647
@@ -31,9 +35,18 @@ defmodule AgentBoard.GitHub do
     end
   end
 
+  @doc "Whether the board can call GitHub as someone."
+  @spec configured?() :: boolean()
+  def configured? do
+    Application.get_env(:agent_board, :github_client) != nil or token() not in [nil, ""]
+  end
+
+  defp token,
+    do: Application.get_env(:agent_board, :github_token, System.get_env("GITHUB_TOKEN", ""))
+
   @doc false
   def build do
-    token = Application.get_env(:agent_board, :github_token, System.get_env("GITHUB_TOKEN", ""))
+    token = token()
 
     headers = [
       {"accept", "application/vnd.github+json"},
@@ -43,8 +56,36 @@ defmodule AgentBoard.GitHub do
     headers =
       if token in [nil, ""], do: headers, else: [{"authorization", "Bearer #{token}"} | headers]
 
-    Req.new(base_url: "https://api.github.com", headers: headers, retry: false)
+    Req.new([base_url: "https://api.github.com", headers: headers] ++ retry_options())
   end
+
+  @doc """
+  What the client tries again by itself, at most twice with a growing delay
+  (`:github_retry_base_ms`, default 300 ms). A read or the closing of an issue
+  can be repeated after a dropped connection or a 500/502/503/504. A write that
+  may have landed cannot: it is repeated only when the connection never opened.
+  A 4xx is final, and a rate limit has its own path (`RateLimited`).
+  """
+  @spec retry_options() :: keyword()
+  def retry_options, do: [retry: &retry_decision/2, max_retries: 2, retry_log_level: false]
+
+  @doc false
+  def retry_decision(request, response_or_exception) do
+    if repeatable?(request.method, response_or_exception) do
+      tries = Req.Request.get_private(request, :req_retry_count, 0)
+      {:delay, Application.get_env(:agent_board, :github_retry_base_ms, 300) * 3 ** tries}
+    else
+      false
+    end
+  end
+
+  defp repeatable?(method, %Req.Response{status: status})
+       when method in @repeatable_methods and status in @transient_statuses,
+       do: true
+
+  defp repeatable?(method, %Req.TransportError{}) when method in @repeatable_methods, do: true
+  defp repeatable?(_method, %Req.TransportError{reason: reason}), do: reason in @never_sent
+  defp repeatable?(_method, _other), do: false
 
   # A 4xx/5xx response is an error, not a body. Req.get! only raises on
   # transport errors, so the status is checked here.
@@ -53,24 +94,58 @@ defmodule AgentBoard.GitHub do
       status when status in 200..299 ->
         response.body
 
-      403 ->
-        raise AgentBoard.GitHub.RateLimited, retry_after: retry_after(response)
-
       429 ->
-        raise AgentBoard.GitHub.RateLimited, retry_after: retry_after(response)
+        raise AgentBoard.GitHub.RateLimited, retry_after: wait_seconds(response)
+
+      403 ->
+        if limited?(response) do
+          raise AgentBoard.GitHub.RateLimited, retry_after: wait_seconds(response)
+        else
+          raise "GitHub HTTP 403: #{inspect(response.body)}"
+        end
 
       status ->
         raise "GitHub HTTP #{status}: #{inspect(response.body)}"
     end
   end
 
-  # GitHub sends Retry-After on the primary rate limit; the default is a
-  # minute, the window length.
-  defp retry_after(response) do
-    case Map.get(response.headers, "retry-after") do
-      [seconds | _] -> seconds
-      seconds when is_binary(seconds) -> seconds
-      _ -> "60"
+  # A 403 is a rate limit only when GitHub says so; the same status answers a
+  # token without access, and waiting would not fix that.
+  defp limited?(response) do
+    header(response, "x-ratelimit-remaining") == "0" or header(response, "retry-after") != nil or
+      response.body |> inspect() |> String.downcase() |> String.contains?("rate limit")
+  end
+
+  # Retry-After on the secondary limit, the reset time on a spent quota; a
+  # minute, the window's length, when GitHub says neither.
+  defp wait_seconds(response) do
+    with nil <- number_header(response, "retry-after"),
+         nil <- until_reset(response) do
+      60
+    end
+  end
+
+  defp until_reset(response) do
+    case number_header(response, "x-ratelimit-reset") do
+      nil -> nil
+      reset -> max(reset - System.system_time(:second), 1)
+    end
+  end
+
+  defp number_header(response, name) do
+    with value when is_binary(value) <- header(response, name),
+         {number, ""} <- Integer.parse(value) do
+      number
+    else
+      _no_number -> nil
+    end
+  end
+
+  defp header(response, name) do
+    case Map.get(response.headers, name) do
+      [value | _] -> value
+      value when is_binary(value) -> value
+      _ -> nil
     end
   end
 
