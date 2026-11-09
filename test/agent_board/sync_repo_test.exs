@@ -305,6 +305,41 @@ defmodule AgentBoard.SyncRepoTest do
       assert_received {:read, :checks, _path}
       refute stored(9).checks_state == "pending"
     end
+
+    test "a merged pull whose read failed is read again", %{repo: repo} do
+      pulls = [recent_pull(9, "abc", merged_at())]
+
+      stub_github(fn conn ->
+        cond do
+          conn.request_path == "/repos/sallaumen/arena-rogue/pulls" ->
+            Req.Test.json(conn, pulls)
+
+          String.ends_with?(conn.request_path, "/check-runs") ->
+            Plug.Conn.send_resp(conn, 500, "{}")
+
+          true ->
+            Req.Test.json(conn, [])
+        end
+      end)
+
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == nil
+
+      stub_pulls(pulls, @done)
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert_received {:read, :checks, _path}
+      assert stored(9).checks_state == "success"
+    end
+
+    test "a merged pull with no checks at all is not read again", %{repo: repo} do
+      stub_pulls([recent_pull(9, "abc", merged_at())], [])
+      assert Sync.sync_repo(client(), repo) == :ok
+      assert stored(9).checks_state == "none"
+      flush_reads()
+
+      assert Sync.sync_repo(client(), repo) == :ok
+      refute_received {:read, _kind, _path}
+    end
   end
 
   test "an old merged pull skips its reviews", %{repo: repo} do
