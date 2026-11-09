@@ -2576,9 +2576,6 @@ defmodule AgentBoardWeb.BoardLive do
             busy={@busy}
             voice={@voice}
             superagents={@superagents}
-            dispatch_paused={@dispatch_paused}
-            show_settings={@panel != "settings"}
-            settings_panel={@panel == "settings"}
           />
 
           <main id="board-work" class="ab-main">
@@ -3120,7 +3117,6 @@ defmodule AgentBoardWeb.BoardLive do
           flash={@flash}
         >
           <.live_component
-            :if={@panel == "settings"}
             module={BoardComponents.SettingsMenu}
             id="board-settings-panel"
             repo={@repo}
@@ -3128,7 +3124,7 @@ defmodule AgentBoardWeb.BoardLive do
             busy={@busy}
             voice={@voice}
             dispatch_paused={@dispatch_paused}
-            settings_panel={true}
+            active={@panel == "settings"}
           />
         </BoardComponents.Panel.shell>
 

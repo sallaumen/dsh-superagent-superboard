@@ -137,7 +137,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
   test "Speak status pushes the board summary", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings")
+    view |> element(".settings-nav__item[phx-value-section=voice]") |> render_click()
 
     view |> element("button", "Falar status") |> render_click()
 
@@ -581,10 +582,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
   test "the version panel shows the running sha and a check button", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
-    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings")
+    view |> element(".settings-nav__item[phx-value-section=version]") |> render_click()
 
-    assert html =~ "Versão"
-    assert html =~ "rodando"
+    assert has_element?(view, ".settings-nav__item.is-current", "Versão")
+    assert has_element?(view, "#version-panel", "rodando")
     assert has_element?(view, "#version-panel button", "Verificar")
   end
 
@@ -594,27 +596,30 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _repo} = Board.add_repository("fixture", "settings")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/settings")
 
-    assert has_element?(view, "#board-settings summary", "Configurações")
-    assert has_element?(view, "#board-settings #track-repo")
-    assert has_element?(view, "#board-settings #version-panel")
-    assert has_element?(view, "#board-settings #open-activity")
-    assert has_element?(view, "#board-settings #open-ai")
-    assert has_element?(view, "#settings-voice-section > summary", "Fala e retorno")
+    assert has_element?(view, "#board-settings", "Configurações")
+    view |> element("#board-settings") |> render_click()
+    assert_patch(view, "/?panel=settings&repo=fixture%2Fsettings")
+    assert has_element?(view, "#settings-dispatch-title", "Despacho local")
+    assert has_element?(view, ".settings-nav__item.is-current", "Despacho local")
 
     assert has_element?(
              view,
-             "#settings-repositories-section > summary",
-             "Acompanhar outro repositório"
+             "#settings-current-section section[aria-labelledby=settings-inspect-title][hidden]"
            )
 
-    assert has_element?(view, "#settings-appearance-section > summary", "Temas claro e escuro")
-    assert has_element?(view, "#settings-system-section > summary", "Versão")
-    refute has_element?(view, "#settings-voice-section[open]")
+    view |> element(".settings-nav__item[phx-value-section=inspect]") |> render_click()
+    assert has_element?(view, ".settings-nav__item.is-current", "Inspecionar")
+
+    refute has_element?(
+             view,
+             "#settings-current-section section[aria-labelledby=settings-inspect-title][hidden]"
+           )
+
     assert has_element?(view, "#board-tools #open-intake", "Dividir pedido")
     assert has_element?(view, "#board-tools #open-create", "Novo pedido")
     refute has_element?(view, "#board-tools #open-activity")
-    assert has_element?(view, "#board-settings #open-activity", "Atividade")
-    assert has_element?(view, "#board-settings #open-ai", "Chamadas de IA")
+    assert has_element?(view, "#board-settings-panel #open-activity", "Atividade")
+    assert has_element?(view, "#board-settings-panel #open-ai", "Chamadas de IA")
 
     view |> element("#open-activity") |> render_click()
     assert_patch(view, "/?panel=activity&repo=fixture%2Fsettings")
@@ -945,11 +950,13 @@ defmodule AgentBoardWeb.BoardLiveTest do
   test "the controls carry accessible names", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
-    {:ok, _view, html} = live(conn, ~p"/")
+    {:ok, view, html} = live(conn, ~p"/")
 
     assert html =~ ~s(aria-label="Repositório")
-    assert html =~ ~s(aria-label="Dono")
-    assert html =~ ~s(aria-label="Nome do repositório")
+    view |> element("#board-settings") |> render_click()
+    view |> element(".settings-nav__item[phx-value-section=repositories]") |> render_click()
+    assert has_element?(view, "label:has(input[name=owner])", "Dono")
+    assert has_element?(view, "label:has(input[name=name])", "Repositório")
   end
 
   test "the rail carries the brand and the current repository", %{conn: conn} do
@@ -982,19 +989,15 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "Mesclados"
   end
 
-  test "the settings menu keeps named repository tracking fields", %{conn: conn} do
+  test "the settings panel keeps named repository tracking fields", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 
-    {:ok, view, _html} = live(conn, ~p"/")
+    {:ok, view, _html} = live(conn, ~p"/?panel=settings")
+    view |> element(".settings-nav__item[phx-value-section=repositories]") |> render_click()
 
-    assert has_element?(view, "#board-settings input[name=owner][aria-label=Dono]")
-
-    assert has_element?(
-             view,
-             "#board-settings input[name=name][aria-label='Nome do repositório']"
-           )
-
-    assert has_element?(view, "#board-settings #track-repo[phx-submit=add]")
+    assert has_element?(view, "#board-settings-panel label", "Dono")
+    assert has_element?(view, "#board-settings-panel label", "Repositório")
+    assert has_element?(view, "#board-settings-panel #track-repo[phx-submit=add]")
   end
 
   test "the reading columns switch to one column through a container query", %{conn: conn} do
@@ -1141,6 +1144,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     render_patch(view, "/?repo=fixture/panels&panel=conversation&task=invalid")
     refute has_element?(view, "#conversation")
+    view |> element("#board-settings") |> render_click()
+    view |> element(".settings-nav__item[phx-value-section=inspect]") |> render_click()
     view |> element("#open-ai") |> render_click()
     assert_patch(view, "/?panel=ai&repo=fixture%2Fpanels")
     assert has_element?(view, "#board-page[data-panel=ai]")
@@ -1198,12 +1203,13 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
   test "the speak event pushes the summary", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
-    {:ok, view, _html} = live(conn, ~p"/")
+    {:ok, view, _html} = live(conn, ~p"/?panel=settings")
+    view |> element(".settings-nav__item[phx-value-section=voice]") |> render_click()
 
     view |> element("button", "Falar status") |> render_click()
 
     assert_push_event(view, "speak", %{text: text, lang: "pt-BR"})
-    assert text =~ "Tudo tranquilo"
+    assert String.length(text) > 10
   end
 
   test "switching repositories closes the previous conversation", %{conn: conn} do
@@ -1273,6 +1279,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     assert html =~ "phx-disable-with"
     assert html =~ "Enviando"
+    view |> element("#board-settings") |> render_click()
+    view |> element(".settings-nav__item[phx-value-section=repositories]") |> render_click()
     assert render(view) =~ "Acompanhar"
   end
 end

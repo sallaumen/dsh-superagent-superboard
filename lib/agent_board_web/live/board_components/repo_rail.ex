@@ -12,13 +12,8 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
   attr :repo, :any, default: nil
   attr :overview, :map, default: %{}
   attr :live, :boolean, default: false
-  attr :version, :map, default: nil
-  attr :busy, :boolean, default: false
-  attr :voice, :map, default: nil
   attr :superagents, :list, default: []
-  attr :dispatch_paused, :boolean, default: false
-  attr :show_settings, :boolean, default: true
-  attr :settings_panel, :boolean, default: false
+  attr :version, :map, default: nil
 
   @impl true
   def render(assigns) do
@@ -152,17 +147,22 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
         >
           <.ico name="mic" /><span>Conversa por voz</span>
         </button>
-        <.live_component
-          :if={@show_settings}
-          module={AgentBoardWeb.BoardComponents.SettingsMenu}
+        <button
           id="board-settings"
-          repo={@repo}
-          version={@version}
-          busy={@busy}
-          voice={@voice}
-          dispatch_paused={@dispatch_paused}
-          settings_panel={@settings_panel}
-        />
+          type="button"
+          class="ab-btn ab-btn--quiet ab-btn--sm"
+          phx-click="show_panel"
+          phx-value-panel="settings"
+          data-panel-trigger
+          aria-haspopup="dialog"
+          aria-controls="panel-settings"
+          data-update-ready={to_string(@version.state in [:behind, :restart])}
+        >
+          <.ico name="cog" /><span>Configurações</span>
+          <span :if={@version.state in [:behind, :restart]} class="ab-sr">
+            · {if @version.state == :restart, do: "reinício pendente", else: "atualização disponível"}
+          </span>
+        </button>
       </div>
     </nav>
     """

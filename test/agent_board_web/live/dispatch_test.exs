@@ -182,6 +182,18 @@ defmodule AgentBoardWeb.DispatchTest do
     assert has_element?(view, "#dispatch-settings-form-dispatch-settings [role=alert]")
   end
 
+  test "opening settings refreshes dispatch limits changed since the board loaded", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/?repo=fixture/dispatch")
+    :ok = Settings.put("dispatch_monthly_usd", "123")
+
+    view |> element("#board-settings") |> render_click()
+
+    assert has_element?(
+             view,
+             "#dispatch-settings-form-dispatch-settings input[name=monthly_usd][value='123.00']"
+           )
+  end
+
   test "the owner can stop the active execution from the inspector", %{
     conn: conn,
     task: task

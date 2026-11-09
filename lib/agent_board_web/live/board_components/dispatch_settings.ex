@@ -30,7 +30,16 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
   end
 
   @impl true
-  def update(assigns, socket), do: {:ok, assign(socket, assigns)}
+  def update(assigns, socket) do
+    was_active = socket.assigns[:active] || false
+    socket = assign(socket, assigns)
+
+    if assigns.active and not was_active do
+      {:ok, assign(socket, snapshot: Runners.snapshot(), error: nil, saved: false)}
+    else
+      {:ok, socket}
+    end
+  end
 
   @impl true
   def render(assigns) do
@@ -39,88 +48,144 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
       id={"dispatch-settings-form-#{@id}"}
       phx-submit="save"
       phx-target={@myself}
+      phx-auto-recover="ignore"
       class="dispatch-settings"
     >
-      <div class="dispatch-settings__grid">
-        <label>
-          <span>Orçamento mensal (US$; 0 = sem teto)</span>
-          <input
-            name="monthly_usd"
-            type="number"
-            min="0"
-            step="0.01"
-            value={number(@snapshot.monthly_usd)}
-            required
-          />
-        </label>
-        <label>
-          <span>Teto por tarefa (US$)</span>
-          <input
-            name="task_usd"
-            type="number"
-            min="0"
-            step="0.01"
-            value={number(@snapshot.task_usd)}
-            required
-          />
-        </label>
-        <label>
-          <span>Codex: tempo máximo (min)</span>
-          <input
-            name="codex_timeout_minutes"
-            type="number"
-            min="1"
-            step="1"
-            value={@snapshot.codex_timeout_minutes}
-            required
-          />
-        </label>
-        <label>
-          <span>Reserva da cota semanal (%)</span>
-          <input
-            name="reserve_percent"
-            type="number"
-            min="0"
+      <div class="dispatch-settings__body">
+        <div class="dispatch-settings__heading">
+          <h4>Tetos</h4>
+          <p>Os limites em US$ se aplicam ao Claude Code. A cota do Codex aparece separadamente.</p>
+        </div>
+        <div class="dispatch-settings__grid">
+          <label>
+            <span>Mensal · US$</span>
+            <input
+              name="monthly_usd"
+              type="number"
+              min="0"
+              step="0.01"
+              value={number(@snapshot.monthly_usd)}
+              aria-describedby="dispatch-monthly-hint"
+              required
+            />
+          </label>
+          <label>
+            <span>Por tarefa · US$</span>
+            <input
+              name="task_usd"
+              type="number"
+              min="0"
+              step="0.01"
+              value={number(@snapshot.task_usd)}
+              required
+            />
+          </label>
+          <label>
+            <span>Tempo por tarefa · min</span>
+            <input
+              name="codex_timeout_minutes"
+              type="number"
+              min="1"
+              step="1"
+              value={@snapshot.codex_timeout_minutes}
+              required
+            />
+          </label>
+        </div>
+        <p id="dispatch-monthly-hint" class="ab-meta">
+          Use 0 para deixar o mês sem teto. O tempo máximo se aplica ao Codex.
+        </p>
+
+        <div :if={is_number(@snapshot.spent_usd)} class="dispatch-settings__usage">
+          <div>
+            <span>Claude Code · usado no mês</span><strong>{money(@snapshot.spent_usd)}{if @snapshot.monthly_usd >
+                                                                                             0,
+                                                                                           do:
+                                                                                             " de #{money(@snapshot.monthly_usd)}",
+                                                                                           else:
+                                                                                             " · sem teto"}</strong>
+          </div>
+          <progress
+            :if={@snapshot.monthly_usd > 0}
+            value={min(@snapshot.spent_usd, @snapshot.monthly_usd)}
+            max={@snapshot.monthly_usd}
+            aria-label="Uso do teto mensal do Claude Code"
+          ></progress>
+        </div>
+        <p :if={not is_number(@snapshot.spent_usd)} class="ab-meta">
+          Uso mensal do Claude Code indisponível: há execuções sem preço conhecido.
+        </p>
+
+        <div class="dispatch-settings__quota">
+          <div class="dispatch-settings__quota-head">
+            <h4>Codex · cota semanal</h4><strong :if={@snapshot.quota}>{percent(
+              @snapshot.quota.used_percent
+            )}% usada</strong>
+          </div>
+          <progress
+            :if={@snapshot.quota}
+            value={@snapshot.quota.used_percent}
             max="100"
-            step="1"
-            value={@snapshot.reserve_percent}
-            required
-          />
-        </label>
-        <label>
-          <span>Modelo do Claude Code</span>
-          <input name="claude_model" value={Runners.claude_model()} required />
-        </label>
-        <label>
-          <span>Modelo do Codex</span>
-          <input name="codex_model" value={Runners.codex_model()} required />
-        </label>
-        <label>
-          <span>Repositórios do DeepSeek (separados por vírgula)</span>
-          <input
-            name="dsh_repositories"
-            value={Enum.join(@snapshot.dsh_repositories, ", ")}
-            placeholder="sallaumen/arena-rogue, sallaumen/o_colmex"
-          />
-        </label>
+            aria-label="Cota semanal usada do Codex"
+          ></progress>
+          <p :if={is_nil(@snapshot.quota)}>
+            Sem leitura recente da cota. O board não a trata como zero.
+          </p>
+          <label>
+            <span>Reserva da cota semanal · %</span>
+            <input
+              name="reserve_percent"
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              value={@snapshot.reserve_percent}
+              required
+            />
+          </label>
+        </div>
+
+        <details class="dispatch-settings__advanced">
+          <summary>Modelos e integração</summary>
+          <div class="dispatch-settings__advanced-body">
+            <label>
+              <span>Modelo do Claude Code</span>
+              <input name="claude_model" value={Runners.claude_model()} required />
+            </label>
+            <label>
+              <span>Modelo do Codex</span>
+              <input name="codex_model" value={Runners.codex_model()} required />
+            </label>
+            <label>
+              <span>Repositórios do DeepSeek (separados por vírgula)</span>
+              <input
+                name="dsh_repositories"
+                value={Enum.join(@snapshot.dsh_repositories, ", ")}
+                placeholder="sallaumen/arena-rogue, sallaumen/o_colmex"
+              />
+            </label>
+            <p class="ab-meta">
+              Claude Code:
+              <code>{Runners.claude_bin()}</code> {if Runners.ready?("claude"),
+                do: "pronto",
+                else: "não encontrado ou sem permissão"}
+            </p>
+            <p class="ab-meta">
+              Codex:
+              <code>{Runners.codex_bin()}</code> {if Runners.ready?("codex"),
+                do: "pronto",
+                else: "não encontrado ou sem permissão"}
+            </p>
+          </div>
+        </details>
       </div>
-
-      <p :if={@snapshot.quota} class="ab-meta">
-        Cota semanal do Codex agora: {percent(@snapshot.quota.used_percent)}% usada.
-      </p>
-
-      <p class="ab-meta">
-        Claude Code: <code>{Runners.claude_bin()}</code>
-        {if Runners.ready?("claude"), do: "pronto", else: "não encontrado ou sem permissão"} ·
-        Codex: <code>{Runners.codex_bin()}</code>
-        {if Runners.ready?("codex"), do: "pronto", else: "não encontrado ou sem permissão"}
-      </p>
 
       <p :if={@error} class="settings-error" role="alert">{@error}</p>
       <p :if={@saved} class="settings-saved" role="status">Tetos salvos.</p>
 
-      <div class="settings-actions">
-        <button type="submit" phx-disable-with="Salvando…">Salvar tetos</button>
+      <div class="dispatch-settings__actions">
+        <button type="reset" class="ab-btn">Descartar</button>
+        <button type="submit" class="ab-btn ab-btn--primary" phx-disable-with="Salvando…">Salvar tetos</button>
       </div>
     </form>
     """
@@ -164,7 +229,6 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
        }}
     else
       {:error, message} -> {:error, message}
-      false -> {:error, "Confira os números do despacho."}
     end
   end
 
@@ -184,6 +248,8 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
 
   defp number(value) when is_float(value), do: :erlang.float_to_binary(value, decimals: 2)
   defp number(value), do: to_string(value)
+
+  defp money(value), do: "US$ " <> (value |> number() |> String.replace(".", ","))
 
   defp percent(value) when is_float(value),
     do: value |> :erlang.float_to_binary(decimals: 0) |> String.replace(".", ",")
