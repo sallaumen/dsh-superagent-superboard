@@ -7,7 +7,8 @@ defmodule AgentBoard.Board do
   """
   import Ecto.Query, warn: false
 
-  alias AgentBoard.Board.{Comment, Event, Objective, PullRequest, Repository, Review, Task}
+  alias AgentBoard.Board.Activity
+  alias AgentBoard.Board.{Comment, Objective, PullRequest, Repository, Review, Task}
   alias AgentBoard.{Repo, Workpad}
 
   @merged_page_size 50
@@ -18,6 +19,19 @@ defmodule AgentBoard.Board do
   def merged_page_size, do: @merged_page_size
   def task_page_size, do: @task_page_size
   def task_states, do: @task_states
+
+  @doc "The recent activity for a repository (owned by `AgentBoard.Board.Activity`)."
+  def events(repository, limit \\ 20), do: Activity.events(repository, limit)
+
+  @doc "The latest sync outcome (owned by `AgentBoard.Board.Activity`)."
+  def latest_sync(repository), do: Activity.latest_sync(repository)
+
+  @doc "The newest attempt and success (owned by `AgentBoard.Board.Activity`)."
+  def sync_snapshot(repository), do: Activity.sync_snapshot(repository)
+
+  @doc "Record an activity row (owned by `AgentBoard.Board.Activity`)."
+  def log_event(repository_id, kind, subject, payload \\ %{}),
+    do: Activity.log_event(repository_id, kind, subject, payload)
 
   @doc "Every tracked repository."
   def list_repositories, do: Repo.all(from r in Repository, order_by: r.id)
@@ -767,46 +781,6 @@ defmodule AgentBoard.Board do
   defp state_tone("done"), do: :done
   defp state_tone(_state), do: :plain
 
-  @doc "The recent activity for a repository."
-  def events(repository, limit \\ 20)
-
-  def events(nil, _limit), do: []
-
-  def events(repository, limit) do
-    Repo.all(
-      from e in Event,
-        where: e.repository_id == ^repository.id,
-        order_by: [desc: e.inserted_at, desc: e.id],
-        limit: ^limit
-    )
-  end
-
-  @doc "The latest sync outcome, independent of the activity window."
-  def latest_sync(repository) do
-    Repo.one(
-      from e in Event,
-        where: e.repository_id == ^repository.id and e.kind in ["sync", "sync_error"],
-        order_by: [desc: e.inserted_at, desc: e.id],
-        limit: 1
-    )
-  end
-
-  @doc "The newest attempt and the newest success, for the freshness snapshot."
-  def sync_snapshot(repository) do
-    events =
-      Repo.all(
-        from e in Event,
-          where: e.repository_id == ^repository.id and e.kind in ["sync", "sync_error"],
-          order_by: [desc: e.inserted_at, desc: e.id],
-          limit: 50
-      )
-
-    %{
-      last_attempt: List.first(events),
-      last_success: Enum.find(events, &(&1.kind == "sync"))
-    }
-  end
-
   @doc """
   Creates an objective from a split and attaches the tasks that were created
   for it. Only a group of two or more tasks becomes an objective.
@@ -922,18 +896,6 @@ defmodule AgentBoard.Board do
         task <- Map.get(board, state, []),
         into: %{},
         do: {task.id, Atom.to_string(state)}
-  end
-
-  @doc "Record an activity row."
-  def log_event(repository_id, kind, subject, payload \\ %{}) do
-    %Event{}
-    |> Event.changeset(%{
-      repository_id: repository_id,
-      kind: kind,
-      subject: subject,
-      payload: payload
-    })
-    |> Repo.insert()
   end
 
   # The schemas are exposed so the sync and the tests can build changesets.
