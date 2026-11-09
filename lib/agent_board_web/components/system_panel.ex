@@ -69,6 +69,11 @@ defmodule AgentBoardWeb.Components.SystemPanel do
           Reiniciar
         </button>
       </div>
+
+      <p class="version-note text-base-content/60 m-0 text-xs">
+        Nada atualiza sozinho: só o botão puxa a main. O serviço nunca roda um <code>git pull</code>
+        em timer.
+      </p>
     </section>
     """
   end
