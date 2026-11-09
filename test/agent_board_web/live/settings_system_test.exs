@@ -17,6 +17,7 @@ defmodule AgentBoardWeb.SettingsSystemTest do
     assert has_element?(view, "#version-title")
     assert has_element?(view, "#version-check", "Verificar de novo")
     assert has_element?(view, "#settings-browser-title", "Neste navegador")
+    assert has_element?(view, "#settings-theme-toggle[phx-hook=ThemeToggle]")
 
     assert has_element?(view, ~s(button[data-phx-theme="system"]), "Sistema")
     assert has_element?(view, ~s(button[data-phx-theme="light"]), "Claro")
