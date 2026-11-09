@@ -375,6 +375,12 @@ body { margin: 0; background: var(--paper); }
 
 .ab-split { padding: 4px 16px 12px; display: flex; flex-direction: column; gap: 2px; }
 .ab-split__item { display: grid; grid-template-columns: 18px 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+.ab-attach { padding: 0 16px 10px; display: grid; gap: var(--space-1); }
+.ab-attach__item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: var(--space-2); align-items: center; font-size: 13px; }
+.ab-attach__thumb { width: 40px; height: 40px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+.ab-attach__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ab-attach__pick { cursor: pointer; }
+.ab-attach__pick:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .ab-split__task { border-top: 1px solid var(--line); padding-bottom: 6px; }
 .ab-split__task:first-of-type { border-top: 0; }
 .ab-split__task .ab-split__item { border-top: 0; }

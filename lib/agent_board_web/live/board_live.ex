@@ -35,7 +35,7 @@ defmodule AgentBoardWeb.BoardLive do
     Voice
   }
 
-  alias AgentBoard.Board.Task
+  alias AgentBoard.Board.{Attachments, Task}
   alias AgentBoard.Freshness
   alias AgentBoard.Intake.{IssueBody, RepoDigest}
   alias AgentBoard.Metrics.Observations
@@ -186,6 +186,7 @@ defmodule AgentBoardWeb.BoardLive do
         composer_job: nil,
         composer_receipt: nil,
         composer_answers: "",
+        composer_attachments: [],
         composer_routing: nil,
         composer_routing_for: nil,
         executor_days: 7,
@@ -206,6 +207,12 @@ defmodule AgentBoardWeb.BoardLive do
         # Rotates the attention phrases; a random start keeps a reload from
         # always opening with the same sentence.
         voice_turn: :rand.uniform(1_000)
+      )
+      |> allow_upload(:attachments,
+        accept: Attachments.accepted(),
+        max_entries: Attachments.max_files(),
+        max_file_size: Attachments.max_bytes(),
+        auto_upload: true
       )
 
     repo =
@@ -2060,6 +2067,11 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("composer_remove_attachment", %{"ref" => ref}, socket) do
+    {:noreply, cancel_upload(socket, :attachments, ref)}
+  end
+
+  @impl true
   def handle_event("composer_split", _params, socket) do
     if socket.assigns.composer_job do
       {:noreply, socket}
@@ -2105,6 +2117,10 @@ defmodule AgentBoardWeb.BoardLive do
 
       is_nil(socket.assigns.repo) ->
         {:noreply, composer_error(socket, gettext("Select a repository before submitting."))}
+
+      attachments_pending?(socket) ->
+        {:noreply,
+         composer_error(socket, gettext("Wait for the files to finish or remove them."))}
 
       text == "" ->
         {:noreply, composer_error(socket, "Escreva o pedido antes de enviar.")}
@@ -3472,6 +3488,8 @@ defmodule AgentBoardWeb.BoardLive do
             title={@composer_title}
             split={@composer_split}
             intake={@intake}
+            uploads={@uploads}
+            attachments_ready={length(@composer_attachments)}
             selected={@composer_selected}
             job={@composer_job}
             receipt={@composer_receipt}
@@ -4009,12 +4027,14 @@ defmodule AgentBoardWeb.BoardLive do
     do: {:noreply, composer_error(socket, gettext("Choose at least one task."))}
 
   defp start_enqueue(socket, requests, shown) do
+    socket = take_attachments(socket)
     repo = socket.assigns.repo
     client = GitHub.client()
     job = composer_job(:enqueue, requests, length(requests))
+    attachments = socket.assigns.composer_attachments
 
     action =
-      %{repository: repo, requests: requests, client: client}
+      %{repository: repo, requests: requests, client: client, attachments: attachments}
       |> then(fn action ->
         if socket.assigns.composer_split and length(requests) > 1 do
           Map.put(action, :objective, split_objective(socket, repo))
@@ -4037,6 +4057,29 @@ defmodule AgentBoardWeb.BoardLive do
          {:error, {refusal, _phrase}} -> {:enqueue_refused, requests, refusal}
        end
      end)}
+  end
+
+  # Read once, at the send, and kept until the receipt: a retry sends the same
+  # files, and an unfinished one never gets this far.
+  defp take_attachments(socket) do
+    new =
+      consume_uploaded_entries(socket, :attachments, fn %{path: path}, entry ->
+        # `path` is the temporary file LiveView made for this upload; the
+        # client's name for it only ever reaches `Attachments.safe_name/1`.
+        {:ok, content} = :file.read_file(path)
+        {:ok, %{name: entry.client_name, content: content}}
+      end)
+
+    assign(socket, :composer_attachments, socket.assigns.composer_attachments ++ new)
+  end
+
+  defp attachments_pending?(socket),
+    do: Enum.any?(socket.assigns.uploads.attachments.entries, &(not &1.done?))
+
+  defp cancel_attachments(socket) do
+    Enum.reduce(socket.assigns.uploads.attachments.entries, socket, fn entry, socket ->
+      cancel_upload(socket, :attachments, entry.ref)
+    end)
   end
 
   # The request behind the group is kept with it; the key makes a retry find
@@ -4112,7 +4155,8 @@ defmodule AgentBoardWeb.BoardLive do
     |> assign(
       composer_job: nil,
       composer_receipt: %{items: items},
-      composer_retry: if(failed > 0, do: {:enqueue, requests})
+      composer_retry: if(failed > 0, do: {:enqueue, requests}),
+      composer_attachments: if(failed > 0, do: socket.assigns.composer_attachments, else: [])
     )
     |> load(socket.assigns.repo)
     |> flash_receipt(items, failed)
@@ -4225,6 +4269,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp reset_composer(socket) do
     socket
     |> cancel_composer_job()
+    |> cancel_attachments()
     |> assign(
       composer_text: "",
       composer_title: nil,
@@ -4234,6 +4279,7 @@ defmodule AgentBoardWeb.BoardLive do
       composer_retry: nil,
       composer_receipt: nil,
       composer_answers: "",
+      composer_attachments: [],
       intake: nil,
       composer_executor_touched: false,
       composer_executor:

@@ -383,6 +383,67 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
   end
 
+  defp github_with_files do
+    test_pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, raw, conn} = Plug.Conn.read_body(conn)
+
+      case {conn.method, String.contains?(conn.request_path, "/contents/")} do
+        {"PUT", true} ->
+          send(test_pid, :file_stored)
+          conn |> Plug.Conn.put_status(201) |> Req.Test.json(%{})
+
+        {"POST", _} ->
+          send(test_pid, {:posted, Jason.decode!(raw)})
+
+          Req.Test.json(conn, %{
+            "number" => 300,
+            "html_url" => "https://github.com/fixture/lifecycle/issues/300"
+          })
+
+        _branch_exists ->
+          Req.Test.json(conn, %{})
+      end
+    end)
+  end
+
+  test "a file attached in the composer reaches the issue", %{conn: conn} do
+    github_with_files()
+    view = open_composer(conn)
+    type(view, "Refazer a tela de login")
+
+    upload =
+      file_input(view, "#composer-form", :attachments, [
+        %{name: "login mock.png", content: "PNGDATA", type: "image/png"}
+      ])
+
+    render_upload(upload, "login mock.png")
+    assert has_element?(view, "#composer-attachments", "login mock.png")
+
+    submit(view, %{"text" => "Refazer a tela de login"})
+
+    assert_received :file_stored
+    assert_received {:posted, %{"body" => body}}
+    assert body =~ "login_mock.png"
+    assert body =~ "board-attachments"
+  end
+
+  test "a type the board does not take is refused where it was chosen", %{conn: conn} do
+    github_with_files()
+    view = open_composer(conn)
+    type(view, "Refazer a tela de login")
+
+    upload =
+      file_input(view, "#composer-form", :attachments, [
+        %{name: "run.exe", content: "MZ", type: "application/octet-stream"}
+      ])
+
+    assert {:error, [[_ref, :not_accepted]]} = render_upload(upload, "run.exe")
+    assert has_element?(view, "#composer-attachments", "Tipo não aceito")
+    assert has_element?(view, "#composer-form button.ab-btn--primary[disabled]")
+  end
+
   test "the review shows what each task says and what the AI left open", %{conn: conn} do
     github()
 

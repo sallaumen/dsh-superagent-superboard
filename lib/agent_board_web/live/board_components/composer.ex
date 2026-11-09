@@ -26,6 +26,8 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   attr :title, :string, default: nil
   attr :split, :boolean, default: false
   attr :intake, :any, default: nil
+  attr :uploads, :map, default: nil
+  attr :attachments_ready, :integer, default: 0
   attr :selected, :any, default: nil
   attr :job, :any, default: nil
   attr :receipt, :any, default: nil
@@ -59,6 +61,8 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       |> assign(:selected_count, Enum.count(selected, &(&1 in 0..max(length(tasks) - 1, 0))))
       |> assign(:derived_title, Titles.from_request(assigns.text))
       |> assign(:busy, not is_nil(assigns.job))
+      |> assign(:attachment_entries, attachment_entries(assigns.uploads))
+      |> assign(:attachments_pending, attachments_pending?(assigns.uploads))
       |> assign(:step, step(assigns.receipt, status, assigns.job))
 
     ~H"""
@@ -278,11 +282,44 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           {gettext("Every chosen task needs a title, a description and a criterion.")}
         </p>
 
+        <section
+          :if={@attachment_entries != [] or @attachments_ready > 0}
+          id="composer-attachments"
+          class="ab-attach"
+          aria-label={gettext("Attached files")}
+        >
+          <p :if={@attachments_ready > 0} class="ab-meta">
+            {gettext("%{count} files ready to send", count: @attachments_ready)}
+          </p>
+          <div :for={entry <- @attachment_entries} class="ab-attach__item">
+            <.live_img_preview :if={image?(entry)} entry={entry} class="ab-attach__thumb" alt="" />
+            <span class="ab-attach__name">{entry.client_name}</span>
+            <span class="ab-meta">{entry_status(entry, @uploads)}</span>
+            <button
+              type="button"
+              class="ab-btn ab-btn--icon ab-btn--sm ab-btn--quiet"
+              phx-click="composer_remove_attachment"
+              phx-value-ref={entry.ref}
+              aria-label={gettext("Remove %{name}", name: entry.client_name)}
+            >
+              <.ico name="close" />
+            </button>
+          </div>
+          <p :for={error <- upload_level_errors(@uploads)} class="ab-compose__error" role="alert">
+            {error}
+          </p>
+        </section>
+
         <p :if={@confirm && !@busy} id="composer-confirm" class="ab-compose__confirm">
           {@confirm}
         </p>
 
         <div class="ab-compose__bar">
+          <label :if={@uploads} class="ab-btn ab-btn--sm ab-attach__pick">
+            <.ico name="plus" />{gettext("Attach")}
+            <.live_file_input upload={@uploads.attachments} class="ab-sr" />
+          </label>
+
           <button
             type="button"
             class="ab-btn ab-btn--icon ab-btn--sm"
@@ -332,7 +369,10 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           <button
             class="ab-btn ab-btn--primary"
             phx-disable-with={disable_label(@split, @status)}
-            disabled={submit_disabled?(@text, @split, @status, @selected_count, @busy) or @incomplete}
+            disabled={
+              submit_disabled?(@text, @split, @status, @selected_count, @busy) or @incomplete or
+                @attachments_pending
+            }
           >
             {button_label(@split, @status, @selected_count)}<.kbd key="⌘↵" />
           </button>
@@ -389,6 +429,31 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
     </div>
     """
   end
+
+  defp attachment_entries(nil), do: []
+  defp attachment_entries(uploads), do: uploads.attachments.entries
+
+  defp attachments_pending?(nil), do: false
+  defp attachments_pending?(uploads), do: Enum.any?(uploads.attachments.entries, &(not &1.done?))
+
+  defp image?(entry), do: entry.client_type in ~w(image/png image/jpeg image/webp image/gif)
+
+  defp entry_status(entry, uploads) do
+    case upload_errors(uploads.attachments, entry) do
+      [error | _] -> upload_error(error)
+      [] -> if entry.done?, do: gettext("ready"), else: "#{entry.progress}%"
+    end
+  end
+
+  defp upload_level_errors(nil), do: []
+
+  defp upload_level_errors(uploads),
+    do: Enum.map(upload_errors(uploads.attachments), &upload_error/1)
+
+  defp upload_error(:too_large), do: gettext("Larger than 20 MB")
+  defp upload_error(:too_many_files), do: gettext("At most 8 files")
+  defp upload_error(:not_accepted), do: gettext("Type not accepted")
+  defp upload_error(_other), do: gettext("Could not read this file")
 
   defp clarifying_questions(spec) do
     case spec["blocking_questions"] do
@@ -524,6 +589,9 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
 
   @doc "The human reason for a failed creation."
   def failure_reason(:conflict), do: gettext("The issue already existed with another number")
+
+  def failure_reason(:attachments_failed),
+    do: gettext("The files could not be saved on GitHub; try again")
 
   def failure_reason(:dependency_failed),
     do: gettext("A task it depends on was not created; try again")
