@@ -31,6 +31,7 @@ defmodule AgentBoard.ActionsTest do
     :resume_task,
     :retry_ticket,
     :auto_retry_ticket,
+    :release_task,
     :dispatch_task,
     :stop_execution,
     :provision_superagent,
@@ -165,6 +166,9 @@ defmodule AgentBoard.ActionsTest do
       :auto_retry_ticket ->
         %{ticket_id: "t1", attempt: 1, client: orchestrator}
 
+      :release_task ->
+        %{task: task, repository: repo, client: github}
+
       :dispatch_task ->
         dispatch_params(task, repo)
 
@@ -220,9 +224,11 @@ defmodule AgentBoard.ActionsTest do
       end
     end
 
-    test "only the automatic retry holds a standing authorization, and it is red" do
-      assert [%{name: :auto_retry_ticket, risk: :red, standing: %{by: "auto_retry"}}] =
-               Enum.filter(Actions.catalog(), &Map.has_key?(&1, :standing))
+    test "only the automatic retry and the release hold a standing authorization, both red" do
+      assert [
+               %{name: :auto_retry_ticket, risk: :red, standing: %{by: "auto_retry"}},
+               %{name: :release_task, risk: :red, standing: %{by: "release"}}
+             ] = Enum.filter(Actions.catalog(), &Map.has_key?(&1, :standing))
     end
 
     test "the sentence names the real values", %{repo: repo} do
@@ -255,7 +261,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 16
+      assert length(reds) == 17
 
       for name <- reds do
         params = red_params(name, context)
@@ -269,7 +275,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 16
+      assert Repo.aggregate(Task, :count, :id) == 17
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -753,7 +759,8 @@ defmodule AgentBoard.ActionsTest do
        [
          "lib/agent_board/board.ex",
          "lib/agent_board/board/requests.ex",
-         "lib/agent_board/board/split_graph.ex"
+         "lib/agent_board/board/split_graph.ex",
+         "lib/agent_board/release.ex"
        ]},
       # AgentControl.retry is the owner's retry, itself reachable only from here.
       {~r/\bOrchestrator\.(retry|set_max_workers)\(/, ["lib/agent_board/agent_control.ex"]},

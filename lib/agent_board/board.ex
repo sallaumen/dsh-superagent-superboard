@@ -887,7 +887,11 @@ defmodule AgentBoard.Board do
         merged: merged,
         done?: total > 0 and merged == total,
         issue_url: objective.issue_url,
-        tasks: Enum.map(objective.tasks, &Map.take(&1, [:id, :number, :title, :state])),
+        tasks:
+          Enum.map(
+            objective.tasks,
+            &Map.take(&1, [:id, :number, :title, :state, :held, :released_at])
+          ),
         edges: edges
       }
     end)
