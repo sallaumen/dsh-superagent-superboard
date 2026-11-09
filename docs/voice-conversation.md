@@ -19,15 +19,15 @@ agent**. Double Space focuses a conversation field that is already visible;
 when no field is visible it does not open another window. The voice panel and
 task conversation also accept text directly.
 
-**External dictation** (optional): in Configurações → Voz → "Entrada para
-conversar com o agente", choose "Ditado externo (Wispr Flow)". Double Space
+**External dictation** (optional): in Configurações → Voz e resumo → "Como
+você envia", choose "Ditado externo · Wispr Flow". Double Space
 then opens its focused field. Wispr Flow types as a keyboard: after the dictated
 text settles for 0.7 s, the board sends it. Typing manually sends on Enter, and
 Esc closes. With the composer open, Double Space focuses its request field.
 The board does not invoke the Wispr app or its shortcut.
 
-**Board microphone** (optional, paid): in Configurações → Voz → "Entrada para
-conversar com o agente", choose "Microfone do board" (board
+**Board microphone** (optional, paid): in Configurações → Voz e resumo → "Como
+você envia", choose "Microfone do board · ElevenLabs, pago" (board
 microphone). Then double Space records, silence ends the turn (0.8 / 1.2 / 1.8 s),
 a sound marks opening and closing, the bars show the level and the transcript is
 ElevenLabs' (Scribe).
@@ -43,9 +43,9 @@ every 5 minutes, so the answer may be spoken a few minutes after it appears on
 GitHub. The "Chamar quando uma tarefa precisar de mim" toggle also silences that
 notice.
 
-## Settings (Configurações → Voz)
+## Settings (Configurações → Voz e resumo)
 
-- **Entrada para conversar com o agente**: Texto (default, existing field),
+- **Como você envia**: Texto (default, existing field),
   Ditado externo (Wispr Flow, opt-in) or Microfone do board (ElevenLabs Scribe,
   opt-in and paid). A previously saved Wispr Flow choice is preserved.
 - **Motor da voz** (voice engine): Navegador em tudo (browser everywhere; default,

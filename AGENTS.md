@@ -33,7 +33,7 @@ you branch and before you merge. The full protocol is
 **Never update or restart the board's service checkout.** The live board runs
 from its own checkout (the plist's `WorkingDirectory`); a `git pull` or a
 `launchctl kickstart` there restarts the owner's board and interrupts agents
-mid-ticket. Updating is the owner's button in **Configurações → Versão**;
+mid-ticket. Updating is the owner's button in **Configurações → Sistema**;
 nothing in the app pulls `main` on a timer.
 
 ## The agent

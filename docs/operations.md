@@ -32,7 +32,7 @@ the compose file, or `docker update --restart unless-stopped <container>`):
 without it Docker leaves it stopped after a reboot and the board never comes
 back. `scripts/service.sh` waits for the database before migrating, for up to
 `AGENT_BOARD_DB_WAIT` seconds (300), and then exits so launchd tries again. The
-**Update and restart** button is in **Settings → Version** and appears after **Check** when the
+**Update and restart** button is in **Settings → System** and appears after **Check** when the
 checkout is behind; the service log records the deps/migrate/boot sequence.
 
 ```sh
