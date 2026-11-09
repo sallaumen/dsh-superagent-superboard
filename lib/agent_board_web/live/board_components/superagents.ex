@@ -17,16 +17,18 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
     <section id="superagents-panel" class="ab-superagents">
       <header class="ab-superagents__head">
         <div>
-          <h2>Superagentes DeepSeek</h2>
+          <div class="ab-superagents__title">
+            <h2>Superagentes DeepSeek</h2>
+            <span class="ab-tag ab-tag--agent">{length(@superagents)}</span>
+          </div>
           <p class="ab-meta">
             Um agente por projeto. O board observa o processo; não o inicia como filho.
           </p>
         </div>
-        <span class="ab-tag ab-tag--agent">{length(@superagents)}</span>
       </header>
 
       <p :if={@superagents == []} class="ab-empty ab-superagents__empty">
-        Nenhum superagent registrado. As fases seguintes adicionam projetos por aqui.
+        Nenhum superagent registrado. Use “Adicionar projeto” abaixo para criar o primeiro.
       </p>
 
       <div :if={@superagents != []} class="ab-superagents__list">
@@ -40,9 +42,15 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
                   else: "repositório removido"}
               </strong>
             </div>
-            <span class={["ab-tag", state_class(superagent.observed_state)]}>
-              {state_label(superagent.observed_state)}
-            </span>
+            <div class="ab-superagent__state">
+              <span class={["ab-tag", state_class(superagent.observed_state)]}>
+                {state_label(superagent.observed_state)}
+              </span>
+              <span class="ab-meta">desejado · {desired_label(superagent.desired_state)}</span>
+              <span class="ab-meta">
+                última leitura · {observed_at(superagent.observed_at, @tz_offset)}
+              </span>
+            </div>
           </div>
 
           <dl class="ab-superagent__facts">
@@ -52,18 +60,8 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
             <div>
               <dt>Porta</dt><dd>{superagent.port}</dd>
             </div>
-            <div>
-              <dt>Workers</dt><dd>{superagent.max_workers}</dd>
-            </div>
-            <div>
-              <dt>Desejado</dt><dd>{desired_label(superagent.desired_state)}</dd>
-            </div>
             <div class="ab-superagent__wide">
               <dt>State dir</dt><dd class="ab-superagent__path">{superagent.state_dir}</dd>
-            </div>
-            <div class="ab-superagent__wide">
-              <dt>Última leitura</dt>
-              <dd>{observed_at(superagent.observed_at, @tz_offset)}</dd>
             </div>
           </dl>
 
@@ -82,17 +80,6 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
               label={remote_label(superagent)}
               confirm_label={remote_label(superagent)}
               busy_label="Aplicando…"
-            />
-
-            <.live_component
-              module={AgentAction}
-              id={"superagent-remove-#{superagent.id}"}
-              mode={:remove_superagent}
-              tone={:halt}
-              superagent={superagent}
-              label="Remover"
-              confirm_label="Remover"
-              busy_label="Removendo…"
             />
 
             <button
@@ -116,10 +103,21 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
               Retomar
             </button>
 
+            <.live_component
+              module={AgentAction}
+              id={"superagent-remove-#{superagent.id}"}
+              mode={:remove_superagent}
+              tone={:halt}
+              superagent={superagent}
+              label="Remover"
+              confirm_label="Remover"
+              busy_label="Removendo…"
+            />
+
             <span class="ab-superagent__workers">
               <button
                 type="button"
-                class="ab-btn ab-btn--sm ab-btn--quiet"
+                class="ab-btn ab-btn--sm"
                 aria-label="Menos uma sessão"
                 phx-click="superagent_scale"
                 phx-value-id={superagent.id}
@@ -129,7 +127,7 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
               <span>{superagent.max_workers} sessões</span>
               <button
                 type="button"
-                class="ab-btn ab-btn--sm ab-btn--quiet"
+                class="ab-btn ab-btn--sm"
                 aria-label="Mais uma sessão"
                 phx-click="superagent_scale"
                 phx-value-id={superagent.id}
