@@ -141,3 +141,8 @@ project — there are no workflow copies. `mix agent_kit.check` validates the
 installation (inside `mix gate`); `mix agent_kit.outdated` warns when a new tag
 exists. Reusable improvements go to the kit; local rules stay here — the details
 are in [Agent practices](agent/practices.md).
+
+We recommend running the executor and local agents with
+[Ponytail](https://github.com/DietrichGebert/ponytail), which keeps changes to
+the least new code; it is a user-level install, never a project dependency. The
+executor setup is in [Setting the agent up](agent/setup.md#7-shared-practices-in-the-executors-worktree).
