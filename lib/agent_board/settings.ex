@@ -13,8 +13,8 @@ defmodule AgentBoard.Settings do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.Board.Setting
   alias AgentBoard.Repo
+  alias AgentBoard.Settings.Setting
 
   @topic "settings"
 

@@ -1,4 +1,4 @@
-defmodule AgentBoard.Board.Setting do
+defmodule AgentBoard.Settings.Setting do
   @moduledoc "One board-wide setting: a key and its value."
   use Ecto.Schema
 
