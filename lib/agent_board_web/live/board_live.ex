@@ -129,6 +129,7 @@ defmodule AgentBoardWeb.BoardLive do
         toast: nil,
         highlight_changes: false,
         panel: nil,
+        settings_section: nil,
         logs_sources: [],
         logs_entries: [],
         logs_state: Logs.empty_state(),
@@ -1476,6 +1477,10 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("show_panel", %{"panel" => "settings", "section" => section}, socket) do
+    {:noreply, BoardNavigation.open_panel(socket, "settings", section)}
+  end
+
   def handle_event("show_panel", %{"panel" => panel}, socket) do
     {:noreply, BoardNavigation.open_panel(socket, panel)}
   end
@@ -1795,6 +1800,8 @@ defmodule AgentBoardWeb.BoardLive do
 
       {:noreply,
        start_async(socket, :update_flow, fn ->
+         config_mtimes = updater().freeze_config_files()
+
          step = fn id, fun ->
            send(parent, {:update_step, id, :running})
 
@@ -1809,8 +1816,18 @@ defmodule AgentBoardWeb.BoardLive do
            end
          end
 
-         with {:ok, sha} <- Actions.run(:update_board, %{}, ui()),
-              :ok <- step.(:deps, fn -> updater().prepare() end),
+         with {:ok, sha} <-
+                step.(:fetch, fn ->
+                  result = Actions.run(:update_board, %{}, ui())
+                  updater().restore_config_files(config_mtimes)
+                  result
+                end),
+              :ok <-
+                step.(:deps, fn ->
+                  result = updater().prepare()
+                  updater().restore_config_files(config_mtimes)
+                  result
+                end),
               :ok <- step.(:compile, fn -> updater().prepare_build() end),
               :ok <- step.(:assets, fn -> updater().prepare_assets() end),
               :ok <- step.(:migrate, fn -> updater().migrate() end),
@@ -3349,6 +3366,7 @@ defmodule AgentBoardWeb.BoardLive do
             voice={@voice}
             dispatch_paused={@dispatch_paused}
             active={@panel == "settings"}
+            section={@settings_section}
             board_locale={@board_locale}
             return_to={BoardNavigation.path(@repo, "settings")}
           />

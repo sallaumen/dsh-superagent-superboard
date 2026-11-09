@@ -20,6 +20,7 @@ defmodule AgentBoardWeb.Components.VersionBadgeTest do
     assert html =~ "main avançou: 2 commits"
     assert html =~ ~s(phx-click="show_panel")
     assert html =~ ~s(phx-value-panel="settings")
+    assert html =~ ~s(phx-value-section="version")
     assert html =~ ~s(id="version-behind")
   end
 

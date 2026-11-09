@@ -32,6 +32,38 @@ defmodule AgentBoard.System.Updater do
   @marker ".agent-board-next-build"
   @mix_timeout 180_000
 
+  @doc """
+  Records the mtimes of the files the dev code reloader watches.
+
+  A fast-forward can change `mix.lock` or a config file while the old node
+  still serves; Phoenix's reloader raises "could not compile application"
+  on the next request. Restoring these mtimes right after the merge keeps
+  the reloader quiet during the short preparation window; the next boot
+  reads the real files.
+  """
+  @spec freeze_config_files(Path.t()) :: [{String.t(), tuple()}]
+  def freeze_config_files(root \\ Git.root()) do
+    for file <- config_files(root),
+        {:ok, %File.Stat{mtime: mtime}} <- [File.stat(Path.join(root, file))],
+        do: {file, mtime}
+  end
+
+  @spec restore_config_files([{String.t(), tuple()}], Path.t()) :: :ok
+  def restore_config_files(times, root \\ Git.root()) do
+    Enum.each(times, fn {file, mtime} -> File.touch(Path.join(root, file), mtime) end)
+    :ok
+  end
+
+  defp config_files(root) do
+    configs =
+      root
+      |> Path.join("config/*.exs")
+      |> Path.wildcard()
+      |> Enum.map(&Path.relative_to(&1, root))
+
+    ["mix.exs", "mix.lock" | configs]
+  end
+
   @doc "Fetches origin/main and fast-forwards HEAD to it."
   @spec pull() :: result()
   def pull do

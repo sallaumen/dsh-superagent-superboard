@@ -36,6 +36,13 @@ defmodule AgentBoardWeb.UpdateFlowTest do
 
     def restart, do: notify(:restart_called)
 
+    def freeze_config_files, do: []
+
+    def restore_config_files(_times) do
+      notify(:restore_called)
+      :ok
+    end
+
     defp notify(message), do: send(Application.get_env(:agent_board, :updater_test_pid), message)
     defp result(key), do: Application.get_env(:agent_board, key, :ok)
   end
@@ -92,6 +99,9 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     assert html =~ "Gerando os assets"
     assert html =~ "Aplicando migrações"
     assert html =~ "Build pronto"
+
+    assert_receive :restore_called
+    assert_receive :restore_called
 
     for message <- [
           :prepare_called,

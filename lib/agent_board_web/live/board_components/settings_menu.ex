@@ -2,6 +2,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   @moduledoc "The board-wide settings panel, with one section visible at a time."
   use AgentBoardWeb, :live_component
 
+  import Phoenix.LiveView, only: [push_patch: 2]
+
+  alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
   @section_keys ~w(inspect dispatch voice summary repositories appearance language version)
@@ -16,8 +19,17 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   @impl true
   def update(assigns, socket) do
-    socket = assign(socket, assigns)
-    section = if socket.assigns[:repo], do: socket.assigns.section, else: "repositories"
+    previous = socket.assigns[:section]
+    socket = assign(socket, Map.delete(assigns, :section))
+
+    # The URL's section wins when it names one; otherwise keep the current
+    # one (or repositories before a repo is selected).
+    section =
+      case assigns[:section] do
+        key when key in @section_keys -> key
+        _ -> if socket.assigns[:repo], do: previous, else: "repositories"
+      end
+
     {:ok, assign(socket, section: section)}
   end
 
@@ -30,7 +42,10 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
         do: section,
         else: socket.assigns.section
 
-    {:noreply, assign(socket, section: section)}
+    {:noreply,
+     socket
+     |> assign(section: section)
+     |> push_patch(to: BoardNavigation.settings_path(socket.assigns[:repo], section))}
   end
 
   @impl true

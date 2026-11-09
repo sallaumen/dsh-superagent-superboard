@@ -7,6 +7,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.Board.Task
 
   @panels ~w(activity intake ai conversation voice history composer shortcuts executors settings superagents logs)
+  @settings_sections ~w(inspect dispatch voice summary repositories appearance language version)
 
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
@@ -23,6 +24,14 @@ defmodule AgentBoardWeb.BoardNavigation do
     query = %{"repo" => "#{repo.owner}/#{repo.name}", "panel" => panel}
     query = if task_id, do: Map.put(query, "task", task_id), else: query
     query = if tab, do: Map.put(query, "tab", tab), else: query
+    "/?" <> URI.encode_query(query)
+  end
+
+  @doc "The settings panel URL, keeping the section alive across a restart."
+  def settings_path(repo, section \\ nil) do
+    query = %{"panel" => "settings"}
+    query = if repo, do: Map.put(query, "repo", "#{repo.owner}/#{repo.name}"), else: query
+    query = if section in @settings_sections, do: Map.put(query, "section", section), else: query
     "/?" <> URI.encode_query(query)
   end
 
@@ -71,9 +80,13 @@ defmodule AgentBoardWeb.BoardNavigation do
       conversation: nil,
       comments: [],
       inspector_tab: "conversa",
+      settings_section: settings_section(panel, params["section"]),
       view: view
     )
   end
+
+  defp settings_section("settings", section) when section in @settings_sections, do: section
+  defp settings_section(_panel, _section), do: nil
 
   defp default_tab(%Task{state: "running"}), do: "atividade"
   defp default_tab(_task), do: "conversa"
@@ -97,7 +110,6 @@ defmodule AgentBoardWeb.BoardNavigation do
              "composer",
              "shortcuts",
              "executors",
-             "settings",
              "superagents"
            ] do
     if not is_nil(socket.assigns.repo) or panel == "settings",
@@ -105,11 +117,16 @@ defmodule AgentBoardWeb.BoardNavigation do
       else: socket
   end
 
+  def open_panel(socket, "settings"), do: open_panel(socket, "settings", nil)
+
   def open_panel(socket, "voice"), do: push_patch(socket, to: path(socket.assigns.repo, "voice"))
 
   def open_panel(socket, "logs"), do: push_patch(socket, to: path(socket.assigns.repo, "logs"))
 
   def open_panel(socket, _panel), do: socket
+
+  def open_panel(socket, "settings", section),
+    do: push_patch(socket, to: settings_path(socket.assigns.repo, section))
 
   defp task(nil, _id), do: nil
 
