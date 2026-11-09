@@ -140,6 +140,16 @@ defmodule AgentBoard.LocalCITest do
              )
   end
 
+  test "a workpad with an empty Validação and no ticket yields no gate" do
+    status =
+      LocalCI.by_pr(@repo, [],
+        workpads: %{7 => workpad(nil, [30])},
+        heads: %{30 => @head}
+      )
+
+    assert status == %{}
+  end
+
   test "another repository and a report without precommit stay unknown" do
     other =
       ticket([{"mix precommit passed (1 test, 0 failures).", ~U[2026-11-06 12:00:00Z]}], [

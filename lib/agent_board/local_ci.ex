@@ -79,6 +79,10 @@ defmodule AgentBoard.LocalCI do
     Enum.find_value(ticket["numbers"] || [], &Map.get(workpads, &1))
   end
 
+  # An empty Validação is no gate: the workpad contributes no status, and
+  # there is no report to fall back to when its issue has no ticket.
+  defp workpad_statuses(_ticket, %{validation: nil}, _heads), do: %{}
+
   # The workpad's gate covers every PR the ticket names and every PR the
   # workpad names, each checked against its own head.
   defp workpad_statuses(ticket, workpad, heads) do
@@ -89,6 +93,10 @@ defmodule AgentBoard.LocalCI do
     |> Enum.uniq()
     |> Map.new(&{&1, workpad_status(workpad.validation, Map.get(heads, &1))})
   end
+
+  # Defensive totality: a missing validation has no state to report. The
+  # guard above keeps this path out of `workpad_statuses/3`.
+  defp workpad_status(nil, _head), do: nil
 
   defp workpad_status(validation, head) do
     state = workpad_state(validation, head)
