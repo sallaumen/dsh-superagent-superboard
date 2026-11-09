@@ -1,5 +1,5 @@
 defmodule AgentBoardWeb.BoardComponents.MergeLog do
-  @moduledoc "Mesclados: seven days in dots, then the record by day."
+  @moduledoc "Merged: seven days side by side, newest first, each with its record."
   use AgentBoardWeb, :html
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
@@ -8,22 +8,24 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
   attr :log, :map, required: true
   attr :frozen, :boolean, default: false
   attr :has_history, :boolean, default: false
-  attr :idle, :boolean, default: false
 
   def merge_log(assigns) do
-    groups = assigns.log.groups
-    hidden = max(length(groups) - 3, 0)
+    days =
+      assigns.log.days
+      |> Enum.reverse()
+      |> Enum.map(fn day ->
+        Map.put(day, :group, Enum.find(assigns.log.groups, &(&1.date == day.date)))
+      end)
 
-    assigns =
-      assigns
-      |> assign(:groups, groups)
-      |> assign(:hidden_groups, hidden)
+    assigns = assign(assigns, :days, days)
 
     ~H"""
     <section id="sec-log" aria-labelledby="sec-log-title">
       <div class="ab-sec__head">
         <h2 id="sec-log-title">{gettext("Merged")}</h2>
-        <span class="ab-sec__count">{count(@log.total, @frozen)} em 7 dias</span>
+        <span class="ab-sec__count">
+          {count(@log.total, @frozen)} {gettext("in 7 days")}
+        </span>
         <span class="ab-top__spacer"></span>
         <button
           :if={@has_history}
@@ -37,50 +39,38 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
         </button>
       </div>
 
-      <div class="ab-week" aria-label={gettext("Merges per day, last 7 days")}>
+      <div class="ab-days" role="list" aria-label={gettext("Merges per day, last 7 days")}>
         <div
-          :for={day <- @log.days}
-          class={["ab-day", day.today && "is-today"]}
-          title={
-            "#{day.n} merges" <>
-              if(day.fail > 0, do: ", #{day.fail} com CI local falhando", else: "") <>
-              if(day.ok > 0, do: ", #{day.ok} com CI local ok", else: "")
-          }
+          :for={day <- @days}
+          id={"log-day-#{day.date}"}
+          class={["ab-day", day.today && "is-today", day.n == 0 && "is-empty"]}
+          role="listitem"
         >
-          <div class="ab-day__dots">
-            <span :if={day.n == 0} class="ab-day__zero" aria-hidden="true"></span>
+          <div class="ab-day__head">
+            <b class="ab-day__label">{day.label}</b>
+            <span class="ab-day__count">{day_count(day)}</span>
+          </div>
+
+          <div class="ab-day__dots" aria-hidden="true">
             <%= if day.n > 0 do %>
               <i
-                :for={index <- 1..min(day.n, 8)}
+                :for={index <- 1..min(day.n, 12)}
                 class={index <= day.fail && "is-fail"}
-                aria-hidden="true"
               ></i>
+              <em :if={day.n > 12}>+{day.n - 12}</em>
             <% end %>
-            <em :if={day.n > 0}>{day.n}</em>
-          </div>
-          <span class="ab-day__label">{day.label}</span>
-        </div>
-      </div>
-
-      <div :if={@log.total == 0} class="ab-sec__empty">{gettext("No PRs merged this week.")}</div>
-
-      <div :if={@log.total > 0} class="ab-log">
-        <h3 class="ab-log__title">{gettext("7-day history")}</h3>
-        <div :for={group <- @groups} class="ab-log__group">
-          <div class="ab-log__day">
-            <span class="ab-label">{group.label}</span>
-            <span class="ab-data-sm ab-faint">
-              {length(group.items)}{if group.more > 0, do: " de #{group.n}", else: ""}
-            </span>
           </div>
 
           <a
-            :for={pr <- group.items}
+            :for={pr <- group_items(day.group)}
             class="ab-pr"
             href={pr.url}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={"PR ##{pr.number}: #{pr.title} (abre o GitHub em nova aba)"}
+            aria-label={
+              "PR ##{pr.number}: #{pr.title} " <>
+                gettext("(opens GitHub in a new tab)")
+            }
           >
             <.glyph kind={:done} />
             <span class="ab-pr__title">
@@ -102,21 +92,41 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
               <span class="ab-data-sm ab-faint">{pr.at}</span>
             </span>
           </a>
+
+          <button
+            :if={group_more(day.group) > 0}
+            type="button"
+            class="ab-more ab-day__more"
+            phx-click="show_panel"
+            phx-value-panel="history"
+            data-panel-trigger
+          >
+            {gettext("and %{count} more", count: group_more(day.group))}
+          </button>
+
+          <span :if={day.n == 0} class="ab-day__none">{gettext("No merges.")}</span>
         </div>
-        <button
-          :if={@hidden_groups > 0}
-          type="button"
-          class="ab-more"
-          phx-click="show_panel"
-          phx-value-panel="history"
-          data-panel-trigger
-        >
-          {ngettext("%{count} more day in history", "%{count} more days in history", @hidden_groups)}
-        </button>
       </div>
     </section>
     """
   end
+
+  defp group_items(nil), do: []
+  defp group_items(group), do: group.items
+
+  defp group_more(nil), do: 0
+  defp group_more(group), do: group.more
+
+  defp day_count(%{n: 0}), do: "0"
+
+  defp day_count(%{n: n, group: %{items: items, more: more}}) when more > 0,
+    do:
+      gettext("%{shown} of %{total}",
+        shown: length(items),
+        total: n
+      )
+
+  defp day_count(%{n: n}), do: "#{n}"
 
   defp count(0, _frozen), do: "0"
   defp count(n, true), do: "≥#{n}"
