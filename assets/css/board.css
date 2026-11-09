@@ -2609,3 +2609,49 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
 }
 .ab-unblock__form textarea { resize: vertical; min-height: 7rem; }
 .ab-unblock__form-actions { display: flex; gap: var(--space-2); margin-top: var(--space-1); }
+
+/* ---------- persistent "main moved" badge ---------- */
+.ab-version-behind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border: 1px solid color-mix(in oklab, var(--stale) 45%, var(--line));
+  border-radius: var(--radius-pill);
+  background: var(--stale-wash);
+  color: var(--stale);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ab-version-behind:hover { border-color: var(--stale); }
+.ab-version-behind:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ab-version-behind__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--stale);
+}
+.ab-version-behind__short { display: none; }
+@media (max-width: 720px) {
+  .ab-version-behind { padding: 0 var(--space-2); }
+  .ab-version-behind__long { display: none; }
+  .ab-version-behind__short { display: inline; }
+}
+
+/* The update is manual; say what the restart does before the click. */
+.version-warning {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--stale);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--stale-wash);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 18px;
+}
