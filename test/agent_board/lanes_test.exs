@@ -1,10 +1,10 @@
-defmodule AgentBoard.WorkTest do
+defmodule AgentBoard.LanesTest do
   @moduledoc "The reading lanes: order, freshness markers, duplicates and the digest."
   use AgentBoard.DataCase, async: true
 
   import Ecto.Query
 
-  alias AgentBoard.{Board, Repo, Work}
+  alias AgentBoard.{Board, Lanes, Repo}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   test "needs puts new items before old ones and follows the urgency order" do
@@ -19,7 +19,7 @@ defmodule AgentBoard.WorkTest do
 
     board = %{ready: [old_review, new_review], blocked: [new_blocked], question: [], running: []}
 
-    needs = Work.needs(repo, board, now: now, last_visit: last_visit)
+    needs = Lanes.needs(repo, board, now: now, last_visit: last_visit)
 
     # Merjed work is done; a red remote check is not a decision for the person.
     assert Enum.map(needs, & &1.title) == ["New blocked", "New review", "Old review"]
@@ -43,7 +43,7 @@ defmodule AgentBoard.WorkTest do
     }
 
     [need] =
-      Work.needs(repo, %{ready: [review], blocked: [], question: []},
+      Lanes.needs(repo, %{ready: [review], blocked: [], question: []},
         now: now,
         tickets_by_number: %{27 => ticket},
         local_ci: %{}
@@ -76,7 +76,7 @@ defmodule AgentBoard.WorkTest do
     }
 
     [need] =
-      Work.needs(repo, %{ready: [review], blocked: [], question: []},
+      Lanes.needs(repo, %{ready: [review], blocked: [], question: []},
         now: now,
         tickets_by_number: %{27 => %{"numbers" => [27], "own_threads" => [28]}},
         local_ci: local
@@ -106,7 +106,7 @@ defmodule AgentBoard.WorkTest do
     ### Bloqueio
     """)
 
-    [need] = Work.needs(repo, %{ready: [], blocked: [], question: [question]}, now: now)
+    [need] = Lanes.needs(repo, %{ready: [], blocked: [], question: [question]}, now: now)
 
     assert need.why == "**O agente perguntou:** Devo manter o boss na arena ou tirar"
   end
@@ -125,7 +125,7 @@ defmodule AgentBoard.WorkTest do
     ticket = %{"numbers" => [32], "report" => "waiting", "report_summary" => "Waiting."}
 
     [need] =
-      Work.needs(repo, %{ready: [], blocked: [blocked], question: []},
+      Lanes.needs(repo, %{ready: [], blocked: [blocked], question: []},
         now: now,
         tickets_by_number: %{32 => ticket}
       )
@@ -154,7 +154,7 @@ defmodule AgentBoard.WorkTest do
     }
 
     [need] =
-      Work.needs(repo, %{ready: [review], blocked: [], question: []},
+      Lanes.needs(repo, %{ready: [review], blocked: [], question: []},
         now: now,
         tickets_by_number: %{27 => %{"numbers" => [27], "own_threads" => [28]}},
         local_ci: local
@@ -170,7 +170,7 @@ defmodule AgentBoard.WorkTest do
     now = ~U[2026-11-06 15:00:00Z]
     review = task(repo, 27, "Pixel art", "ready", DateTime.add(now, -60, :second))
 
-    [need] = Work.needs(repo, %{ready: [review], blocked: [], question: []}, now: now)
+    [need] = Lanes.needs(repo, %{ready: [review], blocked: [], question: []}, now: now)
 
     assert need.why =~ "Pronto para revisão"
     assert need.why =~ "PR não identificado"
@@ -195,7 +195,7 @@ defmodule AgentBoard.WorkTest do
     }
 
     needs =
-      Work.needs(repo, %{ready: [], blocked: [blocked, quiet_block], question: [asked, silent]},
+      Lanes.needs(repo, %{ready: [], blocked: [blocked, quiet_block], question: [asked, silent]},
         now: now,
         tickets_by_number: tickets
       )
@@ -255,7 +255,7 @@ defmodule AgentBoard.WorkTest do
       }
 
       needs =
-        Work.needs(repo, %{ready: [], blocked: [out, person], question: []},
+        Lanes.needs(repo, %{ready: [], blocked: [out, person], question: []},
           now: now,
           tickets_by_number: tickets
         )
@@ -277,10 +277,10 @@ defmodule AgentBoard.WorkTest do
       board = %{ready: [], blocked: [], question: [], retrying: [retrying]}
       tickets = %{62 => failed_ticket(62, @transport, 0)}
 
-      assert Work.needs(repo, board, now: now, tickets_by_number: tickets) == []
+      assert Lanes.needs(repo, board, now: now, tickets_by_number: tickets) == []
 
       assert [%{number: 62, line: line}] =
-               Work.retrying(board, now: now, tz_offset: 180, tickets_by_number: tickets)
+               Lanes.retrying(board, now: now, tz_offset: 180, tickets_by_number: tickets)
 
       assert line ==
                "**Falha de rede ao chamar o modelo.** Nova tentativa automática às 14:11 (1 de 3)."
@@ -295,7 +295,7 @@ defmodule AgentBoard.WorkTest do
       board = %{ready: [review], blocked: [blocked], question: [], retrying: [retrying]}
 
       assert [down, %{number: 64, kind: :review}] =
-               Work.needs(repo, board, now: now, agent: :down)
+               Lanes.needs(repo, board, now: now, agent: :down)
 
       assert %{kind: :agent_down, title: "Agente fora do ar", number: nil, waiting: 2} = down
 
@@ -304,7 +304,7 @@ defmodule AgentBoard.WorkTest do
 
       assert [%{label: "Religar o agente", restart_agent: true}] = down.actions
 
-      assert Enum.map(Work.needs(repo, board, now: now, agent: :up), & &1.kind) == [
+      assert Enum.map(Lanes.needs(repo, board, now: now, agent: :up), & &1.kind) == [
                :blocked,
                :review
              ]
@@ -323,7 +323,7 @@ defmodule AgentBoard.WorkTest do
     }
 
     [need] =
-      Work.needs(repo, %{ready: [], blocked: [], question: [], running: [quiet, busy]},
+      Lanes.needs(repo, %{ready: [], blocked: [], question: [], running: [quiet, busy]},
         now: now,
         last_visit: DateTime.add(now, -1200, :second),
         silences: silences,
@@ -351,7 +351,7 @@ defmodule AgentBoard.WorkTest do
     }
 
     whys =
-      Work.needs(repo, %{ready: [], blocked: [], question: [], running: [edited, started]},
+      Lanes.needs(repo, %{ready: [], blocked: [], question: [], running: [edited, started]},
         now: now,
         silences: silences,
         stall_after: 900,
@@ -372,7 +372,7 @@ defmodule AgentBoard.WorkTest do
     blocked = task(repo, 62, "Blocked", "blocked", at)
 
     needs =
-      Work.needs(repo, %{ready: [review], blocked: [blocked], question: [], running: [quiet]},
+      Lanes.needs(repo, %{ready: [review], blocked: [blocked], question: [], running: [quiet]},
         now: now,
         silences: %{61 => %{at: ~U[2026-11-07 11:00:00Z], source: :report, seconds: 3600}},
         stall_after: 900
@@ -392,7 +392,7 @@ defmodule AgentBoard.WorkTest do
 
     earlier = task(repo, 20, "Unrelated work", "queued", DateTime.add(now, -3600, :second))
 
-    queue = Work.queue(repo, %{}, now: now)
+    queue = Lanes.queue(repo, %{}, now: now)
 
     assert Enum.map(queue.items, & &1.id) == [earlier.id, later.id]
     assert Enum.at(queue.items, 1).note == "Parece repetir #24, já mesclado"
@@ -415,7 +415,7 @@ defmodule AgentBoard.WorkTest do
       }
     }
 
-    log = Work.merge_log(repo, now: today, tz_offset: 0, local_ci: local)
+    log = Lanes.merge_log(repo, now: today, tz_offset: 0, local_ci: local)
 
     assert log.total == 2
     assert List.last(log.days).n == 1
@@ -436,7 +436,7 @@ defmodule AgentBoard.WorkTest do
     now = ~U[2026-11-06 15:00:00Z]
     merged(repo, 9, "Remote only", "failure", now)
 
-    log = Work.merge_log(repo, now: now, tz_offset: 0)
+    log = Lanes.merge_log(repo, now: now, tz_offset: 0)
     item = hd(hd(log.groups).items)
 
     assert item.ci == "unknown"
@@ -455,7 +455,7 @@ defmodule AgentBoard.WorkTest do
     task(repo, 3, "Was already here", "queued", DateTime.add(now, -7200, :second))
 
     board = %{running: [], question: [], ready: [], blocked: [], task_counts: %{queued: 2}}
-    digest = Work.digest(repo, board, now: now, last_visit: last_visit, tz_offset: 0)
+    digest = Lanes.digest(repo, board, now: now, last_visit: last_visit, tz_offset: 0)
 
     text = Enum.map_join(digest.segments, "", & &1.text)
     assert text =~ "mesclou 1 PR"
@@ -470,7 +470,7 @@ defmodule AgentBoard.WorkTest do
     task(repo, 2, "Queued now", "queued", now)
 
     board = %{running: [], question: [], ready: [], blocked: [], task_counts: %{queued: 1}}
-    digest = Work.digest(repo, board, now: now, last_visit: nil, tz_offset: 0)
+    digest = Lanes.digest(repo, board, now: now, last_visit: nil, tz_offset: 0)
 
     assert digest.prefix == "Primeira visita: "
     assert Enum.map_join(digest.segments, "", & &1.text) =~ "1 na fila"
@@ -538,11 +538,11 @@ defmodule AgentBoard.WorkTest do
   end
 end
 
-defmodule AgentBoard.WorkFrozenTest do
+defmodule AgentBoard.LanesFrozenTest do
   @moduledoc "The frozen digest never claims a change it cannot see."
   use AgentBoard.DataCase, async: true
 
-  alias AgentBoard.{Board, Work}
+  alias AgentBoard.{Board, Lanes}
 
   test "without a successful sync the digest says it does not know" do
     {:ok, repo} = Board.add_repository("fixture", "frozen-digest")
@@ -550,7 +550,7 @@ defmodule AgentBoard.WorkFrozenTest do
     board = %{running: [], question: [], ready: [], blocked: [], task_counts: %{queued: 0}}
 
     digest =
-      Work.digest(repo, board,
+      Lanes.digest(repo, board,
         now: now,
         last_visit: DateTime.add(now, -3600, :second),
         tz_offset: 0,

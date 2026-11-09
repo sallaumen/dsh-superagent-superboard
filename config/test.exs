@@ -42,9 +42,9 @@ config :agent_board, Oban, testing: :manual
 # The supervised poller must not tick while the suite runs: a poll in the
 # shared sandbox window would broadcast into the PubSub topics the tests
 # listen to (and a sandbox owner exit could crash it mid-query). One hour
-# keeps it alive but silent; live_test overrides the knob for the schedule
+# keeps it alive but silent; ticket_poller_test overrides the knob for the schedule
 # test.
-config :agent_board, live_poll_interval: 3_600_000
+config :agent_board, ticket_poll_interval: 3_600_000
 
 # The automatic retry ticks on the same schedule rule: the suite calls
 # AutoRetry.tick/1 itself.

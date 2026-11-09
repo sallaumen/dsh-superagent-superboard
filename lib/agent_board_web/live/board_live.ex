@@ -20,6 +20,7 @@ defmodule AgentBoardWeb.BoardLive do
     ExecutorUsage,
     GitHub,
     Intake,
+    Lanes,
     LocalCI,
     Metrics,
     Orchestrator,
@@ -28,8 +29,7 @@ defmodule AgentBoardWeb.BoardLive do
     Superagents,
     Time,
     Titles,
-    Voice,
-    Work
+    Voice
   }
 
   alias AgentBoard.Board.Task
@@ -237,14 +237,14 @@ defmodule AgentBoardWeb.BoardLive do
     %{
       running: Enum.map(board.running, &running_card(&1, run)),
       retrying:
-        Work.retrying(board,
+        Lanes.retrying(board,
           now: now,
           tz_offset: tz_offset,
           tickets_by_number: run.tickets,
           agent: agent_up
         ),
       needs:
-        Work.needs(repo, board,
+        Lanes.needs(repo, board,
           now: now,
           last_visit: last_visit,
           tz_offset: tz_offset,
@@ -255,18 +255,18 @@ defmodule AgentBoardWeb.BoardLive do
           agent: agent_up
         ),
       queue:
-        Work.queue(repo, board,
+        Lanes.queue(repo, board,
           now: now,
           last_visit: last_visit,
           filter: socket.assigns.queue_filter,
           limit: socket.assigns.queue_limit
         ),
-      log: Work.merge_log(repo, now: now, tz_offset: tz_offset, local_ci: local_ci),
+      log: Lanes.merge_log(repo, now: now, tz_offset: tz_offset, local_ci: local_ci),
       digest:
         if freshness.state == :unknown do
           nil
         else
-          Work.digest(repo, board,
+          Lanes.digest(repo, board,
             now: now,
             last_visit: last_visit,
             tz_offset: tz_offset,

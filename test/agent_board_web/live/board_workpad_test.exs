@@ -8,7 +8,7 @@ defmodule AgentBoardWeb.BoardWorkpadTest do
 
   import Phoenix.LiveViewTest
 
-  alias AgentBoard.{Board, Live, Repo}
+  alias AgentBoard.{Board, Repo, TicketPoller}
   alias AgentBoard.Board.{PullRequest, Task}
 
   @head "44653e8abcdef0123456789abcdef0123456789a"
@@ -58,7 +58,7 @@ defmodule AgentBoardWeb.BoardWorkpadTest do
     ### Bloqueio
     """)
 
-    Live.poll()
+    TicketPoller.poll()
     assert Repo.get!(Task, task.id).state == "question"
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/workpad")
@@ -96,7 +96,7 @@ defmodule AgentBoardWeb.BoardWorkpadTest do
     ### Bloqueio
     """)
 
-    Live.poll()
+    TicketPoller.poll()
     assert Repo.get!(Task, task.id).state == "ready"
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/workpad")

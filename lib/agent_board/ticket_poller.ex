@@ -1,9 +1,9 @@
-defmodule AgentBoard.Live do
+defmodule AgentBoard.TicketPoller do
   @moduledoc """
-  The live poll: reads the agent's tickets (the runner's state) and pushes the
-  board when a ticket changed — the real-time shortcut, not only the 1 min sync.
+  The ticket poll: reads the runner's tickets and pushes the board when one
+  changed — the real-time shortcut, not only the five-minute sync.
 
-  It overlays the ticket state on the tasks and broadcasts to the LiveView.
+  It applies the ticket overlay to the tasks and broadcasts to the LiveView.
   """
   use GenServer
 
@@ -31,7 +31,7 @@ defmodule AgentBoard.Live do
   # supervised poller never touches the sandboxed database mid-suite.
   defp schedule, do: Process.send_after(self(), :poll, interval())
 
-  defp interval, do: Application.get_env(:agent_board, :live_poll_interval, 10_000)
+  defp interval, do: Application.get_env(:agent_board, :ticket_poll_interval, 10_000)
 
   @doc "One poll: overlay the tickets on the tasks and broadcast when the hash changed."
   def poll(state \\ %{}) do
