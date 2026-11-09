@@ -263,6 +263,83 @@ defmodule AgentBoard.SuperagentsTest do
              Superagents.provision(repo, source, %{path: "/tmp/checkout"}, FakeProvisioner)
   end
 
+  test "a failed provision leaves no row, so the repository can be tried again", %{repo: repo} do
+    {:ok, source_repo} = Board.add_repository("fixture", "source")
+
+    {:ok, source} =
+      Superagents.create(%{
+        repository_id: source_repo.id,
+        profile: "superagent-source",
+        port: 3193,
+        state_dir: "/tmp/source-superagent-retry"
+      })
+
+    assert {:error, "the bot cannot push"} =
+             Superagents.provision(
+               repo,
+               source,
+               %{path: "/tmp/checkout", fail: "the bot cannot push"},
+               FakeProvisioner
+             )
+
+    assert Superagents.get_by_repository(repo) == nil
+
+    assert [%{kind: "provision_error", payload: %{"reason" => "the bot cannot push"}}] =
+             Board.events(repo) |> Enum.filter(&(&1.kind == "provision_error"))
+
+    assert {:ok, %Superagent{}} =
+             Superagents.provision(repo, source, %{path: "/tmp/checkout"}, FakeProvisioner)
+  end
+
+  test "an agent that would not stop keeps its card and is not restarted", %{repo: repo} do
+    {:ok, source_repo} = Board.add_repository("fixture", "source")
+
+    {:ok, source} =
+      Superagents.create(%{
+        repository_id: source_repo.id,
+        profile: "superagent-source",
+        port: 3194,
+        state_dir: "/tmp/source-superagent-stuck"
+      })
+
+    assert {:error, message} =
+             Superagents.provision(
+               repo,
+               source,
+               %{path: "/tmp/checkout", fail: {:still_running, "the bot cannot push", "stuck"}},
+               FakeProvisioner
+             )
+
+    assert message =~ "the bot cannot push"
+    assert message =~ "the agent did not stop: stuck"
+
+    superagent = Superagents.get_by_repository(repo)
+    assert superagent.desired_state == "stopped"
+    assert superagent.observed_state == "error"
+    assert superagent.last_error =~ "did not stop"
+  end
+
+  test "a detached job finishes after the caller is killed" do
+    test = self()
+
+    caller =
+      spawn(fn ->
+        Superagents.detached(fn ->
+          send(test, {:job, self()})
+
+          receive do
+            :finish -> send(test, :finished)
+          end
+        end)
+      end)
+
+    assert_receive {:job, job}
+    Process.exit(caller, :kill)
+    refute Process.alive?(caller)
+    send(job, :finish)
+    assert_receive :finished
+  end
+
   test "AgentState uses the registered state paths", %{repo: repo} do
     {:ok, _} =
       Superagents.create(%{

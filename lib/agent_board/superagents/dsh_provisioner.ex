@@ -6,12 +6,23 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   """
   @behaviour AgentBoard.Superagents.Provisioner
 
+  alias AgentBoard.Superagents
   alias AgentBoard.Superagents.{DshManager, Superagent}
 
   @doc false
   def provision(%Superagent{} = superagent, %Superagent{} = source, attrs) do
+    # Nothing is touched until the target is known to be free: what is on disk
+    # before this attempt is not this attempt's to remove.
     with :ok <- validate(attrs),
-         :ok <- copy_profile(superagent, source),
+         :ok <- target_free(superagent, source) do
+      build(superagent, source, attrs, File.exists?(superagent.state_dir))
+    end
+  end
+
+  def provision(_superagent, nil, _attrs), do: {:error, :source_required}
+
+  defp build(superagent, source, attrs, state_existed?) do
+    with :ok <- copy_profile(superagent, source),
          :ok <- start(superagent),
          :ok <- wait_api(superagent, 60),
          :ok <- configure(superagent, source, attrs),
@@ -19,13 +30,22 @@ defmodule AgentBoard.Superagents.DshProvisioner do
       {:ok,
        %{profile: superagent.profile, port: superagent.port, state_dir: superagent.state_dir}}
     else
-      {:error, reason} ->
-        rollback(superagent)
-        {:error, reason}
+      {:error, reason} -> undo(superagent, reason, state_existed?)
     end
   end
 
-  def provision(_superagent, nil, _attrs), do: {:error, :source_required}
+  defp target_free(superagent, source) do
+    from = profile_dir(source.profile)
+    to = profile_dir(superagent.profile)
+
+    cond do
+      not (is_binary(from) and is_binary(to)) -> {:error, :invalid_profile}
+      not inside_state?(superagent.state_dir) -> {:error, :invalid_state_dir}
+      not File.dir?(from) -> {:error, :source_profile_missing}
+      File.exists?(to) -> {:error, :profile_exists}
+      true -> :ok
+    end
+  end
 
   defp validate(%{path: path}) do
     if is_binary(path) and File.dir?(path) and File.exists?(Path.join(path, ".git")),
@@ -36,31 +56,23 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   defp validate(_attrs), do: {:error, :checkout_missing}
 
   defp copy_profile(superagent, source) do
-    from = profile_dir(source.profile)
     to = profile_dir(superagent.profile)
 
-    with true <- (is_binary(from) and is_binary(to)) || {:error, :invalid_profile},
-         true <- inside_state?(superagent.state_dir) || {:error, :invalid_state_dir},
-         true <- File.dir?(from) || {:error, :source_profile_missing},
-         true <- not File.exists?(to) || {:error, :profile_exists},
-         :ok <- copy_tree(from, to),
+    with :ok <- copy_tree(profile_dir(source.profile), to),
          :ok <- rewrite_patch(to, superagent) do
       :filelib.ensure_dir(Path.join(superagent.state_dir, "work"))
       :ok
-    else
-      {:error, reason} -> {:error, reason}
-      true -> {:error, :profile_exists}
-      false -> {:error, :checkout_missing}
     end
   end
 
   defp profile_dir(profile) do
-    root = Path.expand("~/.dsh/profiles")
+    root = Path.expand(Superagents.profiles_root())
     path = Path.expand(Path.join(root, profile))
     if Path.dirname(path) == root, do: path, else: nil
   end
 
-  defp state_root, do: Path.expand("~/.dsh/state")
+  defp state_root,
+    do: Application.get_env(:agent_board, :dsh_state_root, Path.expand("~/.dsh/state"))
 
   defp inside_state?(path) do
     root = state_root()
@@ -256,6 +268,8 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   end
 
   defp ok({:ok, 200, _body}), do: :ok
+  # The agent says what is wrong (no push access, say); the status alone does not.
+  defp ok({:ok, _status, %{"error" => detail}}) when is_binary(detail), do: {:error, detail}
   defp ok({:ok, status, _body}), do: {:error, {:http, status}}
   defp ok({:error, reason}), do: {:error, reason}
 
@@ -283,11 +297,19 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
-  defp rollback(superagent) do
-    DshManager.stop(superagent)
-    if profile = profile_dir(superagent.profile), do: remove_tree(profile)
-    if inside_state?(superagent.state_dir), do: remove_tree(superagent.state_dir)
-    :ok
+  # An agent that would not stop keeps its files: deleting them under a running
+  # process would leave it with nothing on the board to stop it. A state
+  # directory from before this attempt (a removed project leaves one) stays.
+  defp undo(superagent, reason, state_existed?) do
+    case DshManager.stop(superagent) do
+      :ok ->
+        remove_tree(profile_dir(superagent.profile))
+        unless state_existed?, do: remove_tree(superagent.state_dir)
+        {:error, reason}
+
+      {:error, stop_failure} ->
+        {:error, {:still_running, reason, stop_failure}}
+    end
   end
 
   defp copy_tree(from, to) do
@@ -297,25 +319,8 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
-  defp remove_tree(path) do
-    case :file.read_file_info(path) do
-      {:ok, %{type: :directory}} ->
-        with {:ok, entries} <- :file.list_dir(path) do
-          Enum.each(entries, &remove_tree(Path.join(path, &1)))
-        end
-
-        :file.del_dir(path)
-
-      {:ok, _file} ->
-        :file.delete(path)
-
-      {:error, :enoent} ->
-        :ok
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
+  # Does not follow symlinks: a profile's node_modules points into a shared store.
+  defp remove_tree(path), do: :file.del_dir_r(path)
 
   defp get(superagent, path), do: request(superagent, :get, path, nil)
   defp put(superagent, path, body), do: request(superagent, :put, path, body)
