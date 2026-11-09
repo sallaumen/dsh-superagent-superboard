@@ -316,6 +316,20 @@ defmodule AgentBoard.GitHub do
     |> body!()
   end
 
+  @doc "Whether `login` is a collaborator of the repository. `login` is already validated."
+  def collaborator?(client, owner, repo, login) do
+    response = Req.get!(client, url: "/repos/#{owner}/#{repo}/collaborators/#{login}")
+
+    case response.status do
+      404 ->
+        false
+
+      _status ->
+        body!(response)
+        true
+    end
+  end
+
   @doc "Close an issue."
   def close_issue(client, owner, repo, number) do
     client

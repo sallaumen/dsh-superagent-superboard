@@ -261,7 +261,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAccessPanel do
     ~H"""
     <div class="ab-access__block">
       <h5>{gettext("Waiting for access")}</h5>
-      <p :if={@project.requests == []} class="ab-meta">
+      <p :if={@project.state == :ok and @project.requests == []} class="ab-meta">
         {gettext("Nobody mentioned the bot without being allowed.")}
       </p>
       <ul :if={@project.requests != []} class="ab-access__list">
@@ -335,7 +335,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAccessPanel do
     ~H"""
     <div class="ab-access__block">
       <h5>{gettext("Allowed")}</h5>
-      <p :if={@project.allowed == []} class="ab-meta">
+      <p :if={@project.state == :ok and @project.allowed == []} class="ab-meta">
         {gettext("Nobody is allowed, so this agent takes no work.")}
       </p>
       <ul :if={@project.allowed != []} class="ab-access__list">
