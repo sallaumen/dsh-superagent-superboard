@@ -197,6 +197,7 @@ defmodule AgentBoardWeb.BoardLive do
         ai_calls: [],
         ai_status: AI.status(),
         version: Version.status(),
+        codex_quota: Runners.snapshot().quota,
         # A page opened during an update joins it, the fast-forward's own
         # reload included.
         busy: UpdateRun.running?(),
@@ -1130,6 +1131,7 @@ defmodule AgentBoardWeb.BoardLive do
     socket =
       socket
       |> BoardNavigation.apply_params(params)
+      |> refresh_settings_quota(previous_panel)
       |> sync_logs_panel(previous_panel)
       |> load_inspector()
       |> load_panel()
@@ -1144,6 +1146,15 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply, mark_open_conversation_seen(socket)}
   end
+
+  # The Codex quota moves while the board runs. Reading it when the settings
+  # panel opens keeps the navigation hint fresh without a query per render.
+  defp refresh_settings_quota(%{assigns: %{panel: "settings"}} = socket, previous)
+       when previous != "settings" do
+    assign(socket, :codex_quota, Runners.snapshot().quota)
+  end
+
+  defp refresh_settings_quota(socket, _previous), do: socket
 
   defp mark_open_conversation_seen(%{assigns: %{conversation: nil}} = socket), do: socket
 
@@ -1173,7 +1184,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp refresh_agent_access(socket) do
     superagents = socket.assigns.superagents
 
-    if socket.assigns[:panel] == "settings" and socket.assigns[:settings_section] == "access" do
+    if socket.assigns[:panel] == "settings" and socket.assigns[:settings_section] == "projects" do
       send_update(BoardComponents.AgentAccessPanel, id: "settings-agent-access", refresh: true)
     end
 
@@ -3100,7 +3111,7 @@ defmodule AgentBoardWeb.BoardLive do
                     class="ab-btn ab-btn--quiet ab-btn--sm"
                     phx-click="show_panel"
                     phx-value-panel="settings"
-                    phx-value-section="access"
+                    phx-value-section="projects"
                     data-panel-trigger
                     aria-haspopup="dialog"
                     aria-controls="panel-settings"
@@ -3117,7 +3128,7 @@ defmodule AgentBoardWeb.BoardLive do
                     class="ab-btn ab-btn--quiet ab-btn--sm"
                     phx-click="show_panel"
                     phx-value-panel="settings"
-                    phx-value-section="superagents"
+                    phx-value-section="projects"
                     data-panel-trigger
                     aria-haspopup="dialog"
                     aria-controls="panel-settings"
@@ -3617,6 +3628,7 @@ defmodule AgentBoardWeb.BoardLive do
             id="board-settings-panel"
             repo={@repo}
             version={@version}
+            codex_quota={@codex_quota}
             busy={@busy}
             progress={@update_progress}
             voice={@voice}

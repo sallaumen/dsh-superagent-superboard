@@ -26,7 +26,7 @@ defmodule AgentBoardWeb.Components.VersionBadge do
       class={["ab-version-behind", @class]}
       phx-click="show_panel"
       phx-value-panel="settings"
-      phx-value-section="version"
+      phx-value-section="system"
       aria-label={@label <> ". " <> gettext("Open Version to update.")}
       title={@label <> ". " <> gettext("Restart the board to apply it.")}
     >

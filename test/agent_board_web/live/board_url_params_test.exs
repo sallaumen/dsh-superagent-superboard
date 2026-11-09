@@ -86,10 +86,10 @@ defmodule AgentBoardWeb.BoardUrlParamsTest do
       {:ok, view, _html} = live(conn, "/")
 
       view
-      |> element(~s(.ab-rail [phx-click=show_panel][phx-value-section=superagents]))
+      |> element(~s(.ab-rail [phx-click=show_panel][phx-value-section=projects]))
       |> render_click()
 
-      assert_patch(view, "/?panel=settings&section=superagents")
+      assert_patch(view, "/?panel=settings&section=projects")
       assert has_element?(view, "#board-page[data-panel=settings]")
     end
 
