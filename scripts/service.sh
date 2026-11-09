@@ -66,6 +66,18 @@ until db_ready; do
   waited=$((waited + 2))
 done
 
+# A staged update prepared _build/next while the old node was still up;
+# promote it before booting so the outage is boot time, not preparation.
+if [ -f .agent-board-next-build ]; then
+  next_build="$(cat .agent-board-next-build)"
+  if [ -d "$next_build" ]; then
+    rm -rf _build.prev
+    [ -d _build ] && mv _build _build.prev
+    mv "$next_build" _build
+    rm -f .agent-board-next-build
+  fi
+fi
+
 mix deps.get
 mix ecto.migrate
 exec mix phx.server

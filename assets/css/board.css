@@ -2768,3 +2768,35 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
   font-size: 12px;
   line-height: 18px;
 }
+
+/* ---------- staged update progress ---------- */
+.version-progress {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.version-progress li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--ink-muted);
+}
+.version-progress li[data-state="running"] { color: var(--ink); font-weight: 600; }
+.version-progress li[data-state="error"] { color: var(--halt); font-weight: 600; }
+.version-progress__mark {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.version-progress li[data-state="running"] .version-progress__mark {
+  background: var(--stale);
+  box-shadow: 0 0 0 3px var(--stale-wash);
+}
+.version-progress li[data-state="done"] .version-progress__mark { background: var(--agent); }
+.version-progress li[data-state="error"] .version-progress__mark { background: var(--halt); }

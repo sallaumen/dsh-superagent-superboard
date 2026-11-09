@@ -1,5 +1,5 @@
 defmodule AgentBoardWeb.UpdateFlowTest do
-  @moduledoc "The update button schedules a real restart and never lies about being current."
+  @moduledoc "The update runs as a staged pipeline and only stops after every stage passed."
   use AgentBoardWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
@@ -7,22 +7,55 @@ defmodule AgentBoardWeb.UpdateFlowTest do
   alias AgentBoard.Board
 
   defmodule UpdaterStub do
-    def pull, do: Application.get_env(:agent_board, :updater_result)
+    def pull, do: result(:updater_result)
 
     def prepare do
-      send(Application.get_env(:agent_board, :updater_test_pid), :prepare_called)
-      Application.get_env(:agent_board, :updater_prepare_result, :ok)
+      notify(:prepare_called)
+      result(:updater_prepare_result)
     end
 
-    def restart, do: send(Application.get_env(:agent_board, :updater_test_pid), :restart_called)
+    def prepare_build do
+      notify(:build_called)
+      result(:updater_build_result)
+    end
+
+    def prepare_assets do
+      notify(:assets_called)
+      result(:updater_assets_result)
+    end
+
+    def migrate do
+      notify(:migrate_called)
+      result(:updater_migrate_result)
+    end
+
+    def mark_ready do
+      notify(:mark_called)
+      result(:updater_mark_result)
+    end
+
+    def restart, do: notify(:restart_called)
+
+    defp notify(message), do: send(Application.get_env(:agent_board, :updater_test_pid), message)
+    defp result(key), do: Application.get_env(:agent_board, key, :ok)
   end
 
   setup do
-    previous = Application.get_env(:agent_board, :updater)
-    previous_delay = Application.get_env(:agent_board, :update_restart_delay_ms)
-    previous_result = Application.get_env(:agent_board, :updater_result)
-    previous_prepare = Application.get_env(:agent_board, :updater_prepare_result)
-    previous_stopper = Application.get_env(:agent_board, :board_stopper)
+    previous =
+      for key <- [
+            :updater,
+            :update_restart_delay_ms,
+            :updater_result,
+            :updater_prepare_result,
+            :updater_build_result,
+            :updater_assets_result,
+            :updater_migrate_result,
+            :updater_mark_result,
+            :board_stopper
+          ],
+          into: %{},
+          do: {key, Application.get_env(:agent_board, key)}
+
     test_pid = self()
 
     Application.put_env(:agent_board, :updater, UpdaterStub)
@@ -31,30 +64,46 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     Application.put_env(:agent_board, :board_stopper, fn -> send(test_pid, :stopped) end)
 
     on_exit(fn ->
-      restore(:updater, previous)
-      restore(:update_restart_delay_ms, previous_delay)
-      restore(:updater_result, previous_result)
-      restore(:updater_prepare_result, previous_prepare)
-      restore(:board_stopper, previous_stopper)
+      for {key, value} <- previous do
+        if is_nil(value),
+          do: Application.delete_env(:agent_board, key),
+          else: Application.put_env(:agent_board, key, value)
+      end
+
       Application.delete_env(:agent_board, :updater_test_pid)
     end)
 
     :ok
   end
 
-  test "a successful update restarts immediately, without losing the stop", %{conn: conn} do
+  test "a successful update runs every stage and restarts only at the end", %{conn: conn} do
     Application.put_env(:agent_board, :updater_result, {:ok, "abc123"})
     {:ok, _} = Board.add_repository("fixture", "update")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update")
 
     html = render_hook(view, "update", %{})
+    html = render_async(view) || html
 
     assert html =~ "Atualizado para abc123"
     assert html =~ "reiniciando o servidor"
-    assert_received :prepare_called
-    assert_received :restart_called
-    assert_received :stopped
-    refute html =~ "Já está em dia"
+    assert html =~ "Buscando a main"
+    assert html =~ "Preparando dependências"
+    assert html =~ "Compilando o build novo"
+    assert html =~ "Gerando os assets"
+    assert html =~ "Aplicando migrações"
+    assert html =~ "Build pronto"
+
+    for message <- [
+          :prepare_called,
+          :build_called,
+          :assets_called,
+          :migrate_called,
+          :mark_called,
+          :restart_called,
+          :stopped
+        ] do
+      assert_received ^message
+    end
   end
 
   test "a dependency failure keeps the old board up", %{conn: conn} do
@@ -64,23 +113,40 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-prepare-failed")
 
     html = render_hook(view, "update", %{})
+    html = render_async(view) || html
 
-    assert html =~ "preparo das dependências falhou"
-    assert html =~ "O board continua no código antigo"
+    assert html =~ "A atualização parou no meio"
+    assert html =~ "o board continua no código antigo"
     refute html =~ "reiniciando o servidor"
     refute_received :restart_called
     refute_received :stopped
   end
 
-  test "a failed update does not pretend to restart", %{conn: conn} do
+  test "a compile failure keeps the old board up", %{conn: conn} do
+    Application.put_env(:agent_board, :updater_result, {:ok, "abc123"})
+    Application.put_env(:agent_board, :updater_build_result, {:error, {:mix, 1, "boom"}})
+    {:ok, _} = Board.add_repository("fixture", "update-compile-failed")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-compile-failed")
+
+    html = render_hook(view, "update", %{})
+    html = render_async(view) || html
+
+    assert html =~ "A atualização parou no meio"
+    refute_received :restart_called
+    refute_received :stopped
+  end
+
+  test "a failed pull does not pretend to restart", %{conn: conn} do
     Application.put_env(:agent_board, :updater_result, {:error, :no_network})
     {:ok, _} = Board.add_repository("fixture", "update-failed")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-failed")
 
     html = render_hook(view, "update", %{})
+    html = render_async(view) || html
 
-    assert html =~ "A atualização falhou"
+    assert html =~ "A atualização parou no meio"
     refute html =~ "reiniciando o servidor"
+    refute_received :restart_called
   end
 
   test "the explicit restart button schedules the same path", %{conn: conn} do
@@ -90,8 +156,6 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     html = render_hook(view, "restart", %{})
 
     assert html =~ "Reiniciando o servidor"
+    assert html =~ "Reiniciando o board"
   end
-
-  defp restore(key, nil), do: Application.delete_env(:agent_board, key)
-  defp restore(key, value), do: Application.put_env(:agent_board, key, value)
 end

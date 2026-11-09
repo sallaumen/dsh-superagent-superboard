@@ -15,6 +15,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   ]
 
   attr :dispatch_paused, :boolean, default: false
+  attr :progress, :list, default: []
 
   @impl true
   def mount(socket), do: {:ok, assign(socket, section: "dispatch")}
@@ -208,7 +209,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
         >
           <h3 id="settings-version-title">Versão</h3>
           <p class="settings-pane__intro">Confira a versão do board e as atualizações disponíveis.</p>
-          <SystemPanel.version_panel version={@version} busy={@busy} />
+          <SystemPanel.version_panel version={@version} busy={@busy} progress={@progress} />
         </section>
       </div>
     </div>
