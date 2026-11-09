@@ -19,7 +19,7 @@ defmodule AgentBoard.AgentAccess do
   alias AgentBoard.Superagents.{Manager, Superagent}
 
   @login ~r/\A[a-z0-9](?:[a-z0-9-]{0,38})\z/i
-  @finished_states ~w(done closed)
+  @finished_states ~w(done closed stopped archived)
   @rerun_limit 10
   @read_timeout 6_000
 
@@ -112,9 +112,11 @@ defmodule AgentBoard.AgentAccess do
       Repo.all(
         from t in BoardTask,
           where: t.repository_id == ^repository_id and t.number in ^numbers,
-          select: {t.number, t.state}
+          select: {t.number, t.state, t.stopped, t.archived}
       )
-      |> Map.new()
+      |> Map.new(fn {number, state, stopped, archived} ->
+        {number, stopped or archived or state in @finished_states}
+      end)
     end
   end
 
@@ -159,7 +161,7 @@ defmodule AgentBoard.AgentAccess do
   defp issue(mention, states) do
     mention
     |> Map.take([:number, :url, :title, :trigger_id, :handled])
-    |> Map.put(:runnable, not mention.handled and states[mention.number] not in @finished_states)
+    |> Map.put(:runnable, not mention.handled and not Map.get(states, mention.number, false))
   end
 
   defp dismissed_at(%Superagent{id: id}) do
@@ -184,9 +186,27 @@ defmodule AgentBoard.AgentAccess do
           last -> %{last | state: :unavailable, reason: project.reason}
         end
 
+      %{reason: {:refusals, _detail}, id: id} = project ->
+        keep_waiting(project, by_id[id])
+
       project ->
         project
     end)
+  end
+
+  # The list answered and the refusals did not: the list is fresh, and whoever
+  # was waiting still is, unless they are on it now.
+  defp keep_waiting(project, nil), do: project
+
+  defp keep_waiting(project, last) do
+    allowed = MapSet.new(project.allowed, &key(&1.login))
+
+    {cleared, requests} = Enum.split_with(last.requests, &MapSet.member?(allowed, &1.key))
+
+    numbers =
+      for request <- cleared, issue <- request.issues, into: MapSet.new(), do: issue.number
+
+    %{project | requests: requests, refused: MapSet.difference(last.refused, numbers)}
   end
 
   @doc "What the rest of the board shows: people waiting, and issues the agent refused."
@@ -252,6 +272,8 @@ defmodule AgentBoard.AgentAccess do
     with {:ok, login} <- normalize_login(login),
          :ok <- refuse_owner(superagent, login),
          :ok <- manager.disallow(superagent, login) do
+      # The old mention is why they were listed: only a new one is a request.
+      _ = record_dismissal(superagent, login)
       changed()
       {:ok, login}
     end
@@ -266,22 +288,25 @@ defmodule AgentBoard.AgentAccess do
   end
 
   @doc "Set a request aside until the person mentions the bot again."
-  def dismiss(%Superagent{id: id}, login) do
+  def dismiss(%Superagent{} = superagent, login) do
     with {:ok, login} <- normalize_login(login),
-         {:ok, dismissal} <-
-           %Dismissal{}
-           |> Dismissal.changeset(%{
-             superagent_id: id,
-             login: key(login),
-             dismissed_at: DateTime.utc_now() |> DateTime.truncate(:second)
-           })
-           |> Repo.insert(
-             on_conflict: {:replace, [:dismissed_at, :updated_at]},
-             conflict_target: [:superagent_id, :login]
-           ) do
+         {:ok, dismissal} <- record_dismissal(superagent, login) do
       changed()
       {:ok, dismissal}
     end
+  end
+
+  defp record_dismissal(%Superagent{id: id}, login) do
+    %Dismissal{}
+    |> Dismissal.changeset(%{
+      superagent_id: id,
+      login: key(login),
+      dismissed_at: DateTime.utc_now() |> DateTime.truncate(:second)
+    })
+    |> Repo.insert(
+      on_conflict: {:replace, [:dismissed_at, :updated_at]},
+      conflict_target: [:superagent_id, :login]
+    )
   end
 
   @doc "The repository's collaborators by lowercase login, with their role."
@@ -303,8 +328,13 @@ defmodule AgentBoard.AgentAccess do
   @spec candidate(Superagent.t(), String.t(), Req.Request.t()) :: map()
   def candidate(%Superagent{repository: repo}, login, client \\ GitHub.client()) do
     case GitHub.collaborator_permission(client, repo.owner, repo.name, login) do
-      {:ok, role} -> %{login: login, exists: true, role: role}
-      :not_found -> %{login: login, exists: false, role: nil}
+      {:ok, role} ->
+        # The permission alone says `read` for anyone on a public repository.
+        collaborator = GitHub.collaborator?(client, repo.owner, repo.name, login)
+        %{login: login, exists: true, role: if(collaborator, do: role, else: "none")}
+
+      :not_found ->
+        %{login: login, exists: false, role: nil}
     end
   rescue
     _exception -> %{login: login, exists: :unknown, role: nil}
