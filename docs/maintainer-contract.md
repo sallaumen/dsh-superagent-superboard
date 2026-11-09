@@ -1219,7 +1219,10 @@ records are the `ai_calls` rows (the split) and the tasks with their
   `board-attachments` branch under the file's hash (a retry is the same path),
   and listed at the top of each issue with the command that fetches them. A
   file that cannot be stored opens no issue. HTML, SVG and zip are never
-  rendered or unpacked by the board.
+  rendered or unpacked by the board. The inspector shows the images through
+  `/attachments/...` (`AttachmentController`), which serves only a raster
+  image at a path the board could have written; anything else redirects to
+  GitHub.
 - **The review is the last word.** Each proposed task shows its dependencies
   and opens to edit title, description and acceptance; a chosen task left
   empty holds the send, on the server too. The request key reads the title

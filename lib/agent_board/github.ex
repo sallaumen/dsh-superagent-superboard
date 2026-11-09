@@ -334,6 +334,19 @@ defmodule AgentBoard.GitHub do
     if response.status == 422, do: :ok, else: body!(response)
   end
 
+  @doc "The raw bytes of a file on a branch."
+  def raw_file(client, owner, repo, branch, path) do
+    client
+    |> Req.get!(
+      url: "/repos/#{owner}/#{repo}/contents/#{path}",
+      params: [ref: branch],
+      headers: [accept: "application/vnd.github.raw+json"],
+      decode_body: false,
+      receive_timeout: 60_000
+    )
+    |> body!()
+  end
+
   @doc "One issue, with the `id` the sub-issue and dependency calls ask for."
   def issue(client, owner, repo, number) do
     client
