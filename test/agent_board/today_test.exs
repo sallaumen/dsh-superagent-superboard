@@ -78,4 +78,48 @@ defmodule AgentBoard.TodayTest do
     assert overview.you == 1
     assert overview.halt == 1
   end
+
+  test "local day metrics and seven-day trend use stored times, including the midnight boundary" do
+    {:ok, arena} = Board.add_repository("fixture", "arena-day")
+    {:ok, colmex} = Board.add_repository("fixture", "colmex-day")
+    now = ~U[2026-11-09 02:30:00Z]
+
+    seen = task(arena, 20, "queued")
+    task(colmex, 21, "queued", %{stopped: true})
+    task(colmex, 22, "blocked")
+
+    # At UTC 02:00 the owner's day (UTC-3) is still November 8.
+    Repo.update_all(from(t in Task, where: t.id == ^seen.id),
+      set: [inserted_at: ~U[2026-11-09 02:00:00Z]]
+    )
+
+    for {repo, number, at} <- [
+          {arena, 30, ~U[2026-11-09 02:00:00Z]},
+          {colmex, 31, ~U[2026-11-08 02:00:00Z]},
+          {arena, 32, ~U[2026-11-02 02:00:00Z]}
+        ] do
+      %PullRequest{}
+      |> PullRequest.changeset(%{
+        repository_id: repo.id,
+        number: number,
+        title: "PR #{number}",
+        state: "merged",
+        merged_at: at
+      })
+      |> Repo.insert!()
+    end
+
+    today = Overview.today(180, now)
+
+    assert today.merged_today == 1
+    assert today.seen_today == 1
+    assert Enum.map(today.trend, & &1.count) == [0, 0, 0, 0, 0, 1, 1]
+    assert Enum.map(today.trend, & &1.date) |> List.last() == ~D[2026-11-08]
+    assert Enum.map(today.queue, & &1.id) == [seen.id]
+
+    arena_day = Enum.find(today.projects, &(&1.name == "fixture/arena-day"))
+    colmex_day = Enum.find(today.projects, &(&1.name == "fixture/colmex-day"))
+    assert %{queued: 1, merged: 1, seen: 1, unknown: true} = arena_day
+    assert %{queued: 0, merged: 0, needs: 1, unknown: true} = colmex_day
+  end
 end

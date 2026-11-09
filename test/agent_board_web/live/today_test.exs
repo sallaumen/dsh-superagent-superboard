@@ -4,7 +4,7 @@ defmodule AgentBoardWeb.TodayTest do
 
   import Phoenix.LiveViewTest
 
-  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.{Board, DailySummary, Repo}
   alias AgentBoard.Board.Task
   alias AgentBoardWeb.BoardComponents.Today
 
@@ -144,6 +144,7 @@ defmodule AgentBoardWeb.TodayTest do
     assert has_element?(view, "#today-running", "Rodando no Codex")
     assert has_element?(view, "#today-running", "Codex")
     assert has_element?(view, "#today-running", "fixture/colmex")
+    assert has_element?(view, "#today-projects tr", "fixture/colmex 1 1 0")
   end
 
   test "o gasto do dia mostra as três moedas, sem somar", %{conn: conn} do
@@ -158,6 +159,34 @@ defmodule AgentBoardWeb.TodayTest do
     assert spend =~ "Codex"
     assert spend =~ "90% da cota semanal"
     refute spend =~ "Total"
+  end
+
+  test "o panorama reúne projetos e abre o projeto escolhido", %{conn: conn} do
+    {:ok, view, _html} = live(conn, @path)
+
+    assert has_element?(view, "#today-overview", "PRs mesclados hoje")
+    assert has_element?(view, "#today-overview", "Issues vistas hoje")
+    assert has_element?(view, "#today-projects", "fixture/arena")
+    assert has_element?(view, "#today-projects", "fixture/colmex")
+    assert has_element?(view, "#today-trend li", "hoje")
+
+    view |> element("#today-projects button", "fixture/colmex") |> render_click()
+    assert render(view) =~ "fixture/colmex"
+    refute has_element?(view, "#today")
+  end
+
+  test "o resumo salvo aparece em Hoje e mantém sua janela própria", %{conn: conn} do
+    :ok = DailySummary.put_settings(%{"at" => "00:00"})
+    spend = fn _since, _until -> %{status: :none, reason: nil} end
+    usage = fn _since, _until -> %{} end
+    assert {:generated, _entry} = DailySummary.tick(spend: spend, usage: usage)
+
+    {:ok, view, _html} = live(conn, @path)
+    assert has_element?(view, "#today-daily-report #daily-summary", "Resumo do dia")
+    assert has_element?(view, "#today-daily-report", "desde")
+
+    view |> element("#today-daily-report #daily-summary-dismiss") |> render_click()
+    refute has_element?(view, "#today-daily-report")
   end
 
   test "clicar num item de outro repositório abre a tarefa nele", %{conn: conn} do
