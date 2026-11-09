@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Configurações e atalhos</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#171614}
+*{box-sizing:border-box}
+a{color:#a3b7ef}a:hover{color:#c6d3f7}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+button:focus-visible,input:focus-visible{outline:2px solid #a3b7ef;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1040px; height: 900px; background: #171614; color: #ece8e1; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 21px; display: flex; gap: 40px; align-items: flex-start; padding: 24px;">
+
+  <div role="dialog" aria-labelledby="cfg" style="width: 680px; height: 820px; background: #292723; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.45); display: flex; flex-direction: column; overflow: hidden;">
+    <header style="display: flex; align-items: center; padding: 16px 20px; border-bottom: 1px solid #3d3a34;"><h2 id="cfg" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Configurações</h2><div style="flex-grow: 1;"></div><button type="button" aria-label="Fechar" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; cursor: pointer;"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="#ece8e1" stroke-width="1.6"></path></svg></button></header>
+    <div style="display: flex; flex-grow: 1; min-height: 0;">
+      <nav aria-label="Seções" style="flex: 0 0 188px; border-right: 1px solid #3d3a34; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px;">
+        <a href="#" style="padding: 7px 10px; border-radius: 6px; color: #aaa398; text-decoration: none;">Inspecionar</a>
+        <a href="#" aria-current="page" style="padding: 7px 10px; border-radius: 6px; background: #1e2538; color: #ece8e1; text-decoration: none; font-weight: 500;">Despacho local</a>
+        <a href="#" style="padding: 7px 10px; border-radius: 6px; color: #aaa398; text-decoration: none;">Voz</a>
+        <a href="#" style="padding: 7px 10px; border-radius: 6px; color: #aaa398; text-decoration: none;">Resumo do dia</a>
+        <a href="#" style="padding: 7px 10px; border-radius: 6px; color: #aaa398; text-decoration: none;">Repositórios</a>
+        <a href="#" style="padding: 7px 10px; border-radius: 6px; color: #aaa398; text-decoration: none;">Aparência</a>
+        <div style="flex-grow: 1;"></div>
+        <a href="#" style="padding: 7px 10px; border-radius: 6px; color: #aaa398; text-decoration: none; display: flex; justify-content: space-between;">Versão <span class="m" style="font-size: 11.5px; color: #a3b7ef;">nova</span></a>
+      </nav>
+      <div style="flex-grow: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 24px; overflow: auto;">
+        <div>
+          <h3 style="margin: 0 0 4px; font-size: 14px; font-weight: 600;">Despacho local</h3>
+          <p style="margin: 0; font-size: 13px; color: #aaa398;">Claude Code e Codex rodando nesta máquina. Cada executor tem seu teto, na sua moeda.</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px; padding: 14px 16px; border: 1px solid #3d3a34; border-radius: 10px;">
+          <div style="flex-grow: 1;"><div style="font-weight: 500;">Pausa global</div><div style="font-size: 12.5px; color: #aaa398;">Nenhum despacho novo sai enquanto estiver ligada. Execuções em andamento continuam.</div></div>
+          <button type="button" role="switch" aria-checked="false" aria-label="Pausa global" style="width: 44px; height: 26px; border-radius: 999px; border: 1px solid #7d756a; background: #121110; padding: 2px; display: flex; cursor: pointer;"><span style="width: 20px; height: 20px; border-radius: 50%; background: #aaa398;"></span></button>
+        </div>
+        <fieldset style="border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
+          <legend style="font-size: 12px; font-weight: 600; color: #aaa398; margin-bottom: 12px;">Tetos</legend>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: #aaa398;">Mensal<input type="text" value="US$ 200,00" class="m" style="height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid #7d756a; background: #121110; color: #ece8e1; font-size: 13px;"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: #aaa398;">Por tarefa<input type="text" value="US$ 3,00" class="m" style="height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid #7d756a; background: #121110; color: #ece8e1; font-size: 13px;"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: #aaa398;">Minutos por tarefa<input type="text" value="20" class="m" style="height: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid #7d756a; background: #121110; color: #ece8e1; font-size: 13px;"></label>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="height: 6px; border-radius: 999px; background: #3d3a34;"><div style="width: 74.5%; height: 6px; border-radius: 999px; background: #ece8e1;"></div></div>
+            <span style="font-size: 12.5px; color: #aaa398;">Usado no mês <span class="m" style="color: #ece8e1;">≥ US$ 149,02</span> de <span class="m">US$ 200,00</span> · preço de lista</span>
+          </div>
+        </fieldset>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 12px; font-weight: 600; color: #aaa398;">Codex · cota, não US$</span>
+          <div style="height: 6px; border-radius: 999px; background: #3d3a34;"><div style="width: 90%; height: 6px; border-radius: 999px; background: #f09670;"></div></div>
+          <span style="font-size: 12.5px; color: #aaa398;"><span style="color: #f09670; font-weight: 600;">90% da cota semanal</span> · fica fora do teto em US$ <span style="color: #dcb15e;">(hipótese)</span></span>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 8px; border-top: 1px solid #3d3a34;">
+          <button type="button" style="height: 34px; padding: 0 12px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 13px;">Descartar</button>
+          <button type="button" style="height: 34px; padding: 0 14px; border-radius: 6px; border: 0; background: #a3b7ef; color: #111a33; font: inherit; font-size: 13px; font-weight: 600;">Salvar tetos</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div role="dialog" aria-labelledby="kb" style="width: 280px; background: #292723; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.45); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;">
+    <h2 id="kb" style="margin: 0; font-size: 14px; font-weight: 600;">Atalhos</h2>
+    <dl style="margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center; font-size: 13px;">
+      <dt><span class="m" style="font-size: 11.5px; border: 1px solid #7d756a; border-radius: 4px; padding: 1px 6px;">espaço 2×</span></dt><dd style="margin: 0; color: #aaa398;">Falar com o board</dd>
+      <dt><span class="m" style="font-size: 11.5px; border: 1px solid #7d756a; border-radius: 4px; padding: 1px 6px;">N</span></dt><dd style="margin: 0; color: #aaa398;">Novo pedido</dd>
+      <dt><span class="m" style="font-size: 11.5px; border: 1px solid #7d756a; border-radius: 4px; padding: 1px 6px;">V</span></dt><dd style="margin: 0; color: #aaa398;">Ditar no composer</dd>
+      <dt><span class="m" style="font-size: 11.5px; border: 1px solid #7d756a; border-radius: 4px; padding: 1px 6px;">?</span></dt><dd style="margin: 0; color: #aaa398;">Esta ajuda</dd>
+      <dt><span class="m" style="font-size: 11.5px; border: 1px solid #7d756a; border-radius: 4px; padding: 1px 6px;">Esc</span></dt><dd style="margin: 0; color: #aaa398;">Fechar a camada de cima</dd>
+    </dl>
+    <p style="margin: 4px 0 0; font-size: 12px; color: #958e83;">Atalhos de letra não disparam dentro de campos de texto.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1040,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

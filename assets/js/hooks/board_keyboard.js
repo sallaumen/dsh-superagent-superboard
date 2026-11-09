@@ -62,7 +62,7 @@ export const BoardKeyboard = {
       return
     }
 
-    if (/^[1-4]$/.test(event.key)) {
+    if (/^[1-5]$/.test(event.key)) {
       const inspector = document.querySelector("#conversation")
       if (!inspector) return
       event.preventDefault()

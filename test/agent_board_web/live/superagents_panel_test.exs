@@ -111,12 +111,28 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     assert has_element?(view, ".ab-superagent-add__preview", "Provisionar o DeepSeek")
 
-    view |> element(".ab-superagent-add__preview button", "Criar projeto") |> render_click()
+    view |> element(".ab-superagent-add__preview button", "Adicionar e iniciar") |> render_click()
     Process.sleep(150)
     _ = render(view)
 
     assert superagent = Superagents.get_by_repository(target)
     assert superagent.max_workers == 2
+  end
+
+  test "each project keeps its own agent pool and the panel sums the total", %{conn: conn} do
+    {:ok, one} = Board.add_repository("fixture", "pool-one")
+    {:ok, two} = Board.add_repository("fixture", "pool-two")
+    first = superagent!(one, %{max_workers: 2})
+    second = superagent!(two, %{max_workers: 4})
+
+    {:ok, view, _html} = live(conn, "/?repo=fixture/pool-one&panel=superagents")
+
+    assert has_element?(view, "#superagents-panel .ab-superagents__title", "6 agentes")
+    assert has_element?(view, "#superagent-#{first.id} .ab-superagent__workers", "2")
+    assert has_element?(view, "#superagent-#{second.id} .ab-superagent__workers", "4")
+    assert has_element?(view, "#superagent-#{first.id} .ab-agent-stack i.is-on", "")
+    assert Repo.get!(Superagent, first.id).max_workers == 2
+    assert Repo.get!(Superagent, second.id).max_workers == 4
   end
 
   test "an empty board says no superagent is registered", %{conn: conn} do

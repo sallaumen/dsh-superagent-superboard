@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Conversa por voz</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#171614}
+*{box-sizing:border-box}
+a{color:#a3b7ef}a:hover{color:#c6d3f7}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.g{display:inline-block;flex:none;width:10px;height:10px}
+.g-run{border-radius:50%;background:#7cc29d}
+.g-you{width:9px;height:9px;background:#a3b7ef;transform:rotate(45deg);border-radius:1.5px}
+.g-queue{border-radius:50%;border:1.5px solid #958e83}
+button:focus-visible,summary:focus-visible{outline:2px solid #a3b7ef;outline-offset:2px}
+</style>
+</helmet>
+<aside aria-label="Conversa por voz" style="width: 520px; height: 1020px; background: #201e1b; border-left: 1px solid #34312c; color: #ece8e1; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 21px; display: flex; flex-direction: column;">
+  <header style="display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #34312c;">
+    <h2 style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Conversa por voz</h2>
+    <span role="status" style="display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: #1e2538; color: #a3b7ef; font-size: 12px; font-weight: 600;"><span class="g g-you" style="width: 7px; height: 7px;"></span>Esperando sua confirmação</span>
+    <div style="flex-grow: 1;"></div>
+    <button type="button" aria-label="Fechar" style="width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; cursor: pointer;"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="#ece8e1" stroke-width="1.6"></path></svg></button>
+  </header>
+
+  <div style="flex-grow: 1; overflow: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;">
+    <div style="align-self: flex-end; max-width: 80%; background: #1e2538; border-radius: 10px; padding: 8px 12px;"><div style="font-size: 12px; color: #aaa398;">Você · <span class="m">20:48</span></div>Como está o arena-rogue?</div>
+    <div style="align-self: flex-start; max-width: 85%; background: #1d2c24; border-radius: 10px; padding: 8px 12px;"><div style="font-size: 12px; color: #aaa398;">Board · <span class="m">20:48</span></div>Dois rodando: a 114 está escrevendo o documento de progressão; a 116 falhou nos testes de seed e tenta de novo em 40 segundos. Duas coisas esperam você.</div>
+    <div style="align-self: flex-end; max-width: 80%; background: #1e2538; border-radius: 10px; padding: 8px 12px;"><div style="font-size: 12px; color: #aaa398;">Você · <span class="m">20:49</span></div>Para a 116.</div>
+    <div role="alertdialog" aria-label="Confirmar por voz" style="align-self: stretch; background: #36211a; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;">
+      <span><strong style="font-weight: 600;">Parar a execução da #116?</strong> Diga “sim, parar” ou use os botões.</span>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 0; background: #f09670; color: #2a130b; font: inherit; font-size: 13px; font-weight: 600;">Parar execução</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 13px;">Não parar</button>
+      </div>
+    </div>
+
+    <details open="open" style="border-top: 1px solid #34312c; padding-top: 10px;">
+      <summary style="cursor: pointer; font-size: 13px; font-weight: 600; min-height: 32px; display: flex; align-items: center;">Bastidores da voz</summary>
+      <ol style="list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px;">
+        <li style="display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 8px; align-items: center;"><span style="color: #aaa398;">✓</span><span>Transcrição <span style="color: #aaa398;">· Wispr</span></span><span class="m" style="font-size: 12px; color: #958e83;">0,6 s</span></li>
+        <li style="display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 8px; align-items: center;"><span style="color: #aaa398;">✓</span><span>Intenção: parar execução <span class="m" style="font-size: 12px; color: #aaa398;">#116</span></span><span class="m" style="font-size: 12px; color: #958e83;">0,9 s</span></li>
+        <li style="display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 8px; align-items: center;"><span class="g g-you"></span><span style="color: #a3b7ef;">Confirmação falada · esperando você</span><span class="m" style="font-size: 12px; color: #958e83;">—</span></li>
+        <li style="display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; color: #aaa398;"><span class="g g-queue"></span><span>Ação no board</span><span class="m" style="font-size: 12px;">—</span></li>
+      </ol>
+    </details>
+
+    <details open="open" style="border-top: 1px solid #34312c; padding-top: 10px;">
+      <summary style="cursor: pointer; font-size: 13px; font-weight: 600; min-height: 32px; display: flex; align-items: center;">O que posso pedir</summary>
+    <div style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 6px 12px; font-size: 13px; color: #aaa398; padding-left: 2px;">
+      <span style="font-weight: 600; color: #ece8e1;">Status</span><span>“Como está o arena-rogue?”</span>
+      <span style="font-weight: 600; color: #ece8e1;">Execuções</span><span>“Para a 116.” “Tenta de novo com Codex.”</span>
+      <span style="font-weight: 600; color: #ece8e1;">Analisar</span><span>“Por que a 116 falhou?”</span>
+      <span style="font-weight: 600; color: #ece8e1;">Pedidos</span><span>“Cria uma tarefa para…”</span>
+      <span style="font-weight: 600; color: #ece8e1;">Ajustes</span><span>“Fala mais devagar.”</span>
+    </div>
+    </details>
+  </div>
+
+  <footer style="padding: 14px 20px 18px; border-top: 1px solid #34312c; display: flex; flex-direction: column; gap: 12px;">
+    <button type="button" style="height: 48px; border-radius: 999px; border: 1px solid #7d756a; background: #121110; color: #ece8e1; font: inherit; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5" fill="none" stroke="#ece8e1" stroke-width="1.6"></rect><path d="M3.5 8.5a5.5 5.5 0 0 0 11 0M9 14v2.5" fill="none" stroke="#ece8e1" stroke-width="1.6"></path></svg>Falar <span class="m" style="font-size: 11.5px; color: #958e83;">espaço 2×</span></button>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #aaa398;"><span>Voz hoje <span class="m" style="color: #ece8e1;">US$ 0,14</span> de <span class="m">US$ 1,00</span></span><div style="flex-grow: 1;"></div><button type="button" style="height: 30px; padding: 0 8px; border: 0; background: transparent; color: #aaa398; font: inherit; font-size: 12.5px; cursor: pointer;">Esquecer conversa</button></div>
+  </footer>
+</aside>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":520,"height":1020}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

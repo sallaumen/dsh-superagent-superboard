@@ -8,8 +8,17 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
   attr :log, :map, required: true
   attr :frozen, :boolean, default: false
   attr :has_history, :boolean, default: false
+  attr :idle, :boolean, default: false
 
   def merge_log(assigns) do
+    groups = assigns.log.groups
+    hidden = max(length(groups) - 3, 0)
+
+    assigns =
+      assigns
+      |> assign(:groups, groups)
+      |> assign(:hidden_groups, hidden)
+
     ~H"""
     <section id="sec-log" aria-labelledby="sec-log-title">
       <div class="ab-sec__head">
@@ -56,7 +65,8 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
       <div :if={@log.total == 0} class="ab-sec__empty">Nenhum PR mesclado nesta semana.</div>
 
       <div :if={@log.total > 0} class="ab-log">
-        <div :for={group <- @log.groups} class="ab-log__group">
+        <h3 class="ab-log__title">Histórico de 7 dias</h3>
+        <div :for={group <- @groups} class="ab-log__group">
           <div class="ab-log__day">
             <span class="ab-label">{group.label}</span>
             <span class="ab-data-sm ab-faint">
@@ -93,6 +103,16 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
             </span>
           </a>
         </div>
+        <button
+          :if={@hidden_groups > 0}
+          type="button"
+          class="ab-more"
+          phx-click="show_panel"
+          phx-value-panel="history"
+          data-panel-trigger
+        >
+          Mais {@hidden_groups} {if @hidden_groups == 1, do: "dia", else: "dias"} no histórico
+        </button>
       </div>
     </section>
     """

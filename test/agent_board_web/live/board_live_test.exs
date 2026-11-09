@@ -1339,6 +1339,21 @@ defmodule AgentBoardWeb.BoardShellTest do
     assert has_element?(view, ".ab-frozen", "Tentar agora")
   end
 
+  test "offline shows minimum counts and absolute ages", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "offline-honest")
+    Board.log_event(repo.id, "sync", "fixture/offline-honest", %{"errors" => 0})
+    Board.log_event(repo.id, "sync_error", "fixture/offline-honest", %{"reason" => "offline"})
+    insert_task(repo, 1, "queued")
+    at = Board.sync_snapshot(repo).last_success.inserted_at
+    expected = AgentBoard.Time.local_time(at, 0)
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/offline-honest")
+
+    assert has_element?(view, "#sec-queue .ab-sec__count", "≥1")
+    assert has_element?(view, "#sec-queue .ab-row", expected)
+    refute has_element?(view, "#sec-queue .ab-row", "há ")
+  end
+
   test "the beacon only says live when GitHub and the runner answered", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "fresh")
     Board.log_event(repo.id, "sync", "sallaumen/fresh", %{"errors" => 0})

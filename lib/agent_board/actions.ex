@@ -335,12 +335,12 @@ defmodule AgentBoard.Actions do
 
   def phrase(:remove_superagent, %{superagent: superagent}, "en-US"),
     do:
-      "Remove DeepSeek from #{project(superagent)}? The agent stops and its profile/state " <>
+      "Archive DeepSeek from #{project(superagent)}? The agent stops and its profile/state " <>
         "are archived; nothing is deleted."
 
   def phrase(:remove_superagent, %{superagent: superagent}, _lang),
     do:
-      "Remover o DeepSeek de #{project(superagent)}? O agente para e o profile/state vão " <>
+      "Arquivar o DeepSeek de #{project(superagent)}? O agente para e o profile/state vão " <>
         "para o arquivo; nada é apagado."
 
   def phrase(:archive_task, %{task: task}, "en-US"),

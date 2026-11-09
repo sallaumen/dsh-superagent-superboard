@@ -24,7 +24,7 @@ defmodule AgentBoardWeb.BoardComponents.Shortcuts do
         <dd>Cancelar a fala ou a resposta em andamento</dd>
         <dt><.kbd key="V" /></dt>
         <dd>Ditar um pedido no composer</dd>
-        <dt><.kbd key="1" />–<.kbd key="4" /></dt>
+        <dt><.kbd key="1" />–<.kbd key="5" /></dt>
         <dd>Trocar aba do painel</dd>
         <dt><.kbd key="?" /></dt>
         <dd>Esta lista</dd>

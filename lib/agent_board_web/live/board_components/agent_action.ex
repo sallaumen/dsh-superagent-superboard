@@ -39,6 +39,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:ceiling_usd, fn -> nil end)
      |> assign_new(:fallback, fn -> false end)
      |> assign_new(:retry, fn -> false end)
+     |> assign_new(:cancel_label, fn -> "Cancelar" end)
      |> assign_new(:reason, fn -> nil end)
      |> assign_new(:execution, fn -> nil end)
      |> assign_new(:superagent, fn -> nil end)
@@ -61,7 +62,12 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
         {@label}
       </button>
 
-      <div :if={@step == :confirm} class="ab-act__confirm" role="group" aria-labelledby={"#{@id}-q"}>
+      <div
+        :if={@step == :confirm}
+        class={["ab-act__confirm", @tone == :halt && "is-halt"]}
+        role="group"
+        aria-labelledby={"#{@id}-q"}
+      >
         <p id={"#{@id}-q"} class="ab-act__question">{@question}</p>
         <div class="ab-act__buttons">
           <button
@@ -108,7 +114,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
             phx-click="cancel"
             phx-target={@myself}
           >
-            Cancelar
+            {@cancel_label}
           </button>
         </div>
       </div>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Componentes e estados</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#171614}
+*{box-sizing:border-box}
+a{color:#a3b7ef}a:hover{color:#c6d3f7}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.g{display:inline-block;flex:none;width:10px;height:10px}
+.g-run{border-radius:50%;background:#7cc29d}
+.g-you{width:9px;height:9px;background:#a3b7ef;transform:rotate(45deg);border-radius:1.5px}
+.g-halt{width:9px;height:9px;background:#f09670;border-radius:2px}
+.g-queue{border-radius:50%;border:1.5px solid #958e83}
+.g-stale{border-radius:50%;border:1.5px solid #dcb15e;background:repeating-linear-gradient(135deg,#dcb15e 0 1.5px,transparent 1.5px 3.5px)}
+.g-unk{border-radius:50%;border:1.5px dashed #958e83}
+button:focus-visible,a:focus-visible{outline:2px solid #a3b7ef;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1600px; min-height: 1640px; background: #171614; color: #ece8e1; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 21px; padding: 40px 48px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 48px; align-content: start;">
+
+  <section style="display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">StatusMark</h2>
+    <p style="margin: 0; font-size: 12.5px; color: #aaa398;">A forma carrega o significado; a cor confirma. Sempre glifo + palavra em listas.</p>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; font-size: 13px;">
+      <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-run"></span><span style="color: #7cc29d; font-weight: 600;">Rodando</span></span>
+      <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-you"></span><span style="color: #a3b7ef; font-weight: 600;">Revisão</span></span>
+      <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-you"></span><span style="color: #a3b7ef; font-weight: 600;">Pergunta</span></span>
+      <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-halt"></span><span style="color: #f09670; font-weight: 600;">Bloqueado</span></span>
+      <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-halt"></span><span style="color: #f09670; font-weight: 600;">CI falhou</span></span>
+      <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-queue"></span><span style="color: #aaa398;">Na fila</span></span>
+      <span style="display: flex; align-items: center; gap: 8px;"><span style="width: 10px; color: #aaa398; font-size: 12px;">✓</span><span style="color: #aaa398;">Mesclado</span></span>
+      <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-stale"></span><span style="color: #dcb15e; font-weight: 600;">Dado velho</span></span>
+      <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-unk"></span><span style="color: #aaa398;">Desconhecido</span></span>
+      <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-stale"></span><span style="color: #dcb15e; font-weight: 600;">Silêncio de execução</span></span>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Botões</h2>
+    <p style="margin: 0; font-size: 12.5px; color: #aaa398;">Um primário por região. Destrutivo é contorno telha, nunca ao lado do primário.</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+      <button type="button" style="height: 36px; padding: 0 14px; border-radius: 6px; border: 0; background: #a3b7ef; color: #111a33; font: inherit; font-size: 13px; font-weight: 600;">Primário</button>
+      <button type="button" style="height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 13px; font-weight: 500;">Secundário</button>
+      <button type="button" style="height: 36px; padding: 0 10px; border-radius: 6px; border: 0; background: transparent; color: #aaa398; font: inherit; font-size: 13px;">Discreto</button>
+      <button type="button" style="height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #f09670; background: transparent; color: #f09670; font: inherit; font-size: 13px; font-weight: 500;">Parar execução</button>
+      <button type="button" disabled="disabled" style="height: 36px; padding: 0 14px; border-radius: 6px; border: 1px dashed #7d756a; background: transparent; color: #958e83; font: inherit; font-size: 13px;">Despachar</button>
+      <button type="button" style="height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 13px; outline: 2px solid #a3b7ef; outline-offset: 2px;">Com foco</button>
+    </div>
+    <p style="margin: 0; font-size: 12.5px; color: #aaa398;">Desabilitado diz o motivo ao lado: <span style="color: #ece8e1;">“Despacho em pausa global.”</span></p>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Item de atenção</h2>
+    <article style="background: #201e1b; border: 1px solid #34312c; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px;">
+      <div style="display: flex; align-items: center; gap: 8px;"><span class="g g-halt"></span><span style="font-size: 12px; font-weight: 600; color: #f09670;">CI falhou na main</span><span class="m" style="font-size: 11.5px; color: #958e83;">PR #1355</span></div>
+      <div style="font-size: 14.5px; font-weight: 500;">Balance the 30-second survival curve</div>
+      <div style="font-size: 13px; color: #aaa398;"><span style="color: #ece8e1;">CI falhou em gates</span> depois do merge. A main está vermelha desde 19:24.</div>
+      <div style="display: flex; gap: 8px; padding-top: 6px;"><button type="button" style="height: 30px; padding: 0 10px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 12.5px;">Ver checks</button><button type="button" style="height: 30px; padding: 0 10px; border-radius: 6px; border: 0; background: transparent; color: #aaa398; font: inherit; font-size: 12.5px;">Despachar correção</button></div>
+    </article>
+    <p style="margin: 0; font-size: 12.5px; color: #aaa398;">Ordem: CI na main → bloqueios → revisões → perguntas → silêncio de execução.</p>
+  </section>
+
+  <section style="grid-column: span 2; display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Tile de vazão · quatro verdades</h2>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #34312c; padding-top: 16px;">
+      <div style="padding-right: 16px; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Medido</span><span><span class="m" style="font-size: 22px; line-height: 28px;">21</span><span style="font-size: 12px; color: #958e83;"> PRs · 24 h</span></span><svg aria-hidden="true" width="100%" height="20" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,18 20,14 40,16 60,8 80,6 100,3" fill="none" stroke="#aaa398" stroke-width="1.5" vector-effect="non-scaling-stroke"></polyline></svg><span style="font-size: 12px; color: #958e83;">valor normal, sem qualificador</span></div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Estimado</span><span><span class="m" style="font-size: 22px; line-height: 28px;">≥ US$ 149,02</span></span><span style="font-size: 12px; color: #aaa398;">mínimo: 2 execuções sem custo informado</span><span style="font-size: 12px; color: #958e83;">“≥” e a frase que explica</span></div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Desconhecido</span><span style="display: flex; align-items: center; gap: 6px;"><span class="g g-unk"></span><span class="m" style="font-size: 22px; line-height: 28px; color: #aaa398;">?</span></span><span style="font-size: 12px; color: #aaa398;">sem leitura: o agente não expõe isso</span><span style="font-size: 12px; color: #958e83;">nunca 0; sempre o motivo</span></div>
+      <div style="padding-left: 16px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Sem dados ainda</span><span class="m" style="font-size: 22px; line-height: 28px; color: #aaa398;">—</span><span style="font-size: 12px; color: #aaa398;">primeira leitura em andamento</span><span style="font-size: 12px; color: #958e83;">bloco estático, sem shimmer</span></div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Linha de fila</h2>
+    <ol style="list-style: none; margin: 0; padding: 0;">
+      <li style="display: grid; grid-template-columns: 22px 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 8px; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83; text-align: right;">1</span><span class="g g-queue"></span><span style="font-weight: 500;">Padrão</span><span class="m" style="font-size: 11.5px; color: #958e83;">há 5 s</span></li>
+      <li style="display: grid; grid-template-columns: 22px 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 8px; border-radius: 10px; background: #1e2538;"><span class="m" style="font-size: 11.5px; color: #958e83; text-align: right;">2</span><span class="g g-queue"></span><span style="font-weight: 500;">Selecionada / aberta no inspector</span><span class="m" style="font-size: 11.5px; color: #958e83;">há 4 s</span></li>
+      <li style="display: grid; grid-template-columns: 22px 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 8px; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83; text-align: right;">3</span><span class="g g-queue"></span><span><span style="font-weight: 500;">Possível repetida</span> <span style="font-size: 12px; color: #dcb15e;">· parecida com #121</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 3 s</span></li>
+      <li style="display: grid; grid-template-columns: 22px 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 8px; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83; text-align: right;">4</span><span class="g g-queue"></span><span><span style="font-weight: 500;">Dividida</span> <span style="font-size: 12px; color: #aaa398;">· de “Fases contínuas…”</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 3 s</span></li>
+    </ol>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Linha de merge</h2>
+    <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid #34312c;"><span style="color: #aaa398; font-size: 12px;">✓</span><span>CI passou e revisado</span><span></span><span style="font-size: 12px; color: #958e83;">CI ✓ · revisado por você · <span class="m">19:28</span></span></div>
+    <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid #34312c;"><span style="color: #aaa398; font-size: 12px;">✓</span><span>CI local não lido</span><span></span><span style="font-size: 12px; color: #958e83;">CI local <span class="m">?</span> · sem revisão · <span class="m">19:21</span></span></div>
+    <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid #34312c;"><span class="g g-halt" style="margin-top: 6px;"></span><span>CI falhou depois do merge</span><span></span><span style="font-size: 12px; color: #f09670;">CI falhou em gates · <span class="m">19:14</span></span></div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Recibo do composer</h2>
+    <div style="border: 1px solid #34312c; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+      <div style="display: flex; align-items: center; gap: 8px;"><span style="color: #aaa398;">✓</span><span><strong style="font-weight: 600;">5 criadas</strong> <span class="m" style="font-size: 11.5px; color: #958e83;">#117–#121</span></span></div>
+      <div style="display: flex; align-items: center; gap: 8px;"><span class="g g-queue"></span><span>1 já estava na fila <span class="m" style="font-size: 11.5px; color: #958e83;">#114</span></span></div>
+      <div style="display: flex; align-items: center; gap: 8px;"><span class="g g-halt"></span><span style="flex-grow: 1;">1 falhou: <span style="color: #aaa398;">GitHub recusou (limite de taxa)</span></span><button type="button" style="height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 12.5px;">Tentar de novo</button></div>
+    </div>
+  </section>
+
+  <section style="grid-column: span 3; display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Raias vazias, carregando e com erro</h2>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px;">
+      <div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Agora · vazio</span><div style="border: 1px dashed #34312c; border-radius: 16px; padding: 16px; font-size: 13.5px;"><span style="display: flex; align-items: center; gap: 8px;"><span class="g g-queue"></span>Nenhum agente trabalhando.</span><span style="font-size: 12.5px; color: #aaa398;">A próxima da fila é <a href="#">#114</a>.</span></div></div>
+      <div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Precisa de você · vazio</span><div style="padding: 16px 0; font-size: 13.5px; color: #aaa398; border-top: 1px solid #34312c;">Nada esperando você.</div></div>
+      <div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Fila · carregando</span><div aria-busy="true" style="display: flex; flex-direction: column; gap: 10px; padding-top: 8px;"><span style="height: 12px; width: 90%; border-radius: 4px; background: #262421;"></span><span style="height: 12px; width: 72%; border-radius: 4px; background: #262421;"></span><span style="height: 12px; width: 80%; border-radius: 4px; background: #262421;"></span><span style="font-size: 12px; color: #958e83;">Lendo a fila do agente…</span></div></div>
+      <div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Mesclados · erro</span><div role="alert" style="border-radius: 10px; background: #36211a; padding: 12px 14px; font-size: 13px; display: flex; flex-direction: column; gap: 8px;"><span><strong style="font-weight: 600;">Não lemos os PRs.</strong> O token do GitHub expirou. Gere outro em Configurações › Repositórios.</span><button type="button" style="align-self: flex-start; height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 12.5px;">Tentar de novo</button></div></div>
+    </div>
+  </section>
+
+  <section style="grid-column: span 3; display: flex; flex-direction: column; gap: 12px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Card de execução · Agora</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px;">
+      <div style="background: #1d2c24; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;"><span style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span class="g g-run"></span><span style="color: #7cc29d; font-weight: 600;">Rodando</span><span style="flex-grow: 1;"></span><span class="m" style="font-size: 12.5px;">04:12</span></span><span style="font-weight: 500;">Ao vivo: o ponto respira, o relógio anda</span><span class="m" style="font-size: 12.5px; color: #7cc29d;">→ passo real do agente</span></div>
+      <div style="background: #1d2c24; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;"><span style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span class="g g-stale"></span><span style="color: #dcb15e; font-weight: 600;">Sem saída há 12 min</span><span style="flex-grow: 1;"></span><span class="m" style="font-size: 12.5px; color: #aaa398;">16:40</span></span><span style="font-weight: 500;">Silêncio de execução: também entra em “Precisa de você”</span><span class="m" style="font-size: 12.5px; color: #aaa398;">último passo às 20:35</span></div>
+      <div style="border-radius: 16px; padding: 14px 16px; border: 1px dashed #6b5a2e; background: repeating-linear-gradient(135deg, #2d2616 0 8px, #171614 8px 16px); display: flex; flex-direction: column; gap: 8px;"><span style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span class="g g-stale"></span><span style="color: #dcb15e; font-weight: 600;">Visto às 20:45</span><span style="flex-grow: 1;"></span><span class="m" style="font-size: 12.5px; color: #aaa398;">04:12 parado</span></span><span style="font-weight: 500;">Sem conexão: hachura, relógio congelado</span><span class="m" style="font-size: 12.5px; color: #aaa398;">último passo visto</span></div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":1640}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -126,6 +126,7 @@ defmodule AgentBoard.Overview do
       url: task.url,
       repository_id: task.repository_id,
       repo: "#{task.repository.owner}/#{task.repository.name}",
+      started_at: task.started_at,
       at: today_time(task.state_changed_at || task.updated_at)
     }
   end

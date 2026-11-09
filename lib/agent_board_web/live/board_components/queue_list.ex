@@ -7,6 +7,9 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
 
   attr :queue, :map, required: true
   attr :frozen, :boolean, default: false
+  attr :selected, :any, default: nil
+  attr :frozen_at, :any, default: nil
+  attr :tz_offset, :integer, default: 0
 
   def queue_list(assigns) do
     ~H"""
@@ -57,20 +60,22 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
           class="ab-row"
           role="listitem"
           data-task={task.id}
+          aria-selected={to_string(not is_nil(@selected) and @selected == task.id)}
           phx-click="open"
           phx-value-id={task.id}
-          data-panel-trigger
           data-panel-trigger
         >
           <span class="ab-row__pos">{index + 1}</span>
           <.glyph kind={:queue} />
           <span class="ab-row__title">
             <span><span class="ab-need__id">#{task.number}</span> {task.title}</span>
-            <span :if={task.note} class="ab-row__note"><.glyph kind={:review} />{task.note}</span>
+            <span :if={task.note} class="ab-row__note is-stale">
+              <.glyph kind={:stale} />{task.note}
+            </span>
             <span :if={is_nil(task.note) and task.sub} class="ab-meta">{task.sub}</span>
           </span>
           <span class="ab-row__side">
-            <span class="ab-meta">{Time.ago(task.age_seconds)}</span>
+            <span class="ab-meta">{age(task.age_seconds, @frozen, @frozen_at, @tz_offset)}</span>
           </span>
         </button>
       </div>
@@ -81,6 +86,9 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
     </section>
     """
   end
+
+  defp age(_seconds, true, %DateTime{} = at, offset), do: Time.local_time(at, offset)
+  defp age(seconds, _frozen, _at, _offset), do: Time.ago(seconds)
 
   defp filter_buttons(filters) do
     filters

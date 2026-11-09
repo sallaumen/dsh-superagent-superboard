@@ -14,6 +14,8 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
 
   attr :flow, :map, required: true
   attr :tz_offset, :integer, default: 0
+  attr :frozen, :boolean, default: false
+  attr :superagents, :list, default: []
 
   def throughput(assigns) do
     ~H"""
@@ -27,12 +29,27 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
       <div class="ab-sec__head">
         <h2 id="sec-flow-title">Vazão</h2>
         <span class="ab-sec__count">
-          por hora · calculado às {Time.local_time(@flow.computed_at, @tz_offset)}
+          por hora · {if @frozen, do: "congelada às", else: "calculado às"} {Time.local_time(
+            @flow.computed_at,
+            @tz_offset
+          )}
+        </span>
+        <span
+          :if={@superagents != []}
+          class="ab-flow__agents"
+          title="Soma dos limites de agentes configurados em cada projeto"
+        >
+          {length(@superagents)} projetos · {Enum.sum(Enum.map(@superagents, & &1.max_workers))} agentes
         </span>
       </div>
       <ul class="ab-flow__grid" aria-label="Vazão por hora, 24 h e 7 dias">
         <li :for={tile <- @flow.tiles} id={"flow-#{tile.key}"} class="ab-flow__tile">
-          <.tile tile={tile} buckets={@flow.buckets} offset={@tz_offset} />
+          <.tile
+            tile={tile}
+            buckets={@flow.buckets}
+            offset={@tz_offset}
+            frozen={@frozen}
+          />
         </li>
       </ul>
     </section>
@@ -42,6 +59,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
   attr :tile, :map, required: true
   attr :buckets, :list, required: true
   attr :offset, :integer, required: true
+  attr :frozen, :boolean, default: false
 
   defp tile(%{tile: %{kind: kind}} = assigns) when kind in [:rate, :depth] do
     ~H"""
@@ -53,10 +71,13 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
         data-value={Metrics.count(@tile.hour)}
         title={title(@tile)}
       >
-        {Metrics.count(@tile.hour)}
+        <span :if={@frozen and @tile.status == :measured} class="ab-flow__atleast">≥ </span>{Metrics.count(
+          @tile.hour
+        )}
       </span>
       <span class="ab-flow__unit">{if @tile.kind == :rate, do: "/h", else: "na fila"}</span>
       <span
+        :if={@tile.status != :unknown}
         class={["ab-tag", delta_tone(@tile)]}
         title={delta_title(@tile)}
       >
@@ -147,7 +168,9 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
       <div>
         <dt>fonte</dt>
         <dd>
-          {if @tile.status == :measured, do: "orquestrador, agora", else: Metrics.reason(@tile.reason)}
+          {if @tile.status == :measured,
+            do: "orquestrador principal, agora",
+            else: Metrics.reason(@tile.reason)}
         </dd>
       </div>
     </dl>
@@ -387,7 +410,9 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
   defp title(%{status: :unknown, reason: reason}), do: Metrics.reason(reason)
   defp title(%{kind: :rate}), do: "nos últimos 60 minutos"
   defp title(%{kind: :depth}), do: "tarefas na fila agora"
-  defp title(%{kind: :load}), do: "vagas do orquestrador em uso agora"
+
+  defp title(%{kind: :load}),
+    do: "vagas do orquestrador principal em uso agora; os superagentes têm limites próprios"
 
   defp delta_tone(%{status: :unknown}), do: nil
   defp delta_tone(%{kind: :rate, delta: delta}) when delta > 0, do: "ab-tag--agent"

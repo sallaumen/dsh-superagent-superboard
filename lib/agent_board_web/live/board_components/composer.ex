@@ -59,6 +59,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       |> assign(:selected_count, Enum.count(selected, &(&1 in 0..max(length(tasks) - 1, 0))))
       |> assign(:derived_title, Titles.from_request(assigns.text))
       |> assign(:busy, not is_nil(assigns.job))
+      |> assign(:step, step(assigns.receipt, status, assigns.job))
 
     ~H"""
     <div
@@ -69,9 +70,14 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       <h2 id="composer-title" class="ab-sr">Novo pedido</h2>
 
       <div class="ab-compose__head">
-        <span class="ab-label">Novo pedido em</span>
+        <span class="ab-label">{if @split, do: "Dividir pedido", else: "Novo pedido"} em</span>
         <span class="ab-chip">{@repo}</span>
         <span class="ab-top__spacer"></span>
+        <ol class="ab-steps" aria-label="Etapas do pedido">
+          <li class={@step == 1 && "is-on"}><span>1</span>Pedido</li>
+          <li :if={@split} class={@step == 2 && "is-on"}><span>2</span>Revisar</li>
+          <li class={@step == 3 && "is-on"}><span>{if @split, do: 3, else: 2}</span>Recibo</li>
+        </ol>
         <.kbd key="Esc" />
         <button
           type="button"
@@ -183,6 +189,13 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           </button>
         </div>
 
+        <.executor_picker
+          :if={@executor && String.trim(@text) != ""}
+          chosen={@executor}
+          suggestion={@suggestion}
+          disabled={@busy}
+        />
+
         <div :if={@split && @tasks != [] && !@busy} class="ab-split">
           <label
             :for={{task, index} <- Enum.with_index(@tasks)}
@@ -206,13 +219,6 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             <.work_tag work_type={task.kind} size={task.size} />
           </label>
         </div>
-
-        <.executor_picker
-          :if={@executor && String.trim(@text) != ""}
-          chosen={@executor}
-          suggestion={@suggestion}
-          disabled={@busy}
-        />
 
         <p :if={@confirm && !@busy} id="composer-confirm" class="ab-compose__confirm">
           {@confirm}
@@ -275,6 +281,13 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
     </div>
     """
   end
+
+  defp step(receipt, _status, _job) when not is_nil(receipt), do: 3
+
+  defp step(_receipt, status, _job) when status in [:ready, :needs_clarification, :no_tasks],
+    do: 2
+
+  defp step(_receipt, _status, _job), do: 1
 
   attr :receipt, :map, required: true
   attr :retry_confirm, :string, default: nil

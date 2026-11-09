@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Grade, densidade e movimento</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#171614}
+*{box-sizing:border-box}
+a{color:#a3b7ef}a:hover{color:#c6d3f7}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+a:focus-visible{outline:2px solid #a3b7ef;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1160px; background: #171614; color: #ece8e1; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 21px; padding: 40px 48px; display: flex; flex-direction: column; gap: 40px;">
+  <div style="display: flex; align-items: baseline; gap: 16px;">
+    <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Grade por largura</h2>
+    <span style="font-size: 13px; color: #aaa398;">proporções reais das colunas; regras completas no <a href="DESIGN.md">DESIGN.md</a></span>
+  </div>
+
+  <div style="display: flex; align-items: flex-end; gap: 32px;">
+    <figure style="margin: 0; display: flex; flex-direction: column; gap: 8px;">
+      <div aria-hidden="true" style="width: 66px; height: 150px; border: 1px solid #7d756a; border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 4px;">
+        <span style="height: 10px; border-radius: 2px; background: #3d3a34;"></span>
+        <span style="height: 22px; border-radius: 3px; background: #2b3f33;"></span>
+        <span style="height: 18px; border-radius: 3px; background: #1e2538;"></span>
+        <span style="flex-grow: 1; border-radius: 3px; background: #262421;"></span>
+        <span style="height: 10px; border-radius: 2px; background: #3d3a34;"></span>
+      </div>
+      <figcaption style="font-size: 12.5px;"><span class="m">390</span><br><span style="color: #aaa398;">1 coluna</span></figcaption>
+    </figure>
+    <figure style="margin: 0; display: flex; flex-direction: column; gap: 8px;">
+      <div aria-hidden="true" style="width: 130px; height: 150px; border: 1px solid #7d756a; border-radius: 8px; padding: 6px; display: flex; gap: 4px;">
+        <span style="width: 12px; border-radius: 2px; background: #121110; border: 1px solid #34312c;"></span>
+        <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;"><span style="height: 26px; border-radius: 3px; background: #2b3f33;"></span><span style="height: 20px; border-radius: 3px; background: #1e2538;"></span><span style="flex-grow: 1; border-radius: 3px; background: #262421;"></span></span>
+      </div>
+      <figcaption style="font-size: 12.5px;"><span class="m">768</span><br><span style="color: #aaa398;">trilho 56 · 1 coluna</span></figcaption>
+    </figure>
+    <figure style="margin: 0; display: flex; flex-direction: column; gap: 8px;">
+      <div aria-hidden="true" style="width: 230px; height: 150px; border: 1px solid #7d756a; border-radius: 8px; padding: 6px; display: flex; gap: 6px;">
+        <span style="width: 38px; border-radius: 2px; background: #121110; border: 1px solid #34312c;"></span>
+        <span style="flex: 3; display: flex; flex-direction: column; gap: 4px;"><span style="height: 30px; border-radius: 3px; background: #2b3f33;"></span><span style="height: 24px; border-radius: 3px; background: #1e2538;"></span><span style="flex-grow: 1; border-radius: 3px; background: #262421;"></span></span>
+        <span style="flex: 2; display: flex; flex-direction: column; gap: 4px;"><span style="flex-grow: 1; border-radius: 3px; background: #262421;"></span><span style="height: 36px; border-radius: 3px; background: #33302b;"></span></span>
+      </div>
+      <figcaption style="font-size: 12.5px;"><span class="m">1366</span><br><span style="color: #aaa398;">3fr · 2fr</span></figcaption>
+    </figure>
+    <figure style="margin: 0; display: flex; flex-direction: column; gap: 8px;">
+      <div aria-hidden="true" style="width: 320px; height: 150px; border: 1px solid #7d756a; border-radius: 8px; padding: 6px; display: flex; gap: 6px;">
+        <span style="width: 38px; border-radius: 2px; background: #121110; border: 1px solid #34312c;"></span>
+        <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+          <span style="height: 18px; display: flex; gap: 4px;"><span style="flex: 7; border-radius: 3px; background: #262421;"></span><span style="flex: 5; border-radius: 3px; background: #262421;"></span></span>
+          <span style="flex-grow: 1; display: flex; gap: 6px;"><span style="flex: 5; display: flex; flex-direction: column; gap: 4px;"><span style="height: 34px; border-radius: 3px; background: #2b3f33;"></span><span style="flex-grow: 1; border-radius: 3px; background: #1e2538;"></span></span><span style="flex: 4; border-radius: 3px; background: #262421;"></span><span style="flex: 3; border-radius: 3px; background: #262421;"></span></span>
+          <span style="height: 16px; border-radius: 3px; background: #33302b;"></span>
+        </span>
+      </div>
+      <figcaption style="font-size: 12.5px;"><span class="m">1920</span><br><span style="color: #aaa398;">5fr · 4fr · 3fr + vazão</span></figcaption>
+    </figure>
+    <figure style="margin: 0; display: flex; flex-direction: column; gap: 8px;">
+      <div aria-hidden="true" style="width: 420px; height: 150px; border: 1px solid #7d756a; border-radius: 8px; padding: 6px; display: flex; gap: 6px;">
+        <span style="width: 38px; border-radius: 2px; background: #121110; border: 1px solid #34312c;"></span>
+        <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px;">
+          <span style="height: 16px; border-radius: 6px; border: 1px solid #3d3a34;"></span>
+          <span style="flex-grow: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;"><span style="border-radius: 3px; background: #262421;"></span><span style="border-radius: 3px; background: #262421;"></span><span style="border-radius: 3px; background: #262421;"></span><span style="border-radius: 3px; background: #262421;"></span><span style="border-radius: 3px; background: #262421;"></span><span style="border-radius: 3px; background: #262421;"></span><span style="border-radius: 3px; background: #262421;"></span></span>
+          <span style="height: 16px; border-radius: 3px; background: #33302b;"></span>
+        </span>
+      </div>
+      <figcaption style="font-size: 12.5px;"><span class="m">2560 ocioso</span><br><span style="color: #aaa398;">raias numa linha · histórico 7 colunas</span></figcaption>
+    </figure>
+  </div>
+  <div style="display: flex; gap: 20px; font-size: 12px; color: #aaa398;">
+    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: #2b3f33;"></span>Agora</span>
+    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: #1e2538;"></span>Precisa de você</span>
+    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: #262421;"></span>Fila, Mesclados, contexto</span>
+    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: #33302b;"></span>Vazão</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 48px; align-items: start;">
+    <section style="display: flex; flex-direction: column; gap: 10px;">
+      <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Tipo</h3>
+      <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #34312c; padding-top: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em;">arena-rogue</span><span class="m" style="font-size: 11.5px; color: #958e83;">display 26/32</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 16px; line-height: 22px; font-weight: 600;">Precisa de você</span><span class="m" style="font-size: 11.5px; color: #958e83;">title 16/22</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 14.5px; line-height: 21px; font-weight: 500;">Sistema de câmera com lerp</span><span class="m" style="font-size: 11.5px; color: #958e83;">task 14.5/21</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 14px;">O agente pergunta se “alt”…</span><span class="m" style="font-size: 11.5px; color: #958e83;">body 14/21</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12.5px; color: #aaa398;">há 14 min · sem revisão</span><span class="m" style="font-size: 11.5px; color: #958e83;">meta 12.5/18</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Fila · 11</span><span class="m" style="font-size: 11.5px; color: #958e83;">label 12/16</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span class="m" style="font-size: 22px; line-height: 28px;">≥ US$ 149,02</span><span class="m" style="font-size: 11.5px; color: #958e83;">data-lg 22/28</span></div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span class="m" style="font-size: 12.5px;">20:47 mix test --only seed</span><span class="m" style="font-size: 11.5px; color: #958e83;">data 12.5/18</span></div>
+      </div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 10px;">
+      <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Espaço</h3>
+      <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #34312c; padding-top: 10px; font-size: 12.5px;">
+        <div style="display: grid; grid-template-columns: 70px 70px minmax(0, 1fr); gap: 10px; align-items: center;"><span class="m">space-3</span><span style="height: 8px; width: 8px; background: #a3b7ef;"></span><span style="color: #aaa398;">8 · dentro da linha</span></div>
+        <div style="display: grid; grid-template-columns: 70px 70px minmax(0, 1fr); gap: 10px; align-items: center;"><span class="m">space-4</span><span style="height: 8px; width: 12px; background: #a3b7ef;"></span><span style="color: #aaa398;">12 · padding de linha</span></div>
+        <div style="display: grid; grid-template-columns: 70px 70px minmax(0, 1fr); gap: 10px; align-items: center;"><span class="m">space-5</span><span style="height: 8px; width: 16px; background: #a3b7ef;"></span><span style="color: #aaa398;">16 · cartão, gutter 390</span></div>
+        <div style="display: grid; grid-template-columns: 70px 70px minmax(0, 1fr); gap: 10px; align-items: center;"><span class="m">space-6</span><span style="height: 8px; width: 24px; background: #a3b7ef;"></span><span style="color: #aaa398;">24 · gutter, título→conteúdo</span></div>
+        <div style="display: grid; grid-template-columns: 70px 70px minmax(0, 1fr); gap: 10px; align-items: center;"><span class="m">32</span><span style="height: 8px; width: 32px; background: #7d756a;"></span><span style="color: #aaa398;">blocos numa coluna (novo)</span></div>
+        <div style="display: grid; grid-template-columns: 70px 70px minmax(0, 1fr); gap: 10px; align-items: center;"><span class="m">space-7</span><span style="height: 8px; width: 40px; background: #a3b7ef;"></span><span style="color: #aaa398;">40 · entre colunas e seções</span></div>
+        <div style="display: grid; grid-template-columns: 70px 70px minmax(0, 1fr); gap: 10px; align-items: center;"><span class="m">space-8</span><span style="height: 8px; width: 64px; background: #a3b7ef;"></span><span style="color: #aaa398;">64 · respiro do vazio</span></div>
+        <p style="margin: 6px 0 0; color: #aaa398;">Texto corrido ≤ 760 px em qualquer largura. Alvo 32 px no desktop, 44 px no toque.</p>
+      </div>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 10px;">
+      <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Movimento</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; border-top: 1px solid #34312c;">
+        <tbody>
+          <tr><td style="padding: 8px 8px 8px 0; border-bottom: 1px solid #34312c;">Ponto do agente</td><td class="m" style="padding: 8px 0; border-bottom: 1px solid #34312c; color: #aaa398;">2.4 s, só ao vivo</td></tr>
+          <tr><td style="padding: 8px 8px 8px 0; border-bottom: 1px solid #34312c;">Camadas entram</td><td class="m" style="padding: 8px 0; border-bottom: 1px solid #34312c; color: #aaa398;">180–220 ms, 4 px</td></tr>
+          <tr><td style="padding: 8px 8px 8px 0; border-bottom: 1px solid #34312c;">Camadas saem</td><td class="m" style="padding: 8px 0; border-bottom: 1px solid #34312c; color: #aaa398;">120 ms</td></tr>
+          <tr><td style="padding: 8px 8px 8px 0; border-bottom: 1px solid #34312c;">Troca de estado</td><td class="m" style="padding: 8px 0; border-bottom: 1px solid #34312c; color: #aaa398;">150 ms cor/glifo</td></tr>
+          <tr><td style="padding: 8px 8px 8px 0; border-bottom: 1px solid #34312c; color: #f09670;">Broadcast</td><td style="padding: 8px 0; border-bottom: 1px solid #34312c; color: #aaa398;">não anima</td></tr>
+          <tr><td style="padding: 8px 8px 8px 0; border-bottom: 1px solid #34312c; color: #f09670;">Reordenar fila</td><td style="padding: 8px 0; border-bottom: 1px solid #34312c; color: #aaa398;">não anima</td></tr>
+          <tr><td style="padding: 8px 8px 8px 0; border-bottom: 1px solid #34312c; color: #f09670;">Skeleton</td><td style="padding: 8px 0; border-bottom: 1px solid #34312c; color: #aaa398;">estático</td></tr>
+          <tr><td style="padding: 8px 8px 8px 0; border-bottom: 1px solid #34312c;">Reduced motion</td><td style="padding: 8px 0; border-bottom: 1px solid #34312c; color: #aaa398;">tudo 0; texto mantém o feedback</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1160}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Board o_colmex · ocioso · ultrawide</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#171614}
+*{box-sizing:border-box}
+a{color:#a3b7ef}a:hover{color:#c6d3f7}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.g{display:inline-block;flex:none;width:10px;height:10px}
+.g-run{border-radius:50%;background:#7cc29d}
+.g-you{width:9px;height:9px;background:#a3b7ef;transform:rotate(45deg);border-radius:1.5px}
+.g-halt{width:9px;height:9px;background:#f09670;border-radius:2px}
+.g-queue{border-radius:50%;border:1.5px solid #958e83}
+.breathe{animation:br 2.4s ease-in-out infinite}
+@keyframes br{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.breathe{animation:none}}
+button:focus-visible,a:focus-visible{outline:2px solid #a3b7ef;outline-offset:2px}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; width: 100%; min-height: 1040px; background: #171614; color: #ece8e1; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 21px;">
+<nav aria-label="Repositórios" style="flex: 0 0 224px; background: #121110; border-right: 1px solid #34312c; padding: 20px 12px; display: flex; flex-direction: column; gap: 4px;">
+  <div style="display: flex; align-items: center; gap: 8px; padding: 0 8px 16px;"><span style="width: 18px; height: 18px; border-radius: 5px; background: #ece8e1; display: flex; align-items: center; justify-content: center;"><span class="g g-run" style="width: 6px; height: 6px;"></span></span><span style="font-weight: 600;">Agent Board</span></div>
+  <a href="#" style="padding: 7px 10px; border-radius: 6px; color: #ece8e1; text-decoration: none;">Hoje</a>
+  <div style="font-size: 12px; font-weight: 600; color: #aaa398; padding: 16px 10px 6px;">sallaumen</div>
+  <a href="#" style="padding: 7px 10px; border-radius: 6px; color: #ece8e1; text-decoration: none;">arena-rogue</a>
+  <a href="#" aria-current="page" style="padding: 7px 10px; border-radius: 6px; background: #1e2538; color: #ece8e1; text-decoration: none; font-weight: 500;">o_colmex</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; padding: 24px 48px 64px; display: flex; flex-direction: column; gap: 32px;">
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+    <div style="display: flex; align-items: baseline; gap: 4px;"><span style="color: #aaa398;">sallaumen/</span><h1 style="margin: 0; font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em;">o_colmex</h1></div>
+    <button type="button" style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #34312c; background: #201e1b; color: #ece8e1; font: inherit; font-size: 12.5px; cursor: pointer;"><span class="g g-run breathe" style="width: 8px; height: 8px;"></span>Ao vivo <span class="m" style="color: #958e83; font-size: 11.5px;">09:12</span></button>
+    <div style="flex-grow: 1;"></div>
+    <button type="button" style="height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;">Dividir pedido</button>
+    <button type="button" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px 0 14px; border-radius: 6px; border: 0; background: #a3b7ef; color: #111a33; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;">Novo pedido <span class="m" style="font-size: 11px; background: rgba(17,26,51,0.12); border-radius: 4px; padding: 0 5px;">N</span></button>
+  </header>
+
+  <section aria-label="Raias, todas vazias" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 40px; padding: 16px 20px; border: 1px solid #34312c; border-radius: 16px;">
+    <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-queue"></span><span style="font-weight: 600;">Agora</span><span style="color: #aaa398;">nenhum agente trabalhando</span></span>
+    <span style="width: 1px; height: 20px; background: #34312c;"></span>
+    <span style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 600;">Precisa de você</span><span style="color: #aaa398;">nada</span></span>
+    <span style="width: 1px; height: 20px; background: #34312c;"></span>
+    <span style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 600;">Fila</span><span style="color: #aaa398;">vazia</span></span>
+    <span style="width: 1px; height: 20px; background: #34312c;"></span>
+    <span style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 600;">Mesclados</span><span class="m" style="color: #aaa398; font-size: 12.5px;">18 em 7 dias</span><span style="color: #aaa398;">· último às <span class="m">02:41</span></span></span>
+    <div style="flex-grow: 1;"></div>
+    <span style="font-size: 12.5px; color: #958e83;">O board volta às raias quando algo entrar.</span>
+  </section>
+
+  <section aria-labelledby="hist-h">
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px;"><h2 id="hist-h" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Histórico de 7 dias</h2><span style="font-size: 12.5px; color: #aaa398;">um ponto por PR · telha se o CI falhou depois do merge</span></div>
+    <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0;">
+      <div style="padding: 0 20px 0 0; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Seg, 2 nov</span><span class="m" style="font-size: 11.5px; color: #958e83;">0</span></div>
+        <div style="height: 10px; border-bottom: 1px solid #34312c;"></div>
+        <span style="font-size: 12.5px; color: #958e83;">Nenhum merge.</span>
+      </div>
+      <div style="padding: 0 20px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Ter, 3 nov</span><span class="m" style="font-size: 11.5px; color: #958e83;">2</span></div>
+        <div style="display: flex; gap: 3px; height: 10px; padding-bottom: 14px; border-bottom: 1px solid #34312c; box-sizing: content-box;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span></div>
+        <div style="font-size: 13px;"><span class="m" style="font-size: 11.5px; color: #958e83;">#21 </span>Importar planilha de colmeias</div>
+        <div style="font-size: 13px;"><span class="m" style="font-size: 11.5px; color: #958e83;">#22 </span>Validar datas de inspeção</div>
+      </div>
+      <div style="padding: 0 20px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Qua, 4 nov</span><span class="m" style="font-size: 11.5px; color: #958e83;">4</span></div>
+        <div style="display: flex; gap: 3px; height: 10px; padding-bottom: 14px; border-bottom: 1px solid #34312c; box-sizing: content-box;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 2px; background: #f09670;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span></div>
+        <div style="font-size: 13px;"><span class="m" style="font-size: 11.5px; color: #958e83;">#24 </span>Mapa de apiários</div>
+        <div style="font-size: 13px;"><span class="g g-halt" style="width: 8px; height: 8px;"></span> <span class="m" style="font-size: 11.5px; color: #958e83;">#25 </span>Exportar relatório <span style="color: #f09670; font-size: 12px;">CI falhou em gates</span></div>
+        <div style="font-size: 12.5px; color: #a3b7ef;">e mais 2</div>
+      </div>
+      <div style="padding: 0 20px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Qui, 5 nov</span><span class="m" style="font-size: 11.5px; color: #958e83;">3</span></div>
+        <div style="display: flex; gap: 3px; height: 10px; padding-bottom: 14px; border-bottom: 1px solid #34312c; box-sizing: content-box;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span></div>
+        <div style="font-size: 13px;"><span class="m" style="font-size: 11.5px; color: #958e83;">#27 </span>Filtro por região</div>
+        <div style="font-size: 12.5px; color: #a3b7ef;">e mais 2</div>
+      </div>
+      <div style="padding: 0 20px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Sex, 6 nov</span><span class="m" style="font-size: 11.5px; color: #958e83;">5</span></div>
+        <div style="display: flex; gap: 3px; height: 10px; padding-bottom: 14px; border-bottom: 1px solid #34312c; box-sizing: content-box;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span></div>
+        <div style="font-size: 13px;"><span class="m" style="font-size: 11.5px; color: #958e83;">#30 </span>Login por link mágico</div>
+        <div style="font-size: 12.5px; color: #a3b7ef;">e mais 4</div>
+      </div>
+      <div style="padding: 0 20px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12px; font-weight: 600; color: #aaa398;">Sáb, 7 nov</span><span class="m" style="font-size: 11.5px; color: #958e83;">3</span></div>
+        <div style="display: flex; gap: 3px; height: 10px; padding-bottom: 14px; border-bottom: 1px solid #34312c; box-sizing: content-box;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #aaa398;"></span></div>
+        <div style="font-size: 13px;"><span class="m" style="font-size: 11.5px; color: #958e83;">#35 </span>Página de colmeia</div>
+        <div style="font-size: 12.5px; color: #a3b7ef;">e mais 2</div>
+      </div>
+      <div style="padding: 0 0 0 20px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 12px; font-weight: 600; color: #ece8e1;">Hoje</span><span class="m" style="font-size: 11.5px; color: #958e83;">1</span></div>
+        <div style="display: flex; gap: 3px; height: 10px; padding-bottom: 14px; border-bottom: 1px solid #34312c; box-sizing: content-box;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ece8e1;"></span></div>
+        <div style="font-size: 13px;"><span class="m" style="font-size: 11.5px; color: #958e83;">#38 </span>Corrigir fuso nas inspeções</div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="vz-h" style="border-top: 1px solid #34312c; padding-top: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px;"><h2 id="vz-h" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Vazão</h2><span style="font-size: 12.5px; color: #aaa398;">no ocioso a hora corrente é zero por definição; mostramos 24 h e 7 d em destaque</span></div>
+    <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr));">
+      <div style="padding-right: 16px;"><div style="font-size: 12px; font-weight: 600; color: #aaa398;">Concluídas</div><div class="m" style="font-size: 22px; line-height: 28px;">6 <span style="font-size: 12px; color: #958e83;">24 h</span></div><div class="m" style="font-size: 11.5px; color: #958e83;">7 d 18 · 0,1/h</div></div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c;"><div style="font-size: 12px; font-weight: 600; color: #aaa398;">Issues abertas</div><div class="m" style="font-size: 22px; line-height: 28px;">0 <span style="font-size: 12px; color: #958e83;">24 h</span></div><div class="m" style="font-size: 11.5px; color: #958e83;">7 d 21</div></div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c;"><div style="font-size: 12px; font-weight: 600; color: #aaa398;">PRs mesclados</div><div class="m" style="font-size: 22px; line-height: 28px;">4 <span style="font-size: 12px; color: #958e83;">24 h</span></div><div class="m" style="font-size: 11.5px; color: #958e83;">7 d 18</div></div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c;"><div style="font-size: 12px; font-weight: 600; color: #aaa398;">Commits</div><div class="m" style="font-size: 22px; line-height: 28px;">11 <span style="font-size: 12px; color: #958e83;">24 h</span></div><div class="m" style="font-size: 11.5px; color: #958e83;">7 d 47</div></div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c;"><div style="font-size: 12px; font-weight: 600; color: #aaa398;">Tickets encerrados</div><div class="m" style="font-size: 22px; line-height: 28px; color: #aaa398;">?</div><div style="font-size: 12px; color: #aaa398;">sem leitura do agente</div></div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c;"><div style="font-size: 12px; font-weight: 600; color: #aaa398;">Fila</div><div class="m" style="font-size: 22px; line-height: 28px;">0</div><div class="m" style="font-size: 11.5px; color: #958e83;">pico 7 d 6</div></div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c;"><div style="font-size: 12px; font-weight: 600; color: #aaa398;">Ciclo issue→PR</div><div class="m" style="font-size: 22px; line-height: 28px;">1 h 40</div><div class="m" style="font-size: 11.5px; color: #958e83;">PR→merge 3 h 05</div></div>
+      <div style="padding-left: 16px; border-left: 1px solid #34312c;"><div style="font-size: 12px; font-weight: 600; color: #aaa398;">Paralelismo</div><div class="m" style="font-size: 22px; line-height: 28px;">0 <span style="font-size: 12px; color: #958e83;">de 3</span></div><div style="font-size: 12px; color: #958e83;">0 esperando</div></div>
+    </div>
+  </section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2560,"height":1040}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -54,19 +54,20 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
           data-panel-trigger
           aria-label={"Abrir tarefa ##{task.number}: #{task.title}"}
         >
-          <.glyph kind={:run} live={not @frozen and not task[:stalled]} />
-
-          <div class="ab-run__title">
+          <div class="ab-run__status">
+            <.glyph kind={:run} live={not @frozen and not task[:stalled]} />
+            <span>Rodando</span>
             <span class="ab-need__id">#{task.number}</span>
-            <span>{task.title}</span>
+            <span class="ab-top__spacer"></span>
+            <div :if={task.elapsed} class="ab-run__clock">
+              <span :if={@frozen}>≥ {Time.duration(task.elapsed)}</span>
+              <span :if={not @frozen} data-tick={task.elapsed}>{Time.duration(task.elapsed)}</span>
+              <small :if={@frozen and @sync_at}>visto às {Time.local_time(@sync_at, @tz_offset)}</small>
+              <small :if={not @frozen and task.agent}>{task.agent}</small>
+            </div>
           </div>
 
-          <div :if={task.elapsed} class="ab-run__clock">
-            <span :if={@frozen}>≥ {Time.duration(task.elapsed)}</span>
-            <span :if={not @frozen} data-tick={task.elapsed}>{Time.duration(task.elapsed)}</span>
-            <small :if={@frozen and @sync_at}>visto às {Time.local_time(@sync_at, @tz_offset)}</small>
-            <small :if={not @frozen and task.agent}>{task.agent}</small>
-          </div>
+          <div class="ab-run__title">{task.title}</div>
 
           <div :if={task[:stalled]} class="ab-run__silence">
             <.glyph kind={:stalled} />
@@ -104,13 +105,13 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
           data-panel-trigger
           aria-label={"Abrir tarefa ##{task.number}: #{task.title}"}
         >
-          <.glyph kind={:retrying} />
-
-          <div class="ab-run__title">
+          <div class="ab-run__status">
+            <.glyph kind={:retrying} />
+            <span>Nova tentativa</span>
             <span class="ab-need__id">#{task.number}</span>
-            <span>{task.title}</span>
           </div>
 
+          <div class="ab-run__title">{task.title}</div>
           <div class="ab-run__retry"><.markup text={task.line} /></div>
         </article>
       </div>

@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Board arena-rogue · trabalhando</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#171614}
+*{box-sizing:border-box}
+a{color:#a3b7ef}a:hover{color:#c6d3f7}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.g{display:inline-block;flex:none;width:10px;height:10px}
+.g-run{border-radius:50%;background:#7cc29d}
+.g-you{width:9px;height:9px;background:#a3b7ef;transform:rotate(45deg);border-radius:1.5px}
+.g-halt{width:9px;height:9px;background:#f09670;border-radius:2px}
+.g-queue{border-radius:50%;border:1.5px solid #958e83}
+.g-stale{border-radius:50%;border:1.5px solid #dcb15e;background:repeating-linear-gradient(135deg,#dcb15e 0 1.5px,transparent 1.5px 3.5px)}
+.g-unk{border-radius:50%;border:1.5px dashed #958e83}
+.breathe{animation:br 2.4s ease-in-out infinite}
+@keyframes br{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.breathe{animation:none}}
+button:focus-visible,a:focus-visible{outline:2px solid #a3b7ef;outline-offset:2px}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; width: 100%; min-height: 1480px; background: #171614; color: #ece8e1; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 21px;">
+
+<nav aria-label="Repositórios" style="flex: 0 0 224px; background: #121110; border-right: 1px solid #34312c; padding: 20px 12px; display: flex; flex-direction: column; gap: 4px;">
+  <div style="display: flex; align-items: center; gap: 8px; padding: 0 8px 16px;">
+    <span style="width: 18px; height: 18px; border-radius: 5px; background: #ece8e1; display: flex; align-items: center; justify-content: center;"><span class="g g-run" style="width: 6px; height: 6px;"></span></span>
+    <span style="font-weight: 600;">Agent Board</span>
+  </div>
+  <a href="Hoje.dc.html" style="display: flex; justify-content: space-between; padding: 7px 10px; border-radius: 6px; color: #ece8e1; text-decoration: none;">Hoje <span class="m" style="font-size: 11.5px; color: #a3b7ef;">◆ 3</span></a>
+  <div style="font-size: 12px; font-weight: 600; color: #aaa398; padding: 16px 10px 6px;">sallaumen</div>
+  <a href="#" aria-current="page" style="display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 6px; background: #1e2538; color: #ece8e1; text-decoration: none; font-weight: 500;">arena-rogue <span style="display: flex; align-items: center; gap: 8px;"><span class="g g-run breathe" style="width: 7px; height: 7px;"></span><span class="m" style="font-size: 11.5px; color: #a3b7ef;">◆ 2</span></span></a>
+  <a href="#" style="display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 6px; color: #ece8e1; text-decoration: none;">o_colmex <span class="m" style="font-size: 11.5px; color: #a3b7ef;">◆ 1</span></a>
+  <div style="flex-grow: 1;"></div>
+  <div style="border-top: 1px solid #34312c; padding-top: 12px; display: flex; flex-direction: column; gap: 2px; font-size: 13px;">
+    <a href="Superagentes.dc.html" style="padding: 6px 10px; color: #aaa398; text-decoration: none;">Superagentes <span class="m" style="font-size: 11.5px; color: #7cc29d;">2 ligados</span></a>
+    <a href="Voz.dc.html" style="padding: 6px 10px; color: #aaa398; text-decoration: none;">Conversa por voz <span class="m" style="font-size: 11.5px; color: #958e83;">espaço 2×</span></a>
+    <a href="Configuracoes.dc.html" style="padding: 6px 10px; color: #aaa398; text-decoration: none;">Configurações</a>
+    <a href="Configuracoes.dc.html" style="padding: 6px 10px; color: #aaa398; text-decoration: none;">Atalhos <span class="m" style="font-size: 11.5px; border: 1px solid #7d756a; border-radius: 4px; padding: 0 5px;">?</span></a>
+  </div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; padding: 24px 40px 64px; display: flex; flex-direction: column; gap: 32px;">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+    <div style="display: flex; align-items: baseline; gap: 4px;">
+      <span style="color: #aaa398; font-size: 14px;">sallaumen/</span>
+      <h1 style="margin: 0; font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em;">arena-rogue</h1>
+    </div>
+    <button type="button" aria-label="Sincronia: ao vivo, todas as fontes responderam às 20:47. Abrir detalhes." style="display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #34312c; background: #201e1b; color: #ece8e1; font: inherit; font-size: 12.5px; cursor: pointer;"><span class="g g-run breathe" style="width: 8px; height: 8px;"></span>Ao vivo <span class="m" style="color: #958e83; font-size: 11.5px;">20:47</span></button>
+    <div style="flex-grow: 1;"></div>
+    <button type="button" style="height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;">Dividir pedido</button>
+    <button type="button" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px 0 14px; border-radius: 6px; border: 0; background: #a3b7ef; color: #111a33; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;">Novo pedido <span class="m" style="font-size: 11px; background: rgba(17,26,51,0.12); border-radius: 4px; padding: 0 5px;">N</span></button>
+  </header>
+
+  <section aria-label="Contexto" style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 40px; align-items: start;">
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <p style="margin: 0; font-size: 15px; line-height: 23px; max-width: 760px;">Desde hoje às 20:39 entraram <a href="#fila">13 tarefas na fila</a>, <span style="color: #7cc29d;">o agente está em 2</span> e <a href="#precisa">2 coisas esperam você</a>.</p>
+      <div style="display: flex; flex-direction: column; border-top: 1px solid #34312c;">
+        <div style="display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid #34312c;">
+          <span style="font-size: 12px; font-weight: 600; color: #aaa398;">Objetivo</span>
+          <div style="min-width: 0;">
+            <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Ainda não está muito legal. A parte de, ao acabar uma fase, ir para um mapa: eu gostaria que nunca voltasse para o mapa.</div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+              <div style="flex-grow: 1; height: 4px; border-radius: 999px; background: #34312c;"><div style="width: 0%; height: 4px; border-radius: 999px; background: #7cc29d;"></div></div>
+              <span style="font-size: 12.5px; color: #aaa398;">critério: todas as tarefas mescladas</span>
+            </div>
+          </div>
+          <span class="m" style="font-size: 12.5px;">0 de 13</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid #34312c; color: #aaa398;">
+          <span style="font-size: 12px; font-weight: 600;">Concluído</span>
+          <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Não estou gostando muito de como é a jogabilidade do projeto. Queria que ele fosse mais próximo da ideia de Vampire Surv…</div>
+          <span class="m" style="font-size: 12.5px;">14 de 14 ✓</span>
+        </div>
+      </div>
+    </div>
+    <aside aria-label="Resumo do dia" style="border-left: 1px solid #34312c; padding-left: 24px;">
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;">
+        <h2 style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Resumo do dia</h2>
+        <span style="font-size: 12.5px; color: #aaa398;">desde ontem às 20:07</span>
+        <div style="flex-grow: 1;"></div>
+        <button type="button" style="border: 0; background: transparent; color: #aaa398; font: inherit; font-size: 12.5px; cursor: pointer; padding: 4px 6px;">Dispensar</button>
+      </div>
+      <dl style="margin: 0; display: grid; grid-template-columns: 148px minmax(0, 1fr); row-gap: 6px; column-gap: 12px; font-size: 13px; line-height: 19px;">
+        <dt style="color: #aaa398;">Feito</dt><dd style="margin: 0;">14 PRs mesclados <span class="m" style="font-size: 11.5px; color: #958e83;">#1353–#1357 e mais 9</span></dd>
+        <dt style="color: #aaa398;">Falhas e pendências</dt><dd style="margin: 0;">A sincronização falhou 2 vezes e se recuperou.</dd>
+        <dt style="color: #aaa398;">O board fez sozinho</dt><dd style="margin: 0;">Nenhuma nova tentativa automática.</dd>
+        <dt style="color: #aaa398;">Gasto</dt>
+        <dd style="margin: 0; display: flex; flex-direction: column; gap: 2px;">
+          <span><span style="color: #aaa398;">DeepSeek</span> <span class="m">≥ US$ 0,20</span></span>
+          <span><span style="color: #aaa398;">Claude Code</span> <span class="m">≥ US$ 149,02</span> <span style="font-size: 12px; color: #958e83;">preço de lista</span></span>
+          <span><span style="color: #aaa398;">Codex</span> <span class="m">90%</span> <span style="font-size: 12px; color: #958e83;">da cota semanal</span></span>
+        </dd>
+      </dl>
+    </aside>
+  </section>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 3fr); gap: 40px; align-items: start;">
+
+    <div style="display: flex; flex-direction: column; gap: 32px;">
+      <section aria-labelledby="agora-h">
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px;"><h2 id="agora-h" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Agora</h2><span class="m" style="font-size: 12px; color: #aaa398;">2 de 4</span></div>
+        <div style="background: #1d2c24; border-radius: 16px; padding: 4px 16px;">
+          <article style="padding: 14px 0; border-bottom: 1px solid #2b3f33; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="g g-run breathe"></span>
+              <span style="font-size: 12px; font-weight: 600; color: #7cc29d;">Rodando</span>
+              <span class="m" style="font-size: 11.5px; color: #958e83;">#114</span>
+              <span style="font-size: 12px; color: #aaa398;">DeepSeek · worker 1</span>
+              <div style="flex-grow: 1;"></div>
+              <span class="m" style="font-size: 12.5px;">04:12</span>
+            </div>
+            <a href="Inspector.dc.html" style="color: #ece8e1; text-decoration: none; font-size: 14.5px; line-height: 21px; font-weight: 500;">Decidir modelo de progressão sem tela de mapa</a>
+            <div class="m" style="font-size: 12.5px; color: #7cc29d;">→ escrevendo docs/design/progressao.md</div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #aaa398;">
+              <span style="color: #ece8e1;">✓ Ler</span><span style="width: 16px; height: 1px; background: #4a6b58;"></span>
+              <span style="color: #ece8e1;">✓ Planejar</span><span style="width: 16px; height: 1px; background: #4a6b58;"></span>
+              <span style="color: #7cc29d; font-weight: 600;">● Escrever</span><span style="width: 16px; height: 1px; background: #4a6b58;"></span>
+              <span>○ Abrir PR</span>
+            </div>
+          </article>
+          <article style="padding: 14px 0; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="g g-halt"></span>
+              <span style="font-size: 12px; font-weight: 600; color: #f09670;">Falhou · nova tentativa 2 de 3</span>
+              <span class="m" style="font-size: 11.5px; color: #958e83;">#116</span>
+              <span style="font-size: 12px; color: #aaa398;">Claude Code</span>
+              <div style="flex-grow: 1;"></div>
+              <span class="m" style="font-size: 12.5px; color: #aaa398;">em 0:40</span>
+            </div>
+            <a href="Inspector.dc.html" style="color: #ece8e1; text-decoration: none; font-size: 14.5px; line-height: 21px; font-weight: 500;">Definir rosters dos 4 personagens e 8 habilidades</a>
+            <div style="font-size: 12.5px; color: #aaa398;"><span style="color: #ece8e1;">mix test falhou em 3 testes de seed.</span> O board tenta de novo com o mesmo executor.</div>
+          </article>
+        </div>
+      </section>
+
+      <section id="precisa" aria-labelledby="precisa-h">
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px;"><h2 id="precisa-h" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Precisa de você</h2><span class="m" style="font-size: 12px; color: #a3b7ef;">2</span></div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <article style="background: #201e1b; border: 1px solid #34312c; border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center;">
+            <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 8px;"><span class="g g-you"></span><span style="font-size: 12px; font-weight: 600; color: #a3b7ef;">Pergunta</span><span class="m" style="font-size: 11.5px; color: #958e83;">#115</span><span style="font-size: 12px; color: #958e83;">há 6 min · <span style="color: #a3b7ef;">novo</span></span></div>
+              <div style="font-size: 14.5px; font-weight: 500;">Definir significado de 'alt' no minimapa</div>
+              <div style="font-size: 13px; color: #aaa398;">O agente pergunta se “alt” é altitude do terreno ou alternância de camada.</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 0; background: #a3b7ef; color: #111a33; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;">Responder</button>
+            </div>
+          </article>
+          <article style="background: #201e1b; border: 1px solid #34312c; border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center;">
+            <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 8px;"><span class="g g-you"></span><span style="font-size: 12px; font-weight: 600; color: #a3b7ef;">Revisão</span><span class="m" style="font-size: 11.5px; color: #958e83;">PR #1359 · #118</span><span style="font-size: 12px; color: #958e83;">há 14 min</span></div>
+              <div style="font-size: 14.5px; font-weight: 500;">Sistema de câmera com dead zone e lerp</div>
+              <div style="font-size: 13px; color: #aaa398;">CI passou, 4 arquivos, +182 −40. Ninguém revisou ainda.</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;">Revisar no GitHub</button>
+            </div>
+          </article>
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: #958e83; padding: 4px 0;"><span style="flex-grow: 1; height: 1px; background: #34312c;"></span>antes da sua última visita · nada<span style="flex-grow: 1; height: 1px; background: #34312c;"></span></div>
+        </div>
+      </section>
+    </div>
+
+    <section id="fila" aria-labelledby="fila-h">
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px;"><h2 id="fila-h" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Fila</h2><span class="m" style="font-size: 12px; color: #aaa398;">11</span><div style="flex-grow: 1;"></div><span style="font-size: 12.5px; color: #958e83;">mais antigas primeiro</span></div>
+      <div role="group" aria-label="Filtrar fila" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+        <button type="button" aria-pressed="true" style="height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid #a3b7ef; background: #1e2538; color: #ece8e1; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;">Todas <span class="m">11</span></button>
+        <button type="button" aria-pressed="false" style="height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid #7d756a; background: transparent; color: #aaa398; font: inherit; font-size: 12px; cursor: pointer;">Novas <span class="m">11</span></button>
+        <button type="button" aria-pressed="false" style="height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid #7d756a; background: transparent; color: #aaa398; font: inherit; font-size: 12px; cursor: pointer;">Divididas <span class="m">0</span></button>
+        <button type="button" aria-pressed="false" style="height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid #7d756a; background: transparent; color: #aaa398; font: inherit; font-size: 12px; cursor: pointer;">Possíveis repetidas <span class="m">0</span></button>
+      </div>
+      <ol style="list-style: none; margin: 0; padding: 0;">
+        <li style="display: grid; grid-template-columns: 22px 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 8px; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83; text-align: right;">1</span><span class="g g-queue"></span><span style="min-width: 0;"><span class="m" style="font-size: 11.5px; color: #958e83;">#117 </span><span style="font-weight: 500;">Política de fullscreen/letterbox em ultrawide</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 5 s</span></li>
+        <li style="display: grid; grid-template-columns: 22px 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 8px; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83; text-align: right;">2</span><span class="g g-queue"></span><span style="min-width: 0;"><span class="m" style="font-size: 11.5px; color: #958e83;">#119 </span><span style="font-weight: 500;">Aumentar mapas e renderização por viewport</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 4 s</span></li>
+        <li style="display: grid; grid-template-columns: 22px 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 8px; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83; text-align: right;">3</span><span class="g g-queue"></span><span style="min-width: 0;"><span class="m" style="font-size: 11.5px; color: #958e83;">#120 </span><span style="font-weight: 500;">Canvas em 100vw/100vh com letterbox</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 3 s</span></li>
+        <li style="display: grid; grid-template-columns: 22px 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 8px; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83; text-align: right;">4</span><span class="g g-queue"></span><span style="min-width: 0;"><span class="m" style="font-size: 11.5px; color: #958e83;">#121 </span><span style="font-weight: 500;">Remover navegação de tela de mapa</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 3 s</span></li>
+        <li style="display: grid; grid-template-columns: 22px 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 8px; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83; text-align: right;">5</span><span class="g g-queue"></span><span style="min-width: 0;"><span class="m" style="font-size: 11.5px; color: #958e83;">#122 </span><span style="font-weight: 500;">Transição contínua entre fases sem tela de carregamento</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 2 s</span></li>
+        <li style="display: grid; grid-template-columns: 22px 14px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 8px; border-bottom: 1px solid #34312c;"><span class="m" style="font-size: 11.5px; color: #958e83; text-align: right;">6</span><span class="g g-queue"></span><span style="min-width: 0;"><span class="m" style="font-size: 11.5px; color: #958e83;">#123 </span><span style="font-weight: 500;">Persistir estado do jogador entre fases</span></span><span class="m" style="font-size: 11.5px; color: #958e83;">há 2 s</span></li>
+      </ol>
+      <button type="button" style="margin-top: 8px; border: 0; background: transparent; color: #a3b7ef; font: inherit; font-size: 13px; padding: 6px 8px; cursor: pointer;">Mais 5 na fila</button>
+    </section>
+
+    <section aria-labelledby="merge-h">
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px;"><h2 id="merge-h" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Mesclados</h2><span class="m" style="font-size: 12px; color: #aaa398;">54 em 7 dias</span><div style="flex-grow: 1;"></div><a href="#" style="font-size: 12.5px;">Histórico</a></div>
+      <div role="img" aria-label="PRs mesclados por dia: 0, 0, 8, 3, 8, 14, 21 hoje. Nenhum com CI falho." style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; align-items: end; height: 120px; padding-bottom: 4px; border-bottom: 1px solid #34312c;">
+        <div style="display: flex; flex-direction: column-reverse; align-items: center; gap: 2px;"><span class="m" style="font-size: 11px; color: #958e83;">—</span></div>
+        <div style="display: flex; flex-direction: column-reverse; align-items: center; gap: 2px;"><span class="m" style="font-size: 11px; color: #958e83;">—</span></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><span class="m" style="font-size: 11px; color: #aaa398;">8</span><div style="width: 6px; height: 46px; background: repeating-linear-gradient(to top, #aaa398 0 4px, transparent 4px 6px);"></div></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><span class="m" style="font-size: 11px; color: #aaa398;">3</span><div style="width: 6px; height: 16px; background: repeating-linear-gradient(to top, #aaa398 0 4px, transparent 4px 6px);"></div></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><span class="m" style="font-size: 11px; color: #aaa398;">8</span><div style="width: 6px; height: 46px; background: repeating-linear-gradient(to top, #aaa398 0 4px, transparent 4px 6px);"></div></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><span class="m" style="font-size: 11px; color: #aaa398;">14</span><div style="width: 6px; height: 82px; background: repeating-linear-gradient(to top, #aaa398 0 4px, transparent 4px 6px);"></div></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><span class="m" style="font-size: 11px; color: #ece8e1;">21</span><div style="width: 6px; height: 96px; background: repeating-linear-gradient(to top, #ece8e1 0 3px, transparent 3px 4.5px);"></div></div>
+      </div>
+      <div class="m" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; font-size: 11px; color: #958e83; padding-top: 4px;"><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span><span>07</span><span style="color: #ece8e1;">hoje</span></div>
+      <div style="margin-top: 20px; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #aaa398; padding-bottom: 4px;"><span>Hoje</span><span class="m" style="font-weight: 400;">3 de 21</span></div>
+        <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid #34312c;"><span style="color: #aaa398; font-size: 12px;">✓</span><span><span class="m" style="font-size: 11.5px; color: #958e83;">#113 </span>Drop consumables from dead bodies in the survival run</span><span></span><span style="font-size: 12px; color: #958e83;">CI local <span class="m">?</span> · sem revisão · <span class="m">19:28</span></span></div>
+        <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid #34312c;"><span style="color: #aaa398; font-size: 12px;">✓</span><span><span class="m" style="font-size: 11.5px; color: #958e83;">#112 </span>Balance the 30-second survival curve</span><span></span><span style="font-size: 12px; color: #958e83;">CI local <span class="m">?</span> · sem revisão · <span class="m">19:21</span></span></div>
+        <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid #34312c;"><span style="color: #aaa398; font-size: 12px;">✓</span><span><span class="m" style="font-size: 11.5px; color: #958e83;">#109 </span>Draw seeded floor scenery on every survival wave</span><span></span><span style="font-size: 12px; color: #958e83;">CI local <span class="m">?</span> · sem revisão · <span class="m">19:14</span></span></div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #aaa398; padding: 14px 0 4px;"><span>Ontem, 7 nov</span><span class="m" style="font-weight: 400;">3 de 14</span></div>
+        <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid #34312c;"><span style="color: #aaa398; font-size: 12px;">✓</span><span><span class="m" style="font-size: 11.5px; color: #958e83;">#68 </span>Medir FPS e identificar gargalos</span><span></span><span style="font-size: 12px; color: #958e83;">CI local <span class="m">?</span> · sem revisão · <span class="m">15:16</span></span></div>
+        <div style="display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 2px 8px; padding: 8px 0;"><span style="color: #aaa398; font-size: 12px;">✓</span><span><span class="m" style="font-size: 11.5px; color: #958e83;">#67 </span>Add persistent music and effect volume controls</span><span></span><span style="font-size: 12px; color: #958e83;">CI local <span class="m">?</span> · sem revisão · <span class="m">14:55</span></span></div>
+      </div>
+    </section>
+  </div>
+
+  <section aria-labelledby="vazao-h" style="border-top: 1px solid #34312c; padding-top: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px;"><h2 id="vazao-h" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Vazão por hora</h2><span style="font-size: 12.5px; color: #aaa398;">calculado às <span class="m">20:47</span> · comparado com a hora anterior</span></div>
+    <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr));">
+      <div style="padding: 0 16px 0 0; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 12px; font-weight: 600; color: #aaa398;">Concluídas</span>
+        <span><span class="m" style="font-size: 22px; line-height: 28px;">0</span><span style="font-size: 12px; color: #958e83;"> /h</span> <span class="m" style="font-size: 11.5px; color: #aaa398;">−7</span></span>
+        <svg aria-hidden="true" width="100%" height="20" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,19 30,19 45,14 55,6 65,10 75,4 85,19 100,19" fill="none" stroke="#aaa398" stroke-width="1.5" vector-effect="non-scaling-stroke"></polyline></svg>
+        <span class="m" style="font-size: 11.5px; color: #958e83;">24 h 22 · 0,9/h<br>7 d 51 · 0,3/h</span>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 12px; font-weight: 600; color: #aaa398;">Issues abertas</span>
+        <span><span class="m" style="font-size: 22px; line-height: 28px;">13</span><span style="font-size: 12px; color: #958e83;"> /h</span> <span class="m" style="font-size: 11.5px; color: #aaa398;">+13</span></span>
+        <svg aria-hidden="true" width="100%" height="20" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,19 60,19 70,8 80,19 92,19 100,2" fill="none" stroke="#aaa398" stroke-width="1.5" vector-effect="non-scaling-stroke"></polyline></svg>
+        <span class="m" style="font-size: 11.5px; color: #958e83;">24 h 36 · 1,5/h<br>7 d 72 · 0,4/h</span>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 12px; font-weight: 600; color: #aaa398;">PRs mesclados</span>
+        <span><span class="m" style="font-size: 22px; line-height: 28px;">0</span><span style="font-size: 12px; color: #958e83;"> /h</span> <span class="m" style="font-size: 11.5px; color: #aaa398;">−7</span></span>
+        <svg aria-hidden="true" width="100%" height="20" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,19 40,19 55,10 65,4 75,9 85,19 100,19" fill="none" stroke="#aaa398" stroke-width="1.5" vector-effect="non-scaling-stroke"></polyline></svg>
+        <span class="m" style="font-size: 11.5px; color: #958e83;">24 h 21 · 0,9/h<br>7 d 54 · 0,3/h</span>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 12px; font-weight: 600; color: #aaa398;">Commits</span>
+        <span><span class="m" style="font-size: 22px; line-height: 28px;">0</span><span style="font-size: 12px; color: #958e83;"> /h</span> <span class="m" style="font-size: 11.5px; color: #aaa398;">−29</span></span>
+        <svg aria-hidden="true" width="100%" height="20" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,19 50,19 60,8 70,3 80,6 90,19 100,19" fill="none" stroke="#aaa398" stroke-width="1.5" vector-effect="non-scaling-stroke"></polyline></svg>
+        <span class="m" style="font-size: 11.5px; color: #958e83;">24 h 66 · 2,8/h<br>7 d 158 · 0,9/h</span>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 12px; font-weight: 600; color: #aaa398;">Tickets encerrados</span>
+        <span style="display: flex; align-items: center; gap: 6px;"><span class="g g-unk"></span><span class="m" style="font-size: 22px; line-height: 28px; color: #aaa398;">?</span></span>
+        <span style="font-size: 12px; line-height: 16px; color: #aaa398;">Sem leitura: o agente não expõe tickets encerrados.</span>
+        <span class="m" style="font-size: 11.5px; color: #958e83;">24 h ?<br>7 d ?</span>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 12px; font-weight: 600; color: #aaa398;">Fila</span>
+        <span><span class="m" style="font-size: 22px; line-height: 28px;">11</span><span style="font-size: 12px; color: #958e83;"> agora</span> <span class="m" style="font-size: 11.5px; color: #aaa398;">+11</span></span>
+        <svg aria-hidden="true" width="100%" height="20" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,19 70,19 75,6 82,12 88,4 94,10 100,8" fill="none" stroke="#aaa398" stroke-width="1.5" vector-effect="non-scaling-stroke"></polyline></svg>
+        <span class="m" style="font-size: 11.5px; color: #958e83;">pico 24 h 18<br>pico 7 d 18</span>
+      </div>
+      <div style="padding: 0 16px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 12px; font-weight: 600; color: #aaa398;">Ciclo</span>
+        <div class="m" style="display: grid; grid-template-columns: auto auto auto; column-gap: 10px; row-gap: 2px; font-size: 11.5px; color: #958e83;">
+          <span></span><span>24 h</span><span>7 d</span>
+          <span style="color: #aaa398;">issue→PR</span><span>—</span><span>—</span>
+          <span style="color: #aaa398;">PR→merge</span><span>—</span><span>—</span>
+        </div>
+        <span style="font-size: 12px; line-height: 16px; color: #aaa398;">— = nenhum par completo na janela</span>
+      </div>
+      <div style="padding: 0 0 0 16px; border-left: 1px solid #34312c; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 12px; font-weight: 600; color: #aaa398;">Paralelismo</span>
+        <span style="display: flex; align-items: center; gap: 10px;"><span><span class="m" style="font-size: 22px; line-height: 28px;">2</span><span style="font-size: 12px; color: #958e83;"> de 4</span></span>
+          <span style="display: flex; border: 1px solid #7d756a; border-radius: 6px;"><button type="button" aria-label="Menos um worker" style="width: 28px; height: 28px; border: 0; background: transparent; color: #ece8e1; font: inherit; cursor: pointer;">−</button><button type="button" aria-label="Mais um worker" style="width: 28px; height: 28px; border: 0; border-left: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; cursor: pointer;">+</button></span></span>
+        <div aria-hidden="true" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px;"><span style="height: 6px; border-radius: 2px; background: #7cc29d;"></span><span style="height: 6px; border-radius: 2px; background: #7cc29d;"></span><span style="height: 6px; border-radius: 2px; background: #34312c;"></span><span style="height: 6px; border-radius: 2px; background: #34312c;"></span></div>
+        <span style="font-size: 12px; color: #958e83;">0 esperando · fonte: orquestrador</span>
+      </div>
+    </div>
+  </section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1480}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Estados de sincronia</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#171614}
+*{box-sizing:border-box}
+a{color:#a3b7ef}a:hover{color:#c6d3f7}
+.m{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.g{display:inline-block;flex:none;width:10px;height:10px}
+.g-run{border-radius:50%;background:#7cc29d}
+.g-stale{border-radius:50%;border:1.5px solid #dcb15e;background:repeating-linear-gradient(135deg,#dcb15e 0 1.5px,transparent 1.5px 3.5px)}
+.g-unk{border-radius:50%;border:1.5px dashed #958e83}
+.g-ring{border-radius:50%;border:1.5px solid #dcb15e}
+button:focus-visible{outline:2px solid #a3b7ef;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1040px; background: #171614; color: #ece8e1; font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 21px; padding: 40px 48px; display: flex; flex-direction: column; gap: 36px;">
+  <div>
+    <h2 style="margin: 0 0 4px; font-size: 16px; font-weight: 600;">Farol de sincronia</h2>
+    <p style="margin: 0; font-size: 13px; color: #aaa398; max-width: 820px;">Cinco estados, um de cada vez. Só “Ao vivo” anima. A cor do farol nunca é vermelha: dado velho é âmbar, porque é um aviso sobre a leitura, não uma falha do agente.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px;">
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <span style="align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #34312c; background: #201e1b; font-size: 12.5px;"><span class="g g-run" style="width: 8px; height: 8px;"></span>Ao vivo <span class="m" style="color: #958e83; font-size: 11.5px;">20:47</span></span>
+      <span style="font-size: 13px; color: #aaa398;">Todas as fontes responderam no último minuto. Ponto respira, relógios andam, idades relativas.</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <span style="align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #6b5a2e; background: #201e1b; font-size: 12.5px;"><span class="g g-ring" style="width: 8px; height: 8px;"></span>Atrasado <span style="color: #aaa398;">dados de <span class="m">20:45</span> · há 2 min</span></span>
+      <span style="font-size: 13px; color: #aaa398;">Uma fonte passou do prazo. Sem faixa. Ponto para de respirar. Valores ficam, sem “≥”.</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <span style="align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #6b5a2e; background: #201e1b; font-size: 12.5px;"><span class="g g-ring" style="width: 8px; height: 8px; border-style: dashed;"></span>Reconectando <span style="color: #aaa398;">tentativa <span class="m">2</span></span></span>
+      <span style="font-size: 13px; color: #aaa398;">Tentando agora. Texto troca a cada tentativa; nenhum spinner. Board continua usável.</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <span style="align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid #6b5a2e; background: #2d2616; font-size: 12.5px;"><span class="g g-stale" style="width: 9px; height: 9px;"></span>Sem conexão <span style="color: #aaa398;">dados de <span class="m">20:45</span></span></span>
+      <span style="font-size: 13px; color: #aaa398;">Faixa no topo, contagens com “≥”, relógios congelados com “visto às”, card Agora hachurado, trilho com “?”.</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <span style="align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; border: 1px dashed #7d756a; background: transparent; font-size: 12.5px;"><span class="g g-unk" style="width: 8px; height: 8px;"></span>Sem dados ainda</span>
+      <span style="font-size: 13px; color: #aaa398;">Primeira leitura. Raias mostram “—” e blocos estáticos, nunca zero.</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; align-items: start;">
+    <section style="display: flex; flex-direction: column; gap: 10px;">
+      <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Detalhe por fonte (clique no farol)</h3>
+      <div role="dialog" aria-label="Sincronia por fonte" style="width: 420px; background: #292723; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.45); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;"><span class="g g-ring" style="width: 8px; height: 8px;"></span><strong style="font-weight: 600;">Atrasado</strong><span style="color: #aaa398;">por causa do GitHub</span></div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+          <tbody>
+            <tr><td style="padding: 6px 0; border-top: 1px solid #3d3a34;">GitHub <span style="color: #958e83;">a cada 5 min</span></td><td class="m" style="padding: 6px 0; border-top: 1px solid #3d3a34; text-align: right; color: #dcb15e;">20:40 · falhou 2×</td></tr>
+            <tr><td style="padding: 6px 0; border-top: 1px solid #3d3a34;">Tickets do agente <span style="color: #958e83;">a cada 10 s</span></td><td class="m" style="padding: 6px 0; border-top: 1px solid #3d3a34; text-align: right;">20:47:02</td></tr>
+            <tr><td style="padding: 6px 0; border-top: 1px solid #3d3a34;">Orquestrador local</td><td class="m" style="padding: 6px 0; border-top: 1px solid #3d3a34; text-align: right;">20:47:00</td></tr>
+          </tbody>
+        </table>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #aaa398;"><span style="flex-grow: 1;">Próxima tentativa em <span class="m" style="color: #ece8e1;">0:42</span>. Último erro: tempo esgotado.</span><button type="button" style="height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #7d756a; background: transparent; color: #ece8e1; font: inherit; font-size: 12.5px;">Tentar agora</button></div>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px;">
+      <h3 style="margin: 0; font-size: 14px; font-weight: 600;">O que muda no board</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+        <thead><tr style="text-align: left; color: #aaa398;"><th scope="col" style="font-weight: 600; padding: 6px 8px 6px 0; border-bottom: 1px solid #34312c;"></th><th scope="col" style="font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #34312c;">Ao vivo</th><th scope="col" style="font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #34312c;">Atrasado</th><th scope="col" style="font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #34312c;">Reconectando</th><th scope="col" style="font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #34312c;">Sem conexão</th><th scope="col" style="font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #34312c;">Sem dados</th></tr></thead>
+        <tbody>
+          <tr><th scope="row" style="text-align: left; font-weight: 600; color: #aaa398; padding: 7px 8px 7px 0; border-bottom: 1px solid #34312c;">Ponto do agente</th><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">respira</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">parado</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">parado</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">hachurado</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">tracejado</td></tr>
+          <tr><th scope="row" style="text-align: left; font-weight: 600; color: #aaa398; padding: 7px 8px 7px 0; border-bottom: 1px solid #34312c;">Relógios</th><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">andam</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">andam</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">param</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">“visto às”</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">—</td></tr>
+          <tr><th scope="row" style="text-align: left; font-weight: 600; color: #aaa398; padding: 7px 8px 7px 0; border-bottom: 1px solid #34312c;">Contagens</th><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">exatas</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">exatas</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">exatas</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">“≥”</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">—</td></tr>
+          <tr><th scope="row" style="text-align: left; font-weight: 600; color: #aaa398; padding: 7px 8px 7px 0; border-bottom: 1px solid #34312c;">Idades</th><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">“há 4 min”</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">“há 4 min”</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">“há 4 min”</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">“20:41”</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">—</td></tr>
+          <tr><th scope="row" style="text-align: left; font-weight: 600; color: #aaa398; padding: 7px 8px 7px 0; border-bottom: 1px solid #34312c;">Faixa no topo</th><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">não</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">não</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">não</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">sim + Tentar agora</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">não</td></tr>
+          <tr><th scope="row" style="text-align: left; font-weight: 600; color: #aaa398; padding: 7px 8px 7px 0; border-bottom: 1px solid #34312c;">Trilho</th><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">marcas</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">marcas</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">marcas</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">“?”</td><td style="padding: 7px 8px; border-bottom: 1px solid #34312c;">“?”</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: start;">
+    <section style="display: flex; flex-direction: column; gap: 10px;">
+      <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Faixa de dados parados</h3>
+      <div role="status" style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 10px; background: #2d2616; font-size: 13.5px;"><span class="g g-stale"></span><span style="flex-grow: 1;"><strong style="font-weight: 600;">Mostrando o que sabíamos às <span class="m">20:45</span>.</strong> O GitHub não respondeu nas últimas 3 tentativas.</span><button type="button" style="height: 30px; padding: 0 12px; border-radius: 6px; border: 1px solid #dcb15e; background: transparent; color: #dcb15e; font: inherit; font-size: 13px; font-weight: 600;">Tentar agora</button></div>
+      <span style="font-size: 12.5px; color: #aaa398;">Causa + recuperação na mesma frase. Ocupa uma linha; não empurra as raias para fora da tela.</span>
+    </section>
+    <section style="display: flex; flex-direction: column; gap: 10px;">
+      <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Ao reconectar</h3>
+      <div role="status" style="align-self: flex-start; display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; background: #292723; box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.45); font-size: 13.5px;"><span class="g g-run" style="width: 8px; height: 8px;"></span><span>Reconectado. <span class="m">3</span> mudanças desde <span class="m">20:45</span>.</span><button type="button" style="height: 28px; padding: 0 10px; border-radius: 6px; border: 0; background: transparent; color: #a3b7ef; font: inherit; font-size: 13px; font-weight: 600;">Mostrar</button></div>
+      <span style="font-size: 12.5px; color: #aaa398;">Um único aviso no canto, some em 8 s ou no Esc. “Mostrar” marca os itens com <span style="color: #a3b7ef;">novo</span>; nada reanima sozinho.</span>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
