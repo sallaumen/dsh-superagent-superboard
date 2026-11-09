@@ -1055,53 +1055,114 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#board-settings-panel #track-repo[phx-submit=add_project]")
   end
 
-  test "the reading columns switch to one column through a container query", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+  test "the board keeps one lane structure with an empty or full queue", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "one-layout")
+    insert_merged(repo, 1, "success")
 
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/one-layout")
+    assert_one_layout(view)
+
+    insert_task(repo, 2, "queued")
+    send(view.pid, :board_updated)
+    assert_one_layout(view)
+
+    refute has_element?(view, "[data-idle]")
+  end
+
+  defp assert_one_layout(view) do
+    assert has_element?(view, ".ab-lanes #sec-now")
+    assert has_element?(view, ".ab-lanes #sec-needs")
+    assert has_element?(view, ".ab-lanes #sec-queue")
+    assert day_columns(view) == 7
+
+    lanes = view |> element(".ab-lanes") |> render()
+    assert position(lanes, "sec-now") < position(lanes, "sec-needs")
+    assert position(lanes, "sec-needs") < position(lanes, "sec-queue")
+
+    html = render(view)
+    assert position(html, "sec-log") < position(html, "fold-flow")
+  end
+
+  defp day_columns(view) do
+    view
+    |> render()
+    |> LazyHTML.from_document()
+    |> LazyHTML.query("#sec-log .ab-day")
+    |> Enum.count()
+  end
+
+  defp position(html, id) do
+    {position, _length} = :binary.match(html, "id=\"#{id}\"")
+    position
+  end
+
+  defp insert_task(repo, number, state) do
     %Task{}
     |> Task.changeset(%{
       repository_id: repo.id,
       kind: "issue",
-      number: 2,
-      title: "Keep the columns visible",
-      state: "queued"
+      number: number,
+      title: "Task #{number}",
+      state: state
     })
     |> Repo.insert!()
-
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
-
-    assert html =~ "ab-cols"
-    assert html =~ "ab-col"
   end
 
-  test "an idle board marks the columns so the history takes the width", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("fixture", "idle")
-
+  defp insert_merged(repo, number, checks) do
     %PullRequest{}
     |> PullRequest.changeset(%{
       repository_id: repo.id,
-      number: 1,
-      title: "Merged pull",
+      number: number,
+      title: "PR #{number}",
       state: "merged",
-      merged_at: DateTime.utc_now()
+      merged_at: DateTime.utc_now(),
+      checks_state: checks
     })
     |> Repo.insert!()
+  end
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/idle")
-    assert has_element?(view, ".ab-cols[data-idle=true]")
+  test "a day with no merges stays in the seven-day history", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "empty-day")
+    insert_merged(repo, 1, "success")
 
-    %Task{}
-    |> Task.changeset(%{
-      repository_id: repo.id,
-      kind: "issue",
-      number: 2,
-      title: "Queued work",
-      state: "queued"
-    })
-    |> Repo.insert!()
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/empty-day")
 
-    send(view.pid, :board_updated)
-    assert has_element?(view, ".ab-cols[data-idle=false]")
+    today = Date.utc_today()
+    assert has_element?(view, "#log-day-#{today}", "PR 1")
+    assert has_element?(view, "#log-day-#{Date.add(today, -1)}", "Nenhum merge.")
+    assert day_columns(view) == 7
+  end
+
+  test "a busy day shows three PRs, twelve dots and the rest in history", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "busy-day")
+
+    for number <- 1..15, do: insert_merged(repo, number, "success")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/busy-day")
+    day = view |> element("#log-day-#{Date.utc_today()}") |> render()
+
+    assert day =~ "3 de 15"
+    assert day =~ "+3"
+    assert day =~ "e mais 12"
+    assert length(Regex.scan(~r/class="ab-pr"/, day)) == 3
+
+    dots =
+      day
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query(".ab-day__dots i")
+      |> Enum.count()
+
+    assert dots == 12
+  end
+
+  test "the merged strip keeps the minimum count when sync is frozen", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "frozen-merged")
+    insert_merged(repo, 1, "success")
+    Board.log_event(repo.id, "sync_error", "fixture/frozen-merged", %{"reason" => "offline"})
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/frozen-merged")
+
+    assert has_element?(view, "#sec-log .ab-sec__count", "≥1")
   end
 
   test "the board renders the tracked repository", %{conn: conn} do

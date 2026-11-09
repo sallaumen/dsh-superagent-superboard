@@ -443,14 +443,6 @@ defmodule AgentBoardWeb.BoardLive do
     )
   end
 
-  # Nothing running, nothing waiting on the owner, queue empty: the wide
-  # layout collapses the lanes into one compact row and gives the merge
-  # history the rest of the width.
-  defp idle_board?(work) do
-    work.running == [] and work.retrying == [] and work.needs == [] and
-      work.queue.items == []
-  end
-
   defp load_inspector(socket) do
     case socket.assigns.conversation do
       nil ->
@@ -3179,8 +3171,8 @@ defmodule AgentBoardWeb.BoardLive do
               >
                 <article
                   :for={objective <- @objectives}
+                  :if={not objective.done?}
                   class="ab-objective"
-                  data-done={to_string(objective.done?)}
                 >
                   <div class="ab-objective__head">
                     <span class="ab-label">{gettext("Objective")}</span>
@@ -3191,7 +3183,6 @@ defmodule AgentBoardWeb.BoardLive do
                         total: objective.total
                       )}
                     </span>
-                    <span :if={objective.done?} class="ab-tag ab-tag--agent">{gettext("completed")}</span>
                   </div>
                   <p class="ab-meta">
                     {gettext("criterion: %{criterion}", criterion: objective.done_criterion)}
@@ -3208,6 +3199,30 @@ defmodule AgentBoardWeb.BoardLive do
                   </div>
                   <.objective_tree :if={objective.edges != []} objective={objective} repo={@repo} />
                 </article>
+
+                <details
+                  :if={Enum.any?(@objectives, & &1.done?)}
+                  class="ab-objective-done"
+                >
+                  <summary>
+                    {ngettext(
+                      "%{count} completed objective",
+                      "%{count} completed objectives",
+                      Enum.count(@objectives, & &1.done?)
+                    )}
+                  </summary>
+                  <ul class="ab-objective-done__list">
+                    <li :for={objective <- @objectives} :if={objective.done?}>
+                      <span class="ab-objective-done__title">{objective.title}</span>
+                      <span class="ab-objective-done__count">
+                        {gettext("%{merged} of %{total} ✓",
+                          merged: objective.merged,
+                          total: objective.total
+                        )}
+                      </span>
+                    </li>
+                  </ul>
+                </details>
               </section>
 
               <details
@@ -3261,78 +3276,70 @@ defmodule AgentBoardWeb.BoardLive do
             <div
               :if={@repo && @view != "hoje" && not empty?(@board)}
               class="ab-cols"
-              data-idle={to_string(idle_board?(@work))}
             >
               <div class="ab-lanes">
-                <div class="ab-col ab-col--main">
-                  <.now_lane
-                    running={@work.running}
-                    retrying={@work.retrying}
-                    frozen={@freshness.frozen?}
-                    frozen_at={@freshness.at}
-                    sync_at={@freshness.at}
-                    tz_offset={@tz_offset}
-                    next_queued={@work.queue.items |> List.first() |> then(&(&1 && &1.number))}
-                  />
-                  <.needs_you
-                    needs={@work.needs}
-                    max={if @needs_expanded, do: 999, else: 5}
-                    selected={@conversation && @conversation.id}
-                    last_visit={@last_visit}
-                    frozen={@freshness.frozen?}
-                    frozen_at={@freshness.at}
-                    tz_offset={@tz_offset}
-                  />
-                </div>
-                <div class="ab-col ab-col--queue">
-                  <.queue_list
-                    queue={@work.queue}
-                    frozen={@freshness.frozen?}
-                    frozen_at={@freshness.at}
-                    tz_offset={@tz_offset}
-                    selected={@conversation && @conversation.id}
-                  />
-                </div>
+                <.now_lane
+                  running={@work.running}
+                  retrying={@work.retrying}
+                  frozen={@freshness.frozen?}
+                  frozen_at={@freshness.at}
+                  sync_at={@freshness.at}
+                  tz_offset={@tz_offset}
+                  next_queued={@work.queue.items |> List.first() |> then(&(&1 && &1.number))}
+                />
+                <.needs_you
+                  needs={@work.needs}
+                  max={if @needs_expanded, do: 999, else: 5}
+                  selected={@conversation && @conversation.id}
+                  last_visit={@last_visit}
+                  frozen={@freshness.frozen?}
+                  frozen_at={@freshness.at}
+                  tz_offset={@tz_offset}
+                />
+                <.queue_list
+                  queue={@work.queue}
+                  frozen={@freshness.frozen?}
+                  frozen_at={@freshness.at}
+                  tz_offset={@tz_offset}
+                  selected={@conversation && @conversation.id}
+                />
               </div>
-              <div class="ab-side">
-                <div class="ab-col ab-col--log">
-                  <.merge_log
-                    log={@work.log}
+
+              <.merge_log
+                log={@work.log}
+                frozen={@freshness.frozen?}
+                has_history={@board.merged != []}
+              />
+
+              <details
+                :if={@flow}
+                id="fold-flow"
+                class="ab-fold ab-fold--flow"
+                data-mobile-fold
+                open
+                phx-hook="BoardFold"
+              >
+                <summary class="ab-fold__summary">
+                  <span>{gettext("Throughput")}</span>
+                  <span class="ab-meta">{if @freshness.frozen?,
+                    do:
+                      gettext("per hour · frozen at %{time}",
+                        time: Time.local_time(@flow.computed_at, @tz_offset)
+                      ),
+                    else:
+                      gettext("per hour · calculated at %{time}",
+                        time: Time.local_time(@flow.computed_at, @tz_offset)
+                      )}</span>
+                </summary>
+                <div class="ab-fold__body">
+                  <.throughput
+                    flow={@flow}
+                    tz_offset={@tz_offset}
                     frozen={@freshness.frozen?}
-                    has_history={@board.merged != []}
-                    idle={idle_board?(@work)}
+                    superagents={@superagents}
                   />
                 </div>
-                <details
-                  :if={@flow}
-                  id="fold-flow"
-                  class="ab-fold ab-fold--flow"
-                  data-mobile-fold
-                  open
-                  phx-hook="BoardFold"
-                >
-                  <summary class="ab-fold__summary">
-                    <span>{gettext("Throughput")}</span>
-                    <span class="ab-meta">{if @freshness.frozen?,
-                      do:
-                        gettext("per hour · frozen at %{time}",
-                          time: Time.local_time(@flow.computed_at, @tz_offset)
-                        ),
-                      else:
-                        gettext("per hour · calculated at %{time}",
-                          time: Time.local_time(@flow.computed_at, @tz_offset)
-                        )}</span>
-                  </summary>
-                  <div class="ab-fold__body">
-                    <.throughput
-                      flow={@flow}
-                      tz_offset={@tz_offset}
-                      frozen={@freshness.frozen?}
-                      superagents={@superagents}
-                    />
-                  </div>
-                </details>
-              </div>
+              </details>
             </div>
           </main>
 
