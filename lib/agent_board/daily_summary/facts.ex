@@ -2,7 +2,7 @@ defmodule AgentBoard.DailySummary.Facts do
   @moduledoc """
   What the summary of the day says, collected once from records the board
   already holds, for the window `[since, until)`. Nothing is estimated here
-  except the executor's cost, which `AgentBoard.ExecutorUsage` already marks
+  except the executor's cost, which `AgentBoard.Usage.Harness` already marks
   as an estimate; a source the board cannot read is `"unknown"`, never zero.
 
   The map has string keys (it is stored as JSON in `daily_summaries`):
@@ -25,8 +25,10 @@ defmodule AgentBoard.DailySummary.Facts do
   import Ecto.Query, warn: false
 
   alias AgentBoard.AutoRetry.Attempt
-  alias AgentBoard.{Board, ExecutorUsage, Repo}
+  alias AgentBoard.Board
   alias AgentBoard.Board.{Event, PullRequest, Repository, Task}
+  alias AgentBoard.Repo
+  alias AgentBoard.Usage.Harness
   alias AgentBoard.Usage.Report
 
   @merged_items 5
@@ -34,13 +36,13 @@ defmodule AgentBoard.DailySummary.Facts do
 
   @doc """
   The facts for the window. `:spend` is the DeepSeek reader, a function of
-  `(since, until)` returning an `ExecutorUsage` reading (default
-  `ExecutorUsage.window/2`); `:usage` reads the ledger's spend for Claude Code
+  `(since, until)` returning an `Usage.Harness` reading (default
+  `Harness.window/2`); `:usage` reads the ledger's spend for Claude Code
   and Codex (default `Report.spend_window/2`).
   """
   @spec collect(DateTime.t(), DateTime.t(), keyword()) :: map()
   def collect(since, until, opts \\ []) do
-    reader = Keyword.get(opts, :spend, &ExecutorUsage.window/2)
+    reader = Keyword.get(opts, :spend, &Harness.window/2)
     usage_reader = Keyword.get(opts, :usage, &Report.spend_window/2)
     usage = usage_reader.(since, until)
 

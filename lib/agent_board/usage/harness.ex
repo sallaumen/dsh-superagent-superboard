@@ -1,6 +1,6 @@
-defmodule AgentBoard.ExecutorUsage do
+defmodule AgentBoard.Usage.Harness do
   @moduledoc """
-  What the coding agent's executor spent on a task, read from the harness's
+  What the DeepSeek Harness spent on a task, read from the harness's
   own transcripts.
 
   The DeepSeek Harness keeps one zstd-compressed JSONL transcript per session

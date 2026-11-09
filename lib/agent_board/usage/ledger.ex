@@ -13,7 +13,7 @@ defmodule AgentBoard.Usage.Ledger do
       `usage_messages`, once per `message.id` across every file; a later
       copy merges its counts by the largest value and keeps the session
       of the first copy stored.
-    * The harness: `AgentBoard.ExecutorUsage.read_transcript/1`, the parser
+    * The harness: `AgentBoard.Harness.read_transcript/1`, the parser
       the task inspector uses, one row per message.
     * Codex: `AgentBoard.Usage.Codex`, a thread's daily growth of its
       cumulative total, written straight to the ledger; its input excludes
@@ -34,9 +34,8 @@ defmodule AgentBoard.Usage.Ledger do
 
   import Ecto.Query
 
-  alias AgentBoard.ExecutorUsage
   alias AgentBoard.Repo
-  alias AgentBoard.Usage.{ClaudeCode, Codex}
+  alias AgentBoard.Usage.{ClaudeCode, Codex, Harness}
 
   require Logger
 
@@ -175,7 +174,7 @@ defmodule AgentBoard.Usage.Ledger do
   defp paths("codex"), do: Codex.rollouts() ++ Codex.rollouts(Codex.archived_dir())
 
   defp paths("dsh") do
-    ExecutorUsage.sessions_dir()
+    Harness.sessions_dir()
     |> Path.join("*/*/session.v4.jsonl.zstd")
     |> Path.wildcard()
     |> Enum.sort()
@@ -273,7 +272,7 @@ defmodule AgentBoard.Usage.Ledger do
     execution = session_dir |> Path.dirname() |> Path.basename()
     prefix = "#{execution}/#{Path.basename(session_dir)}:"
 
-    with {:ok, transcript} <- ExecutorUsage.read_file(file.path) do
+    with {:ok, transcript} <- Harness.read_file(file.path) do
       {rows, skipped} =
         Enum.reduce(transcript.messages, {[], 0}, fn
           %{at: nil}, {rows, skipped} ->

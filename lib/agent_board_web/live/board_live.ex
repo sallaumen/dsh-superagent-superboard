@@ -17,7 +17,6 @@ defmodule AgentBoardWeb.BoardLive do
     DailySummary,
     ElevenLabs,
     Executors,
-    ExecutorUsage,
     GitHub,
     Intake,
     Lanes,
@@ -40,7 +39,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Routing.Signals
   alias AgentBoard.Runners.Execution
   alias AgentBoard.System.Version
-  alias AgentBoard.Usage.Report
+  alias AgentBoard.Usage.{Harness, Report}
   alias AgentBoard.Voice.{Activity, Phrases}
 
   import AgentBoardWeb.BoardComponents.Composer, only: [composer: 1]
@@ -516,7 +515,7 @@ defmodule AgentBoardWeb.BoardLive do
       end
 
     previous = socket.assigns[:inspector_usage]
-    ExecutorUsage.for_tickets(tickets, previous)
+    Harness.for_tickets(tickets, previous)
   end
 
   defp refresh_inspector_after_act(socket, task_id) do

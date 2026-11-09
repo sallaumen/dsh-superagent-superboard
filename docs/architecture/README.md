@@ -173,6 +173,7 @@ evento (uma retentativa abriria um segundo issue).
 | #409 | `Live` colidia com `BoardLive`; `Work` colidia com `Workpad`/`Worktree` | `TicketPoller` e `Lanes` (+ `:ticket_poll_interval`) | suíte completa verde |
 | roteamento (esta rodada) | `Board.route/5` lia `Routing.Signals` num default; `Board` participava do ciclo de leitura | `Routing.plan/5` puro; `Actions` planeja requisição só com executor; `Board` recusa sem linha (`:not_routed`); `snapshot/1` saiu de `Signals` | `mix xref`: ciclo `Board/Signals/Runners/Usage.Report` sumiu; testes de plano e de recusa |
 | visão Hoje (esta rodada) | a visão "Hoje" (cross-repo) morava no contexto de um repositório | `AgentBoard.Overview` para `today/0` e `repo_overview/0` | testes de overview/board e orçamento de queries verdes |
+| uso do Harness (esta rodada) | `ExecutorUsage` não dizia qual fonte lia e morava fora de `Usage` | `AgentBoard.Usage.Harness`; leitor por tarefa separado do Ledger/Report | testes de harness, ledger e report verdes |
 
 ### Antes e depois do acoplamento
 
@@ -360,9 +361,11 @@ um nome para aprender (`Board` por repositório, `Overview` para todos).
   compartilham invariantes (o estado de duas camadas, o `request_key`, a
   resolução de PR). Dividir por tamanho criaria transações e contratos novos sem
   remover acoplamento.
-- **`ExecutorUsage` fica no topo.** Ele lê o transcript de **uma tarefa** para o
-  inspetor; `Usage.Ledger`/`Report` falam do dia e do executor. São dois
-  trabalhos; juntar só para uniformizar o namespace esconderia isso.
+- **`Usage.Harness` fica separado de `Usage.Ledger`/`Report`.** Ele lê o
+  transcript de **uma tarefa** para o inspetor; o Ledger e o Report falam do
+  dia e do executor. Ficam no mesmo namespace porque a fonte é a mesma (o
+  Harness), mas continuam módulos diferentes porque os trabalhos são
+  diferentes.
 - **`BoardLive` continua dono dos eventos.** As páginas não são domínios; o
   componente não decide regra. Se a LiveView começar a bloquear mudanças, o
   corte é por painel (eventos no componente), não por "contexto de tela".
@@ -443,7 +446,8 @@ Dois exemplos concretos:
   `mix xref graph --format cycles --label compile-connected`: sem ciclos de
   compilação.
 - PRs: #401, #402, #404, #406, #409, a entrega de roteamento, a extração da
-  visão Hoje e este documento. Cada um passou a CI
+  visão Hoje, a renomeação de `Usage.Harness` e este documento. Cada um
+  passou a CI
   (backend em quatro partições, gates, frontend, biblioteca, release).
 - O defeito de teste de #406 foi encontrado validando os PRs e tratado em
   separado; nenhum comportamento de produto mudou nesta revisão.
