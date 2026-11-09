@@ -934,7 +934,7 @@ defmodule AgentBoardWeb.BoardLive do
     # entries stay in the buffer and the new file is read from its tail.
     socket =
       if socket.assigns.panel == "logs" do
-        socket = assign(:logs_sources, Logs.sources(socket.assigns.superagents))
+        socket = assign(socket, :logs_sources, Logs.sources(socket.assigns.superagents))
         if socket.assigns.logs_paused, do: socket, else: read_logs_once(socket)
       else
         socket
@@ -1204,7 +1204,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_event("open_any", %{"id" => id}, socket) do
-    with {task_id, ""} <- Integer.parse(to_string(id)),
+    with task_id when is_integer(task_id) <- Board.parse_id(id),
          %Task{} = task <- Board.task(task_id) do
       {:noreply,
        push_patch(socket, to: BoardNavigation.path(task.repository, "conversation", task.id))}
@@ -1216,7 +1216,8 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("select", %{"repo" => slug}, socket) do
     current = socket.assigns.repo
 
-    if current && slug == "#{current.owner}/#{current.name}" do
+    # Hoje keeps the last project loaded underneath: clicking it there leaves Hoje.
+    if current && socket.assigns.view != "hoje" && slug == "#{current.owner}/#{current.name}" do
       # LiveView recovers phx-change forms after reconnect. Same selection must not close a panel.
       {:noreply, socket}
     else

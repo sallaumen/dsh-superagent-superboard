@@ -113,11 +113,9 @@ defmodule AgentBoardWeb.BoardNavigation do
   defp task(nil, _id), do: nil
 
   defp task(repo, id) do
-    with {task_id, ""} <- Integer.parse(to_string(id)),
-         %Task{} = task <- Board.task_of(repo, task_id) do
-      task
-    else
-      _ -> nil
+    case Board.parse_id(id) do
+      nil -> nil
+      task_id -> Board.task_of(repo, task_id)
     end
   end
 end

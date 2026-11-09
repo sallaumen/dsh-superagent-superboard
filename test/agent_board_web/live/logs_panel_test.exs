@@ -249,4 +249,43 @@ defmodule AgentBoardWeb.LogsPanelTest do
     assert html =~ "Só avisos e erros"
     assert html =~ "até #{Logs.cap()} registros"
   end
+
+  test "a log written in Latin-1 opens the sheet instead of crashing the socket", %{
+    conn: conn,
+    board_log: board_log
+  } do
+    repo!()
+
+    File.write!(
+      board_log,
+      <<"2026-11-09 09:58:47.886 [error] a voz n", 0xE3, "o foi gerada (HTTP 400)\n">>,
+      [:append]
+    )
+
+    {:ok, view, html} = live(conn, ~p"/?repo=fixture/logs&panel=logs")
+
+    assert html =~ "a voz não foi gerada"
+    assert render(view) =~ "a voz não foi gerada"
+    assert Process.alive?(view.pid)
+  end
+
+  test "a superagent change while the sheet is open keeps it open and adds the source", %{
+    conn: conn,
+    dir: dir
+  } do
+    repo = repo!()
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/logs&panel=logs")
+
+    superagent!(repo, "superagent-tick")
+
+    File.write!(
+      Path.join(dir, "dsh-superagent-tick-keepalive.log"),
+      "2026-11-09T09:00:00-0300 no manager at 3190\n"
+    )
+
+    send(view.pid, :superagents_changed)
+
+    assert render(view) =~ "no manager at 3190"
+    assert Process.alive?(view.pid)
+  end
 end

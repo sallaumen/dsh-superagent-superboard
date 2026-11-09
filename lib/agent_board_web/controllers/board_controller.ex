@@ -79,9 +79,9 @@ defmodule AgentBoardWeb.BoardController do
 
   def act(conn, %{"id" => id, "action" => action} = params) do
     task =
-      case Integer.parse(to_string(id)) do
-        {task_id, ""} -> Board.task(task_id)
-        _ -> nil
+      case Board.parse_id(id) do
+        nil -> nil
+        task_id -> Board.task(task_id)
       end
 
     result =

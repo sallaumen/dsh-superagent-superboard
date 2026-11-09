@@ -12,6 +12,9 @@ export AGENT_BOARD_RESTART_MODE="${AGENT_BOARD_RESTART_MODE:-supervised}"
 # Info, not the dev default of debug: the log keeps errors, retries and the
 # voice pipeline's lines instead of every SQL query the poller runs.
 export LOG_LEVEL="${LOG_LEVEL:-info}"
+# launchd starts jobs without a locale, and the BEAM then writes its standard
+# output in Latin-1: the log got bytes that are not UTF-8.
+export LANG="${LANG:-en_US.UTF-8}"
 
 # The log rotates here, at every start, keeping one old file, as o_colmex's
 # hive does: launchd only appends, and the file reached a gigabyte. It applies

@@ -70,6 +70,19 @@ if System.get_env("AGENT_BOARD_AUTO_RETRY") in ~w(0 false) do
   config :agent_board, auto_retry: false
 end
 
+# A dev server from a worktree shares Postgres with the live board on 4099.
+# AGENT_BOARD_DATABASE points it at another database (a copy, say), so that its
+# migrations and clicks stay away from the board the owner is using.
+if config_env() == :dev do
+  case System.get_env("AGENT_BOARD_DATABASE") do
+    database when is_binary(database) and database != "" ->
+      config :agent_board, AgentBoard.Repo, database: database
+
+    _ ->
+      :ok
+  end
+end
+
 config :agent_board, AgentBoardWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
