@@ -8,6 +8,9 @@ defmodule AgentBoardWeb.BoardNavigation do
 
   @panels ~w(activity intake ai conversation voice history composer shortcuts executors settings superagents logs)
 
+  # These work without a repository; Settings is where the first one is added.
+  @panels_without_repo ~w(voice logs settings)
+
   def path(nil), do: "/"
   def path(repo), do: "/?" <> URI.encode_query(%{"repo" => "#{repo.owner}/#{repo.name}"})
 
@@ -15,8 +18,7 @@ defmodule AgentBoardWeb.BoardNavigation do
 
   def path(repo, panel, task_id \\ nil, tab \\ nil)
 
-  def path(nil, "voice", _task_id, _tab), do: "/?panel=voice"
-  def path(nil, "logs", _task_id, _tab), do: "/?panel=logs"
+  def path(nil, panel, _task_id, _tab) when panel in @panels_without_repo, do: "/?panel=#{panel}"
 
   def path(repo, panel, task_id, tab) do
     query = %{"repo" => "#{repo.owner}/#{repo.name}", "panel" => panel}
@@ -58,7 +60,7 @@ defmodule AgentBoardWeb.BoardNavigation do
 
     panel =
       cond do
-        panel in ["voice", "logs"] -> panel
+        panel in @panels_without_repo -> panel
         socket.assigns.repo && panel in (@panels -- ["conversation", "voice"]) -> panel
         true -> nil
       end
@@ -96,7 +98,6 @@ defmodule AgentBoardWeb.BoardNavigation do
              "composer",
              "shortcuts",
              "executors",
-             "settings",
              "superagents"
            ] do
     if socket.assigns.repo,
@@ -104,9 +105,8 @@ defmodule AgentBoardWeb.BoardNavigation do
       else: socket
   end
 
-  def open_panel(socket, "voice"), do: push_patch(socket, to: path(socket.assigns.repo, "voice"))
-
-  def open_panel(socket, "logs"), do: push_patch(socket, to: path(socket.assigns.repo, "logs"))
+  def open_panel(socket, panel) when panel in @panels_without_repo,
+    do: push_patch(socket, to: path(socket.assigns.repo, panel))
 
   def open_panel(socket, _panel), do: socket
 
