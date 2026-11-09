@@ -14,26 +14,20 @@ ticket, never enters the worktree and never writes to the agent's sqlite.
 
 ## How to use it
 
-Default since 2026-11-07: **WisprFlow for your speech, the browser voice for the
-agent**. Neither costs anything per use.
+Default since 2026-11-09: **text for your input, the browser voice for the
+agent**. Double Space focuses a conversation field that is already visible;
+when no field is visible it does not open another window. The voice panel and
+task conversation also accept text directly.
 
-1. Double Space (with the board focused, or on the title of the voice panel):
-   opens the "Fale com o Wispr" (talk to Wispr) field, already focused.
-2. Hold the Wispr key and speak. When the Wispr text arrives in the field and
-   stops changing for 0.7 s, the board sends it on its own. Typed by hand, it
-   sends on Enter (so it does not cut off a slow typist). Esc closes.
-3. The agent answers (in the chosen voice). With short answers, it speaks the
-   first sentence and the whole answer appears written. While it thinks, Esc
-   cancels. If the answer asks for a yes or a question, the Wispr field reopens
-   focused for your answer.
-4. With the composer open, double Space (or `V`) only focuses the request text:
-   Wispr types there.
+**External dictation** (optional): in Configurações → Voz → "Entrada para
+conversar com o agente", choose "Ditado externo (Wispr Flow)". Double Space
+then opens its focused field. Wispr Flow types as a keyboard: after the dictated
+text settles for 0.7 s, the board sends it. Typing manually sends on Enter, and
+Esc closes. With the composer open, Double Space focuses its request field.
+The board does not invoke the Wispr app or its shortcut.
 
-The board does not press the Wispr key for you; Wispr has no confirmed public
-API, so it comes in as the keyboard it already is.
-
-**Board microphone** (optional, paid): in Configurações → Voz → "Sua voz para o
-agente" (your voice for the agent), choose "Microfone do board" (board
+**Board microphone** (optional, paid): in Configurações → Voz → "Entrada para
+conversar com o agente", choose "Microfone do board" (board
 microphone). Then double Space records, silence ends the turn (0.8 / 1.2 / 1.8 s),
 a sound marks opening and closing, the bars show the level and the transcript is
 ElevenLabs' (Scribe).
@@ -51,8 +45,9 @@ notice.
 
 ## Settings (Configurações → Voz)
 
-- **Sua voz para o agente**: WisprFlow (default, no cost) or Microfone do board
-  (ElevenLabs, paid).
+- **Entrada para conversar com o agente**: Texto (default, existing field),
+  Ditado externo (Wispr Flow, opt-in) or Microfone do board (ElevenLabs Scribe,
+  opt-in and paid). A previously saved Wispr Flow choice is preserved.
 - **Motor da voz** (voice engine): Navegador em tudo (browser everywhere; default,
   free), Misto (mixed: ElevenLabs only for attention calls and the coding agent's
   answers, the rest in the browser) or ElevenLabs em tudo (ElevenLabs everywhere).
@@ -70,9 +65,10 @@ notice.
   (off by default: it costs voice) and the sound when the microphone opens and
   closes.
 
-There is no draft to review and no Enter. The "Conversa por voz" (voice
-conversation) panel shows the conversation for whoever wants to read it, accepts
-typed text and has "Esquecer conversa" (forget conversation). The old command box
+For the board microphone there is no draft to review and no Enter. The
+"Conversa por voz" (voice conversation) panel shows the conversation for
+whoever wants to read it, accepts typed text and has "Esquecer conversa"
+(forget conversation). The old command box
 (an English draft with "Check command") was removed on 2026-11-07: everything it
 did now goes through the conversation.
 

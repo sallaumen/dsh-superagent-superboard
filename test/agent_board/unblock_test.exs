@@ -43,6 +43,50 @@ defmodule AgentBoard.UnblockTest do
     refute Unblock.context([%{body: empty, inserted_at: DateTime.utc_now()}])
   end
 
+  test "a later reply to the agent resolves the old workpad, and a new workpad reopens it" do
+    workpad = %{kind: "agent", body: @workpad, inserted_at: ~U[2026-11-09 08:00:00Z]}
+
+    reply = %{
+      kind: "user",
+      body: "Use o menu restrito.\n\n@sallaumen-agent",
+      inserted_at: ~U[2026-11-09 08:01:00Z]
+    }
+
+    refute Unblock.context([workpad, reply])
+
+    next_workpad = %{workpad | inserted_at: ~U[2026-11-09 08:02:00Z]}
+    assert %{question: question} = Unblock.context([workpad, reply, next_workpad])
+    assert question =~ "menu restrito"
+  end
+
+  test "a same-second reply resolves the workpad using local comment order" do
+    at = ~U[2026-11-09 08:00:00Z]
+    workpad = %{id: 10, kind: "agent", body: @workpad, inserted_at: at}
+    reply = %{id: 11, kind: "user", body: "Sim.\n\n@sallaumen-agent", inserted_at: at}
+
+    refute Unblock.context([workpad, reply])
+    assert Unblock.context([%{reply | id: 9}, workpad])
+  end
+
+  test "an earlier reply or a later unrelated comment does not resolve the workpad" do
+    workpad = %{kind: "agent", body: @workpad, inserted_at: ~U[2026-11-09 08:00:00Z]}
+
+    earlier_reply = %{
+      kind: "user",
+      body: "Outra decisão.\n\n@sallaumen-agent",
+      inserted_at: ~U[2026-11-09 07:59:00Z]
+    }
+
+    unrelated = %{
+      kind: "user",
+      body: "Anotei um detalhe sem chamar o agente.",
+      inserted_at: ~U[2026-11-09 08:01:00Z]
+    }
+
+    assert %{question: question} = Unblock.context([earlier_reply, workpad, unrelated])
+    assert question =~ "menu restrito"
+  end
+
   test "the title names the blocked issue and the body links back to it" do
     context = Unblock.context([%{body: @workpad, inserted_at: DateTime.utc_now()}])
     title = Unblock.blocker_title(@task, context)

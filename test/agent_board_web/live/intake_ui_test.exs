@@ -42,15 +42,16 @@ defmodule AgentBoardWeb.IntakeUITest do
   test "the ask shows the model's answer", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
-    %AgentBoard.Board.Task{}
-    |> AgentBoard.Board.Task.changeset(%{
-      repository_id: repo.id,
-      kind: "issue",
-      number: 901,
-      title: "Board lento",
-      state: "queued"
-    })
-    |> AgentBoard.Repo.insert!()
+    task =
+      %AgentBoard.Board.Task{}
+      |> AgentBoard.Board.Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 901,
+        title: "Board lento",
+        state: "queued"
+      })
+      |> AgentBoard.Repo.insert!()
 
     Req.Test.stub(@stub, fn conn ->
       if String.ends_with?(conn.request_path, "/chat/completions") do
@@ -64,8 +65,10 @@ defmodule AgentBoardWeb.IntakeUITest do
     view |> element("[data-task]") |> render_click()
 
     view |> element("#ask-agent") |> render_submit(%{"body" => "por que demora?"})
-    html = view |> element("#ask-confirm-go") |> render_click()
-    assert html =~ "Pergunta enviada"
+    render_async(view, 2_000)
+
+    assert %AgentBoard.Board.Comment{} =
+             AgentBoard.Repo.get_by!(AgentBoard.Board.Comment, task_id: task.id)
 
     # the model answers on another process: let it land, then render
     Process.sleep(150)

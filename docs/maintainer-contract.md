@@ -109,7 +109,11 @@ in a prompt, and it is the prerequisite of any dispatch that spends money.
   is refused with `{:phrase_changed, phrase}`) or, for the two actions that
   take it, the **owner's own words** ("cria direto" for a voice create,
   "desfaz" for its undo), checked by `Actions.direct_order?/2` and never
-  taken from the model's flag alone.
+  taken from the model's flag alone. In the task conversation, the owner
+  confirms `ask_task` by writing the message in the open task and pressing
+  **Enviar** beside the visible GitHub destination note. The UI builds the
+  phrase from that exact task and message for the gate in the same submit;
+  there is no second confirmation card.
 - **The one exception is a standing authorization written here**: the
   automatic retry of a transient failure (below), for the actor
   `auto_retry` only. A new one is an owner's decision recorded in this
@@ -151,7 +155,7 @@ and is recorded as `automatic`.
 | Action | Risk | Effect | Confirmation |
 |---|---|---|---|
 | `create_tasks` | red | opens GitHub issues that mention the agent (`Board.Requests.create_request/3`, once per request key) | UI: the composer shows the sentence above the send button and the send carries it; the intake panel's Create asks it in the browser (`data-confirm`). Voice: proposal and yes, or "cria direto". API: `428` then `confirm` |
-| `ask_task` | red | comments on the issue with the mention | UI: the inspector asks in two steps ("Mandar a pergunta"). Voice: proposal and yes |
+| `ask_task` | red | comments on the issue with the mention | UI: the message form names the GitHub destination; Enviar confirms the typed text in one step. Voice: proposal and yes |
 | `stop_task` | red | closes the issue and marks the task stopped | UI: `AgentAction` "Parar". Voice: proposal and yes. API: `428` then `confirm` |
 | `undo_created_task` | red | closes the issue the voice just opened | Voice: "desfaz" within 10 minutes; a proposal when the model read an undo without the word |
 | `archive_task` | yellow | takes the task off the board (Retomar undoes it) | UI: one click. Voice: proposal (kept). API: direct |
@@ -535,10 +539,12 @@ Agora and the detail):
   Speed (`voice_speed`), intonation (`voice_style` → stability), pause
   (`voice_pause`) and microphone sounds (`voice_earcons`) are settings. The conversation never reaches the coding
   agent except through the board actions a button would take.
-- **Cost defaults** (owner's decision, 2026-11-07): the owner's speech comes
-  from WisprFlow typing into the board (`voice_input` = `wispr`, the
-  `VoiceWispr` hook sends a dictated text once it settles); the board's own
-  recorder and ElevenLabs Scribe are the opt-in `microphone` input. Every
+- **Input default** (owner's decision, 2026-11-09): text uses a visible field
+  (`voice_input` = `text`) without opening a dictation window. Wispr Flow
+  typing into the board (`voice_input` = `wispr`, the `VoiceWispr` hook sends
+  dictated text once it settles) and the board's recorder with ElevenLabs
+  Scribe (`microphone`) remain explicit settings; saved `wispr` preferences
+  remain valid. Every
   utterance is routed by `AgentBoardWeb.VoiceSpeech.push/3`: the free browser
   voice by default (`voice_engine` = `browser`), ElevenLabs only for calls in
   `mixed` or for everything in `elevenlabs`, and never without a key or past

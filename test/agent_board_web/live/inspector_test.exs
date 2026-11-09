@@ -259,6 +259,66 @@ defmodule AgentBoardWeb.InspectorTest do
            } = Repo.one(from d in AgentBoard.Actions.Decision, order_by: [desc: d.id], limit: 1)
   end
 
+  test "a submitted message appears while GitHub is pending without duplicating its local comment" do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-sending")
+    task = task(repo, 1418, "Responder ao agente", "blocked")
+    sending = %{task_id: task.id, body: "Pode entregar o menu.", ref: make_ref()}
+
+    html = render_conversation(task, [], ask_sending: sending)
+    assert length(Regex.scan(~r/class="[^"]*ab-msg--sending/, html)) == 1
+    assert html =~ "Pode entregar o menu."
+    assert html =~ "Enviando…"
+    assert html =~ "issue ##{task.number} do GitHub"
+    assert html =~ ~r/<textarea[^>]*disabled/
+    refute html =~ "ask-confirm"
+
+    comment =
+      %Comment{}
+      |> Comment.changeset(%{
+        task_id: task.id,
+        github_id: -1,
+        author: "you",
+        kind: "user",
+        body: "Pode entregar o menu.\n\n@sallaumen-agent"
+      })
+      |> Repo.insert!()
+
+    html = render_conversation(task, [comment], ask_sending: sending)
+    assert length(Regex.scan(~r/class="[^"]*ab-msg--sending/, html)) == 1
+    refute html =~ ~s(data-message-id="sending")
+  end
+
+  test "a failed message restores the draft beside a recoverable error" do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-send-error")
+    task = task(repo, 1419, "Responder ao agente", "blocked")
+
+    html =
+      render_conversation(task, [],
+        ask_draft: "Preciso dos testes primeiro.",
+        ask_error: "A pergunta não chegou ao GitHub. Tente de novo."
+      )
+
+    assert html =~ "Preciso dos testes primeiro."
+    assert html =~ ~s(role="alert")
+    assert html =~ "A pergunta não chegou ao GitHub. Tente de novo."
+    refute html =~ "ab-msg--sending"
+  end
+
+  defp render_conversation(task, comments, opts) do
+    render_component(&Inspector.inspector/1, %{
+      task: task,
+      comments: comments,
+      tab: "conversa",
+      activity: [],
+      calls: [],
+      ask_sending: Keyword.get(opts, :ask_sending),
+      ask_draft: Keyword.get(opts, :ask_draft, ""),
+      ask_error: Keyword.get(opts, :ask_error),
+      tz_offset: 0,
+      live: false
+    })
+  end
+
   defp task(repo, number, title, state) do
     %Task{}
     |> Task.changeset(%{

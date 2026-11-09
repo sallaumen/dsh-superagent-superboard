@@ -138,9 +138,9 @@ defmodule AgentBoardWeb.BoardLive do
         logs_paused: false,
         conversation: nil,
         comments: [],
-        ask_pending: nil,
-        ask_draft: "",
-        ask_draft_task: nil,
+        ask_sending: %{},
+        ask_draft: %{},
+        ask_error: %{},
         inspector_tab: "conversa",
         inspector_activity: [],
         inspector_calls: [],
@@ -1100,7 +1100,6 @@ defmodule AgentBoardWeb.BoardLive do
     socket =
       socket
       |> BoardNavigation.apply_params(params)
-      |> forget_ask_draft_of_another_task()
       |> sync_logs_panel(previous_panel)
       |> load_inspector()
       |> load_panel()
@@ -1141,16 +1140,6 @@ defmodule AgentBoardWeb.BoardLive do
     |> assign(:superagents, Superagents.list())
     |> put_flash(:error, gettext("That superagent is no longer on the board."))
   end
-
-  # A draft belongs to the task it was typed on; closing and reopening that
-  # task keeps it.
-  defp forget_ask_draft_of_another_task(%{assigns: %{conversation: %Task{id: id}}} = socket) do
-    if socket.assigns.ask_draft_task == id,
-      do: socket,
-      else: assign(socket, ask_draft: "", ask_draft_task: id)
-  end
-
-  defp forget_ask_draft_of_another_task(socket), do: socket
 
   # -- the logs sheet ---------------------------------------------------------
   #
@@ -1604,9 +1593,6 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, push_patch(socket, to: BoardNavigation.path(socket.assigns.repo), replace: true)}
   end
 
-  # A question to the agent is red (it posts on GitHub): the first submit
-  # shows the sentence, only "Mandar" posts it, Cancelar records the no.
-  @impl true
   # -- unblocking a stopped task ---------------------------------------------
   #
   # The buttons live next to the draft, so the owner can ask the model for a
@@ -1642,11 +1628,27 @@ defmodule AgentBoardWeb.BoardLive do
   # The form leaves the page with the tab, and a form without phx-change is
   # not recovered after a reconnect: what was typed lives here.
   def handle_event("ask_change", %{"body" => body}, socket) when is_binary(body) do
-    {:noreply, assign(socket, ask_draft: body)}
+    case socket.assigns.conversation do
+      %Task{id: task_id} ->
+        if Map.has_key?(socket.assigns.ask_sending, task_id),
+          do: {:noreply, socket},
+          else:
+            {:noreply,
+             assign(socket, ask_draft: Map.put(socket.assigns.ask_draft, task_id, body))}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("use_unblock_suggestion", %{"text" => text}, socket) do
-    {:noreply, assign(socket, ask_draft: text)}
+    case socket.assigns.conversation do
+      %Task{id: task_id} ->
+        {:noreply, assign(socket, ask_draft: Map.put(socket.assigns.ask_draft, task_id, text))}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("open_blocker", _params, socket) do
@@ -1750,62 +1752,31 @@ defmodule AgentBoardWeb.BoardLive do
       {_task, ""} ->
         {:noreply, socket}
 
-      {task, body} ->
-        params = %{task: task, question: body}
-        pending = %{task_id: task.id, body: body, phrase: Actions.phrase(:ask_task, params)}
-        {:noreply, assign(socket, ask_pending: pending)}
-    end
-  end
+      {%Task{} = task, body} ->
+        if Map.has_key?(socket.assigns.ask_sending, task.id) do
+          {:noreply, socket}
+        else
+          params = %{task: task, question: body, client: GitHub.client()}
+          phrase = Actions.phrase(:ask_task, params)
+          ref = make_ref()
 
-  @impl true
-  def handle_event("ask_cancel", _params, socket) do
-    case {socket.assigns.conversation, socket.assigns.ask_pending} do
-      {%Task{} = task, %{body: body}} ->
-        :ok = Actions.decline(:ask_task, %{task: task, question: body}, ui())
-        {:noreply, assign(socket, ask_pending: nil, ask_draft: body)}
+          socket =
+            assign(socket,
+              ask_sending:
+                Map.put(socket.assigns.ask_sending, task.id, %{
+                  task_id: task.id,
+                  body: body,
+                  ref: ref
+                }),
+              ask_draft: Map.delete(socket.assigns.ask_draft, task.id),
+              ask_error: Map.delete(socket.assigns.ask_error, task.id)
+            )
 
-      _ ->
-        {:noreply, assign(socket, ask_pending: nil)}
-    end
-  end
-
-  @impl true
-  def handle_event("ask_confirm", _params, socket) do
-    case {socket.assigns.conversation, socket.assigns.ask_pending} do
-      {nil, _pending} ->
-        {:noreply, put_flash(socket, :error, gettext("Open a task first"))}
-
-      {_task, pending} when not is_map(pending) ->
-        {:noreply, socket}
-
-      {%Task{id: id} = task, %{task_id: id, body: body, phrase: phrase}} ->
-        socket = assign(socket, ask_pending: nil, ask_draft: "")
-        params = %{task: task, question: body, client: GitHub.client()}
-
-        case Actions.run(:ask_task, params, ui(), confirm: phrase) do
-          {:error, {refusal, _phrase}} when refusal in [:unconfirmed, :phrase_changed] ->
-            {:noreply, socket |> assign(ask_draft: body) |> put_flash(:error, refused_text())}
-
-          {:ok, _} ->
-            ask_in_background(task, body)
-
-            {:noreply,
-             assign(socket,
-               conversation: Board.task(task.id),
-               comments: Board.comments(task)
-             )
-             |> load_inspector()
-             |> put_flash(:info, "Pergunta enviada")}
-
-          {:error, _} ->
-            {:noreply,
-             socket
-             |> assign(ask_draft: body)
-             |> put_flash(:error, gettext("The question did not reach GitHub"))}
+          {:noreply,
+           start_async(socket, {:ask_task, task.id, ref}, fn ->
+             Actions.run(:ask_task, params, ui(), confirm: phrase)
+           end)}
         end
-
-      {_task, _pending_for_another_task} ->
-        {:noreply, assign(socket, ask_pending: nil)}
     end
   end
 
@@ -2345,6 +2316,30 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_async({:ask_task, task_id, ref}, outcome, socket) do
+    case Map.get(socket.assigns.ask_sending, task_id) do
+      %{body: body, ref: ^ref} ->
+        socket = assign(socket, ask_sending: Map.delete(socket.assigns.ask_sending, task_id))
+
+        case outcome do
+          {:ok, {:ok, _comment}} ->
+            {:noreply, ask_succeeded(socket, task_id, body)}
+
+          {:ok, {:error, {refusal, _phrase}}}
+          when refusal in [:unconfirmed, :phrase_changed] ->
+            {:noreply, ask_failed(socket, task_id, body, refused_text())}
+
+          _ ->
+            {:noreply,
+             ask_failed(socket, task_id, body, gettext("The question did not reach GitHub"))}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
   def handle_async(:provision, {:ok, {:ok, text}}, socket) do
     {:noreply,
      socket
@@ -2473,6 +2468,34 @@ defmodule AgentBoardWeb.BoardLive do
     parent = self()
     id = task.id
     Elixir.Task.start(fn -> send(parent, {:answer, id, answer(task, body)}) end)
+  end
+
+  defp ask_failed(socket, task_id, body, message) do
+    socket
+    |> assign(
+      ask_draft: Map.put(socket.assigns.ask_draft, task_id, body),
+      ask_error: Map.put(socket.assigns.ask_error, task_id, message)
+    )
+    |> put_flash(:error, message)
+    |> push_event("inspector:message-failed", %{task_id: task_id})
+  end
+
+  defp ask_succeeded(socket, task_id, body) do
+    task = Board.task(task_id)
+    ask_in_background(task, body)
+
+    socket =
+      if socket.assigns.conversation && socket.assigns.conversation.id == task_id do
+        socket
+        |> assign(conversation: task, comments: Board.comments(task))
+        |> load_inspector()
+      else
+        socket
+      end
+
+    socket
+    |> put_flash(:info, gettext("Question sent"))
+    |> push_event("inspector:message-sent", %{task_id: task_id})
   end
 
   # The full voice state, as one assign: id and model resolve env -> saved ->
@@ -3111,8 +3134,9 @@ defmodule AgentBoardWeb.BoardLive do
             failure={@inspector_failure}
             tz_offset={@tz_offset}
             live={@freshness.live?}
-            ask_pending={@ask_pending}
-            ask_draft={@ask_draft}
+            ask_sending={@conversation && Map.get(@ask_sending, @conversation.id)}
+            ask_draft={if @conversation, do: Map.get(@ask_draft, @conversation.id, ""), else: ""}
+            ask_error={@conversation && Map.get(@ask_error, @conversation.id)}
             ai_status={@ai_status}
             unblock={@unblock}
             unblock_suggestions={@unblock_suggestions}
@@ -3347,11 +3371,23 @@ defmodule AgentBoardWeb.BoardLive do
               class="ab-btn ab-btn--primary"
               phx-click={Phoenix.LiveView.JS.dispatch("board:voice-start")}
             >
-              <.ico name="mic" />{gettext("Speak")}<.kbd key={gettext("Space ×2")} />
+              <%= if @voice.input == "text" do %>
+                <.ico name="keys" />{gettext("Write")}<.kbd key={gettext("Space ×2")} />
+              <% else %>
+                <.ico name="mic" />{gettext("Speak")}<.kbd key={gettext("Space ×2")} />
+              <% end %>
             </button>
-            <span class="ab-meta">{gettext(
-              "Speak and stop: the agent replies and waits for your confirmation before acting."
-            )}</span>
+            <span class="ab-meta">
+              {if @voice.input == "text",
+                do:
+                  gettext(
+                    "Write in the field above; the agent replies and waits for your confirmation before acting."
+                  ),
+                else:
+                  gettext(
+                    "Speak and stop: the agent replies and waits for your confirmation before acting."
+                  )}
+            </span>
           </div>
           <BoardComponents.VoiceCommandList.list open={@voice_commands_open} />
           <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} />

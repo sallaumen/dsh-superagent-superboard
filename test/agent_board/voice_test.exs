@@ -129,7 +129,7 @@ defmodule AgentBoard.VoiceTest do
   end
 
   test "input, engine, replies and narration default to the cheap choices" do
-    assert Voice.input() == "wispr"
+    assert Voice.input() == "text"
     assert Voice.engine() == "browser"
     assert Voice.replies() == "short"
     refute Voice.narrate?()
@@ -143,6 +143,9 @@ defmodule AgentBoard.VoiceTest do
              {"microphone", "mixed", "full", true}
 
     assert {:error, :invalid_input} = Voice.put_input("telepatia")
+
+    assert :ok = Voice.put_input("wispr")
+    assert Voice.input() == "wispr"
     assert {:error, :invalid_engine} = Voice.put_engine("robô")
     assert {:error, :invalid_replies} = Voice.put_replies("longas")
   end
