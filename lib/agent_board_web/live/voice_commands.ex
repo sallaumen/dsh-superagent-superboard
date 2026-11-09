@@ -257,7 +257,7 @@ defmodule AgentBoardWeb.VoiceCommands do
   defp ask(%{conversation: nil}, _question) do
     reply(
       :error,
-      "Open a task first, then ask your question. Your draft is still here."
+      "Abra uma tarefa primeiro e faça a pergunta. Seu rascunho continua aqui."
     )
   end
 

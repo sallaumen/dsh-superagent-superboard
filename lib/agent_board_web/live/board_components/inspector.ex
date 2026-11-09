@@ -216,6 +216,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         id={"inspector-panel-#{@tab}"}
         role="tabpanel"
         aria-labelledby={"inspector-tab-#{@tab}"}
+        tabindex="0"
       >
         <%= case @tab do %>
           <% "atividade" -> %>

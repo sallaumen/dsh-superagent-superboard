@@ -90,25 +90,25 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
   def truncate(value) when is_binary(value), do: value
   def truncate(value), do: inspect(value)
 
-  def empty_copy(:running), do: "No task is running."
-  def empty_copy(:ready), do: "Nothing is waiting on a review."
-  def empty_copy(:blocked), do: "Nothing is blocked."
-  def empty_copy(:merged), do: "No pull request merged yet."
-  def empty_copy(:queued), do: "No queued task."
+  def empty_copy(:running), do: "Nenhuma tarefa rodando."
+  def empty_copy(:ready), do: "Nada esperando revisão."
+  def empty_copy(:blocked), do: "Nada bloqueado."
+  def empty_copy(:merged), do: "Nenhum PR mesclado ainda."
+  def empty_copy(:queued), do: "Nenhuma tarefa na fila."
 
-  def ai_status_label(:logged_in), do: "configured · connection not verified"
-  def ai_status_label(:not_configured), do: "not configured"
-  def ai_status_label(:rehearsal), do: "rehearsal · local fixtures"
+  def ai_status_label(:logged_in), do: "configurada · conexão não verificada"
+  def ai_status_label(:not_configured), do: "não configurada"
+  def ai_status_label(:rehearsal), do: "ensaio · fixtures locais"
   def ai_status_label(status), do: to_string(status)
 
   def latency(value) when is_integer(value), do: "#{value}ms"
-  def latency(_), do: "unknown"
+  def latency(_), do: "desconhecido"
 
   def token_usage(%{input_tokens: input, output_tokens: output})
       when is_integer(input) and is_integer(output),
       do: "#{input + output} tokens"
 
-  def token_usage(_), do: "unknown"
+  def token_usage(_), do: "desconhecido"
 
   # Zero is also stored for old calls and unpriced models, so it is not a
   # trustworthy zero-dollar bill. Keep the stored microdollar precision.
@@ -125,5 +125,5 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
     if fraction == "", do: "$#{dollars}", else: "$#{dollars}.#{fraction}"
   end
 
-  def estimated_cost(_), do: "unknown"
+  def estimated_cost(_), do: "desconhecido"
 end

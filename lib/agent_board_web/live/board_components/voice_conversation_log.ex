@@ -37,7 +37,13 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
         Aperte espaço duas vezes, fale e pare: o agente responde em voz. Ele lembra
         da conversa, consulta o quadro e cria tarefas depois de você confirmar.
       </p>
-      <ol :if={@turns != []} id="voice-chat-turns" class="voice-chat-turns">
+      <ol
+        :if={@turns != []}
+        id="voice-chat-turns"
+        class="voice-chat-turns"
+        tabindex="0"
+        aria-label="Histórico da conversa por voz"
+      >
         <%!-- Rendered newest first in a column-reverse list: the scroll stays
              anchored on the latest turn while reading top to bottom. --%>
         <li :for={turn <- Enum.reverse(@turns)} class="voice-chat-turn" data-role={turn.role}>

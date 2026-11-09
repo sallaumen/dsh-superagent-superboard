@@ -11,13 +11,15 @@ defmodule AgentBoardWeb.BoardComponents.Activity do
     ~H"""
     <section id="activity" class="border-t border-base-content/10 px-5 py-4">
       <h3 class="py-2 text-xs uppercase tracking-[0.16em]">
-        Activity · latest {length(@events)} events
+        Atividade · últimos {length(@events)} eventos
       </h3>
-      <p :if={@events == []} class="text-xs text-base-content/75">No activity recorded yet.</p>
+      <p :if={@events == []} class="text-xs text-base-content/75">
+        Nenhuma atividade registrada ainda.
+      </p>
       <ol
         class="mt-3 max-h-64 space-y-2 overflow-y-auto"
         tabindex="0"
-        aria-label="Recent activity"
+        aria-label="Atividade recente"
       >
         <li
           :for={e <- @events}
@@ -27,7 +29,7 @@ defmodule AgentBoardWeb.BoardComponents.Activity do
             warning?(e) && "text-warning"
           ]}
         >
-          <DataAge.stamp id={"event-age-#{e.id}"} at={e.inserted_at} label="Recorded" />
+          <DataAge.stamp id={"event-age-#{e.id}"} at={e.inserted_at} label="Registrado" />
           <span class="break-words uppercase">{e.kind}</span>
           <span class="min-w-0 break-words text-base-content">{e.subject}</span>
           <span

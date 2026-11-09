@@ -88,7 +88,7 @@ defmodule AgentBoardWeb.BoardActionsTest do
 
     view |> element("#ask-confirm-go") |> render_click()
 
-    assert has_element?(view, "#flash-info", "Question sent")
+    assert has_element?(view, "#flash-info", "Pergunta enviada")
     assert %Comment{github_id: 5} = Repo.get_by!(Comment, task_id: task.id)
     assert %Decision{action: "ask_task", decision: "confirmed", evidence: "phrase"} = last()
   end

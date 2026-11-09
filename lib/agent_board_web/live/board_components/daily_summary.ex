@@ -39,7 +39,9 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
       data-spoken={to_string(not is_nil(@entry.spoken_at))}
     >
       <header class="ab-daily__head">
-        <h2 id="daily-summary-title">Resumo do dia</h2>
+        <h2 id="daily-summary-title">
+          Resumo do dia <small class="ab-daily__scope">do board</small>
+        </h2>
         <span class="ab-daily__since">
           desde {Time.since_label(@entry.window_start, @tz_offset, @entry.generated_at)}
         </span>

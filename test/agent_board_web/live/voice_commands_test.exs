@@ -158,7 +158,7 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
     assert %{result: %{kind: :error, text: text}, path: nil} =
              VoiceCommands.resolve("perguntar qualquer coisa", %{conversation: nil})
 
-    assert text =~ "Open a task first"
+    assert text =~ "Abra uma tarefa primeiro"
   end
 
   test "asking with an open task proposes the confirmed ask" do
