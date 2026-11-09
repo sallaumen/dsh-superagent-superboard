@@ -289,6 +289,51 @@ defmodule AgentBoard.GitHub do
     end
   end
 
+  @doc "Whether a branch exists."
+  def branch_exists?(client, owner, repo, branch) do
+    response = Req.get!(client, url: "/repos/#{owner}/#{repo}/git/ref/heads/#{branch}")
+
+    case response.status do
+      404 ->
+        false
+
+      _status ->
+        body!(response)
+        true
+    end
+  end
+
+  @doc "Create a branch at the head of the default branch."
+  def create_branch_from_head(client, owner, repo, branch) do
+    sha =
+      client
+      |> Req.get!(url: "/repos/#{owner}/#{repo}/commits/HEAD")
+      |> body!()
+      |> Map.fetch!("sha")
+
+    client
+    |> Req.post!(
+      url: "/repos/#{owner}/#{repo}/git/refs",
+      json: %{ref: "refs/heads/#{branch}", sha: sha}
+    )
+    |> body!()
+  end
+
+  @doc """
+  Create a file on a branch. GitHub answers 422 when the path is taken; callers
+  name files by their content, so that is the same file already there.
+  """
+  def put_new_file(client, owner, repo, branch, path, content, message) do
+    response =
+      Req.put!(client,
+        url: "/repos/#{owner}/#{repo}/contents/#{path}",
+        json: %{message: message, branch: branch, content: Base.encode64(content)},
+        receive_timeout: 120_000
+      )
+
+    if response.status == 422, do: :ok, else: body!(response)
+  end
+
   @doc "One issue, with the `id` the sub-issue and dependency calls ask for."
   def issue(client, owner, repo, number) do
     client

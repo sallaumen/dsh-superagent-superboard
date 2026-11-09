@@ -66,7 +66,8 @@ defmodule AgentBoard.Actions do
     Voice
   }
 
-  alias AgentBoard.Board.{Repository, SplitGraph, Task}
+  alias AgentBoard.Board.{Attachments, Repository, SplitGraph, Task}
+  alias AgentBoard.Intake.IssueBody
   alias AgentBoard.Sync.Worker
   alias AgentBoard.Voice.Phrases
 
@@ -609,11 +610,12 @@ defmodule AgentBoard.Actions do
   defp execute(:create_tasks, %{repository: repo, requests: requests} = params) do
     client = github(params)
     requests = route_requests(repo, requests)
-    results = Board.Requests.create_requests(repo, requests, client)
+    with_files = with_attachments(repo, requests, Map.get(params, :attachments, []), client)
 
-    SplitGraph.record(results)
-    maybe_objective(repo, params[:objective], results, client)
-    {:ok, results}
+    case with_files do
+      {:ok, ready} -> finish_create_tasks(repo, ready, params, client)
+      {:error, results} -> {:ok, results}
+    end
   end
 
   defp execute(:ask_task, %{task: task, question: question} = params),
@@ -859,6 +861,37 @@ defmodule AgentBoard.Actions do
     row
     |> Ecto.Changeset.change(outcome: outcome, detail: detail && String.slice(detail, 0, 500))
     |> Repo.update!()
+  end
+
+  defp finish_create_tasks(repo, requests, params, client) do
+    results = Board.Requests.create_requests(repo, requests, client)
+
+    SplitGraph.record(results)
+    maybe_objective(repo, params[:objective], results, client)
+    {:ok, results}
+  end
+
+  # The files come first: an issue that promises a mock it does not have
+  # would send the agent to work without it.
+  defp with_attachments(repo, requests, files, client) do
+    case Attachments.store(repo, files, client) do
+      {:ok, stored} ->
+        {:ok, Enum.map(requests, &attach(&1, stored, repo))}
+
+      {:error, exception} ->
+        Board.log_event(repo.id, "attachment_error", repo.name, %{
+          "reason" => Exception.message(exception)
+        })
+
+        {:error, Enum.map(requests, &{&1, {:error, :attachments_failed}})}
+    end
+  end
+
+  defp attach(request, stored, repo) do
+    %{
+      request
+      | body: IssueBody.with_attachments(request.body, stored, repo, Map.get(request, :language))
+    }
   end
 
   defp maybe_objective(repo, %{title: title} = attrs, results, client) do
