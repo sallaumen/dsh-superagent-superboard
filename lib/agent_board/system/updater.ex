@@ -33,6 +33,33 @@ defmodule AgentBoard.System.Updater do
   end
 
   @doc """
+  Fetches the dependencies the new checkout names **before** the node stops.
+
+  A dependency change is the slow part of a restart (`mix deps.get` can take
+  tens of seconds). Running it while the old node still answers keeps the
+  board up if the network or Hex fails; the caller only stops after `:ok`.
+  Migrations stay in the boot path: a schema change is not prepared against a
+  running old node.
+  """
+  @spec prepare() :: :ok | {:error, term()}
+  def prepare do
+    case run_mix(["deps.get"]) do
+      :ok -> :ok
+      error -> error
+    end
+  end
+
+  defp run_mix(args) do
+    task = Task.async(fn -> System.cmd("mix", args, cd: Git.root(), stderr_to_stdout: true) end)
+
+    case Task.yield(task, 180_000) || Task.shutdown(task, :brutal_kill) do
+      {:ok, {_output, 0}} -> :ok
+      {:ok, {output, status}} -> {:error, {:mix, status, String.slice(output, -2_000, 2_000)}}
+      nil -> {:error, :timeout}
+    end
+  end
+
+  @doc """
   Schedules the boot of the updated code, or returns `:ok` when a service
   manager owns the process and will do it after this VM exits.
   """

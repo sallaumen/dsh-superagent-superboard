@@ -40,7 +40,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Routing
   alias AgentBoard.Routing.Signals
   alias AgentBoard.Runners.Execution
-  alias AgentBoard.System.Version
+  alias AgentBoard.System.{Updater, Version}
   alias AgentBoard.Usage.{Harness, Report}
   alias AgentBoard.Voice.{Activity, Phrases}
 
@@ -979,6 +979,8 @@ defmodule AgentBoardWeb.BoardLive do
   # The header badge should know about a moved main on a fresh page, not
   # only after someone opens Settings. This is a fetch, never an update;
   # the same check repeats once every five minutes while the page is open.
+  defp updater, do: Application.get_env(:agent_board, :updater, Updater)
+
   defp maybe_check_version(socket) do
     if connected?(socket) and Application.get_env(:agent_board, :version_check_on_mount, true) do
       Process.send_after(self(), :version_check, @version_check_interval)
@@ -1648,19 +1650,29 @@ defmodule AgentBoardWeb.BoardLive do
     # restart, even when the short-sha comparison races the fetch.
     case Actions.run(:update_board, %{}, ui()) do
       {:ok, sha} ->
-        # Stop immediately after the fast-forward. The old 1.2 s delay let the
-        # dev code reloader replace this LiveView with the new code and the
-        # scheduled :restart_server died with the old process: checkout on
-        # main, VM still on the old sha. The restart action stops this VM now;
-        # launchd (supervised) or the detached script boots the new code.
-        socket =
-          socket
-          |> assign(:busy, true)
-          |> push_event("restart", %{})
-          |> put_flash(:info, "Atualizado para #{sha}; reiniciando o servidor…")
+        # Fetch dependencies while the old node still answers. If Hex or the
+        # network fails, do not stop: the board keeps serving the old code
+        # and the person can retry. Only a prepared checkout is stopped.
+        case updater().prepare() do
+          :ok ->
+            socket =
+              socket
+              |> assign(:busy, true)
+              |> push_event("restart", %{})
+              |> put_flash(:info, "Atualizado para #{sha}; reiniciando o servidor…")
 
-        Actions.run(:restart_board, %{}, ui())
-        {:noreply, socket}
+            Actions.run(:restart_board, %{}, ui())
+            {:noreply, socket}
+
+          {:error, reason} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               "Atualização baixada, mas o preparo das dependências falhou. " <>
+                 "O board continua no código antigo; nada foi reiniciado. " <> inspect(reason)
+             )}
+        end
 
       {:error, reason} ->
         {:noreply, put_flash(socket, :error, "A atualização falhou: #{inspect(reason)}")}
