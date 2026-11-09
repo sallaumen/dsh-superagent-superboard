@@ -169,6 +169,7 @@ and is recorded as `automatic`.
 | `start_superagent` | red | starts the DeepSeek superagent of one project | UI: `AgentAction` "Ligar" in the Superagentes panel, two steps |
 | `stop_superagent` | red | stops that superagent; in-flight work is interrupted | UI: `AgentAction` "Parar", two steps |
 | `pause_superagent` / `resume_superagent` | yellow | pauses/resumes new work without killing the process | UI: one click |
+| `retry_provision_superagent` | red | runs a failed provisioning again with the stored source and checkout, one attempt at a time; it refuses a profile or state it did not create | UI: `AgentAction` "Tentar de novo" on the failed project, two steps |
 | `remove_superagent` | red | stops the agent, archives profile/state and removes the project from the board | UI: `AgentAction` "Remover", two steps |
 | `scale_superagent` | yellow | changes `maxWorkers` through the DSH settings API | UI: −/+ on the project card |
 | `grant_agent_access` | red | puts a person on one project's `allowed` list through the DSH settings API and, when the sentence names issues, requeues their refused mentions | UI: `AgentAction` "Liberar" / "Liberar e rodar" in Configurações → Acesso do agente |
@@ -812,7 +813,13 @@ that watches one GitHub repository and picks the issues whose body mentions
   workers. The red `provision_superagent` action reserves the row, copies the
   source profile/port/state (standard DSH location), starts the manager and
   copies source/executor/policy/prompts through the DSH API; a failure keeps
-  the row in `error` with the reason and rolls the half-project back.
+  the row in `error` with the reason and rolls the half-project back. The
+  rollback removes only what that attempt made and never follows a link (a
+  profile links to the agent's code). Before anything is created the board
+  gives the bot write access if it lacks it, as the source refuses a repository
+  it cannot push to (`BotAccess`); the owner's confirmation says so. A failed
+  project is not started by the ticker or by "Ligar": "Tentar de novo" runs it
+  again with the source and checkout stored on the row.
   `DshProvisioner` is the real adapter; `FakeProvisioner` covers the tests.
 - **Removal preserves the state.** `remove_superagent` stops the process and
   copies the state (and moves the profile) under

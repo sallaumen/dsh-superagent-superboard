@@ -41,6 +41,9 @@ defmodule AgentBoard.Superagents do
     Repo.all(from s in Superagent, order_by: [asc: s.id], select: s.state_dir)
   end
 
+  @doc "The directory the DSH state lives in; overridable in tests."
+  def state_root, do: Application.get_env(:agent_board, :dsh_state_dir, @dsh_state)
+
   @doc "The directory the DSH profiles live in; overridable in tests."
   def profiles_root, do: Application.get_env(:agent_board, :dsh_profiles_dir, @dsh_profiles)
 
@@ -102,7 +105,7 @@ defmodule AgentBoard.Superagents do
        %{
          profile: profile,
          port: port,
-         state_dir: Path.join(@dsh_state, profile),
+         state_dir: Path.join(state_root(), profile),
          workers: Map.get(attrs, :workers, 3),
          source_profile: source.profile
        }}
@@ -145,7 +148,7 @@ defmodule AgentBoard.Superagents do
          {:ok, source} <- normalize_source(source),
          {:ok, profile} <- next_profile(repository),
          {:ok, port} <- port_for(attrs),
-         state_dir = Path.join(@dsh_state, profile),
+         state_dir = Path.join(state_root(), profile),
          {:ok, superagent} <-
            create(%{
              repository_id: repository.id,
@@ -155,23 +158,89 @@ defmodule AgentBoard.Superagents do
              desired_state: "running",
              observed_state: "starting",
              max_workers: Map.get(attrs, :workers, 3),
-             created_by: Map.get(attrs, :actor, "owner")
+             created_by: Map.get(attrs, :actor, "owner"),
+             checkout_path: Map.get(attrs, :path),
+             source_profile: source.profile
            }) do
-      case provisioner.provision(superagent, source, attrs) do
-        {:ok, _} ->
-          event(superagent, "provision", nil, "starting", "owner", profile)
-          {:ok, superagent}
-
-        {:error, reason} ->
-          event(superagent, "provision", "starting", "error", "owner", inspect(reason))
-          observe(superagent, %{state: "error", detail: inspect(reason)})
-          {:error, reason}
-      end
+      superagent
+      |> provisioner.provision(source, attrs)
+      |> settle_provision(superagent, nil)
     else
       %Superagent{} -> {:error, :already_registered}
       {:error, reason} -> {:error, reason}
     end
   end
+
+  @doc """
+  Run again a provisioning that failed, with what it was first asked for.
+  Only a project that never came up can be retried.
+  """
+  def retry_provision(superagent, provisioner \\ Provisioner.impl())
+
+  def retry_provision(
+        %Superagent{provision_failed_at: %DateTime{}, source_profile: name, checkout_path: path} =
+          superagent,
+        provisioner
+      )
+      when is_binary(name) and is_binary(path) do
+    attrs = %{path: path, workers: superagent.max_workers}
+
+    with {:ok, source} <- source_by_profile(name),
+         {:ok, superagent} <- claim_retry(superagent) do
+      superagent
+      |> provisioner.provision(source, attrs)
+      |> settle_provision(superagent, "error")
+    end
+  end
+
+  def retry_provision(_superagent, _provisioner), do: {:error, :nothing_to_retry}
+
+  # One retry at a time, decided by the database and not by the row the screen
+  # had: a second tab finds it taken. The failure mark stays until it works, so
+  # the ticker keeps away from a project that is still being built.
+  defp claim_retry(%Superagent{id: id}) do
+    {claimed, _rows} =
+      Repo.update_all(
+        from(s in Superagent,
+          where: s.id == ^id and not is_nil(s.provision_failed_at) and s.observed_state == "error"
+        ),
+        set: [observed_state: "starting", last_error: nil]
+      )
+
+    if claimed == 1 do
+      broadcast()
+      {:ok, get(id)}
+    else
+      {:error, :nothing_to_retry}
+    end
+  end
+
+  defp settle_provision({:ok, _result}, superagent, from) do
+    event(superagent, "provision", from, "starting", "owner", superagent.profile)
+
+    superagent
+    |> Superagent.changeset(%{provision_failed_at: nil})
+    |> Repo.update()
+    |> tap(fn _ -> broadcast() end)
+  end
+
+  defp settle_provision({:error, reason}, superagent, _from) do
+    detail = provision_detail(reason)
+    event(superagent, "provision", "starting", "error", "owner", detail)
+
+    {:ok, failed} =
+      superagent
+      |> Superagent.changeset(%{
+        provision_failed_at: DateTime.utc_now() |> DateTime.truncate(:second)
+      })
+      |> Repo.update()
+
+    observe(failed, %{state: "error", detail: detail})
+    {:error, reason}
+  end
+
+  defp provision_detail({:setup, text}) when is_binary(text), do: text
+  defp provision_detail(reason), do: inspect(reason)
 
   defp next_profile(repository) do
     base =
@@ -183,7 +252,11 @@ defmodule AgentBoard.Superagents do
     base = if base == "", do: "project-#{repository.id}", else: base
     candidate = "superagent-" <> String.slice(base, 0, 40)
 
-    if Repo.exists?(from s in Superagent, where: s.profile == ^candidate) do
+    taken =
+      Repo.exists?(from s in Superagent, where: s.profile == ^candidate) or
+        File.exists?(Path.join(profiles_root(), candidate))
+
+    if taken do
       {:ok, candidate <> "-" <> Integer.to_string(System.unique_integer([:positive]))}
     else
       {:ok, candidate}
@@ -291,8 +364,16 @@ defmodule AgentBoard.Superagents do
     end
   end
 
-  @doc "Start the external process and mark the desired state running."
-  def start(%Superagent{} = superagent, manager \\ Manager.impl()) do
+  @doc """
+  Start the external process and mark the desired state running. A project
+  whose provisioning failed has nothing to start: it is retried instead.
+  """
+  def start(superagent, manager \\ Manager.impl())
+
+  def start(%Superagent{provision_failed_at: %DateTime{}}, _manager),
+    do: {:error, :provision_failed}
+
+  def start(%Superagent{} = superagent, manager) do
     case manager.start(superagent) do
       :ok ->
         set_desired(superagent, "running")
@@ -360,6 +441,7 @@ defmodule AgentBoard.Superagents do
   """
   def tick(manager \\ Manager.impl()) do
     list()
+    |> Enum.filter(&is_nil(&1.provision_failed_at))
     |> Task.async_stream(
       fn superagent -> {superagent, manager.status(superagent)} end,
       timeout: 6_000,
@@ -385,7 +467,9 @@ defmodule AgentBoard.Superagents do
   not restarted in a loop.
   """
   def reconcile(manager \\ Manager.impl()) do
-    Enum.each(list(), &reconcile_one(&1, manager))
+    list()
+    |> Enum.filter(&is_nil(&1.provision_failed_at))
+    |> Enum.each(&reconcile_one(&1, manager))
   end
 
   defp reconcile_one(superagent, manager) do

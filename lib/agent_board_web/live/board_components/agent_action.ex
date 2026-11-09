@@ -204,6 +204,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   defp action(%{mode: :dispatch}), do: :dispatch_task
   defp action(%{mode: :stop_execution}), do: :stop_execution
   defp action(%{mode: :start_superagent}), do: :start_superagent
+  defp action(%{mode: :retry_provision_superagent}), do: :retry_provision_superagent
   defp action(%{mode: :stop_superagent}), do: :stop_superagent
   defp action(%{mode: :remove_superagent}), do: :remove_superagent
   defp action(%{mode: :grant_agent_access}), do: :grant_agent_access
@@ -243,7 +244,12 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     do: %{superagent: assigns.superagent, login: assigns.login}
 
   defp params(%{mode: mode} = assigns)
-       when mode in [:start_superagent, :stop_superagent, :remove_superagent],
+       when mode in [
+              :start_superagent,
+              :stop_superagent,
+              :remove_superagent,
+              :retry_provision_superagent
+            ],
        do: %{superagent: assigns.superagent}
 
   defp repository(%Task{repository: %Repository{} = repository}), do: repository

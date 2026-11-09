@@ -6,12 +6,24 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   """
   @behaviour AgentBoard.Superagents.Provisioner
 
-  alias AgentBoard.Superagents.{DshManager, Superagent}
+  alias AgentBoard.{AgentAccess, Superagents}
+  alias AgentBoard.Superagents.{BotAccess, DshManager, Superagent}
 
   @doc false
+  # Only what this attempt created is undone: a failure before the copy leaves
+  # alone a profile that was already there.
   def provision(%Superagent{} = superagent, %Superagent{} = source, attrs) do
     with :ok <- validate(attrs),
-         :ok <- copy_profile(superagent, source),
+         :ok <- profile_free(superagent, source),
+         :ok <- ensure_bot_access(superagent, source) do
+      bring_up(superagent, source, attrs)
+    end
+  end
+
+  def provision(_superagent, nil, _attrs), do: {:error, :source_required}
+
+  defp bring_up(superagent, source, attrs) do
+    with :ok <- copy_profile(superagent, source),
          :ok <- start(superagent),
          :ok <- wait_api(superagent, 60),
          :ok <- configure(superagent, source, attrs),
@@ -25,7 +37,28 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
-  def provision(_superagent, nil, _attrs), do: {:error, :source_required}
+  # The bot and its CLI are the ones the source profile already uses. A source
+  # that cannot say is not a failure here: saving the settings still checks.
+  defp ensure_bot_access(superagent, source) do
+    with {:ok, 200, state} <- get(source, "/state"),
+         {:ok, 200, settings} <- get(source, "/settings"),
+         bot when is_binary(bot) <- get_in(state, ["setup", "accounts", "agent"]),
+         {:ok, bot} <- AgentAccess.normalize_login(bot),
+         %{"value" => %{"config" => %{"cli" => cli}}} when is_binary(cli) and cli != "" <-
+           github_source(settings),
+         %{owner: _, name: _} = repository <- repository_of(superagent) do
+      BotAccess.ensure(repository, bot, cli)
+    else
+      {:error, {:setup, _text}} = refusal -> refusal
+      _unknown -> :ok
+    end
+  end
+
+  defp github_source(settings) do
+    Enum.find(settings["sources"] || [], &(&1["id"] == "github"))
+  end
+
+  defp repository_of(superagent), do: AgentBoard.Repo.preload(superagent, :repository).repository
 
   defp validate(%{path: path}) do
     if is_binary(path) and File.dir?(path) and File.exists?(Path.join(path, ".git")),
@@ -35,32 +68,37 @@ defmodule AgentBoard.Superagents.DshProvisioner do
 
   defp validate(_attrs), do: {:error, :checkout_missing}
 
-  defp copy_profile(superagent, source) do
+  defp profile_free(superagent, source) do
     from = profile_dir(source.profile)
     to = profile_dir(superagent.profile)
 
-    with true <- (is_binary(from) and is_binary(to)) || {:error, :invalid_profile},
-         true <- inside_state?(superagent.state_dir) || {:error, :invalid_state_dir},
-         true <- File.dir?(from) || {:error, :source_profile_missing},
-         true <- not File.exists?(to) || {:error, :profile_exists},
-         :ok <- copy_tree(from, to),
+    cond do
+      not (is_binary(from) and is_binary(to)) -> {:error, :invalid_profile}
+      not inside_state?(superagent.state_dir) -> {:error, :invalid_state_dir}
+      not File.dir?(from) -> {:error, :source_profile_missing}
+      File.exists?(to) -> {:error, :profile_exists}
+      File.exists?(superagent.state_dir) -> {:error, :state_exists}
+      true -> :ok
+    end
+  end
+
+  defp copy_profile(superagent, source) do
+    to = profile_dir(superagent.profile)
+
+    with :ok <- copy_tree(profile_dir(source.profile), to),
          :ok <- rewrite_patch(to, superagent) do
       :filelib.ensure_dir(Path.join(superagent.state_dir, "work"))
       :ok
-    else
-      {:error, reason} -> {:error, reason}
-      true -> {:error, :profile_exists}
-      false -> {:error, :checkout_missing}
     end
   end
 
   defp profile_dir(profile) do
-    root = Path.expand("~/.dsh/profiles")
+    root = Superagents.profiles_root()
     path = Path.expand(Path.join(root, profile))
     if Path.dirname(path) == root, do: path, else: nil
   end
 
-  defp state_root, do: Path.expand("~/.dsh/state")
+  defp state_root, do: Superagents.state_root()
 
   defp inside_state?(path) do
     root = state_root()
@@ -256,6 +294,7 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   end
 
   defp ok({:ok, 200, _body}), do: :ok
+  defp ok({:ok, _status, %{"error" => text}}) when is_binary(text), do: {:error, {:setup, text}}
   defp ok({:ok, status, _body}), do: {:error, {:http, status}}
   defp ok({:error, reason}), do: {:error, reason}
 
@@ -297,23 +336,12 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
-  defp remove_tree(path) do
-    case :file.read_file_info(path) do
-      {:ok, %{type: :directory}} ->
-        with {:ok, entries} <- :file.list_dir(path) do
-          Enum.each(entries, &remove_tree(Path.join(path, &1)))
-        end
-
-        :file.del_dir(path)
-
-      {:ok, _file} ->
-        :file.delete(path)
-
-      {:error, :enoent} ->
-        :ok
-
-      {:error, reason} ->
-        {:error, reason}
+  @doc false
+  # `del_dir_r` does not follow links, and a profile links to the agent's code.
+  def remove_tree(path) do
+    case :file.del_dir_r(path) do
+      {:error, :enoent} -> :ok
+      other -> other
     end
   end
 

@@ -214,4 +214,61 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     assert Process.alive?(view.pid)
   end
+
+  test "a failed provisioning offers a retry instead of starting", %{conn: conn} do
+    {:ok, pid} = FakeManager.start()
+    previous = Application.get_env(:agent_board, :superagent_provisioner)
+    Application.put_env(:agent_board, :superagent_provisioner, FakeProvisioner)
+
+    root = Path.join(System.tmp_dir!(), "retry-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(Path.join(root, "superagent"))
+    File.write!(Path.join([root, "superagent", "cordis.patch.yml"]), "port: 3489\n")
+    Application.put_env(:agent_board, :dsh_profiles_dir, root)
+
+    on_exit(fn ->
+      Application.delete_env(:agent_board, :dsh_profiles_dir)
+      File.rm_rf!(root)
+
+      if previous,
+        do: Application.put_env(:agent_board, :superagent_provisioner, previous),
+        else: Application.delete_env(:agent_board, :superagent_provisioner)
+
+      if Process.alive?(pid), do: Agent.stop(pid)
+    end)
+
+    {:ok, repo} = Board.add_repository("fixture", "failed-panel")
+
+    superagent =
+      superagent!(repo, %{
+        observed_state: "error",
+        last_error: "@bot cannot push",
+        provision_failed_at: DateTime.utc_now() |> DateTime.truncate(:second),
+        checkout_path: "/tmp/checkout",
+        source_profile: "superagent"
+      })
+
+    {:ok, view, html} =
+      live(conn, "/?repo=fixture/failed-panel&panel=settings&section=superagents")
+
+    assert html =~ "@bot cannot push"
+    assert html =~ "a configuração não terminou"
+
+    trigger = "#superagent-retry_provision_superagent-#{superagent.id}-trigger"
+    assert view |> element(trigger) |> render() =~ "Tentar de novo"
+    refute has_element?(view, "#superagent-start_superagent-#{superagent.id}-trigger")
+
+    view |> element(trigger) |> render_click()
+    assert render(view) =~ "Provisionar de novo"
+    assert Repo.get!(Superagent, superagent.id).observed_state == "error"
+
+    view
+    |> element("#superagent-retry_provision_superagent-#{superagent.id}-confirm")
+    |> render_click()
+
+    _ = render_async(view)
+
+    retried = Repo.get!(Superagent, superagent.id)
+    assert is_nil(retried.provision_failed_at)
+    assert retried.observed_state == "starting"
+  end
 end

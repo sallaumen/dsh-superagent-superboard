@@ -386,4 +386,144 @@ defmodule AgentBoard.SuperagentsTest do
       assert %{state: "ready", paused: false} = DshManager.observation(body)
     end
   end
+
+  describe "a provisioning that failed" do
+    defmodule FailingProvisioner do
+      @behaviour AgentBoard.Superagents.Provisioner
+      def provision(_superagent, _source, _attrs), do: {:error, {:setup, "the bot cannot push"}}
+    end
+
+    setup %{repo: repo} do
+      {:ok, source_repo} = Board.add_repository("fixture", "failed-source")
+
+      {:ok, source} =
+        Superagents.create(%{
+          repository_id: source_repo.id,
+          profile: "superagent",
+          port: 3489,
+          state_dir: "/tmp/failed-source"
+        })
+
+      {:ok, _pid} = FakeManager.start()
+
+      root = Path.join(System.tmp_dir!(), "failed-#{System.unique_integer([:positive])}")
+      File.mkdir_p!(Path.join(root, "superagent"))
+      File.write!(Path.join([root, "superagent", "cordis.patch.yml"]), "port: 3489\n")
+      Application.put_env(:agent_board, :dsh_profiles_dir, root)
+
+      on_exit(fn ->
+        Application.delete_env(:agent_board, :dsh_profiles_dir)
+        File.rm_rf!(root)
+      end)
+
+      assert {:error, {:setup, "the bot cannot push"}} =
+               Superagents.provision(
+                 repo,
+                 source,
+                 %{path: "/tmp/checkout", workers: 2, port: 3488},
+                 FailingProvisioner
+               )
+
+      {:ok, failed: Superagents.get_by_repository(repo)}
+    end
+
+    test "keeps the reason in words and what a retry needs", %{failed: failed} do
+      assert failed.observed_state == "error"
+      assert failed.last_error == "the bot cannot push"
+      assert failed.provision_failed_at
+      assert failed.checkout_path == "/tmp/checkout"
+      assert failed.source_profile == "superagent"
+    end
+
+    test "is not started by the ticker or by hand", %{failed: failed} do
+      FakeManager.put(failed.id, "stopped")
+      Repo.update!(Superagent.changeset(failed, %{last_error: "econnrefused"}))
+
+      Superagents.reconcile(FakeManager)
+
+      assert Repo.get!(Superagent, failed.id).observed_state == "error"
+      assert {:error, :provision_failed} = Superagents.start(failed, FakeManager)
+    end
+
+    test "the status read does not replace the reason", %{failed: failed} do
+      Superagents.tick(FakeManager)
+
+      assert Repo.get!(Superagent, failed.id).last_error == "the bot cannot push"
+    end
+
+    test "a retry that works clears the failure", %{failed: failed} do
+      assert {:ok, _} = Superagents.retry_provision(failed, FakeProvisioner)
+
+      retried = Repo.get!(Superagent, failed.id)
+      assert is_nil(retried.provision_failed_at)
+      assert retried.observed_state == "starting"
+      assert is_nil(retried.last_error)
+
+      assert {_row, %Superagent{profile: "superagent"}, %{path: "/tmp/checkout", workers: 2}} =
+               Process.get({FakeProvisioner, :last})
+    end
+
+    test "a retry that fails stays retryable", %{failed: failed} do
+      assert {:error, {:setup, _}} = Superagents.retry_provision(failed, FailingProvisioner)
+      assert Repo.get!(Superagent, failed.id).provision_failed_at
+    end
+
+    test "a second retry from a stale screen finds nothing to do", %{failed: failed} do
+      assert {:ok, _} = Superagents.retry_provision(failed, FakeProvisioner)
+      Process.delete({FakeProvisioner, :last})
+
+      assert {:error, :nothing_to_retry} = Superagents.retry_provision(failed, FakeProvisioner)
+      refute Process.get({FakeProvisioner, :last})
+    end
+
+    test "a retry already running is not started again", %{failed: failed} do
+      defmodule ReentrantProvisioner do
+        @behaviour AgentBoard.Superagents.Provisioner
+
+        def provision(superagent, _source, _attrs) do
+          send(
+            self(),
+            {:inner,
+             Superagents.retry_provision(superagent, AgentBoard.Superagents.FakeProvisioner)}
+          )
+
+          {:ok, %{}}
+        end
+      end
+
+      assert {:ok, _} =
+               Superagents.retry_provision(
+                 failed,
+                 AgentBoard.SuperagentsTest.ReentrantProvisioner
+               )
+
+      assert_received {:inner, {:error, :nothing_to_retry}}
+    end
+
+    test "a new project avoids a profile already on disk", %{repo: repo} do
+      root = Application.fetch_env!(:agent_board, :dsh_profiles_dir)
+      File.mkdir_p!(Path.join(root, "superagent-disk-taken"))
+      {:ok, taken} = Board.add_repository("fixture", "disk-taken")
+
+      assert {:ok, %{profile: profile}} =
+               Superagents.preview(taken, "superagent", %{path: "/tmp/x"})
+
+      refute profile == "superagent-disk-taken"
+      assert repo
+    end
+
+    test "only a failed provisioning can be retried", %{repo: _repo} do
+      {:ok, other} = Board.add_repository("fixture", "healthy")
+
+      {:ok, healthy} =
+        Superagents.create(%{
+          repository_id: other.id,
+          profile: "superagent-healthy",
+          port: 3487,
+          state_dir: "/tmp/healthy"
+        })
+
+      assert {:error, :nothing_to_retry} = Superagents.retry_provision(healthy, FakeProvisioner)
+    end
+  end
 end

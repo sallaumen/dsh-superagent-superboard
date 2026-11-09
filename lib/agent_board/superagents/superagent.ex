@@ -17,6 +17,9 @@ defmodule AgentBoard.Superagents.Superagent do
     field :max_workers, :integer, default: 3
     field :poll_seconds, :integer, default: 60
     field :created_by, :string, default: "owner"
+    field :checkout_path, :string
+    field :source_profile, :string
+    field :provision_failed_at, :utc_datetime
 
     belongs_to :repository, AgentBoard.Board.Repository
     has_many :events, AgentBoard.Superagents.SuperagentEvent
@@ -38,7 +41,10 @@ defmodule AgentBoard.Superagents.Superagent do
       :last_error,
       :max_workers,
       :poll_seconds,
-      :created_by
+      :created_by,
+      :checkout_path,
+      :source_profile,
+      :provision_failed_at
     ])
     |> validate_required([:repository_id, :profile, :port, :state_dir])
     |> validate_inclusion(:desired_state, @desired)

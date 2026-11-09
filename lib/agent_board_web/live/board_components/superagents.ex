@@ -311,17 +311,32 @@ defmodule AgentBoardWeb.BoardComponents.Superagents do
     Enum.reject(repos, &MapSet.member?(taken, &1.id))
   end
 
+  defp remote_action(%{provision_failed_at: %DateTime{}, observed_state: "error"} = superagent)
+       when is_binary(superagent.checkout_path),
+       do: :retry_provision_superagent
+
+  # A retry is running, or there is nothing stored to retry with.
+  defp remote_action(%{provision_failed_at: %DateTime{}}), do: nil
+
   defp remote_action(superagent)
        when superagent.observed_state in ["stopped", "unknown", "error"],
        do: :start_superagent
 
   defp remote_action(_superagent), do: :stop_superagent
 
-  defp remote_label(superagent),
-    do: if(remote_action(superagent) == :start_superagent, do: "Ligar", else: "Parar")
+  defp remote_label(superagent) do
+    case remote_action(superagent) do
+      :retry_provision_superagent -> "Tentar de novo"
+      :start_superagent -> "Ligar"
+      _other -> "Parar"
+    end
+  end
 
   defp state_line(superagent) do
     cond do
+      superagent.provision_failed_at ->
+        "a configuração não terminou"
+
       superagent.desired_state == "running" and superagent.observed_state == "ready" ->
         "como desejado"
 

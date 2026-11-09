@@ -35,6 +35,7 @@ defmodule AgentBoard.ActionsTest do
     :dispatch_task,
     :stop_execution,
     :provision_superagent,
+    :retry_provision_superagent,
     :remove_superagent,
     :start_superagent,
     :stop_superagent,
@@ -203,7 +204,13 @@ defmodule AgentBoard.ActionsTest do
       name when name in [:grant_agent_access, :revoke_agent_access] ->
         %{superagent: superagent!(repo, name), login: "convidada", rerun: []}
 
-      name when name in [:start_superagent, :stop_superagent, :remove_superagent] ->
+      name
+      when name in [
+             :start_superagent,
+             :stop_superagent,
+             :remove_superagent,
+             :retry_provision_superagent
+           ] ->
         %{superagent: superagent!(repo, name)}
 
       :start_agent ->
@@ -261,7 +268,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 17
+      assert length(reds) == 18
 
       for name <- reds do
         params = red_params(name, context)
@@ -275,7 +282,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 17
+      assert Repo.aggregate(Task, :count, :id) == 18
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -766,6 +773,7 @@ defmodule AgentBoard.ActionsTest do
       {~r/\bOrchestrator\.(retry|set_max_workers)\(/, ["lib/agent_board/agent_control.ex"]},
       {~r/\bAgentControl\.(retry|start_agent)\(/, []},
       {~r/\bRunners\.dispatch\(/, []},
+      {~r/\bSuperagents\.retry_provision\(/, []},
       {~r/\bAgentAccess\.(grant|revoke|dismiss)\(/, []},
       {~r/\b(Voice\.put_\w+|ElevenLabs\.save_voice)\(/, []},
       {~r/\bSettings\.put\(/,
