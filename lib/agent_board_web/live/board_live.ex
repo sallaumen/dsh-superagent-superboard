@@ -37,7 +37,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   alias AgentBoard.Board.Task
   alias AgentBoard.Freshness
-  alias AgentBoard.Intake.IssueBody
+  alias AgentBoard.Intake.{IssueBody, RepoDigest}
   alias AgentBoard.Metrics.Observations
   alias AgentBoard.Routing
   alias AgentBoard.Routing.Signals
@@ -3988,12 +3988,19 @@ defmodule AgentBoardWeb.BoardLive do
 
       true ->
         job = composer_job(:split, text, 1)
+        repo = socket.assigns.repo
 
         {:noreply,
          socket
          |> assign(composer_job: job, composer_error: nil, composer_retry: nil, intake: nil)
-         |> start_async({:composer, job.ref}, fn -> {:split, text, Intake.run(text)} end)}
+         |> start_async({:composer, job.ref}, fn ->
+           {:split, text, Intake.run(text, repository_digest(repo))}
+         end)}
     end
+  end
+
+  defp repository_digest(repo) do
+    if GitHub.configured?(), do: RepoDigest.read(repo, GitHub.client())
   end
 
   defp start_enqueue(socket, [], _shown),
