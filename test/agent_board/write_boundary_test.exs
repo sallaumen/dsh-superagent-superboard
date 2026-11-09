@@ -11,7 +11,8 @@ defmodule AgentBoard.WriteBoundaryTest do
   @patterns [
     {~r/\bRepo\.(insert|insert!|update|update!|delete|delete!|insert_all|update_all|delete_all)\(/,
      "Repo write"},
-    {~r/\bBoard\.(create_task|create_request|stop_task|archive_task|resume_task|ask|add_repository|delete_repository|create_objective)\(/,
+    {~r/\bBoard\.Requests\.(create_task|create_request)\(/, "request write"},
+    {~r/\bBoard\.(stop_task|archive_task|resume_task|ask|add_repository|delete_repository|create_objective)\(/,
      "Board write"},
     {~r/\bRunners\.dispatch\(/, "runner dispatch"},
     {~r/\bSettings\.put\(/, "settings write"}
