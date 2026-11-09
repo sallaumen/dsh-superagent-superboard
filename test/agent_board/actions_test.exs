@@ -737,9 +737,11 @@ defmodule AgentBoard.ActionsTest do
     # The effects of the registered actions. Each may be called only from
     # `lib/agent_board/actions.ex`, plus the module that owns the store.
     @effects [
-      {~r/\bBoard\.(create_task|create_request|stop_task|archive_task|resume_task|ask|add_repository|delete_repository)\(/,
+      {~r/\bBoard\.Requests\.(create_task|create_request)\(/, []},
+      {~r/\bBoard\.(stop_task|archive_task|resume_task|ask|add_repository|delete_repository)\(/,
        []},
-      {~r/\bGitHub\.(create_issue|close_issue|create_comment)\(/, ["lib/agent_board/board.ex"]},
+      {~r/\bGitHub\.(create_issue|close_issue|create_comment)\(/,
+       ["lib/agent_board/board.ex", "lib/agent_board/board/requests.ex"]},
       # AgentControl.retry is the owner's retry, itself reachable only from here.
       {~r/\bOrchestrator\.(retry|set_max_workers)\(/, ["lib/agent_board/agent_control.ex"]},
       {~r/\bAgentControl\.(retry|start_agent)\(/, []},

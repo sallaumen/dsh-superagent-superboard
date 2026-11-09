@@ -15,6 +15,7 @@ differ. Change a general rule upstream, not here.
 |---|---|
 | `AgentBoard.Actions` | the one door for every write: each action's risk, its confirming sentence and its effect; refuses a red action without a confirmation; every decision a row |
 | `AgentBoard.Board` | the context: repositories, tasks, comments, events, broadcast |
+| `AgentBoard.Board.Requests` | opens a board request once: claim, receipt, issue, router line |
 | `AgentBoard.Sync` | the GitHub sync: issues, pulls, reviews, checks, comments |
 | `AgentBoard.Sync.Worker` | the Oban job that runs the sync |
 | `AgentBoard.TicketPoller` | the 10s poller that reads the runner's tickets |
@@ -124,7 +125,7 @@ each door; a yellow or green action runs on the click and is recorded as
 
 | Action | Risk | Effect | Confirma |
 |---|---|---|---|
-| `create_tasks` | red | opens GitHub issues that mention the agent (`Board.create_request/3`, once per request key) | UI: the composer shows the sentence above the send button and the send carries it; the intake panel's Create asks it in the browser (`data-confirm`). Voice: proposal and yes, or "cria direto". API: `428` then `confirm` |
+| `create_tasks` | red | opens GitHub issues that mention the agent (`Board.Requests.create_request/3`, once per request key) | UI: the composer shows the sentence above the send button and the send carries it; the intake panel's Create asks it in the browser (`data-confirm`). Voice: proposal and yes, or "cria direto". API: `428` then `confirm` |
 | `ask_task` | red | comments on the issue with the mention | UI: the inspector asks in two steps ("Mandar a pergunta"). Voice: proposal and yes |
 | `stop_task` | red | closes the issue and marks the task stopped | UI: `AgentAction` "Parar". Voice: proposal and yes. API: `428` then `confirm` |
 | `undo_created_task` | red | closes the issue the voice just opened | Voice: "desfaz" within 10 minutes; a proposal when the model read an undo without the word |
@@ -777,7 +778,7 @@ dispatch.
   (`Routing.snapshot/1`) and who decided (`composer`, `voice`, `api`). A
   caller that showed the suggestion passes it; a request for a named
   executor without one is planned by the write door (`Actions`,
-  `Routing.plan/5`) before it reaches `Board.create_request/3`, which
+  `Routing.plan/5`) before it reaches `Board.Requests.create_request/3`, which
   refuses a named-executor request without a line (`:not_routed`). A request
   without an executor is opened as given, with no label and no line. A
   repeat of the same words writes no second row.
@@ -1056,14 +1057,14 @@ records are the `ai_calls` rows (the split) and the tasks with their
 |---|---|---|
 | draft | the socket (`composer_text`, kept across close/reopen) | none |
 | splitting → ready / needs_clarification / no_tasks / failed | `start_async` keyed by a `ref`; a late or cancelled result changes nothing | `ai_calls` |
-| enqueuing → receipt | `start_async`, one `Board.create_request/3` per chosen task | `tasks.request_key` |
+| enqueuing → receipt | `start_async`, one `Board.Requests.create_request/3` per chosen task | `tasks.request_key` |
 | timeout | `{:composer_timeout, ref}` after `:composer_timeout_ms`; cancels the job and names the failure | — |
 
 - **One job at a time.** A second submit while a job runs does nothing; the
   job is the receipt. The submit button is disabled server-side, not only by
   `phx-disable-with`.
 - **A request is created once.** `Board.request_key/3` hashes the repository,
-  the kind of submit and the words; `Board.create_request/3` answers
+  the kind of submit and the words; `Board.Requests.create_request/3` answers
   `{:ok, task, :existing}` for a task with that key or a queued task with the
   same title and body, and opens no second issue. The row is **claimed
   before the GitHub call** (state `draft`, the unique key): two doors that

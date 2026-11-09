@@ -561,7 +561,7 @@ defmodule AgentBoard.Actions do
   defp execute(:create_tasks, %{repository: repo, requests: requests} = params) do
     client = github(params)
     requests = route_requests(repo, requests)
-    results = Enum.map(requests, &{&1, Board.create_request(repo, &1, client)})
+    results = Enum.map(requests, &{&1, Board.Requests.create_request(repo, &1, client)})
 
     maybe_objective(repo, params[:objective], results)
     {:ok, results}

@@ -166,7 +166,7 @@ stateDiagram-v2
 ```
 
 Um "sim" repetido (evento duplicado, duas abas) não cria duas issues: só quem
-move a proposta de `proposed` executa, e `Board.create_request/3` ainda
+move a proposta de `proposed` executa, e `Board.Requests.create_request/3` ainda
 deduplica pela chave.
 
 ## Tempo de resposta

@@ -136,7 +136,7 @@ flowchart TD
     B --> C["Actions.run(:create_tasks)\nvermelha"]
     C --> D{"a frase confere?"}
     D -- não --> X["recusa registrada\nnada executa"]
-    D -- sim --> E["Board.create_request/3\n(routing presente)"]
+    D -- sim --> E["Board.Requests.create_request/3\n(routing presente)"]
     E --> F["claim `draft` + request_key único"]
     F --> G["GitHub.create_issue"]
     G --> H["Task `queued` + Routing.record/3"]
@@ -151,7 +151,7 @@ O que cada camada esconde:
   `executor` (a voz) é planejada por `Actions`, que é a porta de escrita.
 - **`Actions`**: aplica o risco, grava a decisão, planeja a requisição que ainda
   não tem linha e chama o efeito; não sabe como o board persiste a tarefa.
-- **`Board.create_request/3`**: garante "uma vez" (claim, `request_key`, corrida,
+- **`Board.Requests.create_request/3`**: garante "uma vez" (claim, `request_key`, corrida,
   receipt), fala com o GitHub e grava a linha que já recebeu. Exige `:routing`
   para executor nomeado e responde `{:error, :not_routed}` antes do claim; é
   orquestração de contexto, não uma função pura.
@@ -174,6 +174,7 @@ evento (uma retentativa abriria um segundo issue).
 | roteamento (esta rodada) | `Board.route/5` lia `Routing.Signals` num default; `Board` participava do ciclo de leitura | `Routing.plan/5` puro; `Actions` planeja requisição só com executor; `Board` recusa sem linha (`:not_routed`); `snapshot/1` saiu de `Signals` | `mix xref`: ciclo `Board/Signals/Runners/Usage.Report` sumiu; testes de plano e de recusa |
 | visão Hoje (esta rodada) | a visão "Hoje" (cross-repo) morava no contexto de um repositório | `AgentBoard.Overview` para `today/0` e `repo_overview/0` | testes de overview/board e orçamento de queries verdes |
 | uso do Harness (esta rodada) | `ExecutorUsage` não dizia qual fonte lia e morava fora de `Usage` | `AgentBoard.Usage.Harness`; leitor por tarefa separado do Ledger/Report | testes de harness, ledger e report verdes |
+| criação de pedido (esta rodada) | `create_request`, `create_task` e o claim viviam no `Board` junto das leituras | `AgentBoard.Board.Requests`; o `Board` chama de volta só para persistir, registrar e broadcastar | testes de requests e de fronteira verdes |
 
 ### Antes e depois do acoplamento
 
@@ -321,7 +322,7 @@ decisão para `Routing` e a leitura para a porta.
 
 **Escolha.** (c): `Routing.plan/5` é puro (recebe `signals`), `Routing.snapshot/1`
 saiu de `Signals` para não acoplar `Routing` ao leitor, e `Actions` planeja a
-requisição que chega só com `executor`. `Board.create_request/3` exige a linha
+requisição que chega só com `executor`. `Board.Requests.create_request/3` exige a linha
 para executor nomeado e recusa `{:error, :not_routed}` antes do claim. As portas
 (composer, API, voz) leem os sinais e chamam `plan/5` antes de mostrar a frase.
 
@@ -355,7 +356,33 @@ tarefa/repositório; o teste de orçamento de queries fica junto do read model.
 **Custo.** Uma chamada de UI mudou de módulo e o caminho de leitura ganhou mais
 um nome para aprender (`Board` por repositório, `Overview` para todos).
 
-### 6.8 O que foi mantido de propósito
+### 6.8 A criação de pedido é um comando do contexto
+
+**Problema.** `Board.create_request/3`, `Board.create_task/5` e o claim
+(`draft` + `request_key` + receipt) viviam no mesmo módulo das leituras de
+tarefa, comentário e PR, que mudam por outros motivos. A garantia "uma vez"
+ficava escondida entre paginação, workpad e atividade.
+
+**Evidência.** As funções de criação e o claim ocupavam ~200 linhas
+contíguas; `Actions` era o único chamador de `create_request/3`; os testes de
+idempotência formavam um arquivo próprio (`create_request_test.exs`).
+
+**Alternativas.** (a) manter no `Board`; (b) criar um contexto novo, com a
+tabela e o schema; (c) criar um comando dentro do contexto.
+
+**Escolha.** (c): `AgentBoard.Board.Requests` recebe a requisição já roteada,
+faz o claim, chama o GitHub, grava a tarefa, registra a linha e broadcasta.
+Chama de volta `Board.log_event/4`, `Board.broadcast/1` e
+`Board.request_key/3`; o `Board` não chama `Requests`. A tabela e o schema
+continuam no contexto.
+
+**O que ficou mais simples.** A idempotência tem um arquivo e um teste; o
+`Board` ficou com as leituras e as escritas de tarefa que não criam issue.
+**Custo.** Mais um caminho público (`Board.Requests.create_request/3`) e um
+call site em `Actions`; o teste de fronteira precisou apontar para o novo
+módulo.
+
+### 6.9 O que foi mantido de propósito
 
 - **`Board` continua um contexto só.** As tabelas de tarefa, comentário e PR
   compartilham invariantes (o estado de duas camadas, o `request_key`, a
@@ -393,12 +420,12 @@ Dois exemplos concretos:
   o relatório é uma falha de prepare, `AutoRetry.plan/2` olha se sobraram
   arquivos no diretório da execução. Isso permite testar a regra com um mapa e
   a escrita com uma tarefa só.
-- `Board.create_request/3` mistura níveis de propósito: é a fronteira do
-  contexto que garante "uma vez". O efeito (GitHub) está isolado em `GitHub` e
-  o claim é uma linha com chave única; a parte pura (`request_key/3`) é
-  separada. A decisão de rota não mora mais aqui: chega pronta e é recusada
-  quando falta. Se crescer, o próximo corte é extrair o "claim + receipt" para
-  um módulo próprio, não criar uma camada genérica.
+- `Board.Requests.create_request/3` mistura níveis de propósito: é a fronteira
+  da criação que garante "uma vez". O efeito (GitHub) está isolado em `GitHub`
+  e o claim é uma linha com chave única; a parte pura (`Board.request_key/3`)
+  fica no contexto. A decisão de rota não mora mais aqui: chega pronta e é
+  recusada quando falta. O "claim + receipt" já tem módulo próprio; não é uma
+  camada genérica.
 
 ## 8. Onde futuras mudanças entram
 
@@ -446,8 +473,8 @@ Dois exemplos concretos:
   `mix xref graph --format cycles --label compile-connected`: sem ciclos de
   compilação.
 - PRs: #401, #402, #404, #406, #409, a entrega de roteamento, a extração da
-  visão Hoje, a renomeação de `Usage.Harness` e este documento. Cada um
-  passou a CI
+  visão Hoje, a renomeação de `Usage.Harness`, a extração de
+  `Board.Requests` e este documento. Cada um passou a CI
   (backend em quatro partições, gates, frontend, biblioteca, release).
 - O defeito de teste de #406 foi encontrado validando os PRs e tratado em
   separado; nenhum comportamento de produto mudou nesta revisão.

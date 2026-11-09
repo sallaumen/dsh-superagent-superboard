@@ -54,8 +54,8 @@ defmodule AgentBoard.CreateRequestTest do
     key = Board.request_key(repo, "single", ["Add a boss", "Add a boss\n\n@sallaumen-agent"])
     request = %{title: "Add a boss", body: "Add a boss\n\n@sallaumen-agent", key: key}
 
-    assert {:ok, first, :created} = Board.create_request(repo, request, client())
-    assert {:ok, again, :existing} = Board.create_request(repo, request, client())
+    assert {:ok, first, :created} = Board.Requests.create_request(repo, request, client())
+    assert {:ok, again, :existing} = Board.Requests.create_request(repo, request, client())
 
     assert again.id == first.id
     assert Agent.get(counter, & &1) == 1
@@ -117,7 +117,11 @@ defmodule AgentBoard.CreateRequestTest do
     |> Repo.insert!()
 
     assert {:error, :in_progress} =
-             Board.create_request(repo, %{title: "Em andamento", body: body, key: key}, client())
+             Board.Requests.create_request(
+               repo,
+               %{title: "Em andamento", body: body, key: key},
+               client()
+             )
 
     assert Repo.aggregate(Task, :count) == 1
   end
@@ -141,7 +145,7 @@ defmodule AgentBoard.CreateRequestTest do
 
     request = routed(repo, %{title: "Refazer a tela", body: body, key: key, executor: "claude"})
 
-    assert {:ok, task, :created} = Board.create_request(repo, request, client())
+    assert {:ok, task, :created} = Board.Requests.create_request(repo, request, client())
 
     assert_received {:issue, sent}
     refute sent["body"] =~ "@sallaumen-agent"
@@ -149,7 +153,8 @@ defmodule AgentBoard.CreateRequestTest do
     assert %Task{executor: "claude", body: "Refazer a tela"} = Repo.get(Task, task.id)
 
     # The same words again are the same task, not a second issue.
-    assert {:ok, %Task{id: id}, :existing} = Board.create_request(repo, request, client())
+    assert {:ok, %Task{id: id}, :existing} =
+             Board.Requests.create_request(repo, request, client())
 
     assert id == task.id
     refute_received {:issue, _}
@@ -161,7 +166,7 @@ defmodule AgentBoard.CreateRequestTest do
 
     request = routed(repo, %{title: "Add a boss", body: "Add a boss", key: key, executor: "dsh"})
 
-    assert {:ok, task, :created} = Board.create_request(repo, request, client())
+    assert {:ok, task, :created} = Board.Requests.create_request(repo, request, client())
 
     assert_received {:issue, %{"body" => "Add a boss\n\n@sallaumen-agent", "labels" => labels}}
     assert labels == ["executor:dsh"]
@@ -188,8 +193,8 @@ defmodule AgentBoard.CreateRequestTest do
       }
     }
 
-    assert {:ok, task, :created} = Board.create_request(repo, request, client())
-    assert {:ok, _task, :existing} = Board.create_request(repo, request, client())
+    assert {:ok, task, :created} = Board.Requests.create_request(repo, request, client())
+    assert {:ok, _task, :existing} = Board.Requests.create_request(repo, request, client())
 
     assert [decision] = Repo.all(Decision)
     assert decision.task_id == task.id
@@ -235,7 +240,7 @@ defmodule AgentBoard.CreateRequestTest do
       executor: "claude"
     }
 
-    assert {:error, :not_routed} = Board.create_request(repo, request, client())
+    assert {:error, :not_routed} = Board.Requests.create_request(repo, request, client())
     assert Repo.aggregate(Task, :count) == 0
   end
 
@@ -245,7 +250,11 @@ defmodule AgentBoard.CreateRequestTest do
     key = Board.request_key(repo, "single", ["Add a boss", body])
 
     assert {:ok, task, :created} =
-             Board.create_request(repo, %{title: "Add a boss", body: body, key: key}, client())
+             Board.Requests.create_request(
+               repo,
+               %{title: "Add a boss", body: body, key: key},
+               client()
+             )
 
     assert_received {:issue, sent}
     assert sent["body"] == body
@@ -284,7 +293,7 @@ defmodule AgentBoard.CreateRequestTest do
     key = Board.request_key(repo, "single", ["Add a boss", "Add a boss\n\n@sallaumen-agent"])
     request = %{title: "Add a boss", body: "Add a boss\n\n@sallaumen-agent", key: key}
 
-    assert {:ok, task, :existing} = Board.create_request(repo, request, client())
+    assert {:ok, task, :existing} = Board.Requests.create_request(repo, request, client())
     assert task.number == 50
     assert Agent.get(counter, & &1) == 0
   end
@@ -307,7 +316,7 @@ defmodule AgentBoard.CreateRequestTest do
     key = Board.request_key(repo, "single", ["Add a boss", "Add a boss\n\n@sallaumen-agent"])
     request = %{title: "Add a boss", body: "Add a boss\n\n@sallaumen-agent", key: key}
 
-    assert {:ok, _task, :created} = Board.create_request(repo, request, client())
+    assert {:ok, _task, :created} = Board.Requests.create_request(repo, request, client())
     assert Agent.get(counter, & &1) == 1
   end
 
@@ -317,7 +326,7 @@ defmodule AgentBoard.CreateRequestTest do
     key = Board.request_key(repo, "single", ["T", "body"])
 
     assert {:error, _} =
-             Board.create_request(repo, %{title: "T", body: "body", key: key}, client())
+             Board.Requests.create_request(repo, %{title: "T", body: "body", key: key}, client())
 
     assert Repo.aggregate(Task, :count) == 0
   end
@@ -334,7 +343,7 @@ defmodule AgentBoard.CreateRequestTest do
     key = Board.request_key(repo, "split", ["Origin text", "Part 1"])
 
     assert {:ok, task, :created} =
-             Board.create_request(
+             Board.Requests.create_request(
                repo,
                %{title: "Part 1", body: "b", key: key, origin_task_id: origin.id},
                client()

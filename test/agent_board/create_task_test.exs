@@ -21,7 +21,7 @@ defmodule AgentBoard.CreateTaskTest do
       Req.Test.json(conn, %{"number" => 12, "html_url" => "https://github.com/x/y/issues/12"})
     end)
 
-    assert {:ok, task} = Board.create_task(repo, "Add a boss", "Details", client())
+    assert {:ok, task} = Board.Requests.create_task(repo, "Add a boss", "Details", client())
     assert task.number == 12
     assert task.state == "queued"
     assert task.title == "Add a boss"
@@ -30,7 +30,7 @@ defmodule AgentBoard.CreateTaskTest do
   test "a GitHub failure is an error, not a crash", %{repo: repo} do
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 500, "boom") end)
 
-    assert {:error, %RuntimeError{}} = Board.create_task(repo, "T", "body", client())
+    assert {:error, %RuntimeError{}} = Board.Requests.create_task(repo, "T", "body", client())
     assert Enum.any?(Board.events(repo), &(&1.kind == "create_error"))
   end
 end
