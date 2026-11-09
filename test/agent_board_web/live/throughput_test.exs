@@ -86,14 +86,29 @@ defmodule AgentBoardWeb.ThroughputTest do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
     task!(repo, %{number: 2, state: "queued"})
 
+    # The label is written at mount; reading the clock only after the render
+    # can land on the next minute. Capture the minute before mount and after
+    # the render: the label is one of the two.
+    first = local_minute(180)
+
     {:ok, view, _html} =
       conn
       |> put_connect_params(%{"board_tz_offset" => 180})
       |> live(~p"/?repo=sallaumen/arena-rogue")
 
     html = render(allow_view(view))
-    local = DateTime.utc_now() |> DateTime.add(-180 * 60, :second)
-    assert html =~ "calculado às #{String.slice(Time.to_string(DateTime.to_time(local)), 0, 5)}"
+    later = local_minute(180)
+
+    assert [_, label] = Regex.run(~r/calculado às (\d{2}:\d{2})/, html)
+    assert label in [first, later]
+  end
+
+  defp local_minute(offset) do
+    DateTime.utc_now()
+    |> DateTime.add(-offset * 60, :second)
+    |> DateTime.to_time()
+    |> Time.to_string()
+    |> String.slice(0, 5)
   end
 
   test "an empty board has no strip", %{conn: conn} do
