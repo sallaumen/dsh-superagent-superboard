@@ -132,11 +132,11 @@ verifica que os efeitos registrados só são chamados por `Actions`.
 
 ```mermaid
 flowchart TD
-    A["Porta: composer, API ou voz"] --> B["Routing.Signals.read/0\n(sugestão + custo)"]
+    A["Porta: composer, API ou voz"] --> B["Routing.Signals.read/0\n+ Routing.plan/5"]
     B --> C["Actions.run(:create_tasks)\nvermelha"]
     C --> D{"a frase confere?"}
     D -- não --> X["recusa registrada\nnada executa"]
-    D -- sim --> E["Board.create_request/3"]
+    D -- sim --> E["Board.create_request/3\n(routing presente)"]
     E --> F["claim `draft` + request_key único"]
     F --> G["GitHub.create_issue"]
     G --> H["Task `queued` + Routing.record/3"]
@@ -146,18 +146,21 @@ flowchart TD
 
 O que cada camada esconde:
 
-- **Porta**: mostra a frase e coleta a confirmação; não decide risco nem abre
-  issue.
-- **`Actions`**: aplica o risco, grava a decisão e chama o efeito; não sabe como
-  o board persiste a tarefa.
+- **Porta**: lê os sinais e chama `Routing.plan/5` para mostrar a sugestão e a
+  frase; não decide risco nem abre issue. Uma requisição que chega só com
+  `executor` (a voz) é planejada por `Actions`, que é a porta de escrita.
+- **`Actions`**: aplica o risco, grava a decisão, planeja a requisição que ainda
+  não tem linha e chama o efeito; não sabe como o board persiste a tarefa.
 - **`Board.create_request/3`**: garante "uma vez" (claim, `request_key`, corrida,
-  receipt), fala com o GitHub e mantém a linha de roteamento. É orquestração de
-  contexto, não uma função pura.
+  receipt), fala com o GitHub e grava a linha que já recebeu. Exige `:routing`
+  para executor nomeado e responde `{:error, :not_routed}` antes do claim; é
+  orquestração de contexto, não uma função pura.
 - **`TicketOverlay`/`Sync`**: depois, o issue e o ticket viram estado da tarefa.
 
-O caminho de falha é parte do contrato: se o GitHub falha, o claim é removido e
-um evento é gravado; se o insert da decisão de roteamento falha, a tarefa fica e
-o erro vira evento (uma retentativa abriria um segundo issue).
+O caminho de falha é parte do contrato: uma requisição de executor sem linha é
+recusada antes do claim; se o GitHub falha, o claim é removido e um evento é
+gravado; se o insert da decisão de roteamento falha, a tarefa fica e o erro vira
+evento (uma retentativa abriria um segundo issue).
 
 ## 5. O que mudou nesta revisão
 
@@ -168,6 +171,7 @@ o erro vira evento (uma retentativa abriria um segundo issue).
 | #404 | `Board` escrevia `routing_decisions`; `Board.Setting` morava no contexto errado | `Routing.record/3`; `Settings.Setting` | testes de `create_request` e `settings` verdes |
 | #406 | teste do `changes_since` corria com a truncagem de segundos | cutoff depois do insert | removeu a falha intermitente observada na validação |
 | #409 | `Live` colidia com `BoardLive`; `Work` colidia com `Workpad`/`Worktree` | `TicketPoller` e `Lanes` (+ `:ticket_poll_interval`) | suíte completa verde |
+| esta rodada | `Board.route/5` lia `Routing.Signals` num default; `Board` participava do ciclo de leitura | `Routing.plan/5` puro; `Actions` planeja requisição só com executor; `Board` recusa sem linha (`:not_routed`); `snapshot/1` saiu de `Signals` | `mix xref`: ciclo `Board/Signals/Runners/Usage.Report` sumiu; testes de plano e de recusa |
 
 ### Antes e depois do acoplamento
 
@@ -187,16 +191,18 @@ flowchart LR
         B2 --> F2["Freshness"]
         B2 --> W2["Workpad.question?/1"]
         S2 --> W2
-        B2 -. ciclo de leitura .-> SIG2["Routing.Signals"] --> R2["Runners"] --> U2["Usage.Report"] -.-> B2
+        A2["Actions"] --> SIG2["Routing.Signals"] --> R2["Runners"] --> U2["Usage.Report"] --> B2
+        B2 --> ROUT2["Routing.plan/5 · record/3"] --> D2["Routing.Decision"]
     end
 ```
 
 `mix xref graph --format cycles` antes: 6 ciclos, o de domínio com 11 módulos.
-Depois: 7 ciclos; o SCC de 11 se desfez e sobraram dois ciclos de 4
-(`Actions/AutoRetry/Sync/Worker` e `Board/Signals/Runners/Usage.Report`). O ciclo da web (36) é a direção
-router ↔ endpoint do Phoenix, sem aresta de compilação (`--label
-compile-connected` continua sem ciclos). O ciclo que sobrou é conhecido e está
-em [Limites](#9-limites-e-próximos-passos).
+Depois: 6 ciclos; o SCC de 11 não existe mais e sobrou **um** ciclo de domínio,
+`Actions/AutoRetry/Sync/Worker` (4). O ciclo da web (36) é a direção
+router/endpoint do Phoenix, o dos schemas (6) são associações Ecto e os três
+pares de `Superagents` são behaviour ↔ implementação; nenhum tem aresta de
+compilação (`--label compile-connected` continua sem ciclos). O ciclo de
+orquestração que sobrou está em [Limites](#9-limites-e-próximos-passos).
 
 ## 6. Decisões, com o porquê
 
@@ -296,7 +302,33 @@ Configuração interna mudou junto (`:ticket_poll_interval`).
 Fila" acha o módulo. **Custo.** Um rename mecânico grande; o histórico do git
 segue o arquivo e o teste de fronteira garante que nada ficou para trás.
 
-### 6.6 O que foi mantido de propósito
+### 6.6 A decisão de rota sai do `Board`
+
+**Problema.** `Board.route/5` tinha `Routing.Signals.read/0` como valor padrão.
+Chamar uma função do contexto disparava uma leitura da API do runner e do
+ledger; o `Board` ainda entrava no ciclo `Board -> Signals -> Runners ->
+Usage.Report -> Board`.
+
+**Evidência.** O default estava na assinatura de `route/5`; `Board` não precisa
+dos sinais para gravar a tarefa, só para decidir o executor. O ciclo aparecia
+no `mix xref` (5 módulos) depois de tirar `Sync` do caminho.
+
+**Alternativas.** (a) manter e documentar; (b) só remover o default e passar
+`Signals.read()` em cada chamada, mantendo a decisão no `Board`; (c) mover a
+decisão para `Routing` e a leitura para a porta.
+
+**Escolha.** (c): `Routing.plan/5` é puro (recebe `signals`), `Routing.snapshot/1`
+saiu de `Signals` para não acoplar `Routing` ao leitor, e `Actions` planeja a
+requisição que chega só com `executor`. `Board.create_request/3` exige a linha
+para executor nomeado e recusa `{:error, :not_routed}` antes do claim. As portas
+(composer, API, voz) leem os sinais e chamam `plan/5` antes de mostrar a frase.
+
+**O que ficou mais simples.** O `Board` saiu do ciclo; a decisão é testável sem
+rede; a requisição que chega ao contexto já está completa. **Custo.** O contrato
+de `create_request/3` ficou mais estrito: uma chamada direta com executor
+precisa passar a linha, e o teste novo fixa essa recusa.
+
+### 6.7 O que foi mantido de propósito
 
 - **`Board` continua um contexto só.** As tabelas de tarefa, comentário e PR
   compartilham invariantes (o estado de duas camadas, o `request_key`, a
@@ -320,7 +352,7 @@ não são idempotentes por si. A adaptação ao projeto:
 | Nível | Exemplos | Regra |
 |---|---|---|
 | Dados | structs `Board.Task`, `Routing.Decision`, mapas de ticket | sem efeito; o formato é o contrato |
-| Cálculos | `Routing.suggest/2`, `Metrics.throughput/3`, `AgentBlock`, `AgentFailure`, `Workpad.parse/1`, `Freshness.snapshot/1`, `Announcer` | testáveis sem banco/rede; erro é valor |
+| Cálculos | `Routing.suggest/2`, `Routing.plan/5`, `Routing.snapshot/1`, `Metrics.throughput/3`, `AgentBlock`, `AgentFailure`, `Workpad.parse/1`, `Freshness.snapshot/1`, `Announcer` | testáveis sem banco/rede; erro é valor |
 | Leituras | `Board.board/3`, `Board.today/0`, `Lanes.needs/3`, `Metrics.Observations`, `Usage.Report`, `AgentSignal`, `AgentWorktree` | leem banco, git ou arquivos; podem ser cacheadas, mas não decidem escrita |
 | Ações | `Actions.run/4`, `Sync.sync_repo/2`, `TicketPoller.poll/1`, `Runners.dispatch/3`, `AI.call`, `ElevenLabs`, `Superagents` | efeito nas bordas; decisão antes do efeito; falha vira motivo, não resposta inventada |
 
@@ -335,8 +367,9 @@ Dois exemplos concretos:
 - `Board.create_request/3` mistura níveis de propósito: é a fronteira do
   contexto que garante "uma vez". O efeito (GitHub) está isolado em `GitHub` e
   o claim é uma linha com chave única; a parte pura (`request_key/3`) é
-  separada. Se crescer, o próximo corte é extrair o "claim + receipt" para um
-  módulo próprio, não criar uma camada genérica.
+  separada. A decisão de rota não mora mais aqui: chega pronta e é recusada
+  quando falta. Se crescer, o próximo corte é extrair o "claim + receipt" para
+  um módulo próprio, não criar uma camada genérica.
 
 ## 8. Onde futuras mudanças entram
 
@@ -364,15 +397,10 @@ Dois exemplos concretos:
 
 ## 9. Limites e próximos passos
 
-- **`Board.route/5` ainda tem um default efeitual** (`Routing.Signals.read/0`).
-  A chamada lê a API do runner e o ledger dentro do contexto. Para remover,
-  as portas precisam passar `signals`/`routing` até `create_tasks` e o
-  `decided_by` de cada porta precisa ficar explícito. É a próxima correção de
-  fronteira, não uma mudança de comportamento.
-- **O ciclo `Board ↔ Routing.Signals ↔ Runners/Usage.Report`** permanece. Os
-  leitores chamam `Board` e o `Board` chama os sinais para rotear. Cortar exige
-  decidir se o estado da tarefa sai do `Board` ou se o roteamento passa a ser
-  input explícito; nenhum dos dois cabe numa refatoração silenciosa.
+- **O ciclo `Actions ↔ AutoRetry ↔ Sync/Worker`** permanece. É orquestração
+  (a ação enfileira o sync; o sync usa a retentativa; a retentativa chama uma
+  ação). Cortar exigiria um evento ou callback no lugar da chamada; o ganho
+  ainda não paga o desenho.
 - **`BoardLive` tem ~3 mil linhas.** Ainda não é o gargalo; o próximo corte, se
   necessário, é por painel (mover os `handle_event` para o componente), com
   teste de renderização por painel.
@@ -382,12 +410,13 @@ Dois exemplos concretos:
 
 ## 10. Evidência de validação
 
-- `MIX_ENV=test mix gate` no commit final: 976 testes, 0 falhas; compilação com
+- `MIX_ENV=test mix gate` no commit final: 980 testes, 0 falhas; compilação com
   warnings como erro, formato, credo e `agent_kit.check` verdes.
 - `mix xref graph --format cycles` antes/depois (seção 5) e
   `mix xref graph --format cycles --label compile-connected`: sem ciclos de
   compilação.
-- PRs: #401, #402, #404, #406, #409 e este documento. Cada um passou a CI
+- PRs: #401, #402, #404, #406, #409, a entrega de roteamento e este documento.
+  Cada um passou a CI
   (backend em quatro partições, gates, frontend, biblioteca, release).
 - O defeito de teste de #406 foi encontrado validando os PRs e tratado em
   separado; nenhum comportamento de produto mudou nesta revisão.

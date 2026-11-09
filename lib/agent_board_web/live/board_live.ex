@@ -35,6 +35,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Board.Task
   alias AgentBoard.Freshness
   alias AgentBoard.Metrics.Observations
+  alias AgentBoard.Routing
   alias AgentBoard.Routing.Signals
   alias AgentBoard.Runners.Execution
   alias AgentBoard.System.Version
@@ -2859,7 +2860,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp ensure_composer_routing(socket), do: socket
 
   defp put_composer_routing(socket, signals) do
-    routed = Board.route(socket.assigns.repo, %{}, nil, "composer", signals)
+    routed = Routing.plan(socket.assigns.repo, %{}, nil, "composer", signals)
 
     socket
     |> assign(composer_routing: routed.routing)

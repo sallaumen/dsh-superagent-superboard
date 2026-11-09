@@ -3,8 +3,11 @@ defmodule AgentBoard.Routing do
   Where a new task should go: a suggestion, never a dispatch
   (docs/research/alfred.md, 3.5, mode "sugerir").
 
-  `suggest/2` is pure. It applies the signals in the plan's order and says
-  why in sentences the owner reads:
+  `suggest/2` and `plan/5` are pure. `suggest/2` applies the signals in the
+  plan's order and says why in sentences the owner reads; `plan/5` turns a
+  read into the request's executor and the line a `Decision` row keeps. The
+  read itself belongs to the door (or to `Actions`, when a request reaches
+  it without a line), never to this module:
 
   1. **Hard restriction**: the DeepSeek runner watches one repository; it is
      out in any other one the board read. When the orchestrator does not
@@ -49,6 +52,70 @@ defmodule AgentBoard.Routing do
           cost: :unknown | term(),
           mode: String.t()
         }
+
+  @doc """
+  Decides a request's executor and builds the router line the board stores.
+
+  Pure: the caller reads the signals at its door and passes them. The
+  request's own executor wins (a choice made when the suggestion was
+  shown); otherwise the owner's `requested` name; otherwise the suggestion;
+  otherwise the board's default. The line keeps the suggestion, a snapshot
+  of the signals and the door that decided (`composer`, `voice`, `api`).
+  """
+  @spec plan(
+          %{required(:owner) => String.t(), required(:name) => String.t()},
+          map(),
+          String.t() | nil,
+          String.t(),
+          signals()
+        ) :: map()
+  def plan(%{owner: owner, name: name}, request, requested, decided_by, signals) do
+    suggestion =
+      suggest(
+        %{
+          repository: "#{owner}/#{name}",
+          work_type: Map.get(request, :work_type),
+          size: Map.get(request, :size),
+          requested: requested
+        },
+        signals
+      )
+
+    executor =
+      cond do
+        Executors.valid?(Map.get(request, :executor)) -> request.executor
+        Executors.valid?(requested) -> requested
+        true -> suggestion.executor || Executors.default()
+      end
+
+    request
+    |> Map.put(:executor, executor)
+    |> Map.put(:routing, %{
+      suggestion: suggestion,
+      signals: snapshot(signals),
+      decided_by: decided_by
+    })
+  end
+
+  @doc """
+  The signals as stored data: strings for every atom and tuple.
+
+  The decision row keeps this snapshot, not the live maps, so reading an old
+  decision never depends on today's runner state.
+  """
+  @spec snapshot(AgentBoard.Routing.signals()) :: map()
+  def snapshot(signals) do
+    Map.new(signals, fn {executor, signal} -> {executor, Map.new(signal, &stored/1)} end)
+  end
+
+  defp stored({key, {:unavailable, why}}), do: {to_string(key), "unavailable: " <> why}
+
+  defp stored({key, value}) when is_atom(value) and not is_nil(value) and not is_boolean(value),
+    do: {to_string(key), to_string(value)}
+
+  defp stored({key, %{} = value}), do: {to_string(key), Map.new(value, &stored/1)}
+  defp stored({key, value}) when is_list(value), do: {to_string(key), Enum.join(value, ",")}
+  defp stored({key, value}), do: {to_string(key), value}
 
   @doc """
   Records the router's line for a task the board just created.

@@ -18,6 +18,24 @@ defmodule AgentBoard.CreateRequestTest do
   defp client,
     do: Req.new(base_url: "https://api.github.com", plug: {Req.Test, @stub}, retry: false)
 
+  @signals %{
+    "dsh" => %{
+      repository: "sallaumen/arena-rogue",
+      state: :ready,
+      load: %{running: 0, max_workers: 3}
+    },
+    "claude" => %{state: :unknown},
+    "codex" => %{state: :unknown}
+  }
+
+  # A request for a named executor carries the line its door built. The
+  # decision itself is pure; this fixture keeps the context test focused on
+  # "create once", not on reading the runner.
+  defp routed(repo, request, requested \\ nil, decided_by \\ "api") do
+    requested = requested || Map.get(request, :executor)
+    Routing.plan(repo, request, requested, decided_by, @signals)
+  end
+
   defp count_issues(counter) do
     Req.Test.stub(@stub, fn conn ->
       number = Agent.get_and_update(counter, &{&1 + 1, &1 + 1})
@@ -121,12 +139,9 @@ defmodule AgentBoard.CreateRequestTest do
     body = "Refazer a tela\n\n@sallaumen-agent"
     key = Board.request_key(repo, "single", ["Refazer a tela", body])
 
-    assert {:ok, task, :created} =
-             Board.create_request(
-               repo,
-               %{title: "Refazer a tela", body: body, key: key, executor: "claude"},
-               client()
-             )
+    request = routed(repo, %{title: "Refazer a tela", body: body, key: key, executor: "claude"})
+
+    assert {:ok, task, :created} = Board.create_request(repo, request, client())
 
     assert_received {:issue, sent}
     refute sent["body"] =~ "@sallaumen-agent"
@@ -134,12 +149,7 @@ defmodule AgentBoard.CreateRequestTest do
     assert %Task{executor: "claude", body: "Refazer a tela"} = Repo.get(Task, task.id)
 
     # The same words again are the same task, not a second issue.
-    assert {:ok, %Task{id: id}, :existing} =
-             Board.create_request(
-               repo,
-               %{title: "Refazer a tela", body: body, key: key, executor: "claude"},
-               client()
-             )
+    assert {:ok, %Task{id: id}, :existing} = Board.create_request(repo, request, client())
 
     assert id == task.id
     refute_received {:issue, _}
@@ -149,12 +159,9 @@ defmodule AgentBoard.CreateRequestTest do
     capture_issues()
     key = Board.request_key(repo, "single", ["Add a boss", "Add a boss"])
 
-    assert {:ok, task, :created} =
-             Board.create_request(
-               repo,
-               %{title: "Add a boss", body: "Add a boss", key: key, executor: "dsh"},
-               client()
-             )
+    request = routed(repo, %{title: "Add a boss", body: "Add a boss", key: key, executor: "dsh"})
+
+    assert {:ok, task, :created} = Board.create_request(repo, request, client())
 
     assert_received {:issue, %{"body" => "Add a boss\n\n@sallaumen-agent", "labels" => labels}}
     assert labels == ["executor:dsh"]
@@ -176,7 +183,7 @@ defmodule AgentBoard.CreateRequestTest do
       executor: "codex",
       routing: %{
         suggestion: suggestion,
-        signals: Routing.Signals.snapshot(signals),
+        signals: Routing.snapshot(signals),
         decided_by: "composer"
       }
     }
@@ -195,7 +202,7 @@ defmodule AgentBoard.CreateRequestTest do
     assert decision.signals["claude"]["state"] == "unknown"
   end
 
-  test "a request for an executor without a suggestion gets the router's line anyway",
+  test "the write door builds the router line for an executor-only request",
        %{repo: repo} do
     capture_issues()
 
@@ -206,11 +213,30 @@ defmodule AgentBoard.CreateRequestTest do
       executor: "claude"
     }
 
-    assert {:ok, task, :created} = Board.create_request(repo, request, client())
+    params = %{repository: repo, requests: [request], client: client()}
+    phrase = Actions.phrase(:create_tasks, params)
 
-    # The owner's explicit choice decides, whatever the router reads.
+    assert {:ok, [{_request, {:ok, task, :created}}]} =
+             Actions.run(:create_tasks, params, Actions.owner(:ui), confirm: phrase)
+
+    # The owner's explicit choice decides, whatever the router reads; the
+    # line is still recorded by the door, not silently by the Board.
     assert %Decision{suggested: "claude", chosen: "claude", decided_by: "api"} =
              Repo.get_by(Decision, task_id: task.id)
+  end
+
+  test "the board refuses an executor request without a router line", %{repo: repo} do
+    Req.Test.stub(@stub, fn _conn -> flunk("GitHub must not be called") end)
+
+    request = %{
+      title: "Add a boss",
+      body: "Add a boss",
+      key: Board.request_key(repo, "single", ["Add a boss"]),
+      executor: "claude"
+    }
+
+    assert {:error, :not_routed} = Board.create_request(repo, request, client())
+    assert Repo.aggregate(Task, :count) == 0
   end
 
   test "a request without an executor is opened as given, with no label", %{repo: repo} do

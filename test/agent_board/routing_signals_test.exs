@@ -2,7 +2,7 @@ defmodule AgentBoard.RoutingSignalsTest do
   @moduledoc "What the router reads, and the snapshot a decision keeps."
   use ExUnit.Case, async: true
 
-  alias AgentBoard.Routing.Signals
+  alias AgentBoard.{Routing, Routing.Signals}
 
   test "the runner's state becomes its signal; Claude Code and Codex stay unknown" do
     state = %{
@@ -56,7 +56,7 @@ defmodule AgentBoard.RoutingSignalsTest do
   test "the snapshot is plain data" do
     signals = Signals.read(fn -> {:error, :unreachable} end, fn -> %{} end)
 
-    assert Signals.snapshot(signals) == %{
+    assert Routing.snapshot(signals) == %{
              "dsh" => %{
                "repository" => nil,
                "state" => "unavailable: o orquestrador não respondeu"
@@ -65,6 +65,6 @@ defmodule AgentBoard.RoutingSignalsTest do
              "codex" => %{"state" => "unknown"}
            }
 
-    assert Jason.encode!(Signals.snapshot(signals))
+    assert Jason.encode!(Routing.snapshot(signals))
   end
 end

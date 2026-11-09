@@ -28,7 +28,7 @@ differ. Change a general rule upstream, not here.
 | `AgentBoard.AI` | the door to a model: registered calls only, every one a row |
 | `AgentBoard.ExecutorUsage` | what the executor spent on a task, read from the harness transcripts; tokens measured, cost estimated |
 | `AgentBoard.Executors` | who a task is for (`dsh`, `claude`, `codex`): the label and the issue body each gets; pure |
-| `AgentBoard.Routing` | where a new task should go: `suggest/2` (pure rules), `Signals` (what it reads) and one `Decision` row per created task |
+| `AgentBoard.Routing` | where a new task should go: `suggest/2` and `plan/5` (pure), `Signals` (what the door reads) and `record/3` (one `Decision` row per created task) |
 | `AgentBoard.Attribution` | which task a session or a PR worked for: exact, `pr-link`, branch, repository or outside; pure |
 | `AgentBoard.Usage.ClaudeCode` | what Claude Code spent, read from its transcripts (`~/.claude/projects`); one count per `message.id` across files, numbers and named metadata only (`Usage.Fields`) |
 | `AgentBoard.Usage.Codex` | what Codex spent: the `threads` table by named columns (never `title`, `preview`, `name`, `first_user_message`) and the rollouts' cumulative totals as daily differences, plus the last `rate_limits`; zstd rollouts through `Usage.Lines` |
@@ -774,10 +774,13 @@ dispatch.
 - **Every task the board creates for an executor has one row** in
   `routing_decisions`: suggested (nil when nobody could take it), chosen,
   mode, reasons in Portuguese, alternatives, the snapshot of the signals
-  (`Signals.snapshot/1`) and who decided (`composer`, `voice`, `api`). A
-  caller that showed the suggestion passes it; otherwise
-  `Board.create_request/3` runs the router with the chosen executor as the
-  explicit ask. A repeat of the same words writes no second row.
+  (`Routing.snapshot/1`) and who decided (`composer`, `voice`, `api`). A
+  caller that showed the suggestion passes it; a request for a named
+  executor without one is planned by the write door (`Actions`,
+  `Routing.plan/5`) before it reaches `Board.create_request/3`, which
+  refuses a named-executor request without a line (`:not_routed`). A request
+  without an executor is opened as given, with no label and no line. A
+  repeat of the same words writes no second row.
 - The row is written after the task row and outside its transaction: the
   issue already exists, so a decision that fails is a `routing_error`
   event, never a dropped task (a retry without the row would open a second
