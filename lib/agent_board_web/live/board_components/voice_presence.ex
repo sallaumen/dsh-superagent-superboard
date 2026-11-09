@@ -17,33 +17,33 @@ defmodule AgentBoardWeb.BoardComponents.VoicePresence do
       class="voice-presence"
       aria-labelledby={"#{@id}-title"}
     >
-      <div class="voice-presence-head">
-        <span class="voice-presence-kicker">
+      <div class="voice-presence-main">
+        <span class="voice-presence-symbol" aria-hidden="true">
           <.icon name="hero-microphone" class="voice-presence-listen-icon size-4" />
           <.icon name="hero-speaker-wave" class="voice-presence-speak-icon size-4" />
-          <span class="voice-presence-phase">Voz</span>
         </span>
+        <div class="voice-presence-copy">
+          <span class="voice-presence-phase">Voz</span>
+          <h2 id={"#{@id}-title"} class="voice-presence-title">Voz</h2>
+          <p class="voice-presence-detail"></p>
+        </div>
         <button type="button" class="voice-presence-control">
           Fechar
         </button>
       </div>
       <div class="voice-presence-flow" aria-hidden="true">
         <span
-          :for={index <- 0..35}
+          :for={index <- 0..23}
           class="voice-presence-bar"
           style={"--bar-index: #{index}; --bar-height: #{bar_height(index)}px"}
         />
-      </div>
-      <div class="voice-presence-copy">
-        <h2 id={"#{@id}-title"} class="voice-presence-title">Voz</h2>
-        <p class="voice-presence-detail"></p>
       </div>
     </aside>
     """
   end
 
   defp bar_height(index) do
-    envelope = [8, 10, 14, 20, 28, 38, 48, 56, 50, 40, 31, 24, 19, 23, 32, 46, 58, 65]
+    envelope = [4, 6, 9, 13, 18, 24, 20, 14, 8, 5, 7, 12, 19, 23, 17, 10, 6, 4]
     Enum.at(envelope, rem(index, length(envelope)))
   end
 end

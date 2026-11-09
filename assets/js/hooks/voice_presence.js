@@ -1,12 +1,12 @@
 const phaseLabels = {
   permission: ["Microfone", "Cancelar"],
-  listening: ["Ouvindo", "Enviar agora"],
-  transcribing: ["Entendendo", "Cancelar"],
-  thinking: ["Pensando", "Fechar"],
-  generating: ["Preparando a fala", "Cancelar"],
-  speaking: ["Falando", "Parar a voz"],
-  complete: ["Voz", "Fechar"],
-  error: ["Voz", "Fechar"],
+  listening: ["Você", "Enviar agora"],
+  transcribing: ["Sua voz", "Cancelar"],
+  thinking: ["Agente", "Fechar"],
+  generating: ["Agente", "Cancelar"],
+  speaking: ["Agente", "Parar a voz"],
+  complete: ["Concluído", "Fechar"],
+  error: ["Atenção", "Fechar"],
 }
 let latestVoiceState = null
 const activePhases = ["permission", "listening", "transcribing", "thinking", "generating", "speaking"]
@@ -51,7 +51,7 @@ export const VoicePresence = {
     this.el.dataset.source = source
     this.phaseLabel.textContent = phaseLabels[phase]?.[0] || "Voz"
     this.control.textContent = source === "browser-dictation" && phase === "listening"
-      ? "Finish dictation"
+      ? "Concluir ditado"
       : phaseLabels[phase]?.[1] || "Fechar"
     this.title.textContent = title
     this.detail.textContent = detail
