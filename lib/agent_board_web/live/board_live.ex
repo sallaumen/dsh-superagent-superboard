@@ -188,7 +188,7 @@ defmodule AgentBoardWeb.BoardLive do
         # A page opened during an update joins it, the fast-forward's own
         # reload included.
         busy: UpdateRun.running?(),
-        update_progress: if(UpdateRun.running?(), do: [update_step(:fetch, :running)], else: []),
+        update_progress: update_in_progress(),
         voice: current_voice(),
         spoken_text: nil,
         spoken_at: 0,
@@ -205,11 +205,7 @@ defmodule AgentBoardWeb.BoardLive do
 
     # The voice settings are board-wide: a change in another tab, by the API
     # or by a spoken command reaches this socket (handle_info setting_changed).
-    if connected?(socket), do: Settings.subscribe()
-    if connected?(socket), do: DailySummary.subscribe()
-    if connected?(socket), do: Board.subscribe_today()
-    if connected?(socket), do: Superagents.subscribe()
-    if connected?(socket), do: UpdateRun.subscribe()
+    if connected?(socket), do: subscribe_board_wide()
 
     socket = maybe_check_version(socket)
 
@@ -221,6 +217,20 @@ defmodule AgentBoardWeb.BoardLive do
      |> VoiceConversation.mount()
      |> assign(:opening_repo, repo)
      |> show_daily_summary()}
+  end
+
+  defp subscribe_board_wide do
+    Settings.subscribe()
+    DailySummary.subscribe()
+    Board.subscribe_today()
+    Superagents.subscribe()
+    UpdateRun.subscribe()
+  end
+
+  # A page opened during an update joins it, the fast-forward's own reload
+  # included.
+  defp update_in_progress do
+    if UpdateRun.running?(), do: [update_step(:fetch, :running)], else: []
   end
 
   defp empty do

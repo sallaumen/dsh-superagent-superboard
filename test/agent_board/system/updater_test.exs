@@ -31,8 +31,52 @@ defmodule AgentBoard.System.UpdaterTest do
     script = Updater.restart_script("/tmp/agent board", "4242")
 
     assert script =~ ".agent-board-next-build"
-    assert script =~ "mv \"$next_build\" _build"
-    assert script =~ "_build/prev"
+    assert script =~ Updater.promote_snippet()
+  end
+
+  test "the service promotes the staged build the same way" do
+    assert File.read!("scripts/service.sh") =~ Updater.promote_snippet()
+  end
+
+  test "promoting puts the staged build where Mix looks for it and keeps the old one" do
+    dir = Path.join(System.tmp_dir!(), "updater-promote-#{System.unique_integer([:positive])}")
+    on_exit(fn -> File.rm_rf!(dir) end)
+
+    File.mkdir_p!(Path.join(dir, "_build/dev/lib"))
+    File.write!(Path.join(dir, "_build/dev/lib/old"), "")
+    File.mkdir_p!(Path.join(dir, "_build/next/lib"))
+    File.write!(Path.join(dir, "_build/next/lib/new"), "")
+    File.mkdir_p!(Path.join(dir, "_build/prev/stale"))
+    Updater.mark_ready(dir)
+
+    assert {_output, 0} =
+             System.cmd("sh", ["-c", "set -eu\n" <> Updater.promote_snippet()],
+               cd: dir,
+               env: [{"MIX_ENV", "dev"}],
+               stderr_to_stdout: true
+             )
+
+    assert File.exists?(Path.join(dir, "_build/dev/lib/new"))
+    assert File.exists?(Path.join(dir, "_build/prev/lib/old"))
+    refute File.exists?(Path.join(dir, "_build/next"))
+    refute File.exists?(Path.join(dir, "_build/prev/stale"))
+    assert Updater.pending_build(dir) == nil
+  end
+
+  test "a marker without its build is dropped instead of stopping the boot" do
+    dir = Path.join(System.tmp_dir!(), "updater-promote-#{System.unique_integer([:positive])}")
+    on_exit(fn -> File.rm_rf!(dir) end)
+    File.mkdir_p!(Path.join(dir, "_build/dev"))
+    Updater.mark_ready(dir)
+
+    assert {_output, 0} =
+             System.cmd("sh", ["-c", "set -eu\n" <> Updater.promote_snippet()],
+               cd: dir,
+               stderr_to_stdout: true
+             )
+
+    assert File.dir?(Path.join(dir, "_build/dev"))
+    assert Updater.pending_build(dir) == nil
   end
 
   test "marks, reads and clears the staged build" do

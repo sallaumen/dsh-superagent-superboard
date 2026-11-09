@@ -74,11 +74,11 @@ done
 if [ -f .agent-board-next-build ]; then
   next_build="$(cat .agent-board-next-build)"
   if [ -d "$next_build" ]; then
-    rm -rf _build.prev
-    [ -d _build ] && mv _build _build.prev
-    mv "$next_build" _build
-    rm -f .agent-board-next-build
+    rm -rf _build/prev
+    [ -d "_build/${MIX_ENV:-dev}" ] && mv "_build/${MIX_ENV:-dev}" _build/prev
+    mv "$next_build" "_build/${MIX_ENV:-dev}"
   fi
+  rm -f .agent-board-next-build
 fi
 
 mix deps.get
