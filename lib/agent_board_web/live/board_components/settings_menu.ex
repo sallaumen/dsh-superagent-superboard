@@ -5,9 +5,8 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   import Phoenix.LiveView, only: [push_patch: 2]
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
-  import AgentBoardWeb.BoardComponents.Superagents, only: [superagents: 1]
 
-  alias AgentBoardWeb.BoardComponents.AgentAccessPanel
+  alias AgentBoardWeb.BoardComponents.Settings.Projects
   alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
@@ -22,10 +21,8 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :progress, :list, default: []
   attr :superagents, :list, default: []
   attr :access_waiting, :integer, default: 0
+  attr :access_projects, :list, default: []
   attr :codex_quota, :map, default: nil
-  attr :repos, :list, default: []
-  attr :sources, :list, default: []
-  attr :provision_preview, :any, default: nil
   attr :provisioning, :boolean, default: false
   attr :tz_offset, :integer, default: 0
   attr :project_pending, :any, default: nil
@@ -172,121 +169,23 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
       <div id="settings-current-section" class="settings-content">
         <section
           hidden={@section != "projects"}
-          class="settings-pane"
+          class="settings-pane settings-pane--projects"
           aria-labelledby="settings-projects-title"
         >
           <h3 id="settings-projects-title">{gettext("Projects")}</h3>
           <p class="settings-pane__intro">
             {gettext("Each project is a repository, its DeepSeek agent and who can call it.")}
           </p>
-
-          <section class="settings-subpane" aria-labelledby="settings-repositories-title">
-            <h4 id="settings-repositories-title">{gettext("Repositories")}</h4>
-            <p class="settings-pane__intro">
-              {gettext("Add a project in one click: the repository and its own DeepSeek agent.")}
-            </p>
-            <form id="track-repo" phx-submit="add_project" class="settings-track-form">
-              <label><span>{gettext("Owner")}</span><input
-                name="owner"
-                placeholder="sallaumen"
-                required
-              /></label>
-              <label><span>{gettext("Repository")}</span><input
-                name="name"
-                placeholder={gettext("project-name")}
-                required
-              /></label>
-              <label><span>{gettext("Local checkout")}</span><input
-                name="path"
-                placeholder={gettext("~/projects/project-name (with .git)")}
-              /></label>
-              <button
-                type="submit"
-                class="ab-btn ab-btn--primary ab-btn--sm"
-                phx-disable-with={gettext("Adding…")}
-              >
-                {gettext("Add project")}
-              </button>
-            </form>
-
-            <form id="track-repo-only" phx-submit="add_track" class="settings-track-form">
-              <label><span>{gettext("Owner")}</span><input
-                name="owner"
-                placeholder="sallaumen"
-                required
-              /></label>
-              <label><span>{gettext("Repository")}</span><input
-                name="name"
-                placeholder={gettext("project-name")}
-                required
-              /></label>
-              <button
-                type="submit"
-                class="ab-btn ab-btn--quiet ab-btn--sm"
-                phx-disable-with={gettext("Tracking…")}
-              >
-                {gettext("Track only")}
-              </button>
-            </form>
-
-            <div
-              :if={@project_pending}
-              id="add-project-confirm"
-              class="ab-act__confirm"
-              role="group"
-              aria-labelledby="add-project-confirm-q"
-            >
-              <p id="add-project-confirm-q" class="ab-act__question">{@project_pending.phrase}</p>
-              <div class="ab-act__buttons">
-                <button
-                  type="button"
-                  class="ab-btn ab-btn--sm ab-btn--primary"
-                  phx-click="add_project_confirm"
-                  phx-disable-with={gettext("Creating…")}
-                >
-                  {gettext("Create superagent")}
-                </button>
-                <button
-                  type="button"
-                  class="ab-btn ab-btn--sm ab-btn--quiet"
-                  phx-click="add_project_cancel"
-                >
-                  {gettext("Not now")}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section class="settings-subpane" aria-labelledby="settings-superagents-title">
-            <h4 id="settings-superagents-title">{gettext("Superagents")}</h4>
-            <p class="settings-pane__intro">
-              {gettext("One DeepSeek agent per project, each with its own profile, port and state.")}
-            </p>
-            <.superagents
-              superagents={@superagents}
-              repos={@repos}
-              sources={@sources}
-              provision_preview={@provision_preview}
-              provisioning={@provisioning}
-              tz_offset={@tz_offset}
-            />
-          </section>
-
-          <section class="settings-subpane" aria-labelledby="settings-access-title">
-            <h4 id="settings-access-title">{gettext("Agent access")}</h4>
-            <p class="settings-pane__intro">
-              {gettext(
-                "Who can put each project's agent to work by mentioning the bot, and who asked without being allowed."
-              )}
-            </p>
-            <.live_component
-              module={AgentAccessPanel}
-              id="settings-agent-access"
-              superagents={@superagents}
-              visible={@active == true and @section == "projects"}
-              tz_offset={@tz_offset}
-            />
-          </section>
+          <.live_component
+            module={Projects}
+            id="settings-projects"
+            active={@active == true and @section == "projects"}
+            superagents={@superagents}
+            access_projects={@access_projects}
+            project_pending={@project_pending}
+            provisioning={@provisioning}
+            tz_offset={@tz_offset}
+          />
         </section>
 
         <section
