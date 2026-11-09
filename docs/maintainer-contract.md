@@ -246,6 +246,12 @@ that already worked).
   (`ticket_poller_test.exs`). The interval is the `:ticket_poll_interval` knob; the test
   environment stretches it to an hour so the supervised poller never ticks
   into the sandboxed database mid-suite.
+- **The sync's GitHub budget.** The account's 5000 REST calls an hour are shared
+  by every repository and every tool using the token. A pull stored as merged or
+  closed at the same commit is not read again (reviews, checks) unless its checks
+  were still pending; an open pull is read on every sync (`sync_repo_test.exs`,
+  "the GitHub quota"). Reading every recent pull cost about 600 calls per run with
+  three repositories, and the board froze for the rest of each hour.
 - `AgentBoard.MessagePoller` reads recently updated GitHub issue comments once
   per active repository every 30s when a GitHub token is configured. It follows
   pagination, stores only comments for tracked tasks, broadcasts only for new
