@@ -29,6 +29,12 @@ defmodule AgentBoardWeb.SettingsSystemTest do
              "Português (Brasil)"
            )
 
+    # The language form reloads the page: it returns to System, not Projects.
+    assert has_element?(
+             view,
+             ~s(#board-language-form input[name=return_to][value="/?panel=settings&repo=fixture%2Fsystem&section=system"])
+           )
+
     assert has_element?(view, "#settings-activity-title", "Atividade")
     assert has_element?(view, "#settings-activity", "Últimos 20 eventos")
 
