@@ -3816,7 +3816,7 @@ defmodule AgentBoardWeb.BoardLive do
   # owner leaves a task out. The key reads the title the model proposed, so
   # an edited task is still the same request on a retry.
   defp split_requests(repo, text, spec, tasks, selected) do
-    key = fn task -> Board.request_key(repo, "split", [text, task.source_title]) end
+    keys = split_keys(repo, text, tasks)
 
     tasks
     |> Enum.with_index()
@@ -3827,13 +3827,32 @@ defmodule AgentBoardWeb.BoardLive do
       %{
         title: task.title,
         body: IssueBody.render(task, spec) <> "\n\n@sallaumen-agent",
-        key: key.(task),
+        key: Enum.at(keys, index),
         work_type: task.kind,
         size: task.size,
         language: spec["language"],
-        depends_on: Enum.map(chosen, &key.(Enum.at(tasks, &1)))
+        depends_on: Enum.map(chosen, &Enum.at(keys, &1))
       }
     end)
+  end
+
+  # The same title twice is two tasks: a repeat counts its occurrence, so it
+  # is neither the first task's receipt nor the target of its dependents.
+  defp split_keys(repo, text, tasks) do
+    {keys, _seen} =
+      Enum.map_reduce(tasks, %{}, fn task, seen ->
+        base = Board.request_key(repo, "split", [text, task.source_title])
+        repeat = Map.get(seen, base, 0)
+
+        key =
+          if repeat == 0,
+            do: base,
+            else: Board.request_key(repo, "split", [text, task.source_title, "#{repeat}"])
+
+        {key, Map.put(seen, base, repeat + 1)}
+      end)
+
+    keys
   end
 
   defp start_single(socket, text, title, shown) do

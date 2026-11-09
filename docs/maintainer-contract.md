@@ -1167,7 +1167,9 @@ records are the `ai_calls` rows (the split) and the tasks with their
   submit the same words both reach the database, one opens the issue, the
   other answers `{:error, :in_progress}`. A failed issue call deletes the
   claim; the sync never sees a draft in a lane. A retry after a partial
-  split creates only what is missing.
+  split creates only what is missing. A claim older than five minutes lost its
+  process and is taken over, at the risk of a second issue if GitHub had
+  already answered.
 - **The receipt names what happened**: number and link for each task that
   entered, "já estava na fila" ("already in the queue") for a repeat, the
   reason for each failure, and a retry for the failures only. Closing a
@@ -1180,7 +1182,9 @@ records are the `ai_calls` rows (the split) and the tasks with their
   and acceptance, then the goal, constraints, non-goals, assumptions and open
   questions of the request, because the agent reads one issue and nothing
   else. The headings follow the request's language.
-- **What the model says depends is kept** (`Board.Requests.create_requests/3`):
+- **In the composer's split, what the model says depends is kept**
+  (`Board.Requests.create_requests/3`; the older intake panel creates one task
+  at a time and links nothing):
   tasks open blockers first and the body starts with "Depende de #N". A blocker
   that failed holds its dependent back (`:dependency_failed`), and the retry
   opens it with the link. A blocker left out in the review is no dependency; a

@@ -25,6 +25,10 @@ defmodule AgentBoard.Board.Requests do
   defp clip_title(title) when is_binary(title), do: String.slice(title, 0, @title_limit)
   defp clip_title(title), do: title
 
+  # Longer than any send can take (the composer stops one at two minutes), so
+  # a claim this old lost its process before it could finish or clean up.
+  @abandoned_after_seconds 300
+
   @doc """
   Create a task by opening its issue.
 
@@ -172,11 +176,26 @@ defmodule AgentBoard.Board.Requests do
     waiting = MapSet.new(pending, fn {request, _position} -> request.key end)
 
     next =
-      Enum.find(pending, first, fn {request, _position} ->
+      Enum.find(pending, fn {request, _position} ->
         not Enum.any?(depends_on(request), &MapSet.member?(waiting, &1))
-      end)
+      end) || Enum.find(pending, first, &in_cycle?(&1, pending))
 
     [next | dependency_order(List.delete(pending, next))]
+  end
+
+  # With nothing free, only a task of the cycle may open early: one that merely
+  # waits for the cycle would lose the number it could have named.
+  defp in_cycle?({request, _position}, pending) do
+    by_key = Map.new(pending, fn {other, _position} -> {other.key, other} end)
+    reaches?(depends_on(request), request.key, by_key, MapSet.new())
+  end
+
+  defp reaches?(keys, target, by_key, seen) do
+    Enum.any?(keys, fn key ->
+      key == target or
+        (not MapSet.member?(seen, key) and is_map_key(by_key, key) and
+           reaches?(depends_on(by_key[key]), target, by_key, MapSet.put(seen, key)))
+    end)
   end
 
   defp create_after_blockers(repository, request, numbers, client) do
@@ -210,9 +229,22 @@ defmodule AgentBoard.Board.Requests do
     request = %{request | title: title, body: body}
 
     case existing_request(repository, key, title, body) do
-      %Task{number: nil} -> {:error, :in_progress}
+      %Task{number: nil} = claim -> retake_or_wait(claim, repository, request, client)
       %Task{} = task -> {:ok, task, :existing}
       nil -> claim_and_create(repository, request, client)
+    end
+  end
+
+  # If the process died after GitHub answered, retaking opens a second issue;
+  # refusing would hold this request and everything that depends on it forever.
+  defp retake_or_wait(claim, repository, request, client) do
+    age = DateTime.diff(DateTime.utc_now(), claim.inserted_at, :second)
+
+    if age > @abandoned_after_seconds do
+      delete_claim(claim)
+      claim_and_create(repository, request, client)
+    else
+      {:error, :in_progress}
     end
   end
 
