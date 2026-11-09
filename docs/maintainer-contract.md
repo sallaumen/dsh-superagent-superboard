@@ -1278,8 +1278,8 @@ records are the `ai_calls` rows (the split) and the tasks with their
   completed sync. `Board.latest_sync/1` reads the latest outcome independently
   of the 20-event activity window. With no outcome, it says `no sync yet`.
 
-The header is the health line: if it says errors, open the activity panel,
-where each failing item is one row.
+The header is the health line: if it says errors, open Settings → System →
+Activity, where each failing item is one row and repeated errors are grouped.
 
 ## Throughput
 

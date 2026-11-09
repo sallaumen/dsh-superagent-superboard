@@ -19,6 +19,7 @@ defmodule AgentBoard.System.Version do
           available: String.t() | nil,
           behind: non_neg_integer() | nil,
           dirty: boolean(),
+          commits: [map()],
           state: :up_to_date | :behind | :restart | :ahead | :unknown
         }
 
@@ -76,11 +77,18 @@ defmodule AgentBoard.System.Version do
         {:error, _} -> nil
       end
 
+    commits =
+      case Git.commits(served, available) do
+        {:ok, commits} -> commits
+        {:error, _reason} -> []
+      end
+
     %{
       served: served,
       available: available,
       behind: behind,
       dirty: Git.dirty?(),
+      commits: commits,
       state: state(served, available, behind)
     }
   end

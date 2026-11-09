@@ -14,6 +14,7 @@ defmodule AgentBoard.System.VersionTest do
     status = Version.status()
     assert is_binary(status.served)
     assert is_boolean(status.dirty)
+    assert is_list(status.commits)
     assert status.state in [:up_to_date, :behind, :restart, :ahead, :unknown]
   end
 

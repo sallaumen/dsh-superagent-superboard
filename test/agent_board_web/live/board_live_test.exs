@@ -31,8 +31,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert html =~ "text-warning"
-    refute html =~ "text-error"
+    assert html =~ "is-stale"
+    refute html =~ "is-halt"
   end
 
   test "a per-item error event is shown as an error", %{conn: conn} do
@@ -42,7 +42,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert html =~ "text-error"
+    assert html =~ "is-halt"
+    assert html =~ "Erro ao ler #7"
+    assert html =~ "boom"
   end
 
   test "the sync detail says 1 erro, not 1 erros", %{conn: conn} do
@@ -615,8 +617,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     view |> element(".settings-nav__item[phx-value-section=system]") |> render_click()
 
     assert has_element?(view, ".settings-nav__item.is-current", "Sistema")
-    assert has_element?(view, "#version-panel", "rodando")
-    assert has_element?(view, "#version-panel button", "Verificar")
+    assert has_element?(view, "#version-title", "Não foi possível comparar com a main")
+    assert has_element?(view, "#version-check", "Verificar de novo")
   end
 
   test "work actions live in the top bar while settings holds preferences", %{
@@ -651,11 +653,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#board-settings-panel #open-ai")
 
     view |> element(".settings-nav__item[phx-value-section=system]") |> render_click()
-    assert has_element?(view, "#settings-activity-title")
-
-    view |> element("#open-activity") |> render_click()
-    assert_patch(view, "/?panel=activity&repo=fixture%2Fsettings")
-    assert has_element?(view, "#board-page[data-panel=activity]")
+    assert has_element?(view, "#settings-activity")
+    assert has_element?(view, "#settings-browser-title")
+    refute has_element?(view, "#open-activity")
   end
 
   test "new request opens in the composer and closes to the board", %{conn: conn} do
@@ -1204,8 +1204,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "errors: 2"
-    assert html =~ "text-error"
+    assert html =~ "Leitura teve 2 erros"
+    assert html =~ "is-halt"
   end
 
   test "the beacon shows the last sync and its errors", %{conn: conn} do
@@ -1225,8 +1225,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "Atividade"
-    assert html =~ "sync"
-    assert html =~ "pulls: 8"
+    assert html =~ "Leitura de sallaumen/arena-rogue"
+    assert html =~ "8 PRs"
   end
 
   test "repository form recovery does not close the current panel", %{conn: conn} do
@@ -1262,9 +1262,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#conversation")
     view |> element("#board-settings") |> render_click()
     view |> element(".settings-nav__item[phx-value-section=system]") |> render_click()
-    view |> element("#open-activity") |> render_click()
-    assert_patch(view, "/?panel=activity&repo=fixture%2Fpanels")
-    assert has_element?(view, "#board-page[data-panel=activity]")
+    assert has_element?(view, "#settings-activity")
+    refute has_element?(view, "#open-activity")
 
     render_patch(view, "/?repo=#{repo.owner}/#{repo.name}")
     assert has_element?(view, "#board-page[data-panel='']")

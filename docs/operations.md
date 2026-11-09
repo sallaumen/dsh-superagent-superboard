@@ -97,8 +97,8 @@ chooses another file (for example, in a worktree). The loader lives in
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `no sync yet` in the header | no sync outcome recorded | wait for the next sync and check the Activity |
-| `sync failed … · showing saved data` | the repository's last sync failed | open the Activity from the health row; `sync_error` names the cause |
+| `no sync yet` in the header | no sync outcome recorded | wait for the next sync and check Settings → System → Activity |
+| `sync failed … · showing saved data` | the repository's last sync failed | open Settings → System → Activity; `sync_error` names the cause |
 | a repo with Issues disabled | GitHub answers 404 | handled: issues are optional, PRs keep syncing |
 | `No task is running.` | the runner has no active ticket | not an error; it is the empty state |
 | every card says `no review` / `no ci` | the repo has no reviews or CI | correct, not a bug |

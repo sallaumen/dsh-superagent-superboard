@@ -40,6 +40,52 @@ defmodule AgentBoard.System.Git do
     end
   end
 
+  @doc """
+  The commits between two revisions, newest first, each with `sha`, `title`
+  and an optional pull request number. A missing revision is an empty list,
+  so a board that cannot fetch main still renders.
+  """
+  @spec commits(String.t() | nil, String.t() | nil, pos_integer()) ::
+          {:ok, [map()]} | {:error, term()}
+  def commits(from, to, limit \\ 10)
+  def commits(nil, _to, _limit), do: {:ok, []}
+  def commits(_from, nil, _limit), do: {:ok, []}
+  def commits(from, from, _limit), do: {:ok, []}
+
+  def commits(from, to, limit) when is_binary(from) and is_binary(to) do
+    with {:ok, output} <-
+           run([
+             "log",
+             "--max-count=#{limit}",
+             "--format=%h%x1f%s",
+             "#{from}..#{to}"
+           ]) do
+      commits =
+        output
+        |> String.split("\n", trim: true)
+        |> Enum.map(&parse_commit/1)
+
+      {:ok, commits}
+    end
+  end
+
+  @doc false
+  def parse_commit(line) do
+    case String.split(line, <<0x1F>>, parts: 2) do
+      [sha, title] ->
+        pr =
+          case Regex.run(~r/#(\d+)/, title) do
+            [_, number] -> String.to_integer(number)
+            _ -> nil
+          end
+
+        %{sha: sha, title: title, pr: pr}
+
+      _ ->
+        %{sha: String.slice(line, 0, 12), title: line, pr: nil}
+    end
+  end
+
   @doc "Whether the working tree has uncommitted changes."
   @spec dirty?() :: boolean()
   def dirty? do

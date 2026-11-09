@@ -18,6 +18,34 @@ defmodule AgentBoard.System.GitTest do
     assert is_boolean(Git.dirty?())
   end
 
+  test "commits between two revisions carry the sha and title" do
+    case Git.commits("HEAD~1", "HEAD") do
+      {:ok, [commit]} ->
+        assert commit.sha =~ ~r/^[0-9a-f]{7,}$/
+        assert is_binary(commit.title)
+
+      {:error, {128, _message}} ->
+        # A shallow CI checkout has no HEAD~1; the parser is covered below.
+        :ok
+
+      other ->
+        flunk("unexpected commits result: #{inspect(other)}")
+    end
+  end
+
+  test "parses a commit line and its optional pull request" do
+    line = "abc1234" <> <<0x1F>> <> "Call the agent on a split's tasks (#467)"
+
+    assert %{sha: "abc1234", title: "Call the agent on a split's tasks (#467)", pr: 467} =
+             Git.parse_commit(line)
+  end
+
+  test "a missing revision is an empty list, not a crash" do
+    assert {:ok, []} = Git.commits(nil, "HEAD")
+    assert {:ok, []} = Git.commits("HEAD", nil)
+    assert {:ok, []} = Git.commits("HEAD", "HEAD")
+  end
+
   test "an unknown command is an error, not a crash" do
     assert {:error, _} = Git.run(["not-a-git-command"])
   end
