@@ -140,7 +140,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings")
     view |> element(".settings-nav__item[phx-value-section=voice]") |> render_click()
 
-    view |> element("button", "Falar status") |> render_click()
+    view |> element("#speak-status") |> render_click()
 
     assert_push_event(view, "speak", %{text: text})
     assert is_binary(text)
@@ -1322,7 +1322,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/?panel=settings")
     view |> element(".settings-nav__item[phx-value-section=voice]") |> render_click()
 
-    view |> element("button", "Falar status") |> render_click()
+    view |> element("#speak-status") |> render_click()
 
     assert_push_event(view, "speak", %{text: text, lang: "pt-BR"})
     assert String.length(text) > 10
