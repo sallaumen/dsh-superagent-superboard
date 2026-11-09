@@ -69,7 +69,8 @@ defmodule AgentBoard.System.Git do
     end
   end
 
-  defp parse_commit(line) do
+  @doc false
+  def parse_commit(line) do
     case String.split(line, <<0x1F>>, parts: 2) do
       [sha, title] ->
         pr =
