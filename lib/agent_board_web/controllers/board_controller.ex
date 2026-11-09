@@ -36,7 +36,8 @@ defmodule AgentBoardWeb.BoardController do
 
   def repos(conn, _params), do: json(conn, Board.list_repositories())
 
-  def add_repo(conn, %{"owner" => owner, "name" => name}) do
+  def add_repo(conn, %{"owner" => owner, "name" => name})
+      when is_binary(owner) and is_binary(name) do
     case Actions.run(:add_repository, %{owner: owner, name: name}, api()) do
       {:ok, repo} ->
         conn |> put_status(201) |> json(%{id: repo.id, owner: repo.owner, name: repo.name})
@@ -46,8 +47,10 @@ defmodule AgentBoardWeb.BoardController do
     end
   end
 
-  def create_task(conn, %{"repo" => slug, "title" => title} = params) do
-    with [owner, name] <- String.split(slug, "/", parts: 2),
+  def create_task(conn, %{"repo" => slug, "title" => title} = params)
+      when is_binary(slug) and is_binary(title) do
+    with true <- is_nil(params["body"]) or is_binary(params["body"]),
+         [owner, name] <- String.split(slug, "/", parts: 2),
          repo when not is_nil(repo) <- Board.find_repository(owner, name),
          true <- String.trim(title) != "",
          true <- params["executor"] in [nil, "" | Executors.all()] do
@@ -57,7 +60,7 @@ defmodule AgentBoardWeb.BoardController do
       request = Routing.plan(repo, request, params["executor"], "api", Routing.Signals.read())
       action = %{repository: repo, requests: [request], client: client()}
 
-      case Actions.run(:create_tasks, action, api(), confirm: params["confirm"]) do
+      case Actions.run(:create_tasks, action, api(), confirm: confirmation(params)) do
         {:ok, [{_request, {:ok, task, outcome}}]} ->
           created(conn, task, outcome)
 
@@ -87,7 +90,7 @@ defmodule AgentBoardWeb.BoardController do
     result =
       case {Map.get(@task_actions, action), task} do
         {name, %Task{}} when not is_nil(name) ->
-          Actions.run(name, %{task: task, client: client()}, api(), confirm: params["confirm"])
+          Actions.run(name, %{task: task, client: client()}, api(), confirm: confirmation(params))
 
         _ ->
           {:error, :not_found}
@@ -122,6 +125,9 @@ defmodule AgentBoardWeb.BoardController do
       confirm: phrase
     })
   end
+
+  defp confirmation(%{"confirm" => sentence}) when is_binary(sentence), do: sentence
+  defp confirmation(_params), do: nil
 
   defp describe(%{__exception__: true} = exception), do: Exception.message(exception)
   defp describe(%Ecto.Changeset{errors: errors}), do: inspect(errors)

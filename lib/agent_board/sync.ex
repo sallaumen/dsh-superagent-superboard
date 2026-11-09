@@ -199,6 +199,10 @@ defmodule AgentBoard.Sync do
     count
   end
 
+  # GitHub takes 256 characters and the columns hold 255.
+  defp title(nil), do: nil
+  defp title(text), do: String.slice(text, 0, 255)
+
   defp first_line(nil), do: nil
 
   defp first_line(message) do
@@ -291,7 +295,7 @@ defmodule AgentBoard.Sync do
 
     %Task{repository_id: repository.id, kind: "issue", number: issue["number"]}
     |> Task.changeset(%{
-      title: issue["title"],
+      title: title(issue["title"]),
       body: String.slice(issue["body"] || "", 0, 4000),
       state: if(closed, do: "done", else: "queued"),
       state_changed_at: DateTime.utc_now(),
@@ -329,7 +333,7 @@ defmodule AgentBoard.Sync do
 
     %PullRequest{repository_id: repository.id, number: pull["number"]}
     |> PullRequest.changeset(%{
-      title: pull["title"],
+      title: title(pull["title"]),
       state: state,
       url: pull["html_url"],
       author: get_in(pull, ["user", "login"]),

@@ -173,4 +173,24 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     assert html =~ "Nenhum superagente registrado"
   end
+
+  test "a control for a superagent removed elsewhere says so and keeps the socket", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "gone")
+    superagent = superagent!(repo, %{observed_state: "ready"})
+    {:ok, view, _html} = live(conn, "/?repo=fixture/gone&panel=superagents")
+
+    Repo.delete!(superagent)
+
+    assert render_hook(view, "superagent_command", %{
+             "id" => to_string(superagent.id),
+             "action" => "pause"
+           }) =~ "não está mais no board"
+
+    assert render_hook(view, "superagent_scale", %{
+             "id" => to_string(superagent.id),
+             "delta" => "1"
+           }) =~ "não está mais no board"
+
+    assert Process.alive?(view.pid)
+  end
 end

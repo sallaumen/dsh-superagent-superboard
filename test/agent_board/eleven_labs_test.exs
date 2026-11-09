@@ -352,4 +352,23 @@ defmodule AgentBoard.ElevenLabsTest do
 
     assert Agent.get(counter, & &1) == 1
   end
+
+  test "a refused stream logs the provider's code, not its message" do
+    Req.Test.stub(@stub, fn conn ->
+      conn
+      |> Plug.Conn.put_status(400)
+      |> Req.Test.json(%{
+        "detail" => %{"status" => "invalid_voice_settings", "message" => "segredo do texto"}
+      })
+    end)
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert {:error, {:http, 400}} =
+                 ElevenLabs.speech_stream("olá", [], fn _chunk -> :ok end)
+      end)
+
+    assert log =~ "elevenlabs stream status=400 code=invalid_voice_settings"
+    refute log =~ "segredo do texto"
+  end
 end

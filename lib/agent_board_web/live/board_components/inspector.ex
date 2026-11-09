@@ -437,6 +437,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         <form
           :if={!(@ask_pending && @ask_pending.task_id == @task.id)}
           id="ask-agent"
+          phx-change="ask_change"
           phx-submit="ask"
         >
           <div class="ab-compose ab-compose--inline">
@@ -444,6 +445,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               id="ask-body"
               name="body"
               rows="2"
+              phx-debounce="300"
               aria-label="Mensagem para o agente"
               placeholder="Responder ao agente…"
               required

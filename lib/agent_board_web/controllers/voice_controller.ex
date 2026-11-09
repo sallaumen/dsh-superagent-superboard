@@ -97,8 +97,14 @@ defmodule AgentBoardWeb.VoiceController do
   # a yellow action of the registry (`AgentBoard.Actions`), by the API.
   defp put_pref(params, key, value_of) do
     case Map.fetch(params, key) do
-      {:ok, value} -> save(key, value_of.(value))
-      :error -> :ok
+      {:ok, value} when is_binary(value) or is_number(value) or is_boolean(value) ->
+        save(key, value_of.(value))
+
+      {:ok, _other_shape} ->
+        {:error, :invalid_setting}
+
+      :error ->
+        :ok
     end
   end
 
@@ -378,6 +384,7 @@ defmodule AgentBoardWeb.VoiceController do
     do: {400, "the style must be steady, natural or expressive"}
 
   defp status_and_message(:invalid_pause), do: {400, "the pause must be short, normal or long"}
+  defp status_and_message(:invalid_setting), do: {400, "a setting must be text or a number"}
   defp status_and_message(:auth_expired), do: {401, "ElevenLabs rejected the key"}
   defp status_and_message(:usage_limit), do: {429, "ElevenLabs usage limit reached"}
   defp status_and_message({:http, status}), do: {502, "ElevenLabs HTTP #{status}"}

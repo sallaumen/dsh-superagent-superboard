@@ -657,4 +657,23 @@ defmodule AgentBoard.SyncRepoTest do
     assert %AgentBoard.Board.PullRequest{number: 9} =
              Repo.one(from p in AgentBoard.Board.PullRequest, where: p.number == 9)
   end
+
+  test "a title of GitHub's full 256 characters does not fail the sync", %{repo: repo} do
+    title = String.duplicate("a", 256)
+
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Req.Test.json(conn, [issue(11, "open") |> Map.put("title", title)])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    Sync.sync_repo(client(), repo)
+
+    assert Repo.one(from t in Task, where: t.number == 11, select: t.title) ==
+             String.duplicate("a", 255)
+  end
 end
