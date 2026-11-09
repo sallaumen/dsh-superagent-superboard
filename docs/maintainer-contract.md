@@ -17,7 +17,7 @@ differ. Change a general rule upstream, not here.
 | `AgentBoard.Board` | the context: repositories, tasks, comments, events, broadcast |
 | `AgentBoard.Sync` | the GitHub sync: issues, pulls, reviews, checks, comments |
 | `AgentBoard.Sync.Worker` | the Oban job that runs the sync |
-| `AgentBoard.Live` | the 10s poller that reads the runner's tickets |
+| `AgentBoard.TicketPoller` | the 10s poller that reads the runner's tickets |
 | `AgentBoard.GitHub` | the HTTP client (`body!/1`, rate limits) |
 | `AgentBoard.Orchestrator` | the runner's HTTP API: the load (`running`, `queued`, `maxWorkers`) and its two writes, `retry/2` and `set_max_workers/2` |
 | `AgentBoard.AgentFailure` | what a `failed` report means: transient (network, provider) or a person's, pure |
@@ -208,10 +208,10 @@ that already worked).
 - The sync (the Oban `Sync.Worker`, every five minutes) and every task action call
   `Board.broadcast/1`; the LiveView subscribes with `Board.subscribe/1` and
   reloads on `:board_updated`.
-- `AgentBoard.Live` polls the agent's tickets every 10s and broadcasts only
+- `AgentBoard.TicketPoller` polls the agent's tickets every 10s and broadcasts only
   when their hash changed — the runner state reaches the board without waiting
   for the sync. It is idempotent: the same tickets never broadcast twice
-  (`live_test.exs`). The interval is the `:live_poll_interval` knob; the test
+  (`ticket_poller_test.exs`). The interval is the `:ticket_poll_interval` knob; the test
   environment stretches it to an hour so the supervised poller never ticks
   into the sandboxed database mid-suite.
 - Never poll the database from the browser; push.

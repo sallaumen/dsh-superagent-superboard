@@ -34,7 +34,7 @@ defmodule AgentBoard.Announcer do
   Options: `:language` (default `Phrases.default_language/0`), `:turn`
   (rotates the phrase pools, default 0), `:attention` and `:events`
   (booleans, default true) to silence either kind, and `:needs` (`{old,
-  new}` attention lists from `Work.needs/3`) for the silences.
+  new}` attention lists from `Lanes.needs/3`) for the silences.
   """
   def board_changes(old_board, new_board, old_sync, new_sync, opts \\ []) do
     lang = Keyword.get(opts, :language, Phrases.default_language())

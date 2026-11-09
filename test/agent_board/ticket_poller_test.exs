@@ -1,5 +1,5 @@
-defmodule AgentBoard.LiveTest do
-  @moduledoc "The live poller: the ticket overlay in real time."
+defmodule AgentBoard.TicketPollerTest do
+  @moduledoc "The ticket poller: the overlay in real time."
   use AgentBoard.DataCase, async: false
 
   alias AgentBoard.{Board, Repo}
@@ -69,7 +69,7 @@ defmodule AgentBoard.LiveTest do
     :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @running <> "')")
 
     Board.subscribe(repo.id)
-    AgentBoard.Live.poll(%{})
+    AgentBoard.TicketPoller.poll(%{})
 
     assert_receive :board_updated
     assert Repo.get(Task, t.id).state == "running"
@@ -82,10 +82,10 @@ defmodule AgentBoard.LiveTest do
 
     Board.subscribe(repo.id)
 
-    state = AgentBoard.Live.poll(%{})
+    state = AgentBoard.TicketPoller.poll(%{})
     assert_receive :board_updated
 
-    _state = AgentBoard.Live.poll(state)
+    _state = AgentBoard.TicketPoller.poll(state)
     refute_receive :board_updated, 150
   end
 
@@ -95,7 +95,7 @@ defmodule AgentBoard.LiveTest do
 
     :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @stopped <> "')")
 
-    AgentBoard.Live.poll(%{})
+    AgentBoard.TicketPoller.poll(%{})
 
     assert Repo.get(Task, t.id).state == "queued"
   end
@@ -107,7 +107,7 @@ defmodule AgentBoard.LiveTest do
 
     :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @running <> "')")
 
-    AgentBoard.Live.poll(%{})
+    AgentBoard.TicketPoller.poll(%{})
 
     assert Repo.get(Task, t.id).state == "done"
   end
@@ -122,7 +122,7 @@ defmodule AgentBoard.LiveTest do
     :ok =
       Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @waiting_pr <> "')")
 
-    AgentBoard.Live.poll(%{})
+    AgentBoard.TicketPoller.poll(%{})
 
     assert Repo.get(Task, t.id).state == "ready"
   end
@@ -136,7 +136,7 @@ defmodule AgentBoard.LiveTest do
     :ok =
       Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @merged_stale <> "')")
 
-    AgentBoard.Live.poll(%{})
+    AgentBoard.TicketPoller.poll(%{})
 
     assert Repo.get(Task, t.id).state == "done"
   end
@@ -151,7 +151,7 @@ defmodule AgentBoard.LiveTest do
         "insert into ticket (value) values ('" <> @waiting_quiet <> "')"
       )
 
-    AgentBoard.Live.poll(%{})
+    AgentBoard.TicketPoller.poll(%{})
 
     assert Repo.get(Task, t.id).state == "blocked"
   end
@@ -173,17 +173,17 @@ defmodule AgentBoard.LiveTest do
     :ok =
       Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @waiting_pr <> "')")
 
-    AgentBoard.Live.poll(%{})
+    AgentBoard.TicketPoller.poll(%{})
 
     assert Repo.get(Task, t.id).state == "question"
   end
 
   test "the poller schedules the next tick", %{db: _db} do
-    previous = Application.get_env(:agent_board, :live_poll_interval)
-    Application.put_env(:agent_board, :live_poll_interval, 10)
-    on_exit(fn -> Application.put_env(:agent_board, :live_poll_interval, previous) end)
+    previous = Application.get_env(:agent_board, :ticket_poll_interval)
+    Application.put_env(:agent_board, :ticket_poll_interval, 10)
+    on_exit(fn -> Application.put_env(:agent_board, :ticket_poll_interval, previous) end)
 
-    state = AgentBoard.Live.handle_info(:poll, %{})
+    state = AgentBoard.TicketPoller.handle_info(:poll, %{})
 
     assert {:noreply, %{}} = state
     assert_receive :poll, 11_000
@@ -196,7 +196,7 @@ defmodule AgentBoard.LiveTest do
 
     repo = isolated_repo()
 
-    assert is_map(AgentBoard.Live.poll(%{}))
+    assert is_map(AgentBoard.TicketPoller.poll(%{}))
     assert Repo.get_by(Task, repository_id: repo.id) == nil
   end
 end

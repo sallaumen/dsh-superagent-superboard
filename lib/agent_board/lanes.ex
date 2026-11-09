@@ -1,4 +1,4 @@
-defmodule AgentBoard.Work do
+defmodule AgentBoard.Lanes do
   @moduledoc """
   The board's reading lanes, built only from rows the board observed.
 
