@@ -8,6 +8,12 @@ defmodule AgentBoardWeb.UpdateFlowTest do
 
   defmodule UpdaterStub do
     def pull, do: Application.get_env(:agent_board, :updater_result)
+
+    def prepare do
+      send(Application.get_env(:agent_board, :updater_test_pid), :prepare_called)
+      Application.get_env(:agent_board, :updater_prepare_result, :ok)
+    end
+
     def restart, do: send(Application.get_env(:agent_board, :updater_test_pid), :restart_called)
   end
 
@@ -15,6 +21,7 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     previous = Application.get_env(:agent_board, :updater)
     previous_delay = Application.get_env(:agent_board, :update_restart_delay_ms)
     previous_result = Application.get_env(:agent_board, :updater_result)
+    previous_prepare = Application.get_env(:agent_board, :updater_prepare_result)
     previous_stopper = Application.get_env(:agent_board, :board_stopper)
     test_pid = self()
 
@@ -27,6 +34,7 @@ defmodule AgentBoardWeb.UpdateFlowTest do
       restore(:updater, previous)
       restore(:update_restart_delay_ms, previous_delay)
       restore(:updater_result, previous_result)
+      restore(:updater_prepare_result, previous_prepare)
       restore(:board_stopper, previous_stopper)
       Application.delete_env(:agent_board, :updater_test_pid)
     end)
@@ -43,9 +51,25 @@ defmodule AgentBoardWeb.UpdateFlowTest do
 
     assert html =~ "Atualizado para abc123"
     assert html =~ "reiniciando o servidor"
+    assert_received :prepare_called
     assert_received :restart_called
     assert_received :stopped
     refute html =~ "Já está em dia"
+  end
+
+  test "a dependency failure keeps the old board up", %{conn: conn} do
+    Application.put_env(:agent_board, :updater_result, {:ok, "abc123"})
+    Application.put_env(:agent_board, :updater_prepare_result, {:error, {:mix, 1, "hex down"}})
+    {:ok, _} = Board.add_repository("fixture", "update-prepare-failed")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/update-prepare-failed")
+
+    html = render_hook(view, "update", %{})
+
+    assert html =~ "preparo das dependências falhou"
+    assert html =~ "O board continua no código antigo"
+    refute html =~ "reiniciando o servidor"
+    refute_received :restart_called
+    refute_received :stopped
   end
 
   test "a failed update does not pretend to restart", %{conn: conn} do
