@@ -58,9 +58,10 @@ defmodule AgentBoard.Intake do
   defp normalize(:refine_request, _other), do: %{}
 
   defp normalize(:propose_tasks, %{"tasks" => tasks}) when is_list(tasks) do
-    tasks
-    |> Enum.reject(&incomplete?/1)
-    |> Enum.map(&normalize_task/1)
+    kept = tasks |> Enum.with_index() |> Enum.reject(fn {task, _at} -> incomplete?(task) end)
+    positions = kept |> Enum.with_index() |> Map.new(fn {{_task, at}, new} -> {at, new} end)
+
+    Enum.map(kept, fn {task, at} -> normalize_task(task, dependencies(task, at, positions)) end)
   end
 
   defp normalize(:propose_tasks, _other), do: []
@@ -74,14 +75,24 @@ defmodule AgentBoard.Intake do
   # The kind and the size are the model's classification. The registry's
   # schema already refused an answer outside `Task.work_types/0` and
   # `Task.sizes/0`, so they are taken as given, never defaulted.
-  defp normalize_task(task) do
+  defp normalize_task(task, depends_on) do
     %{
       title: task["title"],
       body: task["body"],
       kind: task["kind"],
       acceptance: task["acceptance"] || [],
-      depends_on: task["depends_on"] || [],
+      depends_on: depends_on,
       size: task["size"]
     }
+  end
+
+  # `depends_on` indexes the list the model wrote, so a dropped task moves
+  # the positions after it. A task that is not in the list any more, or that
+  # names itself, is no dependency.
+  defp dependencies(task, at, positions) do
+    (task["depends_on"] || [])
+    |> Enum.reject(&(&1 == at))
+    |> Enum.flat_map(fn index -> positions |> Map.take([index]) |> Map.values() end)
+    |> Enum.uniq()
   end
 end

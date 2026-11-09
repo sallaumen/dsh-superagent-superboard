@@ -112,6 +112,23 @@ defmodule AgentBoard.SyncRepoTest do
     assert stored.head_sha == "abc"
   end
 
+  test "a long issue body reaches the board whole", %{repo: repo} do
+    long = String.duplicate("descrição ", 900)
+
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Req.Test.json(conn, [Map.put(issue(7, "open"), "body", long)])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert Repo.one(Task).body == long
+  end
+
   test "the sync stores the PR's branch and the issues its body closes", %{repo: repo} do
     pull = fn number, head, body ->
       %{

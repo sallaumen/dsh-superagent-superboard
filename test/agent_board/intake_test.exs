@@ -57,6 +57,34 @@ defmodule AgentBoard.IntakeTest do
     assert task.acceptance == ["p95 < 200ms"]
   end
 
+  test "dropping a task keeps every dependency pointing at the same task" do
+    tasks = """
+    {"tasks":[
+      {"title":"","body":"sem titulo","kind":"bug","acceptance":[],"depends_on":[],"size":"M"},
+      {"title":"medir","body":"mede","kind":"bug","acceptance":["a"],"depends_on":[],"size":"S"},
+      {"title":"corrigir","body":"corrige","kind":"bug","acceptance":["b"],"depends_on":[0,1],"size":"S"}
+    ]}
+    """
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(tasks)) end)
+
+    assert {:ok, [%{depends_on: []}, %{title: "corrigir", depends_on: [0]}]} =
+             Intake.propose(%{"goal" => "x"})
+  end
+
+  test "a dependency on itself or outside the list is not a dependency" do
+    tasks = """
+    {"tasks":[
+      {"title":"medir","body":"mede","kind":"bug","acceptance":["a"],"depends_on":[0,7,-1],"size":"S"},
+      {"title":"corrigir","body":"corrige","kind":"bug","acceptance":["b"],"depends_on":[0,0],"size":"S"}
+    ]}
+    """
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(tasks)) end)
+
+    assert {:ok, [%{depends_on: []}, %{depends_on: [0]}]} = Intake.propose(%{"goal" => "x"})
+  end
+
   test "propose keeps the split's kind of work and size" do
     tasks = """
     {"tasks":[

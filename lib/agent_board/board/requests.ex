@@ -17,6 +17,7 @@ defmodule AgentBoard.Board.Requests do
 
   alias AgentBoard.{Board, Executors, Repo, Routing}
   alias AgentBoard.Board.{Repository, Task}
+  alias AgentBoard.Intake.IssueBody
 
   # The column holds 255; past that Postgres raises instead of refusing, and
   # GitHub stops at 256. A title comes from a person or a model.
@@ -138,6 +139,64 @@ defmodule AgentBoard.Board.Requests do
 
   def create_request(repository, request, client),
     do: do_create_request(repository, request, client)
+
+  @doc """
+  Creates requests that may depend on each other, in the order they were given
+  back to the caller.
+
+  `depends_on` names other requests by key. A request is opened after the ones
+  it depends on and its body names their numbers. If one of them failed the
+  request answers `{:error, :dependency_failed}` and opens nothing: an issue
+  created now could never name its blocker, and a retry opens it with the link.
+  A cycle from the model is broken in list order, naming only what already has
+  a number.
+  """
+  @spec create_requests(Repository.t(), [map()], term()) ::
+          [{map(), {:ok, Task.t(), :created | :existing} | {:error, term()}}]
+  def create_requests(repository, requests, client) do
+    {created, _numbers} =
+      requests
+      |> Enum.with_index()
+      |> dependency_order()
+      |> Enum.map_reduce(%{}, fn {request, position}, numbers ->
+        result = create_after_blockers(repository, request, numbers, client)
+        {{position, {request, result}}, remember(numbers, request.key, result)}
+      end)
+
+    created |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))
+  end
+
+  defp dependency_order([]), do: []
+
+  defp dependency_order([first | _] = pending) do
+    waiting = MapSet.new(pending, fn {request, _position} -> request.key end)
+
+    next =
+      Enum.find(pending, first, fn {request, _position} ->
+        not Enum.any?(depends_on(request), &MapSet.member?(waiting, &1))
+      end)
+
+    [next | dependency_order(List.delete(pending, next))]
+  end
+
+  defp create_after_blockers(repository, request, numbers, client) do
+    blockers = request |> depends_on() |> Enum.flat_map(&List.wrap(numbers[&1]))
+
+    if :failed in blockers do
+      {:error, :dependency_failed}
+    else
+      language = Map.get(request, :language)
+      body = IssueBody.with_dependencies(request.body, blockers, language)
+      create_request(repository, %{request | body: body}, client)
+    end
+  end
+
+  defp remember(numbers, key, {:ok, %Task{number: number}, _outcome}),
+    do: Map.put(numbers, key, number)
+
+  defp remember(numbers, key, _failure), do: Map.put(numbers, key, :failed)
+
+  defp depends_on(request), do: Map.get(request, :depends_on, [])
 
   defp do_create_request(repository, %{title: title, body: body, key: key} = request, client) do
     title = clip_title(title)

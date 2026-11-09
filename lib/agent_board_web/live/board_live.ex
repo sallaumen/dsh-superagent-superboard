@@ -36,6 +36,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   alias AgentBoard.Board.Task
   alias AgentBoard.Freshness
+  alias AgentBoard.Intake.IssueBody
   alias AgentBoard.Metrics.Observations
   alias AgentBoard.Routing
   alias AgentBoard.Routing.Signals
@@ -2173,7 +2174,10 @@ defmodule AgentBoardWeb.BoardLive do
          %{text: request_text, repo_id: ^repo_id} <- socket.assigns.intake_draft,
          true <- request_text == intake.text,
          task when not is_nil(task) <- Enum.at(intake.tasks, position),
-         action = %{repository: repo, requests: [intake_request(repo, request_text, task)]},
+         action = %{
+           repository: repo,
+           requests: [intake_request(repo, request_text, task, intake.spec)]
+         },
          {:ok, [{_request, {:ok, _task, _outcome}}]} <-
            Actions.run(:create_tasks, action, ui(), confirm: params["confirm"]) do
       {:noreply, put_flash(socket, :info, "Task created: #{task.title}")}
@@ -2883,34 +2887,25 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   # The sentence on each Create button of the intake panel (data-confirm).
-  defp intake_phrases(%{} = repo, %{status: :ready, text: text, tasks: tasks}),
+  defp intake_phrases(%{} = repo, %{status: :ready, text: text, tasks: tasks, spec: spec}),
     do:
       Enum.map(tasks, fn task ->
         Actions.phrase(:create_tasks, %{
           repository: repo,
-          requests: [intake_request(repo, text, task)]
+          requests: [intake_request(repo, text, task, spec)]
         })
       end)
 
   defp intake_phrases(_repo, _intake), do: []
 
-  defp intake_request(repo, text, task),
+  defp intake_request(repo, text, task, spec),
     do: %{
       title: task.title,
-      body: intake_body(task),
+      body: IssueBody.render(task, spec),
       key: Board.request_key(repo, "intake", [text, task.title]),
       work_type: task.kind,
       size: task.size
     }
-
-  defp intake_body(task) do
-    """
-    #{task.body}
-
-    ## Acceptance
-    #{Enum.map_join(task.acceptance, "\n", &"- #{&1}")}
-    """
-  end
 
   @impl true
   def render(assigns) do
@@ -3650,10 +3645,10 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp submit_split(socket, text, params, shown) do
     case socket.assigns.intake do
-      %{status: :ready, text: ^text, tasks: tasks} when tasks != [] ->
+      %{status: :ready, text: ^text, tasks: tasks, spec: spec} when tasks != [] ->
         requests =
           socket.assigns.repo
-          |> split_requests(text, tasks, selected_from(params, socket))
+          |> split_requests(text, spec, tasks, selected_from(params, socket))
           |> for_executor(socket.assigns)
 
         start_enqueue(socket, requests, shown)
@@ -3699,17 +3694,25 @@ defmodule AgentBoardWeb.BoardLive do
     MapSet.new(for value <- values, {index, ""} <- [Integer.parse(value)], do: index)
   end
 
-  defp split_requests(repo, text, tasks, selected) do
+  # A dependency names its request by key: the positions change when the
+  # owner leaves a task out. A blocker that was left out is no dependency.
+  defp split_requests(repo, text, spec, tasks, selected) do
+    key = fn task -> Board.request_key(repo, "split", [text, task.title]) end
+
     tasks
     |> Enum.with_index()
     |> Enum.filter(fn {_task, index} -> MapSet.member?(selected, index) end)
     |> Enum.map(fn {task, _index} ->
+      chosen = Enum.filter(task.depends_on, &MapSet.member?(selected, &1))
+
       %{
         title: task.title,
-        body: intake_body(task) <> "\n\n@sallaumen-agent",
-        key: Board.request_key(repo, "split", [text, task.title]),
+        body: IssueBody.render(task, spec) <> "\n\n@sallaumen-agent",
+        key: key.(task),
         work_type: task.kind,
-        size: task.size
+        size: task.size,
+        language: spec["language"],
+        depends_on: Enum.map(chosen, &key.(Enum.at(tasks, &1)))
       }
     end)
   end
@@ -3848,8 +3851,8 @@ defmodule AgentBoardWeb.BoardLive do
 
         true ->
           case intake do
-            %{status: :ready, text: ^text, tasks: [_ | _] = tasks} ->
-              split_requests(repo, text, tasks, selected)
+            %{status: :ready, text: ^text, tasks: [_ | _] = tasks, spec: spec} ->
+              split_requests(repo, text, spec, tasks, selected)
 
             %{status: :no_tasks} ->
               single_requests(repo, text, title)
@@ -3953,7 +3956,7 @@ defmodule AgentBoardWeb.BoardLive do
     %{ref: ref, kind: kind, payload: payload, total: total}
   end
 
-  defp composer_timeout, do: Application.get_env(:agent_board, :composer_timeout_ms, 60_000)
+  defp composer_timeout, do: Application.get_env(:agent_board, :composer_timeout_ms, 120_000)
 
   defp finish_composer_job(socket, _job, {:ok, {:split, text, {:ok, result}}}) do
     socket
