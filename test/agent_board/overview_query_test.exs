@@ -1,4 +1,4 @@
-defmodule AgentBoard.RepoOverviewQueryTest do
+defmodule AgentBoard.OverviewQueryTest do
   @moduledoc """
   The Hoje overview must not issue one pull-request query per ready task.
   The query count is the contract: 12 ready tasks with linked merged PRs
@@ -6,7 +6,7 @@ defmodule AgentBoard.RepoOverviewQueryTest do
   """
   use AgentBoard.DataCase, async: false
 
-  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.{Board, Overview, Repo}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   test "ready tasks do not add one PR query each" do
@@ -54,7 +54,7 @@ defmodule AgentBoard.RepoOverviewQueryTest do
 
     on_exit(fn -> :telemetry.detach(id) end)
 
-    result = Board.repo_overview()
+    result = Overview.repo_overview()
     queries = drain(0)
     :telemetry.detach(id)
 

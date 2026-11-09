@@ -4,7 +4,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
   com o repositório em cada item, o que está rodando e o gasto do dia em cada
   moeda (`docs/research/alfred.md`, 3.4 e F2.1).
 
-  A leitura vem de `Board.today/0` e `Usage.Report.today/0`, calculadas na
+  A leitura vem de `Overview.today/0` e `Usage.Report.today/0`, calculadas na
   mesma carga do board; o componente não consulta o banco. Dado que chega não
   anima (`docs/ui-motion.md`).
   """

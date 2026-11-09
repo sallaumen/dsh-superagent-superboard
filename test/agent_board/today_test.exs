@@ -2,7 +2,7 @@ defmodule AgentBoard.TodayTest do
   @moduledoc "A leitura da visão Hoje: os dois repositórios numa lista só, com o repositório em cada item."
   use AgentBoard.DataCase, async: true
 
-  alias AgentBoard.{Board, Repo}
+  alias AgentBoard.{Board, Overview, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
 
   defp task(repo, number, state, attrs \\ %{}) do
@@ -33,7 +33,7 @@ defmodule AgentBoard.TodayTest do
     _stopped = task(arena, 5, "blocked", %{stopped: true})
     _archived = task(colmex, 6, "blocked", %{archived: true})
 
-    today = Board.today()
+    today = Overview.today()
 
     assert Enum.map(today.needs, & &1.id) == [blocked.id, question.id, ready.id]
 
@@ -62,7 +62,7 @@ defmodule AgentBoard.TodayTest do
     })
     |> Repo.insert!()
 
-    assert Board.today().needs == []
+    assert Overview.today().needs == []
     assert Repo.get!(Task, task.id).state == "ready"
   end
 
@@ -71,7 +71,7 @@ defmodule AgentBoard.TodayTest do
     task(repo, 8, "question")
     task(repo, 9, "blocked")
 
-    today = Board.today()
+    today = Overview.today()
     overview = Map.fetch!(today.repos, repo.id)
 
     assert overview.name == "fixture/rail"
