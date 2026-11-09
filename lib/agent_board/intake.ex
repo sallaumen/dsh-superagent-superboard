@@ -14,12 +14,14 @@ defmodule AgentBoard.Intake do
   @type task :: map()
 
   @doc "Refines a rough request into a specification."
-  @spec refine(String.t()) :: {:ok, spec()} | {:error, term()}
-  def refine(text), do: call(:refine_request, %{text: text}, :refine_request)
+  @spec refine(String.t(), String.t() | nil) :: {:ok, spec()} | {:error, term()}
+  def refine(text, digest \\ nil),
+    do: call(:refine_request, with_digest(%{text: text}, digest), :refine_request)
 
   @doc "Splits a specification into tasks."
-  @spec propose(spec()) :: {:ok, [task()]} | {:error, term()}
-  def propose(spec), do: call(:propose_tasks, %{spec: spec}, :propose_tasks)
+  @spec propose(spec(), String.t() | nil) :: {:ok, [task()]} | {:error, term()}
+  def propose(spec, digest \\ nil),
+    do: call(:propose_tasks, with_digest(%{spec: spec}, digest), :propose_tasks)
 
   @doc """
   The whole intake: refine, then split -- unless the spec still has open
@@ -29,26 +31,30 @@ defmodule AgentBoard.Intake do
   turns an unclear request into confident, wrong work. When the model could
   not pin the request down, the result is the questions and no tasks.
   """
-  @spec run(String.t()) ::
+  @spec run(String.t(), String.t() | nil) ::
           {:ok,
            %{spec: spec(), tasks: [task()], status: :ready | :needs_clarification | :no_tasks}}
           | {:error, term()}
-  def run(text) do
-    with {:ok, spec} <- refine(text) do
-      maybe_propose(spec)
+  def run(text, digest \\ nil) do
+    with {:ok, spec} <- refine(text, digest) do
+      maybe_propose(spec, digest)
     end
   end
 
-  defp maybe_propose(%{"blocking_questions" => [_ | _]} = spec), do: needs_clarification(spec)
+  defp with_digest(inputs, nil), do: inputs
+  defp with_digest(inputs, digest), do: Map.put(inputs, :repository, digest)
 
-  defp maybe_propose(%{"ready" => true} = spec) do
-    with {:ok, tasks} <- propose(spec) do
+  defp maybe_propose(%{"blocking_questions" => [_ | _]} = spec, _digest),
+    do: needs_clarification(spec)
+
+  defp maybe_propose(%{"ready" => true} = spec, digest) do
+    with {:ok, tasks} <- propose(spec, digest) do
       status = if tasks == [], do: :no_tasks, else: :ready
       {:ok, %{spec: spec, tasks: tasks, status: status}}
     end
   end
 
-  defp maybe_propose(spec), do: needs_clarification(spec)
+  defp maybe_propose(spec, _digest), do: needs_clarification(spec)
 
   defp needs_clarification(spec),
     do: {:ok, %{spec: spec, tasks: [], status: :needs_clarification}}

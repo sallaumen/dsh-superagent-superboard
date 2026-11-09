@@ -232,6 +232,24 @@ defmodule AgentBoard.GitHub do
     {body!(response), next_page?(response)}
   end
 
+  @doc "Every entry of the default branch's tree, with its `path` and `type`."
+  def tree(client, owner, repo) do
+    client
+    |> Req.get!(url: "/repos/#{owner}/#{repo}/git/trees/HEAD", params: [recursive: 1])
+    |> body!()
+    |> Map.get("tree", [])
+  end
+
+  @doc "The text of a file on the default branch."
+  def file_text(client, owner, repo, path) do
+    client
+    |> Req.get!(url: "/repos/#{owner}/#{repo}/contents/#{path}")
+    |> body!()
+    |> Map.fetch!("content")
+    |> String.replace("\n", "")
+    |> Base.decode64!()
+  end
+
   @doc "Comment on an issue."
   def create_comment(client, owner, repo, number, body) do
     client

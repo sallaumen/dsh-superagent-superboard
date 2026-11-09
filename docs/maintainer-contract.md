@@ -1174,6 +1174,10 @@ records are the `ai_calls` rows (the split) and the tasks with their
   opens it with the link. A blocker left out in the review is no dependency; a
   cycle is broken in list order. This orders the **creation** only: the mention
   still starts every task at once.
+- **The split reads the repository** (`AgentBoard.Intake.RepoDigest`): the
+  code paths and `AGENTS.md`, `CLAUDE.md` and `README.md` of the default
+  branch, bounded, go to the refine and the split as data. It is help, never
+  a gate: a repository the board cannot read splits on the words alone.
 - **The review is the last word.** Each proposed task shows its dependencies
   and opens to edit title, description and acceptance; a chosen task left
   empty holds the send, on the server too. The request key reads the title

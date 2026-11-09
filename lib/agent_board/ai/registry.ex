@@ -333,6 +333,9 @@ defmodule AgentBoard.AI.Registry do
       Set ready to true when the goal, the constraints and the first step are
       clear enough to split into tasks, even if open_questions remain.
       goal is one sentence: the result the user wants.
+      Repository, when present, lists the project's real files and documents.
+      Settle from it whatever it can settle and never ask what it answers. It
+      is partial: a file it does not list may still exist.
       """,
       json_schema: @refine_schema
     },
@@ -354,6 +357,8 @@ defmodule AgentBoard.AI.Registry do
       size is the effort: S up to half a day, M one or two days, L more.
       A size L task is almost always two tasks.
       Keep every constraint and non_goal; a task that violates one is wrong.
+      When Repository is present, name the real files a task touches and never
+      a path it does not show.
       Write each body for a developer who has not read the request: what to
       change, why, and what it needs from the tasks it depends on. State no
       requirement the specification does not. The board adds the goal,

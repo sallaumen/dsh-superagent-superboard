@@ -338,6 +338,51 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert String.ends_with?(second.body, "@sallaumen-agent")
   end
 
+  test "the split reads the repository it is working on", %{conn: conn} do
+    test_pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      case conn.request_path do
+        "/repos/fixture/lifecycle/git/trees/HEAD" ->
+          Req.Test.json(conn, %{"tree" => [%{"path" => "lib/brand_live.ex", "type" => "blob"}]})
+
+        _ ->
+          conn |> Plug.Conn.put_status(404) |> Req.Test.json(%{})
+      end
+    end)
+
+    script(fn
+      %{name: :refine_request, prompt: prompt} ->
+        send(test_pid, {:refine, prompt})
+        Scripted.answer(@refined)
+
+      %{name: :propose_tasks, prompt: prompt} ->
+        send(test_pid, {:propose, prompt})
+        Scripted.answer(@tasks)
+    end)
+
+    view = open_composer(conn, true)
+    type(view, "O board está lento")
+    submit(view, %{"text" => "O board está lento"})
+
+    assert_received {:refine, refine}
+    assert refine =~ "lib/brand_live.ex"
+    assert_received {:propose, propose}
+    assert propose =~ "lib/brand_live.ex"
+    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
+  end
+
+  test "a repository that cannot be read does not stop the split", %{conn: conn} do
+    Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 500, "boom") end)
+    happy_model()
+
+    view = open_composer(conn, true)
+    type(view, "O board está lento")
+    submit(view, %{"text" => "O board está lento"})
+
+    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
+  end
+
   test "the review shows what each task says and what the AI left open", %{conn: conn} do
     github()
 
