@@ -42,9 +42,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
   def inspector(assigns) do
     tabs = [
-      {"conversa", "Conversa", length(assigns.comments)},
-      {"atividade", "Atividade", length(assigns.activity)},
-      {"chamadas", "Chamadas de IA", length(assigns.calls)},
+      {"conversa", gettext("Conversation"), length(assigns.comments)},
+      {"atividade", gettext("Activity"), length(assigns.activity)},
+      {"chamadas", gettext("AI calls"), length(assigns.calls)},
       {"execucoes", gettext("Executions"),
        length(assigns.executions) + length(assigns.runner_executions)},
       {"pr", "PR", nil}
@@ -62,7 +62,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       class="ab-insp"
       phx-hook="TaskConversation"
       data-task-id={@task.id}
-      aria-label={"Detalhes da tarefa ##{@task.number}"}
+      aria-label={gettext("Task #%{number} details", number: @task.number)}
     >
       <div class="ab-insp__head">
         <div class="ab-insp__bar">
@@ -98,11 +98,11 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           </span>
           <.work_tag work_type={@task.work_type} size={@task.size} />
           <span :if={@task.executor} class="ab-meta">
-            para o {AgentBoard.Executors.name(@task.executor)}
+            {gettext("for %{executor}", executor: AgentBoard.Executors.name(@task.executor))}
           </span>
           <span :if={@pr} class="ab-meta">PR #{@pr.number}</span>
           <span :if={@calls != []} class="ab-meta">
-            {length(@calls)} {if length(@calls) == 1, do: "chamada", else: "chamadas"}
+            {ngettext("%{count} call", "%{count} calls", length(@calls), count: length(@calls))}
           </span>
           <a
             :if={@task.url}
@@ -140,8 +140,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             retry={fallback_kind(@dispatch_fallback) == :retry}
             reason={fallback_reason(@dispatch_fallback)}
             label={dispatch_label(@task, @dispatch_fallback)}
-            confirm_label="Despachar"
-            busy_label="Iniciando o runner…"
+            confirm_label={gettext("Dispatch")}
+            busy_label={gettext("Starting runner…")}
           />
 
           <p :if={fallback_reason(@dispatch_fallback)} class="ab-meta">
@@ -194,8 +194,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             repository_id={@task.repository_id}
             number={@task.number}
             label={@failure.retry}
-            confirm_label="Pedir nova tentativa"
-            busy_label="Pedindo ao agente…"
+            confirm_label={gettext("Request another attempt")}
+            busy_label={gettext("Asking the agent…")}
           />
 
           <.live_component
@@ -208,8 +208,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             execution={active_execution(@runner_executions)}
             label={gettext("Stop execution")}
             confirm_label={gettext("Stop execution")}
-            cancel_label="Continuar rodando"
-            busy_label="Parando…"
+            cancel_label={gettext("Keep running")}
+            busy_label={gettext("Stopping…")}
           />
           <button
             :if={@task.stopped or @task.archived}
@@ -227,9 +227,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             tone={:halt}
             task_id={@task.id}
             task={@task}
-            label="Parar"
-            confirm_label="Parar a tarefa"
-            busy_label="Parando…"
+            label={gettext("Stop")}
+            confirm_label={gettext("Stop task")}
+            busy_label={gettext("Stopping…")}
           />
           <button
             :if={not (@task.stopped or @task.archived)}
@@ -442,15 +442,6 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               required
             >{@ask_draft}</textarea>
             <div class="ab-compose__bar">
-              <button
-                type="button"
-                class="ab-btn ab-btn--icon ab-btn--sm"
-                phx-click="show_panel"
-                phx-value-panel="voice"
-                aria-label={gettext("Dictate by voice")}
-              >
-                <.ico name="mic" />
-              </button>
               <span class="ab-top__spacer"></span>
               <button
                 class="ab-btn ab-btn--primary ab-btn--sm"
@@ -999,9 +990,16 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp status_kind("archived"), do: :queue
   defp status_kind(_state), do: :unknown
 
-  defp status_word("stopped"), do: "Parado"
-  defp status_word("archived"), do: "Arquivado"
-  defp status_word(_state), do: nil
+  defp status_word("running"), do: gettext("Running")
+  defp status_word("question"), do: gettext("Question")
+  defp status_word("ready"), do: gettext("Ready for review")
+  defp status_word("blocked"), do: gettext("Blocked")
+  defp status_word("retrying"), do: gettext("Retrying")
+  defp status_word("queued"), do: gettext("Queued")
+  defp status_word("done"), do: pgettext("task status", "Merged")
+  defp status_word("stopped"), do: gettext("Stopped")
+  defp status_word("archived"), do: gettext("Archived")
+  defp status_word(_state), do: gettext("Unknown")
 
   defp pr_kind(_pr, %{state: :fail}), do: :cifail
   defp pr_kind(%{state: "merged"}, _ci), do: :done
