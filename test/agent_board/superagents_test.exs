@@ -280,4 +280,28 @@ defmodule AgentBoard.SuperagentsTest do
              Path.join("/tmp/fixture-superagent-4", "orchestrator.sqlite")
            ]
   end
+
+  describe "the manager's /state in a shape the board did not expect" do
+    alias AgentBoard.Superagents.DshManager
+
+    # A task of the ticker runs this; an exception there is linked to the
+    # ticker, and a few in a row take the whole application down.
+    for {label, body} <- [
+          {"a list", ["x"]},
+          {"text", "<html>bad gateway</html>"},
+          {"health that is text", %{"health" => "ok"}},
+          {"a health entry that is a number", %{"health" => %{"uptime" => 3}}},
+          {"a runtime that is text", %{"health" => %{"runtime" => "ready"}}}
+        ] do
+      test "#{label} is an observed error" do
+        assert %{state: "error"} = DshManager.observation(unquote(Macro.escape(body)))
+      end
+    end
+
+    test "a good answer is still read" do
+      body = %{"health" => %{"runtime" => %{"state" => "ready"}}, "load" => %{"running" => 1}}
+
+      assert %{state: "ready", paused: false} = DshManager.observation(body)
+    end
+  end
 end

@@ -189,4 +189,57 @@ defmodule AgentBoard.AgentStateTest do
     json = Jason.encode!(ticket) |> String.replace("'", "''")
     :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{json}')")
   end
+
+  describe "a ticket row in a shape the board did not expect" do
+    # The runner owns this JSON and its shape moves with its version. A row
+    # that disagrees loses the field, never every board load.
+    for {label, ticket} <- [
+          {"a channel number that is not a number",
+           %{"channels" => [%{"address" => %{"number" => "abc"}}]}},
+          {"a channel that is not an object", %{"channels" => ["github"]}},
+          {"an address that is not an object", %{"channels" => [%{"address" => "x"}]}},
+          {"channels that are not a list", %{"channels" => %{"a" => 1}}},
+          {"assignments that are an object", %{"assignments" => %{"a" => 1}}},
+          {"assignments that are a string", %{"assignments" => "x"}},
+          {"an assignment that is a string", %{"assignments" => ["x"]}},
+          {"a report that is a string", %{"assignments" => [%{"report" => "x"}]}},
+          {"ended that is a string", %{"ended" => "x"}},
+          {"execution that is a string", %{"execution" => "x"}},
+          {"a mandate that is a string", %{"mandate" => "x"}},
+          {"follows that are a string", %{"follows" => "x"}}
+        ] do
+      test "normalizes #{label}" do
+        assert %{"numbers" => numbers, "reports" => reports} =
+                 normalized = AgentState.normalize(unquote(Macro.escape(ticket)))
+
+        assert numbers == []
+        assert reports == []
+        assert is_map(normalized["execution"])
+      end
+    end
+
+    test "a summary or title that is not text reads as absent" do
+      normalized =
+        AgentState.normalize(%{
+          "title" => %{"a" => 1},
+          "assignments" => [%{"report" => %{"state" => "failed", "summary" => %{"a" => 1}}}]
+        })
+
+      assert normalized["title"] == nil
+      assert normalized["report_summary"] == nil
+      assert [%{"summary" => nil}] = normalized["reports"]
+      assert [%{"summary" => nil}] = normalized["assignments"]
+    end
+
+    test "a number past what GitHub's tables hold is dropped" do
+      normalized =
+        AgentState.normalize(%{
+          "channels" => [%{"address" => %{"number" => "9999999999"}}],
+          "follows" => [%{"own" => true, "thread" => "github:9999999999"}]
+        })
+
+      assert normalized["numbers"] == []
+      assert normalized["own_threads"] == []
+    end
+  end
 end

@@ -1,6 +1,26 @@
 defmodule AgentBoard.GitHub do
   @moduledoc "The GitHub client: read-only for the sync, plus the board's writes."
 
+  # tasks.number and pull_requests.number are int4: past this, Postgrex raises
+  # instead of finding nothing, and the query runs on every board load.
+  @max_number 2_147_483_647
+
+  @doc """
+  An issue or pull request number read from text or from the runner, or nil
+  when it is not one the tables can hold. A comment can quote any URL.
+  """
+  @spec number(term()) :: pos_integer() | nil
+  def number(value) when is_integer(value) and value > 0 and value <= @max_number, do: value
+
+  def number(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {number, ""} -> number(number)
+      _other -> nil
+    end
+  end
+
+  def number(_value), do: nil
+
   @doc "A client bound to the API and the configured token, if any."
   def client do
     # get_env/3 only falls back when the key is MISSING; a key set to nil

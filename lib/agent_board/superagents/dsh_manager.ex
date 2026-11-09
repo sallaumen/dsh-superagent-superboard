@@ -84,8 +84,11 @@ defmodule AgentBoard.Superagents.DshManager do
     exception -> {:error, exception}
   end
 
-  defp observation(body) do
-    health = Map.get(body, "health") || %{}
+  @doc false
+  # Public for the tests. The manager's answer is outside data, read in a task
+  # linked to the ticker: a shape this does not expect is an observed error.
+  def observation(body) when is_map(body) do
+    health = if is_map(body["health"]), do: body["health"], else: %{}
     setup = body["setup"]
     load = body["load"] || %{}
     paused = body["paused"] == true
@@ -103,20 +106,24 @@ defmodule AgentBoard.Superagents.DshManager do
     end
   end
 
-  defp health_errors(health) when is_map(health) do
+  def observation(_body),
+    do: %{state: "error", detail: "resposta inesperada do gerente", load: %{}, paused: false}
+
+  defp health_errors(health) do
     health
-    |> Enum.filter(fn {_name, entry} -> entry["state"] == "error" end)
+    |> Enum.filter(fn {_name, entry} -> is_map(entry) and entry["state"] == "error" end)
     |> Enum.map(fn {name, entry} -> "#{name}: #{entry["detail"]}" end)
   end
-
-  defp health_errors(_health), do: []
 
   defp setup_detail(%{"problem" => %{"detail" => detail}}) when is_binary(detail), do: detail
   defp setup_detail(%{"detail" => detail}) when is_binary(detail), do: detail
   defp setup_detail(_setup), do: nil
 
+  defp runtime_state(%{"runtime" => %{"state" => state}}), do: state
+  defp runtime_state(_health), do: nil
+
   defp runtime_observation(health, load, paused) do
-    case {paused, get_in(health, ["runtime", "state"])} do
+    case {paused, runtime_state(health)} do
       {true, _} -> %{state: "paused", detail: nil, load: load, paused: true}
       {false, "paused"} -> %{state: "paused", detail: nil, load: load, paused: true}
       {false, "starting"} -> %{state: "starting", detail: nil, load: load, paused: false}

@@ -110,6 +110,45 @@ defmodule AgentBoardWeb.BoardWorkpadTest do
            )
   end
 
+  test "a comment quoting a PR number no table holds does not stop the board", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "workpad")
+    task = task(repo, 7, "Boss fight")
+    Repo.update!(Task.changeset(task, %{state: "ready"}))
+
+    {:ok, _} =
+      Board.upsert_comment(
+        task,
+        %{
+          "id" => 2,
+          "user" => %{"login" => "someone"},
+          "body" => "see https://github.com/a/b/pull/9999999999"
+        },
+        "sallaumen-agent"
+      )
+
+    {:ok, view, html} = live(conn, ~p"/?repo=fixture/workpad")
+    assert html =~ "Boss fight"
+
+    render_patch(view, ~p"/?repo=fixture/workpad&panel=conversation&task=#{task.id}")
+    assert Process.alive?(view.pid)
+  end
+
+  test "a ticket row in another shape does not stop the board", %{conn: conn, path: path} do
+    {:ok, repo} = Board.add_repository("fixture", "workpad")
+    task(repo, 7, "Boss fight")
+
+    write_ticket(path, %{
+      "channels" => [%{"address" => %{"number" => "abc"}}],
+      "assignments" => %{"unexpected" => true},
+      "ended" => "x"
+    })
+
+    {:ok, view, html} = live(conn, ~p"/?repo=fixture/workpad")
+
+    assert html =~ "Boss fight"
+    assert Process.alive?(view.pid)
+  end
+
   defp task(repo, number, title) do
     %Task{}
     |> Task.changeset(%{
