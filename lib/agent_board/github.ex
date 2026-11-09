@@ -289,6 +289,33 @@ defmodule AgentBoard.GitHub do
     end
   end
 
+  @doc "One issue, with the `id` the sub-issue and dependency calls ask for."
+  def issue(client, owner, repo, number) do
+    client
+    |> Req.get!(url: "/repos/#{owner}/#{repo}/issues/#{number}")
+    |> body!()
+  end
+
+  @doc "Make an issue a sub-issue of another. `child_id` is the issue's `id`, not its number."
+  def add_sub_issue(client, owner, repo, parent_number, child_id) do
+    client
+    |> Req.post!(
+      url: "/repos/#{owner}/#{repo}/issues/#{parent_number}/sub_issues",
+      json: %{sub_issue_id: child_id}
+    )
+    |> body!()
+  end
+
+  @doc "Mark an issue as blocked by another. `blocker_id` is the issue's `id`, not its number."
+  def add_blocked_by(client, owner, repo, number, blocker_id) do
+    client
+    |> Req.post!(
+      url: "/repos/#{owner}/#{repo}/issues/#{number}/dependencies/blocked_by",
+      json: %{issue_id: blocker_id}
+    )
+    |> body!()
+  end
+
   @doc "Whether `login` is a collaborator of the repository. `login` is already validated."
   def collaborator?(client, owner, repo, login) do
     response = Req.get!(client, url: "/repos/#{owner}/#{repo}/collaborators/#{login}")

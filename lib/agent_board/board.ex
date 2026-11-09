@@ -833,30 +833,34 @@ defmodule AgentBoard.Board do
   """
   @spec create_objective(Repository.t(), map(), [integer()]) ::
           {:ok, Objective.t()} | {:error, term()}
-  def create_objective(repository, %{title: title, done_criterion: criterion}, task_ids) do
+  def create_objective(repository, %{title: _title, done_criterion: _criterion} = attrs, task_ids) do
     task_ids = Enum.uniq(task_ids)
 
     if length(task_ids) < 2 do
       {:error, :not_a_group}
     else
-      case %Objective{}
-           |> Objective.changeset(%{
-             repository_id: repository.id,
-             title: title,
-             done_criterion: criterion
-           })
-           |> Repo.insert() do
-        {:ok, objective} ->
-          Repo.update_all(from(t in Task, where: t.id in ^task_ids),
-            set: [objective_id: objective.id]
-          )
+      with {:ok, objective} <- find_or_insert_objective(repository, attrs) do
+        Repo.update_all(from(t in Task, where: t.id in ^task_ids),
+          set: [objective_id: objective.id]
+        )
 
-          broadcast(repository.id)
-          {:ok, objective}
-
-        {:error, changeset} ->
-          {:error, changeset}
+        broadcast(repository.id)
+        {:ok, objective}
       end
+    end
+  end
+
+  # A retry that completes a split finds the objective of its first attempt.
+  defp find_or_insert_objective(repository, attrs) do
+    case attrs[:request_key] &&
+           Repo.get_by(Objective, repository_id: repository.id, request_key: attrs.request_key) do
+      %Objective{} = objective ->
+        {:ok, objective}
+
+      nil ->
+        %Objective{}
+        |> Objective.changeset(Map.put(attrs, :repository_id, repository.id))
+        |> Repo.insert()
     end
   end
 

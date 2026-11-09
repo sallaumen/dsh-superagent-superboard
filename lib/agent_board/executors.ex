@@ -42,6 +42,10 @@ defmodule AgentBoard.Executors do
   @spec dispatched_by_board?(String.t()) :: boolean()
   def dispatched_by_board?(executor), do: executor == "dsh"
 
+  @doc "A text that names the bot without calling it: the runner reads a mention as work."
+  @spec without_mention(String.t()) :: String.t()
+  def without_mention(text), do: String.replace(text, ~r/@(sallaumen-agent)\b/i, "\\1")
+
   @doc """
   The issue body for an executor: the request's body with the bot's mention
   at the end for the DeepSeek runner, and without any mention for anyone
@@ -55,6 +59,6 @@ defmodule AgentBoard.Executors do
 
     if dispatched_by_board?(executor),
       do: bare <> "\n\n@sallaumen-agent",
-      else: String.replace(bare, ~r/@(sallaumen-agent)\b/i, "\\1")
+      else: without_mention(bare)
   end
 end

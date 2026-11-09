@@ -4015,10 +4015,7 @@ defmodule AgentBoardWeb.BoardLive do
       %{repository: repo, requests: requests, client: client}
       |> then(fn action ->
         if socket.assigns.composer_split and length(requests) > 1 do
-          Map.put(action, :objective, %{
-            title: objective_title(socket.assigns.composer_text),
-            done_criterion: gettext("All tasks merged.")
-          })
+          Map.put(action, :objective, split_objective(socket, repo))
         else
           action
         end
@@ -4038,6 +4035,21 @@ defmodule AgentBoardWeb.BoardLive do
          {:error, {refusal, _phrase}} -> {:enqueue_refused, requests, refusal}
        end
      end)}
+  end
+
+  # The request behind the group is kept with it; the key makes a retry find
+  # the objective of its first attempt.
+  defp split_objective(socket, repo) do
+    text = socket.assigns.composer_text
+    intake = socket.assigns.intake
+
+    %{
+      title: objective_title(text),
+      done_criterion: gettext("All tasks merged."),
+      request_key: Board.request_key(repo, "objective", [text]),
+      request_text: text,
+      spec: intake && intake.spec
+    }
   end
 
   defp progress(%{total: total}) when total in [0, nil], do: 0

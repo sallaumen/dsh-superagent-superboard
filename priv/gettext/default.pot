@@ -1930,7 +1930,7 @@ msgstr[1] ""
 msgid "%{count} s ago"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4141
+#: lib/agent_board_web/live/board_live.ex:4160
 #, elixir-autogen, elixir-format
 msgid "%{count} task queued"
 msgid_plural "%{count} tasks queued"
@@ -1975,7 +1975,7 @@ msgstr ""
 msgid "AI is not configured."
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4169
+#: lib/agent_board_web/live/board_live.ex:4188
 #, elixir-autogen, elixir-format
 msgid "AI is not configured. Send as a single request."
 msgstr ""
@@ -1990,7 +1990,7 @@ msgstr ""
 msgid "AI is not configured; write the response or create the task."
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4172
+#: lib/agent_board_web/live/board_live.ex:4191
 #, elixir-autogen, elixir-format
 msgid "AI is out of quota now."
 msgstr ""
@@ -2078,7 +2078,7 @@ msgstr ""
 msgid "Configured · connection not verified"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4155
+#: lib/agent_board_web/live/board_live.ex:4174
 #, elixir-autogen, elixir-format
 msgid "Created %{done} of %{total}. Check the receipt and retry the remaining tasks."
 msgstr ""
@@ -2169,7 +2169,7 @@ msgstr ""
 msgid "GitHub, the agent process, and the local queue responded on schedule."
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4163
+#: lib/agent_board_web/live/board_live.ex:4182
 #, elixir-autogen, elixir-format
 msgid "Issue creation"
 msgstr ""
@@ -2297,7 +2297,7 @@ msgstr ""
 msgid "Nothing waiting for you"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4147
+#: lib/agent_board_web/live/board_live.ex:4166
 #, elixir-autogen, elixir-format
 msgid "Nothing was queued. Check the receipt and try again."
 msgstr ""
@@ -2339,7 +2339,7 @@ msgstr ""
 msgid "Recorded"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4126
+#: lib/agent_board_web/live/board_live.ex:4145
 #, elixir-autogen, elixir-format
 msgid "Request #%{number} queued"
 msgstr ""
@@ -2406,7 +2406,7 @@ msgstr ""
 msgid "Sync status: %{status}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4177
+#: lib/agent_board_web/live/board_live.ex:4196
 #, elixir-autogen, elixir-format
 msgid "The AI call could not be recorded; nothing was created."
 msgstr ""
@@ -2437,7 +2437,7 @@ msgid "The board connection dropped. The screen shows the last known state."
 msgstr ""
 
 #: lib/agent_board_web/failure_text.ex:23
-#: lib/agent_board_web/live/board_live.ex:4173
+#: lib/agent_board_web/live/board_live.ex:4192
 #, elixir-autogen, elixir-format
 msgid "The board's AI budget is exhausted."
 msgstr ""
@@ -2482,7 +2482,7 @@ msgstr ""
 msgid "The repository changed. Review the request again."
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4162
+#: lib/agent_board_web/live/board_live.ex:4181
 #, elixir-autogen, elixir-format
 msgid "The split"
 msgstr ""
@@ -2492,7 +2492,7 @@ msgstr ""
 msgid "The task needs a title and body."
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4132
+#: lib/agent_board_web/live/board_live.ex:4151
 #, elixir-autogen, elixir-format
 msgid "This request was already queued: #%{number}"
 msgstr ""
@@ -3293,7 +3293,7 @@ msgstr ""
 msgid "%{workers} worker + %{subagents} subagents"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4182
+#: lib/agent_board_web/live/board_live.ex:4201
 #, elixir-autogen, elixir-format
 msgid "AI did not respond: "
 msgstr ""
@@ -3308,12 +3308,12 @@ msgstr ""
 msgid "AI needs answers before splitting"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4179
+#: lib/agent_board_web/live/board_live.ex:4198
 #, elixir-autogen, elixir-format
 msgid "AI returned HTTP %{status}."
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4166
+#: lib/agent_board_web/live/board_live.ex:4185
 #, elixir-autogen, elixir-format
 msgid "AI returned an unexpected format. Nothing was created."
 msgstr ""
@@ -3465,7 +3465,7 @@ msgstr ""
 msgid "Natural"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4174
+#: lib/agent_board_web/live/board_live.ex:4193
 #, elixir-autogen, elixir-format
 msgid "No AI provider configured."
 msgstr ""
@@ -3491,7 +3491,7 @@ msgid "Normal · 1.2 s"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/agent_action.ex:185
-#: lib/agent_board_web/live/board_live.ex:4186
+#: lib/agent_board_web/live/board_live.ex:4205
 #, elixir-autogen, elixir-format
 msgid "Nothing happened: the action changed after confirmation. Check and confirm again."
 msgstr ""
@@ -3585,7 +3585,7 @@ msgstr ""
 msgid "Suggest a response"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4171
+#: lib/agent_board_web/live/board_live.ex:4190
 #, elixir-autogen, elixir-format
 msgid "The AI key expired or was rejected."
 msgstr ""
@@ -4310,7 +4310,7 @@ msgstr ""
 msgid "Updated to %{sha}; restarting the server…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4013
+#: lib/agent_board_web/live/board_live.ex:4048
 #, elixir-autogen, elixir-format
 msgid "All tasks merged."
 msgstr ""
@@ -4325,7 +4325,7 @@ msgstr ""
 msgid "Answers:"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4000
+#: lib/agent_board_web/live/board_live.ex:4007
 #, elixir-autogen, elixir-format
 msgid "Choose at least one task."
 msgstr ""
@@ -4340,12 +4340,12 @@ msgstr ""
 msgid "Model saved: %{model}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4080
+#: lib/agent_board_web/live/board_live.ex:4099
 #, elixir-autogen, elixir-format
 msgid "Nothing was created: the request changed before sending. Check the phrase and send again."
 msgstr ""
 
-#: lib/agent_board_web/live/board_live.ex:4047
+#: lib/agent_board_web/live/board_live.ex:4066
 #, elixir-autogen, elixir-format
 msgid "Request objective"
 msgstr ""

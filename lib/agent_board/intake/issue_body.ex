@@ -11,6 +11,8 @@ defmodule AgentBoard.Intake.IssueBody do
   @labels %{
     "pt" => %{
       acceptance: "Critérios de aceite",
+      request: "Pedido original",
+      tasks: "Tarefas",
       context: "Contexto do pedido",
       goal: "Objetivo",
       constraints: "Restrições",
@@ -22,6 +24,8 @@ defmodule AgentBoard.Intake.IssueBody do
     },
     "en" => %{
       acceptance: "Acceptance criteria",
+      request: "Original request",
+      tasks: "Tasks",
       context: "Request context",
       goal: "Goal",
       constraints: "Constraints",
@@ -45,6 +49,17 @@ defmodule AgentBoard.Intake.IssueBody do
       "## #{labels.acceptance}\n#{bullets(task.acceptance)}",
       context(spec, labels)
     ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join("\n\n")
+  end
+
+  @doc "The body of the issue that groups a split: the request in the owner's words."
+  @spec parent(String.t(), map(), [map()]) :: String.t()
+  def parent(request, spec, tasks) do
+    labels = labels(spec["language"])
+    list = Enum.map_join(tasks, "\n", &"- ##{&1.number} #{&1.title}")
+
+    ["## #{labels.request}\n#{request}", context(spec, labels), "## #{labels.tasks}\n#{list}"]
     |> Enum.reject(&is_nil/1)
     |> Enum.join("\n\n")
   end

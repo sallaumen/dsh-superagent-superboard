@@ -802,7 +802,8 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
 
     assert has_element?(view, "#composer-receipt", "1 pedido na fila; 1 já estava na fila")
     assert Repo.aggregate(Task, :count) == 2
-    assert Agent.get(counter, & &1) == 102
+    # The two tasks, and the issue that groups them once both exist.
+    assert Agent.get(counter, & &1) == 103
 
     titles = Repo.all(from t in Task, select: t.title, order_by: t.id)
     assert titles == ["Medir o carregamento", "Corrigir o gargalo"]
