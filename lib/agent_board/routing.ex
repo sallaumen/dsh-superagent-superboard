@@ -28,7 +28,10 @@ defmodule AgentBoard.Routing do
   `:cost` when known, and for the runner `:repository` and `:load`.
   """
 
+  alias AgentBoard.Board.Task
   alias AgentBoard.Executors
+  alias AgentBoard.Repo
+  alias AgentBoard.Routing.Decision
 
   @type availability :: :ready | :paused | :unknown | {:unavailable, String.t()}
   @type task :: %{
@@ -46,6 +49,34 @@ defmodule AgentBoard.Routing do
           cost: :unknown | term(),
           mode: String.t()
         }
+
+  @doc """
+  Records the router's line for a task the board just created.
+
+  One row per task, owned by this context: the suggestion it showed, the
+  executor the owner chose, the snapshot it decided from and the door. The
+  ticket already exists, so a failed insert answers the caller, which
+  reports it without dropping the task (a retry would open a second issue).
+  """
+  @spec record(Task.t(), String.t(), map()) ::
+          {:ok, Decision.t()} | {:error, Ecto.Changeset.t()}
+  def record(%Task{id: task_id}, chosen, routing)
+      when is_integer(task_id) and is_binary(chosen) and is_map(routing) do
+    suggestion = routing.suggestion
+
+    %Decision{}
+    |> Decision.changeset(%{
+      task_id: task_id,
+      suggested: suggestion.executor,
+      chosen: chosen,
+      mode: suggestion.mode,
+      reasons: suggestion.reasons,
+      alternatives: Enum.map(suggestion.alternatives, & &1.executor),
+      signals: routing.signals,
+      decided_by: routing.decided_by
+    })
+    |> Repo.insert()
+  end
 
   @doc "The suggested executor for a task, with the reasons, the alternatives and the expected cost."
   @spec suggest(task(), signals()) :: suggestion()

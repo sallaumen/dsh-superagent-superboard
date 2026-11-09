@@ -7,7 +7,6 @@ defmodule AgentBoard.Board do
 
   alias AgentBoard.Board.{Comment, Event, Objective, PullRequest, Repository, Review, Task}
   alias AgentBoard.{Executors, Freshness, Repo, Routing, Workpad}
-  alias AgentBoard.Routing.Decision
 
   @merged_page_size 50
   @task_page_size 50
@@ -403,19 +402,7 @@ defmodule AgentBoard.Board do
   # drop the task row: a retry without the row would open a second issue.
   defp record_routing({:ok, %Task{id: id} = task}, repository, executor, routing)
        when is_integer(id) and is_binary(executor) and is_map(routing) do
-    %Decision{}
-    |> Decision.changeset(%{
-      task_id: task.id,
-      suggested: routing.suggestion.executor,
-      chosen: executor,
-      mode: routing.suggestion.mode,
-      reasons: routing.suggestion.reasons,
-      alternatives: Enum.map(routing.suggestion.alternatives, & &1.executor),
-      signals: routing.signals,
-      decided_by: routing.decided_by
-    })
-    |> Repo.insert()
-    |> case do
+    case Routing.record(task, executor, routing) do
       {:ok, _decision} ->
         :ok
 
