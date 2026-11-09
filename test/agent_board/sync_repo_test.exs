@@ -66,6 +66,19 @@ defmodule AgentBoard.SyncRepoTest do
     assert sync.payload["errors"] == 1
   end
 
+  test "the sync event counts only this run's errors, not old ones", %{repo: repo} do
+    Board.log_event(repo.id, "pull_error", "#1", %{"reason" => "old"})
+    Board.log_event(repo.id, "comment_error", "#2", %{"reason" => "old"})
+    Board.log_event(repo.id, "commit_error", "#3", %{"reason" => "old"})
+
+    stub_github(fn conn -> Req.Test.json(conn, []) end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+
+    sync = Board.latest_sync(repo)
+    assert sync.payload["errors"] == 0
+  end
+
   test "an invalid issue is logged, not swallowed", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
