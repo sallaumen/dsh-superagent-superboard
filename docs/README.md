@@ -13,7 +13,7 @@ point; this index organizes everything that lives in `docs/`.
 flowchart LR
     GH[(GitHub)]
     A[dsh-superagent<br/>orchestrator + worktrees]
-    B[agent-board<br/>Elixir panel :4099]
+    B[DSH Super Agent Board<br/>Elixir panel]
     E[Claude Code / Codex<br/>local dispatch]
     V[Voice<br/>ElevenLabs / browser]
 
@@ -50,6 +50,7 @@ and dispatches local executors.
 
 | File | What it is |
 |---|---|
+| [operations.md](operations.md) | Run the board as a service, configure credentials, diagnose failures, and understand operating limits |
 | [agent/learning-path.md](agent/learning-path.md) | From-zero tutorial: install the Harness, Creator Mode, the first Super-Agent in a repository, and security — distilled from the owner's reference guide |
 | [agent/how-it-works.md](agent/how-it-works.md) | The agent (`dsh-superagent`): the loop, the tables, the four outcomes, and what the board adds |
 | [agent/setup.md](agent/setup.md) | Install the agent on another machine: bot identity, profile, LaunchAgent, merge policy |

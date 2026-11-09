@@ -6,7 +6,7 @@
 
 ## Affected pipelines
 
-Report the affected pipelines according to the [script matrix](https://github.com/sallaumen/agent-board/blob/main/PIPELINES.md#script-matrix).
+Report the affected pipelines according to the [script matrix](https://github.com/sallaumen/dsh-superagent-superboard/blob/main/PIPELINES.md#script-matrix).
 
 ## Validation
 
@@ -17,4 +17,4 @@ Report the affected pipelines according to the [script matrix](https://github.co
 ## CI
 
 Record the CI state and the corresponding evidence. If it is unavailable,
-follow the [canonical procedure](https://github.com/sallaumen/agent-board/blob/main/PIPELINES.md#if-ci-cannot-run-no-token-billing-or-runner).
+follow the [canonical procedure](https://github.com/sallaumen/dsh-superagent-superboard/blob/main/PIPELINES.md#if-ci-cannot-run-no-token-billing-or-runner).
