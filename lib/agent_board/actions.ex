@@ -66,7 +66,7 @@ defmodule AgentBoard.Actions do
     Voice
   }
 
-  alias AgentBoard.Board.{Repository, Task}
+  alias AgentBoard.Board.{Repository, SplitGraph, Task}
   alias AgentBoard.Sync.Worker
   alias AgentBoard.Voice.Phrases
 
@@ -609,7 +609,8 @@ defmodule AgentBoard.Actions do
     requests = route_requests(repo, requests)
     results = Board.Requests.create_requests(repo, requests, client)
 
-    maybe_objective(repo, params[:objective], results)
+    SplitGraph.record(results)
+    maybe_objective(repo, params[:objective], results, client)
     {:ok, results}
   end
 
@@ -858,13 +859,13 @@ defmodule AgentBoard.Actions do
     |> Repo.update!()
   end
 
-  defp maybe_objective(repo, %{title: title, done_criterion: criterion}, results) do
+  defp maybe_objective(repo, %{title: title} = attrs, results, client) do
     task_ids =
       for {_request, {:ok, %Task{id: id}, _outcome}} <- results, is_integer(id), do: id
 
-    case Board.create_objective(repo, %{title: title, done_criterion: criterion}, task_ids) do
-      {:ok, _objective} ->
-        :ok
+    case Board.create_objective(repo, attrs, task_ids) do
+      {:ok, objective} ->
+        SplitGraph.publish(repo, objective, results, client)
 
       {:error, :not_a_group} ->
         :ok
@@ -874,7 +875,7 @@ defmodule AgentBoard.Actions do
     end
   end
 
-  defp maybe_objective(_repo, _objective, _results), do: :ok
+  defp maybe_objective(_repo, _objective, _results, _client), do: :ok
 
   defp outcome(:create_tasks, {:ok, results}) do
     case Enum.count(results, &match?({_request, {:error, _}}, &1)) do

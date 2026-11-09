@@ -1125,6 +1125,13 @@ computed from the tasks, never a second project manager.
   the board shows the title, the criterion and "x de y tarefas mescladas"
   ("x of y tasks merged") with a progress bar. The objective has no state of
   its own: it exists only as the criterion and the tasks.
+- **A split keeps its graph.** `task_dependencies` holds who waits for whom and
+  the objective keeps the request and its specification. Once every task
+  exists, `Board.SplitGraph` opens one issue labelled `board:objective`, never
+  mentioning the agent, and mirrors sub-issues and blocked-by. The board's rows
+  are the record: a mirror GitHub refuses is a `link_error` event and undoes
+  nothing. The sync keeps that label out of the queue. A retry finds the same
+  objective by `request_key`.
 - **It does not replace the board's lanes.** Attaching or finishing a task is
   the same write and the same sync; no separate status is written.
 - The tests: `objectives_test.exs` (the criterion, progress, one task is not a

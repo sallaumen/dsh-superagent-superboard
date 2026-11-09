@@ -6,6 +6,11 @@ defmodule AgentBoard.Board.Objective do
   schema "objectives" do
     field :title, :string
     field :done_criterion, :string
+    field :request_key, :string
+    field :request_text, :string
+    field :spec, :map
+    field :issue_number, :integer
+    field :issue_url, :string
 
     belongs_to :repository, AgentBoard.Board.Repository
     has_many :tasks, AgentBoard.Board.Task
@@ -16,7 +21,17 @@ defmodule AgentBoard.Board.Objective do
   @doc false
   def changeset(objective, attrs) do
     objective
-    |> cast(attrs, [:repository_id, :title, :done_criterion])
+    |> cast(attrs, [
+      :repository_id,
+      :title,
+      :done_criterion,
+      :request_key,
+      :request_text,
+      :spec,
+      :issue_number,
+      :issue_url
+    ])
     |> validate_required([:repository_id, :title, :done_criterion])
+    |> unique_constraint([:repository_id, :request_key])
   end
 end

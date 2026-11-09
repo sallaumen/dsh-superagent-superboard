@@ -23,7 +23,7 @@ defmodule AgentBoard.Sync do
     Tickets
   }
 
-  alias AgentBoard.Board.{Comment, Commit, PullRequest, Repository, Review, Task}
+  alias AgentBoard.Board.{Comment, Commit, PullRequest, Repository, Review, SplitGraph, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()), do: client |> run() |> length()
@@ -105,7 +105,10 @@ defmodule AgentBoard.Sync do
 
     pulls = GitHub.pulls(client, repository.owner, repository.name)
 
-    Enum.each(issues, &upsert_issue(repository, &1))
+    issues
+    |> Enum.reject(&SplitGraph.objective_issue?/1)
+    |> Enum.each(&upsert_issue(repository, &1))
+
     # One broken PR (reviews, checks) must not kill the whole sync.
     Enum.each(pulls, fn pull ->
       try do
