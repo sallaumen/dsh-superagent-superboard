@@ -30,7 +30,16 @@ defmodule AgentBoardWeb.BoardComponents.DispatchSettings do
   end
 
   @impl true
-  def update(assigns, socket), do: {:ok, assign(socket, assigns)}
+  def update(assigns, socket) do
+    was_active = socket.assigns[:active] || false
+    socket = assign(socket, assigns)
+
+    if assigns.active and not was_active do
+      {:ok, assign(socket, snapshot: Runners.snapshot(), error: nil, saved: false)}
+    else
+      {:ok, socket}
+    end
+  end
 
   @impl true
   def render(assigns) do

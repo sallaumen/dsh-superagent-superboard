@@ -3124,6 +3124,7 @@ defmodule AgentBoardWeb.BoardLive do
             busy={@busy}
             voice={@voice}
             dispatch_paused={@dispatch_paused}
+            active={@panel == "settings"}
           />
         </BoardComponents.Panel.shell>
 

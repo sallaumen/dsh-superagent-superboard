@@ -139,6 +139,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           <.live_component
             module={AgentBoardWeb.BoardComponents.DispatchSettings}
             id="dispatch-settings"
+            active={@active}
           />
         </section>
 
