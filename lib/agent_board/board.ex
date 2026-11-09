@@ -7,8 +7,17 @@ defmodule AgentBoard.Board do
   """
   import Ecto.Query, warn: false
 
-  alias AgentBoard.Board.Activity
-  alias AgentBoard.Board.{Comment, Objective, PullRequest, Repository, Review, Task}
+  alias AgentBoard.Board.{
+    Activity,
+    Comment,
+    Inbox,
+    Objective,
+    PullRequest,
+    Repository,
+    Review,
+    Task
+  }
+
   alias AgentBoard.{Repo, Workpad}
 
   @merged_page_size 50
@@ -19,6 +28,9 @@ defmodule AgentBoard.Board do
   def merged_page_size, do: @merged_page_size
   def task_page_size, do: @task_page_size
   def task_states, do: @task_states
+
+  @doc "Recent agent replies and cross-project attention for the header."
+  def inbox, do: Inbox.snapshot()
 
   @doc "The recent activity for a repository (owned by `AgentBoard.Board.Activity`)."
   def events(repository, limit \\ 20), do: Activity.events(repository, limit)
@@ -488,7 +500,7 @@ defmodule AgentBoard.Board do
       kind: kind
     })
     |> Repo.insert(
-      on_conflict: {:replace, [:body, :author, :updated_at]},
+      on_conflict: {:replace, [:body, :author, :kind, :updated_at]},
       conflict_target: [:task_id, :github_id]
     )
   end

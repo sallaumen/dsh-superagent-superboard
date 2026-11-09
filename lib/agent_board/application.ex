@@ -13,6 +13,7 @@ defmodule AgentBoard.Application do
       {Oban, Application.fetch_env!(:agent_board, Oban)},
       AgentBoard.AgentWorktree.Cache,
       AgentBoard.TicketPoller,
+      AgentBoard.MessagePoller,
       AgentBoard.AutoRetry,
       AgentBoard.DailySummary,
       AgentBoard.Runners.Ticker,

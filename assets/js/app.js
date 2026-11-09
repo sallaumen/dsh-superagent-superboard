@@ -63,6 +63,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     board_resume: boardResume(),
     // The last visit belongs to this browser: the server cannot know it.
     board_last_visit: localStorage.getItem("ab:last-visit"),
+    board_message_seen: localStorage.getItem("ab:message-seen"),
     board_tz_offset: new Date().getTimezoneOffset(),
   }),
   hooks: {...colocatedHooks, DataAge, DailySummaryVoice, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, BoardFold, Composer, Throughput, LogsSheet, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr},
@@ -89,6 +90,15 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 // last visit" and for the new markers. A crash keeps the older, honest time.
 window.addEventListener("pagehide", () => {
   try { localStorage.setItem("ab:last-visit", new Date().toISOString()) } catch (_) {}
+})
+
+window.addEventListener("phx:message_seen", ({detail}) => {
+  try {
+    const seen = JSON.parse(localStorage.getItem("ab:message-seen") || "{}")
+    const key = String(detail.task_id)
+    seen[key] = String(detail.version)
+    localStorage.setItem("ab:message-seen", JSON.stringify(seen))
+  } catch (_) {}
 })
 
 // connect if there are any LiveViews on the page

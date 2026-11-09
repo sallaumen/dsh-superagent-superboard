@@ -19,6 +19,10 @@ export const BoardMenu = {
     document.addEventListener("pointerdown", this.closeOnOutside)
     document.addEventListener("keydown", this.closeOnEscape)
     this.el.addEventListener("toggle", this.closePeers)
+    this.closeOnNavigate = (event) => {
+      if (event.target.closest("[data-board-menu-link]")) this.el.open = false
+    }
+    this.el.addEventListener("click", this.closeOnNavigate)
     this.bindFolds()
     this.restoreFolds()
   },
@@ -47,5 +51,6 @@ export const BoardMenu = {
     document.removeEventListener("pointerdown", this.closeOnOutside)
     document.removeEventListener("keydown", this.closeOnEscape)
     this.el.removeEventListener("toggle", this.closePeers)
+    this.el.removeEventListener("click", this.closeOnNavigate)
   },
 }

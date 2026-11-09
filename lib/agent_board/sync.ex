@@ -23,7 +23,7 @@ defmodule AgentBoard.Sync do
     Tickets
   }
 
-  alias AgentBoard.Board.{Commit, PullRequest, Repository, Review, Task}
+  alias AgentBoard.Board.{Comment, Commit, PullRequest, Repository, Review, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()) do
@@ -222,7 +222,22 @@ defmodule AgentBoard.Sync do
                task.number
              ) do
           comments when is_list(comments) ->
-            Enum.each(comments, &Board.upsert_comment(task, &1, agent_login))
+            existing =
+              Repo.all(
+                from c in Comment,
+                  where: c.task_id == ^task.id,
+                  select: {c.github_id, c.author, c.body}
+              )
+              |> Map.new(fn {id, author, body} -> {id, {author, body}} end)
+
+            Enum.each(comments, fn comment ->
+              id = comment["id"] || -:erlang.phash2({task.id, comment["body"]})
+              author = get_in(comment, ["user", "login"]) || "unknown"
+
+              if Map.get(existing, id) != {author, comment["body"] || ""} do
+                Board.upsert_comment(task, comment, agent_login)
+              end
+            end)
 
           _ ->
             :ok

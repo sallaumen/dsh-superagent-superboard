@@ -83,12 +83,15 @@ defmodule AgentBoardWeb.BoardLive do
     connect = if connected?(socket), do: get_connect_params(socket), else: %{}
     resume = connect["board_resume"]
     last_visit = parse_last_visit(connect["board_last_visit"])
+    message_seen = parse_message_seen(connect["board_message_seen"])
     tz_offset = parse_offset(connect["board_tz_offset"])
 
     socket =
       assign(socket,
         repos: repos,
         last_visit: last_visit,
+        message_seen: message_seen,
+        inbox: %{messages: [], alerts: []},
         tz_offset: tz_offset,
         work: empty_work(),
         flow: nil,
@@ -247,6 +250,29 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp parse_last_visit(_value), do: nil
+
+  defp parse_message_seen(value) when is_binary(value) do
+    case Jason.decode(value) do
+      {:ok, seen} when is_map(seen) ->
+        seen
+        |> Enum.take(300)
+        |> Enum.reduce(%{}, &put_valid_message_seen/2)
+
+      _ ->
+        %{}
+    end
+  end
+
+  defp parse_message_seen(_), do: %{}
+
+  defp put_valid_message_seen({key, version}, acc) do
+    if valid_message_seen?(key, version),
+      do: Map.put(acc, key, version),
+      else: acc
+  end
+
+  defp valid_message_seen?(key, version),
+    do: is_binary(key) and is_binary(version) and version =~ ~r/\A[0-9a-f]{64}\z/
 
   defp parse_offset(value) when is_integer(value), do: value
 
@@ -658,6 +684,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp read_board(socket, repo) do
     today = Overview.today(socket.assigns.tz_offset) |> with_runner_running()
     spend = Report.today(socket.assigns.tz_offset)
+    inbox = Board.inbox()
 
     # load/2 runs again on every reload: subscribing twice would deliver every
     # broadcast twice (and keep listening to the old repo).
@@ -737,6 +764,7 @@ defmodule AgentBoardWeb.BoardLive do
           freshness: freshness,
           repo_overview: today.repos,
           today: today,
+          inbox: inbox,
           today_spend: spend,
           objectives: Board.objectives(repo),
           agent_snapshot: agent,
@@ -759,6 +787,7 @@ defmodule AgentBoardWeb.BoardLive do
           freshness: unknown_freshness(),
           repo_overview: today.repos,
           today: today,
+          inbox: inbox,
           today_spend: spend,
           objectives: [],
           agent_snapshot: %{ok: false, at: nil, tickets: [], error: :unknown},
@@ -923,7 +952,11 @@ defmodule AgentBoardWeb.BoardLive do
     if socket.assigns.view == "hoje" and current != repository_id do
       {:noreply, load(socket, socket.assigns.repo)}
     else
-      {:noreply, socket}
+      if current != repository_id do
+        {:noreply, assign(socket, :inbox, Board.inbox())}
+      else
+        {:noreply, socket}
+      end
     end
   end
 
@@ -966,6 +999,7 @@ defmodule AgentBoardWeb.BoardLive do
       |> load_inspector()
       |> announce(old_board, old_sync, old_needs)
       |> VoiceConversation.check_answers()
+      |> mark_open_conversation_seen()
 
     {:noreply, socket}
   end
@@ -1031,7 +1065,26 @@ defmodule AgentBoardWeb.BoardLive do
         do: load(socket, repo),
         else: socket
 
-    {:noreply, socket}
+    {:noreply, mark_open_conversation_seen(socket)}
+  end
+
+  defp mark_open_conversation_seen(%{assigns: %{conversation: nil}} = socket), do: socket
+
+  defp mark_open_conversation_seen(socket) do
+    task_id = socket.assigns.conversation.id
+    item = Enum.find(socket.assigns.inbox.messages, &(&1.task_id == task_id))
+    key = Integer.to_string(task_id)
+
+    if item && item.version != Map.get(socket.assigns.message_seen, key) do
+      socket =
+        assign(socket, :message_seen, Map.put(socket.assigns.message_seen, key, item.version))
+
+      if connected?(socket),
+        do: push_event(socket, "message_seen", %{task_id: task_id, version: item.version}),
+        else: socket
+    else
+      socket
+    end
   end
 
   # -- the logs sheet ---------------------------------------------------------
@@ -1208,6 +1261,19 @@ defmodule AgentBoardWeb.BoardLive do
          %Task{} = task <- Board.task(task_id) do
       {:noreply,
        push_patch(socket, to: BoardNavigation.path(task.repository, "conversation", task.id))}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("open_inbox_task", %{"id" => id}, socket) do
+    with {task_id, ""} <- Integer.parse(to_string(id)),
+         %Task{} = task <- Board.task(task_id),
+         true <- task.repository.active do
+      {:noreply,
+       push_patch(socket,
+         to: BoardNavigation.path(task.repository, "conversation", task.id, "conversa")
+       )}
     else
       _ -> {:noreply, socket}
     end
@@ -2635,6 +2701,13 @@ defmodule AgentBoardWeb.BoardLive do
           />
 
           <main id="board-work" class="ab-main">
+            <div class="ab-inbox-top">
+              <BoardComponents.MessageHub.hub
+                messages={@inbox.messages}
+                alerts={@inbox.alerts}
+                seen={@message_seen}
+              />
+            </div>
             <div :if={@repo == nil} class="ab-empty">
               <h2>Nenhum repositório acompanhado.</h2>
               <p>
