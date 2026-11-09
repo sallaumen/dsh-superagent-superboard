@@ -8,7 +8,7 @@ defmodule AgentBoardWeb.ExecutorsTest do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
 
-  @path "/?repo=fixture/executors&panel=executors"
+  @path "/?repo=fixture/executors&panel=settings&section=execution"
 
   setup do
     {:ok, repo} = Board.add_repository("fixture", "executors")
@@ -111,30 +111,41 @@ defmodule AgentBoardWeb.ExecutorsTest do
     assert claude =~ "estimado"
     assert claude =~ "≈ US$"
     assert claude =~ "preço de lista"
+    assert has_element?(view, "#executor-claude_code .ab-executor__bars")
 
     codex = view |> element("#executor-codex") |> render()
     assert codex =~ "Codex"
     assert codex =~ "medido"
-    assert codex =~ "90% da cota semanal"
+    assert codex =~ "90%"
+    assert has_element?(view, "#executor-codex [role=progressbar]")
     refute codex =~ "≈ US$"
     refute codex =~ "≥ US$"
 
     dsh = view |> element("#executor-dsh") |> render()
     assert dsh =~ "DeepSeek"
     assert dsh =~ "estimado"
+    assert has_element?(view, "#executor-dsh .ab-executor__bars")
+    assert has_element?(view, "#executor-dsh .ab-executor__limits-card", "cada projeto")
 
-    assert has_element?(view, "#executors", "Por dia")
-    refute has_element?(view, "#executors", "Total geral")
+    refute has_element?(view, "#settings-execution", "Total geral")
   end
 
-  test "the window switches between 7 and 30 days without leaving the panel", %{conn: conn} do
+  test "the window switches between 7 and 30 days without leaving the section", %{conn: conn} do
     {:ok, view, _html} = live(conn, @path)
 
-    assert has_element?(view, ~s(#executors button[aria-pressed="true"]), "7 dias")
+    assert has_element?(
+             view,
+             ~s(#settings-execution .ab-execution__range button[aria-pressed="true"][phx-value-days="7"])
+           )
 
-    view |> element("#executors button", "30 dias") |> render_click()
+    view
+    |> element(~s(#settings-execution .ab-execution__range button[phx-value-days="30"]))
+    |> render_click()
 
-    assert has_element?(view, ~s(#executors button[aria-pressed="true"]), "30 dias")
+    assert has_element?(
+             view,
+             ~s(#settings-execution .ab-execution__range button[aria-pressed="true"][phx-value-days="30"])
+           )
   end
 
   test "a task's Execuções tab lists its ledger execution, attributed by the PR branch",

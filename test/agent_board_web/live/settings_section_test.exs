@@ -114,7 +114,7 @@ defmodule AgentBoardWeb.SettingsSectionTest do
     {:ok, view, _html} = live(conn, "/?panel=settings&section=execution")
 
     assert has_element?(view, "#toggle-dispatch")
-    assert has_element?(view, "#dispatch-settings-form-dispatch-settings")
+    assert has_element?(view, "#execution-settings-form")
     refute has_element?(view, "#open-activity")
   end
 

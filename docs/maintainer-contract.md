@@ -850,11 +850,11 @@ that watches one GitHub repository and picks the issues whose body mentions
   compares a fingerprint every 30 s and announces `:agent_access_changed`, which
   moves the badge and the note on a refused issue ("Queued" remains the task's
   state, per the sync baseline).
-- **The routing list is a setting.** `dsh_repositories`
-  (Configurações → Despacho local, comma-separated) names the repositories
-  the DeepSeek agents watch; the router only suggests DeepSeek for those. The
-  primary orchestrator's repository is always included. A task for any other
-  repository is ruled out with the reason and falls to Claude/Codex.
+- **The routing list comes from Projects.** Every registered superagent's
+  repository is a repository the DeepSeek agents watch; the router only
+  suggests DeepSeek for those. The primary orchestrator's repository is always
+  included. A task for any other repository is ruled out with the reason and
+  falls to Claude/Codex. `dsh_repositories` is no longer a setting.
 - **Creating a dsh task is the dispatch**: the board opens the issue with the
   mention and the superagent picks it up. There is no per-task process to
   start, stop or budget; the `/state` read is the availability signal.

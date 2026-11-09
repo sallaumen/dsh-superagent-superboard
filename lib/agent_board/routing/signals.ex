@@ -13,7 +13,7 @@ defmodule AgentBoard.Routing.Signals do
   """
 
   alias AgentBoard.Orchestrator
-  alias AgentBoard.Runners
+  alias AgentBoard.Superagents
   alias AgentBoard.Usage.Report
 
   @doc "The signals for `AgentBoard.Routing.suggest/2`."
@@ -60,11 +60,17 @@ defmodule AgentBoard.Routing.Signals do
     end
   end
 
-  # The routing read is pure enough to run in tests without the board's
-  # database; a settings read failure falls back to the orchestrator's
-  # repository instead of taking the suggestion down.
+  # Projects is the single place a repository is configured: a superagent's
+  # repository is what the router can suggest DeepSeek for. A read failure
+  # falls back to the orchestrator's repository instead of taking the
+  # suggestion down.
   defp configured_repositories do
-    Runners.dsh_repositories()
+    Superagents.list()
+    |> Enum.map(fn
+      %{repository: %{owner: owner, name: name}} -> "#{owner}/#{name}"
+      _superagent -> nil
+    end)
+    |> Enum.reject(&is_nil/1)
   rescue
     _exception -> []
   end

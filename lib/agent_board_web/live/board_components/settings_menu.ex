@@ -6,7 +6,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
-  alias AgentBoardWeb.BoardComponents.Settings.Projects
+  alias AgentBoardWeb.BoardComponents.Settings.{Execution, Projects}
   alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
@@ -22,6 +22,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :superagents, :list, default: []
   attr :access_waiting, :integer, default: 0
   attr :access_projects, :list, default: []
+  attr :tickets, :list, default: []
+  attr :ai_calls, :list, default: []
+  attr :ai_status, :any, default: :unknown
   attr :codex_quota, :map, default: nil
   attr :provisioning, :boolean, default: false
   attr :tz_offset, :integer, default: 0
@@ -199,78 +202,17 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               "Claude Code and Codex run on this machine; DeepSeek runs through GitHub. Each one is measured in its own currency."
             )}
           </p>
-
-          <section :if={@repo} class="settings-subpane" aria-labelledby="settings-inspect-title">
-            <h4 id="settings-inspect-title">{gettext("Inspect")}</h4>
-            <p class="settings-pane__intro">
-              {gettext("See what the board has done and how each executor is working.")}
-            </p>
-            <div class="settings-inspect-actions">
-              <button
-                id="open-activity"
-                type="button"
-                phx-click="show_panel"
-                phx-value-panel="activity"
-                data-panel-trigger
-                aria-haspopup="dialog"
-                aria-controls="panel-activity"
-              ><.icon name="hero-clock" class="size-4" />{gettext("Activity")}</button>
-              <button
-                id="open-ai"
-                type="button"
-                phx-click="show_panel"
-                phx-value-panel="ai"
-                data-panel-trigger
-                aria-haspopup="dialog"
-                aria-controls="panel-ai"
-              ><.icon name="hero-cpu-chip" class="size-4" />{gettext("AI calls")}</button>
-              <button
-                id="open-executors"
-                type="button"
-                phx-click="show_panel"
-                phx-value-panel="executors"
-                data-panel-trigger
-                aria-haspopup="dialog"
-                aria-controls="panel-executors"
-              ><.icon name="hero-bolt" class="size-4" />{gettext("Executors")}</button>
-            </div>
-          </section>
-
-          <section
-            class="settings-subpane settings-subpane--dispatch"
-            aria-labelledby="settings-dispatch-title"
-          >
-            <h4 id="settings-dispatch-title">{gettext("Local dispatch")}</h4>
-            <p class="settings-pane__intro">
-              {gettext(
-                "Claude Code and Codex run on this machine. Each executor has its own limits and billing."
-              )}
-            </p>
-            <div class="settings-pause">
-              <div>
-                <strong>{gettext("Global pause")}</strong>
-                <p>
-                  {if @dispatch_paused,
-                    do: gettext("No new dispatch starts. Running tasks continue."),
-                    else: gettext("New dispatches can start after your confirmation.")}
-                </p>
-              </div>
-              <button
-                id="toggle-dispatch"
-                type="button"
-                class="settings-pause__switch"
-                role="switch"
-                aria-label={gettext("Global pause for local dispatch")}
-                aria-checked={to_string(@dispatch_paused)}
-                phx-click="toggle_dispatch"
-              ><span aria-hidden="true"></span></button>
-            </div>
-            <.live_component
-              module={AgentBoardWeb.BoardComponents.DispatchSettings}
-              id="dispatch-settings"
-              active={@active and @section == "execution"}
-            />
-          </section>
+          <.live_component
+            module={Execution}
+            id="settings-execution"
+            active={@active == true and @section == "execution"}
+            dispatch_paused={@dispatch_paused}
+            tickets={@tickets}
+            ai_calls={@ai_calls}
+            ai_status={@ai_status}
+            parent={@myself}
+            tz_offset={@tz_offset}
+          />
         </section>
 
         <section
@@ -372,6 +314,23 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                 aria-pressed={to_string(@board_locale == "pt-BR")}
               >Português (Brasil)</button>
             </.form>
+          </section>
+
+          <section :if={@repo} class="settings-subpane" aria-labelledby="settings-activity-title">
+            <h4 id="settings-activity-title">{gettext("Activity")}</h4>
+            <p class="settings-pane__intro">
+              {gettext("The last 20 events the board recorded for this project.")}
+            </p>
+            <button
+              id="open-activity"
+              type="button"
+              class="ab-btn ab-btn--sm"
+              phx-click="show_panel"
+              phx-value-panel="activity"
+              data-panel-trigger
+              aria-haspopup="dialog"
+              aria-controls="panel-activity"
+            >{gettext("Open activity")}</button>
           </section>
         </section>
       </div>
