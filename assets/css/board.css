@@ -2528,6 +2528,7 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
 .ab-project__profile code { overflow: hidden; color: var(--ink); font-family: var(--font-mono); font-size: 11.5px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
 .ab-project__profile .ab-faint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ab-project__actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.ab-project--tracked .ab-project__actions { grid-column: -2; }
 .ab-project__error { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 14px; margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--halt-wash); color: var(--ink); font-size: 12.5px; line-height: 19px; }
 .ab-project__error p { flex: 1 1 320px; margin: 0; }
 .ab-project__error-details { flex: 1 1 100%; }

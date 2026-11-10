@@ -3553,6 +3553,7 @@ defmodule AgentBoardWeb.BoardLive do
             module={BoardComponents.SettingsMenu}
             id="board-settings-panel"
             repo={@repo}
+            repos={@repos}
             version={@version}
             codex_quota={@codex_quota}
             busy={@busy}

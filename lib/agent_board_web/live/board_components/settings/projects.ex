@@ -1,7 +1,8 @@
 defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   @moduledoc """
   Settings → Projects: one row per repository, its DeepSeek agent, state,
-  worker limit and who may call it.
+  worker limit and who may call it. A repository tracked without an agent
+  gets a short row whose button fills the add form, which asks first.
 
   The row opens in place. Access and refusals come from `BoardLive`'s
   `agent_access_projects` read; the expandable block only asks GitHub for the
@@ -27,7 +28,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   @impl true
   def mount(socket) do
-    {:ok, assign(socket, expanded: nil, workers: 1, create_agent: true)}
+    {:ok, assign(socket, expanded: nil, workers: 1, create_agent: true, prefill: %{})}
   end
 
   @impl true
@@ -55,6 +56,10 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
     {:noreply, assign(socket, :expanded, expanded)}
   end
 
+  def handle_event("prefill_project", %{"owner" => owner, "name" => name}, socket) do
+    {:noreply, assign(socket, prefill: %{"owner" => owner, "name" => name}, create_agent: true)}
+  end
+
   def handle_event("toggle_create_agent", _params, socket) do
     {:noreply, assign(socket, :create_agent, not socket.assigns.create_agent)}
   end
@@ -68,22 +73,34 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :tracked, tracked_only(assigns.repos, assigns.superagents))
+
     ~H"""
     <div id={@id} class="ab-projects">
-      <p :if={@superagents == []} class="ab-projects__empty" role="status">
+      <p :if={@superagents == [] and @tracked == []} class="ab-projects__empty" role="status">
         {gettext("No project yet. Add a repository below to get started.")}
       </p>
 
-      <p :if={@superagents != []} class="ab-projects__summary" role="status">
-        <span>{gettext("%{ready} of %{total} on",
+      <p :if={@superagents != [] or @tracked != []} class="ab-projects__summary" role="status">
+        <span :if={@superagents != []}>{gettext("%{ready} of %{total} on",
           ready: ready_count(@superagents),
           total: length(@superagents)
         )}</span>
-        <span aria-hidden="true">·</span>
-        <span>{ngettext("%{count} agent", "%{count} agents", agent_total(@superagents))}</span>
+        <span :if={@superagents != []} aria-hidden="true">·</span>
+        <span :if={@superagents != []}>
+          {ngettext("%{count} agent", "%{count} agents", agent_total(@superagents))}
+        </span>
+        <span :if={@superagents != [] and @tracked != []} aria-hidden="true">·</span>
+        <span :if={@tracked != []}>
+          {ngettext("%{count} without an agent", "%{count} without an agent", length(@tracked))}
+        </span>
       </p>
 
-      <ul :if={@superagents != []} class="ab-projects__list" aria-label={gettext("Projects")}>
+      <ul
+        :if={@superagents != [] or @tracked != []}
+        class="ab-projects__list"
+        aria-label={gettext("Projects")}
+      >
         <li
           :for={superagent <- @superagents}
           id={"project-#{superagent.id}"}
@@ -277,6 +294,46 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             </div>
           </div>
         </li>
+
+        <li :for={repo <- @tracked} id={"tracked-#{repo.id}"} class="ab-project ab-project--tracked">
+          <div class="ab-project__row">
+            <div class="ab-project__identity">
+              <p class="ab-project__name">
+                <span class="ab-project__owner">{repo.owner}/</span><strong>{repo.name}</strong>
+              </p>
+              <p class="ab-project__access">
+                {gettext("The board follows it; no agent works on it.")}
+              </p>
+            </div>
+
+            <div class="ab-project__state">
+              <span class="ab-status ab-status--queue">
+                <.glyph kind={:queue} />
+                {gettext("No agent")}
+              </span>
+            </div>
+
+            <div class="ab-project__actions">
+              <button
+                type="button"
+                class="ab-btn ab-btn--sm"
+                aria-label={
+                  gettext("Create agent for %{project}", project: "#{repo.owner}/#{repo.name}")
+                }
+                phx-click={
+                  JS.push("prefill_project",
+                    value: %{owner: repo.owner, name: repo.name},
+                    target: @myself
+                  )
+                  |> JS.focus(to: "#add-project-path")
+                }
+                disabled={@provisioning}
+              >
+                {gettext("Create agent…")}
+              </button>
+            </div>
+          </div>
+        </li>
       </ul>
 
       <section id="add-project" class="ab-project-add" aria-labelledby="add-project-title">
@@ -290,15 +347,21 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         <form id="track-repo" phx-submit="add_project" class="ab-project-add__form">
           <label>
             <span>{gettext("Owner")}</span>
-            <input name="owner" placeholder="sallaumen" required />
+            <input name="owner" placeholder="sallaumen" value={@prefill["owner"]} required />
           </label>
           <label>
             <span>{gettext("Repository")}</span>
-            <input name="name" placeholder={gettext("project-name")} required />
+            <input
+              name="name"
+              placeholder={gettext("project-name")}
+              value={@prefill["name"]}
+              required
+            />
           </label>
           <label class="ab-project-add__path">
             <span>{gettext("Local folder, with .git")}</span>
             <input
+              id="add-project-path"
               name="path"
               placeholder={gettext("~/projects/project-name")}
               aria-describedby="add-project-path-hint"
@@ -402,6 +465,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
       </section>
     </div>
     """
+  end
+
+  defp tracked_only(repos, superagents) do
+    with_agent = MapSet.new(superagents, & &1.repository_id)
+    Enum.reject(repos, &MapSet.member?(with_agent, &1.id))
   end
 
   defp expanded?(expanded, superagent), do: to_string(expanded) == to_string(superagent.id)

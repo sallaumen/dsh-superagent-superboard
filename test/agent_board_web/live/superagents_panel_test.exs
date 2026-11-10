@@ -194,11 +194,8 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert Repo.get!(Superagent, second.id).max_workers == 4
   end
 
-  test "an empty board says no project is registered", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("fixture", "empty-panel")
-
-    {:ok, view, _html} =
-      live(conn, "/?repo=fixture/empty-panel&panel=settings&section=projects")
+  test "a board with no repository says no project is registered", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/?panel=settings&section=projects")
 
     assert has_element?(view, ".ab-projects__empty", "Nenhum projeto ainda")
   end
@@ -278,5 +275,38 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     retried = Repo.get!(Superagent, superagent.id)
     assert is_nil(retried.provision_failed_at)
     assert retried.observed_state == "starting"
+  end
+
+  # A repository tracked without an agent is still a project: it gets a row,
+  # and its button fills the add form, which asks before creating the agent.
+  test "a repository tracked without an agent is listed and can get one", %{conn: conn} do
+    {:ok, with_agent} = Board.add_repository("fixture", "with-agent")
+    superagent!(with_agent, %{observed_state: "ready"})
+    {:ok, tracked} = Board.add_repository("fixture", "tracked-only")
+
+    {:ok, view, _html} =
+      live(conn, "/?repo=fixture/with-agent&panel=settings&section=projects")
+
+    row = "#tracked-#{tracked.id}"
+    assert has_element?(view, row, "fixture/tracked-only")
+    assert has_element?(view, row, "Sem agente")
+    refute has_element?(view, "#tracked-#{with_agent.id}")
+    assert has_element?(view, ".ab-projects__summary", "1 sem agente")
+
+    view |> element("#{row} button", "Criar agente") |> render_click()
+
+    assert has_element?(view, "#track-repo input[name=owner][value=fixture]")
+    assert has_element?(view, "#track-repo input[name=name][value=tracked-only]")
+    assert has_element?(view, "#track-repo input[name=create_agent][checked]")
+  end
+
+  test "a board with only tracked repositories is not empty", %{conn: conn} do
+    {:ok, _tracked} = Board.add_repository("fixture", "only-tracked")
+
+    {:ok, view, _html} =
+      live(conn, "/?repo=fixture/only-tracked&panel=settings&section=projects")
+
+    refute has_element?(view, ".ab-projects__empty")
+    assert has_element?(view, ".ab-projects__list", "fixture/only-tracked")
   end
 end
