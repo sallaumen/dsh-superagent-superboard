@@ -162,6 +162,29 @@ Captures in `wide/`: `colmex-idle-en-dark-3440x1317.png` (the owner's case: idle
 `busy-2560x1440.png`, `busy-1920x1080.png`, `inspector-3440x1440.png`, `inspector-5120x1440.png`,
 `hoje-3440x1440.png`, `hoje-2560x1440.png`.
 
+## Languages (finding 10, proposal P5)
+
+Inventory of 2026-11-10 at b8dff0e: 652 Portuguese and 110 English user-facing literals outside
+Gettext, 8 browser strings never localized, no Portuguese in `Logger` or raises, a complete pt-BR
+catalog. Workflow `house-patterns` (kit 0.8.0).
+
+Most of it was converted on `main` by the other agent while this audit's slice was being written:
+#527 (menus, message hub, status words, numbers in the viewer's format), #529 (confirmation sentences
+in the interface language) and #530 (lanes, blocks and activity). This audit's own conversion of the
+same modules was dropped in favour of those. What it adds on top:
+
+- `AgentBoard.Time` words relative ages, day headings and "since" labels through Gettext; it was still
+  Portuguese ("há 7 min", "terça", "nov"). `AgentBoardWeb.Time`, its translated copy, now only forwards.
+- Eight browser strings joined `assets/js/i18n.js` ("Listening…", "You", "Agent"…).
+- "Message without a preview", "Report updated" (message hub), "of N" (queue filters) and
+  "thought for N" (voice log).
+
+Still Portuguese outside Gettext, by a rough search of `main`: `actions` 84 lines (results and the
+Portuguese branch of the sentences), `voice/commands` 26, `agent_control` 17, `routing` 12,
+`conversation/agent` 8 and `voice_controller` 4 (voice activity, shown and logged), `runners` 5,
+`auto_retry` 5 and `bot_access` 4 (stored text), `freshness` 19 and `Logs.summary/1` (not rendered).
+`merge_log` and `needs_you` pick a CSS class by comparing a note with a translated string.
+
 ## Proposals, in priority order
 
 Each one changes behavior, a query or the layout. P1 and P3a are implemented and P4 was replaced by

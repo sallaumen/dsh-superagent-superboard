@@ -1,5 +1,7 @@
 defmodule AgentBoard.Board.Inbox do
   @moduledoc "Recent agent conversations and active attention across tracked projects."
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   import Ecto.Query, warn: false
 
   alias AgentBoard.{Board, Repo, Workpad}
@@ -92,7 +94,7 @@ defmodule AgentBoard.Board.Inbox do
     |> Enum.join(" ")
     |> String.slice(0, 170)
     |> case do
-      "" -> "Mensagem sem prévia"
+      "" -> gettext("Message without a preview")
       compact -> compact
     end
   end
@@ -101,7 +103,7 @@ defmodule AgentBoard.Board.Inbox do
     validation = workpad.validation && workpad.validation.detail
 
     [workpad.question, workpad.blockage, validation, workpad.plan]
-    |> Enum.find("Relatório atualizado", &is_binary/1)
+    |> Enum.find(gettext("Report updated"), &is_binary/1)
   end
 
   defp version(id, body) do

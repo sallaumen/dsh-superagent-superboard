@@ -19,7 +19,7 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
         <span class="ab-sec__count">
           {count(@queue.total, @frozen)}
           <span :if={@queue.filter != :all} class="ab-meta">
-            de {count(@queue.counts.all, @frozen)}
+            {gettext("of %{total}", total: count(@queue.counts.all, @frozen))}
           </span>
         </span>
         <span class="ab-top__spacer"></span>

@@ -42,6 +42,7 @@ import {VoicePresence} from "./hooks/voice_presence"
 import {VoiceWispr} from "./hooks/voice_wispr"
 import {TaskConversation} from "./hooks/task_conversation"
 import {voiceInputActive, voiceState} from "./voice_state"
+import {localize} from "./i18n"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -172,9 +173,9 @@ window.addEventListener("board:voice-state", ({detail}) => {
   pill.dataset.phase = detail.phase
   const label = pill.querySelector("[data-voice-label]")
   if (label) {
-    label.textContent = detail.phase === "transcribing"
+    label.textContent = localize(detail.phase === "transcribing"
       ? "Transcrevendo…"
-      : detail.phase === "permission" ? "Aguardando microfone…" : "Ouvindo…"
+      : detail.phase === "permission" ? "Aguardando microfone…" : "Ouvindo…")
   }
 })
 
