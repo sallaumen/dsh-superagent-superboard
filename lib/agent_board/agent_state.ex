@@ -230,6 +230,7 @@ defmodule AgentBoard.AgentState do
       "report_at" => parse(report["at"]),
       "started_at" => parse(last["startedAt"]),
       "idle_at" => parse(last["idleAt"]),
+      "answered_at" => answered_at(ticket, last["id"]),
       "updated_at" => parse(ticket["updatedAt"]),
       "ended_outcome" => ended["outcome"],
       "ended_at" => parse(ended["at"]),
@@ -243,6 +244,22 @@ defmodule AgentBoard.AgentState do
       "reports" => reports(ticket),
       "assignments" => assignments(ticket)
     }
+  end
+
+  # When the worker of this Assignment last read a person's message: the
+  # runner records each one in `inputs[]` (`kind: "trigger"`, `human: true`)
+  # with the Assignment it was delivered to and the moment it was read. A
+  # message not read yet, or one from a machine, is not an answer.
+  defp answered_at(ticket, assignment_id) do
+    ticket["inputs"]
+    |> List.wrap()
+    |> Enum.filter(
+      &(is_map(&1) and &1["kind"] == "trigger" and &1["human"] == true and
+          is_binary(assignment_id) and &1["deliveredTo"] == assignment_id)
+    )
+    |> Enum.map(&parse(&1["readAt"]))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.max(DateTime, fn -> nil end)
   end
 
   # Every Assignment in order, with its report and how it ended: the retry

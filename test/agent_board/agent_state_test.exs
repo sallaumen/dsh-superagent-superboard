@@ -61,6 +61,35 @@ defmodule AgentBoard.AgentStateTest do
     assert ticket["execution"]["directory"] == "/tmp/work"
   end
 
+  test "a person's message the worker read is the ticket's answer", %{db: db} do
+    assignments = [
+      %{"id" => "old", "state" => "ended"},
+      %{"id" => "now", "state" => "running", "report" => %{"state" => "waiting"}}
+    ]
+
+    input = fn fields ->
+      Map.merge(%{"kind" => "trigger", "human" => true, "deliveredTo" => "now"}, fields)
+    end
+
+    inputs = [
+      input.(%{"readAt" => "2026-11-10T17:45:12.054Z"}),
+      input.(%{"readAt" => "2026-11-10T17:20:00.000Z"}),
+      # not read yet, from a machine, a note, delivered to another Assignment
+      input.(%{"at" => "2026-11-10T19:00:00.000Z"}),
+      input.(%{"human" => nil, "readAt" => "2026-11-10T19:00:00.000Z"}),
+      input.(%{"kind" => "note", "readAt" => "2026-11-10T19:00:00.000Z"}),
+      input.(%{"deliveredTo" => "old", "readAt" => "2026-11-10T19:00:00.000Z"}),
+      "not an input"
+    ]
+
+    insert(db, Map.merge(@sample, %{"assignments" => assignments, "inputs" => inputs}))
+    insert(db, @sample)
+
+    assert [answered, plain] = AgentState.snapshot().tickets
+    assert answered["answered_at"] == ~U[2026-11-10 17:45:12.054Z]
+    assert plain["answered_at"] == nil
+  end
+
   test "the threads a ticket opened itself are its own PRs", %{db: db} do
     follows = [
       %{"thread" => "github:28", "own" => true},

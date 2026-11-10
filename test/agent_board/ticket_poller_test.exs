@@ -231,6 +231,23 @@ defmodule AgentBoard.TicketPollerTest do
     assert Repo.get(Task, t.id).state == "blocked"
   end
 
+  # The runner's own record of arena-rogue #208: one Assignment, the waiting
+  # report of 17:00, the owner's message read at 17:45.
+  @answered ~s({"mandate":{"basis":{"scope":{"number":42}}},"assignments":[{"id":"a1","state":"running","startedAt":"2026-11-10T16:56:37.142Z","idleAt":"2026-11-10T17:00:44.619Z","report":{"state":"waiting","summary":"A chave da OpenAI esta sem creditos.","at":"2026-11-10T17:00:44.619Z"}}],"inputs":[{"kind":"trigger","human":true,"at":"2026-11-10T17:45:11.911Z","readAt":"2026-11-10T17:45:12.054Z","deliveredTo":"a1"}]})
+
+  test "a blocked task goes back to work when the worker read the owner's answer", %{db: db} do
+    repo = isolated_repo()
+    t = task(repo)
+    t |> Ecto.Changeset.change(state: "blocked") |> Repo.update!()
+
+    :ok =
+      Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @answered <> "')")
+
+    AgentBoard.TicketPoller.poll(%{})
+
+    assert Repo.get(Task, t.id).state == "running"
+  end
+
   test "a waiting ticket whose newest agent comment asks is a question", %{db: db} do
     repo = isolated_repo()
     t = task(repo)

@@ -247,6 +247,18 @@ that already worked).
   Bloqueio (Block) makes it `blocked` even when the ticket opened a PR, and
   the item in Precisa de você (Needs you) quotes the section, never the whole
   comment.
+- A person's answer puts the task back to work. The runner records each
+  message it delivered to a worker in the ticket's `inputs[]` (`kind:
+  "trigger"`, `human: true`, `deliveredTo`, `readAt`); `AgentState` keeps the
+  newest one the current Assignment read as `answered_at`. A `waiting` or
+  `blocked` report older than that answer no longer decides: the task is
+  `running` (`Tickets.answered_at/1`), its card in Agora (Now) says when the
+  answer was read, and the silence clock counts from it. A newer report, a
+  worker idle after the answer, or an ended ticket decide again. The evidence
+  is the runner's record, never a comment's text: the owner's comment before
+  it is read, or the agent's "On it" reply, change nothing by themselves. The
+  board only reads this; it asks nothing of the runner
+  (`sync_test.exs`, `ticket_poller_test.exs`, `board_stall_test.exs`).
 - Validação (validation) is the local CI of the PRs the ticket and the
   workpad name (`LocalCI.by_pr/3`, scope `:workpad`): the command, its result
   and the sha it ran on. The sha is checked against the PR's head
