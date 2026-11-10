@@ -429,6 +429,45 @@ defmodule AgentBoard.Conversation.CommandsTest do
                turn("desfaz", repo)
     end
 
+    test "a desfaz that failed at GitHub can be said again", %{repo: repo} do
+      {:ok, closes} = Elixir.Agent.start_link(fn -> 0 end)
+
+      Req.Test.stub(@stub, fn
+        %{method: "PATCH"} = conn ->
+          case Elixir.Agent.get_and_update(closes, &{&1, &1 + 1}) do
+            0 -> conn |> Plug.Conn.put_status(502) |> Req.Test.json(%{"message" => "Bad Gateway"})
+            _ -> Req.Test.json(conn, %{"number" => 42})
+          end
+
+        conn ->
+          Req.Test.json(conn, %{
+            "number" => 42,
+            "html_url" => "https://github.com/sallaumen/arena-rogue/issues/42"
+          })
+      end)
+
+      script(fn %{name: :voice_agent} ->
+        agent_answer("create_task", %{
+          "request" => "corrigir o botão",
+          "title" => "Corrigir o botão",
+          "details" => ["o botão salva"],
+          "direct" => true
+        })
+      end)
+
+      turn("cria direto: corrigir o botão", repo)
+      script(fn _ -> flunk("desfaz is local") end)
+
+      assert %{reply: "Não consegui fechar a tarefa 42. Veja a atividade."} = turn("desfaz", repo)
+      assert %Task{stopped: false} = Repo.get_by!(Task, repository_id: repo.id, number: 42)
+
+      assert %{reply: "Desfeito. Fechei a tarefa 42."} = turn("desfaz", repo)
+      assert %Task{stopped: true} = Repo.get_by!(Task, repository_id: repo.id, number: 42)
+
+      assert %{reply: "Não tenho nada para desfazer dos últimos dez minutos."} =
+               turn("desfaz", repo)
+    end
+
     test "desfaz never closes a task the voice did not create", %{repo: repo} do
       task!(repo, %{number: 8, title: "De outra pessoa"})
       script(fn _ -> flunk("desfaz is local") end)

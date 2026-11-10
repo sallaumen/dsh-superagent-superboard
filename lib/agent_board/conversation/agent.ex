@@ -256,6 +256,8 @@ defmodule AgentBoard.Conversation.Agent do
         say(Phrases.nothing_to_undo(lang), "undo")
 
       failure ->
+        :ok = Conversation.release_undone(turn)
+
         Activity.record(:action, :error, "could not undo task ##{n}",
           turn: ctx[:turn_id],
           reason: create_failure(failure)
