@@ -3,11 +3,14 @@ defmodule AgentBoard.ElevenLabs.Retry do
   When an ElevenLabs request is tried again, and how.
 
   Only failures that produced nothing to pay for are retried: a transport
-  error (the connection failed or timed out before a response), a 429 (rate
+  error where the connection never opened (refused, unknown host, no
+  route), a 429 (rate
   limited, honoring `retry-after` up to two seconds) and a 500/502/503/504.
   A 4xx about the key, the voice or the text is final: repeating it cannot
   succeed. A stream is retried only before its first chunk reached the
-  listener; after that a retry would splice two recordings together.
+  listener; after that a retry would splice two recordings together. A
+  timeout or a closed connection is final: the request may already have
+  reached ElevenLabs and been billed.
 
   At most `:voice_max_retries` retries (default 2) with a growing delay
   (`:voice_retry_base_ms`, default 300 ms: about 0.3 s, then 0.9 s). Every
@@ -18,6 +21,7 @@ defmodule AgentBoard.ElevenLabs.Retry do
   alias AgentBoard.Voice.Activity
 
   @retry_statuses [429, 500, 502, 503, 504]
+  @never_connected [:econnrefused, :nxdomain, :ehostunreach, :enetunreach]
   @max_delay_ms 2_000
   @streamed_key :elevenlabs_streamed
 
@@ -61,7 +65,7 @@ defmodule AgentBoard.ElevenLabs.Retry do
 
   @doc "Whether a failure is one that is worth (and safe) to try again."
   def retryable?(%Req.Response{status: status}), do: status in @retry_statuses
-  def retryable?(%Req.TransportError{}), do: true
+  def retryable?(%Req.TransportError{reason: reason}), do: reason in @never_connected
   def retryable?(_other), do: false
 
   defp delay(retries, %Req.Response{status: 429} = response) do

@@ -502,8 +502,10 @@ Agora and the detail):
   `:usage_limit`, `{:http, status}`) — a raise never reaches the caller.
   **Bounded retry** (`AgentBoard.ElevenLabs.Retry`, decided with the owner
   on 2026-11-07): only failures with nothing to pay for are retried — a
-  transport error before a response, a 429 (honoring `retry-after` up to
-  2 s) and a 500/502/503/504 — at most twice, with a growing delay; a 4xx
+  transport error where the connection never opened (refused, unknown host,
+  no route; a timeout or a closed connection may already be billed and is
+  final), a 429 (honoring `retry-after` up to 2 s) and a 500/502/503/504 —
+  at most twice, with a growing delay; a 4xx
   about the key, voice or text is final, and a stream is never retried after
   its first chunk reached the browser. Every retry is a voice activity
   event. The AI calls keep "no retry" below. The key never reaches the
