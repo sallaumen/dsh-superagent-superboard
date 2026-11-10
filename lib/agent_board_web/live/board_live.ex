@@ -418,11 +418,9 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp tickets_by_number(tickets, repo) do
-    for ticket <- tickets,
-        AgentState.same_repository?(ticket, repo),
-        number <- ticket["numbers"] || [],
-        into: %{},
-        do: {number, ticket}
+    tickets
+    |> Enum.filter(&AgentState.same_repository?(&1, repo))
+    |> Tickets.by_number()
   end
 
   defp empty?(board) do
