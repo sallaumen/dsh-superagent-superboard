@@ -5,7 +5,8 @@ defmodule AgentBoard.Usage.Report do
 
   Every value keeps its source's currency and its class:
 
-    * the harness's US$ is **estimated** from the board's price table;
+    * the harness's US$ is **estimated** from the board's price table, each
+      token at the rate of its hour (DeepSeek charges half outside its peak);
     * Claude Code's US$ is an **estimated list price** of the Claude Max
       subscription, a reference and not a bill; its real quota is **unknown**;
     * Codex has no US$: it is a **measured** share of the weekly window;
@@ -19,6 +20,7 @@ defmodule AgentBoard.Usage.Report do
 
   import Ecto.Query
 
+  alias AgentBoard.AI.Providers
   alias AgentBoard.{Attribution, Board, Repo}
   alias AgentBoard.Usage.{Costs, Harness, Ledger}
 
@@ -78,7 +80,73 @@ defmodule AgentBoard.Usage.Report do
     )
     |> maybe_until(until)
     |> Repo.all()
+    |> with_peak(since, until)
   end
+
+  # A ledger row sums a day, and DeepSeek charges by the hour: each harness
+  # row gets the tokens of its peak hours, from its own messages.
+  defp with_peak(rows, since, until) do
+    if Enum.any?(rows, &(&1.source == "dsh")) do
+      peak = peak_by_row(since, until)
+      Enum.map(rows, &put_peak(&1, peak))
+    else
+      rows
+    end
+  end
+
+  defp put_peak(%{source: "dsh"} = row, peak),
+    do: Map.put(row, :peak, Map.get(peak, row_key(row)))
+
+  defp put_peak(row, _peak), do: row
+
+  defp row_key(row), do: {row.execution_id, row.day, row.cwd, row.git_branch, row.model}
+
+  # Grouped by hour in the database; which hours are peak stays one rule
+  # (`Providers.peak?/1`).
+  defp peak_by_row(since, until) do
+    from(m in "usage_messages",
+      where: m.source == "dsh" and m.day >= ^since,
+      group_by: [
+        m.execution_id,
+        m.day,
+        m.cwd,
+        m.git_branch,
+        m.model,
+        fragment("date_trunc('hour', ?)", m.at)
+      ],
+      select: %{
+        execution_id: m.execution_id,
+        day: m.day,
+        cwd: m.cwd,
+        git_branch: m.git_branch,
+        model: m.model,
+        hour: type(fragment("date_trunc('hour', ?)", m.at), :utc_datetime_usec),
+        input: type(sum(m.input_tokens), :integer),
+        output: type(sum(m.output_tokens), :integer),
+        cache_read: type(sum(m.cache_read_tokens), :integer)
+      }
+    )
+    |> messages_until(until)
+    |> Repo.all()
+    |> Enum.reduce(%{}, fn bucket, acc ->
+      add =
+        if Providers.peak?(bucket.hour), do: bucket, else: %{input: 0, output: 0, cache_read: 0}
+
+      Map.update(
+        acc,
+        row_key(bucket),
+        Map.take(add, [:input, :output, :cache_read]),
+        &%{
+          input: &1.input + add.input,
+          output: &1.output + add.output,
+          cache_read: &1.cache_read + add.cache_read
+        }
+      )
+    end)
+  end
+
+  defp messages_until(query, nil), do: query
+  defp messages_until(query, %Date{} = until), do: where(query, [m], m.day <= ^until)
 
   defp maybe_until(query, nil), do: query
   defp maybe_until(query, %Date{} = until), do: where(query, [l], l.day <= ^until)
@@ -442,6 +510,7 @@ defmodule AgentBoard.Usage.Report do
           select: %{
             source: m.source,
             model: m.model,
+            at: type(m.at, :utc_datetime_usec),
             requests: 1,
             input_tokens: m.input_tokens,
             output_tokens: m.output_tokens,

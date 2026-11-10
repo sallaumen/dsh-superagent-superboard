@@ -157,10 +157,34 @@ defmodule AgentBoard.AITest do
 
   defp assert_strict_objects(_schema), do: :ok
 
+  test "DeepSeek's peak hours are its published ones, in UTC, on weekdays" do
+    for {at, expected} <- [
+          {~U[2026-11-10 00:59:59Z], false},
+          {~U[2026-11-10 01:00:00Z], true},
+          {~U[2026-11-10 03:59:59Z], true},
+          {~U[2026-11-10 04:00:00Z], false},
+          {~U[2026-11-10 05:59:59Z], false},
+          {~U[2026-11-10 06:00:00Z], true},
+          {~U[2026-11-10 09:59:59Z], true},
+          {~U[2026-11-10 10:00:00Z], false},
+          {~U[2026-11-07 07:00:00Z], false},
+          {~U[2026-11-08 07:00:00Z], false},
+          {~U[2026-11-13 07:00:00Z], true}
+        ] do
+      assert Providers.peak?(at) == expected, inspect(at)
+    end
+  end
+
   test "cost is computed from the model's price per million tokens" do
-    assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000_000, 0) == 280_000
-    assert Providers.cost_micros(:deepseek, "deepseek-flash", 0, 1_000_000) == 420_000
-    assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000, 2_000) == 1_120
+    # a Tuesday in DeepSeek's peak hours, and the same hour on a Saturday
+    peak = ~U[2026-11-10 07:00:00Z]
+    off_peak = ~U[2026-11-07 07:00:00Z]
+
+    assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000_000, 0, peak) == 300_000
+    assert Providers.cost_micros(:deepseek, "deepseek-flash", 0, 1_000_000, peak) == 1_200_000
+    assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000, 2_000, peak) == 2_700
+    assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000_000, 0, off_peak) == 150_000
+    assert Providers.cost_micros(:deepseek, "deepseek-v4-pro", 0, 1_000_000, peak) == 3_960_000
     assert Providers.cost_micros(:deepseek, "not-a-model", 1_000, 1_000) == 0
     assert Providers.cost_micros(:nope, "x", 1_000, 1_000) == 0
   end

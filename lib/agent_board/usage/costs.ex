@@ -60,6 +60,7 @@ defmodule AgentBoard.Usage.Costs do
   # before the ledger told the two writes apart holds no 1-hour count and is
   # priced at the 5-minute rate, a minimum, until its file is read again.
   @cache_read_multiplier 0.10
+  @no_peak %{input: 0, output: 0, cache_read: 0}
   @cache_write_multiplier 1.25
   @cache_write_1h_multiplier 2.00
 
@@ -73,6 +74,7 @@ defmodule AgentBoard.Usage.Costs do
   @spec prices(String.t(), String.t() | nil) ::
           %{
             optional(:cache_write_1h) => number(),
+            optional(:off_peak) => number() | nil,
             input: number(),
             output: number(),
             cache_read: number() | nil,
@@ -89,7 +91,8 @@ defmodule AgentBoard.Usage.Costs do
           input: Map.get(prices, :input, 0),
           output: Map.get(prices, :output, 0),
           cache_read: Map.get(prices, :cache_read),
-          cache_write: Map.get(prices, :cache_write)
+          cache_write: Map.get(prices, :cache_write),
+          off_peak: Map.get(prices, :off_peak)
         }
     end
   end
@@ -139,31 +142,58 @@ defmodule AgentBoard.Usage.Costs do
 
   defp row_cost(source, row) do
     case prices(source, row[:model]) do
-      %{} = prices ->
-        input = count(row[:input_tokens])
-        output = count(row[:output_tokens])
-        cache_read = count(row[:cache_read_tokens])
-        cache_write = count(row[:cache_write_tokens])
+      %{} = prices -> priced_row(row, prices)
+      _ -> nil
+    end
+  end
 
-        one_hour = one_hour_writes(row, prices, cache_write)
+  defp priced_row(row, prices) do
+    input = count(row[:input_tokens])
+    output = count(row[:output_tokens])
+    cache_read = count(row[:cache_read_tokens])
+    cache_write = count(row[:cache_write_tokens])
+    one_hour = one_hour_writes(row, prices, cache_write)
+    {peak, timed?} = peak_tokens(row, prices)
 
-        complete? =
-          (cache_read == 0 or prices.cache_read != nil) and
-            (cache_write == 0 or prices.cache_write != nil)
+    complete? =
+      timed? and (cache_read == 0 or prices.cache_read != nil) and
+        (cache_write == 0 or prices.cache_write != nil)
 
-        micros =
-          round(
-            input * prices.input +
-              output * prices.output +
-              cache_read * (prices.cache_read || 0) +
-              (cache_write - one_hour) * (prices.cache_write || 0) +
-              one_hour * (prices[:cache_write_1h] || 0)
-          )
+    micros =
+      round(
+        Providers.at_full_rate(input, peak.input, prices) * prices.input +
+          Providers.at_full_rate(output, peak.output, prices) * prices.output +
+          Providers.at_full_rate(cache_read, peak.cache_read, prices) *
+            (prices.cache_read || 0) +
+          (cache_write - one_hour) * (prices.cache_write || 0) +
+          one_hour * (prices[:cache_write_1h] || 0)
+      )
 
-        {micros, complete?}
+    {micros, complete?}
+  end
 
-      _ ->
-        nil
+  # Which tokens paid the peak rate, and whether the row can say. A price with
+  # one rate needs no hour. A ledger row covers a whole day: `Report.rows/2`
+  # gives it the split (`:peak`); a single message has its instant (`:at`). A
+  # row with neither is priced off-peak and is a minimum.
+  defp peak_tokens(row, prices) do
+    cond do
+      is_nil(prices[:off_peak]) -> {@no_peak, true}
+      is_map(row[:peak]) -> {row.peak, true}
+      is_struct(row[:at], DateTime) -> {message_peak(row), true}
+      true -> {@no_peak, false}
+    end
+  end
+
+  defp message_peak(row) do
+    if Providers.peak?(row.at) do
+      %{
+        input: count(row[:input_tokens]),
+        output: count(row[:output_tokens]),
+        cache_read: count(row[:cache_read_tokens])
+      }
+    else
+      @no_peak
     end
   end
 

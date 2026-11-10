@@ -24,6 +24,23 @@ defmodule AgentBoard.Usage.HarnessTest do
   end
 
   describe "parse/1" do
+    test "splits the tokens of the provider's peak hours from the rest" do
+      peak = DateTime.to_unix(~U[2026-11-10 07:00:00Z], :millisecond)
+      off_peak = DateTime.to_unix(~U[2026-11-10 12:00:00Z], :millisecond)
+
+      session =
+        [
+          ~s({"type":"model/selection","seq":1,"data":{"model":"deepseek-flash"}}),
+          timed(assistant_line("a", 10, 20, 30), peak),
+          timed(assistant_line("b", 1, 2, 3), off_peak)
+        ]
+        |> Enum.join("\n")
+        |> Harness.parse()
+
+      assert session.peak == %{input: 10, output: 20, cache_read: 30}
+      assert session.timed?
+    end
+
     test "sums each assistant message once and names the session's model" do
       lines = [
         session_line("worker-abc", 0),
@@ -78,29 +95,28 @@ defmodule AgentBoard.Usage.HarnessTest do
   end
 
   describe "cost/1" do
-    test "prices input and output and says the total is a minimum when cache reads have no price" do
-      cost =
-        Harness.cost([
-          %{
-            model: "deepseek-flash",
-            input: 1_000_000,
-            output: 1_000_000,
-            cache_read: 5,
-            cache_write: 0
-          }
-        ])
+    @session %{
+      model: "deepseek-flash",
+      input: 1_000_000,
+      output: 1_000_000,
+      cache_read: 1_000_000,
+      cache_write: 0
+    }
 
-      assert cost.micros == 700_000
-      assert cost.complete? == false
+    test "a token pays the rate of its hour, cache reads included" do
+      none = %{input: 0, output: 0, cache_read: 0}
+      all = %{input: 1_000_000, output: 1_000_000, cache_read: 1_000_000}
+
+      assert Harness.cost([Map.merge(@session, %{peak: none, timed?: true})]) ==
+               %{micros: 753_000, complete?: true}
+
+      assert Harness.cost([Map.merge(@session, %{peak: all, timed?: true})]) ==
+               %{micros: 1_506_000, complete?: true}
     end
 
-    test "is complete when nothing needs an unknown price" do
-      cost =
-        Harness.cost([
-          %{model: "deepseek-flash", input: 1_000_000, output: 0, cache_read: 0, cache_write: 0}
-        ])
-
-      assert cost == %{micros: 280_000, complete?: true}
+    test "a session with a message that has no time is priced off-peak, as a minimum" do
+      assert Harness.cost([Map.put(@session, :timed?, false)]) ==
+               %{micros: 753_000, complete?: false}
     end
 
     test "an unpriced model is unknown, never zero" do
@@ -116,7 +132,7 @@ defmodule AgentBoard.Usage.HarnessTest do
           %{model: nil, input: 10, output: 10, cache_read: 0, cache_write: 0}
         ])
 
-      assert cost == %{micros: 280_000, complete?: false}
+      assert cost == %{micros: 150_000, complete?: false}
     end
   end
 
@@ -153,7 +169,8 @@ defmodule AgentBoard.Usage.HarnessTest do
       assert usage.output == 1_000_000
       assert usage.cache_read == 10
       assert usage.models == ["deepseek-flash"]
-      assert usage.cost == %{micros: 700_000, complete?: false}
+      # these lines carry no time: off-peak, and a minimum
+      assert usage.cost == %{micros: 750_000, complete?: false}
 
       assert Harness.for_tickets([ticket(dir)], usage) == usage
     end

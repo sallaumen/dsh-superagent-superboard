@@ -15,7 +15,13 @@ defmodule AgentBoard.AI.Providers do
       base_url: "https://api.deepseek.com",
       key_env: "DEEPSEEK_API_KEY",
       models: %{fast: "deepseek-flash", deep: "deepseek-v4-pro"},
-      prices: %{fast: %{input: 0.28, output: 0.42}, deep: %{input: 0.28, output: 0.42}}
+      # US$ per 1M tokens at the peak rate, published at
+      # https://api-docs.deepseek.com/quick_start/pricing (read 2026-11-10).
+      # `input` is a cache miss; off-peak hours pay `off_peak` of these.
+      prices: %{
+        fast: %{input: 0.30, output: 1.20, cache_read: 0.006, off_peak: 0.5},
+        deep: %{input: 1.32, output: 3.96, cache_read: 0.044, off_peak: 0.5}
+      }
     },
     gemini: %{
       label: "Gemini",
@@ -58,7 +64,9 @@ defmodule AgentBoard.AI.Providers do
   the coding agent's harness names its provider differently (DeepSeek's is
   `deepseek-account`), but the model id is the same. `:cache_read` and
   `:cache_write` are optional; a token kind without a price is unpriced, not
-  free. Nil for a model the catalog does not list.
+  free. `:off_peak` is the share of these prices a token pays outside the
+  provider's peak hours (`peak?/1`, `at_full_rate/3`). Nil for a model the
+  catalog does not list.
   """
   @spec prices_for_model(String.t() | nil) :: map() | nil
   def prices_for_model(nil), do: nil
@@ -91,18 +99,42 @@ defmodule AgentBoard.AI.Providers do
   end
 
   @doc """
-  The cost of a call in microdollars, from the model's published price per
-  million tokens. An unknown model or a provider with no price table answers
-  zero rather than guessing -- a wrong number in the panel is worse than no
-  number.
+  Whether an instant (UTC) is in DeepSeek's peak hours: 01:00 to 04:00 and
+  06:00 to 10:00, Monday to Friday. The provider also treats Chinese public
+  holidays as off-peak; the board has no such calendar and prices them as
+  peak, so on those days the estimate is high.
   """
-  @spec cost_micros(atom(), String.t() | nil, non_neg_integer(), non_neg_integer()) ::
+  @spec peak?(DateTime.t()) :: boolean()
+  def peak?(%DateTime{hour: hour} = at),
+    do: Date.day_of_week(at) <= 5 and (hour in 1..3 or hour in 6..9)
+
+  @doc """
+  How many tokens at the published price these are worth: those of the peak
+  hours count whole, the others by the model's `:off_peak` share. A price
+  table without one has a single rate.
+  """
+  @spec at_full_rate(number(), number(), map()) :: number()
+  def at_full_rate(tokens, peak_tokens, %{off_peak: share}) when is_number(share),
+    do: peak_tokens + (tokens - peak_tokens) * share
+
+  def at_full_rate(tokens, _peak_tokens, _prices), do: tokens
+
+  @doc """
+  The cost of a call in microdollars, from the model's published price per
+  million tokens at the instant of the call. An unknown model or a provider
+  with no price table answers zero rather than guessing -- a wrong number in
+  the panel is worse than no number.
+  """
+  @spec cost_micros(atom(), String.t() | nil, non_neg_integer(), non_neg_integer(), DateTime.t()) ::
           non_neg_integer()
-  def cost_micros(provider, model, input_tokens, output_tokens) do
+  def cost_micros(provider, model, input_tokens, output_tokens, at \\ DateTime.utc_now()) do
     with {:ok, %{models: models, prices: prices}} <- fetch(provider),
          {tier, ^model} <- Enum.find(models, fn {_tier, id} -> id == model end),
-         %{input: input_price, output: output_price} <- Map.get(prices, tier) do
-      round(input_tokens * input_price + output_tokens * output_price)
+         %{input: input_price, output: output_price} = price <- Map.get(prices, tier) do
+      peak? = peak?(at)
+      input = at_full_rate(input_tokens, if(peak?, do: input_tokens, else: 0), price)
+      output = at_full_rate(output_tokens, if(peak?, do: output_tokens, else: 0), price)
+      round(input * input_price + output * output_price)
     else
       _ -> 0
     end
