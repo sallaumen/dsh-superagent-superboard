@@ -51,9 +51,10 @@ defmodule AgentBoard.Usage.Ledger do
 
   # What each reader takes from a file. A file read by an older reader is
   # read again in full: Claude Code's 2 added the 1-hour cache writes, the
-  # harness's 3 the model of a session with no `model/selection`.
+  # harness's 3 the model of a session with no `model/selection`, Codex's 3
+  # stopped crediting the count a subagent inherits.
   @claude_reader 2
-  @readers %{"claude_code" => @claude_reader, "codex" => 1, "dsh" => 3}
+  @readers %{"claude_code" => @claude_reader, "codex" => 3, "dsh" => 3}
   @fingerprint_bytes 4_096
   @chunk 2_000
 
@@ -318,7 +319,7 @@ defmodule AgentBoard.Usage.Ledger do
 
   defp read(%{source: "codex", thread: thread_id, files: files}, _known, threads) do
     with {:ok, rollout} <- Codex.read_thread(Enum.map(files, & &1.path)) do
-      thread = Map.get(threads, thread_id, %{})
+      thread = Map.get(threads, thread_id) || stored_thread(thread_id)
 
       rows =
         Enum.map(rollout.days, fn day ->
@@ -346,6 +347,18 @@ defmodule AgentBoard.Usage.Ledger do
       states = Enum.map(earlier, &{&1, %{offset: 0, fingerprint: nil, skipped: 0}})
       {:ok, changed, states ++ [{last, %{offset: 0, fingerprint: nil, skipped: rollout.skipped}}]}
     end
+  end
+
+  # A thread the state database did not give (unreadable, or gone from it)
+  # keeps the cwd, branch and model its rows hold: a re-read must not lose them.
+  defp stored_thread(thread_id) do
+    Repo.one(
+      from l in "usage_ledger",
+        where: l.source == "codex" and l.execution_id == ^thread_id,
+        order_by: [desc: l.day],
+        limit: 1,
+        select: %{cwd: l.cwd, git_branch: l.git_branch, model: l.model}
+    ) || %{}
   end
 
   defp codex_threads do

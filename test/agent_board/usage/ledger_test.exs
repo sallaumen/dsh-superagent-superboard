@@ -205,6 +205,37 @@ defmodule AgentBoard.Usage.LedgerTest do
       assert tokens == 3_800
     end
 
+    # A subagent's first total is its parent's. A thread read before the
+    # reader knew that is read once more, even with the state database gone.
+    test "a subagent's inherited count leaves rows read before the reader knew it",
+         %{codex: dir, root: root} do
+      codex_rollout(
+        dir,
+        [
+          {"2026-09-08T12:11:13.000Z", 1_000_000, 0, 100},
+          {"2026-09-08T12:12:13.000Z", 1_000_500, 0, 100}
+        ],
+        last: {200, 0, 50}
+      )
+
+      state_db(400, 1_000_600)
+
+      assert %{read: 1, failed: 0} = Ledger.refresh()
+      assert codex_tokens(@thread) == 750
+
+      Repo.update_all("usage_ledger", set: [input_tokens: 1_000_500])
+      Repo.update_all("usage_files", set: [reader: 2])
+      File.rm!(Path.join(root, "state_5.sqlite"))
+
+      assert %{read: 1, failed: 0} = Ledger.refresh()
+      assert codex_tokens(@thread) == 750
+
+      assert [{@thread, _, "/w/agent-board", "feat/x", "gpt-6-sol", _, _, _, _, _}] =
+               ledger("codex")
+
+      assert %{read: 0} = Ledger.refresh()
+    end
+
     test "a continued thread is one count, and an archived thread is read too",
          %{codex: dir, root: root} do
       codex_rollout(
@@ -470,21 +501,25 @@ defmodule AgentBoard.Usage.LedgerTest do
     write(dir, name, Enum.map(points, &codex_line(&1, opts)))
   end
 
+  defp codex_usage({input, cached, output}) do
+    %{
+      input_tokens: input,
+      cached_input_tokens: cached,
+      output_tokens: output,
+      reasoning_output_tokens: 0,
+      total_tokens: input + output
+    }
+  end
+
   defp codex_line({at, input, cached, output}, opts) do
+    last = if opts[:last], do: %{last_token_usage: codex_usage(opts[:last])}, else: %{}
+
     Jason.encode!(%{
       timestamp: at,
       type: "event_msg",
       payload: %{
         type: "token_count",
-        info: %{
-          total_token_usage: %{
-            input_tokens: input,
-            cached_input_tokens: cached,
-            output_tokens: output,
-            reasoning_output_tokens: 0,
-            total_tokens: input + output
-          }
-        },
+        info: Map.merge(last, %{total_token_usage: codex_usage({input, cached, output})}),
         rate_limits: %{
           limit_id: "codex",
           primary: %{

@@ -1130,18 +1130,27 @@ Claude Code charges it at twice the input price and a 5-minute write at
   the last count. A continuation file can fork the thread's count from
   before the previous file's end: its first total is credited with that
   response's own `last_token_usage`, so the abandoned tail of the previous
-  file stays counted once and nothing is counted twice.
+  file stays counted once and nothing is counted twice. A subagent's first
+  file inherits its parent's count the same way, so every file's first
+  total is credited like that (a fresh thread's first total is its last).
+  A thread read before this (`usage_files.reader` below 3 for Codex) is read
+  once more and its rows replaced; one the state database no longer gives
+  keeps the cwd, branch and model it already had.
 - Reconciled on 2026-11-07 against the real files (4,523 Claude Code
   transcripts, 1,387 Codex rollouts, 100 harness sessions, 16 GB; a full
   read takes 3–4 minutes on this Mac): Claude Code session `76474110…` (26
   files, one process) matches its `cost-state` on all three models exactly;
-  1,309 of 1,315 Codex threads sum to `threads.tokens_used`, among them
-  `01a0cf47…` (two files) at 1,954,165,348 and `01a0150a…` at 1,798,055,349.
-  The other six are the restarts and forks above: four threads restarted
-  their count (the ledger holds 21.9 M to 183.8 M more than `tokens_used`),
-  two continuations forked (1.2 M and 5.0 M more). Forcing the 5,969 files
-  untouched for two hours to be read again changed none of their 5,843
-  rows.
+  1,309 of 1,315 Codex threads summed to `threads.tokens_used` then, among
+  them `01a0cf47…` (two files) at 1,954,165,348 and `01a0150a…` at
+  1,798,055,349. The other six were the restarts and forks above: four
+  threads restarted their count (the ledger held 21.9 M to 183.8 M more
+  than `tokens_used`), two continuations forked (1.2 M and 5.0 M more).
+  That sum no longer holds for a subagent: its `tokens_used` includes the
+  count inherited from its parent, which the ledger does not credit (on
+  2026-11-10, 181 threads held 75.8 B inherited tokens of the ledger's
+  125.4 B), so a subagent's ledger total is below its `tokens_used`. Forcing
+  the 5,969 files untouched for two hours to be read again changed none of
+  their 5,843 rows.
 - **The screens read `AgentBoard.Usage.Report`**, never the ledger tables.
   The `Executores` panel (7 or 30 days) shows, per executor, sessions, tasks,
   requests/tokens, the cost in its own currency, the direct sessions per

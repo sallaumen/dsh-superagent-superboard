@@ -214,7 +214,10 @@ defmodule AgentBoard.Usage.Codex do
   the next), sometimes from an earlier point than the previous file's end
   (174,819,363 after a file that ended at 175,596,871). So a continuation's
   first total is credited with that response's own `last_token_usage`, and
-  only its later growth counts; it is never a new count from zero.
+  only its later growth counts; it is never a new count from zero. A
+  subagent's first file starts from its parent's count the same way
+  (1,084,647,509 on its first response of 28,028 tokens), so every file's
+  first total is read like that; a fresh thread's first total is its last.
 
   Inside one file a total below the previous one is a new count: Codex
   restarted it (51,126,844, then 0, in one observed thread), and
@@ -223,12 +226,11 @@ defmodule AgentBoard.Usage.Codex do
   """
   @spec read_thread([String.t()]) :: {:ok, rollout()} | {:error, term()}
   def read_thread([first | _] = paths) do
-    acc = %{previous: nil, continued?: false, days: %{}, rate_limits: nil, skipped: 0}
+    acc = %{previous: nil, continued?: true, days: %{}, rate_limits: nil, skipped: 0}
 
     paths
-    |> Enum.with_index()
-    |> Enum.reduce_while({:ok, acc}, fn {path, index}, {:ok, acc} ->
-      case Lines.reduce(path, %{acc | continued?: index > 0}, &take_line/2) do
+    |> Enum.reduce_while({:ok, acc}, fn path, {:ok, acc} ->
+      case Lines.reduce(path, %{acc | continued?: true}, &take_line/2) do
         {:ok, acc} -> {:cont, {:ok, acc}}
         {:error, reason} -> {:halt, {:error, reason}}
       end
@@ -287,10 +289,10 @@ defmodule AgentBoard.Usage.Codex do
     |> take_rate_limits(payload["rate_limits"], at)
   end
 
-  # The first total of a continuation file is credited with that response's
-  # own usage: the file forks the thread's count at some earlier point (a
-  # continuation was seen starting below the previous file's last total),
-  # so the previous file's last total is not its baseline.
+  # The first total of a file is credited with that response's own usage: a
+  # subagent inherits its parent's count, and a continuation forks the
+  # thread's at some earlier point (one was seen starting below the previous
+  # file's last total), so neither has a baseline to subtract.
   defp take_total(%{continued?: true} = acc, %{"total_token_usage" => total} = info, at)
        when is_map(total) do
     total = usage(total)
