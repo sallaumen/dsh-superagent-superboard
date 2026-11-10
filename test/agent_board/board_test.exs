@@ -471,6 +471,35 @@ defmodule AgentBoard.BoardOverviewTest do
     assert Overview.repo_overview()[repo.id].you == 1
   end
 
+  # A link is evidence only for a task waiting on review: an issue that cites a
+  # merged PR, or a rework whose newest link is the PR it replaces, is not done.
+  test "only a ready task is reconciled to done by its linked PR" do
+    {:ok, repo} = Board.add_repository("fixture", "only-ready")
+    pull = insert_merged(repo, 9, "success")
+    url = "https://github.com/fixture/only-ready/pull/#{pull.number}"
+
+    queued =
+      repo
+      |> insert_task(1, "queued")
+      |> Ecto.Changeset.change(body: "Regression from #{url}")
+      |> Repo.update!()
+
+    running = insert_task(repo, 2, "running")
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: running.id,
+      github_id: 102,
+      author: "sallaumen",
+      body: "Redo #{url}, it broke the build"
+    })
+    |> Repo.insert!()
+
+    assert Board.reconcile_resolved_tasks(repo) == 0
+    assert Repo.get(Task, queued.id).state == "queued"
+    assert Repo.get(Task, running.id).state == "running"
+  end
+
   # The number alone is not the link: #42 of another repository says nothing
   # about this repository's #42.
   test "a link to another repository's PR does not resolve the task" do
@@ -497,6 +526,25 @@ defmodule AgentBoard.BoardOverviewTest do
     Board.log_event(repo.id, "sync", "sallaumen/known", %{"errors" => 0})
 
     refute Overview.repo_overview()[repo.id].unknown
+  end
+
+  test "a repository's last sync is found behind many newer events" do
+    {:ok, repo} = Board.add_repository("sallaumen", "quiet")
+    {:ok, busy} = Board.add_repository("sallaumen", "busy")
+    {:ok, sync} = Board.log_event(repo.id, "sync", "sallaumen/quiet", %{"errors" => 0})
+
+    for i <- 1..30 do
+      Board.log_event(busy.id, "sync", "sallaumen/busy", %{"errors" => 0})
+      Board.log_event(repo.id, "comment", "sallaumen/quiet##{i}", %{})
+    end
+
+    {:ok, busy_error} = Board.log_event(busy.id, "sync_error", "sallaumen/busy", %{})
+
+    overview = Overview.repo_overview()
+    assert overview[repo.id].last_sync.id == sync.id
+    refute overview[repo.id].unknown
+    assert overview[busy.id].last_sync.id == busy_error.id
+    assert overview[busy.id].unknown
   end
 
   test "the sync snapshot keeps the last success apart from the failed attempt" do

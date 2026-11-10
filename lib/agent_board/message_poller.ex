@@ -8,7 +8,7 @@ defmodule AgentBoard.MessagePoller do
   require Logger
 
   alias AgentBoard.{Board, GitHub, Repo}
-  alias AgentBoard.Board.{Comment, Repository, Task}
+  alias AgentBoard.Board.{Comment, Event, Repository, Task}
 
   @interval 30_000
   @bootstrap_window 10 * 60
@@ -20,7 +20,7 @@ defmodule AgentBoard.MessagePoller do
   @impl true
   def init(_opts) do
     schedule()
-    {:ok, %{}}
+    {:ok, %{started_at: DateTime.utc_now()}}
   end
 
   @impl true
@@ -53,7 +53,7 @@ defmodule AgentBoard.MessagePoller do
       if retry_later?(previous, now) do
         acc
       else
-        since = previous[:since] || DateTime.add(now, -@bootstrap_window, :second)
+        since = previous[:since] || bootstrap_since(repository, state[:started_at] || now, now)
 
         try do
           {comments, cursor} = pages(client, repository, DateTime.add(since, -2, :second))
@@ -78,6 +78,27 @@ defmodule AgentBoard.MessagePoller do
         end
       end
     end)
+  end
+
+  # The cursor lives in memory, so a restart reads back to the last successful
+  # sync before this boot (the poller was reading until then); a sync that
+  # finished after the boot read only a few tasks and would hide the outage.
+  # Never less than the ten-minute window; a long outage is read in
+  # @max_pages steps, as any backlog.
+  defp bootstrap_since(repository, started_at, now) do
+    window = DateTime.add(now, -@bootstrap_window, :second)
+
+    Repo.one(
+      from e in Event,
+        where:
+          e.repository_id == ^repository.id and e.kind == "sync" and
+            e.inserted_at < ^started_at,
+        select: max(e.inserted_at)
+    )
+    |> case do
+      nil -> window
+      synced_at -> Enum.min([synced_at, window], DateTime)
+    end
   end
 
   defp retry_later?(%{retry_at: at}, now), do: DateTime.compare(at, now) == :gt

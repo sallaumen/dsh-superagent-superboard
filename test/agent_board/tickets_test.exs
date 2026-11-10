@@ -3,6 +3,21 @@ defmodule AgentBoard.TicketsTest do
 
   alias AgentBoard.Tickets
 
+  describe "by_number/1" do
+    defp ticket(id, numbers, updated, ended \\ nil),
+      do: %{"id" => id, "numbers" => numbers, "updated_at" => updated, "ended_at" => ended}
+
+    test "an open ticket speaks for its issue, else the most recently updated" do
+      old = ticket("old", [7, 8], ~U[2026-11-09 10:00:00Z], ~U[2026-11-09 10:00:00Z])
+      newer = ticket("newer", [8], ~U[2026-11-09 12:00:00Z], ~U[2026-11-09 12:00:00Z])
+      open = ticket("open", [7], ~U[2026-11-08 10:00:00Z])
+
+      for tickets <- [[old, newer, open], [open, newer, old]] do
+        assert Tickets.by_number(tickets) == %{7 => open, 8 => newer}
+      end
+    end
+  end
+
   describe "stages/2" do
     @started ~U[2026-11-10 12:00:00Z]
     @ticket %{"started_at" => @started, "own_threads" => []}

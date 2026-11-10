@@ -35,17 +35,28 @@ defmodule AgentBoard.Superagents.Ticker do
           state
       end
 
-    try do
-      # Starting/stopping an agent can wait on the external manager for up to
-      # a minute; never block the ticker (and the next status read) on it.
-      Task.Supervisor.start_child(AgentBoard.Superagents.TaskSupervisor, fn ->
-        Superagents.reconcile()
-      end)
-    rescue
-      exception -> Logger.warning("superagent tick failed: #{Exception.message(exception)}")
-    end
+    {:noreply, reconcile(state)}
+  end
 
-    {:noreply, state}
+  # Starting/stopping an agent can wait on the external manager for up to a
+  # minute; never block the ticker (and the next status read) on it. A
+  # reconcile acts on the list it read, so a second one is never started over
+  # one still running: it would stop or start the same agent again.
+  defp reconcile(state) do
+    if is_pid(state[:reconcile]) and Process.alive?(state.reconcile) do
+      state
+    else
+      {:ok, pid} =
+        Task.Supervisor.start_child(AgentBoard.Superagents.TaskSupervisor, fn ->
+          Superagents.reconcile()
+        end)
+
+      Map.put(state, :reconcile, pid)
+    end
+  rescue
+    exception ->
+      Logger.warning("superagent tick failed: #{Exception.message(exception)}")
+      state
   end
 
   # A refused mention reaches the board only through this read: nothing in

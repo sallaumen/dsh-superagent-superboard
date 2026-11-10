@@ -79,7 +79,8 @@ is gitignored. `.env` is the committed list of variables — copy what you need.
 cp .env .env.local        # add GITHUB_TOKEN and any AI or voice keys you use
 ```
 
-The app uses the first provider with a key; `AI_PROVIDER` pins one. Without a
+The app uses the first provider with a key; `AI_PROVIDER` pins one, and
+`AI_DAILY_TOKENS` sets the daily token cap (default 5000000). Without a
 key, AI answers `:not_configured`, and `AI_REHEARSAL=1` runs the whole panel
 against free fixtures. Tests never read `.env.local`. `AGENT_BOARD_ENV_FILE`
 chooses another file (for example, in a worktree). The loader lives in

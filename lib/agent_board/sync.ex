@@ -91,26 +91,26 @@ defmodule AgentBoard.Sync do
           select: max(e.id)
       ) || 0
 
-    # A repository can have Issues disabled (404). That is not a sync failure:
-    # the pulls still matter.
+    # A repository can have Issues disabled (404 or 410). That is not a sync
+    # failure: the pulls still matter. Any other failure read no issue state,
+    # so it is a `sync_error`, never a fresh sync.
     issues =
       try do
         GitHub.issues(client, repository.owner, repository.name)
       rescue
-        error in GitHub.RateLimited ->
-          reraise error, __STACKTRACE__
+        exception in RuntimeError ->
+          if String.starts_with?(exception.message, ["GitHub HTTP 404", "GitHub HTTP 410"]) do
+            Board.log_event(
+              repository.id,
+              "issues_unavailable",
+              "#{repository.owner}/#{repository.name}",
+              %{"reason" => Exception.message(exception)}
+            )
 
-        exception ->
-          Board.log_event(
-            repository.id,
-            "issues_unavailable",
-            "#{repository.owner}/#{repository.name}",
-            %{
-              "reason" => Exception.message(exception)
-            }
-          )
-
-          []
+            []
+          else
+            reraise exception, __STACKTRACE__
+          end
       end
 
     pulls = GitHub.pulls(client, repository.owner, repository.name)
@@ -351,6 +351,27 @@ defmodule AgentBoard.Sync do
     )
   end
 
+  # A reopened issue is work again: its `done` task goes back to the queue.
+  # This runs before the tickets and `Board.reconcile_resolved_tasks/1`, so a
+  # merged ticket or a resolved linked PR still brings it back to `done`. Only
+  # an issue changed after the board last decided the state is reopened, so
+  # that `done` is not undone and redone on every sync.
+  defp reopen_task(_repository, _number, nil), do: 0
+
+  defp reopen_task(repository, number, issue_updated_at) do
+    now = DateTime.utc_now()
+
+    Repo.update_all(
+      from(t in Task,
+        where:
+          t.repository_id == ^repository.id and t.kind == "issue" and t.number == ^number and
+            not t.stopped and not t.archived and t.state == "done" and
+            (is_nil(t.state_changed_at) or t.state_changed_at < ^issue_updated_at)
+      ),
+      set: [state: "queued", state_changed_at: now, updated_at: now]
+    )
+  end
+
   defp upsert_issue(repository, issue) do
     closed = issue["state"] == "closed"
 
@@ -363,13 +384,18 @@ defmodule AgentBoard.Sync do
       url: issue["html_url"],
       author: get_in(issue, ["user", "login"])
     })
+    # `updated_at` stays the board's: replacing it made every fetched task
+    # look changed now on every sync.
     |> Repo.insert(
-      on_conflict: {:replace, [:title, :url, :updated_at]},
+      on_conflict: {:replace, [:title, :body, :url]},
       conflict_target: [:repository_id, :kind, :number]
     )
     |> case do
       {:ok, _} ->
-        if closed, do: close_task(repository, issue["number"])
+        if closed,
+          do: close_task(repository, issue["number"]),
+          else: reopen_task(repository, issue["number"], to_dt(issue["updated_at"]))
+
         :ok
 
       {:error, changeset} ->
@@ -560,21 +586,10 @@ defmodule AgentBoard.Sync do
   def apply_tickets(repository, issues) do
     by_number = Map.new(issues, &{&1["number"], &1})
 
-    Enum.each(normalized_tickets(), fn ticket ->
-      apply_ticket(repository, by_number, ticket)
-    end)
-
-    :ok
-  end
-
-  defp apply_ticket(repository, by_number, ticket) do
-    if AgentState.same_repository?(ticket, repository) do
-      apply_ticket_numbers(repository, by_number, ticket)
-    end
-  end
-
-  defp apply_ticket_numbers(repository, by_number, ticket) do
-    Enum.each(ticket["numbers"], fn number ->
+    normalized_tickets()
+    |> Enum.filter(&AgentState.same_repository?(&1, repository))
+    |> Tickets.by_number()
+    |> Enum.each(fn {number, ticket} ->
       case ticket_state(ticket,
              workpad: fn -> Board.agent_workpad(repository.id, number) end,
              asked?: fn -> Board.agent_asked?(repository.id, number) end

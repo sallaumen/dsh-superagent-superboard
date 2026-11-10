@@ -18,6 +18,8 @@ config :agent_board, AgentBoard.Repo,
 # you can enable the server option below.
 config :agent_board, AgentBoardWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
+  # Phoenix.ConnTest's host, so the endpoint's host allowlist lets tests in.
+  url: [host: "www.example.com"],
   secret_key_base: "tdMGzqIS+LJ/7BuPCYb2MfBggrd/2vCezFfQI0RMYJ9nrlkB+LmU2AQQ+HA4diJf",
   server: false
 

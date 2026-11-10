@@ -54,6 +54,11 @@ defmodule AgentBoard.AIBudgetTest do
     assert Repo.aggregate(Call, :count) == 1
   end
 
+  test "a cap that is not a whole number keeps the default, it does not lift the cap" do
+    Application.put_env(:agent_board, :ai_daily_tokens, "30")
+    assert Budget.cap() == 5_000_000
+  end
+
   test "a clean day has spent nothing" do
     assert Budget.tokens_today() == 0
     assert Budget.check(:fast) == :ok

@@ -181,20 +181,22 @@ defmodule AgentBoard.Board do
   end
 
   @doc """
-  Marks tasks whose linked PR is already merged or closed as done.
+  Marks ready tasks whose linked PR is already merged or closed as done.
 
   The read-time filter keeps them out of the lanes immediately, but the stored
   state should also stop lying: a task whose PR was merged is done, not
-  waiting. Stopped and archived tasks keep their explicit state.
+  waiting. Only `ready` is reconciled, the population that filter covers: any
+  link counts as the linked PR, so in another state it can be a merged PR an
+  issue merely cites or the PR a rework replaces, and the ticket overlay owns
+  running, blocked and question. Stopped and archived tasks keep their
+  explicit state.
   """
   @spec reconcile_resolved_tasks(Repository.t()) :: non_neg_integer()
   def reconcile_resolved_tasks(repository) do
     tasks =
       Repo.all(
         from t in Task,
-          where:
-            t.repository_id == ^repository.id and
-              t.state not in ["done", "stopped", "archived"]
+          where: t.repository_id == ^repository.id and t.state == "ready"
       )
 
     ids = resolved_task_ids(tasks) |> MapSet.to_list()

@@ -115,14 +115,21 @@ differ. Change a general rule upstream, not here.
   `retrying`, `ready`, `blocked`) while the issue is open. `retrying` is a
   failure `AgentBoard.AutoRetry` will retry by itself, or a retry waiting
   for a worker ("Automatic retry" below). A ticket that ended `merged` is
-  `done` whatever its last report said. A stopped or archived task keeps its
-  state.
+  `done` whatever its last report said. An issue keeps every ticket it ever
+  had, and one speaks for it: the open one, else the most recently updated
+  (`Tickets.by_number/1`, used by the sync and the ticket poll). A stopped or
+  archived task keeps its state.
 - The sync's insert sets the baseline once and keeps the state on conflict,
   so an overlay is not reset to `queued` every five minutes. A **closed
   issue** is the exception: every sync moves its task to `done`, unless it
   is stopped or archived (`Sync.close_task/2`). Before this, an issue closed
   after it entered the board stayed in Fila (the queue) while the runner had
-  nothing to do (`sync_repo_test.exs`). A reopened issue is not moved back yet.
+  nothing to do (`sync_repo_test.exs`). A **reopened issue** moves its `done`
+  task back to `queued`, unless it is stopped or archived
+  (`Sync.reopen_task/3`); the tickets and `Board.reconcile_resolved_tasks/1`
+  run after it in the same sync, so a merged ticket still makes it `done`.
+  Only an issue whose `updated_at` is newer than the task's
+  `state_changed_at` is reopened, so that `done` is not redone every sync.
 - A **blocker task** points at the task it unblocks through
   `tasks.blocker_for_task_id`. It is created through the same `create_tasks`
   action as any request, with the agent's mention and the link; the queue
@@ -315,7 +322,10 @@ that already worked).
   per active repository every 30s when a GitHub token is configured. It follows
   pagination, stores only comments for tracked tasks, broadcasts only for new
   or edited content, and keeps its cursor and last good messages on failure.
-  GitHub's rate-limit response delays that repository's next read. The normal
+  The cursor lives in memory: after a restart the first read goes back to the
+  repository's last successful sync before the boot, never less than ten minutes,
+  so a reply posted while the board was down is read; a long backlog is read
+  in page-limited steps (`message_poller_test.exs`). GitHub's rate-limit response delays that repository's next read. The normal
   five-minute sync remains the fallback, including without a token.
 - The top-right message window reads the newest agent reply per task from the
   board's comments and uses a browser-local read version. Editing a workpad
@@ -935,7 +945,9 @@ that watches one GitHub repository and picks the issues whose body mentions
   `econnrefused` error, is started again, at most once every ten minutes
   (each automatic start is a `start` event by `board`): a start whose health
   check times out still answers `:ok`, and an agent that dies at boot would
-  otherwise be started on every tick. Per-profile LaunchAgents are no
+  otherwise be started on every tick. One reconcile runs at a time: a tick
+  that finds the previous one still waiting on the manager starts none, so
+  the same agent is never stopped or started twice. Per-profile LaunchAgents are no
   longer required; the board LaunchAgent is the single boot entry.
 - **The board has a Superagentes (Superagents) panel.** It lists one card per
   registered project (repository, profile, port, workers, desired/observed
