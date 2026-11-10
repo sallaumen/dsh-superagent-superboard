@@ -523,6 +523,44 @@ defmodule AgentBoard.SyncRepoTest do
     assert Enum.any?(Board.events(repo), &(&1.kind == "issues_unavailable"))
   end
 
+  test "a repository whose Issues are gone (410) still syncs", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" -> Plug.Conn.send_resp(conn, 410, "{}")
+        _ -> Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert Enum.any?(Board.events(repo), &(&1.kind == "issues_unavailable"))
+  end
+
+  # A refused token, a 5xx after the retries or a timeout read no issue
+  # state: a fresh `sync` event would tell the board everything is current.
+  test "an issues read that fails is a sync error, not a fresh sync", %{repo: repo} do
+    failures = [
+      &Plug.Conn.send_resp(&1, 401, ~s({"message": "Bad credentials"})),
+      &Plug.Conn.send_resp(&1, 502, "bad gateway"),
+      &Req.Test.transport_error(&1, :timeout)
+    ]
+
+    for failure <- failures do
+      stub_github(fn conn ->
+        case conn.request_path do
+          "/repos/sallaumen/arena-rogue/issues" -> failure.(conn)
+          _ -> Req.Test.json(conn, [])
+        end
+      end)
+
+      assert {:error, _exception} = Sync.sync_repo(client(), repo)
+    end
+
+    kinds = Enum.map(Board.events(repo), & &1.kind)
+    assert Enum.count(kinds, &(&1 == "sync_error")) == 3
+    refute "sync" in kinds
+    refute "issues_unavailable" in kinds
+  end
+
   test "a merged pull still gets its rollups", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do

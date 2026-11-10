@@ -91,26 +91,26 @@ defmodule AgentBoard.Sync do
           select: max(e.id)
       ) || 0
 
-    # A repository can have Issues disabled (404). That is not a sync failure:
-    # the pulls still matter.
+    # A repository can have Issues disabled (404 or 410). That is not a sync
+    # failure: the pulls still matter. Any other failure read no issue state,
+    # so it is a `sync_error`, never a fresh sync.
     issues =
       try do
         GitHub.issues(client, repository.owner, repository.name)
       rescue
-        error in GitHub.RateLimited ->
-          reraise error, __STACKTRACE__
+        exception in RuntimeError ->
+          if String.starts_with?(exception.message, ["GitHub HTTP 404", "GitHub HTTP 410"]) do
+            Board.log_event(
+              repository.id,
+              "issues_unavailable",
+              "#{repository.owner}/#{repository.name}",
+              %{"reason" => Exception.message(exception)}
+            )
 
-        exception ->
-          Board.log_event(
-            repository.id,
-            "issues_unavailable",
-            "#{repository.owner}/#{repository.name}",
-            %{
-              "reason" => Exception.message(exception)
-            }
-          )
-
-          []
+            []
+          else
+            reraise exception, __STACKTRACE__
+          end
       end
 
     pulls = GitHub.pulls(client, repository.owner, repository.name)
