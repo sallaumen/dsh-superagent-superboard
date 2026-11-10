@@ -6645,6 +6645,31 @@ msgstr ""
 msgid "live"
 msgstr ""
 
+#: lib/agent_board/runners.ex:226
+#, elixir-autogen, elixir-format
+msgid "The last execution stopped at the budget cap (%{detail})."
+msgstr ""
+
+#: lib/agent_board/runners.ex:237
+#, elixir-autogen, elixir-format
+msgid "The last execution stopped on quota or login (%{detail})."
+msgstr ""
+
+#: lib/agent_board/runners.ex:248
+#, elixir-autogen, elixir-format
+msgid "The last execution failed on network or time (%{detail})."
+msgstr ""
+
+#: lib/agent_board/board/inbox.ex:96
+#, elixir-autogen, elixir-format
+msgid "Message without a preview"
+msgstr ""
+
+#: lib/agent_board/board/inbox.ex:105
+#, elixir-autogen, elixir-format
+msgid "Report updated"
+msgstr ""
+
 #: lib/agent_board_web/live/board_components/queue_list.ex:22
 #, elixir-autogen, elixir-format
 msgid "of %{total}"

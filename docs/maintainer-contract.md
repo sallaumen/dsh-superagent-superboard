@@ -65,6 +65,20 @@ differ. Change a general rule upstream, not here.
   and `priv/gettext/pt_BR/LC_MESSAGES/default.po` for Brazilian Portuguese.
   Keep both languages complete when adding or changing a control, status,
   error, empty state, or accessible name.
+- The rule for a sentence written outside the screens is **who reads it**.
+  Text the LiveView renders from its own process goes through Gettext even
+  when a domain module writes it (`Lanes`, `AgentBlock`, `Board.task_activity`,
+  `Logs`, `Metrics.reason/1`, `Runners.fallback/1`). A confirmation sentence
+  comes from `Actions.phrase/3` in the interface language
+  (`AgentBoardWeb.Locale.language/0`); the gate accepts it in either
+  supported language and records the one the person read. Text that is
+  spoken, stored (events, retry notes, routing reasons, a superagent's last
+  error), posted to GitHub or answered by the JSON API does not follow the
+  interface language.
+- Known gap: the result or error an action returns (`{:ok, text}` from a
+  retry, a restart, a grant) and the routing reasons are shared by the
+  screen, the voice and the API, and are still Portuguese on the English
+  board. They need a language argument, as `Actions.phrase/3` has.
 
 - **Ecto migrations** own the schema. Never edit a migrated table by hand; add a
   migration.
