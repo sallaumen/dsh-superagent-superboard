@@ -138,3 +138,25 @@ the "0,5/h" rates in Throughput, the inspector's activity lines, and the
 confirmation sentences. They are about 350 strings, and the confirmation
 sentences are also what the action gate compares, so they are a change of
 their own.
+
+## 5. Phone: targets and length
+
+Measured at 390 x 844.
+
+| What | Before | After |
+|---|---|---|
+| Page length | 4,848 px; Merged alone 2,373 px, always open | 2,857 px; Merged is one 44 px line until opened, like Throughput |
+| Buttons, chips, queue rows, tabs, segments | 40 px (32 px for Ask, Stop, Archive and every dialog's Close) | 44 px |
+| "task #184" links (98 in Merge History), the digest link | 58 x 24 px | same size on screen, 44 px to the finger |
+| Queue rows | title cut after about 22 characters, no age | the whole title on up to two lines, the age under it |
+
+- `5-phone-390-before-after.jpg` (top row before, bottom row after: queue,
+  Merged, inspector)
+
+Also checked: 1440 and 1920 look the same as before (the Merged fold is
+always open there and its one-line summary is hidden), and no horizontal
+scroll at 390, 1440 or 1920.
+
+Left as it is: the PR titles in Merge History are links inside a line of
+text, 17 px tall on one line; and the bottom bar, which the critique called
+translucent, measured opaque.

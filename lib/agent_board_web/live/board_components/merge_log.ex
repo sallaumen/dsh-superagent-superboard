@@ -21,80 +21,89 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
 
     ~H"""
     <section id="sec-log" aria-labelledby="sec-log-title">
-      <div class="ab-sec__head">
-        <h2 id="sec-log-title">{gettext("Merged")}</h2>
-        <span class="ab-sec__count">
-          {count(@log.total, @frozen)} {gettext("in 7 days")}
-        </span>
-        <span class="ab-top__spacer"></span>
-        <button
-          :if={@has_history}
-          type="button"
-          class="ab-btn ab-btn--quiet ab-btn--sm"
-          phx-click="show_panel"
-          phx-value-panel="history"
-          data-panel-trigger
-        >
-          {gettext("History")} <.ico name="ext" />
-        </button>
-      </div>
-
-      <div class="ab-days" role="list" aria-label={gettext("Merges per day, last 7 days")}>
-        <div
-          :for={day <- @days}
-          id={"log-day-#{day.date}"}
-          class={["ab-day", day.today && "is-today", day.n == 0 && "is-empty"]}
-          role="listitem"
-        >
-          <div class="ab-day__head">
-            <b class="ab-day__label">{day.label}</b>
-            <span class={["ab-day__count", group_extra(day.group) != [] && "ab-day__count--short"]}>
-              {day_count(day)}
+      <%!-- On a phone the lane is one line until it is opened (BoardFold). --%>
+      <details id="fold-log" class="ab-fold ab-fold--log" data-mobile-fold open phx-hook="BoardFold">
+        <summary class="ab-fold__summary">
+          <span>{gettext("Merged")}</span>
+          <span class="ab-meta">{count(@log.total, @frozen)} {gettext("in 7 days")}</span>
+        </summary>
+        <div class="ab-fold__body">
+          <div class="ab-sec__head">
+            <h2 id="sec-log-title">{gettext("Merged")}</h2>
+            <span class="ab-sec__count">
+              {count(@log.total, @frozen)} {gettext("in 7 days")}
             </span>
-            <span :if={group_extra(day.group) != []} class="ab-day__count ab-day__count--wide">
-              {day_count_wide(day)}
-            </span>
+            <span class="ab-top__spacer"></span>
+            <button
+              :if={@has_history}
+              type="button"
+              class="ab-btn ab-btn--quiet ab-btn--sm"
+              phx-click="show_panel"
+              phx-value-panel="history"
+              data-panel-trigger
+            >
+              {gettext("History")} <.ico name="ext" />
+            </button>
           </div>
 
-          <div class="ab-day__dots" aria-hidden="true">
-            <%= if day.n > 0 do %>
-              <i
-                :for={index <- 1..min(day.n, 12)}
-                class={index <= day.fail && "is-fail"}
-              ></i>
-              <em :if={day.n > 12}>+{day.n - 12}</em>
-            <% end %>
+          <div class="ab-days" role="list" aria-label={gettext("Merges per day, last 7 days")}>
+            <div
+              :for={day <- @days}
+              id={"log-day-#{day.date}"}
+              class={["ab-day", day.today && "is-today", day.n == 0 && "is-empty"]}
+              role="listitem"
+            >
+              <div class="ab-day__head">
+                <b class="ab-day__label">{day.label}</b>
+                <span class={["ab-day__count", group_extra(day.group) != [] && "ab-day__count--short"]}>
+                  {day_count(day)}
+                </span>
+                <span :if={group_extra(day.group) != []} class="ab-day__count ab-day__count--wide">
+                  {day_count_wide(day)}
+                </span>
+              </div>
+
+              <div class="ab-day__dots" aria-hidden="true">
+                <%= if day.n > 0 do %>
+                  <i
+                    :for={index <- 1..min(day.n, 12)}
+                    class={index <= day.fail && "is-fail"}
+                  ></i>
+                  <em :if={day.n > 12}>+{day.n - 12}</em>
+                <% end %>
+              </div>
+
+              <.pr_row :for={pr <- group_items(day.group)} pr={pr} />
+              <div :if={group_extra(day.group) != []} class="ab-day__extra">
+                <.pr_row :for={pr <- group_extra(day.group)} pr={pr} />
+              </div>
+
+              <button
+                :if={group_more(day.group) > 0}
+                type="button"
+                class={["ab-more ab-day__more", group_extra(day.group) != [] && "ab-day__more--short"]}
+                phx-click="show_panel"
+                phx-value-panel="history"
+                data-panel-trigger
+              >
+                {gettext("and %{count} more", count: group_more(day.group))}
+              </button>
+              <button
+                :if={group_more_wide(day.group) > 0}
+                type="button"
+                class="ab-more ab-day__more ab-day__more--wide"
+                phx-click="show_panel"
+                phx-value-panel="history"
+                data-panel-trigger
+              >
+                {gettext("and %{count} more", count: group_more_wide(day.group))}
+              </button>
+
+              <span :if={day.n == 0} class="ab-day__none">{gettext("No merges.")}</span>
+            </div>
           </div>
-
-          <.pr_row :for={pr <- group_items(day.group)} pr={pr} />
-          <div :if={group_extra(day.group) != []} class="ab-day__extra">
-            <.pr_row :for={pr <- group_extra(day.group)} pr={pr} />
-          </div>
-
-          <button
-            :if={group_more(day.group) > 0}
-            type="button"
-            class={["ab-more ab-day__more", group_extra(day.group) != [] && "ab-day__more--short"]}
-            phx-click="show_panel"
-            phx-value-panel="history"
-            data-panel-trigger
-          >
-            {gettext("and %{count} more", count: group_more(day.group))}
-          </button>
-          <button
-            :if={group_more_wide(day.group) > 0}
-            type="button"
-            class="ab-more ab-day__more ab-day__more--wide"
-            phx-click="show_panel"
-            phx-value-panel="history"
-            data-panel-trigger
-          >
-            {gettext("and %{count} more", count: group_more_wide(day.group))}
-          </button>
-
-          <span :if={day.n == 0} class="ab-day__none">{gettext("No merges.")}</span>
         </div>
-      </div>
+      </details>
     </section>
     """
   end
