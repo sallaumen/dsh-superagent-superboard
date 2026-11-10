@@ -60,8 +60,10 @@ defmodule AgentBoard.Routing do
 
   Pure: the caller reads the signals at its door and passes them. The
   request's own executor wins (a choice made when the suggestion was
-  shown); otherwise the owner's `requested` name; otherwise the suggestion;
-  otherwise the board's default. The line keeps the suggestion, a snapshot
+  shown); otherwise the owner's `requested` name, unless rule 1 rules it out
+  (no runner would read the issue's mention, so the suggestion goes and its
+  reasons say why; a paused runner can still wait); otherwise the
+  suggestion; otherwise the board's default. The line keeps the suggestion, a snapshot
   of the signals and the door that decided (`composer`, `voice`, `api`).
   """
   @spec plan(
@@ -72,10 +74,12 @@ defmodule AgentBoard.Routing do
           signals()
         ) :: map()
   def plan(%{owner: owner, name: name}, request, requested, decided_by, signals) do
+    repository = "#{owner}/#{name}"
+
     suggestion =
       suggest(
         %{
-          repository: "#{owner}/#{name}",
+          repository: repository,
           work_type: Map.get(request, :work_type),
           size: Map.get(request, :size),
           requested: requested
@@ -85,9 +89,14 @@ defmodule AgentBoard.Routing do
 
     executor =
       cond do
-        Executors.valid?(Map.get(request, :executor)) -> request.executor
-        Executors.valid?(requested) -> requested
-        true -> suggestion.executor || Executors.default()
+        Executors.valid?(Map.get(request, :executor)) ->
+          request.executor
+
+        Executors.valid?(requested) and not restricted?(requested, repository, signals) ->
+          requested
+
+        true ->
+          suggestion.executor || Executors.default()
       end
 
     request
@@ -210,12 +219,9 @@ defmodule AgentBoard.Routing do
   end
 
   defp out_reason("dsh", task, dsh) do
-    watched = dsh[:repositories] || List.wrap(dsh[:repository])
-    wanted = String.downcase(to_string(task.repository))
-
     cond do
-      watched != [] and not Enum.any?(watched, &(String.downcase(to_string(&1)) == wanted)) ->
-        case watched do
+      unwatched?(dsh, task.repository) ->
+        case watched(dsh) do
           [one] ->
             gettext("DeepSeek only serves %{repository}.", repository: one)
 
@@ -242,6 +248,20 @@ defmodule AgentBoard.Routing do
       _ ->
         nil
     end
+  end
+
+  defp restricted?("dsh", repository, signals),
+    do: unwatched?(signal(signals, "dsh"), repository)
+
+  defp restricted?(_executor, _repository, _signals), do: false
+
+  defp watched(dsh), do: dsh[:repositories] || List.wrap(dsh[:repository])
+
+  defp unwatched?(dsh, repository) do
+    wanted = String.downcase(to_string(repository))
+    watched = watched(dsh)
+
+    watched != [] and not Enum.any?(watched, &(String.downcase(to_string(&1)) == wanted))
   end
 
   defp silence(%{state: {:unavailable, why}}), do: why
