@@ -754,6 +754,7 @@ defmodule AgentBoardWeb.BoardLive do
             composer_job: nil,
             composer_receipt: nil,
             composer_answers: "",
+            composer_attachments: [],
             composer_routing: nil,
             composer_routing_for: nil,
             composer_executor: nil,
