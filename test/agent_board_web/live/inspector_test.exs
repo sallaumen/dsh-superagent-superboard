@@ -223,6 +223,68 @@ defmodule AgentBoardWeb.InspectorTest do
 
     assert has_element?(view, "#conversation", "Refazer o login.")
     refute view |> element("#conversation") |> render() =~ "gh api"
+
+    # The image opens in the board's viewer; the other file is a plain link.
+    assert has_element?(
+             view,
+             "#task-attachments[phx-hook='ImageViewer'] a[data-viewer-image='a.png'][aria-label='Ver a imagem a.png']"
+           )
+
+    refute has_element?(view, "#task-attachments a[data-viewer-image][href$='m.html']")
+    assert has_element?(view, "dialog#image-viewer[phx-update='ignore'] a[download]", "Baixar")
+    assert has_element?(view, "dialog#image-viewer button[data-viewer-close]", "Fechar")
+    refute has_element?(view, "dialog#image-viewer.board-dialog")
+  end
+
+  test "a reply shows its links and its own files", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-reply-files")
+    task = task(repo, 41, "Resposta com imagem", "ready")
+    hash = String.duplicate("d", 64)
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: task.id,
+      github_id: 3,
+      author: "sallaumen-agent",
+      kind: "agent",
+      body:
+        "Veja https://example.com/pr/1. e [o desenho](https://github.com/fixture/inspector-reply-files/blob/board-attachments/#{hash}/tela.png) <script>"
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", task.id))
+
+    assert has_element?(
+             view,
+             "#conversation .ab-msg a[href='https://example.com/pr/1'][target='_blank'][rel='noopener noreferrer']",
+             "https://example.com/pr/1"
+           )
+
+    assert has_element?(view, "#conversation .ab-msg p a", "o desenho")
+
+    assert has_element?(
+             view,
+             "#conversation .ab-msg .ab-gallery a[data-viewer-image='tela.png'] img[src='/attachments/#{repo.id}/#{hash}/tela.png']"
+           )
+
+    refute view |> element("#conversation") |> render() =~ "<script>"
+  end
+
+  test "Send sits inside the message box, beside the words", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-send")
+    task = task(repo, 42, "Responder", "ready")
+
+    {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", task.id))
+
+    assert has_element?(view, "#ask-agent .ab-compose--inline > textarea#ask-body")
+
+    assert has_element?(
+             view,
+             "#ask-agent .ab-compose--inline > button.ab-compose__send",
+             "Enviar"
+           )
+
+    refute has_element?(view, "#ask-agent .ab-compose__bar")
   end
 
   test "hidden executor markers never reach the conversation", %{conn: conn} do

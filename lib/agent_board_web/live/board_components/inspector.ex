@@ -477,27 +477,24 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               disabled={@ask_sending && @ask_sending.task_id == @task.id}
               required
             >{@ask_draft}</textarea>
-            <div class="ab-compose__bar">
-              <span class="ab-top__spacer"></span>
-              <button
-                class="ab-btn ab-btn--primary ab-btn--sm"
-                disabled={@ask_sending && @ask_sending.task_id == @task.id}
-                phx-disable-with={gettext("Sending…")}
-              >
-                {if @ask_sending && @ask_sending.task_id == @task.id,
-                  do: gettext("Sending…"),
-                  else: gettext("Send")}
-                <.kbd :if={is_nil(@ask_sending)} key="↵" />
-              </button>
-            </div>
-            <p class="ab-compose__hint">
-              {gettext(
-                "This message is posted on GitHub issue #%{number} and mentions the agent when you send it.",
-                number: @task.number
-              )}
-            </p>
-            <p :if={@ask_error} class="ab-compose__error" role="alert">{@ask_error}</p>
+            <button
+              class="ab-btn ab-btn--primary ab-btn--sm ab-compose__send"
+              disabled={@ask_sending && @ask_sending.task_id == @task.id}
+              phx-disable-with={gettext("Sending…")}
+            >
+              {if @ask_sending && @ask_sending.task_id == @task.id,
+                do: gettext("Sending…"),
+                else: gettext("Send")}
+              <.kbd :if={is_nil(@ask_sending)} key="↵" />
+            </button>
           </div>
+          <p class="ab-compose__hint">
+            {gettext(
+              "This message is posted on GitHub issue #%{number} and mentions the agent when you send it.",
+              number: @task.number
+            )}
+          </p>
+          <p :if={@ask_error} class="ab-compose__error" role="alert">{@ask_error}</p>
         </form>
       </div>
     </aside>
@@ -536,6 +533,73 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     """
   end
 
+  # The files a message names: an image opens in the board's own viewer (the
+  # `ImageViewer` hook), with the plain link as the fallback and for a
+  # modified click; any other file is a link out.
+  attr :id, :string, required: true
+  attr :repository_id, :integer, required: true
+  attr :files, :list, required: true
+
+  defp gallery(assigns) do
+    ~H"""
+    <div :if={@files != []} id={@id} class="ab-gallery" phx-hook="ImageViewer">
+      <a
+        :for={file <- @files}
+        href={~p"/attachments/#{@repository_id}/#{file.hash}/#{file.name}"}
+        target="_blank"
+        rel="noopener noreferrer"
+        class={if(file.image?, do: "ab-gallery__image", else: "ab-chip")}
+        data-viewer-image={file.image? && file.name}
+        aria-label={
+          if file.image?,
+            do: gettext("View image %{name}", name: file.name),
+            else: gettext("Open %{name}", name: file.name)
+        }
+      >
+        <img
+          :if={file.image?}
+          src={~p"/attachments/#{@repository_id}/#{file.hash}/#{file.name}"}
+          alt={file.name}
+          loading="lazy"
+        />
+        <span :if={!file.image?}>{file.name}</span>
+      </a>
+    </div>
+    """
+  end
+
+  # One viewer for the conversation. The hook fills and opens it; the server
+  # never re-renders it, so an update does not close an image being looked at.
+  defp image_viewer(assigns) do
+    ~H"""
+    <dialog
+      id="image-viewer"
+      class="ab-viewer"
+      phx-update="ignore"
+      aria-labelledby="image-viewer-name"
+    >
+      <header class="ab-viewer__bar">
+        <span id="image-viewer-name" class="ab-viewer__name"></span>
+        <a class="ab-btn ab-btn--sm" data-viewer-download download>
+          {gettext("Download")}
+        </a>
+        <a
+          class="ab-btn ab-btn--quiet ab-btn--sm"
+          data-viewer-tab
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {gettext("Open in a new tab")}
+        </a>
+        <button type="button" class="ab-btn ab-btn--quiet ab-btn--sm" data-viewer-close>
+          {gettext("Close")} <.kbd key="Esc" />
+        </button>
+      </header>
+      <img class="ab-viewer__image" data-viewer-target alt="" />
+    </dialog>
+    """
+  end
+
   # The executor writes hidden routing markers into issue comments; they are
   # not part of the message a person reads.
   defp clean_body(nil), do: ""
@@ -550,6 +614,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp conversation_tab(assigns) do
     ~H"""
     <div class="ab-conversation">
+      <.image_viewer />
       <div
         :if={@task.body not in [nil, ""]}
         class="ab-msg ab-msg--you"
@@ -560,24 +625,11 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <span class="ab-data-sm">{Time.local_time(@task.inserted_at, @offset)}</span>
         </div>
         <p>{@task.body |> IssueBody.without_attachments() |> clean_body()}</p>
-        <div :if={Attachments.in_body(@task.body) != []} id="task-attachments" class="ab-gallery">
-          <a
-            :for={file <- Attachments.in_body(@task.body)}
-            href={~p"/attachments/#{@task.repository_id}/#{file.hash}/#{file.name}"}
-            target="_blank"
-            rel="noopener noreferrer"
-            class={if(file.image?, do: "ab-gallery__image", else: "ab-chip")}
-            aria-label={gettext("Open %{name}", name: file.name)}
-          >
-            <img
-              :if={file.image?}
-              src={~p"/attachments/#{@task.repository_id}/#{file.hash}/#{file.name}"}
-              alt={file.name}
-              loading="lazy"
-            />
-            <span :if={!file.image?}>{file.name}</span>
-          </a>
-        </div>
+        <.gallery
+          id="task-attachments"
+          repository_id={@task.repository_id}
+          files={Attachments.in_body(@task.body)}
+        />
       </div>
 
       <div
@@ -595,7 +647,12 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           {if comment.kind == "agent", do: comment.author || gettext("Agent"), else: gettext("You")}
           <span class="ab-data-sm">{Time.local_time(comment.inserted_at, @offset)}</span>
         </div>
-        <p><.markup text={clean_body(comment.body)} /></p>
+        <p><.markup text={clean_body(comment.body)} links /></p>
+        <.gallery
+          id={"comment-attachments-#{comment.id}"}
+          repository_id={@task.repository_id}
+          files={Attachments.in_body(comment.body)}
+        />
         <span
           :if={sending_comment?(comment, @ask_sending, @task.id)}
           class="ab-msg__delivery"
