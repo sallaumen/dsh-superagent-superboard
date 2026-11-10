@@ -154,9 +154,10 @@ defmodule AgentBoard.Superagents do
 
   @doc """
   Reserve one row and ask the provisioner to create the external profile,
-  port, state and setup. A failure the provisioner could undo leaves no row and
-  returns the reason, so the owner sees what happened and can try the same
-  repository again. An agent that would not stop keeps its row in `error`.
+  port, state and setup. A failure keeps the row in `error`, marked for
+  "Tentar de novo", and returns the reason; a missing checkout removes the row
+  instead, since a retry would use the same path. An agent that would not stop
+  keeps an ordinary row in `error`.
   """
   def provision(repository, source, attrs, provisioner \\ Provisioner.impl()) do
     with nil <- get_by_repository(repository),
@@ -254,6 +255,15 @@ defmodule AgentBoard.Superagents do
     observe(stopped, %{state: "error", detail: detail})
     log_provision_error(stopped, detail)
     {:error, detail}
+  end
+
+  # A retry would use the same missing path again, so the row goes and the
+  # repository returns to the form where the path is typed. Nothing was created.
+  defp settle_provision({:error, :checkout_missing} = error, superagent, _from) do
+    {:ok, _} = Repo.delete(superagent)
+    broadcast()
+    log_provision_error(superagent, "no git checkout at #{superagent.checkout_path}")
+    error
   end
 
   # The provisioner undid its work. The row stays, with what a retry needs, and
