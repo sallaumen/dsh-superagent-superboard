@@ -831,7 +831,10 @@ that watches one GitHub repository and picks the issues whose body mentions
   board, so the repository can be provisioned again. Nothing is deleted.
 - **The board owns the boot.** The ticker reconciles `desired=running` rows
   after a board restart: a process that is stopped/unknown, or an
-  `econnrefused` error, is started again. Per-profile LaunchAgents are no
+  `econnrefused` error, is started again, at most once every ten minutes
+  (each automatic start is a `start` event by `board`): a start whose health
+  check times out still answers `:ok`, and an agent that dies at boot would
+  otherwise be started on every tick. Per-profile LaunchAgents are no
   longer required; the board LaunchAgent is the single boot entry.
 - **The board has a Superagentes (Superagents) panel.** It lists one card per
   registered project (repository, profile, port, workers, desired/observed
