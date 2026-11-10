@@ -84,6 +84,7 @@ behavior (`dropdown`, `modal`, `tabs`, `toggle`); the look comes from the tokens
 | 1366 | Rail 224. Lanes in 2 columns `3fr 2fr`: [Agora, Precisa, Fila] · [Mesclados, Vazão 2×2]. Inspector floats (below 1240 px of content). |
 | 1920 | Context in `7fr 5fr` (objectives · day summary). Lanes in 3 columns `5fr 4fr 3fr`: [Agora + Precisa] · [Fila] · [Mesclados]. Vazão in an 8-cell strip below. Inspector 440 px pushes the content. |
 | 2560 | Same layout as 1920 with gutter 48 and inspector 520. **Idle**: the four lanes collapse into a single row; below, a 7-day history in 7 columns and the throughput strip showing 24 h/7 d. Back to lanes when something comes in. |
+| 3440 and wider | No width cap: the board fills `main`. From 2500 px of content the same document sits in two panes. Left: header, summary, context, lanes (two columns, three from 2860 px) and Vazão in 4 × 2 under them. Right: Mesclados, seven days with up to eight merges each instead of three. Below 2500 px (a 2560 window) the single flow fills the width. |
 
 Reading width: running text (summary, conversation, reasons) ≤ 760 px / ~80 characters, even at 2560.
 Gaps: 40 between columns and sections, 32 between blocks in a column, 12 between a section title and its
