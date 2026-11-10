@@ -100,4 +100,54 @@ defmodule AgentBoard.MessagePollerTest do
     Req.Test.stub(@stub, fn _conn -> raise "must not poll during backoff" end)
     assert MessagePoller.poll(state, client()) == state
   end
+
+  # A broken repository (a 404, a 5xx) is read again later and later, not
+  # every 30 s: a success resets the wait.
+  test "a failing repository waits longer after each failure", %{repository: repository} do
+    Req.Test.stub(@stub, fn conn -> Plug.Conn.resp(conn, 404, "not found") end)
+
+    first = MessagePoller.poll(%{}, client())
+    first_wait = DateTime.diff(first[repository.id].retry_at, DateTime.utc_now())
+    assert first_wait >= 55
+
+    Req.Test.stub(@stub, fn _conn -> raise "must not poll during the wait" end)
+    assert MessagePoller.poll(first, client()) == first
+
+    Req.Test.stub(@stub, fn conn -> Plug.Conn.resp(conn, 404, "not found") end)
+    due = put_in(first[repository.id].retry_at, DateTime.add(DateTime.utc_now(), -1))
+    second = MessagePoller.poll(due, client())
+    assert DateTime.diff(second[repository.id].retry_at, DateTime.utc_now()) > first_wait
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, []) end)
+    due = put_in(second[repository.id].retry_at, DateTime.add(DateTime.utc_now(), -1))
+    assert %{since: %DateTime{}} = recovered = MessagePoller.poll(due, client())[repository.id]
+    refute Map.has_key?(recovered, :retry_at)
+  end
+
+  # More comments than the page limit since the cursor: what was read is
+  # stored and the cursor moves to the last one, so the next poll goes on
+  # from there instead of failing at the same limit forever.
+  test "a backlog past the page limit is read in steps", %{repository: repository, task: task} do
+    Req.Test.stub(@stub, fn conn ->
+      page = String.to_integer(conn.query_params["page"])
+
+      conn
+      |> Plug.Conn.put_resp_header(
+        "link",
+        ~s(<https://api.github.com/x?page=#{page + 1}>; rel="next")
+      )
+      |> Req.Test.json([
+        Map.put(
+          remote_comment(2000 + page, "comentário #{page}"),
+          "updated_at",
+          "2026-11-0#{min(page, 9)}T10:00:00Z"
+        )
+      ])
+    end)
+
+    state = MessagePoller.poll(%{}, client())
+
+    assert length(Board.comments(task)) == 10
+    assert state[repository.id].since == ~U[2026-11-09 10:00:00Z]
+  end
 end
