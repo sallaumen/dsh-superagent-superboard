@@ -146,7 +146,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectAccess do
     Actions.run(
       :dismiss_access_request,
       %{superagent: superagent, login: request.login},
-      Actions.owner(:ui)
+      Actions.owner(:ui),
+      language: AgentBoardWeb.Locale.language()
     )
   end
 

@@ -232,6 +232,30 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     assert_received {:orchestrator, "POST", "/orchestrator/api/tickets/t71/retry"}
   end
 
+  test "in English, the retry asks and answers in English", %{blocked: blocked} do
+    orchestrator(:up)
+    conn = Phoenix.ConnTest.build_conn() |> Plug.Test.put_req_cookie("board_locale", "en")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/failures")
+
+    view |> element("#need-retry-#{blocked.id}-trigger") |> render_click()
+
+    assert has_element?(
+             view,
+             "#need-retry-#{blocked.id} .ab-act__question",
+             "Ask the agent for another attempt on #71 now?"
+           )
+
+    view |> element("#need-retry-#{blocked.id}-confirm") |> render_click()
+    assert_receive {:holding, request}
+    send(request, :answer)
+
+    # The effect runs in a task; its answer still follows the confirmation.
+    html = render_async(view)
+    assert html =~ "New attempt requested."
+    refute html =~ "Nova tentativa pedida."
+    assert_received {:orchestrator, "POST", "/orchestrator/api/tickets/t71/retry"}
+  end
+
   test "cancel leaves everything as it was", %{conn: conn, blocked: blocked} do
     orchestrator(:up)
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/failures")

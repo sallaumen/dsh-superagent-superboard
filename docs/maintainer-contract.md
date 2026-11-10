@@ -75,10 +75,16 @@ differ. Change a general rule upstream, not here.
   spoken, stored (events, retry notes, routing reasons, a superagent's last
   error), posted to GitHub or answered by the JSON API does not follow the
   interface language.
-- Known gap: the result or error an action returns (`{:ok, text}` from a
-  retry, a restart, a grant) and the routing reasons are shared by the
-  screen, the voice and the API, and are still Portuguese on the English
-  board. They need a language argument, as `Actions.phrase/3` has.
+- What an action answers (`{:ok, text}` or `{:error, text}` from a retry, a
+  restart, a grant, a dispatch) is written in the language of its
+  confirmation: `Actions.run/4` runs the effect under that language, read
+  from the sentence it was given or from `language:` for an action that asks
+  nothing. A caller in a Task reads `Locale.language/0` before entering it.
+- Known gap: the routing reasons the composer shows ("Você pediu o Claude
+  Code.") are the same value `Routing.record/3` stores with the task, so
+  they are still Portuguese on the English board. Translating what is shown
+  without changing what is stored needs the signals to carry a reason code
+  instead of a sentence.
 
 - **Ecto migrations** own the schema. Never edit a migrated table by hand; add a
   migration.

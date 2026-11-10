@@ -16,6 +16,8 @@ defmodule AgentBoard.AgentControl do
   shows, never `inspect/1`.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   require Logger
 
   alias AgentBoard.{Board, Orchestrator, Repo}
@@ -27,7 +29,8 @@ defmodule AgentBoard.AgentControl do
   @spec retry(String.t() | nil, keyword()) :: {:ok, String.t()} | {:error, String.t()}
   def retry(ticket_id, opts \\ [])
 
-  def retry(nil, _opts), do: {:error, "O board não achou o ticket do agente desta tarefa."}
+  def retry(nil, _opts),
+    do: {:error, gettext("The board did not find the agent's ticket for this task.")}
 
   def retry(ticket_id, opts) do
     client = Keyword.get_lazy(opts, :client, &Orchestrator.client/0)
@@ -36,7 +39,7 @@ defmodule AgentBoard.AgentControl do
 
     case result do
       {:ok, :retried} ->
-        {:ok, "Nova tentativa pedida. O agente começa quando houver um worker livre."}
+        {:ok, gettext("New attempt requested. The agent starts when a worker is free.")}
 
       {:error, reason} ->
         {:error, retry_reason(reason)}
@@ -45,19 +48,32 @@ defmodule AgentBoard.AgentControl do
 
   defp retry_reason({:refused, "notRetryable"}),
     do:
-      "O agente recusou: só tenta de novo um ticket cuja última palavra foi uma falha ou um bloqueio, sem mensagem sua depois."
+      gettext(
+        "The agent refused: it only retries a ticket whose last word was a failure or a block, with no message from you after it."
+      )
 
-  defp retry_reason({:refused, "ticketEnded"}), do: "O agente recusou: o ticket já terminou."
-  defp retry_reason({:refused, "ticketStopped"}), do: "O agente recusou: alguém parou o ticket."
-  defp retry_reason({:refused, code}), do: "O agente recusou (#{code || "sem código"})."
-  defp retry_reason(:unknown_ticket), do: "O agente não conhece este ticket."
-  defp retry_reason(:unreachable), do: "O agente não respondeu. Religue o agente e tente de novo."
+  defp retry_reason({:refused, "ticketEnded"}),
+    do: gettext("The agent refused: the ticket has already ended.")
+
+  defp retry_reason({:refused, "ticketStopped"}),
+    do: gettext("The agent refused: someone stopped the ticket.")
+
+  defp retry_reason({:refused, code}),
+    do: gettext("The agent refused (%{code}).", code: code || gettext("no code"))
+
+  defp retry_reason(:unknown_ticket), do: gettext("The agent does not know this ticket.")
+
+  defp retry_reason(:unreachable),
+    do: gettext("The agent did not answer. Restart the agent and try again.")
 
   defp retry_reason(:timeout),
-    do: "O agente não respondeu a tempo. Confira em instantes se a tentativa começou."
+    do:
+      gettext("The agent did not answer in time. Check in a moment whether the attempt started.")
 
-  defp retry_reason(:not_configured), do: "A API do agente está desligada neste board."
-  defp retry_reason({:http, status}), do: "O agente respondeu com erro HTTP #{status}."
+  defp retry_reason(:not_configured), do: gettext("The agent's API is turned off on this board.")
+
+  defp retry_reason({:http, status}),
+    do: gettext("The agent answered with HTTP error %{status}.", status: status)
 
   defp record(ticket_id, repository_id, number, result) do
     outcome = if match?({:ok, _}, result), do: "retried", else: "error"
@@ -66,14 +82,9 @@ defmodule AgentBoard.AgentControl do
     if repository_id do
       target = if number, do: " em ##{number}", else: ""
 
+      # The event is stored: it stays in Portuguese whoever asked.
       subject =
-        case result do
-          {:ok, _} ->
-            "Nova tentativa pedida por você#{target}"
-
-          {:error, reason} ->
-            "Nova tentativa pedida por você#{target} não foi aceita: #{retry_reason(reason)}"
-        end
+        Gettext.with_locale(AgentBoardWeb.Gettext, "pt_BR", fn -> subject(result, target) end)
 
       Board.log_event(repository_id, "agent_retry_manual", subject, %{
         "ticket_id" => ticket_id,
@@ -86,6 +97,11 @@ defmodule AgentBoard.AgentControl do
 
     :ok
   end
+
+  defp subject({:ok, _}, target), do: "Nova tentativa pedida por você#{target}"
+
+  defp subject({:error, reason}, target),
+    do: "Nova tentativa pedida por você#{target} não foi aceita: #{retry_reason(reason)}"
 
   @doc """
   Start the orchestrator with the prototype's manager and say how it went.
@@ -103,17 +119,25 @@ defmodule AgentBoard.AgentControl do
 
     case Task.yield(task, timeout) || Task.shutdown(task, :brutal_kill) do
       {:ok, {_output, 0}} ->
-        {:ok, "O agente está de pé."}
+        {:ok, gettext("The agent is up.")}
 
       {:ok, {output, status}} ->
-        {:error, "O agente não subiu (saída #{status}): #{last_line(output)}"}
+        {:error,
+         gettext("The agent did not come up (exit %{status}): %{line}",
+           status: status,
+           line: last_line(output)
+         )}
 
       {:exit, reason} ->
-        {:error, "O comando que religa o agente falhou: #{inspect(reason)}"}
+        {:error,
+         gettext("The command that restarts the agent failed: %{reason}", reason: inspect(reason))}
 
       nil ->
         {:error,
-         "O agente não respondeu em #{div(timeout, 1000)} s. Ele pode estar subindo; confira em instantes."}
+         gettext(
+           "The agent did not answer in %{seconds} s. It may still be coming up; check in a moment.",
+           seconds: div(timeout, 1000)
+         )}
     end
   end
 

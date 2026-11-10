@@ -44,6 +44,8 @@ defmodule AgentBoard.Actions do
   read) nor the board's own records (events, voice turns, ledgers, caches).
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   require Logger
   import Ecto.Query, warn: false
 
@@ -609,7 +611,7 @@ defmodule AgentBoard.Actions do
             words: words
           })
 
-        execute_recorded(name, params, row)
+        execute_recorded(name, params, row, lang)
 
       {:refuse, reason, words} ->
         insert!(name, spec, params, actor, %{
@@ -646,8 +648,16 @@ defmodule AgentBoard.Actions do
 
   # The screen shows the sentence in the interface language. Both sentences
   # are rebuilt from the same values, so matching either is the same proof.
+  # Portuguese first: a sentence that only exists in Portuguese is the same
+  # in both, and must not make the answer English.
   defp shown_language(name, params, confirm) when is_binary(confirm) do
-    if squish(confirm) == squish(phrase(name, params, "en-US")), do: "en-US", else: "pt-BR"
+    shown = squish(confirm)
+
+    cond do
+      shown == squish(phrase(name, params, "pt-BR")) -> "pt-BR"
+      shown == squish(phrase(name, params, "en-US")) -> "en-US"
+      true -> "pt-BR"
+    end
   end
 
   defp shown_language(_name, _params, _confirm), do: "pt-BR"
@@ -673,9 +683,17 @@ defmodule AgentBoard.Actions do
 
   defp gate(_name, _spec, _actor, nil, _phrase), do: {:go, "automatic", nil, nil}
 
-  defp execute_recorded(name, params, row) do
-    result = execute(name, params)
-    {outcome, detail} = outcome(name, result)
+  # The effect answers in the language of the confirmation: what it returns
+  # is read by whoever confirmed. `AgentBoardWeb.Gettext` reads the process.
+  defp execute_recorded(name, params, row, lang) do
+    locale = if lang == "en-US", do: "en", else: "pt_BR"
+
+    {result, {outcome, detail}} =
+      Gettext.with_locale(AgentBoardWeb.Gettext, locale, fn ->
+        result = execute(name, params)
+        {result, outcome(name, result)}
+      end)
+
     finish(row, outcome, detail)
     log(name, row.decision, row, outcome)
     result
@@ -729,8 +747,11 @@ defmodule AgentBoard.Actions do
     case Runners.dispatch(task, executor, opts) do
       {:ok, execution} ->
         {:ok,
-         "Despacho iniciado no #{Executors.name(executor)} " <>
-           "(sessão #{execution.session_id || execution.id}). O progresso aparece em Execuções."}
+         gettext(
+           "Dispatch started on %{executor} (session %{session}). Progress appears under Executions.",
+           executor: Executors.name(executor),
+           session: execution.session_id || execution.id
+         )}
 
       {:error, reason} ->
         {:error, dispatch_error(reason)}
@@ -740,16 +761,16 @@ defmodule AgentBoard.Actions do
   defp execute(:stop_execution, %{execution: execution}) do
     case Runners.stop(execution) do
       {:ok, _execution} ->
-        {:ok, "Execução parada. A tarefa ficou bloqueada para você decidir."}
+        {:ok, gettext("Execution stopped. The task is blocked for you to decide.")}
 
       {:error, :already_finished} ->
-        {:error, "A execução já terminou; veja o resultado em Execuções."}
+        {:error, gettext("The execution has already ended; see the result under Executions.")}
 
       {:error, :not_running} ->
-        {:error, "Essa execução não está mais ativa."}
+        {:error, gettext("That execution is no longer active.")}
 
       {:error, reason} ->
-        {:error, "Não foi possível parar a execução: #{describe(reason)}"}
+        {:error, gettext("Could not stop the execution: %{reason}", reason: describe(reason))}
     end
   end
 
@@ -763,59 +784,82 @@ defmodule AgentBoard.Actions do
          }) do
       {:ok, superagent} ->
         {:ok,
-         "Superagent #{superagent.profile} reservado na porta #{superagent.port}; o status atualiza no ticker."}
+         gettext(
+           "Superagent %{profile} reserved on port %{port}; the status updates on the ticker.",
+           profile: superagent.profile,
+           port: superagent.port
+         )}
 
       {:error, reason} ->
-        {:error, "Não foi possível provisionar: #{describe(reason)}"}
+        {:error, gettext("Could not provision: %{reason}", reason: describe(reason))}
     end
   end
 
   defp execute(:retry_provision_superagent, %{superagent: superagent}) do
     case Superagents.retry_provision(superagent) do
-      {:ok, _superagent} -> {:ok, "Provisionado de novo; o status atualiza no ticker."}
-      {:error, reason} -> {:error, "Não foi possível provisionar: #{describe(reason)}"}
+      {:ok, _superagent} ->
+        {:ok, gettext("Provisioned again; the status updates on the ticker.")}
+
+      {:error, reason} ->
+        {:error, gettext("Could not provision: %{reason}", reason: describe(reason))}
     end
   end
 
   defp execute(:remove_superagent, %{superagent: superagent}) do
     case Superagents.remove(superagent) do
-      {:ok, archive} -> {:ok, "Superagent removido; profile/state arquivados em #{archive}."}
-      {:error, reason} -> {:error, "Não foi possível remover: #{describe(reason)}"}
+      {:ok, archive} ->
+        {:ok,
+         gettext("Superagent removed; profile/state archived in %{archive}.", archive: archive)}
+
+      {:error, reason} ->
+        {:error, gettext("Could not remove: %{reason}", reason: describe(reason))}
     end
   end
 
   defp execute(:start_superagent, %{superagent: superagent}) do
     case Superagents.start(superagent) do
-      {:ok, _} -> {:ok, "Superagent iniciado. O status atualiza na próxima leitura."}
-      {:error, reason} -> {:error, "Não foi possível iniciar: #{describe(reason)}"}
+      {:ok, _} ->
+        {:ok, gettext("Superagent started. The status updates on the next read.")}
+
+      {:error, reason} ->
+        {:error, gettext("Could not start: %{reason}", reason: describe(reason))}
     end
   end
 
   defp execute(:stop_superagent, %{superagent: superagent}) do
     case Superagents.stop(superagent) do
-      {:ok, _} -> {:ok, "Superagent parado."}
-      {:error, reason} -> {:error, "Não foi possível parar: #{describe(reason)}"}
+      {:ok, _} -> {:ok, gettext("Superagent stopped.")}
+      {:error, reason} -> {:error, gettext("Could not stop: %{reason}", reason: describe(reason))}
     end
   end
 
   defp execute(:pause_superagent, %{superagent: superagent}) do
     case Superagents.pause(superagent, true) do
-      {:ok, _} -> {:ok, "Superagent pausado."}
-      {:error, reason} -> {:error, "Não foi possível pausar: #{describe(reason)}"}
+      {:ok, _} ->
+        {:ok, gettext("Superagent paused.")}
+
+      {:error, reason} ->
+        {:error, gettext("Could not pause: %{reason}", reason: describe(reason))}
     end
   end
 
   defp execute(:resume_superagent, %{superagent: superagent}) do
     case Superagents.pause(superagent, false) do
-      {:ok, _} -> {:ok, "Superagent retomado."}
-      {:error, reason} -> {:error, "Não foi possível retomar: #{describe(reason)}"}
+      {:ok, _} ->
+        {:ok, gettext("Superagent resumed.")}
+
+      {:error, reason} ->
+        {:error, gettext("Could not resume: %{reason}", reason: describe(reason))}
     end
   end
 
   defp execute(:scale_superagent, %{superagent: superagent, workers: workers}) do
     case Superagents.scale(superagent, workers) do
-      {:ok, _} -> {:ok, "Limite de sessões atualizado."}
-      {:error, reason} -> {:error, "Não foi possível mudar o limite: #{describe(reason)}"}
+      {:ok, _} ->
+        {:ok, gettext("Session limit updated.")}
+
+      {:error, reason} ->
+        {:error, gettext("Could not change the limit: %{reason}", reason: describe(reason))}
     end
   end
 
@@ -825,24 +869,39 @@ defmodule AgentBoard.Actions do
         {:ok, granted_text(superagent, result)}
 
       {:error, reason} ->
-        {:error, "Não foi possível liberar @#{login}: #{access_failure(reason)}"}
+        {:error,
+         gettext("Could not allow @%{login}: %{reason}",
+           login: login,
+           reason: access_failure(reason)
+         )}
     end
   end
 
   defp execute(:revoke_agent_access, %{superagent: superagent, login: login}) do
     case AgentAccess.revoke(superagent, login) do
       {:ok, login} ->
-        {:ok, "@#{login} saiu da lista de #{project(superagent)}."}
+        {:ok,
+         gettext("@%{login} was removed from the list of %{project}.",
+           login: login,
+           project: result_project(superagent)
+         )}
 
       {:error, reason} ->
-        {:error, "Não foi possível revogar @#{login}: #{access_failure(reason)}"}
+        {:error,
+         gettext("Could not revoke @%{login}: %{reason}",
+           login: login,
+           reason: access_failure(reason)
+         )}
     end
   end
 
   defp execute(:dismiss_access_request, %{superagent: superagent, login: login}) do
     case AgentAccess.dismiss(superagent, login) do
-      {:ok, _dismissal} -> {:ok, "Pedido de @#{login} dispensado."}
-      {:error, reason} -> {:error, "Não foi possível dispensar: #{access_failure(reason)}"}
+      {:ok, _dismissal} ->
+        {:ok, gettext("Request from @%{login} set aside.", login: login)}
+
+      {:error, reason} ->
+        {:error, gettext("Could not set aside: %{reason}", reason: access_failure(reason))}
     end
   end
 
@@ -1015,29 +1074,38 @@ defmodule AgentBoard.Actions do
   defp outcome(_name, {:error, reason}), do: {"error", describe(reason)}
   defp outcome(_name, other), do: {"error", describe(other)}
 
-  defp dispatch_error(:paused), do: "o despacho está pausado"
-  defp dispatch_error(:already_running), do: "esta tarefa já tem uma execução em andamento"
+  defp dispatch_error(:paused), do: gettext("Dispatch is paused")
+
+  defp dispatch_error(:already_running),
+    do: gettext("This task already has an execution in progress")
 
   defp dispatch_error(:monthly_budget),
-    do: "o gasto do mês já chegou ao teto do Claude Code"
+    do: gettext("This month's spend has reached the Claude Code ceiling")
 
   defp dispatch_error(:budget_unknown),
-    do: "o gasto do mês tem um modelo sem preço; o teto não pode ser conferido"
+    do: gettext("This month's spend has a model without a price; the ceiling cannot be checked")
 
   defp dispatch_error(:quota_reserved),
-    do: "a cota semanal do Codex está dentro da reserva do dono"
+    do: gettext("The weekly Codex quota is within the owner's reserve")
 
-  defp dispatch_error(:task_closed), do: "a tarefa já terminou ou está parada"
+  defp dispatch_error(:task_closed), do: gettext("The task has already ended or is stopped")
 
   defp dispatch_error(:executor_mismatch),
-    do: "a tarefa é de outro executor; escolha o executor na tarefa antes de despachar"
+    do:
+      gettext(
+        "The task belongs to another executor; choose the executor on the task before dispatching"
+      )
 
   defp dispatch_error(:runner_missing),
     do:
-      "o binário do executor não existe ou não é executável neste Mac; confira o caminho em Configurações"
+      gettext(
+        "The executor binary does not exist or is not executable on this Mac; check the path in Settings"
+      )
 
-  defp dispatch_error(:repo_missing), do: "o checkout local do repositório não existe"
-  defp dispatch_error(:no_repository), do: "a tarefa não tem repositório"
+  defp dispatch_error(:repo_missing),
+    do: gettext("The local checkout of the repository does not exist")
+
+  defp dispatch_error(:no_repository), do: gettext("The task has no repository")
   defp dispatch_error(reason), do: describe(reason)
 
   defp executor_name(executor), do: Executors.name(executor)
@@ -1047,6 +1115,14 @@ defmodule AgentBoard.Actions do
 
   defp project(%AgentBoard.Superagents.Superagent{} = superagent),
     do: "projeto #{superagent.repository_id}"
+
+  # The project in a result. `project/1` stays as it is: `phrase/3` uses it,
+  # and the gate rebuilds the sentence in a process with another locale.
+  defp result_project(%AgentBoard.Superagents.Superagent{repository: %Repository{}} = superagent),
+    do: project(superagent)
+
+  defp result_project(%AgentBoard.Superagents.Superagent{} = superagent),
+    do: gettext("project %{id}", id: superagent.repository_id)
 
   defp rerun_text(%{rerun: [_ | _] = rerun}, "en-US"),
     do: " The refused mentions on #{issue_list(rerun)} run again."
@@ -1059,41 +1135,60 @@ defmodule AgentBoard.Actions do
   defp issue_list(rerun), do: Enum.map_join(rerun, ", ", &"##{&1.number}")
 
   defp granted_text(superagent, %{login: login, requeued: requeued, failed: failed}) do
-    "@#{login} liberado em #{project(superagent)}." <>
-      if(requeued == [], do: "", else: " Rodando de novo: #{numbers(requeued)}.") <>
+    gettext("@%{login} allowed on %{project}.",
+      login: login,
+      project: result_project(superagent)
+    ) <>
+      if(requeued == [],
+        do: "",
+        else: " " <> gettext("Running again: %{numbers}.", numbers: numbers(requeued))
+      ) <>
       if(failed == [],
         do: "",
-        else: " Não consegui reprocessar #{numbers(failed)}: peça uma nova menção."
+        else:
+          " " <>
+            gettext("Could not reprocess %{numbers}: ask for a new mention.",
+              numbers: numbers(failed)
+            )
       )
   end
 
   defp numbers(numbers), do: Enum.map_join(numbers, ", ", &"##{&1}")
 
+  # These follow a colon ("Could not allow @login: ..."), so they start small.
   defp access_failure(:conflict),
-    do: "a lista mudou no painel do agente; confira e tente de novo."
+    do: gettext("the list changed in the agent's panel; check and try again.")
 
-  defp access_failure(:invalid_login), do: "esse login do GitHub não é válido."
-  defp access_failure(:owner_protected), do: "o dono do repositório não pode ser revogado."
+  defp access_failure(:invalid_login), do: gettext("that GitHub login is not valid.")
+
+  defp access_failure(:owner_protected),
+    do: gettext("the repository owner cannot be revoked.")
 
   defp access_failure(:github_source_missing),
-    do: "o agente deste projeto não tem o GitHub configurado."
+    do: gettext("this project's agent does not have GitHub configured.")
 
-  defp access_failure(%{__exception__: true}), do: "o agente não respondeu; ele está ligado?"
-  defp access_failure(:timeout), do: "o agente demorou demais para responder."
-  defp access_failure({:http, status}), do: "o agente respondeu com erro (HTTP #{status})."
-  defp access_failure(:malformed), do: "o agente deu uma resposta que o board não entende."
+  defp access_failure(%{__exception__: true}),
+    do: gettext("the agent did not answer; is it running?")
+
+  defp access_failure(:timeout), do: gettext("the agent took too long to answer.")
+
+  defp access_failure({:http, status}),
+    do: gettext("the agent answered with an error (HTTP %{status}).", status: status)
+
+  defp access_failure(:malformed),
+    do: gettext("the agent gave an answer the board does not understand.")
 
   defp access_failure(other) do
     Logger.warning("agent access failed: #{inspect(other)}")
-    "o agente recusou o pedido."
+    gettext("the agent refused the request.")
   end
 
   defp describe({:setup, text}) when is_binary(text), do: text
 
   defp describe(:provision_failed),
-    do: "a configuração deste projeto não terminou; use Tentar de novo."
+    do: gettext("this project's setup did not finish; use Try again.")
 
-  defp describe(:nothing_to_retry), do: "este projeto não tem provisionamento para refazer."
+  defp describe(:nothing_to_retry), do: gettext("this project has no provisioning to redo.")
 
   defp describe(%{__exception__: true} = exception), do: Exception.message(exception)
   defp describe(text) when is_binary(text), do: text
