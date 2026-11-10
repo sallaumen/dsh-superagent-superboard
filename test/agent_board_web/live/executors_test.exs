@@ -130,6 +130,26 @@ defmodule AgentBoardWeb.ExecutorsTest do
     refute has_element?(view, "#settings-execution", "Total geral")
   end
 
+  # A bar is a UTC day: at 22:00 in Brazil the newest one is already tomorrow
+  # there, so it cannot be called today.
+  test "the newest bar prints its date and the chart says its days are UTC", %{conn: conn} do
+    {:ok, view, _html} = live(conn, @path)
+
+    today = Date.utc_today()
+    bars = view |> element("#executor-dsh .ab-executor__bars") |> render()
+
+    assert bars =~ "por dia UTC"
+    assert bars =~ "#{Date.to_iso8601(today)} UTC"
+
+    assert has_element?(
+             view,
+             "#executor-dsh .ab-executor__bar-label",
+             Calendar.strftime(today, "%d/%m")
+           )
+
+    refute has_element?(view, "#executor-dsh .ab-executor__bar-label", "hoje")
+  end
+
   test "the window switches between 7 and 30 days without leaving the section", %{conn: conn} do
     {:ok, view, _html} = live(conn, @path)
 
