@@ -7,10 +7,14 @@ defmodule AgentBoard.Lanes do
   here, so they do not appear.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Actions, AgentBlock, AgentSignal, Board, Release, Repo, Time, Titles, Workpad}
+  alias AgentBoard.{Actions, AgentBlock, AgentSignal, Board, Release, Repo, Titles, Workpad}
   alias AgentBoard.Board.{Comment, PullRequest, Task, TaskDependency}
+  # The locale-aware times: these sentences are read on the screen.
+  alias AgentBoardWeb.{Locale, Time}
 
   @queue_limit 8
   @day_limit 3
@@ -65,9 +69,15 @@ defmodule AgentBoard.Lanes do
   defp agent_down_need(waiting, _context) do
     tail =
       case waiting do
-        0 -> "Nada anda até ele voltar."
-        1 -> "1 tarefa espera ele voltar; as falhas de rede voltam a ser tentadas sozinhas."
-        n -> "#{n} tarefas esperam ele voltar; as falhas de rede voltam a ser tentadas sozinhas."
+        0 ->
+          gettext("Nothing moves until it is back.")
+
+        n ->
+          ngettext(
+            "%{count} task waits for it to come back; network failures are retried on their own.",
+            "%{count} tasks wait for it to come back; network failures are retried on their own.",
+            n
+          )
       end
 
     %{
@@ -75,13 +85,13 @@ defmodule AgentBoard.Lanes do
       id: nil,
       number: nil,
       kind: :agent_down,
-      title: "Agente fora do ar",
-      why: "**O orquestrador não responde.** " <> tail,
+      title: pgettext("status", "Agent offline"),
+      why: gettext("**The orchestrator is not responding.**") <> " " <> tail,
       ci: nil,
       age_seconds: nil,
       is_new: false,
       waiting: waiting,
-      actions: [%{label: "Religar o agente", restart_agent: true}]
+      actions: [%{label: gettext("Restart the agent"), restart_agent: true}]
     }
   end
 
@@ -100,7 +110,7 @@ defmodule AgentBoard.Lanes do
         id: task.id,
         number: task.number,
         title: task.title,
-        line: (block && block.line) || "**Nova tentativa automática.** Esperando o agente."
+        line: (block && block.line) || gettext("**Automatic retry.** Waiting for the agent.")
       }
     end
   end
@@ -201,8 +211,10 @@ defmodule AgentBoard.Lanes do
     do: task.state_changed_at || task.updated_at || task.inserted_at
 
   defp task_why(%{held: true, released_at: at}, :unanswered, _ticket, _pull, context) do
-    "**A chamada ao agente não foi concluída.** O board tentou " <>
-      "#{Time.since_label(at, context.tz_offset, context.now)} e não tenta de novo sozinho."
+    gettext(
+      "**The call to the agent did not complete.** The board tried %{since} and does not try again on its own.",
+      since: Time.since_label(at, context.tz_offset, context.now)
+    )
   end
 
   # What the board knows: it called, and no ticket names the issue. Why the
@@ -210,21 +222,25 @@ defmodule AgentBoard.Lanes do
   defp task_why(task, :unanswered, _ticket, _pull, context) do
     at = Release.called_at(task)
 
-    "**Chamado #{Time.ago(DateTime.diff(context.now, at))} e o agente não começou.** " <>
-      "O board comentou a menção #{Time.since_label(at, context.tz_offset, context.now)} " <>
-      "e nenhum ticket do agente cita esta issue."
+    gettext(
+      "**Called %{ago} and the agent did not start.** The board posted the mention %{since} and no agent ticket names this issue.",
+      ago: Time.ago(DateTime.diff(context.now, at)),
+      since: Time.since_label(at, context.tz_offset, context.now)
+    )
   end
 
   defp task_why(_task, :review, _ticket, %PullRequest{number: number}, _context),
-    do: "**PR ##{number} pronto para revisão**"
+    do: gettext("**PR #%{number} ready for review**", number: number)
 
   defp task_why(_task, :review, ticket, nil, _context) do
     case ticket && ticket["report_summary"] do
       summary when is_binary(summary) and summary != "" ->
-        "**Pronto para revisão**, PR não identificado. O agente disse: " <> excerpt(summary)
+        gettext("**Ready for review**, PR not identified. The agent said: %{summary}",
+          summary: excerpt(summary)
+        )
 
       _ ->
-        "**Pronto para revisão**, PR não identificado pelo board. Abra a conversa."
+        gettext("**Ready for review**, PR not identified by the board. Open the conversation.")
     end
   end
 
@@ -239,13 +255,13 @@ defmodule AgentBoard.Lanes do
 
     cond do
       question ->
-        "**O agente perguntou:** " <> excerpt(question)
+        gettext("**The agent asked:** %{question}", question: excerpt(question))
 
       is_binary(summary) and Workpad.question?(summary) ->
-        "**O agente perguntou:** " <> excerpt(summary)
+        gettext("**The agent asked:** %{question}", question: excerpt(summary))
 
       true ->
-        "**O agente espera uma resposta sua.** Abra a conversa e responda."
+        gettext("**The agent is waiting for your answer.** Open the conversation and reply.")
     end
   end
 
@@ -261,7 +277,9 @@ defmodule AgentBoard.Lanes do
   defp task_why(task, :stalled, _ticket, _pull, context) do
     silence = Map.fetch!(context.silences, task.number)
     since = Time.local_time(silence.at, context.tz_offset)
-    "**Sem sinal #{Time.ago(silence.seconds)}.** " <> silence_source(silence.source, since)
+
+    gettext("**Last signal %{ago}.**", ago: Time.ago(silence.seconds)) <>
+      " " <> silence_source(silence.source, since)
   end
 
   # A block the agent reported itself (a workpad Bloqueio, a `blocked`
@@ -276,36 +294,49 @@ defmodule AgentBoard.Lanes do
     summary = ticket && ticket["report_summary"]
 
     cond do
-      blockage -> "**Bloqueado:** " <> excerpt(blockage)
-      is_binary(summary) and summary != "" -> "**Bloqueado:** " <> excerpt(summary)
-      true -> "**Bloqueado**, sem motivo no relatório do agente. Abra o detalhe."
+      blockage ->
+        gettext("**Blocked:** %{reason}", reason: excerpt(blockage))
+
+      is_binary(summary) and summary != "" ->
+        gettext("**Blocked:** %{reason}", reason: excerpt(summary))
+
+      true ->
+        gettext("**Blocked**, with no reason in the agent's report. Open the details.")
     end
   end
 
   defp silence_source(:report, since),
-    do: "O último relatório do agente foi às #{since}; nenhum sinal no worktree desde então."
+    do:
+      gettext("The agent's last report was at %{time}; no signal in the worktree since then.",
+        time: since
+      )
 
   defp silence_source(:worktree, since),
-    do: "A última mudança no worktree foi às #{since}; nenhum relatório depois."
+    do:
+      gettext("The last change in the worktree was at %{time}; no report after it.", time: since)
 
   defp silence_source(:start, since),
     do:
-      "Começou às #{since} e não deu sinal desde então: nenhum relatório nem mudança no worktree."
+      gettext(
+        "It started at %{time} and has given no signal since: no report and no change in the worktree.",
+        time: since
+      )
 
   defp need_actions(task, :review, %PullRequest{url: url, number: number}, _context)
        when is_binary(url) do
     [
       %{label: action_label(:review), task_id: task.id},
-      %{label: "Abrir PR ##{number}", url: url}
+      %{label: gettext("Open PR #%{number}", number: number), url: url}
     ]
   end
 
   # The same red action as the tree's "Chamar o agente", with its sentence.
   defp need_actions(task, :unanswered, _pull, %{repository: repository}) do
-    phrase = Actions.phrase(:release_task, %{task: task, repository: repository})
+    phrase =
+      Actions.phrase(:release_task, %{task: task, repository: repository}, Locale.language())
 
     [
-      %{label: "Chamar de novo", release: phrase},
+      %{label: gettext("Call again"), release: phrase},
       %{label: action_label(:unanswered), task_id: task.id}
     ]
   end
@@ -341,7 +372,7 @@ defmodule AgentBoard.Lanes do
     |> Enum.map(&String.trim/1)
     |> Enum.reject(&(&1 == ""))
     |> Enum.uniq()
-    |> Enum.join(" e ")
+    |> Enum.join(" #{gettext("and")} ")
     |> String.slice(0, 80)
   end
 
@@ -372,12 +403,12 @@ defmodule AgentBoard.Lanes do
     end
   end
 
-  defp action_label(:review), do: "Revisar"
-  defp action_label(:question), do: "Responder"
-  defp action_label(:blocked), do: "Ver detalhe"
-  defp action_label(:stalled), do: "Ver detalhe"
-  defp action_label(:unanswered), do: "Ver detalhe"
-  defp action_label(:cifail), do: "Ver falha"
+  defp action_label(:review), do: gettext("Review")
+  defp action_label(:question), do: gettext("Respond")
+  defp action_label(:blocked), do: gettext("View details")
+  defp action_label(:stalled), do: gettext("View details")
+  defp action_label(:unanswered), do: gettext("View details")
+  defp action_label(:cifail), do: gettext("View failure")
 
   # A silent run blocks the whole queue while there is one worker: it comes
   # right after a block, before the work that only waits for the owner.
@@ -472,9 +503,14 @@ defmodule AgentBoard.Lanes do
 
     sub =
       case {Map.get(blockers, row.blocker_for_task_id), Map.get(origins, row.origin_task_id)} do
-        {number, _origin} when is_integer(number) -> "desbloqueia ##{number}"
-        {nil, number} when is_integer(number) -> "dividido de ##{number}"
-        _ -> nil
+        {number, _origin} when is_integer(number) ->
+          gettext("unblocks #%{number}", number: number)
+
+        {nil, number} when is_integer(number) ->
+          gettext("split from #%{number}", number: number)
+
+        _ ->
+          nil
       end
 
     %{
@@ -486,7 +522,9 @@ defmodule AgentBoard.Lanes do
       is_new: new?(row.inserted_at, last_visit),
       sub: sub,
       split: not is_nil(sub),
-      note: duplicate && "Parece repetir ##{duplicate.number}, já mesclado"
+      note:
+        duplicate &&
+          gettext("Looks like a repeat of #%{number}, already merged", number: duplicate.number)
     }
   end
 
@@ -503,8 +541,8 @@ defmodule AgentBoard.Lanes do
 
   defp held_sub(row, waits) do
     case Map.get(waits, row.id, []) do
-      [] -> "espera as dependências"
-      numbers -> "espera " <> Enum.map_join(numbers, ", ", &"##{&1}")
+      [] -> gettext("waiting for its dependencies")
+      numbers -> gettext("waiting for %{tasks}", tasks: Enum.map_join(numbers, ", ", &"##{&1}"))
     end
   end
 
@@ -538,7 +576,9 @@ defmodule AgentBoard.Lanes do
         nil
 
       is_nil(ticket) ->
-        "chamado #{Time.ago(DateTime.diff(calls.now, called))}, aguardando o agente"
+        gettext("called %{ago}, waiting for the agent",
+          ago: Time.ago(DateTime.diff(calls.now, called))
+        )
 
       ticket["stopped"] || ticket["archived"] ->
         nil
@@ -555,10 +595,10 @@ defmodule AgentBoard.Lanes do
   defp agent_queue(ticket, now) do
     case List.last(ticket["assignments"] || []) do
       %{"created_at" => %DateTime{} = at} ->
-        "na fila do agente #{Time.ago(DateTime.diff(now, at))}"
+        gettext("entered the agent's queue %{ago}", ago: Time.ago(DateTime.diff(now, at)))
 
       _no_assignment ->
-        "na fila do agente"
+        gettext("in the agent's queue")
     end
   end
 
@@ -566,11 +606,11 @@ defmodule AgentBoard.Lanes do
   defp stuck(row, calls) do
     cond do
       call_failed?(row, calls.now) ->
-        "a chamada ao agente não foi concluída"
+        gettext("the call to the agent did not complete")
 
       unanswered?(row, calls) ->
         called = Time.ago(DateTime.diff(calls.now, Release.called_at(row)))
-        "chamado #{called}, o agente não começou"
+        gettext("called %{ago}, the agent did not start", ago: called)
 
       true ->
         nil
@@ -614,10 +654,10 @@ defmodule AgentBoard.Lanes do
 
   defp filters(counts) do
     [
-      {"Todas", counts.all},
-      {"Novas", counts.new},
-      {"Divididas", counts.split},
-      {"Possíveis repetidas", counts.dupes}
+      {gettext("All"), counts.all},
+      {pgettext("queue filter", "New"), counts.new},
+      {pgettext("queue filter", "Split"), counts.split},
+      {gettext("Possible repeats"), counts.dupes}
     ]
   end
 
@@ -706,28 +746,30 @@ defmodule AgentBoard.Lanes do
   end
 
   defp ci_status(pull, %{state: :pass} = local) do
-    {"pass", "CI local ok", local_title(local, pull)}
+    {"pass", gettext("Local CI passed"), local_title(local, pull)}
   end
 
   defp ci_status(_pull, %{state: :fail} = local) do
-    {"fail", "CI local falhou", local_title(local, nil)}
+    {"fail", gettext("Local CI failed"), local_title(local, nil)}
   end
 
   # The workpad names a gate on another commit than the PR's head: the
   # evidence exists but does not cover what would merge.
-  defp ci_status(_pull, %{state: :stale, detail: detail}), do: {"unknown", "CI local ?", detail}
+  defp ci_status(_pull, %{state: :stale, detail: detail}),
+    do: {"unknown", gettext("Local CI unknown"), detail}
 
   defp ci_status(%PullRequest{checks_state: "failure"} = pull, nil) do
-    {"unknown", "CI local ?", remote_failure_title(pull)}
+    {"unknown", gettext("Local CI unknown"), remote_failure_title(pull)}
   end
 
   defp ci_status(%PullRequest{checks_state: "success"}, nil),
-    do: {"pass", "CI ok", "GitHub Actions passou."}
+    do: {"pass", gettext("CI passed"), gettext("GitHub Actions passed.")}
 
   defp ci_status(%PullRequest{checks_state: "pending"}, nil),
-    do: {"unknown", "CI rodando", "GitHub Actions ainda está rodando."}
+    do: {"unknown", gettext("CI running"), gettext("GitHub Actions is still running.")}
 
-  defp ci_status(_pull, nil), do: {"unknown", "sem CI", "Nenhum check remoto configurado."}
+  defp ci_status(_pull, nil),
+    do: {"unknown", gettext("no CI"), gettext("No remote check configured.")}
 
   defp local_state(pull, local_ci) when is_map(local_ci) do
     case Map.get(local_ci, pull.number, %{}) do
@@ -739,38 +781,49 @@ defmodule AgentBoard.Lanes do
   defp local_title(local, pull) do
     prefix =
       if local.remote_blocked do
-        "#{remote_label(pull)} (billing/sem crédito no GitHub)."
+        gettext("%{remote} (billing/no credit on GitHub).", remote: remote_label(pull))
       else
         "#{remote_label(pull)}."
       end
 
-    "#{prefix} CI local passou#{local_scope(local)}: #{local.detail}"
+    gettext("%{prefix} Local CI passed%{scope}: %{detail}",
+      prefix: prefix,
+      scope: local_scope(local),
+      detail: local.detail
+    )
   end
 
-  defp remote_label(%{checks_state: "failure"}), do: "GitHub Actions falhou"
-  defp remote_label(%{checks_state: "success"}), do: "GitHub Actions passou"
-  defp remote_label(%{checks_state: "pending"}), do: "GitHub Actions ainda roda"
-  defp remote_label(_pull), do: "GitHub Actions sem checks"
+  defp remote_label(%{checks_state: "failure"}), do: gettext("GitHub Actions failed")
+  defp remote_label(%{checks_state: "success"}), do: gettext("GitHub Actions passed")
+  defp remote_label(%{checks_state: "pending"}), do: gettext("GitHub Actions is still running")
+  defp remote_label(_pull), do: gettext("GitHub Actions has no checks")
 
   defp local_scope(%{scope: :ticket, evidence_pr: number}),
-    do: " no ticket (relatório cita ##{number}; este PR é do mesmo trabalho)"
+    do:
+      " " <>
+        gettext("on the ticket (report cites #%{number}; this PR is from the same work)",
+          number: number
+        )
 
   defp local_scope(_local), do: ""
 
   defp remote_failure_title(pull) do
     case checks_label(pull) do
       "" ->
-        "GitHub Actions falhou (billing/sem crédito); sem evidência de CI local."
+        gettext("GitHub Actions failed (billing/no credit); no evidence of local CI.")
 
       checks ->
-        "GitHub Actions falhou em #{checks} (billing/sem crédito); sem evidência de CI local."
+        gettext(
+          "GitHub Actions failed on %{checks} (billing/no credit); no evidence of local CI.",
+          checks: checks
+        )
     end
   end
 
-  defp review_label("approved"), do: "revisado"
-  defp review_label("changes_requested"), do: "mudanças pedidas"
-  defp review_label("pending"), do: "revisão pendente"
-  defp review_label(_state), do: "sem revisão"
+  defp review_label("approved"), do: gettext("reviewed")
+  defp review_label("changes_requested"), do: gettext("changes requested")
+  defp review_label("pending"), do: gettext("review pending")
+  defp review_label(_state), do: gettext("no review")
 
   @doc """
   The one-sentence digest. Since the previous visit when there is one; the
@@ -799,7 +852,7 @@ defmodule AgentBoard.Lanes do
         %{
           prefix: first_prefix(frozen?, frozen_at, offset),
           segments: join_phrases(phrases),
-          suffix: (frozen? && " Depois disso, não sabemos.") || ".",
+          suffix: (frozen? && " " <> gettext("After that, we do not know.")) || ".",
           now: now
         }
     end
@@ -813,11 +866,24 @@ defmodule AgentBoard.Lanes do
     queued = Map.get(board, :task_counts, %{}) |> Map.get(:queued, 0)
 
     [
-      running > 0 && [%{text: "#{running} rodando", role: :agent}],
-      retrying > 0 && [%{text: "#{retrying} em nova tentativa automática", role: :agent}],
-      waiting > 0 && [%{text: "#{waiting} esperando você", role: :you}],
-      blocked > 0 && [%{text: "#{blocked} #{plural(blocked, "bloqueado")}", role: :halt}],
-      queued > 0 && [%{text: "#{queued} na fila", role: :agent}]
+      running > 0 && [%{text: gettext("%{count} running", count: running), role: :agent}],
+      retrying > 0 &&
+        [%{text: gettext("%{count} in automatic retry", count: retrying), role: :agent}],
+      waiting > 0 &&
+        [
+          %{
+            text: ngettext("%{count} waiting for you", "%{count} waiting for you", waiting),
+            role: :you
+          }
+        ],
+      blocked > 0 &&
+        [
+          %{
+            text: pngettext("digest", "%{count} blocked", "%{count} blocked", blocked),
+            role: :halt
+          }
+        ],
+      queued > 0 && [%{text: gettext("%{count} in the queue", count: queued), role: :agent}]
     ]
     |> Enum.reject(&(&1 == false))
   end
@@ -831,7 +897,10 @@ defmodule AgentBoard.Lanes do
         [
           %{
             text:
-              if(frozen? and is_nil(frozen_at), do: "não sabemos o que mudou", else: "nada mudou"),
+              if(frozen? and is_nil(frozen_at),
+                do: gettext("we do not know what changed"),
+                else: gettext("nothing changed")
+              ),
             role: :plain
           }
         ]
@@ -912,7 +981,17 @@ defmodule AgentBoard.Lanes do
       counts.merged > 0 && merged_phrase(counts.merged),
       counts.reviews > 0 && [review_phrase(counts.reviews, first_review)],
       counts.questions > 0 &&
-        [%{text: "fez #{counts.questions} #{plural(counts.questions, "pergunta")}", role: :you}],
+        [
+          %{
+            text:
+              ngettext(
+                "it asked %{count} question",
+                "it asked %{count} questions",
+                counts.questions
+              ),
+            role: :you
+          }
+        ],
       running != [] && [running_phrase(running)],
       blocked != [] && [blocked_phrase(blocked)],
       counts.queue_new > 0 && [queue_phrase(counts.queue_new)]
@@ -922,51 +1001,62 @@ defmodule AgentBoard.Lanes do
   end
 
   defp first_prefix(true, %DateTime{} = frozen_at, offset),
-    do: "Até #{Time.local_time(frozen_at, offset)}: "
+    do: gettext("Until %{time}:", time: Time.local_time(frozen_at, offset)) <> " "
 
-  defp first_prefix(true, nil, _offset), do: "Sem uma sincronia concluída: "
-  defp first_prefix(false, _frozen_at, _offset), do: "Primeira visita: "
+  defp first_prefix(true, nil, _offset), do: gettext("Without a completed sync:") <> " "
+  defp first_prefix(false, _frozen_at, _offset), do: gettext("First visit:") <> " "
 
   defp since_prefix(_last_visit, offset, %DateTime{} = frozen_at, true, _now),
-    do: "Até #{Time.local_time(frozen_at, offset)}, "
+    do: gettext("Until %{time},", time: Time.local_time(frozen_at, offset)) <> " "
 
   defp since_prefix(_last_visit, _offset, nil, true, _now),
-    do: "Sem uma sincronia concluída, "
+    do: gettext("Without a completed sync,") <> " "
 
   defp since_prefix(last_visit, offset, nil, false, now),
-    do: "Desde #{Time.since_label(last_visit, offset, now)} "
+    do: gettext("Since %{since}", since: Time.since_label(last_visit, offset, now)) <> " "
 
-  defp since_suffix(_phrases, true), do: ". Depois disso, não sabemos."
+  defp since_suffix(_phrases, true), do: ". " <> gettext("After that, we do not know.")
   defp since_suffix(_phrases, false), do: "."
 
-  defp queue_phrase(1), do: %{text: "1 nova na fila", role: :agent}
-  defp queue_phrase(n), do: %{text: "#{n} novas na fila", role: :agent}
+  defp queue_phrase(n) do
+    %{text: ngettext("%{count} new in the queue", "%{count} new in the queue", n), role: :agent}
+  end
 
-  defp merged_phrase(merged),
-    do: [%{text: "o agente mesclou #{merged} #{plural(merged, "PR")}", role: :agent}]
-
-  defp review_phrase(1, pr) do
-    %{text: "abriu 1 PR para revisão", role: :you, url: pr && pr.url}
+  defp merged_phrase(merged) do
+    text = ngettext("the agent merged %{count} PR", "the agent merged %{count} PRs", merged)
+    [%{text: text, role: :agent}]
   end
 
   defp review_phrase(n, pr) do
-    %{text: "abriu #{n} PRs para revisão", role: :you, url: pr && pr.url}
+    %{
+      text: ngettext("it opened %{count} PR for review", "it opened %{count} PRs for review", n),
+      role: :you,
+      url: pr && pr.url
+    }
   end
 
   defp running_phrase([task]) do
-    %{text: "está trabalhando em ##{task.number}", role: :agent, task_id: task.id}
+    %{
+      text: gettext("it is working on #%{number}", number: task.number),
+      role: :agent,
+      task_id: task.id
+    }
   end
 
   defp running_phrase(tasks) do
-    %{text: "está trabalhando em #{length(tasks)} tarefas", role: :agent}
+    %{text: gettext("it is working on %{count} tasks", count: length(tasks)), role: :agent}
   end
 
   defp blocked_phrase([task]) do
-    %{text: "##{task.number} continua bloqueado", role: :halt, task_id: task.id}
+    %{
+      text: gettext("#%{number} is still blocked", number: task.number),
+      role: :halt,
+      task_id: task.id
+    }
   end
 
   defp blocked_phrase(tasks) do
-    %{text: "#{length(tasks)} continuam bloqueados", role: :halt}
+    %{text: gettext("%{count} are still blocked", count: length(tasks)), role: :halt}
   end
 
   defp first_review(repository, last_visit) do
@@ -990,7 +1080,7 @@ defmodule AgentBoard.Lanes do
     init
     |> Enum.intersperse([%{text: ", ", role: :plain}])
     |> List.flatten()
-    |> Kernel.++([%{text: " e ", role: :plain}])
+    |> Kernel.++([%{text: " #{gettext("and")} ", role: :plain}])
     |> Kernel.++(last)
   end
 
@@ -1007,7 +1097,4 @@ defmodule AgentBoard.Lanes do
     |> String.trim()
     |> String.slice(0, 160)
   end
-
-  defp plural(1, singular), do: singular
-  defp plural(_n, singular), do: singular <> "s"
 end

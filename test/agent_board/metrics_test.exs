@@ -185,6 +185,19 @@ defmodule AgentBoard.MetricsTest do
   end
 
   describe "words" do
+    setup do
+      Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+      :ok
+    end
+
+    test "the English board writes the rate and the reason its way" do
+      Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+
+      assert Metrics.rate(1.66) == "1.7"
+      assert Metrics.reason(:unreachable) == "orchestrator unreachable"
+      assert Metrics.reason({:http, 503}) == "orchestrator returned HTTP 503"
+    end
+
     test "counts, rates, deltas and durations" do
       assert Metrics.count(nil) == "?"
       assert Metrics.count(12) == "12"
@@ -200,8 +213,8 @@ defmodule AgentBoard.MetricsTest do
       assert Metrics.duration(720) == "12 min"
       assert Metrics.duration(3900) == "1 h 05 min"
       assert Metrics.duration(2 * 86_400 + 3 * 3600 + 7) == "2 d 3 h"
-      assert Metrics.reason(:never_synced) =~ "commits"
-      assert Metrics.reason({:http, 503}) =~ "503"
+      assert Metrics.reason(:never_synced) == "ainda sem leitura dos commits"
+      assert Metrics.reason({:http, 503}) == "orquestrador respondeu HTTP 503"
     end
   end
 end

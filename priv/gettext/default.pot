@@ -5844,3 +5844,742 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "peak"
 msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "The model provider rate-limited the requests"
+msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "The model provider is down"
+msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "Network failure calling the model"
+msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "No network preparing the worktree: GitHub did not resolve"
+msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "No network preparing the worktree"
+msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "Request limit reached"
+msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "Network failure"
+msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "Preparing the worktree timed out"
+msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "Preparing the worktree failed"
+msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "The model returned an error"
+msgstr ""
+
+#: lib/agent_board/agent_failure.ex
+#, elixir-autogen, elixir-format
+msgid "The agent reported a failure"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "(%{attempt} of %{max})"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Automatic retry when the agent is back %{attempts}."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "The board asks for attempt %{attempt} of %{max} as soon as the orchestrator answers, without you."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Automatic retry in a moment %{attempts}."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "The board asks for attempt %{attempt} of %{max} within the next minute, without you."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Automatic retry at %{time} %{attempts}."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "The board asks for attempt %{attempt} of %{max} at %{time}, without you."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing to do. To skip the wait, press Try now."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "the provider"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "the network"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "The %{max} automatic attempts failed; try again when %{where} is back."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "The board stopped trying on its own after %{max} attempts."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Check %{where} and press Try again."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "The prepare step left files in the ticket's folder; delete the folder and try again."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "The board does not retry on its own: the agent would treat those files as a ready worktree."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Delete %{dir} and press Try again."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Check the bot's access to GitHub and try again."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "The board does not retry on its own: the prepare step waited ten minutes, which usually means a password prompt."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Run gh-agent auth status; with the right login, press Try again."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "This does not look like a network failure: read the error in the details before trying again."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "The board does not retry on its own: this error does not look temporary."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Read the error below, fix the cause and press Try again, or reply in the conversation."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Retry queued"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "**Retry queued.** Waiting for a free worker%{attempts}."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "The agent starts as soon as a worker is free."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing to do."
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "failed: %{reason}"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "no message"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "waited for an answer"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "delivered"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "working"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "ended without a report"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "retry requested"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "automatic retry at %{time}"
+msgstr ""
+
+#: lib/agent_board/agent_block.ex
+#, elixir-autogen, elixir-format
+msgid "the agent restarted"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing moves until it is back."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} task waits for it to come back; network failures are retried on their own."
+msgid_plural "%{count} tasks wait for it to come back; network failures are retried on their own."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**The orchestrator is not responding.**"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Restart the agent"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**Automatic retry.** Waiting for the agent."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**The call to the agent did not complete.** The board tried %{since} and does not try again on its own."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**Called %{ago} and the agent did not start.** The board posted the mention %{since} and no agent ticket names this issue."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**PR #%{number} ready for review**"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**Ready for review**, PR not identified. The agent said: %{summary}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**Ready for review**, PR not identified by the board. Open the conversation."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**The agent asked:** %{question}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**The agent is waiting for your answer.** Open the conversation and reply."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**Last signal %{ago}.**"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**Blocked:** %{reason}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "**Blocked**, with no reason in the agent's report. Open the details."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "The agent's last report was at %{time}; no signal in the worktree since then."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "The last change in the worktree was at %{time}; no report after it."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "It started at %{time} and has given no signal since: no report and no change in the worktree."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Open PR #%{number}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Call again"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "View details"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "View failure"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "unblocks #%{number}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "split from #%{number}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Looks like a repeat of #%{number}, already merged"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "waiting for its dependencies"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "waiting for %{tasks}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "called %{ago}, waiting for the agent"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "entered the agent's queue %{ago}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "in the agent's queue"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "the call to the agent did not complete"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "called %{ago}, the agent did not start"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgctxt "queue filter"
+msgid "New"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgctxt "queue filter"
+msgid "Split"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Possible repeats"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "GitHub Actions is still running."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "No remote check configured."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "%{remote} (billing/no credit on GitHub)."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "%{prefix} Local CI passed%{scope}: %{detail}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "GitHub Actions failed"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "GitHub Actions passed"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "GitHub Actions is still running"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "GitHub Actions has no checks"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "on the ticket (report cites #%{number}; this PR is from the same work)"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "GitHub Actions failed on %{checks} (billing/no credit); no evidence of local CI."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "After that, we do not know."
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} running"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} in automatic retry"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgctxt "digest"
+msgid "%{count} blocked"
+msgid_plural "%{count} blocked"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} in the queue"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "we do not know what changed"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "nothing changed"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "it asked %{count} question"
+msgid_plural "it asked %{count} questions"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Until %{time}:"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Without a completed sync:"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "First visit:"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Until %{time},"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Without a completed sync,"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "Since %{since}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} new in the queue"
+msgid_plural "%{count} new in the queue"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "the agent merged %{count} PR"
+msgid_plural "the agent merged %{count} PRs"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "it opened %{count} PR for review"
+msgid_plural "it opened %{count} PRs for review"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "it is working on #%{number}"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "it is working on %{count} tasks"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "#%{number} is still blocked"
+msgstr ""
+
+#: lib/agent_board/lanes.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} are still blocked"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/inspector.ex
+#, elixir-autogen, elixir-format
+msgid "Parallelism: %{reason}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/inspector.ex
+#, elixir-autogen, elixir-format
+msgid "Send to %{executor}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/inspector.ex
+#, elixir-autogen, elixir-format
+msgid "Try again on %{executor}"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgid "Entered the queue"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgid "The agent started"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgid "Current state: %{state}"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgid "PR #%{number} opened"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgid "PR #%{number} merged"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity"
+msgid "CI failed"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity"
+msgid "CI passed"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity state"
+msgid "running"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity state"
+msgid "question"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity state"
+msgid "to review"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity state"
+msgid "blocked"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity state"
+msgid "trying again"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity state"
+msgid "queued"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity state"
+msgid "merged"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity state"
+msgid "stopped"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity state"
+msgid "archived"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "activity state"
+msgid "unknown"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "log level"
+msgid "warning"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "log level"
+msgid "error"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "log source"
+msgid "reading"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "log source"
+msgid "the file does not exist yet"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgctxt "log source"
+msgid "could not be read"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgid ", but the PR's head is %{head}: the gate does not cover the current commit."
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} warning"
+msgid_plural "%{count} warnings"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgid "paused"
+msgstr ""
+
+#: lib/agent_board/board.ex
+#, elixir-autogen, elixir-format
+msgid "live"
+msgstr ""

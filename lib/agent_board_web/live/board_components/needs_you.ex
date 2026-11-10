@@ -81,7 +81,8 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                 class={[
                   "ab-tag",
                   need.ci.state == "fail" && "ab-tag--halt",
-                  need.ci.state == "pass" && need.ci.note == "CI local ok" && "ab-tag--agent"
+                  need.ci.state == "pass" && need.ci.note == gettext("Local CI passed") &&
+                    "ab-tag--agent"
                 ]}
                 title={need.ci.title}
               >
@@ -162,12 +163,12 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   defp dom_id(_need), do: nil
 
   defp kind_label(:review), do: gettext("Review")
-  defp kind_label(:question), do: "Pergunta"
-  defp kind_label(:blocked), do: "Bloqueado"
-  defp kind_label(:cifail), do: "CI falhou"
-  defp kind_label(:stalled), do: "Sem sinal"
-  defp kind_label(:unanswered), do: "Sem resposta"
-  defp kind_label(:agent_down), do: "Agente fora do ar"
+  defp kind_label(:question), do: pgettext("status", "Question")
+  defp kind_label(:blocked), do: pgettext("status", "Blocked")
+  defp kind_label(:cifail), do: pgettext("status", "CI failed")
+  defp kind_label(:stalled), do: pgettext("status", "No signal")
+  defp kind_label(:unanswered), do: pgettext("status", "No answer")
+  defp kind_label(:agent_down), do: pgettext("status", "Agent offline")
   defp kind_label(_kind), do: gettext("Attention")
 
   defp tone(:agent_down), do: "is-halt"

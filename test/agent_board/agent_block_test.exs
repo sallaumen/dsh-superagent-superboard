@@ -48,6 +48,29 @@ defmodule AgentBoard.AgentBlockTest do
     AgentBlock.explain(ticket, Keyword.merge([now: @failed_at, tz_offset: 180, agent: :up], opts))
   end
 
+  # The assertions below are the original Portuguese; the English test sets its own locale.
+  setup do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+    :ok
+  end
+
+  test "the English board reads the block in English" do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+    block = explain(ticket(@model))
+
+    assert block.headline == "Network failure calling the model"
+
+    assert block.line ==
+             "**Network failure calling the model.** Automatic retry at 14:11 (1 of 3)."
+
+    assert block.system ==
+             "The board asks for attempt 1 of 3 at 14:11, without you."
+
+    assert block.action == "Nothing to do. To skip the wait, press Try now."
+    assert block.retry == "Try now"
+    assert [%{text: "failed: network failure calling the model"}] = block.attempts
+  end
+
   test "a scheduled retry names the failure, the local time and the count" do
     block = explain(ticket(@model))
 

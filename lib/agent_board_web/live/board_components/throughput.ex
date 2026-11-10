@@ -380,7 +380,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
       viewBox="0 0 96 24"
       preserveAspectRatio="none"
       role="img"
-      aria-label={"Paralelismo: #{Metrics.reason(@tile.reason)}"}
+      aria-label={gettext("Parallelism: %{reason}", reason: Metrics.reason(@tile.reason))}
     >
       <line x1="0" y1="23.5" x2="96" y2="23.5" class="ab-flow__base" />
     </svg>

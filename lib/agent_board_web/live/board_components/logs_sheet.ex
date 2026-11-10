@@ -50,11 +50,11 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
         <div class="ab-logs__heading">
           <h2 id="logs-title">{gettext("Logs")}</h2>
           <span class="ab-meta">
-            {@counts.warning} {plural(@counts.warning, "aviso", "avisos")} · {@counts.error} {plural(
-              @counts.error,
-              "erro",
-              "erros"
-            )} · {if @paused, do: "pausado", else: "ao vivo"}
+            {ngettext("%{count} warning", "%{count} warnings", @counts.warning)} · {ngettext(
+              "%{count} error",
+              "%{count} errors",
+              @counts.error
+            )} · {if @paused, do: gettext("paused"), else: gettext("live")}
           </span>
         </div>
         <div class="ab-logs__actions">
@@ -87,7 +87,7 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
             class="ab-btn ab-btn--quiet ab-btn--sm"
             phx-click={if @paused, do: "logs_resume", else: "logs_pause"}
           >
-            {if @paused, do: "Retomar", else: "Pausar"}
+            {if @paused, do: gettext("Resume"), else: gettext("Pause")}
           </button>
           <button
             type="button"
@@ -170,7 +170,4 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
   defp unreadable?(sources, statuses) do
     Enum.any?(sources, &(status(statuses, &1.id) != :ok))
   end
-
-  defp plural(1, one, _many), do: one
-  defp plural(_count, _one, many), do: many
 end

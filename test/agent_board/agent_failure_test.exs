@@ -9,6 +9,31 @@ defmodule AgentBoard.AgentFailureTest do
   @prepare "Error: The prepare command failed: fatal: unable to access " <>
              "'https://github.com/sallaumen/arena-rogue.git/': Could not resolve host: github.com"
 
+  test "the screen's sentence is the stored one in Portuguese, and English in English" do
+    failures =
+      for transient <- [true, false],
+          stage <- [:model, :prepare, :other],
+          cause <- [:rate_limit, :provider_unavailable, :dns, :hung, :unknown] do
+        %{transient: transient, stage: stage, cause: cause, summary: ""}
+      end
+
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+
+    for failure <- failures,
+        do: assert(AgentFailure.headline(failure) == AgentFailure.describe(failure))
+
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+
+    for failure <- failures,
+        do: refute(AgentFailure.headline(failure) == AgentFailure.describe(failure))
+
+    assert AgentFailure.headline(AgentFailure.classify(@model)) ==
+             "Network failure calling the model"
+
+    assert AgentFailure.describe(AgentFailure.classify(@model)) ==
+             "Falha de rede ao chamar o modelo"
+  end
+
   test "the model's transport failing is transient, at the model" do
     assert %{transient: true, cause: :model_transport, stage: :model} =
              AgentFailure.classify(@model)

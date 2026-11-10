@@ -10,6 +10,8 @@ defmodule AgentBoard.AgentBlock do
   answers come in as options.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   alias AgentBoard.{AgentFailure, AutoRetry, Time}
 
   @type state :: :scheduled | :queued | :exhausted | :needs_person
@@ -45,7 +47,7 @@ defmodule AgentBoard.AgentBlock do
   end
 
   defp from_plan(ticket, plan, opts) do
-    headline = AgentFailure.describe(plan.failure)
+    headline = AgentFailure.headline(plan.failure)
     {line, system, action, retry} = words(plan, headline, ticket, opts)
 
     %{
@@ -62,56 +64,75 @@ defmodule AgentBoard.AgentBlock do
   end
 
   defp words(%{state: :scheduled} = plan, _headline, _ticket, opts) do
-    count = "(#{plan.attempt} de #{plan.max})"
+    count = gettext("(%{attempt} of %{max})", attempt: plan.attempt, max: plan.max)
+    attempt = [attempt: plan.attempt, max: plan.max]
 
     {line, system} =
       case when_due(plan, opts) do
         :agent_down ->
-          {"Nova tentativa automática quando o agente voltar #{count}.",
-           "O board pede a tentativa #{plan.attempt} de #{plan.max} assim que o orquestrador responder, sem você."}
+          {gettext("Automatic retry when the agent is back %{attempts}.", attempts: count),
+           gettext(
+             "The board asks for attempt %{attempt} of %{max} as soon as the orchestrator answers, without you.",
+             attempt
+           )}
 
         :soon ->
-          {"Nova tentativa automática em instantes #{count}.",
-           "O board pede a tentativa #{plan.attempt} de #{plan.max} no próximo minuto, sem você."}
+          {gettext("Automatic retry in a moment %{attempts}.", attempts: count),
+           gettext(
+             "The board asks for attempt %{attempt} of %{max} within the next minute, without you.",
+             attempt
+           )}
 
         {:at, time} ->
-          {"Nova tentativa automática às #{time} #{count}.",
-           "O board pede a tentativa #{plan.attempt} de #{plan.max} às #{time}, sem você."}
+          {gettext("Automatic retry at %{time} %{attempts}.", time: time, attempts: count),
+           gettext(
+             "The board asks for attempt %{attempt} of %{max} at %{time}, without you.",
+             [time: time] ++ attempt
+           )}
       end
 
-    {line, system, "Nada a fazer. Para não esperar, toque em Tentar agora.", "Tentar agora"}
+    {line, system, gettext("Nothing to do. To skip the wait, press Try now."), gettext("Try now")}
   end
 
   defp words(%{state: :exhausted} = plan, _headline, _ticket, _opts) do
     where =
       if plan.failure.cause in [:rate_limit, :provider_unavailable],
-        do: "o provedor",
-        else: "a rede"
+        do: gettext("the provider"),
+        else: gettext("the network")
 
-    {"As #{plan.max} tentativas automáticas falharam; tente de novo quando #{where} voltar.",
-     "O board parou de tentar sozinho depois de #{plan.max} tentativas.",
-     "Confira #{where} e toque em Tentar de novo.", "Tentar de novo"}
+    {gettext("The %{max} automatic attempts failed; try again when %{where} is back.",
+       max: plan.max,
+       where: where
+     ), gettext("The board stopped trying on its own after %{max} attempts.", max: plan.max),
+     gettext("Check %{where} and press Try again.", where: where), gettext("Try again")}
   end
 
   defp words(%{state: :needs_person, leftover: true}, _headline, ticket, _opts) do
     dir = get_in(ticket, ["execution", "directory"])
 
-    {"O preparo deixou arquivos na pasta do ticket; apague a pasta e tente de novo.",
-     "O board não tenta sozinho: o agente trataria esses arquivos como um worktree pronto.",
-     "Apague #{dir} e toque em Tentar de novo.", "Tentar de novo"}
+    {gettext(
+       "The prepare step left files in the ticket's folder; delete the folder and try again."
+     ),
+     gettext(
+       "The board does not retry on its own: the agent would treat those files as a ready worktree."
+     ), gettext("Delete %{dir} and press Try again.", dir: dir), gettext("Try again")}
   end
 
   defp words(%{state: :needs_person, failure: %{cause: :hung}}, _headline, _ticket, _opts) do
-    {"Confira o acesso do bot ao GitHub e tente de novo.",
-     "O board não tenta sozinho: o preparo esperou dez minutos, o que costuma ser um pedido de senha.",
-     "Rode gh-agent auth status; com o login certo, toque em Tentar de novo.", "Tentar de novo"}
+    {gettext("Check the bot's access to GitHub and try again."),
+     gettext(
+       "The board does not retry on its own: the prepare step waited ten minutes, which usually means a password prompt."
+     ), gettext("Run gh-agent auth status; with the right login, press Try again."),
+     gettext("Try again")}
   end
 
   defp words(%{state: :needs_person}, _headline, _ticket, _opts) do
-    {"Não parece falha de rede: leia o erro no detalhe antes de tentar de novo.",
-     "O board não tenta sozinho: este erro não parece passageiro.",
-     "Leia o erro abaixo, resolva a causa e toque em Tentar de novo, ou responda na conversa.",
-     "Tentar de novo"}
+    {gettext(
+       "This does not look like a network failure: read the error in the details before trying again."
+     ), gettext("The board does not retry on its own: this error does not look temporary."),
+     gettext(
+       "Read the error below, fix the cause and press Try again, or reply in the conversation."
+     ), gettext("Try again")}
   end
 
   defp when_due(plan, opts) do
@@ -127,14 +148,18 @@ defmodule AgentBoard.AgentBlock do
   defp queued(ticket, opts) do
     retries = AutoRetry.streak(ticket)
     max = AutoRetry.max_retries()
-    count = if retries in 1..max, do: " (#{retries} de #{max})", else: ""
+
+    count =
+      if retries in 1..max,
+        do: " " <> gettext("(%{attempt} of %{max})", attempt: retries, max: max),
+        else: ""
 
     %{
       state: :queued,
-      headline: "Nova tentativa na fila",
-      line: "**Nova tentativa na fila.** Esperando um worker livre#{count}.",
-      system: "O agente começa assim que um worker ficar livre.",
-      action: "Nada a fazer.",
+      headline: gettext("Retry queued"),
+      line: gettext("**Retry queued.** Waiting for a free worker%{attempts}.", attempts: count),
+      system: gettext("The agent starts as soon as a worker is free."),
+      action: gettext("Nothing to do."),
       error: previous_error(ticket),
       retry: nil,
       ticket_id: ticket["id"],
@@ -177,30 +202,30 @@ defmodule AgentBoard.AgentBlock do
   defp outcome(%{"report" => "failed", "summary" => summary}) do
     case AgentFailure.classify(summary) do
       %{transient: true} = failure ->
-        "falhou: " <> lowercase_first(AgentFailure.describe(failure))
+        gettext("failed: %{reason}", reason: lowercase_first(AgentFailure.headline(failure)))
 
       _other ->
-        "falhou: " <> excerpt(summary || "sem mensagem")
+        gettext("failed: %{reason}", reason: excerpt(summary || gettext("no message")))
     end
   end
 
-  defp outcome(%{"report" => "blocked"}), do: "bloqueado"
-  defp outcome(%{"report" => "waiting"}), do: "esperou uma resposta"
-  defp outcome(%{"report" => "ready"}), do: "entregou"
-  defp outcome(%{"report" => "progress"}), do: "trabalhando"
-  defp outcome(%{"state" => "pending"}), do: "na fila"
-  defp outcome(%{"state" => "running"}), do: "rodando"
-  defp outcome(_assignment), do: "encerrada sem relatório"
+  defp outcome(%{"report" => "blocked"}), do: gettext("blocked")
+  defp outcome(%{"report" => "waiting"}), do: gettext("waited for an answer")
+  defp outcome(%{"report" => "ready"}), do: gettext("delivered")
+  defp outcome(%{"report" => "progress"}), do: gettext("working")
+  defp outcome(%{"state" => "pending"}), do: gettext("queued")
+  defp outcome(%{"state" => "running"}), do: gettext("running")
+  defp outcome(_assignment), do: gettext("ended without a report")
 
   defp ending(%{"ended_reason" => "retried", "id" => id}, automatic, offset) do
     case Map.get(automatic, id) do
-      nil -> "; nova tentativa pedida"
-      at -> "; nova tentativa automática às #{Time.local_time(at, offset)}"
+      nil -> "; " <> gettext("retry requested")
+      at -> "; " <> gettext("automatic retry at %{time}", time: Time.local_time(at, offset))
     end
   end
 
   defp ending(%{"ended_reason" => "hostRestarted"}, _automatic, _offset),
-    do: "; o agente reiniciou"
+    do: "; " <> gettext("the agent restarted")
 
   defp ending(_assignment, _automatic, _offset), do: ""
 

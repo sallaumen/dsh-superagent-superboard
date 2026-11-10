@@ -131,7 +131,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
           class={[
             "ab-tag",
             @pr.ci == "fail" && "ab-tag--halt",
-            @pr.ci == "pass" && @pr.ciNote == "CI local ok" && "ab-tag--agent"
+            @pr.ci == "pass" && @pr.ciNote == gettext("Local CI passed") && "ab-tag--agent"
           ]}
           title={@pr.ciTitle}
         >
