@@ -62,6 +62,27 @@ with value when is_binary(value) <- System.get_env("ELEVENLABS_DAILY_CHAR_CAP"),
   config :agent_board, elevenlabs_daily_char_cap: cap
 end
 
+# The AI layer in every environment but the suite (the live board runs in
+# dev). Each provider reads its own key (AgentBoard.AI.Providers). AI_PROVIDER
+# pins one provider, so a refusal does not fall back to another; absent lets
+# the catalog pick the first with a key. AI_DAILY_TOKENS is the daily token
+# cap (AgentBoard.AI.Budget), a whole number; absent or malformed keeps the
+# module default (5M, a working day of intake and questions).
+if config_env() != :test do
+  case System.get_env("AI_PROVIDER") do
+    provider when provider in ~w(deepseek gemini openai) ->
+      config :agent_board, ai_provider: String.to_atom(provider)
+
+    _ ->
+      :ok
+  end
+
+  with value when is_binary(value) <- System.get_env("AI_DAILY_TOKENS"),
+       {cap, ""} when cap >= 0 <- Integer.parse(String.trim(value)) do
+    config :agent_board, ai_daily_tokens: cap
+  end
+end
+
 # The automatic retry of transient agent failures (AgentBoard.AutoRetry) is
 # the board's one write in the runner. AGENT_BOARD_AUTO_RETRY=0 switches it
 # off, for a second board (a worktree on another database) that must only
@@ -131,17 +152,6 @@ if config_env() == :prod do
   host = System.get_env("PHX_HOST") || "example.com"
 
   config :agent_board, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
-
-  # The panel's own model key. Absent means the AI layer answers
-  # :not_configured instead of reaching the network.
-  config :agent_board, :ai_api_key, System.get_env("DEEPSEEK_API_KEY")
-
-  # Which provider answers; nil lets the catalog pick the first with a key.
-  config :agent_board, :ai_provider, System.get_env("AI_PROVIDER")
-
-  # The daily ceiling. A Flash refine costs cents; 5M tokens is a working day
-  # of intake and questions, not a demo.
-  config :agent_board, :ai_daily_tokens, System.get_env("AI_DAILY_TOKENS", "5000000")
 
   # Rehearsal answers every call with a free fixture -- the panel works end to
   # end without a key, in development only.
