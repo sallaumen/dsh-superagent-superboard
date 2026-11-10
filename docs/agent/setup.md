@@ -118,6 +118,24 @@ orchestrator's own output is in the newest
 `<prototype>/.artifacts/dsh-superagent-superagent-*.log` and in
 `scripts/agent/logs.sh`.
 
+### Opening the panel
+
+The panel at `http://127.0.0.1:3082/` answers `dsh web authentication
+required; reopen the URL printed by dsh web.` to a browser that never opened
+the URL dsh printed when it started. That URL carries the process's launch
+token and is in the manager's log; opening it once leaves a cookie in that
+browser, and the plain address works from then on.
+
+```sh
+scripts/agent/panel.sh                     # the primary agent
+scripts/agent/panel.sh superagent-colmex   # a second one, by profile
+```
+
+The script hands the URL to `open` and never prints it: the token is a
+credential, so do not paste it into an issue, a chat or a commit. Each row in
+Configurações → Projetos links to its agent's plain address, and the number
+of agents is changed there or on the board's flow tile, without the panel.
+
 ### A second repository (optional)
 
 One superagent watches one repository. To have DeepSeek on `o_colmex` while
