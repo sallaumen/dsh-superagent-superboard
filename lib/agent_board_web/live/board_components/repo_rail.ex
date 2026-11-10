@@ -33,7 +33,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
         <span>Agent Board</span>
       </div>
 
-      <h3 class="ab-label">{@owner}</h3>
+      <p class="ab-label">{@owner}</p>
 
       <button
         type="button"

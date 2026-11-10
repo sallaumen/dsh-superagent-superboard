@@ -295,6 +295,64 @@ defmodule AgentBoard.Conversation.CommandsTest do
       assert [%{"numbers" => [3], "outcome" => "merged"}] = facts["ended_last_24h"]
     end
 
+    test "a lookup speaks for this repository's open ticket only", %{repo: repo} do
+      test_pid = self()
+      task!(repo, %{number: 9, title: "Som", state: "running"})
+
+      ticket = fn fields, repository ->
+        Map.merge(
+          %{
+            "mandate" => %{"basis" => %{"scope" => %{"number" => 9}}},
+            "channels" => [
+              %{"address" => %{"url" => "https://github.com/#{repository}/issues/9"}}
+            ]
+          },
+          fields
+        )
+      end
+
+      report = fn state, summary ->
+        %{
+          "assignments" => [
+            %{"state" => "running", "report" => %{"state" => state, "summary" => summary}}
+          ]
+        }
+      end
+
+      with_tickets([
+        ticket.(report.("progress", "This run"), "sallaumen/arena-rogue"),
+        ticket.(
+          report.("progress", "Older run")
+          |> Map.put("ended", %{
+            "outcome" => "completed",
+            "at" => DateTime.to_iso8601(DateTime.utc_now())
+          }),
+          "sallaumen/arena-rogue"
+        ),
+        ticket.(report.("failed", "Another project"), "sallaumen/o_colmex")
+      ])
+
+      board = %{running: Board.task_page(repo.id, :running, nil, 8), task_counts: %{running: 1}}
+
+      script(fn
+        %{name: :voice_agent} -> agent_answer("look", %{"lookup" => "runs"})
+        request -> explained(test_pid, "Ok.").(request)
+      end)
+
+      turn("o que está rodando?", repo, %{board: board})
+      assert_received {:explain, %{"facts" => facts}}
+      assert [%{"run" => %{"report_summary" => "This run"}}] = facts["running"]
+
+      script(fn
+        %{name: :voice_agent} -> agent_answer("look", %{"lookup" => "failures"})
+        request -> explained(test_pid, "Ok.").(request)
+      end)
+
+      turn("o que está falhando?", repo)
+      assert_received {:explain, %{"facts" => failures}}
+      assert failures["failed_runs"] == []
+    end
+
     test "activity counts today's merges and new tasks", %{repo: repo} do
       test_pid = self()
 

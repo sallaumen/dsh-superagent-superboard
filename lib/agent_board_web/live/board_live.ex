@@ -418,11 +418,9 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp tickets_by_number(tickets, repo) do
-    for ticket <- tickets,
-        AgentState.same_repository?(ticket, repo),
-        number <- ticket["numbers"] || [],
-        into: %{},
-        do: {number, ticket}
+    tickets
+    |> Enum.filter(&AgentState.same_repository?(&1, repo))
+    |> Tickets.by_number()
   end
 
   defp empty?(board) do
@@ -942,11 +940,7 @@ defmodule AgentBoardWeb.BoardLive do
       Process.send_after(self(), :version_check, @version_check_interval)
     end
 
-    if socket.assigns[:version_check] do
-      {:noreply, socket}
-    else
-      {:noreply, start_async(socket, :version_check, fn -> Version.refresh() end)}
-    end
+    {:noreply, start_async(socket, :version_check, fn -> Version.refresh_shared() end)}
   end
 
   def handle_info({:update_step, id, state}, socket) do
@@ -1142,7 +1136,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp maybe_check_version(socket) do
     if connected?(socket) and Application.get_env(:agent_board, :version_check_on_mount, true) do
       Process.send_after(self(), :version_check, @version_check_interval)
-      start_async(socket, :version_check, fn -> Version.refresh() end)
+      start_async(socket, :version_check, fn -> Version.refresh_shared() end)
     else
       socket
     end
