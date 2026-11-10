@@ -187,4 +187,38 @@ defmodule AgentBoard.WorkpadTest do
 
     assert %{pull_requests: [28, 30]} = Workpad.parse(body)
   end
+
+  for {validation, passed?, detail} <- [
+        {"mix format: passou…\nmix test: falhou (2 falhas)", false,
+         "mix test: falhou (2 falhas)"},
+        {"- `mix lint`: passou em 1a3e618\n- `mix test`: 2 failures em 1a3e618", false,
+         "`mix test`: 2 failures em 1a3e618"},
+        {"mix precommit: falhou (2 falhas)\nmix format: passou", false,
+         "mix precommit: falhou (2 falhas)"},
+        {"mix format: falhou\nmix precommit: passou", true, "mix precommit: passou"},
+        {"mix test: passou, nenhum teste falhou", true, "mix test: passou, nenhum teste falhou"},
+        {"mix test: passou (0 failed)", true, "mix test: passou (0 failed)"},
+        {"mix precommit passed with no failing tests", true,
+         "mix precommit passed with no failing tests"},
+        {"mix test: passou, não falhou nada", true, "mix test: passou, não falhou nada"},
+        {"`mix test` (14 arquivos): passou (102 testes, 0 falhas) em eb9cf26", true,
+         "`mix test` (14 arquivos): passou (102 testes, 0 falhas) em eb9cf26"},
+        {"- mix test: passou\n- `mix validate_db` com id duplicado: falhou com exit 1, como esperado",
+         true, "mix test: passou"},
+        {"mix precommit: não passou", false, "mix precommit: não passou"},
+        {"mix test: nao passou (2 falhas)", false, "mix test: nao passou (2 falhas)"},
+        {"mix precommit did not pass", false, "mix precommit did not pass"},
+        {"mix precommit didn't pass", false, "mix precommit didn't pass"},
+        {"mix test: did not pass 2 failed", false, "mix test: did not pass 2 failed"},
+        {"mix format: passou\nmix test: não passou", false, "mix test: não passou"},
+        {"mix test: passou, mas 3 testes falharam", false,
+         "mix test: passou, mas 3 testes falharam"}
+      ] do
+    test "Validação reads #{inspect(validation)}" do
+      body = "## Relatório do agente\n### Validação\n" <> unquote(validation)
+
+      assert %{validation: %{passed?: passed?, detail: detail}} = Workpad.parse(body)
+      assert {passed?, detail} == {unquote(passed?), unquote(detail)}
+    end
+  end
 end

@@ -17,7 +17,8 @@ defmodule AgentBoard.Workpad do
   @pr ~r/(?:PR\s*#|pull\/)(\d+)/i
   @placeholder ~r/^(?:[-–—*_]+|n\/a|none|nenhum[ao]?|\(?vazi[oa]\)?|\(none\)|\(empty\))$/iu
   @pass ~r/\b(passou|passaram|passed|passes|pass|ok|verde|green)\b|\b0\s+(failures?|falhas?|issues?|erros?|errors?)\b/iu
-  @fail ~r/\b(falhou|falharam|failed|failing|fail|vermelho|red)\b|\b[1-9]\d*\s+(failures?|falhas?|issues?|erros?|errors?)\b/iu
+  @fail ~r/\bn[ãa]o\s+pass(?:ou|aram)\b|\bdid(?:\s+not|n['’]t)\s+pass\b|\b(falhou|falharam|failed|failing|fail|vermelho|red)\b|\b[1-9]\d*\s+(failures?|falhas?|issues?|erros?|errors?)\b/iu
+  @not_a_failure ~r/(?:\b(?:0|zero|no|not|none|nenhum[ao]?|sem|without|n[ãa]o)|n't)\s+(?:(?!pass)\w+\s+){0,2}?(?:falh(?:ou|aram|as?)|fail(?:ed|ing|ures?|s)?)\b|\b(?:falhou|failed)\b.{0,40}?\b(?:como esperado|as expected)\b/iu
   @sha ~r/\b(?=[0-9a-f]*\d)[0-9a-f]{7,40}\b/i
   @command ~r/^`?([^`:\n]{1,80}?)`?\s*:\s*(.+)$/u
   @list_marker ~r/^(?:[-*+]|\d+[.)])\s+/
@@ -140,7 +141,7 @@ defmodule AgentBoard.Workpad do
   end
 
   # The gate line: the one naming `mix precommit` when there are several,
-  # else the first. A list item or a `command: result` line starts a gate; a
+  # else the first failing one, else the first. A list item or a `command: result` line starts a gate; a
   # bare line continues the previous one (a wrapped line), fences are
   # dropped. `command: result` splits on the first colon; the sha is any hex
   # token of seven or more characters holding a digit.
@@ -156,18 +157,25 @@ defmodule AgentBoard.Workpad do
       |> Enum.reverse()
 
     line =
-      gates
-      |> Enum.find(&(&1 =~ ~r/mix precommit/i))
-      |> Kernel.||(List.first(gates) || "")
+      (Enum.find(gates, &(&1 =~ ~r/mix precommit/i)) ||
+         Enum.find(gates, &failed?/1) || List.first(gates) || "")
       |> String.replace(~r/\s+/, " ")
 
-    {command, result} =
-      case Regex.run(@command, line) do
-        [_, command, result] -> {String.trim(command), result}
-        nil -> {nil, line}
-      end
+    {command, result} = gate_parts(line)
 
     %{command: command, passed?: passed?(result), sha: sha(line), detail: line}
+  end
+
+  defp failed?(gate) do
+    {_command, result} = gate_parts(gate)
+    passed?(result) == false
+  end
+
+  defp gate_parts(line) do
+    case Regex.run(@command, line) do
+      [_, command, result] -> {String.trim(command), result}
+      nil -> {nil, line}
+    end
   end
 
   defp gate_line(line, gates) do
@@ -182,11 +190,19 @@ defmodule AgentBoard.Workpad do
 
   defp passed?(result) do
     cond do
-      result =~ @fail -> false
+      without_negated_failures(result) =~ @fail -> false
       result =~ @pass -> true
       true -> nil
     end
   end
+
+  @doc """
+  The text without its negated or zero-count failures: "nenhum teste falhou",
+  "0 failed", "no failing tests", a failure the gate expected. They say the
+  opposite of the word they contain.
+  """
+  @spec without_negated_failures(String.t()) :: String.t()
+  def without_negated_failures(text), do: String.replace(text, @not_a_failure, "")
 
   defp sha(line) do
     case Regex.run(@sha, line) do

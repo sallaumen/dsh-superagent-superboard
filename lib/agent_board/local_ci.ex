@@ -23,8 +23,8 @@ defmodule AgentBoard.LocalCI do
   use Gettext, backend: AgentBoardWeb.Gettext
 
   @pr ~r/(?:PR\s*#|pull\/)(\d+)/i
-  @pass ~r/\b(passed|passes|green|0 failures|0 issues)\b/i
-  @fail ~r/\b(failed|failing)\b|[1-9]\d*\s+(failures|issues)/i
+  @pass ~r/\b(passed|passes|passou|passaram|green|verde|0 failures|0 falhas|0 issues)\b/i
+  @fail ~r/\bn[ãa]o\s+pass(?:ou|aram)\b|\bdid(?:\s+not|n['’]t)\s+pass\b|\b(failed|failing|falhou|falharam)\b|[1-9]\d*\s+(failures|falhas|issues)/iu
   @billing ~r/(billing|spending limit)/i
   @actions ~r/GitHub Actions|CI did not run|CI could not (start|run)/i
   @report_limit 220
@@ -217,7 +217,7 @@ defmodule AgentBoard.LocalCI do
       |> Enum.filter(&(&1 =~ ~r/mix precommit/i))
 
     cond do
-      Enum.any?(precommit, &(&1 =~ @fail)) -> :fail
+      Enum.any?(precommit, &(AgentBoard.Workpad.without_negated_failures(&1) =~ @fail)) -> :fail
       Enum.any?(precommit, &(&1 =~ @pass)) -> :pass
       true -> nil
     end
