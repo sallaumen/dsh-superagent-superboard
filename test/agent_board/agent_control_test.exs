@@ -4,6 +4,7 @@ defmodule AgentBoard.AgentControlTest do
 
   alias AgentBoard.{AgentControl, Board, Orchestrator, Repo}
   alias AgentBoard.Board.Event
+  alias AgentBoard.Superagents.Superagent
 
   @stub AgentBoard.AgentControlTest.Stub
 
@@ -59,6 +60,49 @@ defmodule AgentBoard.AgentControlTest do
 
     assert {:error, "O agente não respondeu. Religue o agente e tente de novo."} =
              AgentControl.retry("t9", client: client)
+  end
+
+  describe "the agent of the ticket's repository" do
+    setup do
+      previous = Application.get_env(:agent_board, :orchestrator_client)
+
+      Application.put_env(:agent_board, :orchestrator_client, fn ->
+        Req.merge(Orchestrator.build(), plug: {Req.Test, @stub})
+      end)
+
+      on_exit(fn ->
+        if is_nil(previous),
+          do: Application.delete_env(:agent_board, :orchestrator_client),
+          else: Application.put_env(:agent_board, :orchestrator_client, previous)
+      end)
+
+      test = self()
+
+      Req.Test.stub(@stub, fn conn ->
+        send(test, {:request, conn.method, conn.port, conn.request_path})
+        Req.Test.json(conn, %{"retried" => true})
+      end)
+    end
+
+    test "a repository with its own superagent is asked on that port", %{repo: repo} do
+      {:ok, _superagent} =
+        %Superagent{}
+        |> Superagent.changeset(%{
+          repository_id: repo.id,
+          profile: "superagent-colmex",
+          port: 3083,
+          state_dir: "/tmp/superagent-colmex"
+        })
+        |> Repo.insert()
+
+      assert {:ok, _text} = AgentControl.retry("t9", repository_id: repo.id, number: 9)
+      assert_receive {:request, "POST", 3083, "/orchestrator/api/tickets/t9/retry"}
+    end
+
+    test "a repository without one is asked on the primary", %{repo: repo} do
+      assert {:ok, _text} = AgentControl.retry("t9", repository_id: repo.id, number: 9)
+      assert_receive {:request, "POST", 1, "/orchestrator/api/tickets/t9/retry"}
+    end
   end
 
   test "no ticket, no request" do

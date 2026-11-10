@@ -9,6 +9,7 @@ defmodule AgentBoard.AutoRetryTest do
   alias AgentBoard.{AgentState, AutoRetry, Orchestrator, Repo}
   alias AgentBoard.AutoRetry.Attempt
   alias AgentBoard.Board.{Event, Repository}
+  alias AgentBoard.Superagents.Superagent
 
   @stub AgentBoard.AutoRetryTest.Stub
   @failed_at ~U[2026-11-07 15:41:51Z]
@@ -101,7 +102,7 @@ defmodule AgentBoard.AutoRetryTest do
         %{
           "address" => %{
             "number" => 53,
-            "url" => "https://github.com/sallaumen/arena-rogue/issues/53"
+            "url" => Keyword.get(opts, :url, "https://github.com/sallaumen/arena-rogue/issues/53")
           }
         }
       ],
@@ -310,6 +311,101 @@ defmodule AgentBoard.AutoRetryTest do
 
       assert tick(client, [ticket(@model)], 3_600) == []
       assert requests() == []
+    end
+  end
+
+  describe "the agent of each ticket" do
+    setup do
+      previous = Application.get_env(:agent_board, :orchestrator_client)
+
+      Application.put_env(:agent_board, :orchestrator_client, fn ->
+        Req.merge(Orchestrator.build(), plug: {Req.Test, @stub})
+      end)
+
+      on_exit(fn ->
+        if is_nil(previous),
+          do: Application.delete_env(:agent_board, :orchestrator_client),
+          else: Application.put_env(:agent_board, :orchestrator_client, previous)
+      end)
+    end
+
+    # The primary answers on port 1 (the API of this file's setup); `up`
+    # lists the ports that answer `GET /state`.
+    defp agents(up) do
+      test = self()
+
+      Req.Test.stub(@stub, fn conn ->
+        send(test, {:agent, conn.method, conn.port})
+
+        cond do
+          conn.method == "POST" ->
+            Req.Test.json(conn, %{"retried" => true})
+
+          conn.port in up ->
+            Req.Test.json(conn, %{"load" => %{"running" => 0, "queued" => 0, "maxWorkers" => 3}})
+
+          true ->
+            Req.Test.transport_error(conn, :econnrefused)
+        end
+      end)
+    end
+
+    defp own_superagent(port) do
+      repository =
+        %Repository{}
+        |> Repository.changeset(%{owner: "sallaumen", name: "o_colmex"})
+        |> Ecto.Changeset.put_change(:id, 2_000_000 + System.unique_integer([:positive]))
+        |> Repo.insert!()
+
+      %Superagent{}
+      |> Superagent.changeset(%{
+        repository_id: repository.id,
+        profile: "superagent-colmex",
+        port: port,
+        state_dir: "/tmp/superagent-colmex"
+      })
+      |> Repo.insert!()
+    end
+
+    @colmex_url "https://github.com/sallaumen/o_colmex/issues/7"
+
+    test "a repository with its own superagent is retried there, with the primary down" do
+      own_superagent(3083)
+      agents([3083])
+
+      assert [{"c1", "retried"}] =
+               AutoRetry.tick(
+                 tickets: [ticket(@model, id: "c1", assignment: "c-a", url: @colmex_url)],
+                 now: at(61)
+               )
+
+      assert_received {:agent, "GET", 3083}
+      assert_received {:agent, "POST", 3083}
+      refute_received {:agent, _method, 1}
+    end
+
+    test "a repository without one is retried on the primary" do
+      own_superagent(3083)
+      agents([1])
+
+      assert [{"t1", "retried"}] = AutoRetry.tick(tickets: [ticket(@model)], now: at(61))
+
+      assert_received {:agent, "GET", 1}
+      assert_received {:agent, "POST", 1}
+      refute_received {:agent, _method, 3083}
+    end
+
+    test "each agent's own answer decides for its tickets" do
+      own_superagent(3083)
+      agents([1])
+
+      tickets = [
+        ticket(@model, id: "c1", assignment: "c-a", url: @colmex_url),
+        ticket(@model, id: "t1", assignment: "t-a")
+      ]
+
+      assert [{"t1", "retried"}] = AutoRetry.tick(tickets: tickets, now: at(61))
+      refute_received {:agent, "POST", 3083}
     end
   end
 end
