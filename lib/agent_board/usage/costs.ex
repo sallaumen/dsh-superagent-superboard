@@ -157,8 +157,8 @@ defmodule AgentBoard.Usage.Costs do
 
   @doc """
   The share of the weekly Codex window in the newest reading: the widest
-  window of at least a week (`10080` minutes). nil when there is no such
-  reading, never zero.
+  window of at least a week (`10080` minutes) that has not reset yet. nil
+  when there is no such reading, never zero.
   """
   @spec codex_weekly([map()]) ::
           %{
@@ -172,12 +172,16 @@ defmodule AgentBoard.Usage.Costs do
     limits
     |> Enum.filter(&(&1[:source] == "codex"))
     |> Enum.flat_map(&windows/1)
-    |> Enum.filter(&(&1.window_minutes >= 10_080))
+    |> Enum.filter(&(&1.window_minutes >= 10_080 and not reset?(&1.resets_at)))
     |> Enum.max_by(
       &{&1.window_minutes, DateTime.to_unix(&1.observed_at, :microsecond)},
       fn -> nil end
     )
   end
+
+  # A reading from before the reset says nothing about the current week.
+  defp reset?(%DateTime{} = resets_at), do: DateTime.compare(resets_at, DateTime.utc_now()) == :lt
+  defp reset?(_resets_at), do: false
 
   defp windows(limit) do
     [
