@@ -418,6 +418,86 @@ defmodule AgentBoard.LanesTest do
     refute Enum.at(queue.items, 1).sub
   end
 
+  describe "a task the board called and no ticket answered" do
+    setup do
+      {:ok, repo} = Board.add_repository("fixture", "unanswered")
+      %{repo: repo, now: ~U[2026-11-10 11:27:00Z]}
+    end
+
+    defp called(repo, number, at, attrs \\ %{}) do
+      task = task(repo, number, "Called #{number}", "queued", at)
+      attrs = Map.merge(%{released_at: at, executor: "dsh"}, attrs)
+      Repo.update_all(from(t in Task, where: t.id == ^task.id), set: Map.to_list(attrs))
+      Map.merge(task, attrs)
+    end
+
+    test "needs the owner, says since when and offers to call again", %{repo: repo, now: now} do
+      stuck = called(repo, 182, ~U[2026-11-09 20:47:31Z])
+
+      [need] =
+        Lanes.needs(repo, %{queued: [stuck]}, now: now, stall_after: 900, tz_offset: 180)
+
+      assert need.kind == :unanswered
+      assert need.number == 182
+      assert need.why =~ "**Chamado há 14 h e o agente não começou.**"
+      assert need.why =~ "ontem às 17:47"
+      # it became the owner's when the call was 15 minutes old
+      assert need.age_seconds == 14 * 3600 + 39 * 60 + 29 - 900
+
+      assert [%{label: "Chamar de novo", release: phrase}, %{label: "Ver detalhe"}] =
+               need.actions
+
+      assert phrase == AgentBoard.Actions.phrase(:release_task, %{task: stuck, repository: repo})
+    end
+
+    test "is only a task with no ticket, called long enough ago", %{repo: repo, now: now} do
+      taken = called(repo, 1, ~U[2026-11-09 20:47:31Z])
+      fresh = called(repo, 2, DateTime.add(now, -600, :second))
+      held = called(repo, 3, ~U[2026-11-09 20:47:31Z], %{held: true, released_at: nil})
+      other = called(repo, 4, ~U[2026-11-09 20:47:31Z], %{executor: "claude", released_at: nil})
+      created = called(repo, 5, ~U[2026-11-09 20:47:31Z], %{released_at: nil})
+
+      needs =
+        Lanes.needs(repo, %{queued: [taken, fresh, held, other, created]},
+          now: now,
+          stall_after: 900,
+          tickets_by_number: %{1 => %{"numbers" => [1], "assignment" => "pending"}}
+        )
+
+      # an issue opened with the mention was called when it was created
+      assert Enum.map(needs, & &1.number) == [5]
+    end
+
+    test "waits with everything else when the agent is down", %{repo: repo, now: now} do
+      stuck = called(repo, 182, ~U[2026-11-09 20:47:31Z])
+
+      assert [%{kind: :agent_down, waiting: 1}] =
+               Lanes.needs(repo, %{queued: [stuck]}, now: now, stall_after: 900, agent: :down)
+    end
+
+    test "the queue says it, and a held task names what it waits for", %{repo: repo, now: now} do
+      stuck = called(repo, 182, ~U[2026-11-09 20:47:31Z])
+      held = called(repo, 184, ~U[2026-11-09 20:36:11Z], %{held: true, released_at: nil})
+      done = task(repo, 183, "Done", "done", now)
+      at = DateTime.truncate(now, :second)
+
+      Repo.insert_all(AgentBoard.Board.TaskDependency, [
+        %{task_id: held.id, blocked_by_task_id: stuck.id, inserted_at: at, updated_at: at},
+        %{task_id: held.id, blocked_by_task_id: done.id, inserted_at: at, updated_at: at}
+      ])
+
+      queue = Lanes.queue(repo, %{}, now: now, stall_after: 900)
+
+      assert %{184 => "espera #182", 182 => nil} = Map.new(queue.items, &{&1.number, &1.sub})
+
+      assert %{182 => "chamado há 14 h, o agente não começou", 184 => nil} =
+               Map.new(queue.items, &{&1.number, &1.stuck})
+
+      taken = Lanes.queue(repo, %{}, now: now, stall_after: 900, tickets_by_number: %{182 => %{}})
+      assert Enum.all?(taken.items, &is_nil(&1.stuck))
+    end
+  end
+
   test "the merge log groups the last seven days and counts every PR" do
     {:ok, repo} = Board.add_repository("fixture", "log")
     today = ~U[2026-11-06 15:00:00Z]

@@ -5383,3 +5383,8 @@ msgid "%{count} without an agent"
 msgid_plural "%{count} without an agent"
 msgstr[0] "%{count} sem agente"
 msgstr[1] "%{count} sem agente"
+
+#: lib/agent_board_web/live/board_live.ex:2043
+#, elixir-autogen, elixir-format
+msgid "Agent called on #%{number}."
+msgstr "Agente chamado na #%{number}."

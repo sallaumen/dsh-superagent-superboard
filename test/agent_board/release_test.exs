@@ -132,6 +132,49 @@ defmodule AgentBoard.ReleaseTest do
     assert_received {:comment, _, _}
   end
 
+  test "the comment names its task, so calls made together stay apart", %{repo: repo} do
+    github()
+    held = task(repo, 2, "queued", %{held: true})
+    waits(held, task(repo, 1, "done"))
+
+    assert [{2, :ok}] = Release.tick(client())
+    assert_received {:comment, _path, %{"body" => body}}
+    assert body =~ "#2 T2"
+    assert String.ends_with?(body, "@sallaumen-agent")
+  end
+
+  test "the owner can call again a task the agent never took", %{repo: repo} do
+    github()
+    called = ~U[2026-11-09 20:47:31Z]
+    stuck = task(repo, 2, "queued", %{released_at: called, executor: "dsh"})
+    params = %{task: stuck, repository: repo, client: client()}
+    phrase = Actions.phrase(:release_task, params)
+
+    assert :ok = Actions.run(:release_task, params, Actions.owner(:ui), confirm: phrase)
+    assert_received {:comment, "/repos/sallaumen/arena-rogue/issues/2/comments", _body}
+    assert %Task{released_at: again} = Repo.get!(Task, stuck.id)
+    assert DateTime.compare(again, called) == :gt
+  end
+
+  test "a task that is running, or that the runner was never called on, is not called", %{
+    repo: repo
+  } do
+    github()
+
+    for {number, state, attrs} <- [
+          {2, "running", %{released_at: ~U[2026-11-09 20:47:31Z], executor: "dsh"}},
+          {3, "queued", %{executor: "claude"}}
+        ] do
+      params = %{task: task(repo, number, state, attrs), repository: repo, client: client()}
+      phrase = Actions.phrase(:release_task, params)
+
+      assert {:error, :not_waiting} =
+               Actions.run(:release_task, params, Actions.owner(:ui), confirm: phrase)
+    end
+
+    refute_received {:comment, _, _}
+  end
+
   describe "creating a split" do
     defp stub_creation do
       {:ok, counter} = Agent.start_link(fn -> 0 end)

@@ -10,6 +10,11 @@ defmodule AgentBoard.Release do
   A task is claimed once (`released_at`) before its comment. A comment that
   failed may have landed, so nothing repeats it: the task stays held and the
   owner decides. `config :agent_board, auto_release: false` switches it off.
+
+  A comment that landed is not a start either: the runner may be down, or
+  route the call to another ticket. `called_at/1` is when the board called,
+  for the lanes to say how long nobody answered, and the owner may call again
+  a task that is still in the queue.
   """
   use GenServer
 
@@ -100,12 +105,30 @@ defmodule AgentBoard.Release do
     claimed == 1
   end
 
-  @doc "The effect of `release_task`: the comment that calls the agent."
-  @spec call_agent(Task.t(), Repository.t(), term()) :: :ok | {:error, term()}
-  def call_agent(%Task{held: false}, _repository, _client), do: {:error, :not_held}
+  @doc """
+  When the board called the DeepSeek runner on a task: the release comment,
+  or the issue itself, which opens with the mention. nil for a held task and
+  for another executor's, which nobody called.
+  """
+  @spec called_at(map()) :: DateTime.t() | nil
+  def called_at(%{held: true}), do: nil
+  def called_at(%{released_at: %DateTime{} = at}), do: at
+  def called_at(%{executor: "dsh", inserted_at: at}), do: at
+  def called_at(_task), do: nil
 
-  def call_agent(task, repository, client) do
-    body = task |> Repo.preload(:objective) |> language() |> IssueBody.release_comment()
+  @doc """
+  The effect of `release_task`: the comment that calls the agent, on a held
+  task or again on a called one that is still in the queue.
+  """
+  @spec call_agent(Task.t(), Repository.t(), term()) :: :ok | {:error, term()}
+  def call_agent(%Task{} = task, repository, client) do
+    if task.held or (task.state == "queued" and called_at(task)),
+      do: comment(task, repository, client),
+      else: {:error, :not_waiting}
+  end
+
+  defp comment(task, repository, client) do
+    body = task |> Repo.preload(:objective) |> language() |> IssueBody.release_comment(task)
     GitHub.create_comment(client, repository.owner, repository.name, task.number, body)
 
     Repo.update_all(from(t in Task, where: t.id == ^task.id),

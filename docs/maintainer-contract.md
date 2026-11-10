@@ -162,7 +162,7 @@ and is recorded as `automatic`.
 | `resume_task` | yellow | puts the task back in the board's queue (does not reopen the issue) | UI: one click. API: direct |
 | `retry_ticket` | red | `POST tickets/<id>/retry` asked by the owner; the executor spends tokens | UI: `AgentAction` "Tentar de novo" / "Tentar agora" |
 | `auto_retry_ticket` | red | the same request, asked by the board after a transient failure | System: the standing authorization ("Automatic retry"), `auto_retry` only |
-| `release_task` | red | comments the mention that starts a task that was waiting; standing authorization for `release` (ADR 0005) |
+| `release_task` | red | comments the mention that starts a task that was waiting, or again on a called task still in the queue; standing authorization for `release` (ADR 0005) | System: the standing authorization ("Release in order"), `release` only. UI: "Chamar o agente" in the tree and "Chamar de novo" in Precisa de você ask the sentence in the browser (`data-confirm`) |
 | `dispatch_task` | red | starts Claude Code or Codex in a worktree; spends the owner's subscription | UI: `AgentAction` "Despachar" in two steps, with the sentence, executor, task, repository and ceiling; voice/API: `428` then `confirm` |
 | `stop_execution` | red | kills the active tmux session, records `stopped` and leaves the task blocked | UI: `AgentAction` "Parar execução" in two steps; voice/API: `428` then `confirm` |
 | `provision_superagent` | red | creates the profile, port, state and setup of a new DeepSeek project | UI: the Superagentes panel's "Adicionar projeto", preview then confirm |
@@ -615,6 +615,32 @@ tree; `release_task` is the second standing authorization, for the actor
 - **The owner can call the agent sooner** from the tree, with a confirmation.
 - **Switch:** `AGENT_BOARD_AUTO_RELEASE=0`. A board with no GitHub token does not
   release either.
+- **A comment that landed is not a start.** On 2026-11-09 the runner ingested
+  nothing for two hours and three release comments were never read; three
+  identical calls written by hand afterwards were weighed as one batch and
+  routed to each other's tickets, so #182 never got one and sat in Fila with
+  no reason for 14 h. Two rules came out of it:
+  - **The comment names its task** (`IssueBody.release_comment/2`: `#182
+    <title>` on the first line), so calls that arrive together differ.
+  - **A call nobody answered is shown** (`Release.called_at/1`,
+    `Lanes.needs/3`): a queued task the board called (the release comment, or
+    a `dsh` issue opened with the mention) longer ago than `:stall_after_ms`
+    and that no ticket names is an `:unanswered` item in Precisa de você
+    ("Sem resposta", DOM id `unanswered-<id>`), ranked with the silences, and
+    its row in Fila says "chamado há N, o agente não começou". The item says
+    what the board knows (it called, no ticket names the issue) and never why:
+    that is in the runner. With the orchestrator down it collapses into
+    "Agente fora do ar" like a block. A held row in Fila names the open
+    dependencies it waits for.
+  - **"Chamar de novo" is `release_task` again**, by the owner, with the
+    sentence: `Release.call_agent/3` takes a held task or a called one still
+    `queued`, and refuses anything else with `:not_waiting`. It moves
+    `released_at`, so the item leaves and comes back if that call is not
+    answered either. The board still repeats no call by itself.
+- The tests: `release_test.exs` (once, the failed comment, the comment's
+  first line, calling again, what is refused), `lanes_test.exs` ("a task the
+  board called and no ticket answered") and `objective_tree_test.exs` (the
+  item, the row and the click on the rendered board).
 
 ## Executor usage
 

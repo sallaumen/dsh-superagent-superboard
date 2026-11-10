@@ -77,6 +77,9 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
             <span :if={task.note} class="ab-row__note is-stale">
               <.glyph kind={:stale} />{task.note}
             </span>
+            <span :if={task.stuck} class="ab-row__note is-stale">
+              <.glyph kind={:stale} />{task.stuck}
+            </span>
             <span :if={is_nil(task.note) and task.sub} class="ab-meta">{task.sub}</span>
           </span>
           <span class="ab-row__side">

@@ -17,6 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.StatusMark do
     blocked: %{glyph: "halt", word: "Bloqueado", tone: "halt"},
     cifail: %{glyph: "halt", word: "CI falhou", tone: "halt"},
     stalled: %{glyph: "halt", word: "Sem sinal", tone: "halt"},
+    unanswered: %{glyph: "halt", word: "Sem resposta", tone: "halt"},
     queue: %{glyph: "queue", word: "Na fila", tone: "queue"},
     done: %{glyph: "done", word: "Mesclado", tone: "done"},
     stale: %{glyph: "stale", word: "Dado antigo", tone: "stale"},
