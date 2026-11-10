@@ -14,6 +14,8 @@ defmodule AgentBoard.Runners do
   for Codex, and 50 % of the weekly Codex window reserved. The settings are
   board-wide (`dispatch_*` keys) and the global pause is `dispatch_paused`.
   """
+
+  use Gettext, backend: AgentBoardWeb.Gettext
   import Ecto.Query, warn: false
   require Logger
 
@@ -220,7 +222,10 @@ defmodule AgentBoard.Runners do
         %{
           kind: :budget,
           executor: execution.executor,
-          reason: "A última execução parou no teto de orçamento (#{short(text)})."
+          reason:
+            gettext("The last execution stopped at the budget cap (%{detail}).",
+              detail: short(text)
+            )
         }
 
       text =~
@@ -228,7 +233,10 @@ defmodule AgentBoard.Runners do
         %{
           kind: :switch,
           executor: other,
-          reason: "A última execução parou por cota ou login (#{short(text)})."
+          reason:
+            gettext("The last execution stopped on quota or login (%{detail}).",
+              detail: short(text)
+            )
         }
 
       text =~
@@ -236,7 +244,10 @@ defmodule AgentBoard.Runners do
         %{
           kind: :retry,
           executor: execution.executor,
-          reason: "A última execução falhou por rede ou tempo (#{short(text)})."
+          reason:
+            gettext("The last execution failed on network or time (%{detail}).",
+              detail: short(text)
+            )
         }
 
       true ->
