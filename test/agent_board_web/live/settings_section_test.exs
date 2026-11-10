@@ -78,6 +78,21 @@ defmodule AgentBoardWeb.SettingsSectionTest do
     end
   end
 
+  # The standalone Superagents panel (until #454) had its own URL.
+  test "the old Superagents panel URL opens Projects", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/?panel=superagents")
+
+    assert has_element?(view, "[data-panel=settings]")
+    assert has_element?(view, ".settings-nav__item.is-current", "Projetos")
+
+    {:ok, _repo} = Board.add_repository("fixture", "old-panel")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/old-panel&panel=superagents")
+
+    assert has_element?(view, "[data-panel=settings]")
+    assert has_element?(view, ".settings-nav__item.is-current", "Projetos")
+    refute has_element?(view, "section[aria-labelledby=settings-projects-title][hidden]")
+  end
+
   test "an old show_panel section link still opens the new section", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "old-link")
 

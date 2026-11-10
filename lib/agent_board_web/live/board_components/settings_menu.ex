@@ -32,7 +32,6 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :tz_offset, :integer, default: 0
   attr :project_pending, :any, default: nil
   attr :board_locale, :string, default: "en"
-  attr :return_to, :string, default: "/"
 
   @impl true
   def mount(socket), do: {:ok, assign(socket, section: "projects")}
@@ -294,7 +293,11 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                   role="group"
                   aria-label={gettext("Board language")}
                 >
-                  <input type="hidden" name="return_to" value={@return_to} />
+                  <input
+                    type="hidden"
+                    name="return_to"
+                    value={BoardNavigation.settings_path(@repo, @section)}
+                  />
                   <button
                     type="submit"
                     name="locale"

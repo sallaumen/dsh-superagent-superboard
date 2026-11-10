@@ -136,18 +136,19 @@ python3 scripts/dsh-superagent --profile superagent-colmex \
 In the new panel at `http://127.0.0.1:3083`, set the GitHub repository to
 `owner/second-repo`, the agent CLI to the same `gh-agent`, the executor
 directory/prepare command to the second clone, and the policy allowed list
-(changed afterwards in Configurações → Acesso do agente, per person and project).
+(changed afterwards in Configurações → Projetos, per person and project).
 The bot account needs write access to that repository (invite it, then accept
 the invitation as the bot).
 
-Install the second keepalive and tell the board the routing list:
+Install the second keepalive:
 
 ```sh
 cp ops/com.dsh.superagent.colmex.plist ~/Library/LaunchAgents/
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dsh.superagent.colmex.plist
-# Configurações → Despacho local → Repositórios do DeepSeek:
-# sallaumen/arena-rogue, sallaumen/o_colmex
 ```
+
+There is no routing list to fill in: the board suggests DeepSeek for the
+repositories of the agents listed in Configurações → Projetos.
 
 `AgentState` reads both `~/.dsh/state/superagent*/orchestrator.sqlite` files,
 so the board shows both DeepSeek lanes without a restart of the agents.

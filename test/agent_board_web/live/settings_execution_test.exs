@@ -69,6 +69,36 @@ defmodule AgentBoardWeb.SettingsExecutionTest do
     assert has_element?(view, ".ab-execution__dirty", "Nenhuma mudança não salva")
   end
 
+  # The board writes money with a decimal comma and a pt-BR phone keypad has
+  # only the comma: "2,75" is 2.75, and a partly numeric cap is refused
+  # instead of being saved as its leading digits.
+  test "a cap with a decimal comma keeps its cents; a malformed one is refused", context do
+    {:ok, view, _html} = open(context.conn, context.path)
+
+    fields = %{
+      "monthly_usd" => "120,50",
+      "task_usd" => "2,75",
+      "timeout_minutes" => "30",
+      "reserve_percent" => "20",
+      "claude_model" => "claude-test",
+      "codex_model" => "codex-test"
+    }
+
+    view |> form("#execution-settings-form", fields) |> render_submit()
+
+    assert Settings.get("dispatch_monthly_usd") == "120.50"
+    assert Settings.get("dispatch_task_usd") == "2.75"
+
+    for bad <- ["3x", "1.000,50"] do
+      view
+      |> form("#execution-settings-form", %{fields | "task_usd" => bad})
+      |> render_submit()
+
+      assert has_element?(view, ".ab-execution__dirty.is-error"), "#{bad} should be refused"
+      assert Settings.get("dispatch_task_usd") == "2.75"
+    end
+  end
+
   test "the DeepSeek card opens Projects", context do
     {:ok, view, _html} = open(context.conn, context.path)
 
