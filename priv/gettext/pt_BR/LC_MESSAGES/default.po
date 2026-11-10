@@ -7485,3 +7485,8 @@ msgstr "os erros recentes da própria voz (transcrição, modelo, reprodução)"
 #, elixir-autogen, elixir-format
 msgid "what needs you, what is running and what is in the queue"
 msgstr "o que precisa de você, o que roda e o que está na fila"
+
+#: lib/agent_board_web/live/voice_conversation.ex:207
+#, elixir-autogen, elixir-format
+msgid "Nothing was erased: confirm to forget."
+msgstr "Nada foi apagado: confirme para esquecer."

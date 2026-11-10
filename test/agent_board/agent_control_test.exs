@@ -33,7 +33,7 @@ defmodule AgentBoard.AgentControlTest do
 
     assert text =~ "Nova tentativa pedida"
 
-    assert [%Event{kind: "agent_retry_manual", subject: "Nova tentativa pedida por você em #9"}] =
+    assert [%Event{kind: "agent_retry_manual", subject: "Retry requested by you on #9"}] =
              Repo.all(from e in Event, where: e.repository_id == ^repo.id)
   end
 
@@ -50,7 +50,8 @@ defmodule AgentBoard.AgentControlTest do
     assert [%Event{subject: subject}] =
              Repo.all(from e in Event, where: e.repository_id == ^repo.id)
 
-    assert subject =~ "não foi aceita"
+    # the stored subject is English whoever asked; the answer above is the asker's
+    assert subject =~ "Retry requested by you on #9 was not accepted: The agent refused"
   end
 
   test "an agent that does not answer says to restart it", %{client: client} do

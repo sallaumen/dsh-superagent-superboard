@@ -82,12 +82,12 @@ defmodule AgentBoard.Voice.Activity do
 
   @doc "A failure reason in words, for the detail and the log."
   @spec reason(term()) :: String.t()
-  def reason(:not_configured), do: "sem chave configurada"
-  def reason(:auth_expired), do: "chave recusada (401)"
-  def reason(:usage_limit), do: "limite de uso (429)"
-  def reason(:budget_exhausted), do: "orçamento de IA esgotado"
-  def reason(:timeout), do: "tempo esgotado"
-  def reason(:no_provider), do: "nenhum provedor de IA respondeu"
+  def reason(:not_configured), do: "no key configured"
+  def reason(:auth_expired), do: "key refused (401)"
+  def reason(:usage_limit), do: "usage limit (429)"
+  def reason(:budget_exhausted), do: "AI budget exhausted"
+  def reason(:timeout), do: "timed out"
+  def reason(:no_provider), do: "no AI provider answered"
   def reason({:http, status}), do: "HTTP #{status}"
   def reason(%{__exception__: true} = e), do: Exception.message(e)
   def reason(other) when is_atom(other), do: Atom.to_string(other)

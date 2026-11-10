@@ -430,7 +430,7 @@ defmodule AgentBoard.RunnersTest do
 
     execution = Repo.get!(AgentBoard.Runners.Execution, execution.id)
     assert execution.status == "failed"
-    assert execution.error =~ "não escreveu o estado a tempo"
+    assert execution.error =~ "did not write its state in time"
   end
 
   # A reboot kills the tmux session but leaves "running" in the status file.
@@ -450,7 +450,7 @@ defmodule AgentBoard.RunnersTest do
 
       execution = Repo.get!(AgentBoard.Runners.Execution, execution.id)
       assert execution.status == "failed"
-      assert execution.error =~ "passou do tempo"
+      assert execution.error =~ "ran past its time"
       assert Repo.get!(Task, task.id).state == "blocked"
 
       task = Repo.preload(Repo.get!(Task, task.id), :repository, force: true)

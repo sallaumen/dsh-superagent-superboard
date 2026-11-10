@@ -248,7 +248,7 @@ defmodule AgentBoard.Conversation.Agent do
              confirm: confirm,
              language: lang
            ) do
-      Activity.record(:action, :ok, "desfeito: tarefa ##{n} fechada", turn: ctx[:turn_id])
+      Activity.record(:action, :ok, "undone: task ##{n} closed", turn: ctx[:turn_id])
       repo = Repo.get(Repository, task.repository_id)
       %{say(Phrases.undone(lang, n), "undo") | effect: repo && {:changed, repo}}
     else
@@ -256,7 +256,7 @@ defmodule AgentBoard.Conversation.Agent do
         say(Phrases.nothing_to_undo(lang), "undo")
 
       failure ->
-        Activity.record(:action, :error, "não consegui desfazer a tarefa ##{n}",
+        Activity.record(:action, :error, "could not undo task ##{n}",
           turn: ctx[:turn_id],
           reason: create_failure(failure)
         )
@@ -318,7 +318,7 @@ defmodule AgentBoard.Conversation.Agent do
 
     case AI.call(:voice_agent, %{prompt: "Inputs:\n" <> Jason.encode!(inputs)}) do
       {:ok, %{json: %{"action" => action} = json}} ->
-        Activity.record(:model, :ok, "decidiu: #{action}",
+        Activity.record(:model, :ok, "decided: #{action}",
           turn: ctx[:turn_id],
           ms: System.monotonic_time(:millisecond) - started
         )
@@ -326,7 +326,7 @@ defmodule AgentBoard.Conversation.Agent do
         act(action, json, pending, ctx)
 
       {:ok, _result} ->
-        Activity.record(:model, :error, "a resposta do modelo veio fora do formato",
+        Activity.record(:model, :error, "the model's answer came out of format",
           turn: ctx[:turn_id],
           ms: System.monotonic_time(:millisecond) - started
         )
@@ -334,7 +334,7 @@ defmodule AgentBoard.Conversation.Agent do
         say(Phrases.not_understood(ctx.language), "error")
 
       {:error, reason} ->
-        Activity.record(:model, :error, "o modelo não respondeu",
+        Activity.record(:model, :error, "the model did not answer",
           turn: ctx[:turn_id],
           ms: System.monotonic_time(:millisecond) - started,
           reason: reason
@@ -456,7 +456,7 @@ defmodule AgentBoard.Conversation.Agent do
 
     case AI.call(:voice_explain, %{prompt: "Inputs:\n" <> Jason.encode!(inputs)}) do
       {:ok, %{json: %{"reply" => text}}} when is_binary(text) and text != "" ->
-        Activity.record(:model, :ok, "explicou a partir do quadro (#{kind})",
+        Activity.record(:model, :ok, "explained from the board (#{kind})",
           turn: ctx[:turn_id],
           ms: System.monotonic_time(:millisecond) - started
         )
@@ -464,7 +464,7 @@ defmodule AgentBoard.Conversation.Agent do
         say(text, "look_" <> kind)
 
       {:ok, _result} ->
-        Activity.record(:model, :error, "a explicação veio fora do formato",
+        Activity.record(:model, :error, "the explanation came out of format",
           turn: ctx[:turn_id],
           ms: System.monotonic_time(:millisecond) - started
         )
@@ -472,7 +472,7 @@ defmodule AgentBoard.Conversation.Agent do
         say(Phrases.not_understood(ctx.language), "error")
 
       {:error, reason} ->
-        Activity.record(:model, :error, "o modelo não explicou",
+        Activity.record(:model, :error, "the model did not explain",
           turn: ctx[:turn_id],
           ms: System.monotonic_time(:millisecond) - started,
           reason: reason
@@ -534,7 +534,7 @@ defmodule AgentBoard.Conversation.Agent do
   # The owner said "cria direto": no "Posso criar?", and "desfaz" takes it
   # back for 10 minutes (the reply says so).
   defp create_direct(task, ctx) do
-    Activity.record(:action, :info, "pedido direto: cria sem perguntar", turn: ctx[:turn_id])
+    Activity.record(:action, :info, "direct request: creates without asking", turn: ctx[:turn_id])
 
     case execute(task, ctx, {:words, ctx[:utterance]}) do
       %{proposal: %{"kind" => "created", "number" => n, "repository" => slug}} = outcome ->
@@ -589,7 +589,7 @@ defmodule AgentBoard.Conversation.Agent do
   # the yes passes that same sentence to the gate.
   defp proposal(proposal, phrase, lang) do
     :ok = Conversation.supersede_proposals()
-    Activity.record(:action, :info, "proposta aguardando o seu sim: #{proposal["kind"]}")
+    Activity.record(:action, :info, "proposal waiting for your yes: #{proposal["kind"]}")
 
     %{
       reply: phrase,
@@ -724,7 +724,7 @@ defmodule AgentBoard.Conversation.Agent do
       Activity.record(
         :action,
         :ok,
-        "tarefa ##{task.number} #{if outcome == :created, do: "criada", else: "já existia"} em #{slug(repo)}",
+        "task ##{task.number} #{if outcome == :created, do: "created", else: "already existed"} in #{slug(repo)}",
         turn: ctx[:turn_id]
       )
 
@@ -735,7 +735,7 @@ defmodule AgentBoard.Conversation.Agent do
       if outcome == :created, do: created(said, task, repo), else: said
     else
       failure ->
-        Activity.record(:action, :error, "não consegui criar a tarefa",
+        Activity.record(:action, :error, "could not create the task",
           turn: ctx[:turn_id],
           reason: create_failure(failure)
         )
@@ -772,7 +772,7 @@ defmodule AgentBoard.Conversation.Agent do
         }
 
       failure ->
-        Activity.record(:action, :error, "não consegui mudar a tarefa ##{p["number"]}",
+        Activity.record(:action, :error, "could not change task ##{p["number"]}",
           turn: ctx[:turn_id],
           reason: create_failure(failure)
         )
@@ -799,14 +799,14 @@ defmodule AgentBoard.Conversation.Agent do
          params = %{task: task, question: p["question"], client: client(ctx)},
          {:ok, _comment} <-
            Actions.run(:ask_task, params, voice(), confirm: confirm, language: lang) do
-      Activity.record(:action, :ok, "pergunta enviada ao agente na tarefa ##{p["number"]}",
+      Activity.record(:action, :ok, "question sent to the agent on task ##{p["number"]}",
         turn: ctx[:turn_id]
       )
 
       say(Phrases.ask_sent(lang, p["number"]), "ask_task")
     else
       failure ->
-        Activity.record(:action, :error, "a pergunta não foi enviada na tarefa ##{p["number"]}",
+        Activity.record(:action, :error, "the question was not sent on task ##{p["number"]}",
           turn: ctx[:turn_id],
           reason: create_failure(failure)
         )

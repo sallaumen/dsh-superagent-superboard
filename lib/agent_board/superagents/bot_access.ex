@@ -47,8 +47,8 @@ defmodule AgentBoard.Superagents.BotAccess do
 
       {_output, _code} ->
         {:error,
-         "@#{bot} foi convidado para #{slug(repository)}, mas não conseguiu aceitar o convite. " <>
-           "Aceite com a conta do bot e tente de novo."}
+         "@#{bot} was invited to #{slug(repository)}, but could not accept the invitation. " <>
+           "Accept it with the bot's account and try again."}
     end
   end
 
@@ -56,13 +56,13 @@ defmodule AgentBoard.Superagents.BotAccess do
   defp run(cli, args, opts), do: System.cmd("/usr/bin/env", [cli | args], opts)
 
   defp not_found(repository, bot) do
-    "Não encontrei @#{bot} em #{slug(repository)}: a conta não existe ou o token do board não " <>
-      "enxerga esse repositório."
+    "Could not find @#{bot} in #{slug(repository)}: the account does not exist or the board's " <>
+      "token cannot see that repository."
   end
 
   defp cannot_invite(repository, bot) do
-    "Não consegui dar acesso de escrita a @#{bot} em #{slug(repository)}. Adicione o bot em " <>
-      "https://github.com/#{slug(repository)}/settings/access e tente de novo."
+    "Could not give @#{bot} write access to #{slug(repository)}. Add the bot at " <>
+      "https://github.com/#{slug(repository)}/settings/access and try again."
   end
 
   defp slug(%{owner: owner, name: name}), do: "#{owner}/#{name}"

@@ -80,11 +80,11 @@ defmodule AgentBoard.AgentControl do
     Logger.info("agent_retry_manual ticket=#{ticket_id} outcome=#{outcome}")
 
     if repository_id do
-      target = if number, do: " em ##{number}", else: ""
+      target = if number, do: " on ##{number}", else: ""
 
-      # The event is stored: it stays in Portuguese whoever asked.
+      # The event is stored: it is written in English whoever asked.
       subject =
-        Gettext.with_locale(AgentBoardWeb.Gettext, "pt_BR", fn -> subject(result, target) end)
+        Gettext.with_locale(AgentBoardWeb.Gettext, "en", fn -> subject(result, target) end)
 
       Board.log_event(repository_id, "agent_retry_manual", subject, %{
         "ticket_id" => ticket_id,
@@ -98,10 +98,10 @@ defmodule AgentBoard.AgentControl do
     :ok
   end
 
-  defp subject({:ok, _}, target), do: "Nova tentativa pedida por você#{target}"
+  defp subject({:ok, _}, target), do: "Retry requested by you#{target}"
 
   defp subject({:error, reason}, target),
-    do: "Nova tentativa pedida por você#{target} não foi aceita: #{retry_reason(reason)}"
+    do: "Retry requested by you#{target} was not accepted: #{retry_reason(reason)}"
 
   @doc """
   Start the orchestrator with the prototype's manager and say how it went.
@@ -153,7 +153,7 @@ defmodule AgentBoard.AgentControl do
     if File.exists?(manager) do
       System.cmd("python3", [manager, "start"], stderr_to_stdout: true)
     else
-      {"o gerenciador não está em #{manager}; defina DSH_SUPERAGENT_HOME", 127}
+      {"the manager is not at #{manager}; set DSH_SUPERAGENT_HOME", 127}
     end
   rescue
     exception -> {Exception.message(exception), 1}
@@ -164,7 +164,7 @@ defmodule AgentBoard.AgentControl do
     |> String.split("\n", trim: true)
     |> List.last()
     |> case do
-      nil -> "sem saída"
+      nil -> "no output"
       line -> String.slice(line, 0, 200)
     end
   end

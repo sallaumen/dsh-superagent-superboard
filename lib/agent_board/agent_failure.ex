@@ -10,7 +10,7 @@ defmodule AgentBoard.AgentFailure do
   unknown text, needs a person: a guess never earns an automatic retry.
 
   Pure: no network, no database. `AgentBoard.AutoRetry` decides what to do
-  with the result and stores it in Portuguese with `describe/1`; the screen
+  with the result and stores it in English with `describe/1`; the screen
   says it in the viewer's language with `headline/1`.
   """
 
@@ -73,35 +73,17 @@ defmodule AgentBoard.AgentFailure do
     end
   end
 
-  @doc "One short sentence for what went wrong, in the board's voice."
+  @doc """
+  One short sentence for what went wrong, in English whoever reads: the text
+  stored with a retry (`AgentBoard.AutoRetry`). The screen uses `headline/1`.
+  """
   @spec describe(t()) :: String.t()
-  def describe(%{transient: true, stage: :model, cause: :rate_limit}),
-    do: "O provedor do modelo limitou as requisições"
-
-  def describe(%{transient: true, stage: :model, cause: :provider_unavailable}),
-    do: "O provedor do modelo está fora do ar"
-
-  def describe(%{transient: true, stage: :model}), do: "Falha de rede ao chamar o modelo"
-
-  def describe(%{transient: true, stage: :prepare, cause: :dns}),
-    do: "Sem rede ao preparar o worktree: o GitHub não resolveu"
-
-  def describe(%{transient: true, stage: :prepare}),
-    do: "Sem rede ao preparar o worktree"
-
-  def describe(%{transient: true, cause: :rate_limit}), do: "Limite de requisições atingido"
-  def describe(%{transient: true}), do: "Falha de rede"
-
-  def describe(%{cause: :hung, stage: :prepare}),
-    do: "O preparo do worktree passou do tempo limite"
-
-  def describe(%{stage: :prepare}), do: "O preparo do worktree falhou"
-  def describe(%{stage: :model}), do: "O modelo devolveu um erro"
-  def describe(_failure), do: "O agente relatou uma falha"
+  def describe(failure),
+    do: Gettext.with_locale(AgentBoardWeb.Gettext, "en", fn -> headline(failure) end)
 
   @doc """
-  The sentence of `describe/1` in the viewer's language, for the screen.
-  `describe/1` stays Portuguese: its text is stored with the retry.
+  What went wrong in one short sentence, in the viewer's language, for the
+  screen. `describe/1` is the same sentence in English, for what is stored.
   """
   @spec headline(t()) :: String.t()
   def headline(%{transient: true, stage: :model, cause: :rate_limit}),

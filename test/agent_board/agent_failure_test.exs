@@ -9,7 +9,7 @@ defmodule AgentBoard.AgentFailureTest do
   @prepare "Error: The prepare command failed: fatal: unable to access " <>
              "'https://github.com/sallaumen/arena-rogue.git/': Could not resolve host: github.com"
 
-  test "the screen's sentence is the stored one in Portuguese, and English in English" do
+  test "the stored sentence is the screen's English one, whoever reads" do
     failures =
       for transient <- [true, false],
           stage <- [:model, :prepare, :other],
@@ -17,21 +17,24 @@ defmodule AgentBoard.AgentFailureTest do
         %{transient: transient, stage: stage, cause: cause, summary: ""}
       end
 
-    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
 
     for failure <- failures,
         do: assert(AgentFailure.headline(failure) == AgentFailure.describe(failure))
 
-    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
 
     for failure <- failures,
         do: refute(AgentFailure.headline(failure) == AgentFailure.describe(failure))
 
     assert AgentFailure.headline(AgentFailure.classify(@model)) ==
-             "Network failure calling the model"
+             "Falha de rede ao chamar o modelo"
 
     assert AgentFailure.describe(AgentFailure.classify(@model)) ==
-             "Falha de rede ao chamar o modelo"
+             "Network failure calling the model"
+
+    # asking for the stored sentence does not change the reader's language
+    assert Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR"
   end
 
   test "the model's transport failing is transient, at the model" do
@@ -39,7 +42,7 @@ defmodule AgentBoard.AgentFailureTest do
              AgentFailure.classify(@model)
 
     assert AgentFailure.describe(AgentFailure.classify(@model)) ==
-             "Falha de rede ao chamar o modelo"
+             "Network failure calling the model"
   end
 
   test "a host that did not resolve during the prepare is transient, at the prepare" do
@@ -47,7 +50,7 @@ defmodule AgentBoard.AgentFailureTest do
     assert %{transient: true, cause: :dns, stage: :prepare} = failure
 
     assert AgentFailure.describe(failure) ==
-             "Sem rede ao preparar o worktree: o GitHub não resolveu"
+             "No network preparing the worktree: GitHub did not resolve"
   end
 
   test "refused, reset, timed out, rate limited and 5xx are transient" do
@@ -78,6 +81,6 @@ defmodule AgentBoard.AgentFailureTest do
              AgentFailure.classify(
                "Error: The prepare command failed: The operation was aborted due to timeout"
              )
-           ) == "O preparo do worktree passou do tempo limite"
+           ) == "Preparing the worktree timed out"
   end
 end

@@ -126,7 +126,7 @@ defmodule AgentBoard.ElevenLabs.Usage do
       Activity.record(
         :tts,
         :info,
-        "teto diário atingido: #{number(total)} de #{number(cap)} caracteres da ElevenLabs hoje"
+        "daily cap reached: #{number(total)} of #{number(cap)} ElevenLabs characters today"
       )
     end
 
