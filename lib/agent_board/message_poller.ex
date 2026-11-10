@@ -13,6 +13,7 @@ defmodule AgentBoard.MessagePoller do
   @interval 30_000
   @bootstrap_window 10 * 60
   @max_pages 10
+  @max_failure_wait 30 * 60
 
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts, name: __MODULE__)
 
@@ -55,9 +56,9 @@ defmodule AgentBoard.MessagePoller do
         since = previous[:since] || DateTime.add(now, -@bootstrap_window, :second)
 
         try do
-          comments = pages(client, repository, DateTime.add(since, -2, :second))
+          {comments, cursor} = pages(client, repository, DateTime.add(since, -2, :second))
           if store(repository, comments), do: Board.broadcast(repository.id)
-          Map.put(acc, repository.id, %{since: now})
+          Map.put(acc, repository.id, %{since: cursor || now})
         rescue
           error in GitHub.RateLimited ->
             seconds = retry_seconds(error.retry_after)
@@ -68,7 +69,12 @@ defmodule AgentBoard.MessagePoller do
               "message poll unavailable for #{repository.owner}/#{repository.name}: #{inspect(error.__struct__)}"
             )
 
-            acc
+            # 60 s, doubling to half an hour: a broken repository is not read
+            # every 30 s for as long as it stays broken.
+            failures = Map.get(previous, :failures, 0) + 1
+            wait = min(60 * Integer.pow(2, failures - 1), @max_failure_wait)
+            retry = %{failures: failures, retry_at: DateTime.add(now, wait)}
+            Map.put(acc, repository.id, Map.merge(previous, retry))
         end
       end
     end)
@@ -84,9 +90,17 @@ defmodule AgentBoard.MessagePoller do
     end
   end
 
-  defp pages(client, repository, since, page \\ 1, found \\ []) do
-    if page > @max_pages, do: raise("message poll pagination limit reached")
+  # The comments since `since`, oldest update first, and the cursor for the
+  # next poll: nil when everything was read, the last comment's update when
+  # the page limit stopped the read.
+  defp pages(client, repository, since, page \\ 1, found \\ [])
 
+  defp pages(_client, _repository, _since, page, found) when page > @max_pages do
+    comments = found |> Enum.reverse() |> List.flatten()
+    {comments, comments |> List.last() |> updated_at()}
+  end
+
+  defp pages(client, repository, since, page, found) do
     {comments, more?} =
       GitHub.repository_issue_comments(
         client,
@@ -98,8 +112,17 @@ defmodule AgentBoard.MessagePoller do
 
     if more?,
       do: pages(client, repository, since, page + 1, [comments | found]),
-      else: found |> Enum.reverse() |> Kernel.++([comments]) |> List.flatten()
+      else: {found |> Enum.reverse() |> Kernel.++([comments]) |> List.flatten(), nil}
   end
+
+  defp updated_at(%{"updated_at" => at}) when is_binary(at) do
+    case DateTime.from_iso8601(at) do
+      {:ok, at, _offset} -> at
+      _ -> nil
+    end
+  end
+
+  defp updated_at(_comment), do: nil
 
   defp store(_repository, []), do: false
 
