@@ -22,7 +22,6 @@ defmodule AgentBoard.System.UpdateRun do
   require Logger
 
   @topic "system:update"
-  @lock {__MODULE__, :run}
   @running {__MODULE__, :running}
   @held {__MODULE__, :reload_held}
 
@@ -50,7 +49,10 @@ defmodule AgentBoard.System.UpdateRun do
   end
 
   defp run(actor) do
-    if :global.set_lock(@lock, [node()], 0) do
+    # :global grants a lock again to the same requester; each run is its own.
+    lock = {__MODULE__, self()}
+
+    if :global.set_lock(lock, [node()], 0) do
       :persistent_term.put(@running, true)
       :persistent_term.put(@held, true)
 
@@ -62,7 +64,7 @@ defmodule AgentBoard.System.UpdateRun do
           broadcast({:update_finished, {:error, Exception.message(exception)}})
       after
         :persistent_term.erase(@running)
-        :global.del_lock(@lock, [node()])
+        :global.del_lock(lock, [node()])
       end
     end
   end

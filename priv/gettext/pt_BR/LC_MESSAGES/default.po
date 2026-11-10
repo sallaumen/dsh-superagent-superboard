@@ -2787,7 +2787,6 @@ msgid "tasks in queue now"
 msgstr "tarefas na fila agora"
 
 #: lib/agent_board/time.ex:96
-#: lib/agent_board_web/live/board_components/settings/execution.ex:654
 #, elixir-autogen, elixir-format
 msgid "today"
 msgstr "hoje"
@@ -4753,8 +4752,8 @@ msgstr "Perto do fim da semana. Novos despachos para o Codex param quando só re
 
 #: lib/agent_board_web/live/board_components/settings/execution.ex:397
 #, elixir-autogen, elixir-format
-msgid "Daily usage for %{name}"
-msgstr "Uso diário de %{name}"
+msgid "Usage per UTC day for %{name}"
+msgstr "Uso por dia UTC de %{name}"
 
 #: lib/agent_board_web/live/board_components/settings/execution.ex:243
 #, elixir-autogen, elixir-format

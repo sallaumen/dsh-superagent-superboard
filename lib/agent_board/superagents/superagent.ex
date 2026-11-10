@@ -50,7 +50,10 @@ defmodule AgentBoard.Superagents.Superagent do
     |> validate_inclusion(:desired_state, @desired)
     |> validate_inclusion(:observed_state, @observed)
     |> validate_number(:port, greater_than: 0, less_than: 65_536)
-    |> validate_number(:max_workers, greater_than: 0, less_than_or_equal_to: 32)
+    |> validate_number(:max_workers,
+      greater_than: 0,
+      less_than_or_equal_to: AgentBoard.Orchestrator.worker_range().last
+    )
     |> validate_number(:poll_seconds, greater_than_or_equal_to: 60, less_than_or_equal_to: 3_600)
     |> unique_constraint(:repository_id)
     |> unique_constraint(:profile)

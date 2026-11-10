@@ -108,8 +108,11 @@ defmodule AgentBoardWeb.BoardController do
       {:error, {refusal, _phrase} = gate} when refusal in @refusals ->
         needs_confirmation(conn, gate)
 
-      _ ->
+      {:error, :not_found} ->
         conn |> put_status(404) |> json(%{error: "task not found"})
+
+      {:error, reason} ->
+        conn |> put_status(502) |> json(%{error: describe(reason)})
     end
   end
 

@@ -4,7 +4,7 @@ defmodule AgentBoardWeb.UpdateFlowTest do
 
   import Phoenix.LiveViewTest
 
-  alias AgentBoard.Board
+  alias AgentBoard.{Actions, Board}
   alias AgentBoard.System.UpdateRun
 
   defmodule UpdaterStub do
@@ -102,6 +102,22 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     end)
 
     :ok
+  end
+
+  test "a second start while one runs joins it and runs no second pipeline" do
+    Application.put_env(:agent_board, :updater_result, {:ok, "abc123"})
+    Application.put_env(:agent_board, :updater_prepare_wait, self())
+
+    {:ok, _first} = UpdateRun.start(Actions.owner(:ui))
+    assert_receive {:prepare_waiting, first}, 5_000
+    {:ok, _second} = UpdateRun.start(Actions.owner(:ui))
+
+    refute_receive {:prepare_waiting, _second}, 500
+    assert UpdateRun.running?()
+
+    send(first, :continue)
+    assert_receive {:update_finished, {:ok, "abc123"}}, 5_000
+    finished()
   end
 
   test "a successful update runs every stage and restarts only at the end", %{conn: conn} do
