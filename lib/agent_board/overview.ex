@@ -12,7 +12,7 @@ defmodule AgentBoard.Overview do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{Board, Freshness, Repo}
-  alias AgentBoard.Board.{Event, PullRequest, Repository, Task}
+  alias AgentBoard.Board.{PullRequest, Repository, Task}
 
   @today_states ~w(blocked question ready running queued)
   @need_rank %{"blocked" => 0, "question" => 1, "ready" => 2}
@@ -35,17 +35,6 @@ defmodule AgentBoard.Overview do
         Map.update(acc, repository_id, %{state => count}, &Map.put(&1, state, count))
       end)
 
-    # The newest sync (or error) of each repository, without a global limit:
-    # a repository whose last sync is old still reads its own event.
-    syncs =
-      Repo.all(
-        from e in Event,
-          where: e.kind in ["sync", "sync_error"],
-          distinct: e.repository_id,
-          order_by: [asc: e.repository_id, desc: e.inserted_at, desc: e.id]
-      )
-      |> Map.new(&{&1.repository_id, &1})
-
     ready_by_repository =
       Repo.all(from t in Task, where: t.state == "ready", preload: [:repository])
       |> then(fn ready ->
@@ -61,7 +50,9 @@ defmodule AgentBoard.Overview do
     Board.list_repositories()
     |> Map.new(fn repository ->
       by_state = Map.get(counts, repository.id, %{})
-      sync = syncs[repository.id]
+      # One indexed newest-first read per repository: events are never
+      # deleted, so a distinct over every sync event grows with the table.
+      sync = Board.latest_sync(repository)
 
       unknown =
         is_nil(sync) or sync.kind == "sync_error" or
