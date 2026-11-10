@@ -346,7 +346,9 @@ defmodule AgentBoardWeb.BoardLive do
           now: now,
           last_visit: last_visit,
           filter: socket.assigns.queue_filter,
-          limit: socket.assigns.queue_limit
+          limit: socket.assigns.queue_limit,
+          tickets_by_number: run.tickets,
+          stall_after: run.stall_after
         ),
       log: Lanes.merge_log(repo, now: now, tz_offset: tz_offset, local_ci: local_ci),
       digest:
@@ -2034,11 +2036,11 @@ defmodule AgentBoardWeb.BoardLive do
     repo = socket.assigns.repo
 
     with {number, ""} <- Integer.parse(to_string(id)),
-         %Task{held: true, repository_id: repo_id} = task when repo_id == repo.id <-
-           Board.task(number),
+         %Task{repository_id: repo_id} = task when repo_id == repo.id <- Board.task(number),
          params = %{task: task, repository: repo, client: GitHub.client()},
          :ok <- Actions.run(:release_task, params, ui(), confirm: confirm) do
-      {:noreply, socket}
+      {:noreply,
+       put_flash(socket, :info, gettext("Agent called on #%{number}.", number: task.number))}
     else
       _refused_or_failed ->
         {:noreply, put_flash(socket, :error, gettext("Could not call the agent on this task."))}

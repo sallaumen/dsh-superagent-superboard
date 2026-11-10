@@ -110,6 +110,15 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                   rel="noopener noreferrer"
                 >{action.label}<span class="ab-sr">{gettext("(opens GitHub in a new tab)")}</span></a>
                 <button
+                  :if={action[:release]}
+                  type="button"
+                  class={["ab-btn ab-btn--sm", action_class(need.kind)]}
+                  phx-click="release_task"
+                  phx-value-id={need.id}
+                  phx-value-confirm={action.release}
+                  data-confirm={action.release}
+                >{action.label}</button>
+                <button
                   :if={action[:task_id]}
                   type="button"
                   class={["ab-btn ab-btn--sm", action_class(need.kind)]}
@@ -133,6 +142,8 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   # A silent run is also the card in Agora: one task, two items, two ids.
   defp dom_id(%{kind: :agent_down}), do: "need-agent-down"
   defp dom_id(%{kind: :stalled, id: id}) when not is_nil(id), do: "silence-#{id}"
+  # A call nobody answered is also the row in Fila.
+  defp dom_id(%{kind: :unanswered, id: id}) when not is_nil(id), do: "unanswered-#{id}"
   defp dom_id(%{id: id}) when not is_nil(id), do: "task-#{id}"
   defp dom_id(_need), do: nil
 
@@ -141,6 +152,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   defp kind_label(:blocked), do: "Bloqueado"
   defp kind_label(:cifail), do: "CI falhou"
   defp kind_label(:stalled), do: "Sem sinal"
+  defp kind_label(:unanswered), do: "Sem resposta"
   defp kind_label(:agent_down), do: "Agente fora do ar"
   defp kind_label(_kind), do: gettext("Attention")
 
@@ -148,12 +160,14 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   defp tone(:cifail), do: "is-halt"
   defp tone(:blocked), do: "is-halt"
   defp tone(:stalled), do: "is-halt"
+  defp tone(:unanswered), do: "is-halt"
   defp tone(_kind), do: "is-you"
 
   defp action_class(:agent_down), do: "ab-btn--halt"
   defp action_class(:cifail), do: "ab-btn--halt"
   defp action_class(:blocked), do: "ab-btn--halt"
   defp action_class(:stalled), do: "ab-btn--halt"
+  defp action_class(:unanswered), do: "ab-btn--halt"
   defp action_class(_kind), do: "ab-btn--quiet"
 
   defp age(_seconds, true, %DateTime{} = at, offset), do: Time.local_time(at, offset)

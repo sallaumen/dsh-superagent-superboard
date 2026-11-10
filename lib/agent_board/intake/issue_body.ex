@@ -81,9 +81,15 @@ defmodule AgentBoard.Intake.IssueBody do
   @spec without_attachments(String.t()) :: String.t()
   def without_attachments(body), do: String.replace(body, @attachments_section, "")
 
-  @doc "The comment that calls the agent on a task that was waiting."
-  @spec release_comment(String.t() | nil) :: String.t()
-  def release_comment(language), do: "#{labels(language).release}\n\n@sallaumen-agent"
+  @doc """
+  The comment that calls the agent on a task that was waiting. It names the
+  task: the runner weighs the calls that arrive together as one batch, and
+  three with the same text were once routed to each other's tickets.
+  """
+  @spec release_comment(String.t() | nil, %{number: pos_integer(), title: String.t()}) ::
+          String.t()
+  def release_comment(language, %{number: number, title: title}),
+    do: "##{number} #{title}\n\n#{labels(language).release}\n\n@sallaumen-agent"
 
   @doc "The body with its files at the top: seen on GitHub, fetchable by the agent."
   @spec with_attachments(String.t(), [map()], map(), String.t() | nil) :: String.t()

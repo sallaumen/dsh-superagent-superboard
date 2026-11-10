@@ -136,6 +136,51 @@ defmodule AgentBoardWeb.ObjectiveTreeTest do
     assert %Task{held: false} = Repo.get!(Task, held.id)
   end
 
+  test "a called task nobody took is the owner's, who calls again from the board", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "parada")
+    test_pid = self()
+
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(
+        base_url: "https://api.github.com",
+        plug: fn conn ->
+          send(test_pid, {:called, conn.request_path})
+          Req.Test.json(conn, %{})
+        end,
+        retry: false
+      )
+    end)
+
+    on_exit(fn -> Application.delete_env(:agent_board, :github_client) end)
+    Board.log_event(repo.id, "sync", "fixture/parada", %{"errors" => 0})
+
+    stuck =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 182,
+        title: "Ajustar curvas",
+        state: "queued",
+        executor: "dsh",
+        released_at: DateTime.add(DateTime.utc_now(), -14 * 3600, :second)
+      })
+      |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/parada")
+
+    assert has_element?(view, "#sec-needs #unanswered-#{stuck.id}", "o agente não começou")
+    assert has_element?(view, "#sec-queue #task-#{stuck.id}", "o agente não começou")
+
+    view
+    |> element("#unanswered-#{stuck.id} button", "Chamar de novo")
+    |> render_click()
+
+    assert_received {:called, "/repos/fixture/parada/issues/182/comments"}
+    refute has_element?(view, "#unanswered-#{stuck.id}")
+    assert render(view) =~ "Agente chamado na #182"
+  end
+
   test "a group with no connections draws no tree", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "plana")
     objective(repo, [task(repo, 1, "queued"), task(repo, 2, "queued")])

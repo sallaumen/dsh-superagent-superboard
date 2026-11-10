@@ -9,8 +9,8 @@ defmodule AgentBoard.Lanes do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AgentBlock, AgentSignal, Board, Repo, Time, Titles, Workpad}
-  alias AgentBoard.Board.{Comment, PullRequest, Task}
+  alias AgentBoard.{Actions, AgentBlock, AgentSignal, Board, Release, Repo, Time, Titles, Workpad}
+  alias AgentBoard.Board.{Comment, PullRequest, Task, TaskDependency}
 
   @queue_limit 8
   @day_limit 3
@@ -30,13 +30,19 @@ defmodule AgentBoard.Lanes do
   (`AgentBoard.AgentBlock`). With `agent: :down` (the orchestrator did not
   answer) the blocks and silences collapse into one `:agent_down` item:
   they all wait for the same thing.
+
+  A call nobody answered is derived too (`unanswered?/2`): the mention is
+  what starts the runner, and a comment that landed is not a start. The
+  runner may have been down, or have routed the call to another ticket; the
+  board only knows that no ticket names the issue, and says that.
   """
-  def needs(_repository, board, opts \\ []) do
-    context = context(board, opts)
+  def needs(repository, board, opts \\ []) do
+    context = board |> context(opts) |> Map.put(:repository, repository)
 
     [
       lane(board, :blocked, :blocked, context),
       silent_lane(board, context),
+      unanswered_lane(board, context),
       lane(board, :ready, :review, context),
       lane(board, :question, :question, context)
     ]
@@ -48,7 +54,7 @@ defmodule AgentBoard.Lanes do
   end
 
   defp collapse_agent_down(needs, board, %{agent: :down} = context) do
-    {waiting, rest} = Enum.split_with(needs, &(&1.kind in [:blocked, :stalled]))
+    {waiting, rest} = Enum.split_with(needs, &(&1.kind in [:blocked, :stalled, :unanswered]))
     [agent_down_need(length(waiting) + length(Map.get(board, :retrying, [])), context) | rest]
   end
 
@@ -126,6 +132,25 @@ defmodule AgentBoard.Lanes do
     |> Enum.map(&task_need(&1, :stalled, context))
   end
 
+  defp unanswered_lane(board, context) do
+    board
+    |> Map.get(:queued, [])
+    |> Enum.filter(&unanswered?(&1, context))
+    |> Enum.map(&task_need(&1, :unanswered, context))
+  end
+
+  # Called by the board longer ago than a silence takes, and no ticket of the
+  # runner names the issue: one waiting for a worker has a ticket already.
+  defp unanswered?(task, %{tickets: tickets, stall_after: stall_after, now: now}) do
+    case Release.called_at(task) do
+      %DateTime{} = at ->
+        not Map.has_key?(tickets, task.number) and DateTime.diff(now, at) >= stall_after
+
+      nil ->
+        false
+    end
+  end
+
   # Every item says what to do, where and why: the kind is the what, the
   # actions are the where, and `why` is the evidence the board has. A fact
   # the board cannot see is said to be missing, never filled in.
@@ -145,7 +170,7 @@ defmodule AgentBoard.Lanes do
       ci: ci,
       age_seconds: Time.age_seconds(at, context.now),
       is_new: new?(at, context.last_visit),
-      actions: need_actions(task, kind, pull)
+      actions: need_actions(task, kind, pull, context)
     }
   end
 
@@ -155,8 +180,21 @@ defmodule AgentBoard.Lanes do
     DateTime.add(context.silences[task.number].at, context.stall_after, :second)
   end
 
+  defp need_at(task, :unanswered, context),
+    do: DateTime.add(Release.called_at(task), context.stall_after, :second)
+
   defp need_at(task, _kind, _context),
     do: task.state_changed_at || task.updated_at || task.inserted_at
+
+  # What the board knows: it called, and no ticket names the issue. Why the
+  # runner did not start is in the runner, so the item does not guess.
+  defp task_why(task, :unanswered, _ticket, _pull, context) do
+    at = Release.called_at(task)
+
+    "**Chamado #{Time.ago(DateTime.diff(context.now, at))} e o agente não começou.** " <>
+      "O board comentou a menção #{Time.since_label(at, context.tz_offset, context.now)} " <>
+      "e nenhum ticket do agente cita esta issue."
+  end
 
   defp task_why(_task, :review, _ticket, %PullRequest{number: number}, _context),
     do: "**PR ##{number} pronto para revisão**"
@@ -235,14 +273,26 @@ defmodule AgentBoard.Lanes do
     do:
       "Começou às #{since} e não deu sinal desde então: nenhum relatório nem mudança no worktree."
 
-  defp need_actions(task, :review, %PullRequest{url: url, number: number}) when is_binary(url) do
+  defp need_actions(task, :review, %PullRequest{url: url, number: number}, _context)
+       when is_binary(url) do
     [
       %{label: action_label(:review), task_id: task.id},
       %{label: "Abrir PR ##{number}", url: url}
     ]
   end
 
-  defp need_actions(task, kind, _pull), do: [%{label: action_label(kind), task_id: task.id}]
+  # The same red action as the tree's "Chamar o agente", with its sentence.
+  defp need_actions(task, :unanswered, _pull, %{repository: repository}) do
+    phrase = Actions.phrase(:release_task, %{task: task, repository: repository})
+
+    [
+      %{label: "Chamar de novo", release: phrase},
+      %{label: action_label(:unanswered), task_id: task.id}
+    ]
+  end
+
+  defp need_actions(task, kind, _pull, _context),
+    do: [%{label: action_label(kind), task_id: task.id}]
 
   # The same reading as Mesclados: the local gate is the evidence, the red
   # remote check is quiet, and no local report is a `?`, not a pass.
@@ -292,6 +342,7 @@ defmodule AgentBoard.Lanes do
   defp action_label(:question), do: "Responder"
   defp action_label(:blocked), do: "Ver detalhe"
   defp action_label(:stalled), do: "Ver detalhe"
+  defp action_label(:unanswered), do: "Ver detalhe"
   defp action_label(:cifail), do: "Ver falha"
 
   # A silent run blocks the whole queue while there is one worker: it comes
@@ -301,6 +352,7 @@ defmodule AgentBoard.Lanes do
   defp rank(:cifail), do: 0
   defp rank(:blocked), do: 1
   defp rank(:stalled), do: 2
+  defp rank(:unanswered), do: 2
   defp rank(:review), do: 3
   defp rank(:question), do: 4
 
@@ -313,6 +365,12 @@ defmodule AgentBoard.Lanes do
     last_visit = Keyword.get(opts, :last_visit)
     filter = Keyword.get(opts, :filter, :all)
     limit = Keyword.get(opts, :limit, @queue_limit)
+
+    calls = %{
+      now: now,
+      tickets: Keyword.get(opts, :tickets_by_number, %{}),
+      stall_after: Keyword.get(opts, :stall_after, AgentSignal.stall_after())
+    }
 
     rows =
       Repo.all(
@@ -330,7 +388,9 @@ defmodule AgentBoard.Lanes do
             inserted_at: t.inserted_at,
             origin_task_id: t.origin_task_id,
             blocker_for_task_id: t.blocker_for_task_id,
-            held: t.held
+            held: t.held,
+            released_at: t.released_at,
+            executor: t.executor
           }
       )
 
@@ -343,7 +403,14 @@ defmodule AgentBoard.Lanes do
 
     origins = origin_numbers(rows)
     blockers = blocker_numbers(rows)
-    items = Enum.map(rows, &queue_item(&1, merged, origins, blockers, now, last_visit))
+    waits = open_dependencies(rows)
+
+    items =
+      Enum.map(rows, fn row ->
+        item = queue_item(row, merged, origins, blockers, now, last_visit)
+        Map.merge(item, %{sub: held_sub(row, waits) || item.sub, stuck: stuck(row, calls)})
+      end)
+
     counts = queue_counts(items)
 
     filtered = filter_items(items, filter)
@@ -364,7 +431,6 @@ defmodule AgentBoard.Lanes do
 
     sub =
       case {Map.get(blockers, row.blocker_for_task_id), Map.get(origins, row.origin_task_id)} do
-        _ when row.held -> "espera as dependências"
         {number, _origin} when is_integer(number) -> "desbloqueia ##{number}"
         {nil, number} when is_integer(number) -> "dividido de ##{number}"
         _ -> nil
@@ -380,6 +446,43 @@ defmodule AgentBoard.Lanes do
       sub: sub,
       note: duplicate && "Parece repetir ##{duplicate.number}, já mesclado"
     }
+  end
+
+  # A held task names what it still waits for; one with every dependency
+  # finished is about to be called (`AgentBoard.Release`, within a minute).
+  defp held_sub(%{held: false}, _waits), do: nil
+
+  defp held_sub(row, waits) do
+    case Map.get(waits, row.id, []) do
+      [] -> "espera as dependências"
+      numbers -> "espera " <> Enum.map_join(numbers, ", ", &"##{&1}")
+    end
+  end
+
+  defp open_dependencies(rows) do
+    case for(%{held: true, id: id} <- rows, do: id) do
+      [] ->
+        %{}
+
+      ids ->
+        from(d in TaskDependency,
+          join: b in Task,
+          on: b.id == d.blocked_by_task_id,
+          where: d.task_id in ^ids and b.state not in ["done", "closed"],
+          order_by: b.number,
+          select: {d.task_id, b.number}
+        )
+        |> Repo.all()
+        |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    end
+  end
+
+  # The same derivation as the item in Precisa de você (`unanswered?/2`).
+  defp stuck(row, calls) do
+    if unanswered?(row, calls) do
+      called = Time.ago(DateTime.diff(calls.now, Release.called_at(row)))
+      "chamado #{called}, o agente não começou"
+    end
   end
 
   defp blocker_numbers(rows) do
