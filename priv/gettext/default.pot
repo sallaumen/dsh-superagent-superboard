@@ -7008,6 +7008,7 @@ msgstr ""
 #: lib/agent_board_web/live/board_live.ex
 #, elixir-autogen, elixir-format
 msgid "Executor limit: %{agents}. The orchestrator will restart."
+msgstr ""
 
 #: lib/agent_board_web/live/board_components/queue_list.ex:22
 #, elixir-autogen, elixir-format
