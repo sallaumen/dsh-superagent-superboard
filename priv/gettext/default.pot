@@ -6608,3 +6608,83 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Report updated"
 msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "no code"
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The board did not find the agent's ticket for this task."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "New attempt requested. The agent starts when a worker is free."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent refused: it only retries a ticket whose last word was a failure or a block, with no message from you after it."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent refused: the ticket has already ended."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent refused: someone stopped the ticket."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent refused (%{code})."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent does not know this ticket."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent did not answer. Restart the agent and try again."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent did not answer in time. Check in a moment whether the attempt started."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent's API is turned off on this board."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent answered with HTTP error %{status}."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent is up."
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent did not come up (exit %{status}): %{line}"
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The command that restarts the agent failed: %{reason}"
+msgstr ""
+
+#: lib/agent_board/agent_control.ex
+#, elixir-autogen, elixir-format
+msgid "The agent did not answer in %{seconds} s. It may still be coming up; check in a moment."
+msgstr ""

@@ -682,6 +682,27 @@ defmodule AgentBoard.ActionsTest do
       assert d.via == "system" and d.phrase =~ "(2 de 3)"
     end
 
+    test "the result is written in the language of the confirmation", %{owner: owner} do
+      params = %{opts: [starter: fn -> {"ok", 0} end]}
+
+      assert {:ok, "The agent is up."} =
+               Actions.run(:start_agent, params, owner,
+                 confirm: Actions.phrase(:start_agent, %{}, "en-US")
+               )
+
+      assert {:ok, "O agente está de pé."} =
+               Actions.run(:start_agent, params, owner,
+                 confirm: Actions.phrase(:start_agent, %{}, "pt-BR")
+               )
+
+      # Naming the language works too, for an action that asks nothing.
+      assert {:ok, "The agent is up."} =
+               Actions.run(:start_agent, params, owner,
+                 confirm: Actions.phrase(:start_agent, %{}, "en-US"),
+                 language: "en-US"
+               )
+    end
+
     test "start_agent runs the manager after the confirmation", %{owner: owner} do
       test_pid = self()
       params = %{opts: [starter: fn -> send(test_pid, :started) && {"ok", 0} end]}

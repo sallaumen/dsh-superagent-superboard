@@ -609,7 +609,7 @@ defmodule AgentBoard.Actions do
             words: words
           })
 
-        execute_recorded(name, params, row)
+        execute_recorded(name, params, row, lang)
 
       {:refuse, reason, words} ->
         insert!(name, spec, params, actor, %{
@@ -646,8 +646,16 @@ defmodule AgentBoard.Actions do
 
   # The screen shows the sentence in the interface language. Both sentences
   # are rebuilt from the same values, so matching either is the same proof.
+  # Portuguese first: a sentence that only exists in Portuguese is the same
+  # in both, and must not make the answer English.
   defp shown_language(name, params, confirm) when is_binary(confirm) do
-    if squish(confirm) == squish(phrase(name, params, "en-US")), do: "en-US", else: "pt-BR"
+    shown = squish(confirm)
+
+    cond do
+      shown == squish(phrase(name, params, "pt-BR")) -> "pt-BR"
+      shown == squish(phrase(name, params, "en-US")) -> "en-US"
+      true -> "pt-BR"
+    end
   end
 
   defp shown_language(_name, _params, _confirm), do: "pt-BR"
@@ -673,9 +681,17 @@ defmodule AgentBoard.Actions do
 
   defp gate(_name, _spec, _actor, nil, _phrase), do: {:go, "automatic", nil, nil}
 
-  defp execute_recorded(name, params, row) do
-    result = execute(name, params)
-    {outcome, detail} = outcome(name, result)
+  # The effect answers in the language of the confirmation: what it returns
+  # is read by whoever confirmed. `AgentBoardWeb.Gettext` reads the process.
+  defp execute_recorded(name, params, row, lang) do
+    locale = if lang == "en-US", do: "en", else: "pt_BR"
+
+    {result, {outcome, detail}} =
+      Gettext.with_locale(AgentBoardWeb.Gettext, locale, fn ->
+        result = execute(name, params)
+        {result, outcome(name, result)}
+      end)
+
     finish(row, outcome, detail)
     log(name, row.decision, row, outcome)
     result
