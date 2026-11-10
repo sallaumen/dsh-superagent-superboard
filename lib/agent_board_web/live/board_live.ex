@@ -556,6 +556,15 @@ defmodule AgentBoardWeb.BoardLive do
     )
   end
 
+  # The project card's − and + and the totals count from the row, not the runner.
+  defp save_superagent_ceiling(socket, max) do
+    if superagent = Superagents.get_by_repository(socket.assigns.repo) do
+      Superagents.set_max_workers(superagent, max)
+    end
+
+    socket
+  end
+
   # The runner's ceiling, saved through its API; the tile re-reads the load.
   defp set_max_workers(socket, max) do
     params = %{max: max, client: Orchestrator.client_for(socket.assigns.repo)}
@@ -563,11 +572,13 @@ defmodule AgentBoardWeb.BoardLive do
     case Actions.run(:set_max_workers, params, ui()) do
       {:ok, max} ->
         socket
+        |> save_superagent_ceiling(max)
         |> load(socket.assigns.repo)
         |> put_flash(:info, gettext("Executor limit: %{agents}.", agents: agents(max)))
 
       {:ok, max, :restarting} ->
         socket
+        |> save_superagent_ceiling(max)
         |> load(socket.assigns.repo)
         |> put_flash(
           :info,
