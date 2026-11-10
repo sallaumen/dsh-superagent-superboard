@@ -182,7 +182,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
         <dt>{gettext("Source")}</dt>
         <dd>
           {if @tile.status == :measured,
-            do: "orquestrador principal, agora",
+            do: gettext("main orchestrator, now"),
             else: Metrics.reason(@tile.reason)}
         </dd>
       </div>
@@ -245,7 +245,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
 
   defp window(%{tile: %{kind: :depth}} = assigns) do
     ~H"""
-    <b>{Metrics.count(Map.get(@tile, @field))}</b> pico
+    <b>{Metrics.count(Map.get(@tile, @field))}</b> {gettext("peak")}
     """
   end
 

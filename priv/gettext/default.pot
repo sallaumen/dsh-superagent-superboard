@@ -5547,3 +5547,300 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "task #%{number}"
 msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Messages and notifications"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Messages from Yasme"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Messages"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Yasme's replies, by task"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Filter messages"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "All"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Unread"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Marking…"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Mark all as seen"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "No replies yet. Conversations appear here when Yasme answers."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "You are up to date. New replies appear here."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "New"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Open conversation"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Mark the reply on task #%{number} as seen"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Mark as seen without opening the conversation"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Mark seen"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Up to 30 recent conversations · updates on its own."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "General notifications"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Open items from every project"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing is waiting for you now."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Open task #%{number} in %{repo}: %{kind}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "View task"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "The number counts open items, not unread messages."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Open the conversation on task #%{number} in %{repo}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "New reply."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "All seen"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} new"
+msgid_plural "%{count} new"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Messages from Yasme, none new"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Messages from Yasme, %{count} new"
+msgid_plural "Messages from Yasme, %{count} new"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Attention, nothing open"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Attention, %{count} open item"
+msgid_plural "Attention, %{count} open items"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "attention kind"
+msgid "Blocked"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "attention kind"
+msgid "Question"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "attention kind"
+msgid "Review"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "since %{when}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Restart"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "Restarting the agent…"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "main orchestrator, now"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "No task running."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "The reply changed. Read the new message before marking it."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgid "That reply was not found. Reload the window."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "Running"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "New attempt"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "Agent offline"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "To review"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "Question"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "Blocked"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "CI failed"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "No signal"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "No answer"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "Queued"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "Merged"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "Old data"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/message_hub.ex
+#, elixir-autogen, elixir-format
+msgctxt "status"
+msgid "Unknown"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/throughput.ex
+#, elixir-autogen, elixir-format
+msgid "peak"
+msgstr ""

@@ -8,8 +8,8 @@ export const ageLabel = (at, now, sync = false, locale = "en") => {
   const elapsed = portuguese
     ? minutes < 1 ? "agora" : minutes < 60 ? `há ${minutes} min` :
       minutes < 1440 ? `há ${Math.floor(minutes / 60)} h ${minutes % 60} min` : `há ${Math.floor(minutes / 1440)} d`
-    : minutes < 1 ? "just now" : minutes < 60 ? `${minutes}m ago` :
-      minutes < 1440 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m ago` : `${Math.floor(minutes / 1440)}d ago`
+    : minutes < 1 ? "just now" : minutes < 60 ? `${minutes} min ago` :
+      minutes < 1440 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min ago` : `${Math.floor(minutes / 1440)} d ago`
   const state = !sync ? "record" : minutes >= 5 ? "stale" : minutes >= 2 ? "delayed" : "recent"
   const suffix = portuguese
     ? state === "stale" ? " · atrasado — mostrando dados salvos" : state === "delayed" ? " · atualização atrasada" : ""

@@ -76,9 +76,5 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
     """
   end
 
-  defp seconds(ms),
-    do:
-      :erlang.float_to_binary(ms / 1000, decimals: 1)
-      |> String.replace(".", ",")
-      |> Kernel.<>(" s")
+  defp seconds(ms), do: AgentBoardWeb.Numbers.decimal(ms / 1000, 1) <> " s"
 end

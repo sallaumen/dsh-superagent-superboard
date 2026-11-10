@@ -41,7 +41,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:ceiling_usd, fn -> nil end)
      |> assign_new(:fallback, fn -> false end)
      |> assign_new(:retry, fn -> false end)
-     |> assign_new(:cancel_label, fn -> "Cancelar" end)
+     |> assign_new(:cancel_label, fn -> gettext("Cancel") end)
      |> assign_new(:reason, fn -> nil end)
      |> assign_new(:execution, fn -> nil end)
      |> assign_new(:superagent, fn -> nil end)

@@ -1486,7 +1486,7 @@ defmodule AgentBoardWeb.BoardLive do
          assign(
            socket,
            :inbox_notice,
-           "A resposta mudou. Confira a nova mensagem antes de marcá-la."
+           gettext("The reply changed. Read the new message before marking it.")
          )}
     end
   end
@@ -1494,7 +1494,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("mark_inbox_message_seen", _params, socket),
     do:
       {:noreply,
-       assign(socket, :inbox_notice, "Não encontramos essa resposta. Atualize a janela.")}
+       assign(socket, :inbox_notice, gettext("That reply was not found. Reload the window."))}
 
   def handle_event("mark_messages_seen", _params, socket) do
     versions =

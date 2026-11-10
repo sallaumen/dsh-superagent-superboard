@@ -378,10 +378,5 @@ defmodule AgentBoardWeb.BoardComponents.Today do
 
   defp percent(value), do: Integer.to_string(value)
 
-  defp money(micros) do
-    cents = div(micros + 5_000, 10_000)
-    separator = if Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR", do: ",", else: "."
-
-    "US$ #{div(cents, 100)}#{separator}#{cents |> rem(100) |> Integer.to_string() |> String.pad_leading(2, "0")}"
-  end
+  defp money(micros), do: AgentBoardWeb.Numbers.usd(micros)
 end

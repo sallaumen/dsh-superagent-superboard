@@ -91,7 +91,7 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
   def truncate(value) when is_binary(value), do: value
   def truncate(value), do: inspect(value)
 
-  def empty_copy(:running), do: "Nenhuma tarefa rodando."
+  def empty_copy(:running), do: gettext("No task running.")
   def empty_copy(:ready), do: gettext("Nothing awaiting review.")
   def empty_copy(:blocked), do: gettext("Nothing blocked.")
   def empty_copy(:merged), do: gettext("No PRs merged yet.")
@@ -110,21 +110,4 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
       do: "#{input + output} tokens"
 
   def token_usage(_), do: gettext("unknown")
-
-  # Zero is also stored for old calls and unpriced models, so it is not a
-  # trustworthy zero-dollar bill. Keep the stored microdollar precision.
-  def estimated_cost(micros) when is_integer(micros) and micros > 0 do
-    dollars = div(micros, 1_000_000)
-
-    fraction =
-      micros
-      |> rem(1_000_000)
-      |> Integer.to_string()
-      |> String.pad_leading(6, "0")
-      |> String.trim_trailing("0")
-
-    if fraction == "", do: "$#{dollars}", else: "$#{dollars}.#{fraction}"
-  end
-
-  def estimated_cost(_), do: gettext("unknown")
 end

@@ -43,7 +43,7 @@ defmodule AgentBoardWeb.InspectorTest do
     assert has_element?(
              view,
              ".ab-insp__facts button[phx-value-tab=chamadas]",
-             "3 chamadas · ≥ $0.31"
+             "3 chamadas · ≥ US$ 0,31"
            )
 
     assert has_element?(view, "#conversation", "Conversa")
@@ -52,11 +52,11 @@ defmodule AgentBoardWeb.InspectorTest do
     assert has_element?(view, "#conversation", "claude-opus")
     assert has_element?(view, "#conversation", "18.2k")
     assert has_element?(view, "#conversation", "—")
-    assert has_element?(view, "#conversation", "≥ $0.31")
+    assert has_element?(view, "#conversation", "≥ US$ 0,31")
     assert has_element?(view, "#conversation", "Chamadas feitas pelo board")
     # A call under a cent is a cost: never "$0.00".
-    assert has_element?(view, "#inspector-panel-chamadas tbody td", "< $0.01")
-    refute has_element?(view, "#inspector-panel-chamadas", "$0.00")
+    assert has_element?(view, "#inspector-panel-chamadas tbody td", "< US$ 0,01")
+    refute has_element?(view, "#inspector-panel-chamadas", "US$ 0,00")
 
     view |> element("#conversation button", "Atividade") |> render_click()
     assert has_element?(view, "#conversation", "Entrou na fila")
@@ -166,11 +166,11 @@ defmodule AgentBoardWeb.InspectorTest do
 
     assert html =~ "Executor do agente"
     # The estimate is in the header too, with its floor sign.
-    assert html =~ "executor ≥ $0.16"
+    assert html =~ "executor ≥ US$ 0,16"
     assert html =~ "1 worker + 1 subagente(s)"
     assert html =~ "303.4k"
     assert html =~ "80.0M"
-    assert html =~ "≥ $0.16"
+    assert html =~ "≥ US$ 0,16"
     assert html =~ "o custo é um mínimo"
 
     assert render_inspector(task, "chamadas", %{usage | status: :none}) =~

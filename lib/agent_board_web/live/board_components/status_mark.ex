@@ -9,19 +9,19 @@ defmodule AgentBoardWeb.BoardComponents.StatusMark do
   use AgentBoardWeb, :html
 
   @statuses %{
-    run: %{glyph: "run", word: "Rodando", tone: "run"},
-    retrying: %{glyph: "queue", word: "Nova tentativa", tone: "run"},
-    agent_down: %{glyph: "halt", word: "Agente fora do ar", tone: "halt"},
-    review: %{glyph: "you", word: "Para revisar", tone: "you"},
-    question: %{glyph: "you", word: "Pergunta", tone: "you"},
-    blocked: %{glyph: "halt", word: "Bloqueado", tone: "halt"},
-    cifail: %{glyph: "halt", word: "CI falhou", tone: "halt"},
-    stalled: %{glyph: "halt", word: "Sem sinal", tone: "halt"},
-    unanswered: %{glyph: "halt", word: "Sem resposta", tone: "halt"},
-    queue: %{glyph: "queue", word: "Na fila", tone: "queue"},
-    done: %{glyph: "done", word: "Mesclado", tone: "done"},
-    stale: %{glyph: "stale", word: "Dado antigo", tone: "stale"},
-    unknown: %{glyph: "unknown", word: "Desconhecido", tone: "queue"}
+    run: %{glyph: "run", tone: "run"},
+    retrying: %{glyph: "queue", tone: "run"},
+    agent_down: %{glyph: "halt", tone: "halt"},
+    review: %{glyph: "you", tone: "you"},
+    question: %{glyph: "you", tone: "you"},
+    blocked: %{glyph: "halt", tone: "halt"},
+    cifail: %{glyph: "halt", tone: "halt"},
+    stalled: %{glyph: "halt", tone: "halt"},
+    unanswered: %{glyph: "halt", tone: "halt"},
+    queue: %{glyph: "queue", tone: "queue"},
+    done: %{glyph: "done", tone: "done"},
+    stale: %{glyph: "stale", tone: "stale"},
+    unknown: %{glyph: "unknown", tone: "queue"}
   }
 
   attr :kind, :atom, required: true
@@ -29,12 +29,13 @@ defmodule AgentBoardWeb.BoardComponents.StatusMark do
   attr :live, :boolean, default: false
 
   def status_mark(assigns) do
-    assigns = assign(assigns, :status, Map.get(@statuses, assigns.kind, @statuses.unknown))
+    status = Map.get(@statuses, assigns.kind, @statuses.unknown)
+    assigns = assign(assigns, :tone, status.tone)
 
     ~H"""
-    <span class={"ab-status ab-status--#{@status.tone}"}>
+    <span class={"ab-status ab-status--#{@tone}"}>
       <.glyph kind={@kind} live={@live} />
-      {@word || @status.word}
+      {@word || word(@kind)}
     </span>
     """
   end
@@ -53,4 +54,18 @@ defmodule AgentBoardWeb.BoardComponents.StatusMark do
     ></i>
     """
   end
+
+  defp word(:run), do: pgettext("status", "Running")
+  defp word(:retrying), do: pgettext("status", "New attempt")
+  defp word(:agent_down), do: pgettext("status", "Agent offline")
+  defp word(:review), do: pgettext("status", "To review")
+  defp word(:question), do: pgettext("status", "Question")
+  defp word(:blocked), do: pgettext("status", "Blocked")
+  defp word(:cifail), do: pgettext("status", "CI failed")
+  defp word(:stalled), do: pgettext("status", "No signal")
+  defp word(:unanswered), do: pgettext("status", "No answer")
+  defp word(:queue), do: pgettext("status", "Queued")
+  defp word(:done), do: pgettext("status", "Merged")
+  defp word(:stale), do: pgettext("status", "Old data")
+  defp word(_unknown), do: pgettext("status", "Unknown")
 end

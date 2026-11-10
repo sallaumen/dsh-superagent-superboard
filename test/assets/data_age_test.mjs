@@ -12,9 +12,14 @@ test('completed sync ages through recent, delayed and stale without a new respon
   assert.match(ageLabel(0, 300000, true).text, /showing saved data/)
 })
 test('old activity is an age, not evidence of a broken sync', () => {
-  assert.deepEqual(ageLabel(0, 3600000), {text: '1h 0m ago', state: 'record'})
+  assert.deepEqual(ageLabel(0, 3600000), {text: '1 h 0 min ago', state: 'record'})
 })
 test('missing and future timestamps never imply fresh data', () => {
   assert.equal(ageLabel(NaN, 0, true).state, 'unknown')
   assert.equal(ageLabel(120000, 0, true).state, 'unknown')
+})
+test('the age is written like the ages the server writes', () => {
+  assert.equal(ageLabel(0, 5 * 60000).text, '5 min ago')
+  assert.equal(ageLabel(0, 3 * 86400000).text, '3 d ago')
+  assert.equal(ageLabel(0, 177 * 60000, false, 'pt-BR').text, 'há 2 h 57 min')
 })
