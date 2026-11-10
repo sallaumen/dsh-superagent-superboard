@@ -29,7 +29,7 @@ The version badges reflect the CI toolchain and the checked-in dependency lockfi
 | Ask questions, dictate requests, and hear status | Use browser speech or optional ElevenLabs voice, with confirmation before consequential actions |
 | Review daily summaries, activity, and usage by source | Understand what changed and where time and model usage went |
 
-The board starts in English. **Settings → Language** switches this browser to
+The board starts in English. **Settings → System → Board language** switches this browser to
 Brazilian Portuguese; spoken language is a separate preference.
 
 ## How the pieces fit

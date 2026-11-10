@@ -172,7 +172,7 @@ and is recorded as `automatic`.
 | `retry_provision_superagent` | red | runs a failed provisioning again with the stored source and checkout, one attempt at a time; it refuses a profile or state it did not create | UI: `AgentAction` "Tentar de novo" on the failed project, two steps |
 | `remove_superagent` | red | stops the agent, archives profile/state and removes the project from the board | UI: `AgentAction` "Remover", two steps |
 | `scale_superagent` | yellow | changes `maxWorkers` through the DSH settings API | UI: −/+ on the project card |
-| `grant_agent_access` | red | puts a person on one project's `allowed` list through the DSH settings API and, when the sentence names issues, requeues their refused mentions | UI: `AgentAction` "Liberar" / "Liberar e rodar" in Configurações → Acesso do agente |
+| `grant_agent_access` | red | puts a person on one project's `allowed` list through the DSH settings API and, when the sentence names issues, requeues their refused mentions | UI: `AgentAction` "Liberar" / "Liberar e rodar" on the project in Configurações → Projetos |
 | `revoke_agent_access` | red | takes a person off that list and sets their old mentions aside; mentions on issues without a ticket are ignored, those on issues with a ticket may still be weighed as a follow-up, and their open tickets may be refused (the repository owner cannot be removed) | UI: `AgentAction` "Revogar" |
 | `dismiss_access_request` | yellow | sets a request aside until the person mentions the bot again (`agent_access_dismissals`) | UI: one click on "Dispensar" |
 | `start_agent` | red | runs `dsh-superagent start` on this machine; clears a stop made on purpose | UI: `AgentAction` "Religar o agente" |
@@ -696,7 +696,7 @@ Phase 3 of the Alfred plan (`docs/research/alfred.md`, 3.6 and F3.1–F3.3):
 the owner's `gh` account, US$ 300/month, US$ 5 per Claude Code task, 30
 minutes for Codex and 50 % of the Codex weekly window reserved; all are
 settings (`dispatch_*`); both the global pause and the numbers have a form
-in Configurações → Despacho local (Settings → Local dispatch).
+in Configurações → Execução (Settings → Execution).
 
 - **The process is not a child of the board.** `dispatch/3` writes a run
   directory (`~/.agent_board/runs/<uuid>`), a prompt and a `launch.sh`, and
@@ -840,8 +840,8 @@ that watches one GitHub repository and picks the issues whose body mentions
   reads the manager API every 30 s; the actions are `start_superagent`,
   `stop_superagent`, `pause_superagent`, `resume_superagent` and
   `scale_superagent`.
-- **Who may start work is per project and per person** (Configurações → Acesso
-  do agente, `AgentBoard.AgentAccess`). The list belongs to the agent
+- **Who may start work is per project and per person** (Configurações → Projetos,
+  `AgentBoard.AgentAccess`). The list belongs to the agent
   (`policy.sources.github.allowed`); a change is read, edited and saved at the
   revision it was read, so a change made elsewhere is a conflict, and only the
   list changes. A mention from someone not listed is recorded by the agent as
@@ -1096,8 +1096,8 @@ slept is never recovered; this routine asks a question instead.
   4000-4500, the live board included, and would spend it. Its own switch
   governs the voice, not the narration toggle; for the engine choice it is
   narration (the free browser voice unless the engine is `elevenlabs`).
-- **Settings** live in Configurações → Resumo do dia (Settings → Daily
-  summary): `daily_summary_enabled`
+- **Settings** live in Configurações → Voz e resumo (Settings → Voice
+  and summary): `daily_summary_enabled`
   (`"false"` switches it off) and `daily_summary_at` (`HH:MM`, default
   08:00); a malformed hour is refused in words and saves nothing.
 - The tests: `daily_summary_test.exs` (the wall clock with a controlled

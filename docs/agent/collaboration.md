@@ -67,5 +67,5 @@ The board reads GitHub; it never writes to the agent's sqlite.
 (the plist's `WorkingDirectory`); a `git pull` or a
 `launchctl kickstart -k "gui/$(id -u)/com.agentboard"` there restarts the
 owner's board and interrupts agents mid-ticket. Updating is the owner's button
-in **Configurações → Versão**; nothing pulls `main` on a timer, and no agent
+in **Configurações → Sistema**; nothing pulls `main` on a timer, and no agent
 does it on the owner's behalf.
