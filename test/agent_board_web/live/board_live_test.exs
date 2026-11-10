@@ -540,44 +540,37 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "mudanças pedidas"
   end
 
-  test "a merged pull shows its CI badge", %{conn: conn} do
+  test "History words a pull's CI as the merge log does: a red remote check alone is unknown", %{
+    conn: conn
+  } do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
-    %PullRequest{}
-    |> PullRequest.changeset(%{
-      repository_id: repo.id,
-      number: 405,
-      title: "CI PR",
-      state: "merged",
-      merged_at: DateTime.utc_now(),
-      checks_state: "failure"
-    })
-    |> Repo.insert!()
+    pull =
+      %PullRequest{}
+      |> PullRequest.changeset(%{
+        repository_id: repo.id,
+        number: 406,
+        title: "Named CI",
+        state: "merged",
+        merged_at: DateTime.utc_now(),
+        checks_state: "failure",
+        checks_failed: "compile"
+      })
+      |> Repo.insert!()
 
-    {:ok, _view, html} = live(conn, ~p"/")
+    {:ok, view, _html} = live(conn, ~p"/")
 
-    assert html =~ "CI PR"
-    assert html =~ "CI falhou"
-  end
+    # GitHub Actions cannot run on this account: its red is not a failed gate.
+    history = "#pull-#{pull.id} .item-signals span[title*='GitHub Actions falhou em compile']"
+    assert has_element?(view, history, "CI local ?")
 
-  test "a failed CI names the check", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    assert has_element?(
+             view,
+             "#sec-log [title*='GitHub Actions falhou em compile']",
+             "CI local ?"
+           )
 
-    %PullRequest{}
-    |> PullRequest.changeset(%{
-      repository_id: repo.id,
-      number: 406,
-      title: "Named CI",
-      state: "merged",
-      merged_at: DateTime.utc_now(),
-      checks_state: "failure",
-      checks_failed: "compile"
-    })
-    |> Repo.insert!()
-
-    {:ok, _view, html} = live(conn, ~p"/")
-
-    assert html =~ "CI falhou: compile"
+    refute has_element?(view, "#pull-#{pull.id}", "CI falhou")
   end
 
   test "a pull with no reviews says so instead of hiding the badge", %{conn: conn} do

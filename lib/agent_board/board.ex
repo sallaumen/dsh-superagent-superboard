@@ -885,10 +885,7 @@ defmodule AgentBoard.Board do
 
   defp task_repo_events(repository, number) do
     repository
-    |> events(50)
-    |> Enum.filter(
-      &(&1.subject == "##{number}" or String.contains?(&1.subject || "", "##{number}"))
-    )
+    |> Activity.for_number(number)
     |> Enum.map(fn event ->
       %{
         at: event.inserted_at,
@@ -896,15 +893,38 @@ defmodule AgentBoard.Board do
         tone: if(event_error?(event), do: :halt, else: :plain)
       }
     end)
-    |> Enum.take(10)
   end
 
   defp event_text(event) do
     case event.payload do
-      %{"reason" => reason} -> "#{event.kind}: #{truncate_reason(reason)}"
-      _ -> event.kind
+      %{"reason" => reason} -> "#{event_words(event)}: #{truncate_reason(reason)}"
+      _ -> event_words(event)
     end
   end
+
+  # What happened, in the reader's words. A kind this list does not know is
+  # shown as its own words rather than hidden.
+  defp event_words(%{kind: "task_released"}), do: gettext("Released to the agent")
+  defp event_words(%{kind: "release_error"}), do: gettext("Release failed")
+  defp event_words(%{kind: "stop_error"}), do: gettext("Stop failed")
+  defp event_words(%{kind: "routing_error"}), do: gettext("Could not save the routing")
+  defp event_words(%{kind: "comment_error"}), do: gettext("Could not read the comments")
+  defp event_words(%{kind: "issue_error"}), do: gettext("Could not read the issue")
+
+  defp event_words(%{kind: "agent_retry", payload: %{"attempt" => attempt, "max" => max}}),
+    do: gettext("Automatic retry %{attempt} of %{max}", attempt: attempt, max: max)
+
+  defp event_words(%{kind: "agent_retry_error", payload: %{"attempt" => attempt, "max" => max}}),
+    do:
+      gettext("Automatic retry %{attempt} of %{max} was not accepted", attempt: attempt, max: max)
+
+  defp event_words(%{kind: "agent_retry_manual", payload: %{"outcome" => "retried"}}),
+    do: gettext("Retry requested by you")
+
+  defp event_words(%{kind: "agent_retry_manual"}),
+    do: gettext("Retry requested by you was not accepted")
+
+  defp event_words(%{kind: kind}), do: String.replace(kind || "", "_", " ")
 
   defp event_error?(event) do
     payload = event.payload || %{}
@@ -921,15 +941,17 @@ defmodule AgentBoard.Board do
   defp checks_activity(%PullRequest{checks_state: "failure"} = pull) do
     %{
       at: pull.checks_changed_at,
+      # Named for what it is: the remote check. The gate that counts here is
+      # the local one (`AgentBoard.LocalCI`), so this is not painted as a halt.
       text:
-        pgettext("activity", "CI failed") <>
+        gettext("GitHub Actions failed") <>
           if(pull.checks_failed in [nil, ""], do: "", else: " · #{pull.checks_failed}"),
-      tone: :halt
+      tone: :plain
     }
   end
 
   defp checks_activity(%PullRequest{checks_state: "success"} = pull) do
-    %{at: pull.checks_changed_at, text: pgettext("activity", "CI passed"), tone: :agent}
+    %{at: pull.checks_changed_at, text: gettext("GitHub Actions passed"), tone: :agent}
   end
 
   defp checks_activity(_pull), do: nil

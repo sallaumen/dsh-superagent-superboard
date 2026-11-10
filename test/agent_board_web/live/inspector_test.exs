@@ -457,6 +457,74 @@ defmodule AgentBoardWeb.InspectorTest do
     |> Repo.insert!()
   end
 
+  test "a task with more calls than the board loads says which ones the total covers", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-many-calls")
+    task = task(repo, 27, "Muitas chamadas", "ready")
+    for _ <- 1..23, do: call(repo, task, "deepseek-flash", 100, 10, 20_000, 500)
+
+    {:ok, view, _html} =
+      live(conn, BoardNavigation.path(repo, "conversation", task.id, "chamadas"))
+
+    assert has_element?(
+             view,
+             ".ab-insp__facts button[phx-value-tab=chamadas]",
+             "20 mais recentes de 23 chamadas · US$ 0,40"
+           )
+
+    assert has_element?(view, "#conversation [role=tab]", "23")
+
+    assert has_element?(
+             view,
+             "#inspector-panel-chamadas tfoot",
+             "20 mais recentes de 23 chamadas"
+           )
+
+    assert has_element?(
+             view,
+             "#calls-window",
+             "A tabela e os totais cobrem só as 20 mais recentes de 23."
+           )
+  end
+
+  test "the activity names what happened to the task, however old, and nothing of another task",
+       %{
+         conn: conn
+       } do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-activity")
+    task = task(repo, 12, "Com histórico", "ready")
+
+    Board.log_event(repo.id, "task_released", "#12")
+    Board.log_event(repo.id, "stop_error", "#12", %{"reason" => "timeout"})
+
+    Board.log_event(repo.id, "agent_retry", "Nova tentativa automática 2 de 3 em #12: rede", %{
+      "attempt" => 2,
+      "max" => 3
+    })
+
+    Board.log_event(repo.id, "task_released", "#123")
+    Board.log_event(repo.id, "brand_new_kind", "#12")
+    # The repository's log moves on: sixty reads later the task's events remain.
+    for _ <- 1..60, do: Board.log_event(repo.id, "sync", "fixture/inspector-activity")
+
+    {:ok, view, _html} =
+      live(conn, BoardNavigation.path(repo, "conversation", task.id, "atividade"))
+
+    panel = "#inspector-panel-atividade"
+    assert has_element?(view, panel, "Liberada para o agente")
+    assert has_element?(view, panel, "Falha ao parar: timeout")
+    assert has_element?(view, panel, "Nova tentativa automática 2 de 3")
+    assert has_element?(view, panel, "brand new kind")
+    refute view |> element(panel) |> render() =~ "task_released"
+
+    assert view
+           |> element(panel)
+           |> render()
+           |> String.split("Liberada para o agente")
+           |> length() == 2
+  end
+
   defp call(_repo, task, model, input, output, cost, duration) do
     %Call{}
     |> Call.changeset(%{

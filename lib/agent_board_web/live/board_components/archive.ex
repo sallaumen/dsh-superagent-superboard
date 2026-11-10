@@ -40,6 +40,7 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
           module={AgentBoardWeb.BoardComponents.Card}
           id={"pull-#{item.id}"}
           item={item}
+          ci={AgentBoard.Lanes.ci(item, @local_ci)}
           state={:merged}
         />
         <p :if={@items == []} class="lane-empty">{empty_copy(:merged)}</p>

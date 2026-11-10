@@ -26,9 +26,9 @@ defmodule AgentBoardWeb.BoardComponents.Card do
           issue={hd(@item.closes_issues)}
         />
       </div>
-      <div :if={review_badge(@item) || checks_badge(@item)} class="item-signals">
+      <div class="item-signals">
         <span :if={review_badge(@item)} class={review_badge_class(@item)}>{review_badge(@item)}</span>
-        <span :if={checks_badge(@item)} class={checks_badge_class(@item)}>{checks_badge(@item)}</span>
+        <span class={ci_class(@ci)} title={elem(@ci, 2)}>{elem(@ci, 1)}</span>
       </div>
       <DataAge.stamp
         id={"#{@id}-age"}
@@ -40,4 +40,10 @@ defmodule AgentBoardWeb.BoardComponents.Card do
     </article>
     """
   end
+
+  # The same answer the merge log gives (`AgentBoard.Lanes.ci/2`): the local
+  # gate first, and a red remote check alone is unknown, not a failure.
+  defp ci_class({"pass", _note, _title}), do: "text-success"
+  defp ci_class({"fail", _note, _title}), do: "text-error"
+  defp ci_class(_ci), do: "text-base-content/75"
 end

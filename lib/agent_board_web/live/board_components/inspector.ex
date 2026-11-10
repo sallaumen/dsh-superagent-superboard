@@ -17,6 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :tab, :string, required: true
   attr :activity, :list, required: true
   attr :calls, :list, required: true
+  attr :calls_total, :integer, default: 0
   attr :executions, :list, default: []
   attr :runner_executions, :list, default: []
   attr :dispatch_paused, :boolean, default: false
@@ -47,7 +48,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     tabs = [
       {"conversa", gettext("Conversation"), length(assigns.comments)},
       {"atividade", gettext("Activity"), length(assigns.activity)},
-      {"chamadas", gettext("AI calls"), length(assigns.calls)},
+      {"chamadas", gettext("AI calls"), max(assigns.calls_total, length(assigns.calls))},
       {"execucoes", gettext("Executions"), executions_count(assigns)},
       {"pr", "PR", nil}
     ]
@@ -111,9 +112,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             phx-value-tab="chamadas"
             title={gettext("The board's own model calls for this task")}
           >
-            {ngettext("%{count} call", "%{count} calls", length(@calls), count: length(@calls))} · {total_cost(
-              @totals
-            )}
+            {calls_count(@calls, @calls_total)} · {total_cost(@totals)}
           </button>
           <button
             :if={match?(%{status: :measured}, @usage)}
@@ -305,7 +304,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <% "atividade" -> %>
             <.activity_tab activity={@activity} offset={@tz_offset} />
           <% "chamadas" -> %>
-            <.calls_tab calls={@calls} totals={@totals} usage={@usage} offset={@tz_offset} />
+            <.calls_tab
+              calls={@calls}
+              calls_total={@calls_total}
+              totals={@totals}
+              usage={@usage}
+              offset={@tz_offset}
+            />
           <% "execucoes" -> %>
             <.executions_tab
               executions={@executions}
@@ -757,9 +762,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="2">
-                {length(@calls)} {if length(@calls) == 1, do: "chamada", else: "chamadas"}
-              </td>
+              <td colspan="2">{calls_count(@calls, @calls_total)}</td>
               <td class="r">{tokens(@totals.input)}</td>
               <td class="r">{tokens(@totals.output)}</td>
               <td class="r">{duration(@totals.duration)}</td>
@@ -771,6 +774,11 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
       <p :if={@calls != []} class="ab-meta">
         {gettext("Calls made by the board.")}
+        <span :if={@calls_total > length(@calls)} id="calls-window">{gettext(
+          "The table and its totals cover only the newest %{shown} of %{count}.",
+          shown: length(@calls),
+          count: @calls_total
+        )}</span>
         <span :if={@totals.missing_cost}>{gettext(
           "Missing cost appears as —; the total is a minimum."
         )}</span>
@@ -1159,6 +1167,14 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp pr_review("changes_requested"), do: gettext("changes requested")
   defp pr_review("pending"), do: gettext("pending review")
   defp pr_review(_state), do: gettext("no review")
+
+  # A task with more calls than the board loads says so: the sum beside this
+  # count is the sum of the calls shown, never of all of them.
+  defp calls_count(calls, total) when total > length(calls),
+    do: gettext("newest %{shown} of %{count} calls", shown: length(calls), count: total)
+
+  defp calls_count(calls, _total),
+    do: ngettext("%{count} call", "%{count} calls", length(calls), count: length(calls))
 
   defp call_totals(calls) do
     %{

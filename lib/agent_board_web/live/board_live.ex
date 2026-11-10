@@ -157,6 +157,7 @@ defmodule AgentBoardWeb.BoardLive do
         inspector_tab: "conversa",
         inspector_activity: [],
         inspector_calls: [],
+        inspector_calls_total: 0,
         inspector_executions: [],
         inspector_executions_for: nil,
         inspector_runner_executions: [],
@@ -458,6 +459,7 @@ defmodule AgentBoardWeb.BoardLive do
         assign(socket,
           inspector_activity: [],
           inspector_calls: [],
+          inspector_calls_total: 0,
           inspector_executions: [],
           inspector_executions_for: nil,
           inspector_runner_executions: [],
@@ -493,6 +495,7 @@ defmodule AgentBoardWeb.BoardLive do
           [
             inspector_activity: Board.task_activity(task, pr),
             inspector_calls: AI.recent_for_task(task.id),
+            inspector_calls_total: AI.count_for_task(task.id),
             inspector_executions: executions,
             inspector_executions_for:
               if(socket.assigns.inspector_tab == "execucoes", do: task.id, else: nil),
@@ -694,6 +697,7 @@ defmodule AgentBoardWeb.BoardLive do
       inspector_tab: "conversa",
       inspector_activity: [],
       inspector_calls: [],
+      inspector_calls_total: 0,
       inspector_pr: nil,
       sync_snapshot: %{last_attempt: nil, last_success: nil},
       freshness: unknown_freshness(),
@@ -754,6 +758,7 @@ defmodule AgentBoardWeb.BoardLive do
             inspector_tab: "conversa",
             inspector_activity: [],
             inspector_calls: [],
+            inspector_calls_total: 0,
             inspector_pr: nil,
             toast: nil,
             highlight_changes: false,
@@ -2304,6 +2309,7 @@ defmodule AgentBoardWeb.BoardLive do
        comments: [],
        inspector_activity: [],
        inspector_calls: [],
+       inspector_calls_total: 0,
        inspector_pr: nil
      )
      |> push_event("panel_close", %{})}
@@ -3458,6 +3464,7 @@ defmodule AgentBoardWeb.BoardLive do
             tab={@inspector_tab}
             activity={@inspector_activity}
             calls={@inspector_calls}
+            calls_total={@inspector_calls_total}
             executions={@inspector_executions}
             runner_executions={@inspector_runner_executions}
             dispatch_paused={@inspector_dispatch_paused}
@@ -3609,6 +3616,7 @@ defmodule AgentBoardWeb.BoardLive do
               id="merged-column-history"
               items={@board.merged}
               has_more={@board.merged_has_more}
+              local_ci={@local_ci}
             />
           </BoardComponents.Concluded.history>
         </BoardComponents.Panel.shell>

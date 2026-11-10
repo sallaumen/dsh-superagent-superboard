@@ -137,6 +137,11 @@ defmodule AgentBoard.AI do
     )
   end
 
+  @doc "How many calls one task has in all; `recent_for_task/2` shows the newest."
+  @spec count_for_task(integer()) :: non_neg_integer()
+  def count_for_task(task_id),
+    do: Repo.aggregate(from(c in Call, where: c.task_id == ^task_id), :count)
+
   @doc "Whether the engine is configured."
   @spec status() :: AgentBoard.AI.Engine.status()
   def status, do: engine().status()
