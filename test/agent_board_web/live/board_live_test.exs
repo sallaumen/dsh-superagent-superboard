@@ -1056,6 +1056,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#board-settings-panel label", "Dono")
     assert has_element?(view, "#board-settings-panel label", "Repositório")
     assert has_element?(view, "#board-settings-panel #track-repo[phx-submit=add_project]")
+    # The hint belongs to the folder field, so it is laid out with it.
+    assert has_element?(view, ".ab-project-add__path #add-project-path[aria-describedby]")
+    assert has_element?(view, ".ab-project-add__path #add-project-path-hint")
   end
 
   test "the board keeps one lane structure with an empty or full queue", %{conn: conn} do
