@@ -289,6 +289,34 @@ defmodule AgentBoard.SuperagentsTest do
              Board.events(repo) |> Enum.filter(&(&1.kind == "provision_error"))
   end
 
+  test "a checkout that is not there gives the repository back to the form", %{repo: repo} do
+    {:ok, source_repo} = Board.add_repository("fixture", "source")
+
+    {:ok, source} =
+      Superagents.create(%{
+        repository_id: source_repo.id,
+        profile: "superagent-source",
+        port: 3195,
+        state_dir: "/tmp/source-superagent-path"
+      })
+
+    assert {:error, :checkout_missing} =
+             Superagents.provision(
+               repo,
+               source,
+               %{path: "/tmp/typo", fail: :checkout_missing},
+               FakeProvisioner
+             )
+
+    assert Superagents.get_by_repository(repo) == nil
+
+    assert [%{payload: %{"reason" => "no git checkout at /tmp/typo"}}] =
+             Board.events(repo) |> Enum.filter(&(&1.kind == "provision_error"))
+
+    assert {:ok, %Superagent{}} =
+             Superagents.provision(repo, source, %{path: "/tmp/checkout"}, FakeProvisioner)
+  end
+
   test "an agent that would not stop keeps its card and is not restarted", %{repo: repo} do
     {:ok, source_repo} = Board.add_repository("fixture", "source")
 

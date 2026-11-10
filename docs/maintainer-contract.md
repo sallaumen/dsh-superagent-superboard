@@ -820,7 +820,8 @@ that watches one GitHub repository and picks the issues whose body mentions
   agent's code is never followed), keeps the row in `error` with the agent's own
   reason, and records it in the repository's activity. A failed project is not
   started by the ticker or by "Ligar": "Tentar de novo" runs it again with the
-  source and checkout stored on the row, one attempt at a time. An agent that
+  source and checkout stored on the row, one attempt at a time. A checkout that
+  is not there removes the row instead, so the path can be typed again. An agent that
   will not stop keeps its files and an ordinary row in `error`, desired
   `stopped`. The work outlives the page that started it; a board restart in the
   middle is not undone, and **Arquivar** clears what it leaves.
