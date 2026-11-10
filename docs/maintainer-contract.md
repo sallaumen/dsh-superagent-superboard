@@ -758,6 +758,8 @@ tree; `release_task` is the second standing authorization, for the actor
 - **Tokens are measured**: each `assistant/message` counts once (by
   `data.message.id`), summing `data.usage` input, output, cache read and
   cache write. Input excludes cache reads.
+- A session that switched models pays each model's price (`Harness.parse/2`,
+  `parts`), as the ledger does, which groups by model.
 - **Cost is an estimate** from `AI.Providers` prices, matched by model id
   (`prices_for_model/1`), the rates DeepSeek publishes (source and date in the
   table). DeepSeek charges half outside its peak hours (`Providers.peak?/1`):

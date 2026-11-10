@@ -73,7 +73,25 @@ defmodule AgentBoard.Usage.HarnessTest do
       assert %{model: "deepseek-flash", requests: 1} = Harness.parse(Enum.join(lines, "\n"))
     end
 
-    test "a session that switched models is unpriced, not priced at the last one" do
+    test "a session on two models pays each model's price" do
+      at = DateTime.to_unix(~U[2026-11-10 12:00:00Z], :millisecond)
+
+      session =
+        [
+          ~s({"type":"model/selection","seq":1,"data":{"model":"deepseek-flash"}}),
+          timed(assistant_line("a", 1_000_000, 0, 0), at),
+          ~s({"type":"model/selection","seq":2,"data":{"model":"deepseek-v4-pro"}}),
+          timed(assistant_line("b", 1_000_000, 0, 0), at)
+        ]
+        |> Enum.join("\n")
+        |> Harness.parse()
+
+      assert session.model == nil
+      assert session.input == 2_000_000
+      assert Harness.cost([session]) == %{micros: 810_000, complete?: true}
+    end
+
+    test "a session that switched to an unlisted model counts what it can, as a minimum" do
       lines = [
         session_line("worker-mixed", 0),
         ~s({"type":"model/selection","seq":1,"data":{"provider":"deepseek-account","model":"deepseek-flash"}}),
@@ -85,7 +103,8 @@ defmodule AgentBoard.Usage.HarnessTest do
       usage = Harness.parse(Enum.join(lines, "\n"))
 
       assert usage.model == nil
-      assert Harness.cost([usage]) == nil
+      assert %{complete?: false, micros: micros} = Harness.cost([usage])
+      assert micros > 0
     end
 
     test "a delegated session is a subagent" do
