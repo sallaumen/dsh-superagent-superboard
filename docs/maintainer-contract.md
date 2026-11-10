@@ -948,7 +948,11 @@ minutes in its own Oban queue, `usage`. An execution is a Claude Code
 session (`sessionId`), a Codex thread (its id) or a harness ticket (its
 folder under `~/.dsh/sessions`). A row also keeps the cwd, branch and model,
 and counts messages (`requests`), input without the cache, output, cache
-read and cache write tokens, with the first and last time.
+read and cache write tokens, with the first and last time. For Claude Code
+it also keeps the part of the cache write that was a 1-hour write
+(`cache_write_1h_tokens`, part of `cache_write_tokens`, never added to it):
+Claude Code charges it at twice the input price and a 5-minute write at
+1.25 times, and `Usage.Costs` prices each at its own rate.
 
 | Source | Files | Reader | Rule |
 |---|---|---|---|
@@ -960,8 +964,11 @@ read and cache write tokens, with the first and last time.
   mtime; a new run reads the files oldest by creation/rename (`ctime`), so a
   moved copy is read after the original even when its mtime is older. A Claude Code transcript that only grew is read from the end of its
   last complete line, when the 4 KB before that point still hash the same;
-  otherwise from the start. A Codex thread is read whole when any of its
-  files changed. Files are read oldest first, so a session's original is
+  otherwise from the start. A transcript read by an older Claude Code reader
+  (`usage_files.reader` below the current one) is read once more in full, so
+  a count the reader learned later reaches the rows already stored; until
+  then those rows hold zero for it and are priced as a minimum. A Codex
+  thread is read whole when any of its files changed. Files are read oldest first, so a session's original is
   stored before a later copy.
 - **Reading the same files again changes no row.** A ledger row is written
   only when its numbers change, and a message only when a count grows

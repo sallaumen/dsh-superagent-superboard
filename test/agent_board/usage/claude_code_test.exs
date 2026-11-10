@@ -30,6 +30,20 @@ defmodule AgentBoard.Usage.ClaudeCodeTest do
       assert m2.cache_read == 900 and m2.cache_write == 40 and m2.input == 7
     end
 
+    # A 1-hour cache write costs more than a 5-minute one, so its part of the
+    # write is read apart, and never as more than the write itself.
+    test "reads the 1-hour part of a cache write", %{root: root} do
+      path =
+        write(root, "proj/s1.jsonl", [
+          assistant_line("m1", "s1", cache_write: 50),
+          assistant_line("m2", "s1", cache_write: 40)
+        ])
+
+      assert {:ok, %{messages: [m1, m2]}} = ClaudeCode.read_file(path)
+      assert m1.cache_write == 50 and m1.cache_write_1h == 50
+      assert m2.cache_write == 40 and m2.cache_write_1h == 40
+    end
+
     test "skips synthetic messages and counts the lines it cannot read", %{root: root} do
       path =
         write(root, "proj/s1.jsonl", [

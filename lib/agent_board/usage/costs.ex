@@ -28,7 +28,8 @@ defmodule AgentBoard.Usage.Costs do
           optional(:input_tokens) => non_neg_integer(),
           optional(:output_tokens) => non_neg_integer(),
           optional(:cache_read_tokens) => non_neg_integer(),
-          optional(:cache_write_tokens) => non_neg_integer()
+          optional(:cache_write_tokens) => non_neg_integer(),
+          optional(:cache_write_1h_tokens) => non_neg_integer()
         }
 
   # Claude Code's own list price per million tokens, in US$: input and output
@@ -37,8 +38,10 @@ defmodule AgentBoard.Usage.Costs do
   # samples did not separate the rates uses the family's main model; a model
   # absent here is unpriced, not free. opus-4-8, fable-5-2 and haiku-5-5 were
   # read on 2026-11-10 from lines that split 5-minute and 1-hour cache writes,
-  # where the price is exact. Haiku's web searches (US$ 0.01 each there) are not in
-  # the ledger, so a haiku row is a minimum.
+  # where the price is exact. The opus-4-8 lines are of sessions started from
+  # 2026-10-02 to 2026-11-07: its older rows use the same rate unverified.
+  # Haiku's web searches (US$ 0.01 each there) are not in the ledger, so a
+  # haiku row is a minimum.
   @claude_prices %{
     "claude-opus-5-5" => %{input: 2.30, output: 30.00},
     "claude-opus-5-5[1m]" => %{input: 2.30, output: 30.00},
@@ -53,10 +56,12 @@ defmodule AgentBoard.Usage.Costs do
   }
 
   # Anthropic's cache multipliers over the input price: a read costs 10 % of
-  # the input, a write 125 % (the 5-minute cache). A 1-hour write costs more,
-  # so a row that wrote cache is still a minimum.
+  # the input, a 5-minute write 125 % and a 1-hour write 200 %. A row read
+  # before the ledger told the two writes apart holds no 1-hour count and is
+  # priced at the 5-minute rate, a minimum, until its file is read again.
   @cache_read_multiplier 0.10
   @cache_write_multiplier 1.25
+  @cache_write_1h_multiplier 2.00
 
   @doc "The sources whose cost/2 is in US$."
   def usd_sources, do: ["dsh", "claude_code"]
@@ -67,6 +72,7 @@ defmodule AgentBoard.Usage.Costs do
   """
   @spec prices(String.t(), String.t() | nil) ::
           %{
+            optional(:cache_write_1h) => number(),
             input: number(),
             output: number(),
             cache_read: number() | nil,
@@ -98,7 +104,8 @@ defmodule AgentBoard.Usage.Costs do
           input: input,
           output: output,
           cache_read: input * @cache_read_multiplier,
-          cache_write: input * @cache_write_multiplier
+          cache_write: input * @cache_write_multiplier,
+          cache_write_1h: input * @cache_write_1h_multiplier
         }
     end
   end
@@ -138,6 +145,8 @@ defmodule AgentBoard.Usage.Costs do
         cache_read = count(row[:cache_read_tokens])
         cache_write = count(row[:cache_write_tokens])
 
+        one_hour = one_hour_writes(row, prices, cache_write)
+
         complete? =
           (cache_read == 0 or prices.cache_read != nil) and
             (cache_write == 0 or prices.cache_write != nil)
@@ -147,7 +156,8 @@ defmodule AgentBoard.Usage.Costs do
             input * prices.input +
               output * prices.output +
               cache_read * (prices.cache_read || 0) +
-              cache_write * (prices.cache_write || 0)
+              (cache_write - one_hour) * (prices.cache_write || 0) +
+              one_hour * (prices[:cache_write_1h] || 0)
           )
 
         {micros, complete?}
@@ -156,6 +166,12 @@ defmodule AgentBoard.Usage.Costs do
         nil
     end
   end
+
+  # The 1-hour part of the write, for a source with a rate for it.
+  defp one_hour_writes(row, %{cache_write_1h: _rate}, cache_write),
+    do: min(count(row[:cache_write_1h_tokens]), cache_write)
+
+  defp one_hour_writes(_row, _prices, _cache_write), do: 0
 
   defp count(n) when is_integer(n) and n > 0, do: n
   defp count(_), do: 0
