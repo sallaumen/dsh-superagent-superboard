@@ -142,6 +142,40 @@ defmodule AgentBoard.SyncRepoTest do
     assert Repo.one(Task).body == long
   end
 
+  test "an issue's edited body reaches the board on the next sync", %{repo: repo} do
+    for body <- ["first words", "edited words"] do
+      stub_github(fn conn ->
+        case conn.request_path do
+          "/repos/sallaumen/arena-rogue/issues" ->
+            Req.Test.json(conn, [Map.put(issue(7, "open"), "body", body)])
+
+          _ ->
+            Req.Test.json(conn, [])
+        end
+      end)
+
+      assert Sync.sync_repo(client(), repo) == :ok
+    end
+
+    assert Repo.one(Task).body == "edited words"
+  end
+
+  test "a sync does not make an unchanged task look updated now", %{repo: repo} do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(7, "open")])
+        _ -> Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    long_ago = ~U[2026-01-01 00:00:00Z]
+    Repo.update_all(Task, set: [updated_at: long_ago])
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert Repo.one(Task).updated_at == long_ago
+  end
+
   test "the sync stores the PR's branch and the issues its body closes", %{repo: repo} do
     pull = fn number, head, body ->
       %{
