@@ -64,7 +64,7 @@ Class: **D** confirmed defect, **F** UX friction with observable impact, **S** p
 | 8 | D | Inspector header: "atualizado há há 7 min" | `aside.ab-insp .ab-insp__facts` | fixed |
 | 9 | D | Throughput tile "concluído" beside "Issues abertas", "PRs mesclados" (the contract names it "Concluídas") | `#fold-flow` | fixed |
 | 10 | D | English is not complete: with the default locale the board mixes "Needs you" with "Desde hoje às 10:13 nada mudou", "Ontem, 9 nov", "sem revisão", "CI local ?", "desde yesterday at 08:00", "US$ 5,10". pt-BR is coherent. The strings live in `Lanes`, `Board` and `Time`, not in gettext | English walk at 1920 | proposal P5 |
-| 11 | F | Ultrawide: above a 2204 px window the extra width is margin only. The rail stays at x = 0 and the inspector at the right edge: at 5120 the content is 1458 px from the rail and 1190 px from the inspector, and it shifts 252 px when the inspector opens | `board-working-5120x1440.png`, `inspector-open-5120x1440.png` | fixed in the second delivery (P4) |
+| 11 | F | Ultrawide: above a 2204 px window the extra width is margin only. The rail stays at x = 0 and the inspector at the right edge: at 5120 the content is 1458 px from the rail and 1190 px from the inspector, and it shifts 252 px when the inspector opens | `board-working-5120x1440.png`, `inspector-open-5120x1440.png` | fixed in the third delivery (two panes) |
 | 12 | F | The same PR reads "CI FALHOU: GATES" in red in History (GitHub Actions, blocked by billing) and "CI local ok" in the merge log (#195) | both captures | proposal P6 |
 | 13 | F | Activity shows the raw kind `task_released`, and reads only the repository's last 50 events: an older task loses its own | `Board.task_repo_events/2` | proposal P6 |
 | 14 | F | DeepSeek cost is always `≥`: cache reads have no price, and on the sampled task they were 48.4 M tokens against 316 k of input. The minimum can be far from the cost | `before-inspector-cost-1920.png` | proposal P3c |
@@ -74,7 +74,7 @@ Class: **D** confirmed defect, **F** UX friction with observable impact, **S** p
 | 18 | S | A merged task's inspector still offers Perguntar, Parar and Arquivar | `after-inspector-cost-1920.png` | owner's call |
 | 19 | S | History keeps the old look: spaced capitals in "PRS MESCLADOS", bars in the primary blue | `after-history-panel-1920.png` | with P2 |
 | 20 | S | "Agente fora do ar" is the label and the title of the same card | `state-frozen-agent-offline-1920.png` | taste |
-| 21 | S | Opening the inspector above 2000 px widens the rail from 224 to 240 px | `board.css` `@container board (min-width: 1880px)` | gone from 2204 px up (P4); still there between 2000 and 2203 |
+| 21 | S | Opening the inspector above 2000 px widens the rail from 224 to 240 px | `board.css` `@container board (min-width: 1880px)` | still there |
 
 No finding blocks the main task on the current lanes: nothing overflows, is cut or is out of reach at any
 width tested, and no control lost its focus ring.
@@ -92,7 +92,7 @@ All in the web layer; no query, schema, sync, dispatch or click destination chan
 - Tests: `inspector_test.exs` (sub-cent), `executors_test.exs` (count), `board_live_test.exs` (partial
   trend; four assertions that pinned the English badges in a pt-BR render now assert the translation).
 
-## Second delivery: P1, P3a and P4
+## Second delivery: P1 and P3a (P4 rejected)
 
 The owner approved the three small proposals on 2026-11-10.
 
@@ -105,23 +105,67 @@ The owner approved the three small proposals on 2026-11-10.
 - **P3a.** The inspector header says "1 chamada · < $0.01" and "executor ≥ $0.17", two links to the
   AI calls tab, from data the inspector already loads. Two numbers, never a sum; the executor one
   appears only with a measured reading (`after-inspector-header-cost-1920.png`).
-- **P4.** From a 2204 px window up (the rail plus the cap) rail, content and inspector are one centred
-  block. The content sits where it sat; the rail and the inspector came to it. From 3244 px up opening
-  the inspector moves nothing; between 2204 and 3243 the block shifts as one piece, as the content alone
-  did before. No horizontal scroll at 2204, 2560, 3440 or 5120
-  (`after-board-5120x1440.png`, `after-inspector-open-3440x1440.png`, `after-inspector-open-5120x1440.png`).
-
-| Window | Rail | Content | Inspector | Moves on open |
-|---|---|---|---|---|
-| 2560 | 178–402 | 402–2382 | fills to the edge | block, 178 px |
-| 3440 | 618–842 | 842–2822 | 2822–3342 | nothing |
-| 5120 | 1458–1682 | 1682–3662 | 3662–4182 | nothing |
+- **P4, rejected.** #520 centred rail, content and inspector as one block. On the owner's 3440 px window
+  that left the rail 618 px from the edge beside an empty rectangle: the margin had moved, the width was
+  still unused. The validation only checked that nothing overflowed. Reverted in #521; replaced by the
+  third delivery below.
 
 The link adds one line under each such row: the merged band is about 90 px taller at 1920.
 
+## Third delivery: a layout that uses the width
+
+Workflow `responsive-layout` (kit 0.8.0, medium). The 1980 px cap is gone: the board fills `main` at
+every width, and from 2500 px of content the same document is arranged in two panes.
+
+| Content of `main` | Arrangement |
+|---|---|
+| below 2500 px (a 2560 window: 2224) | one flow, as before, now without side margins |
+| 2500 px and up (3440, 3840, 5120) | left pane: header, summary, context, lanes, and Vazão under them in 4 × 2. Right pane: Mesclados, seven days with up to eight merges each |
+| 2500 to 2859 px (3440 with the inspector open) | same panes, lanes in two columns |
+
+- The document order never changes (work, merged, throughput), so nothing differs for a narrower
+  window, a phone or a screen reader. `.ab-cols` became `.ab-stage`, with the header and context
+  inside `.ab-pane--work`.
+- **More of the record.** A day showed three merges and "and 26 more". `Lanes.merge_log/2` now also
+  hands the next five (`extra`, `more_wide`); a wide window shows them, with its own "8 of 29" and
+  "and 21 more". They come from the PRs the log already read: no query.
+- **Throughput in 4 × 2** under the lanes: 350 px cells at 3440, where the Cycle table and the
+  Parallelism source no longer cut their text (finding 16, on wide windows).
+- **Hoje** from 2000 px of content: what needs the owner on the left, projects and the week on the
+  right, the day's spending beside the title. It was a 1100 px column in a 3216 px area.
+- Fixed in passing: "Source" overflowed its 34 px column in English and read "Sourceorquestrador".
+
+Measured (WebKit, emulated): no horizontal scroll and no hard-clipped text at 3440×1440, 3840×1080,
+5120×1440, 2560×1440, 1920, 1366 and 390. At 3440×1440 a working board fits without vertical scroll
+(work pane ends at 816 px, throughput at 1158, merged at 1058). Lane, day and cell columns at 1920,
+1366 and 390 are the same as before.
+
+| Window | Left pane | Right pane | Lanes | Days | Cells |
+|---|---|---|---|---|---|
+| 3440 | 280–1724 | 1724–3384 | 401/401/521 | 7 × 231 | 4 × 350 |
+| 3840 | 280–1910 | 1910–3784 | 458/458/595 | 7 × 262 | 4 × 396 |
+| 5120 | 280–2505 | 2505–5064 | 638/638/829 | 7 × 360 | 4 × 545 |
+| 3440 + inspector | 296–1490 | 1490–2864 | 557/557 | 7 × 190 | 4 × 287 |
+
+Known costs, said plainly:
+
+- On an idle board the left pane ends early (451 px at 3440×1317) while the record runs to 974 px: the
+  space under the throughput is empty because there is no work to show.
+- Tab order is the document's: work, merged, then throughput, which sits under the lanes on the left.
+- Opening a task at 3440 takes the lanes from three columns to two, so the queue moves 269 px left. The
+  old layout moved the content 252 px on the same click.
+- At 5120 the panes are 2200 and 2560 px wide: sparse, though nothing stretches. Only emulated.
+- At 3440 with the inspector open a day column is 190 px, the narrowest it gets.
+
+Captures in `wide/`: `colmex-idle-en-dark-3440x1317.png` (the owner's case: idle, English, dark),
+`busy-3440x1440.png`, `busy-dark-3440x1440.png`, `busy-3840x1080.png`, `busy-5120x1440.png`,
+`busy-2560x1440.png`, `busy-1920x1080.png`, `inspector-3440x1440.png`, `inspector-5120x1440.png`,
+`hoje-3440x1440.png`, `hoje-2560x1440.png`.
+
 ## Proposals, in priority order
 
-Each one changes behavior, a query or the layout. P1, P3a and P4 are implemented (above); the rest wait.
+Each one changes behavior, a query or the layout. P1 and P3a are implemented and P4 was replaced by
+the third delivery (above); the rest wait.
 
 ### P1 — From a merged PR to its task (small)
 

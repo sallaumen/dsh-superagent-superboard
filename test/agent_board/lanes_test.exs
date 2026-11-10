@@ -619,6 +619,19 @@ defmodule AgentBoard.LanesTest do
     assert item.ciTitle =~ "billing"
   end
 
+  test "a day keeps three merges and offers five more to a wide window" do
+    {:ok, repo} = Board.add_repository("fixture", "wide-day")
+    now = ~U[2026-11-06 15:00:00Z]
+    for n <- 1..10, do: merged(repo, n, "PR #{n}", "success", DateTime.add(now, -n, :minute))
+
+    group = hd(Lanes.merge_log(repo, now: now, tz_offset: 0).groups)
+
+    assert Enum.map(group.items, & &1.number) == [1, 2, 3]
+    assert Enum.map(group.extra, & &1.number) == [4, 5, 6, 7, 8]
+    assert group.more == 7
+    assert group.more_wide == 2
+  end
+
   test "a red remote check without local evidence is quiet, not a red day" do
     {:ok, repo} = Board.add_repository("fixture", "remote-only")
     now = ~U[2026-11-06 15:00:00Z]

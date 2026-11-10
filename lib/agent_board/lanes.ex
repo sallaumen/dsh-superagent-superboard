@@ -14,6 +14,8 @@ defmodule AgentBoard.Lanes do
 
   @queue_limit 8
   @day_limit 3
+  # A wide window shows this many per day; the rows past @day_limit are `extra`.
+  @day_reach 8
   @log_days 7
 
   @doc """
@@ -674,7 +676,12 @@ defmodule AgentBoard.Lanes do
           label: Time.day_label(day.date, today),
           n: length(day_pulls),
           more: max(length(day_pulls) - @day_limit, 0),
-          items: Enum.map(shown, &merged_pr(&1, offset, local_ci))
+          more_wide: max(length(day_pulls) - @day_reach, 0),
+          items: Enum.map(shown, &merged_pr(&1, offset, local_ci)),
+          extra:
+            day_pulls
+            |> Enum.slice(@day_limit, @day_reach - @day_limit)
+            |> Enum.map(&merged_pr(&1, offset, local_ci))
         }
       end)
 

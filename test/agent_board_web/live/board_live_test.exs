@@ -1082,7 +1082,15 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert position(lanes, "sec-now") < position(lanes, "sec-needs")
     assert position(lanes, "sec-needs") < position(lanes, "sec-queue")
 
+    # One stage: the work (header, context, lanes), then the record. A wide
+    # window puts them side by side; the order in the document never changes.
+    assert has_element?(view, ".ab-stage > .ab-pane--work .ab-lanes")
+    assert has_element?(view, ".ab-stage > .ab-pane--work > header.ab-top")
+    assert has_element?(view, ".ab-stage > #sec-log")
+    assert has_element?(view, ".ab-stage > #fold-flow")
+
     html = render(view)
+    assert position(html, "sec-queue") < position(html, "sec-log")
     assert position(html, "sec-log") < position(html, "fold-flow")
   end
 
@@ -1183,7 +1191,14 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert day =~ "3 de 15"
     assert day =~ "+3"
     assert day =~ "e mais 12"
-    assert length(Regex.scan(~r/class="ab-pr"/, day)) == 3
+
+    tree = LazyHTML.from_fragment(day)
+    # Three rows at every width; five more only a wide window shows, with
+    # their own count and their own "more".
+    assert tree |> LazyHTML.query(".ab-day > .ab-pr") |> Enum.count() == 3
+    assert tree |> LazyHTML.query(".ab-day__extra .ab-pr") |> Enum.count() == 5
+    assert tree |> LazyHTML.query(".ab-day__count--wide") |> LazyHTML.text() =~ "8 de 15"
+    assert tree |> LazyHTML.query(".ab-day__more--wide") |> LazyHTML.text() =~ "e mais 7"
 
     dots =
       day
