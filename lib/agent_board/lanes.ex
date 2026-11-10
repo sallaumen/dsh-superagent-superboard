@@ -772,6 +772,7 @@ defmodule AgentBoard.Lanes do
           date: date,
           label: Time.day_label(date, today),
           n: length(day_pulls),
+          issues: delivered(day_pulls),
           fail: Enum.count(day_pulls, &(local_state(&1, local_ci) == :fail)),
           ok: Enum.count(day_pulls, &(local_state(&1, local_ci) == :pass)),
           today: date == today

@@ -7470,12 +7470,6 @@ msgstr "PR #%{number}: %{title}. Abrir a tarefa #%{issue} no board"
 msgid "PR #%{number} on GitHub (opens in a new tab)"
 msgstr "PR #%{number} no GitHub (abre em outra aba)"
 
-#: lib/agent_board_web/live/board_components/merge_log.ex:239
-#, elixir-autogen, elixir-format
-msgid "%{amount} issue"
-msgid_plural "%{amount} issues"
-msgstr[0] "%{amount} issue"
-msgstr[1] "%{amount} issues"
 
 #: lib/agent_board_web/live/board_components/merge_log.ex:244
 #, elixir-autogen, elixir-format
@@ -7494,10 +7488,6 @@ msgstr "Issues entregues hoje"
 msgid "closed by a merged PR"
 msgstr "fechadas por um PR mesclado"
 
-#: lib/agent_board_web/live/board_components/merge_log.ex:237
-#, elixir-autogen, elixir-format
-msgid "%{issues} delivered"
-msgstr "%{issues} entregues"
 
 #: lib/agent_board_web/live/board_components/merge_log.ex:243
 #, elixir-autogen, elixir-format
@@ -7623,3 +7613,16 @@ msgstr "A voz também fala este idioma."
 #, elixir-autogen, elixir-format
 msgid "creates at once, without asking; \"undo\" closes the issue for 10 minutes"
 msgstr "cria na hora, sem perguntar; \"desfaz\" fecha a issue por 10 minutos"
+
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "%{amount} issue delivered"
+msgid_plural "%{amount} issues delivered"
+msgstr[0] "%{amount} issue entregue"
+msgstr[1] "%{amount} issues entregues"
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "no issues delivered"
+msgstr "nenhuma issue entregue"

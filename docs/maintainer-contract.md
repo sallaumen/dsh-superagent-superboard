@@ -1164,7 +1164,10 @@ flowchart TB
   delivered today" before "PRs merged today" (owner's decision, 2026-11-10:
   an issue is the delivery of value, a PR is how it got there). The
   Throughput tile "Completed" still counts every task that ended done,
-  closed without a merge included.
+  closed without a merge included. Each day in Merged says "N issues
+  delivered · M PRs" too, and the daily summary stores `merged.issues`
+  (distinct repository and issue) and leads its line and its spoken
+  sentence with it; a summary stored before that key falls back to PRs.
 - The tests: `attribution_test.exs` (each rule and keyword) and
   `sync_repo_test.exs` (the columns through the sync, the fork, a session
   attributed by branch).

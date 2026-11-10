@@ -7,8 +7,10 @@ defmodule AgentBoard.DailySummary.Facts do
 
   The map has string keys (it is stored as JSON in `daily_summaries`):
 
-    * `"merged"`: `%{"count", "items"}`, pull requests merged in the window
-      (GitHub's `merged_at`), newest first, at most five items;
+    * `"merged"`: `%{"count", "issues", "items"}`, pull requests merged in
+      the window (GitHub's `merged_at`), newest first, at most five items;
+      `"issues"` is the issues they closed, each once (a row stored before
+      it has no such key);
     * `"needs"`: `%{"blocked", "waiting", "items"}`, what needs the owner at
       generation time (blocked; questions and reviews whose PR is still
       open), stopped and archived tasks left out, at most three items;
@@ -67,11 +69,26 @@ defmodule AgentBoard.DailySummary.Facts do
           on: r.id == p.repository_id,
           where: p.state == "merged" and p.merged_at >= ^since and p.merged_at < ^until,
           order_by: [desc: p.merged_at, desc: p.id],
-          select: %{number: p.number, title: p.title, url: p.url, owner: r.owner, name: r.name}
+          select: %{
+            number: p.number,
+            title: p.title,
+            url: p.url,
+            owner: r.owner,
+            name: r.name,
+            repository_id: p.repository_id,
+            closes: p.closes_issues
+          }
       )
+
+    issues =
+      pulls
+      |> Enum.flat_map(fn pull -> Enum.map(pull.closes || [], &{pull.repository_id, &1}) end)
+      |> Enum.uniq()
+      |> length()
 
     %{
       "count" => length(pulls),
+      "issues" => issues,
       "items" =>
         pulls
         |> Enum.take(@merged_items)

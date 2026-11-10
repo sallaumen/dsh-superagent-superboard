@@ -107,6 +107,7 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
       content: %{
         "merged" => %{
           "count" => 2,
+          "issues" => 1,
           "items" => [
             %{
               "repo" => "sallaumen/arena-rogue",
@@ -144,6 +145,7 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
     {:ok, view, _html} = live(conn, @path)
     html = view |> element("#daily-summary") |> render()
 
+    assert html =~ "1 issue entregue"
     assert html =~ "2 PRs mesclados"
     assert has_element?(view, ~s(#daily-summary a[href="u12"]), "#12")
     assert html =~ "1 bloqueada; a sincronização falhou 2 vezes"
