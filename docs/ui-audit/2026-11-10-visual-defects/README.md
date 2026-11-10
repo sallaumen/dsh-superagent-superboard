@@ -87,3 +87,24 @@ database) to see the proposal.
 Left as it is: the composer keeps its own compact header (an icon button
 beside the Esc key), and the last visible row of Merge History is cut by the
 dialog edge because the list scrolls there.
+
+### 3b. One segmented control, and destructive actions with a shape
+
+| What | Before | After |
+|---|---|---|
+| Segmented controls | four sets of rules: Theme and language (joined, 40 px), the Voice choices (a copy of the same), "7 days / 30 days" (two separate 26 px buttons), the Messages filter (sunk track with a raised thumb, 44 px) | one `ab-segmented` / `ab-segment`, joined, the pressed segment in the `you` wash; a 32 px size for the two that sit in a heading |
+| Inspector: Ask, Stop, Archive | Ask bordered; Stop red text; Archive blue text 5 px after Stop | Stop outlined in `halt`; Archive bordered and at the far end of the row |
+| Stop confirmation | "Stop task" and "Cancelar" as bare text | two buttons |
+| Expanded project: Stop, Archive project… | red text, 26 px apart | outlined, 24 px apart |
+| Needs you: "Religar o agente" | red text | outlined, like every other halt action |
+
+- `3-controls-1440-before-after.jpg` (top to bottom: the stop confirmation,
+  the executor window, the project actions; the after column adds the
+  Messages filter)
+
+Left as it is: `ab-btn--sm` is 26 px in dense rows, 32 px in the inspector
+header and 36 to 44 px beside fields of that height; making every button one
+of two heights is a wider change than this fix. "Stop" is still offered on a
+merged task: stopping closes the issue, so removing it is a product decision.
+"Cancelar" is the confirmation's Portuguese default and is fixed with the
+other strings.

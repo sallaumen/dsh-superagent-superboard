@@ -54,7 +54,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           {gettext("Silence that ends your speech")}
         </span>
         <div
-          class="voice-segments"
+          class="ab-segmented"
           role="group"
           aria-labelledby="voice-pause-title"
           aria-describedby="voice-pause-hint"
@@ -62,7 +62,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           <button
             :for={{id, label} <- pauses()}
             type="button"
-            class={["voice-segment", @voice.pause == id && "is-selected"]}
+            class={["ab-segment", @voice.pause == id && "is-selected"]}
             aria-pressed={to_string(@voice.pause == id)}
             phx-click="voice_pause"
             phx-value-pause={id}
@@ -136,11 +136,11 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
       <div class="voice-field">
         <span class="voice-field-label" id="voice-engine-title">{gettext("Voice engine")}</span>
-        <div class="voice-segments" role="group" aria-labelledby="voice-engine-title">
+        <div class="ab-segmented" role="group" aria-labelledby="voice-engine-title">
           <button
             :for={{id, label} <- engines()}
             type="button"
-            class={["voice-segment", @voice.engine == id && "is-selected"]}
+            class={["ab-segment", @voice.engine == id && "is-selected"]}
             aria-pressed={to_string(@voice.engine == id)}
             phx-click="voice_engine"
             phx-value-engine={id}
@@ -223,11 +223,11 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
       <div class="voice-field">
         <span class="voice-field-label" id="voice-replies-title">{gettext("Responses")}</span>
-        <div class="voice-segments" role="group" aria-labelledby="voice-replies-title">
+        <div class="ab-segmented" role="group" aria-labelledby="voice-replies-title">
           <button
             :for={{id, label} <- replies()}
             type="button"
-            class={["voice-segment", @voice.replies == id && "is-selected"]}
+            class={["ab-segment", @voice.replies == id && "is-selected"]}
             aria-pressed={to_string(@voice.replies == id)}
             phx-click="voice_replies"
             phx-value-replies={id}
@@ -257,11 +257,11 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
       <div :if={@voice.configured} class="voice-field">
         <span class="voice-field-label" id="voice-style-title">{gettext("Intonation")}</span>
-        <div class="voice-segments" role="group" aria-labelledby="voice-style-title">
+        <div class="ab-segmented" role="group" aria-labelledby="voice-style-title">
           <button
             :for={{id, label} <- styles()}
             type="button"
-            class={["voice-segment", @voice.style == id && "is-selected"]}
+            class={["ab-segment", @voice.style == id && "is-selected"]}
             aria-pressed={to_string(@voice.style == id)}
             phx-click="voice_style"
             phx-value-style={id}

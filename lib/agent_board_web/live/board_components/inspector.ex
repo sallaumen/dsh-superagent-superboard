@@ -270,7 +270,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <button
             :if={not (@task.stopped or @task.archived)}
             type="button"
-            class="ab-btn ab-btn--sm ab-btn--quiet"
+            class="ab-btn ab-btn--sm ab-insp__archive"
             phx-click="act"
             phx-value-id={@task.id}
             phx-value-action="archive"

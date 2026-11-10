@@ -238,11 +238,15 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
 
       <div class="ab-execution__heading">
         <h4>{gettext("Executors")}</h4>
-        <div class="ab-execution__range" role="group" aria-label={gettext("Executor window")}>
+        <div
+          class="ab-segmented ab-segmented--sm ab-execution__range"
+          role="group"
+          aria-label={gettext("Executor window")}
+        >
           <button
             :for={days <- @days_list}
             type="button"
-            class="ab-btn ab-btn--sm"
+            class="ab-segment"
             aria-pressed={to_string(@days == days)}
             phx-click="days"
             phx-value-days={days}

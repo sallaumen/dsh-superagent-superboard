@@ -114,7 +114,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
           </button>
           <button
             type="button"
-            class="ab-btn ab-btn--sm ab-btn--quiet"
+            class="ab-btn ab-btn--sm"
             phx-click="cancel"
             phx-target={@myself}
           >

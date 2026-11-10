@@ -135,7 +135,7 @@ defmodule AgentBoardWeb.ExecutorsTest do
 
     assert has_element?(
              view,
-             ~s(#settings-execution .ab-execution__range button[aria-pressed="true"][phx-value-days="7"])
+             ~s(#settings-execution .ab-segmented .ab-segment[aria-pressed="true"][phx-value-days="7"])
            )
 
     view
