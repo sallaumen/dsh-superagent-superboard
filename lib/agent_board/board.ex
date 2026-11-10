@@ -14,7 +14,6 @@ defmodule AgentBoard.Board do
     Objective,
     PullRequest,
     Repository,
-    Review,
     Task,
     TaskDependency
   }
@@ -993,6 +992,5 @@ defmodule AgentBoard.Board do
   end
 
   # The schemas are exposed so the sync and the tests can build changesets.
-  def review_changeset(review, attrs), do: Review.changeset(review, attrs)
   def pull_request_changeset(pr, attrs), do: PullRequest.changeset(pr, attrs)
 end

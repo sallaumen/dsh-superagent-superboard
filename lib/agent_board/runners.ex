@@ -58,16 +58,6 @@ defmodule AgentBoard.Runners do
   @spec get_execution(integer()) :: Execution.t() | nil
   def get_execution(id) when is_integer(id), do: Repo.get(Execution, id)
 
-  @doc "The latest execution of a task, or nil."
-  def latest_for_task(task_id) do
-    Repo.one(
-      from e in Execution,
-        where: e.task_id == ^task_id,
-        order_by: [desc: e.id],
-        limit: 1
-    )
-  end
-
   @doc "Every execution of a task, newest first."
   def for_task(task_id) do
     Repo.all(from e in Execution, where: e.task_id == ^task_id, order_by: [desc: e.id])
@@ -688,9 +678,6 @@ defmodule AgentBoard.Runners do
   end
 
   defp executable?(_path), do: false
-
-  @doc "Whether the executor's CLI exists and can be executed."
-  def ready?(executor), do: executable?(binary(executor))
 
   @doc "The CLI path the executor uses."
   def binary("claude"), do: claude_bin()

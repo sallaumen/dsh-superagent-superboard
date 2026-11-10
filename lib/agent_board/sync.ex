@@ -23,7 +23,7 @@ defmodule AgentBoard.Sync do
     Tickets
   }
 
-  alias AgentBoard.Board.{Comment, Commit, PullRequest, Repository, Review, SplitGraph, Task}
+  alias AgentBoard.Board.{Comment, Commit, PullRequest, Repository, SplitGraph, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()), do: client |> run() |> length()
@@ -499,8 +499,6 @@ defmodule AgentBoard.Sync do
         GitHub.reviews(client, repository.owner, repository.name, pull["number"])
       end)
 
-    Enum.each(reviews || [], &upsert_review(repository, pull["number"], &1))
-
     checks =
       safe_fetch(repository, "check_error", pull, fn ->
         GitHub.check_runs(
@@ -548,28 +546,6 @@ defmodule AgentBoard.Sync do
       })
 
       nil
-  end
-
-  defp upsert_review(repository, number, review) do
-    pr_id =
-      Repo.one(
-        from p in PullRequest,
-          where: p.repository_id == ^repository.id and p.number == ^number,
-          select: p.id
-      )
-
-    if pr_id do
-      %Review{pull_request_id: pr_id}
-      |> Review.changeset(%{
-        reviewer: get_in(review, ["user", "login"]) || "unknown",
-        state: String.downcase(review["state"] || ""),
-        submitted_at: to_dt(review["submitted_at"])
-      })
-      |> Repo.insert(
-        on_conflict: :nothing,
-        conflict_target: [:pull_request_id, :reviewer, :submitted_at]
-      )
-    end
   end
 
   # -- the tickets ------------------------------------------------------------
