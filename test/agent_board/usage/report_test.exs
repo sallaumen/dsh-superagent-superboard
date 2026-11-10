@@ -341,6 +341,13 @@ defmodule AgentBoard.Usage.ReportTest do
     assert Costs.cost("codex", [%{model: "gpt-6-sol"}]) == nil
   end
 
+  # Anthropic's published price; the three processes with `cost-state` lines
+  # report US$ 27.53, inside the 22.49-27.79 this price gives for their rows.
+  test "opus-5 has the published list price" do
+    assert %{input: 5.0, output: 25.0, cache_read: 0.5, cache_write: 6.25, cache_write_1h: 10.0} =
+             Costs.prices("claude_code", "claude-opus-5")
+  end
+
   # Read from Claude Code's own `cost-state` lines on 2026-11-10, on the lines
   # that split 5-minute and 1-hour cache writes: fable-5-2 matches on 3 of 3
   # and haiku-5-5 on 7 of 8, to five decimals.

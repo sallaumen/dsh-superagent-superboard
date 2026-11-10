@@ -1110,7 +1110,7 @@ Claude Code charges it at twice the input price and a 5-minute write at
   output includes reasoning in Codex and thinking in Claude Code. A session
   that switched models is unpriced (unknown), never priced at its last
   selection. Claude Code's US$ uses a list-price table per model read from its own `cost-state`
-  entries (observed 2026-11-07; `claude-opus-4-8`, `claude-fable-5-2` and `claude-haiku-5-5` on 2026-11-10): an estimate, never the bill. Codex has no
+  entries (observed 2026-11-07; `claude-opus-4-8`, `claude-fable-5-2` and `claude-haiku-5-5` on 2026-11-10; `claude-opus-5` is Anthropic's published price, which its `cost-state` agrees with): an estimate, never the bill. Codex has no
   US$ and is read as the share of its weekly window.
 - Days are UTC, like the AI budget and the ElevenLabs ledger.
 - A run a restart interrupts is discarded, not repeated; the next run picks
