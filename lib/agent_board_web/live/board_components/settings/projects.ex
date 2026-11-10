@@ -388,18 +388,20 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               required
             />
           </label>
-          <label class="ab-project-add__path">
-            <span>{gettext("Local folder, with .git")}</span>
-            <input
-              id="add-project-path"
-              name="path"
-              placeholder={gettext("~/projects/project-name")}
-              aria-describedby="add-project-path-hint"
-            />
-          </label>
-          <p id="add-project-path-hint" class="ab-project-add__hint">
-            {gettext("Empty uses ~/projects/project-name.")}
-          </p>
+          <div class="ab-project-add__path">
+            <label>
+              <span>{gettext("Local folder, with .git")}</span>
+              <input
+                id="add-project-path"
+                name="path"
+                placeholder={gettext("~/projects/project-name")}
+                aria-describedby="add-project-path-hint"
+              />
+            </label>
+            <p id="add-project-path-hint" class="ab-project-add__hint">
+              {gettext("Empty uses ~/projects/project-name.")}
+            </p>
+          </div>
 
           <label class="ab-project-add__create">
             <input
