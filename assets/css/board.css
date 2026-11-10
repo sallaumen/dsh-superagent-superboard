@@ -146,7 +146,10 @@ body { margin: 0; background: var(--paper); }
 .ab-rail__foot .ab-meta { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 
 /* main */
-.ab-main { padding: 24px 40px 64px; min-width: 0; container-type: inline-size; container-name: main; overflow: auto; }
+/* --ab-pad-x repeats the inline padding so a full-bleed child can reach the edges.
+   The page is its own layer: a floating inspector, which makes the page inert
+   (board_panels.js), always paints above it, sticky children included. */
+.ab-main { --ab-pad-x: 40px; padding: 24px 40px 64px; min-width: 0; container-type: inline-size; container-name: main; overflow: auto; isolation: isolate; }
 .ab-top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
 .ab-top__repo { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .ab-top__repo h1 { margin: 0; font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; }
@@ -418,7 +421,7 @@ body { margin: 0; background: var(--paper); }
 /* ultrawide: wider reading column, panel stays docked */
 @container board (min-width: 1880px) {
   .ab-board[data-inspector="open"] { grid-template-columns: 240px minmax(0, 1fr) 520px; }
-  .ab-main { padding-left: 56px; padding-right: 56px; }
+  .ab-main { --ab-pad-x: 56px; padding-left: 56px; padding-right: 56px; }
 }
 /* medium: panel floats over the content instead of squeezing it */
 @container board (max-width: 1240px) {
@@ -443,14 +446,14 @@ body { margin: 0; background: var(--paper); }
   .ab-compose__head .ab-kbd, .ab-compose__head .ab-top__spacer { display: none; }
   .ab-compose__head .ab-btn { min-width: 40px; min-height: 40px; margin-left: auto; }
   .ab-compose__head .ab-chip { min-width: 0; flex: 0 1 auto; }
-  .ab-main { padding: 20px 24px 48px; }
+  .ab-main { --ab-pad-x: 24px; padding: 20px 24px 48px; }
   .ab-toast { left: 24px; right: 24px; }
 }
 /* phone */
 @container board (max-width: 640px) {
   .ab-board, .ab-board[data-inspector="open"] { grid-template-columns: minmax(0, 1fr); }
   .ab-rail { display: none; }
-  .ab-main { padding: 16px 16px 96px; }
+  .ab-main { --ab-pad-x: 16px; padding: 16px 16px 96px; }
   .ab-top__repo h1 { font-size: 22px; line-height: 28px; }
   .ab-top { gap: 10px; }
   .ab-top__actions .ab-btn:not(.ab-btn--primary) { display: none; }
@@ -1733,8 +1736,12 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 
 /* The design system forbids spaced uppercase for labels. */
 
-/* The two header windows share a quiet position, but never mix replies with work alerts. */
-.ab-inbox-top { display: flex; justify-content: flex-end; min-height: 44px; margin: -4px 0 10px; position: sticky; top: 0; z-index: 6; pointer-events: none; }
+/* The two header windows share a quiet position, but never mix replies with work alerts.
+   The band is opaque from edge to edge, so the page scrolls under one clean line
+   instead of being cut by a floating block. */
+.ab-inbox-top { display: flex; justify-content: flex-end; min-height: 44px; margin: -4px 0 10px; position: sticky; top: 0; z-index: 6; }
+/* -100px: the band sticks below the page's top padding, and nothing may show above it. */
+.ab-inbox-top::before { content: ""; position: absolute; inset: -100px calc(-1 * var(--ab-pad-x)) 0; z-index: -1; background: var(--paper); }
 .ab-message-hub { display: flex; justify-content: flex-end; gap: 6px; width: min(100%, 440px); position: relative; border-radius: var(--radius-sm); background: var(--paper); pointer-events: auto; }
 .ab-hub-menu { min-width: 0; }
 .ab-hub-menu > summary { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 8px 11px; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--ink-muted); font-size: 12.5px; font-weight: 600; cursor: pointer; list-style: none; }
