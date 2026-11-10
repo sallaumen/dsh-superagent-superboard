@@ -251,6 +251,11 @@ defmodule AgentBoardWeb.UpdateFlowTest do
         is_list(opts[transport]) do
       assert opts[transport][:code_reloader] == false
     end
+
+    # The live-reload socket exists only in dev, and it was the trigger: it
+    # connects on every page load.
+    assert File.read!("lib/agent_board_web/endpoint.ex") =~
+             "Phoenix.LiveReloader.Socket,\n      websocket: [code_reloader: false]"
   end
 
   test "the explicit restart button schedules the same path", %{conn: conn} do

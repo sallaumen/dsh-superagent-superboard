@@ -1,6 +1,15 @@
 // The socket state is client-side knowledge: the server cannot render
 // "reconnecting" while it is not connected. The beacon and the frozen banner
 // read this attribute; the server is told on reconnect so it can count changes.
+// An update can compile for minutes between the click and the stop.
+const RESTART_CLICK_WINDOW_MS = 10 * 60 * 1000
+
+export const restartRequested = (requestedAt, now) =>
+  requestedAt > 0 && now - requestedAt < RESTART_CLICK_WINDOW_MS
+
+// A reload would erase text the person has typed and not sent.
+export const holdsDraft = fields => Array.from(fields).some(field => field.value.trim() !== "")
+
 export const BoardConnection = {
   mounted() {
     this.mark("live")
@@ -29,7 +38,7 @@ export const BoardConnection = {
     // A click on Update/Restart is the reliable signal that the server is
     // going away; the pushed event can be lost during the VM stop.
     const requested = Number(sessionStorage.getItem("ab:restart-requested-at") || 0)
-    if (requested && Date.now() - requested < 30000) {
+    if (restartRequested(requested, Date.now())) {
       sessionStorage.setItem("ab:reload-after-restart", "1")
     }
     sessionStorage.removeItem("ab:restart-requested-at")
@@ -44,10 +53,13 @@ export const BoardConnection = {
   },
 
   // Called only once the new server has answered the LiveView, so the reload
-  // cannot land on a dead port; it fetches the new assets without an F5.
+  // cannot land on a dead port; it fetches the new assets without an F5. A tab
+  // holding unsent text keeps it (LiveView restores the form) and gets the new
+  // assets on its next load.
   reloadIfRestarted() {
     if (sessionStorage.getItem("ab:reload-after-restart") !== "1") return
     sessionStorage.removeItem("ab:reload-after-restart")
+    if (holdsDraft(document.querySelectorAll("textarea"))) return
     window.location.reload()
   },
   mark(state) {

@@ -58,7 +58,8 @@ shell and logs to `agent-board-update-restart.log` in the system temp
 directory. While the update prepares, the old node keeps serving the code it
 has loaded: no request or socket recompiles it. The page reloads on its own
 once the new server answers its LiveView, so it picks up the new assets and
-never navigates to a dead port.
+never navigates to a dead port. A tab with unsent text in a text area is not
+reloaded; it keeps the text and gets the new assets on its next load.
 
 ## Logs
 
