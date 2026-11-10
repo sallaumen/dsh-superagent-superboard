@@ -12,7 +12,7 @@ defmodule AgentBoard.Conversation.CommandsTest do
   alias AgentBoard.AI.Registry
   alias AgentBoard.{Board, Conversation, Repo}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
-  alias AgentBoard.Conversation.{Agent, Lookup}
+  alias AgentBoard.Conversation.{Agent, Lookup, Turn}
   alias AgentBoard.Voice.Commands
 
   @stub AgentBoard.Conversation.CommandsTest.Stub
@@ -476,6 +476,107 @@ defmodule AgentBoard.Conversation.CommandsTest do
                turn("desfaz", repo)
 
       assert %Task{stopped: false} = Repo.get_by!(Task, repository_id: repo.id, number: 8)
+    end
+  end
+
+  describe "a project named out loud" do
+    test "a misheard project creates nothing and says so", %{repo: repo} do
+      Req.Test.stub(@stub, fn _conn -> flunk("nothing may reach GitHub") end)
+
+      script(fn %{name: :voice_agent} ->
+        agent_answer("create_task", %{
+          "request" => "corrigir o login",
+          "title" => "Corrigir o login",
+          "details" => ["o login funciona"],
+          "repository" => "colmeks",
+          "direct" => true
+        })
+      end)
+
+      assert %{reply: "Não acompanho nenhum projeto chamado colmeks."} =
+               turn("cria direto no colmeks corrigir o login", repo)
+
+      assert Repo.aggregate(Task, :count) == 0
+      assert Conversation.pending_proposal() == nil
+    end
+
+    test "stop on another repository proposes that task and names it", %{repo: repo} do
+      {:ok, other} = Board.add_repository("sallaumen", "colmex")
+      task!(repo, %{number: 12, title: "Do arena"})
+      theirs = task!(other, %{number: 12, title: "Do colmex", state: "running"})
+
+      {:ok, calls} = Elixir.Agent.start_link(fn -> [] end)
+
+      Req.Test.stub(@stub, fn conn ->
+        Elixir.Agent.update(calls, &[conn.request_path | &1])
+        Req.Test.json(conn, %{"number" => 12})
+      end)
+
+      script(fn %{name: :voice_agent} ->
+        agent_answer("stop_task", %{"task_number" => 12, "repository" => "colmex"})
+      end)
+
+      proposed = turn("para a doze do colmex", repo)
+
+      assert proposed.reply =~ "No colmex: Parar a tarefa #12, “Do colmex”?"
+      assert %Turn{proposal: %{"task_id" => id}} = Conversation.pending_proposal()
+      assert id == theirs.id
+
+      assert %{action: "stop_task"} = turn("sim", repo)
+      assert %Task{stopped: true} = Repo.get!(Task, theirs.id)
+      assert Elixir.Agent.get(calls, & &1) == ["/repos/sallaumen/colmex/issues/12"]
+    end
+
+    test "stop, archive and ask refuse a project that matches nothing", %{repo: repo} do
+      task!(repo, %{number: 12, title: "Do arena"})
+
+      for {action, fields} <- [
+            {"stop_task", %{}},
+            {"archive_task", %{}},
+            {"ask_task", %{"request" => "travou?"}}
+          ] do
+        script(fn %{name: :voice_agent} ->
+          agent_answer(
+            action,
+            Map.merge(fields, %{"task_number" => 12, "repository" => "colmeks"})
+          )
+        end)
+
+        assert %{reply: "Não acompanho nenhum projeto chamado colmeks."} =
+                 turn("mexe na doze do colmeks", repo)
+      end
+
+      assert Conversation.pending_proposal() == nil
+    end
+
+    test "ask on another repository skips the task open on the screen", %{repo: repo} do
+      {:ok, other} = Board.add_repository("sallaumen", "colmex")
+      open = task!(repo, %{number: 3, title: "Aberta"})
+      theirs = task!(other, %{number: 12, title: "Do colmex"})
+
+      script(fn %{name: :voice_agent} ->
+        agent_answer("ask_task", %{
+          "task_number" => 12,
+          "request" => "travou?",
+          "repository" => "colmex"
+        })
+      end)
+
+      asked = turn("pergunta na doze do colmex se travou", repo, %{open_task: open})
+
+      assert asked.reply =~ "No colmex: Perguntar ao agente na tarefa #12"
+      assert %Turn{proposal: %{"task_id" => id}} = Conversation.pending_proposal()
+      assert id == theirs.id
+    end
+
+    test "naming the project on the screen says the plain sentence", %{repo: repo} do
+      task!(repo, %{number: 12, title: "Do arena", state: "running"})
+
+      script(fn %{name: :voice_agent} ->
+        agent_answer("stop_task", %{"task_number" => 12, "repository" => "arena rogue"})
+      end)
+
+      assert turn("para a doze do arena", repo).reply =~ ~r/^Parar a tarefa #12/u
     end
   end
 

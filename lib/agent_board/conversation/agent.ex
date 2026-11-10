@@ -408,18 +408,20 @@ defmodule AgentBoard.Conversation.Agent do
   defp act("help", _json, _pending, ctx), do: help(ctx.language)
   defp act("undo", _json, _pending, ctx), do: undo(ctx, ctx[:utterance])
 
-  defp act(action, %{"task_number" => n}, _pending, ctx)
+  defp act(action, %{"task_number" => n} = json, _pending, ctx)
        when action in ~w(stop_task archive_task),
-       do: propose_task_action(action, n, ctx)
+       do: propose_task_action(action, n, json, ctx)
 
   defp act("ask_task", %{"task_number" => n, "request" => question} = json, _pending, ctx) do
-    task = find_task(ctx.repo, n) || Map.get(ctx, :open_task)
+    repo = repository_for(json, ctx)
+    task = find_task(repo, n) || if(not elsewhere?(repo, ctx), do: Map.get(ctx, :open_task))
     question = String.trim(question || "")
 
     cond do
       question == "" -> say(reply(json, ctx), "ask_task")
+      repo == :unknown -> say(unknown_repository(json, ctx), "ask_task")
       is_nil(task) -> say(Phrases.task_not_found(ctx.language, n), "ask_task")
-      true -> propose_ask(task, question, ctx)
+      true -> propose_ask(task, question, repo, ctx)
     end
   end
 
@@ -505,11 +507,14 @@ defmodule AgentBoard.Conversation.Agent do
   # second refine call cost 5-7 s of silence before "Posso criar?".
   defp propose_task(%{"request" => request} = json, ctx) do
     lang = ctx.language
-    repo = match_repository(ctx.repos, json["repository"]) || ctx.repo
+    repo = repository_for(json, ctx)
 
     cond do
       blank?(request) ->
         say(reply(json, ctx), "create_task")
+
+      repo == :unknown ->
+        say(unknown_repository(json, ctx), "create_task")
 
       is_nil(repo) ->
         listen(say(Phrases.which_project(lang), "create_task"))
@@ -560,10 +565,11 @@ defmodule AgentBoard.Conversation.Agent do
     end
   end
 
-  defp propose_task_action(action, number, ctx) do
+  defp propose_task_action(action, number, json, ctx) do
     lang = ctx.language
+    repo = repository_for(json, ctx)
 
-    case find_task(ctx.repo, number) do
+    case find_task(repo, number) do
       %Task{} = task when task.stopped == false and task.archived == false ->
         kind = if action == "stop_task", do: "stop_task", else: "archive_task"
 
@@ -578,13 +584,17 @@ defmodule AgentBoard.Conversation.Agent do
           Actions.phrase(task_action(kind), %{task: task}, lang),
           lang
         )
+        |> say_where(repo, ctx)
+
+      _ when repo == :unknown ->
+        say(unknown_repository(json, ctx), action)
 
       _ ->
         say(Phrases.task_not_found(lang, number), action)
     end
   end
 
-  defp propose_ask(task, question, ctx) do
+  defp propose_ask(task, question, repo, ctx) do
     lang = ctx.language
 
     proposal(
@@ -598,6 +608,27 @@ defmodule AgentBoard.Conversation.Agent do
       Actions.phrase(:ask_task, %{task: task, question: question}, lang),
       lang
     )
+    |> say_where(repo, ctx)
+  end
+
+  # The project the owner named, or the one on screen when they named none. A
+  # name that matches nothing is `:unknown`: a guess would write to the wrong one.
+  defp repository_for(json, ctx) do
+    name = json["repository"]
+    if blank?(name), do: ctx.repo, else: match_repository(ctx.repos, name) || :unknown
+  end
+
+  defp unknown_repository(json, ctx),
+    do: Phrases.repository_not_found(ctx.language, String.trim(json["repository"]))
+
+  defp elsewhere?(%Repository{id: id}, ctx), do: not match?(%{id: ^id}, ctx.repo)
+  defp elsewhere?(_repo, _ctx), do: false
+
+  # The gate rebuilds the action's own sentence, so the project goes around it.
+  defp say_where(outcome, repo, ctx) do
+    if elsewhere?(repo, ctx),
+      do: %{outcome | reply: Phrases.in_repository(ctx.language, repo.name, outcome.reply)},
+      else: outcome
   end
 
   # The proposal says the action's sentence and keeps it, with its language:
@@ -923,8 +954,9 @@ defmodule AgentBoard.Conversation.Agent do
     )
   end
 
-  defp find_task(nil, _number), do: nil
-  defp find_task(repo, n) when is_integer(n) and n > 0, do: Board.find_task(repo, n)
+  defp find_task(%Repository{} = repo, n) when is_integer(n) and n > 0,
+    do: Board.find_task(repo, n)
+
   defp find_task(_repo, _number), do: nil
 
   @doc "The tracked repository a spoken name points at (`arena rogue` → `owner/arena-rogue`)."

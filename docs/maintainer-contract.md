@@ -636,6 +636,10 @@ Agora and the detail):
   recorded as `%{"kind" => "created"}` with `proposal_status` `done`, and
   "desfaz" closes it (`Board.stop_task/2`) within 10 minutes, claimed once
   (`done` → `undone`). A task that already existed is never undoable.
+  A project named out loud that matches nothing is said ("Não acompanho
+  nenhum projeto chamado…" — "I don't follow a project called…"), never
+  replaced by the one on screen; stop, archive and ask resolve it the way
+  create does, and the proposal says which when it is not the one on screen.
 - **Voice reads** (`look`) never write: `AgentBoard.Conversation.Lookup`
   reads the board's own data (tasks, PRs, the runner's tickets, the voice
   activity ring) and the registered `:voice_explain` call answers only from
