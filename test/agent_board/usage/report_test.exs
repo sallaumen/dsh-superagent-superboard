@@ -311,4 +311,20 @@ defmodule AgentBoard.Usage.ReportTest do
                %{model: "claude-haiku-5-5", input_tokens: 1_009_421, output_tokens: 106_421}
              ])
   end
+
+  # A real cost-state line of opus-4-8 (read on 2026-11-10): Claude Code's own
+  # cost for these counts is US$ 8.02491. All ten lines on this machine match
+  # 5.00 in / 25.00 out; the family's main model rate gave about half.
+  test "opus-4-8 is priced at its own rate, not its family's" do
+    assert %{micros: 8_024_914, complete?: true} =
+             Costs.cost("claude_code", [
+               %{
+                 model: "claude-opus-4-8",
+                 input_tokens: 136,
+                 output_tokens: 45_953,
+                 cache_read_tokens: 11_357_968,
+                 cache_write_tokens: 191_428
+               }
+             ])
+  end
 end
