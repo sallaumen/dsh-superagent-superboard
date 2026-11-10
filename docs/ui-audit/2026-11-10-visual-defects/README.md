@@ -58,3 +58,32 @@ browser to stress the layout; the server did not have that state.
 Also checked after the change: the Voice column in dark, the expanded project
 row at 1440 and 390, and Projects, Voice and Execution at 390 with no
 horizontal scroll inside the dialog.
+
+## 3. Three dialogs on another design system
+
+Split request, Merge History and Voice conversation were still painted by the
+daisyUI theme (a cold blue palette of its own) and by old rules in `app.css`.
+DESIGN.md already says how that theme maps to the board tokens; the map is
+now applied, so every old rule that reads a daisyUI colour follows the tokens.
+
+| What | Before | After |
+|---|---|---|
+| Split request: submit | ink on cold blue, 2.18:1 in light and 1.72:1 in dark, 16 px radius, 44 px | the board's primary button: white on `you`, 6 px radius, 40 px |
+| Split request: field | 16 px radius on a sunk fill | 6 px radius, `line-strong` border, `surface` fill |
+| Split request: proposal | "OBJECTIVE", "OPEN QUESTIONS" in 10 px capitals; "Create" as 10 px text in a hairline box | 12 px labels in normal case; "Create" is a button |
+| Merge History: heading and signals | "MERGED PRS", "NO REVIEW", "CI FAILED: GATES" in 10 px spaced capitals, system mono | "Merged PRs" 14 px; "no review", "CI failed: gates" 11.5 px Plex Mono |
+| Merge History in dark | cold navy band and bars | warm paper tones |
+| Voice conversation | pill Close (75 x 40, no border), pill field, pill Send and Write, 22 px dialog radius, 18 px bubbles | the shared Close (77 x 32), 6 px field and buttons, the shared dialog radius, 10 px bubbles |
+| Scrim in dark | lightened the page (it mixed in `ink`, which is light in dark) | darkens it |
+
+- `3-split-and-history-1440-before-after.jpg`
+- `3-voice-1440-before-after.jpg`
+- `3-dark-scrim-1440-before-after.jpg`
+
+Also checked after the change: the board and the inspector in light and dark
+(unchanged), and a split on the isolated server (rehearsal answers, copy
+database) to see the proposal.
+
+Left as it is: the composer keeps its own compact header (an icon button
+beside the Esc key), and the last visible row of Merge History is cut by the
+dialog edge because the list scrolls there.

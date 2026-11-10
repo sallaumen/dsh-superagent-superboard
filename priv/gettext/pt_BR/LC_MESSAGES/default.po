@@ -3318,6 +3318,7 @@ msgid "API key missing"
 msgstr "sem chave de API"
 
 #: lib/agent_board_web/live/board_components/inspector.ex:1070
+#: lib/agent_board_web/live/board_components/presentation.ex:37
 #, elixir-autogen, elixir-format
 msgid "CI passed"
 msgstr "CI ok"
@@ -3404,6 +3405,7 @@ msgid "merged"
 msgstr "mesclado"
 
 #: lib/agent_board_web/live/board_components/inspector.ex:1071
+#: lib/agent_board_web/live/board_components/presentation.ex:33
 #, elixir-autogen, elixir-format
 msgid "no CI"
 msgstr "sem CI"
@@ -5480,28 +5482,18 @@ msgstr "aprovado"
 
 #: lib/agent_board_web/live/board_components/presentation.ex:38
 #, elixir-autogen, elixir-format
-msgid "ci failed"
+msgid "CI failed"
 msgstr "CI falhou"
 
 #: lib/agent_board_web/live/board_components/presentation.ex:31
 #, elixir-autogen, elixir-format
-msgid "ci failed: %{name}"
+msgid "CI failed: %{name}"
 msgstr "CI falhou: %{name}"
-
-#: lib/agent_board_web/live/board_components/presentation.ex:37
-#, elixir-autogen, elixir-format
-msgid "ci passed"
-msgstr "CI passou"
 
 #: lib/agent_board_web/live/board_components/presentation.ex:39
 #, elixir-autogen, elixir-format
-msgid "ci running"
+msgid "CI running"
 msgstr "CI rodando"
-
-#: lib/agent_board_web/live/board_components/presentation.ex:33
-#, elixir-autogen, elixir-format
-msgid "no ci"
-msgstr "sem CI"
 
 #: lib/agent_board_web/live/board_components/presentation.ex:16
 #, elixir-autogen, elixir-format

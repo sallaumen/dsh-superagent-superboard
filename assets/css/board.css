@@ -703,7 +703,11 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   overflow: visible;
   box-shadow: none;
 }
-.ab-composer-dialog.board-dialog::backdrop { background: color-mix(in oklab, var(--ink) 18%, transparent); }
+/* A scrim darkens the page in both themes; --ink is light in dark. */
+:root { --scrim-ink: #1f1d1a; }
+[data-theme="dark"] { --scrim-ink: #000; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --scrim-ink: #000; } }
+.ab-composer-dialog.board-dialog::backdrop { background: color-mix(in oklab, var(--scrim-ink) 18%, transparent); }
 .ab-composer-dialog .ab-compose { width: 100%; max-height: calc(100dvh - var(--space-6)); display: flex; flex-direction: column; }
 .ab-composer-dialog .ab-compose > form, .ab-composer-dialog .ab-receipt { min-height: 0; overflow-y: auto; }
 .ab-composer-dialog .ab-compose__bar { position: sticky; bottom: 0; z-index: 1; }
@@ -2139,7 +2143,7 @@ dialog#panel-logs.board-sheet[open] {
   max-height: calc(100dvh - var(--space-5));
 }
 dialog#panel-logs.board-sheet::backdrop {
-  background: color-mix(in oklab, var(--ink) 18%, transparent);
+  background: color-mix(in oklab, var(--scrim-ink) 18%, transparent);
 }
 .ab-logs__drag {
   flex: none;

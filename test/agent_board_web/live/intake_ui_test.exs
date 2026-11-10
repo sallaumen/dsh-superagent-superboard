@@ -82,6 +82,8 @@ defmodule AgentBoardWeb.IntakeUITest do
     {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
     assert has_element?(view, "#intake-form button[disabled]")
+    # The submit is the board's primary button, not a hand-coloured one.
+    assert has_element?(view, "#intake-form button.ab-btn.ab-btn--primary")
     assert html =~ "não configurada"
     assert html =~ "Nenhuma chamada de IA registrada ainda."
     assert html =~ "Dividir fica indisponível"
