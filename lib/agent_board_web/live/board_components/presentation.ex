@@ -28,15 +28,15 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
 
   def checks_badge(%{checks_state: "failure", checks_failed: name})
       when is_binary(name) and name != "",
-      do: gettext("ci failed: %{name}", name: name)
+      do: gettext("CI failed: %{name}", name: name)
 
-  def checks_badge(%{checks_state: "none"}), do: gettext("no ci")
+  def checks_badge(%{checks_state: "none"}), do: gettext("no CI")
 
   def checks_badge(%{checks_state: state}) when state in ["success", "failure", "pending"] do
     case state do
-      "success" -> gettext("ci passed")
-      "failure" -> gettext("ci failed")
-      "pending" -> gettext("ci running")
+      "success" -> gettext("CI passed")
+      "failure" -> gettext("CI failed")
+      "pending" -> gettext("CI running")
     end
   end
 
