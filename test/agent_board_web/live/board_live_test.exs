@@ -1173,13 +1173,14 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert day_columns(view) == 7
   end
 
-  test "a merged PR leads to the task it closes, in the log and in history", %{conn: conn} do
+  test "a merged PR opens the task it closes, in the log and in history", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "pr-door")
     task = insert_task(repo, 7, "done")
+    url = "https://github.com/fixture/pr-door/pull/41"
 
     repo
     |> insert_merged(41, "success")
-    |> Ecto.Changeset.change(closes_issues: [7])
+    |> Ecto.Changeset.change(closes_issues: [7], url: url)
     |> Repo.update!()
 
     # #99 is an issue the board never tracked; PR 43 closes nothing.
@@ -1192,17 +1193,27 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/pr-door")
 
-    # The row itself still opens GitHub; the task is a second door.
-    assert has_element?(view, "#sec-log a.ab-pr[target=_blank]", "PR 41")
-    assert has_element?(view, "#sec-log button[phx-value-number='41']", "tarefa #7")
+    # Issues lead the count: #7 and #99 delivered, by three PRs.
+    assert has_element?(view, "#sec-log .ab-sec__count", "2 issues entregues · 3 PRs em 7 dias")
+
+    # The row opens the task on the board; GitHub is the small link beside it.
+    assert has_element?(view, "#sec-log button.ab-pr[phx-value-number='41']", "PR 41")
+    assert has_element?(view, ~s(#sec-log a[href="#{url}"][target=_blank]), "GitHub")
+    # A PR that closes nothing has no task to open: the row stays GitHub.
+    assert has_element?(view, "#sec-log a.ab-pr[target=_blank]", "PR 43")
     refute has_element?(view, "#sec-log button[phx-value-number='43']")
 
-    view |> element("#sec-log button[phx-value-number='41']") |> render_click()
+    view |> element("#sec-log button.ab-pr[phx-value-number='41']") |> render_click()
     assert_patch(view, AgentBoardWeb.BoardNavigation.path(repo, "conversation", task.id))
     assert has_element?(view, "#conversation-title", "Task 7")
+    assert has_element?(view, ".ab-tab", "Conversa")
+    # A delivered task can still be asked about, but not stopped: its issue is closed.
+    assert has_element?(view, ".ab-insp__actions button", "Perguntar")
+    refute has_element?(view, "#stop-#{task.id}-trigger")
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/pr-door&panel=history&list=prs")
-    assert has_element?(view, "#merged-list button[phx-value-number='41']", "tarefa #7")
+    assert has_element?(view, "#merged-list button[phx-value-number='41']", "PR 41")
+    assert has_element?(view, ~s(#merged-list a[href="#{url}"][target=_blank]))
 
     html = view |> element("#merged-list button[phx-value-number='42']") |> render_click()
     assert html =~ "O board não acompanha a issue que este PR fecha."

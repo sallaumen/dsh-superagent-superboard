@@ -121,6 +121,7 @@ defmodule AgentBoardWeb.BoardLive do
           queue: [],
           projects: [],
           merged_today: 0,
+          delivered_today: 0,
           seen_today: 0,
           trend: []
         },

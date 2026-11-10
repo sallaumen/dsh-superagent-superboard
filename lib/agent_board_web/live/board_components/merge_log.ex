@@ -25,14 +25,12 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
       <details id="fold-log" class="ab-fold ab-fold--log" data-mobile-fold open phx-hook="BoardFold">
         <summary class="ab-fold__summary">
           <span>{gettext("Merged")}</span>
-          <span class="ab-meta">{count(@log.total, @frozen)} {gettext("in 7 days")}</span>
+          <span class="ab-meta"><.week log={@log} frozen={@frozen} /></span>
         </summary>
         <div class="ab-fold__body">
           <div class="ab-sec__head">
             <h2 id="sec-log-title">{gettext("Merged")}</h2>
-            <span class="ab-sec__count">
-              {count(@log.total, @frozen)} {gettext("in 7 days")}
-            </span>
+            <span class="ab-sec__count"><.week log={@log} frozen={@frozen} /></span>
             <span class="ab-top__spacer"></span>
             <button
               :if={@has_history}
@@ -112,6 +110,32 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
 
   attr :pr, :map, required: true
 
+  # A PR that closes an issue opens its task on the board, where the whole
+  # conversation is; GitHub stays one small link away. One that closes
+  # nothing has no task, so the row is GitHub.
+  defp pr_row(%{pr: %{closes: [issue | _]}} = assigns) do
+    assigns = assign(assigns, :issue, issue)
+
+    ~H"""
+    <button
+      type="button"
+      class="ab-pr"
+      phx-click="open_pr_task"
+      phx-value-number={@pr.number}
+      aria-label={
+        gettext("PR #%{number}: %{title}. Open task #%{issue} on the board",
+          number: @pr.number,
+          title: @pr.title,
+          issue: @issue
+        )
+      }
+    >
+      <.pr_body pr={@pr} />
+    </button>
+    <.github_link :if={@pr.url} number={@pr.number} url={@pr.url} />
+    """
+  end
+
   defp pr_row(assigns) do
     ~H"""
     <a
@@ -124,45 +148,52 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
           gettext("(opens GitHub in a new tab)")
       }
     >
-      <.glyph kind={:done} />
-      <span class="ab-pr__title">
-        <span class="ab-need__id">#{@pr.number}</span> {@pr.title}
-      </span>
-      <span class="ab-pr__meta">
-        <span
-          class={[
-            "ab-tag",
-            @pr.ci == "fail" && "ab-tag--halt",
-            @pr.ci == "pass" && @pr.ciNote == gettext("Local CI passed") && "ab-tag--agent"
-          ]}
-          title={@pr.ciTitle}
-        >
-          <.glyph :if={@pr.ci == "fail"} kind={:cifail} />
-          {@pr.ciNote}
-        </span>
-        <span class="ab-meta">{@pr.review}</span>
-        <span class="ab-data-sm ab-faint">{@pr.at}</span>
-      </span>
+      <.pr_body pr={@pr} />
     </a>
-    <.task_door :if={@pr.closes != []} pull={@pr.number} issue={hd(@pr.closes)} />
     """
   end
 
-  @doc "The way from a merged PR into the task it closes; the row itself opens GitHub."
-  attr :pull, :integer, required: true
-  attr :issue, :integer, required: true
+  attr :pr, :map, required: true
 
-  def task_door(assigns) do
+  defp pr_body(assigns) do
     ~H"""
-    <button
-      type="button"
+    <.glyph kind={:done} />
+    <span class="ab-pr__title">
+      <span class="ab-need__id">#{@pr.number}</span> {@pr.title}
+    </span>
+    <span class="ab-pr__meta">
+      <span
+        class={[
+          "ab-tag",
+          @pr.ci == "fail" && "ab-tag--halt",
+          @pr.ci == "pass" && @pr.ciNote == gettext("Local CI passed") && "ab-tag--agent"
+        ]}
+        title={@pr.ciTitle}
+      >
+        <.glyph :if={@pr.ci == "fail"} kind={:cifail} />
+        {@pr.ciNote}
+      </span>
+      <span class="ab-meta">{@pr.review}</span>
+      <span class="ab-data-sm ab-faint">{@pr.at}</span>
+    </span>
+    """
+  end
+
+  @doc "The PR on GitHub, beside a row that opens its task on the board."
+  attr :number, :integer, required: true
+  attr :url, :string, required: true
+
+  def github_link(assigns) do
+    ~H"""
+    <a
       class="ab-more ab-pr__task"
-      phx-click="open_pr_task"
-      phx-value-number={@pull}
-      aria-label={gettext("Open task #%{number} on the board", number: @issue)}
+      href={@url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={gettext("PR #%{number} on GitHub (opens in a new tab)", number: @number)}
     >
-      {gettext("task #%{number}", number: @issue)}
-    </button>
+      GitHub <.ico name="ext" />
+    </a>
     """
   end
 
@@ -196,6 +227,24 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
       )
 
   defp day_count(%{n: n}), do: "#{n}"
+
+  # Issues lead: an issue is a delivery; a PR is how it got there.
+  attr :log, :map, required: true
+  attr :frozen, :boolean, required: true
+
+  defp week(assigns) do
+    ~H"""
+    <b class="ab-delivered">{gettext("%{issues} delivered",
+      issues:
+        ngettext("%{amount} issue", "%{amount} issues", @log.issues,
+          amount: count(@log.issues, @frozen)
+        )
+    )}</b>
+    · {gettext("%{prs} in 7 days",
+      prs: ngettext("%{amount} PR", "%{amount} PRs", @log.total, amount: count(@log.total, @frozen))
+    )}
+    """
+  end
 
   defp count(0, _frozen), do: "0"
   defp count(n, true), do: "≥#{n}"
