@@ -254,8 +254,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             phx-value-id={@task.id}
             phx-value-action="resume"
           >{gettext("Resume")}</button>
+          <%!-- A merged task's issue is already closed: there is nothing to stop. --%>
           <.live_component
-            :if={not (@task.stopped or @task.archived)}
+            :if={not (@task.stopped or @task.archived) and @task.state != "done"}
             module={AgentAction}
             id={"stop-#{@task.id}"}
             mode={:stop}

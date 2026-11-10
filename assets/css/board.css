@@ -678,14 +678,20 @@ body.board-panel-open .ab-toast,
   .ab-ended__row .ab-status { grid-column: 1 / -1; }
   .ab-ended__pr { text-align: left; }
 }
-/* A merged PR's way into its task; the row itself opens GitHub. */
+/* A merged PR that closes an issue opens its task; GitHub is the small link
+   under the row (or beside the title in History). */
+button.ab-pr { width: 100%; border: 0; background: none; font: inherit; text-align: left; }
 .ab-pr__task {
+  display: inline-flex; align-items: center; gap: 4px;
   width: fit-content; margin: -4px 0 4px 20px; padding: 2px 0; min-height: 24px;
   font-size: 12.5px; font-weight: 400; color: var(--ink-muted);
   text-decoration: underline; text-underline-offset: 2px;
 }
 .ab-pr__task:hover { background: none; color: var(--ink); }
-.archive-row .ab-pr__task { display: inline-flex; margin: 0 0 0 8px; }
+.ab-pr__task .ab-ico { width: 12px; height: 12px; }
+.archive-row .ab-pr__task { margin: 0 0 0 8px; }
+.item-title__open { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.item-title__open:hover { text-decoration: underline; text-underline-offset: 0.2em; }
 .ab-insp__cost { border: 0; background: none; padding: 0; font-family: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .ab-insp__cost:hover { color: var(--ink); }
 
