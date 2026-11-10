@@ -70,6 +70,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoardWeb.{
     BoardComponents,
     BoardNavigation,
+    Locale,
     VoiceConversation,
     VoiceSpeech
   }
@@ -1279,11 +1280,15 @@ defmodule AgentBoardWeb.BoardLive do
          {:ok, preview} <-
            Superagents.preview(repository, source, %{path: path, workers: workers}) do
       phrase =
-        Actions.phrase(:provision_superagent, %{
-          repository: repository,
-          source: source,
-          path: path
-        })
+        Actions.phrase(
+          :provision_superagent,
+          %{
+            repository: repository,
+            source: source,
+            path: path
+          },
+          Locale.language()
+        )
 
       {:noreply,
        socket
@@ -1858,7 +1863,9 @@ defmodule AgentBoardWeb.BoardLive do
          title when title != "" <- String.trim(title),
          body when body != "" <- String.trim(body) do
       request = Unblock.request(repo, task, title, body)
-      phrase = Actions.phrase(:create_tasks, %{repository: repo, requests: [request]})
+
+      phrase =
+        Actions.phrase(:create_tasks, %{repository: repo, requests: [request]}, Locale.language())
 
       {:noreply,
        assign(socket,
@@ -1939,7 +1946,7 @@ defmodule AgentBoardWeb.BoardLive do
           {:noreply, socket}
         else
           params = %{task: task, question: body, client: GitHub.client()}
-          phrase = Actions.phrase(:ask_task, params)
+          phrase = Actions.phrase(:ask_task, params, Locale.language())
           ref = make_ref()
 
           socket =
@@ -2943,10 +2950,14 @@ defmodule AgentBoardWeb.BoardLive do
   defp intake_phrases(%{} = repo, %{status: :ready, text: text, tasks: tasks, spec: spec}),
     do:
       Enum.map(tasks, fn task ->
-        Actions.phrase(:create_tasks, %{
-          repository: repo,
-          requests: [intake_request(repo, text, task, spec)]
-        })
+        Actions.phrase(
+          :create_tasks,
+          %{
+            repository: repo,
+            requests: [intake_request(repo, text, task, spec)]
+          },
+          Locale.language()
+        )
       end)
 
   defp intake_phrases(_repo, _intake), do: []
@@ -3953,12 +3964,13 @@ defmodule AgentBoardWeb.BoardLive do
 
     if requests == [],
       do: nil,
-      else: Actions.phrase(:create_tasks, %{repository: repo, requests: requests})
+      else:
+        Actions.phrase(:create_tasks, %{repository: repo, requests: requests}, Locale.language())
   end
 
   @doc false
   def retry_phrase(%{} = repo, {:enqueue, [_ | _] = requests}),
-    do: Actions.phrase(:create_tasks, %{repository: repo, requests: requests})
+    do: Actions.phrase(:create_tasks, %{repository: repo, requests: requests}, Locale.language())
 
   def retry_phrase(_repo, _retry), do: nil
 

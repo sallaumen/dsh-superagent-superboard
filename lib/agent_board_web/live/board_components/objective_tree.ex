@@ -158,7 +158,13 @@ defmodule AgentBoardWeb.BoardComponents.ObjectiveTree do
 
   defp held(layout), do: Enum.filter(layout.nodes, &Map.get(&1, :held, false))
 
-  defp phrase(node, repo), do: Actions.phrase(:release_task, %{task: node, repository: repo})
+  defp phrase(node, repo),
+    do:
+      Actions.phrase(
+        :release_task,
+        %{task: node, repository: repo},
+        AgentBoardWeb.Locale.language()
+      )
 
   defp why(%{held: true, released_at: %DateTime{}}), do: gettext("Could not call the agent")
 

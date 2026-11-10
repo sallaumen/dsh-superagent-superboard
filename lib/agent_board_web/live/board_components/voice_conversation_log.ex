@@ -16,7 +16,11 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
     # Forgetting is red (no way back): the browser asks the registry's
     # sentence and the click carries it to the gate.
     assigns =
-      assign(assigns, :forget_phrase, AgentBoard.Actions.phrase(:forget_conversation, %{}))
+      assign(
+        assigns,
+        :forget_phrase,
+        AgentBoard.Actions.phrase(:forget_conversation, %{}, AgentBoardWeb.Locale.language())
+      )
 
     ~H"""
     <section class="voice-chat" aria-labelledby="voice-chat-heading">

@@ -22,6 +22,14 @@ defmodule AgentBoardWeb.Locale do
   def gettext_locale("pt-BR"), do: "pt_BR"
   def gettext_locale(_), do: "en"
 
+  @doc """
+  The language of the sentences `AgentBoard.Actions.phrase/3` writes for this
+  viewer (`"pt-BR"` or `"en-US"`), from the process's interface language.
+  """
+  def language do
+    if Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR", do: "pt-BR", else: "en-US"
+  end
+
   def init(opts), do: opts
   def call(conn, opts), do: fetch(conn, opts)
 
