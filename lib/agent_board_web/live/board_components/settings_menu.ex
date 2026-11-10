@@ -289,7 +289,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                   action={~p"/language"}
                   method="post"
                   id="board-language-form"
-                  class="settings-segmented"
+                  class="ab-segmented"
                   role="group"
                   aria-label={gettext("Board language")}
                 >
@@ -302,14 +302,14 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                     type="submit"
                     name="locale"
                     value="en"
-                    class="settings-segment"
+                    class="ab-segment"
                     aria-pressed={to_string(@board_locale == "en")}
                   >English</button>
                   <button
                     type="submit"
                     name="locale"
                     value="pt-BR"
-                    class="settings-segment"
+                    class="ab-segment"
                     aria-pressed={to_string(@board_locale == "pt-BR")}
                   >Português (Brasil)</button>
                 </.form>

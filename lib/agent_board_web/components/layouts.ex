@@ -102,13 +102,13 @@ defmodule AgentBoardWeb.Layouts do
       id={@id}
       role="group"
       aria-label={gettext("Theme")}
-      class="settings-segmented"
+      class="ab-segmented"
       phx-hook="ThemeToggle"
     >
       <button
         :for={{theme, label} <- themes()}
         type="button"
-        class="settings-segment"
+        class="ab-segment"
         aria-pressed="false"
         phx-click={JS.dispatch("phx:set-theme")}
         data-phx-theme={theme}

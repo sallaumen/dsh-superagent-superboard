@@ -43,15 +43,21 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
             </span>
           </header>
           <div :if={@messages != []} class="ab-hub-menu__tools">
-            <div class="ab-hub-menu__filters" role="group" aria-label="Filtrar mensagens">
+            <div
+              class="ab-segmented ab-segmented--sm ab-hub-menu__filters"
+              role="group"
+              aria-label="Filtrar mensagens"
+            >
               <button
                 type="button"
+                class="ab-segment"
                 phx-click="filter_inbox"
                 phx-value-filter="all"
                 aria-pressed={to_string(@filter == "all")}
               >Todas</button>
               <button
                 type="button"
+                class="ab-segment"
                 phx-click="filter_inbox"
                 phx-value-filter="unread"
                 aria-pressed={to_string(@filter == "unread")}
