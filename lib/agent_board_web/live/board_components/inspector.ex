@@ -869,10 +869,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
   defp money(nil), do: "—"
 
-  defp money(usd) when is_number(usd) do
-    amount = :erlang.float_to_binary(usd / 1, decimals: 2) |> String.replace(".", ",")
-    "US$ " <> amount
-  end
+  defp money(usd) when is_number(usd), do: AgentBoardWeb.Numbers.usd(round(usd * 1_000_000))
 
   defp executor_label("dsh"), do: "DeepSeek"
   defp executor_label("claude_code"), do: "Claude Code"
@@ -1151,13 +1148,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp cost(nil), do: "—"
   defp cost(micros) when micros <= 0, do: "—"
   # Under a cent is a cost, not "$0.00".
-  defp cost(micros) when micros < 10_000, do: "< $0.01"
+  defp cost(micros) when micros < 10_000, do: "< " <> AgentBoardWeb.Numbers.usd(10_000)
 
-  defp cost(micros) do
-    dollars = div(micros, 1_000_000)
-    cents = micros |> rem(1_000_000) |> div(10_000)
-    "$#{dollars}.#{String.pad_leading(to_string(cents), 2, "0")}"
-  end
+  # It is shown as a lower bound, so it never rounds up.
+  defp cost(micros), do: AgentBoardWeb.Numbers.usd(micros - rem(micros, 10_000))
 
   defp total_cost(%{known_cost: 0, missing_cost: true}), do: "—"
   defp total_cost(%{known_cost: known, missing_cost: true}) when known < 10_000, do: "≥ $0.00"

@@ -10,12 +10,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   """
   use AgentBoardWeb, :live_component
 
-  import AgentBoardWeb.BoardComponents.Presentation, only: [estimated_cost: 1]
-
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
-  alias AgentBoard.{Actions, Runners, Time}
+  alias AgentBoard.{Actions, Runners}
   alias AgentBoard.Usage.Report
+  alias AgentBoardWeb.Time
 
   @days [7, 30]
   @draft_keys ~w(monthly_usd task_usd timeout_minutes reserve_percent claude_model codex_model)
@@ -690,11 +689,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
 
   defp ai_cost(nil), do: "—"
 
-  defp ai_cost(micros) when is_integer(micros) and micros > 0 do
-    estimated_cost(micros)
-    |> String.replace_prefix("$", "US$ ")
-    |> String.replace(".", ",")
-  end
+  defp ai_cost(micros) when is_integer(micros) and micros > 0,
+    do: AgentBoardWeb.Numbers.usd_exact(micros)
 
   defp ai_cost(_micros), do: "—"
 
@@ -708,7 +704,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   defp failure_reason(_reason), do: gettext("Reason not recorded")
 
   defp latency_text(nil), do: "—"
-  defp latency_text(ms) when is_integer(ms), do: thousands(Integer.to_string(ms)) <> " ms"
+  defp latency_text(ms) when is_integer(ms), do: AgentBoardWeb.Numbers.grouped(ms) <> " ms"
 
   defp ago(nil), do: "—"
   defp ago(at), do: Time.ago(Time.age_seconds(at, DateTime.utc_now()))
@@ -735,8 +731,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   defp tokens(n) when n >= 1000, do: "#{float(n / 1000)}k"
   defp tokens(n), do: number(n)
 
-  defp float(value),
-    do: :erlang.float_to_binary(value / 1.0, decimals: 1) |> String.replace(".", ",")
+  defp float(value), do: AgentBoardWeb.Numbers.decimal(value, 1)
 
   defp percent(value) when is_float(value),
     do: value |> :erlang.float_to_binary(decimals: 0) |> String.replace(".", ",")
@@ -745,24 +740,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
 
   defp money(value) when is_float(value), do: money_micros(round(value * 1_000_000))
 
-  defp money_micros(micros) do
-    value = micros / 1_000_000
-    decimals = if value >= 1000, do: 0, else: 2
-    raw = :erlang.float_to_binary(value, decimals: decimals)
-
-    formatted =
-      case String.split(raw, ".") do
-        [integer] -> thousands(integer)
-        [integer, fraction] -> thousands(integer) <> "," <> fraction
-      end
-
-    "US$ " <> formatted
-  end
-
-  defp thousands(integer) do
-    integer
-    |> String.reverse()
-    |> String.replace(~r/(\d{3})(?=\d)/, "\\1.")
-    |> String.reverse()
-  end
+  # From a thousand dollars up the cents are noise.
+  defp money_micros(micros),
+    do: AgentBoardWeb.Numbers.usd(micros, cents: micros < 1_000_000_000)
 end

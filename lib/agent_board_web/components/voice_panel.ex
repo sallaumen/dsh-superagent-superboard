@@ -401,11 +401,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
     ]
   end
 
-  defp speed_label(speed) do
-    :erlang.float_to_binary(speed * 1.0, decimals: 2)
-    |> String.replace(".", ",")
-    |> Kernel.<>("×")
-  end
+  defp speed_label(speed), do: AgentBoardWeb.Numbers.decimal(speed, 2) <> "×"
 
   defp picker_note(_engine, :environment),
     do: gettext("Set in .env.local (ELEVENLABS_VOICE_ID); to change here, remove the variable.")

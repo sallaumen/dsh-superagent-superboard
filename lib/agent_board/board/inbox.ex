@@ -86,6 +86,7 @@ defmodule AgentBoard.Board.Inbox do
 
     text
     |> String.replace(~r/<!--.*?-->/s, "")
+    |> String.replace(~r/\[([^\]]+)\]\([^)]*\)/, "\\1")
     |> String.replace(~r/[#*_`>]/, "")
     |> String.split(~r/\s+/, trim: true)
     |> Enum.join(" ")

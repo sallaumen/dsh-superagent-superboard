@@ -12,12 +12,14 @@ defmodule AgentBoard.Board.InboxTest do
 
     comment(a, 101, "First answer")
     comment(a, 102, "## Relatório do agente\n### Pergunta\nQual opção você prefere?")
-    comment(b, 103, "Other project answer")
+    comment(b, 103, "Done: [PR 199](https://github.com/o/r/pull/199) was merged")
 
     inbox = Board.inbox()
 
     assert Enum.map(inbox.messages, & &1.task_id) == [b.id, a.id]
     assert Enum.find(inbox.messages, &(&1.task_id == a.id)).preview == "Qual opção você prefere?"
+    # A Markdown link reads as its text, not as its markup.
+    assert Enum.find(inbox.messages, &(&1.task_id == b.id)).preview == "Done: PR 199 was merged"
     assert Enum.map(inbox.messages, & &1.repo) == ["sallaumen/o_colmex", "sallaumen/arena-rogue"]
     assert [%{task_id: id, state: "blocked"}] = inbox.alerts
     assert id == b.id

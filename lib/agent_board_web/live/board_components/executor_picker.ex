@@ -117,9 +117,6 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
 
   def cost_label(_other), do: gettext("unknown")
 
-  defp amount(%{micros: micros, complete?: false}),
-    do: "≥ US$ #{:erlang.float_to_binary(micros / 1_000_000, decimals: 2)}"
-
-  defp amount(%{micros: micros}),
-    do: "≈ US$ #{:erlang.float_to_binary(micros / 1_000_000, decimals: 2)}"
+  defp amount(%{micros: micros, complete?: false}), do: "≥ " <> AgentBoardWeb.Numbers.usd(micros)
+  defp amount(%{micros: micros}), do: "≈ " <> AgentBoardWeb.Numbers.usd(micros)
 end

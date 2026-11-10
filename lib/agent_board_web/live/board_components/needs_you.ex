@@ -99,8 +99,8 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                   mode={:restart}
                   tone={:halt}
                   label={action.label}
-                  confirm_label="Religar"
-                  busy_label="Religando o agente…"
+                  confirm_label={gettext("Restart")}
+                  busy_label={gettext("Restarting the agent…")}
                 />
                 <.live_component
                   :if={action[:retry]}

@@ -44,7 +44,9 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
           <small class="ab-daily__scope">{gettext("from the board")}</small>
         </h2>
         <span class="ab-daily__since">
-          desde {Time.since_label(@entry.window_start, @tz_offset, @entry.generated_at)}
+          {gettext("since %{when}",
+            when: Time.since_label(@entry.window_start, @tz_offset, @entry.generated_at)
+          )}
         </span>
         <button
           id="daily-summary-dismiss"
@@ -220,9 +222,5 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
 
   defp spend_title(_line), do: gettext("Transcripts could not be read")
 
-  defp dollars(micros) do
-    cents = div(micros + 5_000, 10_000)
-
-    "US$ #{div(cents, 100)},#{cents |> rem(100) |> Integer.to_string() |> String.pad_leading(2, "0")}"
-  end
+  defp dollars(micros), do: AgentBoardWeb.Numbers.usd(micros)
 end

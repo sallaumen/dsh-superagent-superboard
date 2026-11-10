@@ -108,3 +108,33 @@ of two heights is a wider change than this fix. "Stop" is still offered on a
 merged task: stopping closes the issue, so removing it is a product decision.
 "Cancelar" is the confirmation's Portuguese default and is fixed with the
 other strings.
+
+## 4. English text and number formats
+
+| What | Before (board in English) | After |
+|---|---|---|
+| Messages and Attention menus | all Portuguese: "Mensagens", "Todas", "Marcar todas como vistas", "Abrir conversa", "Atenção", "Ver tarefa" | English, with the same Portuguese under Português (Brasil) |
+| Message preview | raw Markdown: "o [PR 199](https://github.com/…) foi merged" | "o PR 199 foi merged" |
+| Money | "≈ US$ 2.653" (2,653 dollars), "≥ US$ 19,28", "US$ 0,000171", and "$0.31" / "< $0.01" in the inspector | "≈ US$ 2,680", "≥ US$ 19.28", "US$ 0.000171", "US$ 0.31": one writer, the viewer's separators |
+| Other numbers | "2.019 ms", speed "1,10×", "2,0 s" | "2,019 ms", "1.10×", "2.0 s" |
+| Relative time | "há 3 h" in the menus and the AI calls table, "2h 57m ago" in Merge History, "14 min ago" elsewhere | "3 h ago", "2 h 57 min ago", "14 min ago" |
+| Daily Summary | "desde yesterday at 08:00" | "since yesterday at 08:00" |
+| Stop confirmation | "Stop task" / "Cancelar" | "Stop task" / "Cancel" |
+| Status words with no caller text | Portuguese fallback ("Rodando", "Na fila") | through the locale |
+
+- `4-messages-english-1440-before-after.jpg`
+- `4-numbers-english-1440-before-after.jpg`
+
+Portuguese is unchanged: the tests run in pt-BR and pass with the same
+strings, except money in the inspector, which now reads "US$ 0,31" instead of
+"$0.31".
+
+Still Portuguese on the English board, because these sentences are written
+in the domain layer (`AgentBoard.Lanes`, `Freshness`, `AgentBlock`,
+`Metrics`, `Actions`), not in the screens: the one-line digest under the
+project name, the Needs-you cards and their buttons, the queue filter chips,
+the day headings and review words in Merged, "orquestrador fora do ar" and
+the "0,5/h" rates in Throughput, the inspector's activity lines, and the
+confirmation sentences. They are about 350 strings, and the confirmation
+sentences are also what the action gate compares, so they are a change of
+their own.
