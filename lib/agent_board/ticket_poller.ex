@@ -48,8 +48,10 @@ defmodule AgentBoard.TicketPoller do
 
     Repo.all(Repository)
     |> Enum.reduce(state, fn repo, acc ->
-      overlay_tasks(repo, tickets)
-      hash = :erlang.phash2({repo.id, tickets, active_worktrees(repo, tickets)})
+      # Only this repository's tickets: another one's change reloads its own tabs.
+      own = Enum.filter(tickets, &AgentState.same_repository?(&1, repo))
+      overlay_tasks(repo, own)
+      hash = :erlang.phash2({repo.id, own, active_worktrees(repo, own)})
 
       if Map.get(acc, repo.id) != hash do
         Board.broadcast(repo.id)
@@ -71,7 +73,6 @@ defmodule AgentBoard.TicketPoller do
 
   defp overlay_tasks(repo, tickets) do
     for ticket <- tickets,
-        AgentState.same_repository?(ticket, repo),
         raw <- ticket["numbers"] || [] do
       overlay_ticket(repo, ticket, raw)
     end
