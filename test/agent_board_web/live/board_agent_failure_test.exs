@@ -210,6 +210,28 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
            )
   end
 
+  test "the card in Precisa de você asks for the attempt itself", %{conn: conn, blocked: blocked} do
+    orchestrator(:up)
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/failures")
+
+    view |> element("#need-retry-#{blocked.id}-trigger", "Tentar de novo") |> render_click()
+
+    assert has_element?(
+             view,
+             "#need-retry-#{blocked.id} .ab-act__question",
+             "Pedir ao agente uma nova tentativa de #71 agora?"
+           )
+
+    refute_received {:orchestrator, "POST", _path}
+
+    view |> element("#need-retry-#{blocked.id}-confirm") |> render_click()
+    assert_receive {:holding, request}
+    send(request, :answer)
+
+    assert render_async(view) =~ "Nova tentativa pedida."
+    assert_received {:orchestrator, "POST", "/orchestrator/api/tickets/t71/retry"}
+  end
+
   test "cancel leaves everything as it was", %{conn: conn, blocked: blocked} do
     orchestrator(:up)
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/failures")

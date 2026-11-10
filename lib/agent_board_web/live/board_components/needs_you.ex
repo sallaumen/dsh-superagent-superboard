@@ -102,6 +102,20 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                   confirm_label="Religar"
                   busy_label="Religando o agente…"
                 />
+                <.live_component
+                  :if={action[:retry]}
+                  module={AgentAction}
+                  id={"need-retry-#{need.id}"}
+                  mode={:retry}
+                  tone={:halt}
+                  ticket_id={action.retry.ticket_id}
+                  task_id={need.id}
+                  repository_id={action.retry.repository_id}
+                  number={action.retry.number}
+                  label={action.label}
+                  confirm_label={gettext("Request another attempt")}
+                  busy_label={gettext("Asking the agent…")}
+                />
                 <a
                   :if={action[:url]}
                   class={["ab-btn ab-btn--sm", action_class(need.kind)]}

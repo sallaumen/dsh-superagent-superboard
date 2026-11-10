@@ -135,9 +135,19 @@ defmodule AgentBoard.Lanes do
   defp unanswered_lane(board, context) do
     board
     |> Map.get(:queued, [])
-    |> Enum.filter(&unanswered?(&1, context))
+    |> Enum.filter(&(unanswered?(&1, context) or call_failed?(&1, context.now)))
     |> Enum.map(&task_need(&1, :unanswered, context))
   end
+
+  # The board claimed the call and the comment did not land: the task is
+  # still held, and the release tick never calls a claimed task again
+  # (`AgentBoard.Release`). A minute covers a comment still on its way.
+  @call_grace 60
+
+  defp call_failed?(%{held: true, released_at: %DateTime{} = at}, now),
+    do: DateTime.diff(now, at) >= @call_grace
+
+  defp call_failed?(_task, _now), do: false
 
   # Called by the board longer ago than a silence takes, and no ticket of the
   # runner names the issue: one waiting for a worker has a ticket already.
@@ -180,11 +190,18 @@ defmodule AgentBoard.Lanes do
     DateTime.add(context.silences[task.number].at, context.stall_after, :second)
   end
 
+  defp need_at(%{held: true, released_at: at}, :unanswered, _context), do: at
+
   defp need_at(task, :unanswered, context),
     do: DateTime.add(Release.called_at(task), context.stall_after, :second)
 
   defp need_at(task, _kind, _context),
     do: task.state_changed_at || task.updated_at || task.inserted_at
+
+  defp task_why(%{held: true, released_at: at}, :unanswered, _ticket, _pull, context) do
+    "**A chamada ao agente não foi concluída.** O board tentou " <>
+      "#{Time.since_label(at, context.tz_offset, context.now)} e não tenta de novo sozinho."
+  end
 
   # What the board knows: it called, and no ticket names the issue. Why the
   # runner did not start is in the runner, so the item does not guess.
@@ -289,6 +306,21 @@ defmodule AgentBoard.Lanes do
       %{label: "Chamar de novo", release: phrase},
       %{label: action_label(:unanswered), task_id: task.id}
     ]
+  end
+
+  # A failure with an attempt left to ask for gets the button on the card,
+  # the same one as the detail's (`AgentBoard.AgentBlock`).
+  defp need_actions(task, :blocked, _pull, context) do
+    detail = %{label: action_label(:blocked), task_id: task.id}
+
+    case AgentBlock.explain(Map.get(context.tickets, task.number), block_opts(context)) do
+      %{retry: label, ticket_id: ticket_id} when is_binary(label) and is_binary(ticket_id) ->
+        retry = %{ticket_id: ticket_id, repository_id: task.repository_id, number: task.number}
+        [%{label: label, retry: retry}, detail]
+
+      _no_retry ->
+        [detail]
+    end
   end
 
   defp need_actions(task, kind, _pull, _context),
@@ -409,9 +441,12 @@ defmodule AgentBoard.Lanes do
       Enum.map(rows, fn row ->
         item = queue_item(row, merged, origins, blockers, now, last_visit)
 
+        stuck = stuck(row, calls)
+        held = if is_nil(stuck), do: held_sub(row, waits)
+
         Map.merge(item, %{
-          sub: held_sub(row, waits) || join_sub([item.sub, call_sub(row, calls)]),
-          stuck: stuck(row, calls)
+          sub: held || join_sub([item.sub, call_sub(row, calls)]),
+          stuck: stuck
         })
       end)
 
@@ -527,9 +562,16 @@ defmodule AgentBoard.Lanes do
 
   # The same derivation as the item in Precisa de você (`unanswered?/2`).
   defp stuck(row, calls) do
-    if unanswered?(row, calls) do
-      called = Time.ago(DateTime.diff(calls.now, Release.called_at(row)))
-      "chamado #{called}, o agente não começou"
+    cond do
+      call_failed?(row, calls.now) ->
+        "a chamada ao agente não foi concluída"
+
+      unanswered?(row, calls) ->
+        called = Time.ago(DateTime.diff(calls.now, Release.called_at(row)))
+        "chamado #{called}, o agente não começou"
+
+      true ->
+        nil
     end
   end
 

@@ -106,7 +106,7 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/card.ex:20
 #: lib/agent_board_web/live/board_components/composer.ex:519
 #: lib/agent_board_web/live/board_components/merge_log.ex:72
-#: lib/agent_board_web/live/board_components/needs_you.ex:111
+#: lib/agent_board_web/live/board_components/needs_you.ex:125
 #: lib/agent_board_web/live/board_components/objective_tree.ex:90
 #, elixir-autogen, elixir-format
 msgid "(opens GitHub in a new tab)"
@@ -761,7 +761,7 @@ msgid "Resume"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/composer.ex:84
-#: lib/agent_board_web/live/board_components/needs_you.ex:150
+#: lib/agent_board_web/live/board_components/needs_you.ex:164
 #: lib/agent_board_web/live/board_components/today.ex:360
 #, elixir-autogen, elixir-format
 msgid "Review"
@@ -1689,7 +1689,7 @@ msgstr ""
 msgid "Already in the queue"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/needs_you.ex:157
+#: lib/agent_board_web/live/board_components/needs_you.ex:171
 #, elixir-autogen, elixir-format
 msgid "Attention"
 msgstr ""
@@ -3746,6 +3746,7 @@ msgid "Archived"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:212
+#: lib/agent_board_web/live/board_components/needs_you.ex:117
 #, elixir-autogen, elixir-format
 msgid "Asking the agent…"
 msgstr ""
@@ -3781,6 +3782,7 @@ msgid "Ready for review"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:211
+#: lib/agent_board_web/live/board_components/needs_you.ex:116
 #, elixir-autogen, elixir-format
 msgid "Request another attempt"
 msgstr ""
