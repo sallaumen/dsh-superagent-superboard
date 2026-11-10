@@ -91,12 +91,14 @@ defmodule AgentBoard.Sync do
           select: max(e.id)
       ) || 0
 
+    since = updated_since(repository)
+
     # A repository can have Issues disabled (404 or 410). That is not a sync
     # failure: the pulls still matter. Any other failure read no issue state,
     # so it is a `sync_error`, never a fresh sync.
     issues =
       try do
-        GitHub.issues(client, repository.owner, repository.name)
+        GitHub.issues(client, repository.owner, repository.name, since)
       rescue
         exception in RuntimeError ->
           if String.starts_with?(exception.message, ["GitHub HTTP 404", "GitHub HTTP 410"]) do
@@ -113,7 +115,7 @@ defmodule AgentBoard.Sync do
           end
       end
 
-    pulls = GitHub.pulls(client, repository.owner, repository.name)
+    pulls = GitHub.pulls(client, repository.owner, repository.name, since)
 
     issues
     |> Enum.reject(&SplitGraph.objective_issue?/1)
@@ -177,6 +179,19 @@ defmodule AgentBoard.Sync do
       ),
       :count
     )
+  end
+
+  # The last completed sync, an hour early: its row is written when it ends, so
+  # the margin covers what changed while it ran and GitHub's clock. nil: never.
+  defp updated_since(repository) do
+    at =
+      Repo.one(
+        from e in AgentBoard.Board.Event,
+          where: e.repository_id == ^repository.id and e.kind == "sync",
+          select: max(e.inserted_at)
+      )
+
+    at && DateTime.add(at, -1, :hour)
   end
 
   # -- the commits ------------------------------------------------------------

@@ -149,22 +149,50 @@ defmodule AgentBoard.GitHub do
     end
   end
 
-  @doc "The repository's issues, the pull requests filtered out."
-  def issues(client, owner, repo) do
+  # shortcut: at most 10 pages (1000 items) per read, so the first import of a huge
+  # repository cannot spend the shared 5000/h quota; raise it if one is ever cut.
+  @max_pages 10
+
+  @doc """
+  The repository's issues updated since an instant (all of them, up to 10
+  pages, when nil: the first import), the pull requests filtered out.
+  """
+  def issues(client, owner, repo, since) do
+    params = if since, do: [since: DateTime.to_iso8601(since)] ++ recent(), else: recent()
+
     client
-    |> Req.get!(url: "/repos/#{owner}/#{repo}/issues", params: recent())
-    |> body!()
+    |> pages("/repos/#{owner}/#{repo}/issues", params, fn _items -> true end)
     # GitHub returns pull requests from this endpoint too. The KEY is the
     # marker and its value may be nil, so Map.has_key?/2 is deliberate --
     # a test fixture that sets "pull_request" => nil is a pull request here.
     |> Enum.reject(&Map.has_key?(&1, "pull_request"))
   end
 
-  @doc "The repository's pull requests."
-  def pulls(client, owner, repo) do
-    client
-    |> Req.get!(url: "/repos/#{owner}/#{repo}/pulls", params: recent())
-    |> body!()
+  @doc """
+  The repository's pull requests, newest update first: the first page always,
+  the next ones while the page read does not end before `since`.
+  """
+  def pulls(client, owner, repo, since) do
+    pages(client, "/repos/#{owner}/#{repo}/pulls", recent(), &updated_since?(&1, since))
+  end
+
+  defp pages(client, url, params, more?, page \\ 1) do
+    response = Req.get!(client, url: url, params: [{:page, page} | params])
+    items = body!(response)
+
+    if page < @max_pages and next_page?(response) and more?.(items),
+      do: items ++ pages(client, url, params, more?, page + 1),
+      else: items
+  end
+
+  # /pulls takes no `since`: a page that ends before it is the last one needed.
+  defp updated_since?(_items, nil), do: true
+
+  defp updated_since?(items, since) do
+    case DateTime.from_iso8601(List.last(items)["updated_at"] || "") do
+      {:ok, at, _offset} -> DateTime.compare(at, since) != :lt
+      _no_date -> false
+    end
   end
 
   @doc "The reviews of a pull request."
