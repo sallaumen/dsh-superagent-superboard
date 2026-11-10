@@ -1644,6 +1644,8 @@ database held 24 such `Sync.Worker` rows, each from a different boot.
   tile (`set_max_workers/2`: `GET settings`, then `PUT settings/executor`
   with the whole block and the revision it read; a save in between is a
   conflict, never an overwrite; 1..16, the runner's range). Changing only
-  `maxWorkers` does not restart the runner (`worker_limit_test.exs`).
+  `maxWorkers` does not restart the runner (`worker_limit_test.exs`). The
+  tile also saves that ceiling in the project's `superagents` row, where the
+  card's − and + count from.
 - The web layer never talks to GitHub directly: it goes through `AgentBoard.Board`
   and `AgentBoard.GitHub`.

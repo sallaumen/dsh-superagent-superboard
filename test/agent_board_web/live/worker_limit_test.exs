@@ -4,7 +4,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
 
   import Phoenix.LiveViewTest
 
-  alias AgentBoard.{Board, Orchestrator, Repo}
+  alias AgentBoard.{Board, Orchestrator, Repo, Superagents}
   alias AgentBoard.Board.Task
   alias AgentBoard.Superagents.Superagent
   alias AgentBoardWeb.BoardLive
@@ -181,6 +181,29 @@ defmodule AgentBoardWeb.WorkerLimitTest do
 
     view |> element("#flow-load button[aria-label='Menos um agente']") |> render_click()
     assert has_element?(view, "#flow-load [data-key='load-max']", "3")
+  end
+
+  test "the tile keeps the project's row at the ceiling it saved", %{
+    conn: conn,
+    repo: repo,
+    runner: runner
+  } do
+    {:ok, row} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "superagent-arena",
+        port: 3190,
+        state_dir: "/tmp/superagent-arena",
+        max_workers: 3
+      })
+
+    Agent.update(runner, &%{&1 | max: 6})
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    render_async(view, 5_000)
+
+    view |> element("#flow-load button[aria-label='Mais um agente']") |> render_click()
+
+    assert Superagents.get(row.id).max_workers == 7
   end
 
   test "the minus button stops at one agent", %{conn: conn, runner: runner} do
