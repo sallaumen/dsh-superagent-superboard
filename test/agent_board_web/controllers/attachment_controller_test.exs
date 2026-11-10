@@ -66,6 +66,33 @@ defmodule AgentBoardWeb.AttachmentControllerTest do
     refute_received {:github, _, _}
   end
 
+  # Each image costs one GitHub call on the board's token: another site's page
+  # full of <img> tags would burn the hourly quota.
+  for site <- ["cross-site", "same-site"] do
+    test "a #{site} image request asks GitHub nothing", %{conn: conn, repo: repo} do
+      github()
+
+      conn =
+        conn
+        |> put_req_header("sec-fetch-site", unquote(site))
+        |> get("/attachments/#{repo.id}/#{@hash}/mock.png")
+
+      assert conn.status == 403
+      refute_received {:github, _, _}
+    end
+  end
+
+  test "the board's own page still loads its images", %{conn: conn, repo: repo} do
+    github()
+
+    conn =
+      conn
+      |> put_req_header("sec-fetch-site", "same-origin")
+      |> get("/attachments/#{repo.id}/#{@hash}/mock.png")
+
+    assert response(conn, 200) == "PNGDATA"
+  end
+
   test "a file GitHub does not have is a 404, not a crash", %{conn: conn, repo: repo} do
     github(404)
     assert response(get(conn, "/attachments/#{repo.id}/#{@hash}/mock.png"), 404)
