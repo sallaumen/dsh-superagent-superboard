@@ -19,6 +19,17 @@ defmodule AgentBoard.AgentSignalTest do
              %{at: ~U[2026-11-07 11:30:00Z], source: :report, seconds: 1800}
   end
 
+  test "an answer the worker read is a signal: it is alive since then" do
+    ticket = %{
+      "started_at" => ~U[2026-11-07 10:00:00Z],
+      "report_at" => ~U[2026-11-07 10:05:00Z],
+      "idle_at" => ~U[2026-11-07 10:05:00Z],
+      "answered_at" => ~U[2026-11-07 11:50:00Z]
+    }
+
+    assert AgentSignal.last_signal(ticket) == {~U[2026-11-07 11:50:00Z], :report}
+  end
+
   test "a ticket that only started has its start as the signal" do
     ticket = %{"started_at" => ~U[2026-11-07 11:50:00Z]}
 

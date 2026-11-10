@@ -39,6 +39,42 @@ defmodule AgentBoardWeb.BoardStallTest do
     :ok
   end
 
+  # The worker said it was waiting at 10:05 and read the owner's answer at 10:50.
+  @answered ~s({"mandate":{"basis":{"scope":{"number":77}}},"assignments":[{"id":"a1","state":"running","startedAt":"2026-11-06T10:00:00.000Z","idleAt":"2026-11-06T10:05:00.000Z","report":{"state":"waiting","summary":"Sem creditos.","at":"2026-11-06T10:05:00.000Z"}}],"inputs":[{"kind":"trigger","human":true,"readAt":"2026-11-06T10:50:00.000Z","deliveredTo":"a1"}],"execution":{"directory":"/does/not/exist"}})
+
+  test "a task back at work after the owner's answer says so in Agora", %{conn: conn} do
+    {:ok, db} = Exqlite.Sqlite3.open(Application.get_env(:agent_board, :state_db))
+    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @answered <> "')")
+    Exqlite.Sqlite3.close(db)
+
+    {:ok, repo} = Board.add_repository("fixture", "answered")
+    Board.log_event(repo.id, "sync", "fixture/answered", %{"errors" => 0})
+
+    answered =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 77,
+        title: "Answered run",
+        state: "running"
+      })
+      |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/answered")
+
+    assert has_element?(
+             view,
+             "#sec-now #task-#{answered.id} .ab-run__answered",
+             "De volta ao trabalho: leu sua resposta às 10:50"
+           )
+
+    # The fixture's clock is days old, so the run is also silent: that is the
+    # only thing it asks of the owner, counted from the answer, not a block.
+    assert has_element?(view, "#sec-needs #silence-#{answered.id}", "Sem sinal há")
+    refute has_element?(view, "#sec-needs", "Bloqueado")
+  end
+
   test "a silent run is marked in Agora and lands in Precisa de você", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "stall")
     Board.log_event(repo.id, "sync", "fixture/stall", %{"errors" => 0})

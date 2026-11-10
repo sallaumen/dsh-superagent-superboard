@@ -237,6 +237,59 @@ defmodule AgentBoard.SyncTest do
     )
   end
 
+  describe "a person's answer the worker read" do
+    # arena-rogue #208, 2026-11-10: the owner answered at 14:44, the worker read
+    # it a second later and worked for 35 minutes under a "Blocked" card,
+    # because the report it had written before the answer still said waiting.
+    @waited ~U[2026-11-10 17:00:44Z]
+    @read ~U[2026-11-10 17:45:12Z]
+
+    defp answered(report \\ "waiting") do
+      waiting("A chave da OpenAI está sem créditos.")
+      |> Map.merge(%{
+        "report" => report,
+        "report_at" => @waited,
+        "idle_at" => @waited,
+        "answered_at" => @read
+      })
+    end
+
+    test "puts a waiting ticket back to work, whatever the agent wrote since" do
+      assert Sync.ticket_state(answered()) == "running"
+      # the workpad still carries the old block, and "On it" asks nothing
+      assert Sync.ticket_state(answered(), workpad: %{blockage: "sem créditos"}) == "running"
+      assert Sync.ticket_state(answered(), workpad: %{question: "Qual chave?"}) == "running"
+      assert Sync.ticket_state(answered(), asked?: false) == "running"
+    end
+
+    test "puts a blocked report back to work too" do
+      assert Sync.ticket_state(answered("blocked")) == "running"
+    end
+
+    test "does not count before it is read, or when it is older than the report" do
+      assert Sync.ticket_state(Map.put(answered(), "answered_at", nil)) == "blocked"
+
+      asks_again = Map.put(answered(), "report_at", DateTime.add(@read, 48, :second))
+      assert Sync.ticket_state(asks_again) == "blocked"
+      assert Sync.ticket_state(asks_again, workpad: %{question: "E agora?"}) == "question"
+    end
+
+    test "does not count once the worker went idle after it, or the ticket ended" do
+      idle_again = Map.put(answered(), "idle_at", DateTime.add(@read, 600, :second))
+      assert Sync.ticket_state(idle_again) == "blocked"
+
+      ended = Map.put(answered(), "ended_at", DateTime.add(@read, 60, :second))
+      assert Sync.ticket_state(ended) == "blocked"
+    end
+
+    test "changes nothing for a report that is not waiting for anyone" do
+      ticket = Map.merge(answered(), %{"report" => "ready", "own_threads" => [28]})
+      assert Sync.ticket_state(ticket) == "ready"
+      assert AgentBoard.Tickets.answered_at(ticket) == nil
+      assert AgentBoard.Tickets.answered_at(answered()) == @read
+    end
+  end
+
   defp waiting(summary) do
     %{
       "assignment" => "running",

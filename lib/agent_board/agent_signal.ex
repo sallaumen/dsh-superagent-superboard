@@ -55,6 +55,8 @@ defmodule AgentBoard.AgentSignal do
     [
       {ticket["report_at"], :report},
       {ticket["idle_at"], :report},
+      # a person's answer the worker read: it is alive since then
+      {ticket["answered_at"], :report},
       {ticket["started_at"], :start},
       {AgentWorktree.last_activity_at(ticket), :worktree}
     ]

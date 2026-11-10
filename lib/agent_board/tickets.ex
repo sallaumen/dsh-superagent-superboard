@@ -26,11 +26,25 @@ defmodule AgentBoard.Tickets do
   the newest agent comment (`asked?`, a boolean or a function) actually
   asks one; a waiting ticket that opened a PR is a review; anything else is
   a block whose reason is the report itself.
+
+  A `waiting` or `blocked` report is the worker's last word only until a
+  person answers it: once the worker has read a person's message newer than
+  that report (`answered_at/1`), it is working again and the task is
+  `running`, whatever comment it posted since. A new report, or the worker
+  going idle after the answer, is the newer fact and decides again.
   """
   def state(ticket, opts \\ []) do
     cond do
       stopped?(ticket) -> nil
       ticket["ended_outcome"] == "merged" -> "done"
+      answered_at(ticket) -> "running"
+      true -> reported_state(ticket, opts)
+    end
+  end
+
+  # What the last Assignment's own report and state say.
+  defp reported_state(ticket, opts) do
+    cond do
       ticket["report"] == "waiting" -> waiting_state(ticket, opts)
       retrying?(ticket) -> "retrying"
       blocked_ticket?(ticket) -> "blocked"
@@ -39,6 +53,29 @@ defmodule AgentBoard.Tickets do
       true -> nil
     end
   end
+
+  @doc """
+  When the worker read the person's answer to the report it is still showing
+  (`waiting` or `blocked`), or nil: no answer read, a report newer than the
+  answer, a worker idle since, or a ticket that ended. The moment comes from
+  the runner (`AgentBoard.AgentState`, `inputs[].readAt`), never from a
+  comment's text.
+  """
+  @spec answered_at(map()) :: DateTime.t() | nil
+  def answered_at(
+        %{"report" => report, "report_at" => %DateTime{} = reported, "answered_at" => answered} =
+          ticket
+      )
+      when report in ["waiting", "blocked"] and is_struct(answered, DateTime) do
+    if is_nil(ticket["ended_at"]) and DateTime.after?(answered, reported) and
+         not idle_after?(ticket["idle_at"], answered),
+       do: answered
+  end
+
+  def answered_at(_ticket), do: nil
+
+  defp idle_after?(%DateTime{} = idle, answered), do: DateTime.after?(idle, answered)
+  defp idle_after?(_idle, _answered), do: false
 
   @doc """
   The stages of an assignment, each from evidence the board can see, never a

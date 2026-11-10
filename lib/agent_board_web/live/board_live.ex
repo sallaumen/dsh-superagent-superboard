@@ -407,6 +407,7 @@ defmodule AgentBoardWeb.BoardLive do
       elapsed: task.started_at && Time.age_seconds(task.started_at, run.frozen_at || run.now),
       silence: silence,
       stalled: AgentSignal.stalled?(silence, run.stall_after),
+      answered_at: ticket && Tickets.answered_at(ticket),
       agent: nil,
       phases: Tickets.stages(ticket, worktree)
     }

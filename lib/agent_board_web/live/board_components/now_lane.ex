@@ -73,6 +73,12 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
 
           <div class="ab-run__title">{task.title}</div>
 
+          <div :if={task[:answered_at]} class="ab-run__answered ab-meta">
+            {gettext("Back to work: read your answer at %{time}",
+              time: Time.local_time(task.answered_at, @tz_offset)
+            )}
+          </div>
+
           <div :if={task[:stalled]} class="ab-run__silence">
             <.glyph kind={:stalled} />
             <span>{gettext("no signal for %{duration}", duration: Time.duration(task.silence.seconds))}</span>
