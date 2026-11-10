@@ -65,6 +65,14 @@ const english = {
   "Parar a voz": "Stop voice",
   "Falando": "Speaking",
   "Voz": "Voice",
+  "Você": "You",
+  "Sua voz": "Your voice",
+  "Agente": "Agent",
+  "Concluído": "Done",
+  "Atenção": "Attention",
+  "Transcrevendo…": "Transcribing…",
+  "Aguardando microfone…": "Waiting for microphone…",
+  "Ouvindo…": "Listening…",
 }
 
 export const isPortuguese = () => document.documentElement.lang === "pt-BR"

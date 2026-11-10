@@ -58,7 +58,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
             else: gettext("Agent")}</span>
           <p>{turn.text}</p>
           <span :if={turn.role == "agent" && turn.duration_ms} class="voice-chat-time">
-            pensou em {seconds(turn.duration_ms)}
+            {gettext("thought for %{time}", time: seconds(turn.duration_ms))}
           </span>
         </li>
       </ol>

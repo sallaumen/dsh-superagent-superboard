@@ -5,8 +5,7 @@ defmodule AgentBoard.Time do
   browser reports it).
   """
 
-  @weekdays ~w(segunda terça quarta quinta sexta sábado domingo)
-  @months ~w(jan fev mar abr mai jun jul ago set out nov dez)
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   @doc "Whole seconds between `at` and `now`; never negative."
   def age_seconds(nil, _now), do: nil
@@ -16,11 +15,11 @@ defmodule AgentBoard.Time do
   end
 
   @doc "A relative phrase in the board's voice."
-  def ago(nil), do: "desconhecido"
-  def ago(sec) when sec < 60, do: "há #{sec} s"
-  def ago(sec) when sec < 3600, do: "há #{div(sec, 60)} min"
-  def ago(sec) when sec < 86_400, do: "há #{div(sec, 3600)} h"
-  def ago(sec), do: "há #{div(sec, 86_400)} d"
+  def ago(nil), do: gettext("unknown")
+  def ago(sec) when sec < 60, do: gettext("%{count} s ago", count: sec)
+  def ago(sec) when sec < 3600, do: gettext("%{count} min ago", count: div(sec, 60))
+  def ago(sec) when sec < 86_400, do: gettext("%{count} h ago", count: div(sec, 3600))
+  def ago(sec), do: gettext("%{count} d ago", count: div(sec, 86_400))
 
   @doc "Elapsed time for a running task: m:ss, or h mm min past an hour."
   def duration(nil), do: "—"
@@ -48,8 +47,8 @@ defmodule AgentBoard.Time do
 
   def local_date(%DateTime{} = at, offset), do: local(at, offset) |> DateTime.to_date()
 
-  @doc "hoje às 22:10, ontem às 22:10 ou terça, 4 nov às 22:10."
-  def since_label(nil, _offset, _now), do: "antes da última visita"
+  @doc "today at 22:10, yesterday at 22:10 or Tuesday, Nov 4 at 22:10."
+  def since_label(nil, _offset, _now), do: gettext("before your last visit")
 
   def since_label(%DateTime{} = at, offset, now) do
     date = local_date(at, offset)
@@ -57,26 +56,75 @@ defmodule AgentBoard.Time do
     time = local_time(at, offset)
 
     cond do
-      date == today -> "hoje às #{time}"
-      date == Date.add(today, -1) -> "ontem às #{time}"
-      true -> "#{weekday(date)}, #{date.day} #{month(date)} às #{time}"
+      date == today ->
+        gettext("today at %{time}", time: time)
+
+      date == Date.add(today, -1) ->
+        gettext("yesterday at %{time}", time: time)
+
+      true ->
+        gettext("%{day}, %{date} %{month} at %{time}",
+          day: weekday(date),
+          date: date.day,
+          month: month(date),
+          time: time
+        )
     end
   end
 
-  @doc "The group heading: Hoje, Ontem, 5 nov or Terça, 4 nov."
+  @doc "The group heading: Today, Yesterday, 5 Nov or Tuesday, 4 Nov."
   def day_label(date, today) do
     cond do
-      date == today -> "Hoje"
-      date == Date.add(today, -1) -> "Ontem, #{date.day} #{month(date)}"
-      true -> "#{String.capitalize(weekday(date))}, #{date.day} #{month(date)}"
+      date == today ->
+        gettext("Today")
+
+      date == Date.add(today, -1) ->
+        gettext("Yesterday, %{date} %{month}", date: date.day, month: month(date))
+
+      true ->
+        # Portuguese writes the weekday in lower case; a heading starts with a capital.
+        gettext("%{day}, %{date} %{month}",
+          day: String.capitalize(weekday(date)),
+          date: date.day,
+          month: month(date)
+        )
     end
   end
 
   @doc "Short label under the week dots."
   def short_day_label(date, today) do
-    if date == today, do: "hoje", else: String.pad_leading("#{date.day}", 2, "0")
+    if date == today, do: gettext("today"), else: String.pad_leading("#{date.day}", 2, "0")
   end
 
-  def weekday(%Date{} = date), do: Enum.at(@weekdays, Date.day_of_week(date) - 1)
-  def month(%Date{month: month}), do: Enum.at(@months, month - 1)
+  def weekday(%Date{} = date) do
+    case Date.day_of_week(date) do
+      1 -> gettext("Monday")
+      2 -> gettext("Tuesday")
+      3 -> gettext("Wednesday")
+      4 -> gettext("Thursday")
+      5 -> gettext("Friday")
+      6 -> gettext("Saturday")
+      7 -> gettext("Sunday")
+    end
+  end
+
+  def month(%Date{month: month}) do
+    Enum.at(
+      [
+        gettext("Jan"),
+        gettext("Feb"),
+        gettext("Mar"),
+        gettext("Apr"),
+        gettext("May"),
+        gettext("Jun"),
+        gettext("Jul"),
+        gettext("Aug"),
+        gettext("Sep"),
+        gettext("Oct"),
+        gettext("Nov"),
+        gettext("Dec")
+      ],
+      month - 1
+    )
+  end
 end
