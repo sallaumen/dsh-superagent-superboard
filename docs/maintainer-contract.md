@@ -320,7 +320,10 @@ that already worked).
   closed at the same commit is not read again (reviews, checks) unless its checks
   were still pending; an open pull is read on every sync (`sync_repo_test.exs`,
   "the GitHub quota"). Reading every recent pull cost about 600 calls per run with
-  three repositories, and the board froze for the rest of each hour.
+  three repositories, and the board froze for the rest of each hour. Issues
+  and pulls are read past the first page, so nothing updated since the last
+  completed sync (an hour early) is skipped; each read stops at 10 pages, which
+  bounds a first import (`sync_pages_test.exs`).
 - `AgentBoard.MessagePoller` reads recently updated GitHub issue comments once
   per active repository every 30s when a GitHub token is configured. It follows
   pagination, stores only comments for tracked tasks, broadcasts only for new
