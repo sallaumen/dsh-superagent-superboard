@@ -84,6 +84,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
                 class={["ab-more ab-day__more", group_extra(day.group) != [] && "ab-day__more--short"]}
                 phx-click="show_panel"
                 phx-value-panel="history"
+                phx-value-list="prs"
                 data-panel-trigger
               >
                 {gettext("and %{count} more", count: group_more(day.group))}
@@ -94,6 +95,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
                 class="ab-more ab-day__more ab-day__more--wide"
                 phx-click="show_panel"
                 phx-value-panel="history"
+                phx-value-list="prs"
                 data-panel-trigger
               >
                 {gettext("and %{count} more", count: group_more_wide(day.group))}

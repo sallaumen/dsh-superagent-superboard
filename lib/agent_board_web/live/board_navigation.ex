@@ -42,6 +42,17 @@ defmodule AgentBoardWeb.BoardNavigation do
     "/?" <> URI.encode_query(query)
   end
 
+  @doc """
+  The history panel URL: which list it shows (ended tasks, or `"prs"` for the
+  merged pull requests) and the search, so a reload or a shared link reopens it.
+  """
+  def history_path(repo, list \\ "tasks", query \\ "") do
+    params = %{"repo" => "#{repo.owner}/#{repo.name}", "panel" => "history"}
+    params = if list == "prs", do: Map.put(params, "list", "prs"), else: params
+    params = if query in [nil, ""], do: params, else: Map.put(params, "q", query)
+    "/?" <> URI.encode_query(params)
+  end
+
   @doc "The settings panel URL, keeping the section alive across a restart."
   def settings_path(repo, section \\ nil) do
     query = %{"panel" => "settings"}
@@ -110,6 +121,8 @@ defmodule AgentBoardWeb.BoardNavigation do
       comments: [],
       inspector_tab: "conversa",
       settings_section: settings_section(panel, params["section"]),
+      history_list: if(params["list"] == "prs", do: "prs", else: "tasks"),
+      history_query: String.slice(params["q"] || "", 0, 120),
       view: view
     )
   end

@@ -1177,12 +1177,77 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert_patch(view, AgentBoardWeb.BoardNavigation.path(repo, "conversation", task.id))
     assert has_element?(view, "#conversation-title", "Task 7")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/pr-door&panel=history")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/pr-door&panel=history&list=prs")
     assert has_element?(view, "#merged-list button[phx-value-number='41']", "tarefa #7")
 
     html = view |> element("#merged-list button[phx-value-number='42']") |> render_click()
     assert html =~ "O board não acompanha a issue que este PR fecha."
     refute has_element?(view, "#conversation")
+  end
+
+  test "history lists the tasks that ended, in order, and searches them", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "ended")
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    ended = fn number, title, attrs, minutes_ago ->
+      repo
+      |> insert_task(number, "done")
+      |> Ecto.Changeset.change(
+        Map.merge(
+          %{title: title, state_changed_at: DateTime.add(now, -minutes_ago, :minute)},
+          attrs
+        )
+      )
+      |> Repo.update!()
+    end
+
+    merged = ended.(7, "Salvar replays", %{}, 5)
+    ended.(8, "Fechar sem PR", %{}, 10)
+    ended.(9, "Parar no meio", %{state: "stopped", stopped: true}, 15)
+    insert_task(repo, 10, "queued")
+
+    repo
+    |> insert_merged(41, "success")
+    |> Ecto.Changeset.change(closes_issues: [7])
+    |> Repo.update!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/ended")
+    view |> element("#sec-log button", "Histórico") |> render_click()
+    assert_patch(view, AgentBoardWeb.BoardNavigation.history_path(repo))
+
+    # Newest end first, each with how it ended; a task still in a lane is not here.
+    rows = view |> element("#ended-list") |> render()
+    at = fn text -> rows |> :binary.match(text) |> elem(0) end
+    assert at.("Salvar replays") < at.("Fechar sem PR")
+    assert at.("Fechar sem PR") < at.("Parar no meio")
+    assert has_element?(view, "#ended-#{merged.id}", "Mesclado")
+    assert has_element?(view, "#ended-#{merged.id}", "PR #41")
+    assert has_element?(view, "#ended-list", "Encerrada sem PR mesclado")
+    assert has_element?(view, "#ended-list", "Parada")
+    refute has_element?(view, "#ended-list", "Task 10")
+
+    # The search lives in the URL: by number, then by a word of the title.
+    view |> form("#history-search", %{q: "#9"}) |> render_change()
+    assert_patch(view, AgentBoardWeb.BoardNavigation.history_path(repo, "tasks", "#9"))
+    assert has_element?(view, "#ended-list", "Parar no meio")
+    refute has_element?(view, "#ended-list", "Salvar replays")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/ended&panel=history&q=replays")
+    assert has_element?(view, "#history-search input[value=replays]")
+    assert has_element?(view, "#ended-list", "Salvar replays")
+    refute has_element?(view, "#ended-list", "Parar no meio")
+
+    view |> form("#history-search", %{q: "nada disso"}) |> render_change()
+    assert has_element?(view, "#ended-list", "Nenhuma tarefa encerrada corresponde")
+
+    # A row opens the task; the other list is the merged PRs, as before.
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/ended&panel=history")
+    view |> element("#ended-#{merged.id}") |> render_click()
+    assert_patch(view, AgentBoardWeb.BoardNavigation.path(repo, "conversation", merged.id))
+
+    view |> element("#history button", "PRs mesclados") |> render_click()
+    assert_patch(view, AgentBoardWeb.BoardNavigation.history_path(repo, "prs"))
+    assert has_element?(view, "#history .ab-history__prs:not([hidden]) #merged-list", "PR 41")
   end
 
   test "a busy day shows three PRs, twelve dots and the rest in history", %{conn: conn} do

@@ -265,6 +265,106 @@ defmodule AgentBoard.Board do
     Repo.all(query)
   end
 
+  @ended_states ~w(done closed stopped archived)
+  @ended_page_size 50
+
+  def ended_page_size, do: @ended_page_size
+
+  @doc """
+  A page of the tasks that ended, newest first by the instant the board saw
+  the end, each with how it ended and the pull request that closes it.
+
+  `query` narrows the page: a number (with or without `#`) is the issue's
+  number, any other text is searched in the title. The page is one query and
+  the pull requests of its tasks are a second one.
+  """
+  @spec ended_page(
+          integer(),
+          String.t() | nil,
+          {DateTime.t() | nil, integer()} | nil,
+          pos_integer()
+        ) ::
+          [map()]
+  def ended_page(repository_id, query \\ nil, cursor \\ nil, limit \\ @ended_page_size) do
+    base =
+      from t in Task,
+        where: t.repository_id == ^repository_id and t.kind == "issue",
+        where: t.state in ^@ended_states or t.stopped or t.archived,
+        order_by: [desc_nulls_last: t.state_changed_at, desc: t.id],
+        limit: ^limit
+
+    tasks = base |> ended_search(query) |> ended_after(cursor) |> Repo.all()
+    pulls = closing_pulls(repository_id, tasks)
+
+    Enum.map(tasks, fn task ->
+      pull = Map.get(pulls, task.number)
+
+      %{
+        id: task.id,
+        number: task.number,
+        title: task.title,
+        ended_at: task.state_changed_at,
+        outcome: ended_outcome(task, pull),
+        pull: pull && %{number: pull.number, url: pull.url}
+      }
+    end)
+  end
+
+  @doc "How a task ended: merged needs a merged pull request that closes its issue."
+  def ended_outcome(%Task{archived: true}, _pull), do: :archived
+  def ended_outcome(%Task{state: "archived"}, _pull), do: :archived
+  def ended_outcome(%Task{stopped: true}, _pull), do: :stopped
+  def ended_outcome(%Task{state: "stopped"}, _pull), do: :stopped
+  def ended_outcome(_task, %PullRequest{state: "merged"}), do: :merged
+  def ended_outcome(_task, _pull), do: :closed
+
+  defp ended_search(base, query) do
+    text = String.trim(query || "")
+
+    case Regex.run(~r/^#?(\d+)$/, text) do
+      [_, digits] ->
+        from t in base, where: t.number == ^String.to_integer(digits)
+
+      nil when text == "" ->
+        base
+
+      nil ->
+        pattern = "%" <> String.replace(text, ~r/([\\%_])/, "\\\\\\1") <> "%"
+        from t in base, where: ilike(t.title, ^pattern)
+    end
+  end
+
+  defp ended_after(base, nil), do: base
+
+  defp ended_after(base, {nil, id}),
+    do: from(t in base, where: is_nil(t.state_changed_at) and t.id < ^id)
+
+  defp ended_after(base, {%DateTime{} = at, id}) do
+    from t in base,
+      where:
+        is_nil(t.state_changed_at) or t.state_changed_at < ^at or
+          (t.state_changed_at == ^at and t.id < ^id)
+  end
+
+  # The pull request that closes each issue, by issue number: a merged one
+  # wins, then the newest. One read for the whole page.
+  defp closing_pulls(_repository_id, []), do: %{}
+
+  defp closing_pulls(repository_id, tasks) do
+    numbers = tasks |> Enum.map(& &1.number) |> Enum.reject(&is_nil/1)
+
+    from(p in PullRequest,
+      where:
+        p.repository_id == ^repository_id and
+          fragment("? && ?::integer[]", p.closes_issues, ^numbers),
+      order_by: [asc: fragment("? = 'merged'", p.state), asc: p.id]
+    )
+    |> Repo.all()
+    |> Enum.reduce(%{}, fn pull, acc ->
+      Enum.reduce(pull.closes_issues, acc, &Map.put(&2, &1, pull))
+    end)
+  end
+
   defp first_repository,
     do: Repo.one(from r in Repository, where: r.active, order_by: r.id, limit: 1)
 
