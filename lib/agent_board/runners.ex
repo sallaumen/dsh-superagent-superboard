@@ -140,11 +140,8 @@ defmodule AgentBoard.Runners do
       {:ok, %{ceiling_usd: ceiling, timeout_seconds: @claude_timeout_seconds}}
     else
       case claude_month_usd() do
-        {:ok, spent} when spent >= cap ->
-          {:error, :monthly_budget}
-
-        {:ok, _spent} ->
-          {:ok, %{ceiling_usd: ceiling, timeout_seconds: @claude_timeout_seconds}}
+        {:ok, spent} ->
+          month_budget(spent + in_flight_usd("claude"), cap, ceiling)
 
         {:error, reason} ->
           {:error, reason}
@@ -161,6 +158,21 @@ defmodule AgentBoard.Runners do
     else
       {:ok, %{ceiling_usd: nil, timeout_seconds: timeout}}
     end
+  end
+
+  defp month_budget(spent, cap, _ceiling) when spent >= cap, do: {:error, :monthly_budget}
+
+  defp month_budget(_spent, _cap, ceiling),
+    do: {:ok, %{ceiling_usd: ceiling, timeout_seconds: @claude_timeout_seconds}}
+
+  # The ledger sees a run only after it ends; until then its ceiling is what
+  # it may still spend.
+  defp in_flight_usd(executor) do
+    Repo.one(
+      from e in Execution,
+        where: e.executor == ^executor and e.status in ^@active,
+        select: type(coalesce(sum(e.ceiling_micros), 0), :integer)
+    ) / 1_000_000
   end
 
   # Only the Claude Code rows are summed: the board never adds two
