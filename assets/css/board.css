@@ -421,7 +421,8 @@ body { margin: 0; background: var(--paper); }
 /* ---------- widths ---------- */
 /* ultrawide: wider reading column, panel stays docked */
 @container board (min-width: 1880px) {
-  .ab-board[data-inspector="open"] { grid-template-columns: 240px minmax(0, 1fr) 520px; }
+  /* the rail keeps its width when the inspector opens: only the panel grows */
+  .ab-board[data-inspector="open"] { grid-template-columns: 224px minmax(0, 1fr) 520px; }
   .ab-main { --ab-pad-x: 56px; padding-left: 56px; padding-right: 56px; }
 }
 /* medium: panel floats over the content instead of squeezing it */
@@ -1475,6 +1476,9 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-flow__cycle th[scope="row"],
 .ab-flow__cycle thead th:first-child { width: 38%; padding-left: 0; }
 .ab-flow__cycle td.ab-flow__value { font-size: 10.5px; }
+/* a duration wraps between its parts (the template joins each number to its
+   unit), so a narrow tile shows "23 h / 59 min" instead of "23 h 5…" */
+.ab-flow__cycle td { white-space: normal; overflow: visible; text-overflow: clip; vertical-align: top; }
 .ab-flow__tile { padding: var(--space-3) var(--space-3); }
 .ab-context .ab-daily { max-width: 70ch; }
 

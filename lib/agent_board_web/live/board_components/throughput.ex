@@ -131,9 +131,9 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
             data-key="cycle.issue_pr"
             data-value={Metrics.duration(@tile.day.issue_to_pr)}
           >
-            {Metrics.duration(@tile.day.issue_to_pr)}
+            {cycle_duration(@tile.day.issue_to_pr)}
           </td>
-          <td>{Metrics.duration(@tile.week.issue_to_pr)}</td>
+          <td>{cycle_duration(@tile.week.issue_to_pr)}</td>
         </tr>
         <tr>
           <th scope="row">{gettext("PR → merge")}</th>
@@ -142,9 +142,9 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
             data-key="cycle.pr_merge"
             data-value={Metrics.duration(@tile.day.pr_to_merge)}
           >
-            {Metrics.duration(@tile.day.pr_to_merge)}
+            {cycle_duration(@tile.day.pr_to_merge)}
           </td>
-          <td>{Metrics.duration(@tile.week.pr_to_merge)}</td>
+          <td>{cycle_duration(@tile.week.pr_to_merge)}</td>
         </tr>
         <tr class="ab-flow__cycle-n">
           <th scope="row">{gettext("tickets")}</th>
@@ -467,6 +467,11 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
     ) <>
       Enum.map_join(series, ", ", &Integer.to_string/1)
   end
+
+  # A narrow cell wraps "23 h 59 min" between its parts ("23 h" / "59 min"),
+  # never inside one, instead of cutting it with an ellipsis.
+  defp cycle_duration(seconds),
+    do: seconds |> Metrics.duration() |> String.replace(~r/(\d) /u, "\\1\u00A0")
 
   defp tile_label(%{key: "done"}), do: pgettext("throughput tile", "Completed")
   defp tile_label(%{key: "opened"}), do: gettext("Issues opened")
