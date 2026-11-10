@@ -135,6 +135,35 @@ defmodule AgentBoard.TicketPollerTest do
     refute_receive :board_updated, 150
   end
 
+  # A ticket in one repository says nothing new about another: only the
+  # repository it names reloads its tabs.
+  test "a ticket change broadcasts only to its own repository", %{db: db} do
+    repo = isolated_repo()
+
+    other =
+      %Repository{}
+      |> Repository.changeset(%{owner: "sallaumen", name: "o_colmex"})
+      |> Ecto.Changeset.put_change(:id, 1_000_000 + System.unique_integer([:positive]))
+      |> Repo.insert!()
+
+    ticket = fn state ->
+      ~s({"channels":[{"address":{"url":"https://github.com/sallaumen/arena-rogue/issues/42"}}],"mandate":{"basis":{"scope":{"number":42}}},"assignments":[{"state":"#{state}"}]})
+    end
+
+    :ok =
+      Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{ticket.("queued")}')")
+
+    state = AgentBoard.TicketPoller.poll(%{})
+
+    Board.subscribe(repo.id)
+    Board.subscribe(other.id)
+    :ok = Exqlite.Sqlite3.execute(db, "update ticket set value = '#{ticket.("running")}'")
+    _state = AgentBoard.TicketPoller.poll(state)
+
+    assert_receive :board_updated
+    refute_receive :board_updated, 150
+  end
+
   test "a stopped ticket is not overlaid", %{db: db} do
     repo = isolated_repo()
     t = task(repo)
