@@ -8,6 +8,8 @@ defmodule AgentBoardWeb.BoardComponents.Concluded do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [status_mark: 1]
 
   alias AgentBoard.Time
+  alias AgentBoard.Usage.TaskCosts
+  alias AgentBoardWeb.BoardComponents.Inspector
 
   attr :list, :string, required: true
   attr :query, :string, required: true
@@ -22,6 +24,9 @@ defmodule AgentBoardWeb.BoardComponents.Concluded do
       assigns
       |> assign(:today, Time.local_date(now, assigns.offset))
       |> assign(:days, days(assigns.ended.items, assigns.offset))
+      # in memory, recomputed by the usage worker: no ledger read per render
+      |> assign(:costs, TaskCosts.for_tasks(Enum.map(assigns.ended.items, & &1.id)))
+      |> assign(:costs_at, TaskCosts.computed_at())
 
     ~H"""
     <div id="history" class="ab-history">
@@ -84,6 +89,12 @@ defmodule AgentBoardWeb.BoardComponents.Concluded do
             <span class="ab-ended__title">
               <span class="ab-need__id">#{item.number}</span> {item.title}
             </span>
+            <span
+              class="ab-ended__cost ab-data-sm"
+              title={cost_title(@costs_at, @offset)}
+            >
+              {cost_text(Map.get(@costs, item.id))}
+            </span>
             <span class="ab-ended__pr ab-data-sm">
               {if item.pull, do: "PR ##{item.pull.number}", else: "—"}
             </span>
@@ -134,4 +145,34 @@ defmodule AgentBoardWeb.BoardComponents.Concluded do
   defp word(:closed), do: gettext("Closed, no merged PR")
   defp word(:stopped), do: pgettext("ended task", "Stopped")
   defp word(:archived), do: pgettext("ended task", "Archived")
+
+  # What the task's executors cost, each in its own unit and never summed
+  # across them (`TaskCosts`). No entry is "—": nothing attributed in the
+  # window, or not computed yet; it is never a zero.
+  defp cost_text(nil), do: "—"
+
+  defp cost_text(entries) do
+    case Enum.filter(entries, & &1.cost) do
+      [] ->
+        gettext("cost unknown")
+
+      priced ->
+        Enum.map_join(priced, " · ", fn entry ->
+          "#{Inspector.executor_label(entry.source)} #{Inspector.execution_cost(entry)}"
+        end)
+    end
+  end
+
+  defp cost_title(nil, _offset),
+    do:
+      gettext(
+        "The executor cost is computed every five minutes; not yet since the board started."
+      )
+
+  defp cost_title(at, offset),
+    do:
+      gettext(
+        "What the executor spent on this task in the last 90 days, from the usage ledger, at %{time}. Each executor in its own unit; the board's own calls are in the task.",
+        time: Time.local_time(at, offset)
+      )
 end

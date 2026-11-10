@@ -945,22 +945,28 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
   defp money(usd) when is_number(usd), do: AgentBoardWeb.Numbers.usd(round(usd * 1_000_000))
 
-  defp executor_label("dsh"), do: "DeepSeek"
-  defp executor_label("claude_code"), do: "Claude Code"
-  defp executor_label("codex"), do: "Codex"
-  defp executor_label(source), do: source
+  @doc "An executor source by name (`dsh` is DeepSeek)."
+  def executor_label("dsh"), do: "DeepSeek"
+  def executor_label("claude_code"), do: "Claude Code"
+  def executor_label("codex"), do: "Codex"
+  def executor_label(source), do: source
 
-  defp execution_cost(%{source: "codex"}), do: gettext("unknown")
-  defp execution_cost(%{cost: nil}), do: gettext("unknown")
+  @doc """
+  What an execution (or a task's executions of one executor) cost, in the
+  executor's own unit: `≈` an estimate, `≥` a floor when a price is missing,
+  Claude Code a list price, Codex unknown.
+  """
+  def execution_cost(%{source: "codex"}), do: gettext("unknown")
+  def execution_cost(%{cost: nil}), do: gettext("unknown")
 
-  defp execution_cost(%{source: "claude_code", cost: %{micros: micros, complete?: true}}),
+  def execution_cost(%{source: "claude_code", cost: %{micros: micros, complete?: true}}),
     do: "≈ #{cost(micros)} " <> gettext("list price")
 
-  defp execution_cost(%{source: "claude_code", cost: %{micros: micros}}),
+  def execution_cost(%{source: "claude_code", cost: %{micros: micros}}),
     do: "≥ #{cost(micros)} " <> gettext("list price")
 
-  defp execution_cost(%{cost: %{micros: micros, complete?: true}}), do: "≈ #{cost(micros)}"
-  defp execution_cost(%{cost: %{micros: micros}}), do: "≥ #{cost(micros)}"
+  def execution_cost(%{cost: %{micros: micros, complete?: true}}), do: "≈ #{cost(micros)}"
+  def execution_cost(%{cost: %{micros: micros}}), do: "≥ #{cost(micros)}"
 
   defp task_result(task, pr) do
     word = task_result_label(task.state)
