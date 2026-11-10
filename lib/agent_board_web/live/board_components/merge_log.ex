@@ -25,14 +25,12 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
       <details id="fold-log" class="ab-fold ab-fold--log" data-mobile-fold open phx-hook="BoardFold">
         <summary class="ab-fold__summary">
           <span>{gettext("Merged")}</span>
-          <span class="ab-meta">{count(@log.total, @frozen)} {gettext("in 7 days")}</span>
+          <span class="ab-meta"><.week log={@log} frozen={@frozen} /></span>
         </summary>
         <div class="ab-fold__body">
           <div class="ab-sec__head">
             <h2 id="sec-log-title">{gettext("Merged")}</h2>
-            <span class="ab-sec__count">
-              {count(@log.total, @frozen)} {gettext("in 7 days")}
-            </span>
+            <span class="ab-sec__count"><.week log={@log} frozen={@frozen} /></span>
             <span class="ab-top__spacer"></span>
             <button
               :if={@has_history}
@@ -229,6 +227,24 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
       )
 
   defp day_count(%{n: n}), do: "#{n}"
+
+  # Issues lead: an issue is a delivery; a PR is how it got there.
+  attr :log, :map, required: true
+  attr :frozen, :boolean, required: true
+
+  defp week(assigns) do
+    ~H"""
+    <b class="ab-delivered">{gettext("%{issues} delivered",
+      issues:
+        ngettext("%{amount} issue", "%{amount} issues", @log.issues,
+          amount: count(@log.issues, @frozen)
+        )
+    )}</b>
+    · {gettext("%{prs} in 7 days",
+      prs: ngettext("%{amount} PR", "%{amount} PRs", @log.total, amount: count(@log.total, @frozen))
+    )}
+    """
+  end
 
   defp count(0, _frozen), do: "0"
   defp count(n, true), do: "≥#{n}"

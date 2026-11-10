@@ -121,16 +121,16 @@ defmodule AgentBoard.Overview do
       Repo.all(
         from p in PullRequest,
           where: p.state == "merged" and p.merged_at >= ^start_at and p.merged_at < ^tomorrow_at,
-          select: {p.repository_id, p.merged_at}
+          select: {p.repository_id, p.merged_at, p.closes_issues}
       )
 
     merge_counts =
-      Enum.frequencies_by(merges, fn {repository_id, at} ->
+      Enum.frequencies_by(merges, fn {repository_id, at, _closes} ->
         {repository_id, AgentBoard.Time.local_date(at, offset)}
       end)
 
     daily_merges =
-      Enum.frequencies_by(merges, fn {_repository_id, at} ->
+      Enum.frequencies_by(merges, fn {_repository_id, at, _closes} ->
         AgentBoard.Time.local_date(at, offset)
       end)
 
@@ -181,9 +181,23 @@ defmodule AgentBoard.Overview do
       queue: active_queue,
       projects: projects,
       merged_today: Map.get(daily_merges, local_day, 0),
+      delivered_today: delivered_on(merges, local_day, offset),
       seen_today: seen_today |> Map.values() |> Enum.sum(),
       trend: trend
     }
+  end
+
+  # An issue is delivered once, whichever repository and however many PRs.
+  defp delivered_on(merges, day, offset) do
+    merges
+    |> Enum.filter(fn {_repository_id, at, _closes} ->
+      AgentBoard.Time.local_date(at, offset) == day
+    end)
+    |> Enum.flat_map(fn {repository_id, _at, closes} ->
+      Enum.map(closes || [], &{repository_id, &1})
+    end)
+    |> Enum.uniq()
+    |> length()
   end
 
   defp day_start(date, offset) do

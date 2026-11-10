@@ -1193,6 +1193,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/pr-door")
 
+    # Issues lead the count: #7 and #99 delivered, by three PRs.
+    assert has_element?(view, "#sec-log .ab-sec__count", "2 issues entregues · 3 PRs em 7 dias")
+
     # The row opens the task on the board; GitHub is the small link beside it.
     assert has_element?(view, "#sec-log button.ab-pr[phx-value-number='41']", "PR 41")
     assert has_element?(view, ~s(#sec-log a[href="#{url}"][target=_blank]), "GitHub")

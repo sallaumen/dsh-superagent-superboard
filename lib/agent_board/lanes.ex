@@ -804,8 +804,20 @@ defmodule AgentBoard.Lanes do
         }
       end)
 
-    %{days: days, groups: groups, total: Enum.sum(Enum.map(days, & &1.n))}
+    %{
+      days: days,
+      groups: groups,
+      total: Enum.sum(Enum.map(days, & &1.n)),
+      issues: delivered(pulls)
+    }
   end
+
+  @doc """
+  The issues the PRs delivered: each issue a merged PR closes (`Closes #n`),
+  once however many PRs closed it. A PR that closes nothing delivers no issue.
+  """
+  def delivered(pulls),
+    do: pulls |> Enum.flat_map(&(&1.closes_issues || [])) |> Enum.uniq() |> length()
 
   @doc """
   How a pull's CI reads, the local gate first: `{state, note, title}`. One
