@@ -29,19 +29,18 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   attr :parent, :any, default: nil
   attr :tz_offset, :integer, default: 0
 
+  # The settings menu is on every page, so this mounts on every load: the
+  # snapshot (which prices the month) is read when the section opens.
   @impl true
   def mount(socket) do
-    snapshot = Runners.snapshot()
-    saved = saved_values(snapshot)
-
     {:ok,
      assign(socket,
        days: 7,
        days_list: @days,
        sources: @sources,
-       snapshot: snapshot,
-       saved: saved,
-       draft: saved,
+       snapshot: nil,
+       saved: %{},
+       draft: %{},
        dirty: [],
        report: nil,
        error: nil,

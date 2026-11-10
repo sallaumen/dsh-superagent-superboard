@@ -43,7 +43,7 @@ defmodule AgentBoardWeb.BoardLive do
   alias AgentBoard.Routing.Signals
   alias AgentBoard.Runners.Execution
   alias AgentBoard.System.{UpdateRun, Version}
-  alias AgentBoard.Usage.{Harness, Report}
+  alias AgentBoard.Usage.{Costs, Harness, Ledger, Report}
   alias AgentBoard.Voice.{Activity, Phrases}
 
   import AgentBoardWeb.BoardComponents.Composer, only: [composer: 1]
@@ -191,7 +191,7 @@ defmodule AgentBoardWeb.BoardLive do
         ai_calls: [],
         ai_status: AI.status(),
         version: Version.status(),
-        codex_quota: Runners.snapshot().quota,
+        codex_quota: Costs.codex_weekly(Ledger.limits()),
         # A page opened during an update joins it, the fast-forward's own
         # reload included.
         busy: UpdateRun.running?(),
@@ -1136,7 +1136,7 @@ defmodule AgentBoardWeb.BoardLive do
   # panel opens keeps the navigation hint fresh without a query per render.
   defp refresh_settings_quota(%{assigns: %{panel: "settings"}} = socket, previous)
        when previous != "settings" do
-    assign(socket, :codex_quota, Runners.snapshot().quota)
+    assign(socket, :codex_quota, Costs.codex_weekly(Ledger.limits()))
   end
 
   defp refresh_settings_quota(socket, _previous), do: socket
