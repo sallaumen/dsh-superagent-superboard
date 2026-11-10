@@ -34,7 +34,6 @@ defmodule AgentBoard.Board.PullRequest do
     field :closes_issues, {:array, :integer}, default: []
 
     belongs_to :repository, AgentBoard.Board.Repository
-    has_many :reviews, AgentBoard.Board.Review
 
     timestamps(type: :utc_datetime)
   end
