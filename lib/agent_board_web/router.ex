@@ -33,11 +33,18 @@ defmodule AgentBoardWeb.Router do
     pipe_through :browser
 
     post "/language", LocaleController, :update
-    get "/attachments/:repo_id/:hash/:name", AttachmentController, :show
 
     live_session :board, on_mount: {AgentBoardWeb.Locale, :default} do
       live "/", BoardLive
     end
+  end
+
+  # Each image is a GitHub call on the board's token: another site's <img>
+  # tags would spend the hourly quota. The board's own <img> is same-origin.
+  scope "/", AgentBoardWeb do
+    pipe_through [:browser, :refuse_cross_site]
+
+    get "/attachments/:repo_id/:hash/:name", AttachmentController, :show
   end
 
   scope "/api", AgentBoardWeb do
