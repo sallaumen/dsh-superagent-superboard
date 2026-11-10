@@ -1836,18 +1836,6 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 @container board (min-width: 1904px) and (max-width: 1999px) {
   .ab-board[data-inspector="open"] { grid-template-columns: 224px minmax(0, 1fr) 440px; }
 }
-/* Spare width (the 224 px rail plus the 1980 px cap): rail, content and
-   inspector stay one centred block instead of drifting to the window's edges. */
-@container board (min-width: 2204px) {
-  .ab-board { grid-template-columns: 224px minmax(0, 1980px); justify-content: center; }
-  .ab-board[data-inspector="open"] { grid-template-columns: 224px minmax(0, 1980px) 520px; }
-  .ab-rail { border-left: 1px solid var(--line); }
-  .ab-insp { border-right: 1px solid var(--line); }
-}
-/* With room for the inspector beside the centred content, opening it moves nothing. */
-@container board (min-width: 3244px) {
-  .ab-board[data-inspector="open"] { padding-left: 520px; }
-}
 
 /* Panels keep the width the frame gives them; they never stretch to 832 by
    default just because the dialog shell does. */
