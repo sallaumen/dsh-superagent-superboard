@@ -176,8 +176,7 @@ same modules was dropped in favour of those. What it adds on top:
 - `AgentBoard.Time` words relative ages, day headings and "since" labels through Gettext; it was still
   Portuguese ("há 7 min", "terça", "nov"). `AgentBoardWeb.Time`, its translated copy, now only forwards.
 - Eight browser strings joined `assets/js/i18n.js` ("Listening…", "You", "Agent"…).
-- "Message without a preview", "Report updated" (message hub), "of N" (queue filters) and
-  "thought for N" (voice log).
+- "of N" (queue filters) and "thought for N" (voice log). The inbox placeholders are left to #531.
 
 Still Portuguese outside Gettext, by a rough search of `main`: `actions` 84 lines (results and the
 Portuguese branch of the sentences), `voice/commands` 26, `agent_control` 17, `routing` 12,

@@ -6645,16 +6645,6 @@ msgstr "pausado"
 msgid "live"
 msgstr "ao vivo"
 
-#: lib/agent_board/board/inbox.ex:97
-#, elixir-autogen, elixir-format
-msgid "Message without a preview"
-msgstr "Mensagem sem prévia"
-
-#: lib/agent_board/board/inbox.ex:106
-#, elixir-autogen, elixir-format
-msgid "Report updated"
-msgstr "Relatório atualizado"
-
 #: lib/agent_board_web/live/board_components/queue_list.ex:22
 #, elixir-autogen, elixir-format
 msgid "of %{total}"
