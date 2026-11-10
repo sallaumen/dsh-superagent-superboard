@@ -67,6 +67,20 @@ defmodule AgentBoard.AnnouncerTest do
              [Phrases.attention("pt-BR", :blocked, "Ship it", 0)]
   end
 
+  test "a run past its time is said once, when its item first appears" do
+    need = %{key: "task-1", kind: :slow, title: "Ship it"}
+    silent = %{key: "task-1", kind: :stalled, title: "Ship it"}
+
+    assert Announcer.board_changes(board(), board(), nil, nil, needs: {[], [need]}) ==
+             [Phrases.attention("pt-BR", :slow, "Ship it", 0)]
+
+    assert Announcer.board_changes(board(), board(), nil, nil, needs: {[need], [need]}) == []
+
+    # the same task going silent later is other news, said in its own words
+    assert Announcer.board_changes(board(), board(), nil, nil, needs: {[need], [silent]}) ==
+             [Phrases.attention("pt-BR", :stalled, "Ship it", 0)]
+  end
+
   test "a silence calls the owner once, when its item first appears" do
     need = %{key: "task-1", kind: :stalled, title: "Ship it"}
     review = %{key: "task-2", kind: :review, title: "Other"}

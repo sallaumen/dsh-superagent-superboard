@@ -540,6 +540,37 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "mudanças pedidas"
   end
 
+  test "a small task running past 20 minutes is a heads-up in Precisa de você", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "slow-run")
+    Board.log_event(repo.id, "sync", "fixture/slow-run", %{"errors" => 0})
+
+    slow =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 31,
+        title: "Ajuste pequeno",
+        state: "running",
+        size: "S",
+        state_changed_at: DateTime.add(DateTime.utc_now(), -25 * 60)
+      })
+      |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/slow-run")
+
+    assert has_element?(view, "#sec-now #task-#{slow.id}", "Ajuste pequeno")
+    assert has_element?(view, "#sec-needs #slow-#{slow.id} .ab-need__kind", "Demorando")
+
+    assert has_element?(
+             view,
+             "#sec-needs #slow-#{slow.id} .ab-need__why.is-stale",
+             "Uma tarefa pequena é sinalizada depois de 20 min."
+           )
+
+    assert has_element?(view, "#sec-needs #slow-#{slow.id} button", "Ver detalhe")
+  end
+
   test "History words a pull's CI as the merge log does: a red remote check alone is unknown", %{
     conn: conn
   } do

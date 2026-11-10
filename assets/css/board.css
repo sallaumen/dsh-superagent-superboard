@@ -194,6 +194,7 @@ body { margin: 0; background: var(--paper); }
 .ab-need__why strong { font-weight: 500; }
 .ab-need__why.is-halt strong { color: var(--halt); }
 .ab-need__why.is-you strong { color: var(--you); }
+.ab-need__why.is-stale strong { color: var(--stale); }
 .ab-need__side { grid-row: 1; grid-column: 3; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
 .ab-need__actions { grid-column: 3; grid-row: 2; justify-self: end; display: flex; gap: 2px; margin: -4px -8px -2px 0; align-self: center; }
 .ab-new { display: inline-flex; align-items: center; gap: 5px; color: var(--you); font-size: 11.5px; font-weight: 600; }
@@ -1384,6 +1385,7 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-need__kind { font-weight: 600; color: var(--you); white-space: nowrap; }
 .ab-need__top.is-halt .ab-need__kind,
 .ab-need[data-task] .ab-need__top:has(.ab-g--halt) .ab-need__kind { color: var(--halt); }
+.ab-need[data-task] .ab-need__top:has(.ab-g--stale) .ab-need__kind { color: var(--stale); }
 .ab-need__title { grid-column: 1; grid-row: 2; }
 .ab-need__title span:last-child { white-space: normal; }
 .ab-need__why { grid-column: 1; grid-row: 3; }

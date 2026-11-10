@@ -32,6 +32,10 @@ defmodule AgentBoard.Lanes do
   task state: a running task is the owner's only while its ticket has given
   no signal for `:stall_after` seconds.
 
+  A long run (`slow_after/1`) is derived the same way and asks nothing: a
+  running task past the time its size allows is listed last, as a heads-up,
+  while it still gives signals. Once it goes silent the silence is the item.
+
   A failed ticket says what happened and what is left to the owner
   (`AgentBoard.AgentBlock`). With `agent: :down` (the orchestrator did not
   answer) the blocks and silences collapse into one `:agent_down` item:
@@ -50,7 +54,8 @@ defmodule AgentBoard.Lanes do
       silent_lane(board, context),
       unanswered_lane(board, context),
       lane(board, :ready, :review, context),
-      lane(board, :question, :question, context)
+      lane(board, :question, :question, context),
+      slow_lane(board, context)
     ]
     |> List.flatten()
     |> collapse_agent_down(board, context)
@@ -60,7 +65,9 @@ defmodule AgentBoard.Lanes do
   end
 
   defp collapse_agent_down(needs, board, %{agent: :down} = context) do
-    {waiting, rest} = Enum.split_with(needs, &(&1.kind in [:blocked, :stalled, :unanswered]))
+    {waiting, rest} =
+      Enum.split_with(needs, &(&1.kind in [:blocked, :stalled, :unanswered, :slow]))
+
     [agent_down_need(length(waiting) + length(Map.get(board, :retrying, [])), context) | rest]
   end
 
@@ -144,6 +151,35 @@ defmodule AgentBoard.Lanes do
     |> Enum.map(&task_need(&1, :stalled, context))
   end
 
+  # Minutes of work the owner allows a running task before being told, by
+  # size (2026-11-10: small 20, large 60). A task without a size, as most
+  # issues opened on GitHub are, waits as long as a large one.
+  @slow_after %{"S" => 20, "M" => 40, "L" => 60}
+  @slow_after_unsized 60
+
+  @doc "Seconds of work after which a running task of this size is a heads-up."
+  @spec slow_after(String.t() | nil) :: pos_integer()
+  def slow_after(size), do: Map.get(@slow_after, size, @slow_after_unsized) * 60
+
+  # The work counts from when the task last became `running`: a retry or the
+  # owner's answer starts it again, and the time it waited is not work.
+  defp working_since(task), do: task.state_changed_at || task.started_at
+
+  defp slow?(task, now) do
+    case working_since(task) do
+      %DateTime{} = since -> DateTime.diff(now, since) >= slow_after(task.size)
+      nil -> false
+    end
+  end
+
+  defp slow_lane(board, context) do
+    board
+    |> Map.get(:running, [])
+    |> Enum.reject(&AgentSignal.stalled?(context.silences[&1.number], context.stall_after))
+    |> Enum.filter(&slow?(&1, context.now))
+    |> Enum.map(&task_need(&1, :slow, context))
+  end
+
   defp unanswered_lane(board, context) do
     board
     |> Map.get(:queued, [])
@@ -201,6 +237,10 @@ defmodule AgentBoard.Lanes do
   defp need_at(task, :stalled, context) do
     DateTime.add(context.silences[task.number].at, context.stall_after, :second)
   end
+
+  # The same for a long run: it is news from the minute it passed its limit.
+  defp need_at(task, :slow, _context),
+    do: DateTime.add(working_since(task), slow_after(task.size), :second)
 
   defp need_at(%{held: true, released_at: at}, :unanswered, _context), do: at
 
@@ -282,6 +322,27 @@ defmodule AgentBoard.Lanes do
       " " <> silence_source(silence.source, since)
   end
 
+  # A heads-up, not a verdict: how long, the limit that made it one, and the
+  # last signal when the board has one. It never says the agent is stuck.
+  defp task_why(task, :slow, _ticket, _pull, context) do
+    since = working_since(task)
+    limit = div(slow_after(task.size), 60)
+
+    [
+      gettext("**Working since %{time} (%{ago}).**",
+        time: Time.local_time(since, context.tz_offset),
+        ago: Time.ago(Time.age_seconds(since, context.now))
+      ),
+      slow_limit(task.size, limit),
+      case context.silences[task.number] do
+        %{seconds: seconds} -> gettext("Last signal %{ago}.", ago: Time.ago(seconds))
+        nil -> nil
+      end
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" ")
+  end
+
   # A block the agent reported itself (a workpad Bloqueio, a `blocked`
   # report): its own words.
   defp blockage_why(task, ticket, _pull, _context) do
@@ -310,6 +371,9 @@ defmodule AgentBoard.Lanes do
       gettext("The agent's last report was at %{time}; no signal in the worktree since then.",
         time: since
       )
+
+  defp silence_source(:answer, since),
+    do: gettext("The agent read your answer at %{time}; no signal since then.", time: since)
 
   defp silence_source(:worktree, since),
     do:
@@ -408,6 +472,7 @@ defmodule AgentBoard.Lanes do
   defp action_label(:blocked), do: gettext("View details")
   defp action_label(:stalled), do: gettext("View details")
   defp action_label(:unanswered), do: gettext("View details")
+  defp action_label(:slow), do: gettext("View details")
   defp action_label(:cifail), do: gettext("View failure")
 
   # A silent run blocks the whole queue while there is one worker: it comes
@@ -420,6 +485,20 @@ defmodule AgentBoard.Lanes do
   defp rank(:unanswered), do: 2
   defp rank(:review), do: 3
   defp rank(:question), do: 4
+  # Nothing to do yet: after everything that waits for the owner.
+  defp rank(:slow), do: 5
+
+  defp slow_limit("S", limit),
+    do: gettext("A small task is flagged after %{count} min.", count: limit)
+
+  defp slow_limit("M", limit),
+    do: gettext("A medium task is flagged after %{count} min.", count: limit)
+
+  defp slow_limit("L", limit),
+    do: gettext("A large task is flagged after %{count} min.", count: limit)
+
+  defp slow_limit(_size, limit),
+    do: gettext("A task without a size is flagged after %{count} min.", count: limit)
 
   @doc """
   The queue, numbered in arrival order. A title that repeats a merged PR gets

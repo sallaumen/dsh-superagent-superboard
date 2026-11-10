@@ -354,6 +354,21 @@ that already worked).
   ticket in the runner: the automatic retry (below) covers only a `failed`
   report, never a silence, and the runner refuses a retry
   while a ticket runs (`canRetry` in `dsh: src/core/stage.ts`).
+- A long run is the other derived item, and only a heads-up. A `running`
+  task whose work has lasted past the time its size allows
+  (`Lanes.slow_after/1`: S 20 min, M 40, L 60, no size 60; the owner's
+  numbers of 2026-11-10) enters Precisa de você as `:slow` ("Demorando",
+  "Taking long"), last in the list, in the stale tone, with since when it
+  works, the limit that made it an item and the last signal when there is
+  one. The work counts from `state_changed_at`, the moment the task last
+  became `running`: a retry or the owner's answer starts it again, and time
+  spent waiting is not work. It never says the agent is stuck, and a task
+  that is also silent shows only the silence. Derived on each read and
+  written nowhere: it leaves when the task leaves `running`. The voice says
+  it once, like the silence. Its DOM id is `slow-<id>`. The item appears on
+  the next board reload after the limit (a ticket or worktree change, or the
+  five-minute sync), not on a timer (`lanes_test.exs`, `announcer_test.exs`,
+  `board_live_test.exs`).
 - The tests: `agent_signal_test.exs` and `agent_worktree_test.exs` (the
   signal), `work_test.exs` (the lane, its text and its order),
   `announcer_test.exs` (spoken once) and `board_stall_test.exs` (rendered in

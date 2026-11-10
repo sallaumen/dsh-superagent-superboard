@@ -99,14 +99,17 @@ defmodule AgentBoard.Announcer do
     Enum.split_with(changes, &match?({:attention, _, _}, &1))
   end
 
-  # A silence is news when its item first appears, and quiet while it stays.
+  # A silence or a long run is news when its item first appears, and quiet
+  # while it stays.
   defp silence_changes(nil), do: []
 
   defp silence_changes({old_needs, new_needs}) do
-    old_keys = for need <- old_needs, need.kind == :stalled, into: MapSet.new(), do: need.key
-
-    for need <- new_needs, need.kind == :stalled, not MapSet.member?(old_keys, need.key) do
-      {:attention, :stalled, need.title}
+    for kind <- [:stalled, :slow],
+        old_keys = for(need <- old_needs, need.kind == kind, into: MapSet.new(), do: need.key),
+        need <- new_needs,
+        need.kind == kind,
+        not MapSet.member?(old_keys, need.key) do
+      {:attention, kind, need.title}
     end
   end
 

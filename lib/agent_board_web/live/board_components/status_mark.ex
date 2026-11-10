@@ -18,6 +18,7 @@ defmodule AgentBoardWeb.BoardComponents.StatusMark do
     cifail: %{glyph: "halt", tone: "halt"},
     stalled: %{glyph: "halt", tone: "halt"},
     unanswered: %{glyph: "halt", tone: "halt"},
+    slow: %{glyph: "stale", tone: "stale"},
     queue: %{glyph: "queue", tone: "queue"},
     done: %{glyph: "done", tone: "done"},
     stale: %{glyph: "stale", tone: "stale"},
@@ -64,6 +65,7 @@ defmodule AgentBoardWeb.BoardComponents.StatusMark do
   defp word(:cifail), do: pgettext("status", "CI failed")
   defp word(:stalled), do: pgettext("status", "No signal")
   defp word(:unanswered), do: pgettext("status", "No answer")
+  defp word(:slow), do: pgettext("status", "Taking long")
   defp word(:queue), do: pgettext("status", "Queued")
   defp word(:done), do: pgettext("status", "Merged")
   defp word(:stale), do: pgettext("status", "Old data")

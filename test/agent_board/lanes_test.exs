@@ -111,6 +111,98 @@ defmodule AgentBoard.LanesTest do
     assert need.why == "**O agente perguntou:** Devo manter o boss na arena ou tirar"
   end
 
+  describe "a run past the time its size allows" do
+    @now ~U[2026-11-10 15:00:00Z]
+
+    defp running(repo, number, size, minutes) do
+      task = task(repo, number, "Run #{number}", "running", DateTime.add(@now, -minutes * 60))
+      %{task | size: size}
+    end
+
+    defp slow(repo, tasks, opts \\ []) do
+      Lanes.needs(repo, %{running: tasks}, Keyword.merge([now: @now], opts))
+    end
+
+    test "is a heads-up from the limit on: small 20, medium 40, large and unsized 60 min" do
+      {:ok, repo} = Board.add_repository("fixture", "slow-limits")
+
+      on_time = [
+        running(repo, 1, "S", 19),
+        running(repo, 2, "M", 39),
+        running(repo, 3, "L", 59),
+        running(repo, 4, nil, 59)
+      ]
+
+      assert slow(repo, on_time) == []
+
+      late = [
+        running(repo, 5, "S", 20),
+        running(repo, 6, "M", 40),
+        running(repo, 7, "L", 60),
+        running(repo, 8, nil, 60)
+      ]
+
+      needs = slow(repo, late)
+      assert needs |> Enum.map(& &1.number) |> Enum.sort() == [5, 6, 7, 8]
+
+      assert Enum.all?(needs, &(&1.kind == :slow and &1.age_seconds == 0))
+      assert Enum.map(needs, &hd(&1.actions).label) |> Enum.uniq() == ["Ver detalhe"]
+      assert Lanes.slow_after("S") == 20 * 60
+      assert Lanes.slow_after(nil) == Lanes.slow_after("L")
+    end
+
+    test "says since when, the limit that made it one and the last signal it has" do
+      {:ok, repo} = Board.add_repository("fixture", "slow-why")
+      small = running(repo, 9, "S", 34)
+
+      assert [%{why: why}] = slow(repo, [small])
+
+      assert why ==
+               "**Trabalhando desde 14:26 (há 34 min).** Uma tarefa pequena é sinalizada depois de 20 min."
+
+      silences = %{9 => %{at: DateTime.add(@now, -120), source: :worktree, seconds: 120}}
+
+      assert [%{why: why, age_seconds: 840}] = slow(repo, [small], silences: silences)
+      assert why =~ "sinalizada depois de 20 min. Último sinal há 2 min."
+
+      assert [%{why: unsized}] = slow(repo, [running(repo, 10, nil, 61)])
+      assert unsized =~ "Uma tarefa sem tamanho é sinalizada depois de 60 min."
+    end
+
+    test "gives way to the silence: one task, one reason to look" do
+      {:ok, repo} = Board.add_repository("fixture", "slow-silent")
+      small = running(repo, 11, "S", 34)
+      silences = %{11 => %{at: DateTime.add(@now, -1200), source: :report, seconds: 1200}}
+
+      assert [%{kind: :stalled, number: 11}] =
+               slow(repo, [small], silences: silences, stall_after: 900)
+    end
+
+    test "comes after everything that waits for the owner, and waits with the agent down" do
+      {:ok, repo} = Board.add_repository("fixture", "slow-order")
+      small = running(repo, 12, "S", 34)
+      question = task(repo, 13, "Question", "question", DateTime.add(@now, -3600))
+      board = %{running: [small], question: [question], blocked: [], ready: []}
+
+      assert Enum.map(Lanes.needs(repo, board, now: @now), & &1.kind) == [:question, :slow]
+
+      assert [%{kind: :agent_down, waiting: 1}, %{kind: :question}] =
+               Lanes.needs(repo, board, now: @now, agent: :down)
+    end
+
+    test "a silence that began with the owner's answer says so" do
+      {:ok, repo} = Board.add_repository("fixture", "silent-after-answer")
+      run = running(repo, 14, "L", 30)
+      silences = %{14 => %{at: DateTime.add(@now, -1200), source: :answer, seconds: 1200}}
+
+      assert [%{kind: :stalled, why: why}] =
+               slow(repo, [run], silences: silences, stall_after: 900)
+
+      assert why ==
+               "**Sem sinal há 20 min.** O agente leu sua resposta às 14:40; nenhum sinal desde então."
+    end
+  end
+
   test "a block quotes the workpad's Bloqueio before the report" do
     {:ok, repo} = Board.add_repository("fixture", "workpad-block")
     now = ~U[2026-11-06 15:00:00Z]
@@ -366,7 +458,8 @@ defmodule AgentBoard.LanesTest do
     {:ok, repo} = Board.add_repository("fixture", "silence")
     now = ~U[2026-11-07 12:00:00Z]
     quiet = task(repo, 50, "Silent run", "running", DateTime.add(now, -3600, :second))
-    busy = task(repo, 51, "Busy run", "running", DateTime.add(now, -3600, :second))
+    # under the hour a task without a size is allowed: a busy run is no item
+    busy = task(repo, 51, "Busy run", "running", DateTime.add(now, -3540, :second))
 
     silences = %{
       50 => %{at: ~U[2026-11-07 11:30:00Z], source: :report, seconds: 1800},
