@@ -193,6 +193,94 @@ defmodule AgentBoard.Conversation.AgentTest do
     assert Agent.yes_or_no("") == :none
   end
 
+  test "a yes is every word affirmative or filler, a no word anywhere is a no" do
+    for yes <- [
+          "sim",
+          "pode criar",
+          "manda ver",
+          "ok, valeu",
+          "sim, por favor",
+          "pode sim, obrigado",
+          "yes please",
+          "go ahead, thanks",
+          "do it"
+        ] do
+      assert {yes, Agent.yes_or_no(yes)} == {yes, :yes}
+    end
+
+    for no <- [
+          "pode cancelar",
+          "ok cancela",
+          "isso não",
+          "no thanks",
+          "yes, cancel it",
+          "not now"
+        ] do
+      assert {no, Agent.yes_or_no(no)} == {no, :no}
+    end
+
+    for neither <- [
+          "pode deixar",
+          "manda pro Claude",
+          "cria outra tarefa sobre login",
+          "valeu",
+          "por favor",
+          "cria no colmex",
+          "go ahead with login"
+        ] do
+      assert {neither, Agent.yes_or_no(neither)} == {neither, :none}
+    end
+  end
+
+  defp running_task(repo) do
+    %Task{}
+    |> Task.changeset(%{
+      repository_id: repo.id,
+      number: 7,
+      title: "Placar",
+      state: "running",
+      kind: "issue"
+    })
+    |> Repo.insert!()
+  end
+
+  test "pode cancelar answers a stop with a no: the issue stays open", %{repo: repo} do
+    task = running_task(repo)
+    Req.Test.stub(@stub, fn _conn -> flunk("nothing may reach GitHub") end)
+    script(fn %{name: :voice_agent} -> agent_answer("stop_task", %{"task_number" => 7}) end)
+    turn("para a tarefa sete", repo)
+
+    script(fn _ -> flunk("a no is local") end)
+    assert %{action: "cancel"} = turn("pode cancelar", repo)
+    assert %Task{stopped: false} = Repo.get!(Task, task.id)
+    assert Conversation.pending_proposal() == nil
+  end
+
+  test "a yes after another turn confirms nothing, even if the model reads a confirm",
+       %{repo: repo} do
+    task = running_task(repo)
+    Req.Test.stub(@stub, fn _conn -> flunk("nothing may reach GitHub") end)
+    script(fn %{name: :voice_agent} -> agent_answer("stop_task", %{"task_number" => 7}) end)
+    turn("para a tarefa sete", repo)
+
+    script(fn %{name: :voice_agent} -> agent_answer("reply", %{"reply" => "Três rodando."}) end)
+    turn("quantas tarefas estão rodando?", repo)
+    assert Conversation.pending_proposal() == nil
+
+    script(fn %{name: :voice_agent} -> agent_answer("confirm", %{"reply" => "De nada."}) end)
+    assert %{reply: "De nada."} = turn("ok, valeu", repo)
+    assert %Task{stopped: false} = Repo.get!(Task, task.id)
+  end
+
+  test "repete says the proposal again and keeps it waiting for the yes", %{repo: repo} do
+    running_task(repo)
+    script(fn %{name: :voice_agent} -> agent_answer("stop_task", %{"task_number" => 7}) end)
+    turn("para a tarefa sete", repo)
+
+    turn("repete", repo)
+    assert %Turn{proposal: %{"kind" => "stop_task"}} = Conversation.pending_proposal()
+  end
+
   test "a chat turn is answered with the model's reply and remembered", %{repo: repo} do
     script(fn %{name: :voice_agent} ->
       agent_answer("reply", %{"reply" => "Tudo tranquilo por aqui."})
