@@ -12,6 +12,8 @@ defmodule AgentBoard.Routing.Signals do
   never zero.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   alias AgentBoard.Orchestrator
   alias AgentBoard.Superagents
   alias AgentBoard.Usage.Report
@@ -84,9 +86,12 @@ defmodule AgentBoard.Routing.Signals do
     end
   end
 
-  defp reason(:not_configured), do: "a API do orquestrador está desligada"
-  defp reason(:unreachable), do: "o orquestrador não respondeu"
-  defp reason(:malformed), do: "o orquestrador respondeu num formato inesperado"
-  defp reason({:http, status}), do: "o orquestrador respondeu HTTP #{status}"
-  defp reason(_other), do: "o orquestrador não respondeu"
+  defp reason(:not_configured), do: gettext("the orchestrator's API is off")
+  defp reason(:unreachable), do: gettext("the orchestrator did not answer")
+  defp reason(:malformed), do: gettext("the orchestrator answered in an unexpected format")
+
+  defp reason({:http, status}),
+    do: gettext("the orchestrator answered HTTP %{status}", status: status)
+
+  defp reason(_other), do: gettext("the orchestrator did not answer")
 end

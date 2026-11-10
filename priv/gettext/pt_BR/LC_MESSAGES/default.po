@@ -7087,3 +7087,83 @@ msgstr "Arquivada"
 msgctxt "ended task"
 msgid "Stopped"
 msgstr "Parada"
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "You asked for %{executor}."
+msgstr "Você pediu o %{executor}."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "You asked for %{executor}, but %{reason}"
+msgstr "Você pediu o %{executor}, mas %{reason}"
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "DeepSeek only serves %{repository}."
+msgstr "o DeepSeek só atende o %{repository}."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "DeepSeek only serves %{repositories}."
+msgstr "o DeepSeek só atende %{repositories}."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "DeepSeek is paused."
+msgstr "o DeepSeek está pausado."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "%{executor} is not available (%{why})."
+msgstr "o %{executor} não está disponível (%{why})."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "the orchestrator did not answer"
+msgstr "o orquestrador não respondeu"
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "No executor can take the task now."
+msgstr "Nenhum executor pode receber a tarefa agora."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "Now: %{running} of %{max} running."
+msgstr "Agora: %{running} de %{max} rodando."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "DeepSeek serves this repository and is the only one the board dispatches on its own."
+msgstr "O DeepSeek atende este repositório e é o único que o board despacha sozinho."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "Could not read which repository DeepSeek serves (%{why}): the board's default stays, the issue with the mention, which only moves if it watches this repository."
+msgstr "Não deu para ler qual repositório o DeepSeek atende (%{why}): fica o padrão do board, a issue com a menção, que só anda se ele vigiar este repositório."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "%{executor} comes before %{next} in the fixed order."
+msgstr "O %{executor} vem antes do %{next} na ordem fixa."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "The availability of %{executor} is unknown."
+msgstr "A disponibilidade do %{executor} é desconhecida."
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "the orchestrator's API is off"
+msgstr "a API do orquestrador está desligada"
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "the orchestrator answered in an unexpected format"
+msgstr "o orquestrador respondeu num formato inesperado"
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "the orchestrator answered HTTP %{status}"
+msgstr "o orquestrador respondeu HTTP %{status}"

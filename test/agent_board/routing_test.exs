@@ -16,6 +16,24 @@ defmodule AgentBoard.RoutingTest do
 
   defp task(repository, attrs \\ %{}), do: Map.merge(%{repository: repository}, attrs)
 
+  # The Portuguese sentences below are the proof that pt-BR did not change.
+  setup do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+    :ok
+  end
+
+  test "the reasons follow the viewer's language" do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+
+    asked = Routing.suggest(task("sallaumen/arena-rogue", %{requested: "codex"}), @ready)
+    assert hd(asked.reasons) == "You asked for Codex."
+
+    ruled_out = Routing.suggest(task("sallaumen/o_colmex", %{requested: "dsh"}), @ready)
+
+    assert hd(ruled_out.reasons) ==
+             "You asked for DeepSeek, but DeepSeek only serves sallaumen/arena-rogue."
+  end
+
   test "the runner's repository goes to the DeepSeek, which the board dispatches itself" do
     suggestion = Routing.suggest(task("sallaumen/arena-rogue"), @ready)
 
