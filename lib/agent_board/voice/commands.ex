@@ -20,6 +20,8 @@ defmodule AgentBoard.Voice.Commands do
   fill in), so the panel offers it as a button.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   @type mode :: :local | :read | :confirm | :direct
   @type item :: %{say: String.t(), does: String.t(), mode: mode(), try: boolean()}
   @type group :: %{id: atom(), title: String.t(), items: [item()]}
@@ -30,24 +32,29 @@ defmodule AgentBoard.Voice.Commands do
   @groups [
     %{
       id: :status,
-      title: "Status e resumo",
+      title: gettext_noop("Status and summary"),
       items: [
-        %{say: "Status", does: "o quadro em uma frase, na hora", mode: :local, try: true},
+        %{
+          say: "Status",
+          does: gettext_noop("the board in one sentence, right away"),
+          mode: :local,
+          try: true
+        },
         %{
           say: "Como está o quadro?",
-          does: "o que precisa de você, o que roda e o que está na fila",
+          does: gettext_noop("what needs you, what is running and what is in the queue"),
           mode: :read,
           try: true
         },
         %{
           say: "O que mudou hoje?",
-          does: "merges, tarefas novas e execuções terminadas hoje",
+          does: gettext_noop("merges, new tasks and runs that ended today"),
           mode: :read,
           try: true
         },
         %{
           say: "Como foi a semana?",
-          does: "os merges e as tarefas dos últimos 7 dias",
+          does: gettext_noop("the merges and the tasks of the last 7 days"),
           mode: :read,
           try: true
         }
@@ -55,23 +62,23 @@ defmodule AgentBoard.Voice.Commands do
     },
     %{
       id: :runs,
-      title: "Execuções do agente",
+      title: gettext_noop("The agent's runs"),
       items: [
         %{
           say: "O que está rodando agora?",
-          does: "cada execução, há quanto tempo e o último relato",
+          does: gettext_noop("each run, for how long and its last report"),
           mode: :read,
           try: true
         },
         %{
           say: "O agente está vivo?",
-          does: "o último sinal do agente e quantas execuções ele tem",
+          does: gettext_noop("the agent's last signal and how many runs it has"),
           mode: :read,
           try: true
         },
         %{
           say: "O que terminou hoje?",
-          does: "as execuções encerradas nas últimas 24 horas e como terminaram",
+          does: gettext_noop("the runs that ended in the last 24 hours and how they ended"),
           mode: :read,
           try: true
         }
@@ -79,36 +86,41 @@ defmodule AgentBoard.Voice.Commands do
     },
     %{
       id: :task,
-      title: "Analisar uma tarefa",
+      title: gettext_noop("Look into a task"),
       items: [
         %{
           say: "Por que a 42 está bloqueada?",
-          does: "o bloqueio ou a pergunta do workpad, o relato e o PR",
+          does: gettext_noop("the block or the question in the workpad, the report and the PR"),
           mode: :read,
           try: false
         },
         %{
           say: "Como está a tarefa 42?",
-          does: "estado, há quanto tempo, a execução, o PR e o CI",
+          does: gettext_noop("state, for how long, the run, the PR and the CI"),
           mode: :read,
           try: false
         },
-        %{say: "Abre a tarefa 42", does: "mostra a conversa da tarefa", mode: :read, try: false}
+        %{
+          say: "Abre a tarefa 42",
+          does: gettext_noop("shows the task's conversation"),
+          mode: :read,
+          try: false
+        }
       ]
     },
     %{
       id: :failures,
-      title: "Bugs e falhas",
+      title: gettext_noop("Bugs and failures"),
       items: [
         %{
           say: "O que está falhando?",
-          does: "CI vermelho, tarefas bloqueadas, execuções que pararam e erros de sync",
+          does: gettext_noop("red CI, blocked tasks, runs that stopped and sync errors"),
           mode: :read,
           try: true
         },
         %{
           say: "Teve erro na voz?",
-          does: "os erros recentes da própria voz (transcrição, modelo, reprodução)",
+          does: gettext_noop("the voice's own recent errors (transcription, model, playback)"),
           mode: :read,
           try: true
         }
@@ -116,17 +128,17 @@ defmodule AgentBoard.Voice.Commands do
     },
     %{
       id: :search,
-      title: "Buscar",
+      title: gettext_noop("Search"),
       items: [
         %{
           say: "Acha a tarefa sobre volume",
-          does: "busca no título e na descrição das tarefas e nos PRs",
+          does: gettext_noop("searches the title and description of tasks, and the PRs"),
           mode: :read,
           try: false
         },
         %{
           say: "Tem algum bug de login aberto?",
-          does: "a mesma busca, com o estado de cada achado",
+          does: gettext_noop("the same search, with the state of each result"),
           mode: :read,
           try: false
         }
@@ -134,35 +146,42 @@ defmodule AgentBoard.Voice.Commands do
     },
     %{
       id: :requests,
-      title: "Pedidos (escrevem no GitHub)",
+      title: gettext_noop("Requests (they write to GitHub)"),
       items: [
         %{
           say: "Cria uma tarefa no arena rogue para mostrar o volume",
-          does: "refina o pedido e pergunta com o repositório e o título",
+          does: gettext_noop("refines the request and asks, naming the repository and the title"),
           mode: :confirm,
           try: false
         },
         %{
           say: "Cria direto: corrigir o botão de salvar",
-          does: "cria na hora, sem perguntar; \"desfaz\" fecha a issue por 10 minutos",
+          does:
+            gettext_noop(
+              "creates at once, without asking; \"desfaz\" closes the issue for 10 minutes"
+            ),
           mode: :direct,
           try: false
         },
         %{
           say: "Pergunta pro agente da 12 se ele rodou os testes",
-          does: "comenta na issue depois do seu sim e fala a resposta quando chegar",
+          does:
+            gettext_noop(
+              "comments on the issue after your yes and speaks the answer when it comes"
+            ),
           mode: :confirm,
           try: false
         },
         %{
           say: "Para a 7 / Arquiva a 7",
-          does: "diz qual é e o que acontece, e pergunta",
+          does: gettext_noop("says which one and what happens, and asks"),
           mode: :confirm,
           try: false
         },
         %{
           say: "Desfaz",
-          does: "fecha a última tarefa que a voz criou, nos últimos 10 minutos",
+          does:
+            gettext_noop("closes the last task the voice created, within the last 10 minutes"),
           mode: :local,
           try: false
         }
@@ -170,23 +189,33 @@ defmodule AgentBoard.Voice.Commands do
     },
     %{
       id: :conversation,
-      title: "A conversa e a voz",
+      title: gettext_noop("The conversation and the voice"),
       items: [
-        %{say: "Repete", does: "fala de novo a última resposta", mode: :local, try: false},
         %{
-          say: "Mais devagar / mais rápido / mais alto / mais baixo",
-          does: "ajusta a voz e confirma já na voz nova",
+          say: "Repete",
+          does: gettext_noop("says the last answer again"),
           mode: :local,
           try: false
         },
-        %{say: "Muda para o arena rogue", does: "troca de projeto", mode: :read, try: false},
         %{
-          say: "Esquece a conversa",
-          does: "apaga a memória da conversa",
+          say: "Mais devagar / mais rápido / mais alto / mais baixo",
+          does: gettext_noop("adjusts the voice and confirms in the new one"),
+          mode: :local,
+          try: false
+        },
+        %{
+          say: "Muda para o arena rogue",
+          does: gettext_noop("switches project"),
           mode: :read,
           try: false
         },
-        %{say: "Ajuda", does: "abre esta lista", mode: :local, try: false}
+        %{
+          say: "Esquece a conversa",
+          does: gettext_noop("erases the conversation's memory"),
+          mode: :read,
+          try: false
+        },
+        %{say: "Ajuda", does: gettext_noop("opens this list"), mode: :local, try: false}
       ]
     }
   ]
@@ -205,8 +234,8 @@ defmodule AgentBoard.Voice.Commands do
 
   @doc "How a mode reads in the list."
   @spec mode_label(mode()) :: String.t()
-  def mode_label(:local), do: "na hora"
-  def mode_label(:read), do: "só lê"
-  def mode_label(:confirm), do: "pede seu sim"
-  def mode_label(:direct), do: "faz na hora"
+  def mode_label(:local), do: gettext("right away")
+  def mode_label(:read), do: gettext("only reads")
+  def mode_label(:confirm), do: gettext("asks for your yes")
+  def mode_label(:direct), do: gettext("acts at once")
 end

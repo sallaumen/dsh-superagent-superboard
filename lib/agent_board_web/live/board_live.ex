@@ -1659,7 +1659,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply,
          socket
          |> refresh_inspector_after_act(task_id)
-         |> put_flash(:info, "Tarefa atualizada")
+         |> put_flash(:info, gettext("Task updated"))
          |> speak(Voice.task_summary(task.title, action, socket.assigns.voice.language))}
 
       _ ->
@@ -1956,14 +1956,19 @@ defmodule AgentBoardWeb.BoardLive do
             {:noreply,
              socket
              |> assign(blocker_pending: nil, blocker_open: false)
-             |> put_flash(:info, "Tarefa de desbloqueio ##{created.number} criada e priorizada.")
+             |> put_flash(
+               :info,
+               gettext("Unblocking task #%{number} created and put first.",
+                 number: created.number
+               )
+             )
              |> load_inspector()}
 
           {:ok, _other} ->
             {:noreply,
              socket
              |> assign(blocker_pending: nil, blocker_open: false)
-             |> put_flash(:info, "Tarefa de desbloqueio criada.")
+             |> put_flash(:info, gettext("Unblocking task created."))
              |> load_inspector()}
 
           {:error, {refusal, _phrase}} when refusal in [:unconfirmed, :phrase_changed] ->
@@ -2184,7 +2189,7 @@ defmodule AgentBoardWeb.BoardLive do
          composer_error(socket, gettext("Wait for the files to finish or remove them."))}
 
       text == "" ->
-        {:noreply, composer_error(socket, "Escreva o pedido antes de enviar.")}
+        {:noreply, composer_error(socket, gettext("Write the request before sending."))}
 
       socket.assigns.composer_split ->
         submit_split(socket, text, params, shown)
@@ -4227,7 +4232,10 @@ defmodule AgentBoardWeb.BoardLive do
     socket
     |> assign(composer_job: nil)
     |> composer_error(
-      "#{job_name(kind)} parou de forma inesperada: #{FailureText.text(reason)} Nada mais foi feito.",
+      gettext("%{job} stopped unexpectedly: %{reason} Nothing else was done.",
+        job: job_name(kind),
+        reason: FailureText.text(reason)
+      ),
       {kind, payload}
     )
   end
