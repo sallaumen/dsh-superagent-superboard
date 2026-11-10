@@ -6583,3 +6583,28 @@ msgstr "pausado"
 #, elixir-autogen, elixir-format
 msgid "live"
 msgstr "ao vivo"
+
+#: lib/agent_board/runners.ex
+#, elixir-autogen, elixir-format
+msgid "The last execution stopped at the budget cap (%{detail})."
+msgstr "A última execução parou no teto de orçamento (%{detail})."
+
+#: lib/agent_board/runners.ex
+#, elixir-autogen, elixir-format
+msgid "The last execution stopped on quota or login (%{detail})."
+msgstr "A última execução parou por cota ou login (%{detail})."
+
+#: lib/agent_board/runners.ex
+#, elixir-autogen, elixir-format
+msgid "The last execution failed on network or time (%{detail})."
+msgstr "A última execução falhou por rede ou tempo (%{detail})."
+
+#: lib/agent_board/runners.ex
+#, elixir-autogen, elixir-format
+msgid "Message without a preview"
+msgstr "Mensagem sem prévia"
+
+#: lib/agent_board/runners.ex
+#, elixir-autogen, elixir-format
+msgid "Report updated"
+msgstr "Relatório atualizado"

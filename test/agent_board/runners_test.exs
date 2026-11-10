@@ -305,6 +305,12 @@ defmodule AgentBoard.RunnersTest do
     assert %{kind: :switch, executor: "codex", reason: reason} = Runners.fallback(claude)
     assert reason =~ "cota ou login"
 
+    # The reason is shown on the screen, so it follows the viewer's language.
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+    assert %{reason: english} = Runners.fallback(claude)
+    assert english =~ "quota or login"
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+
     assert %{kind: :retry, executor: "claude"} = Runners.fallback(network)
     assert %{kind: :budget, executor: "claude"} = Runners.fallback(budget)
     assert Runners.fallback(content) == :none
