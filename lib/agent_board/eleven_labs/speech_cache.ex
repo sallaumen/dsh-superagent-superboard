@@ -163,8 +163,14 @@ defmodule AgentBoard.ElevenLabs.SpeechCache do
   @spec release(binary(), binary() | nil) :: :ok
   def release(key, audio) do
     if table?() do
+      now = now()
+      # Every spoken phrase leaves one of these; nothing else ever deletes them.
+      :ets.select_delete(@table, [
+        {{{:recent, :_}, :_, :"$1"}, [{:"=<", :"$1", now - @recent_ms}], [true]}
+      ])
+
       if is_binary(audio) and byte_size(audio) > 0,
-        do: :ets.insert(@table, {{:recent, key}, audio, now()})
+        do: :ets.insert(@table, {{:recent, key}, audio, now})
 
       :ets.delete(@table, {:inflight, key})
     end

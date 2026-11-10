@@ -89,4 +89,15 @@ defmodule AgentBoard.ElevenLabs.SpeechCacheTest do
     assert SpeechCache.get("k") == :miss
     assert rows() == []
   end
+
+  test "a release drops the audio kept for followers once its minute is over" do
+    old = System.system_time(:millisecond) - 61_000
+    :ets.insert(SpeechCache, {{:recent, "spoken-long-ago"}, "ID3old", old})
+
+    assert SpeechCache.claim("new") == :leader
+    SpeechCache.release("new", "ID3new")
+
+    assert :ets.lookup(SpeechCache, {:recent, "spoken-long-ago"}) == []
+    assert SpeechCache.get("new") == {:ok, "ID3new"}
+  end
 end
