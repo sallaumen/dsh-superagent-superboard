@@ -72,10 +72,7 @@ defmodule AgentBoard.TicketPoller do
   end
 
   defp overlay_tasks(repo, tickets) do
-    for ticket <- tickets,
-        raw <- ticket["numbers"] || [] do
-      overlay_ticket(repo, ticket, raw)
-    end
+    for {number, ticket} <- Tickets.by_number(tickets), do: overlay_ticket(repo, ticket, number)
 
     :ok
   end

@@ -560,21 +560,10 @@ defmodule AgentBoard.Sync do
   def apply_tickets(repository, issues) do
     by_number = Map.new(issues, &{&1["number"], &1})
 
-    Enum.each(normalized_tickets(), fn ticket ->
-      apply_ticket(repository, by_number, ticket)
-    end)
-
-    :ok
-  end
-
-  defp apply_ticket(repository, by_number, ticket) do
-    if AgentState.same_repository?(ticket, repository) do
-      apply_ticket_numbers(repository, by_number, ticket)
-    end
-  end
-
-  defp apply_ticket_numbers(repository, by_number, ticket) do
-    Enum.each(ticket["numbers"], fn number ->
+    normalized_tickets()
+    |> Enum.filter(&AgentState.same_repository?(&1, repository))
+    |> Tickets.by_number()
+    |> Enum.each(fn {number, ticket} ->
       case ticket_state(ticket,
              workpad: fn -> Board.agent_workpad(repository.id, number) end,
              asked?: fn -> Board.agent_asked?(repository.id, number) end
