@@ -20,6 +20,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :dispatch_paused, :boolean, default: false
   attr :progress, :list, default: []
   attr :superagents, :list, default: []
+  attr :repos, :list, default: []
   attr :access_waiting, :integer, default: 0
   attr :access_projects, :list, default: []
   attr :tickets, :list, default: []
@@ -185,6 +186,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
             id="settings-projects"
             active={@active == true and @section == "projects"}
             superagents={@superagents}
+            repos={@repos}
             access_projects={@access_projects}
             project_pending={@project_pending}
             provisioning={@provisioning}
