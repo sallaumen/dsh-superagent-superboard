@@ -372,6 +372,10 @@ defmodule AgentBoard.Voice.Phrases do
   def repository_not_found("en-US", name), do: "I don't follow a project called #{name}."
   def repository_not_found(_lang, name), do: "Não acompanho nenhum projeto chamado #{name}."
 
+  @doc "A proposal about a project that is not the one on the screen."
+  def in_repository("en-US", name, sentence), do: "In #{name}: #{sentence}"
+  def in_repository(_lang, name, sentence), do: "No #{name}: #{sentence}"
+
   def ask_sent("en-US", n), do: "Sent. The answer will show up in task #{n}'s conversation."
   def ask_sent(_lang, n), do: "Mandei. A resposta vai aparecer na conversa da tarefa #{n}."
 

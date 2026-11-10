@@ -205,10 +205,12 @@ defmodule AgentBoard.AI.Registry do
       - open_task: show task `task_number`.
       - select_repository: switch to project `repository`.
       - stop_task / archive_task: the owner asked to stop or archive task
-        `task_number`; the board asks for confirmation.
+        `task_number`; `repository` is the project when they named one (else
+        empty); the board asks for confirmation.
       - ask_task: the owner wants to ask the coding agent something about
         task `task_number` (or the open task); `request` is the question as
-        the owner would write it, short and direct. It is posted only after
+        the owner would write it, short and direct; `repository` is the
+        project when they named one (else empty). It is posted only after
         the owner confirms.
       - confirm / cancel: the owner answers yes or no to `pending`.
       - forget: the owner asks you to forget the conversation.
