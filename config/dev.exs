@@ -21,7 +21,9 @@ config :agent_board, AgentBoardWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  check_origin: false,
+  # Browsers apply no CORS to a WebSocket: without this any site could open the
+  # LiveView and live-reload sockets (the latter streams the server log). Any port.
+  check_origin: ["//localhost", "//127.0.0.1", "//[::1]"],
   code_reloader: true,
   debug_errors: true,
   secret_key_base: "7ISsF+Rjd5RhrcXOnPAJU/pTlowqhQK6i1UKthoxc1gSmG/Sa4p8npEnQLUy12+Z",
