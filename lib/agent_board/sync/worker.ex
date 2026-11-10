@@ -35,20 +35,21 @@ defmodule AgentBoard.Sync.Worker do
 
   # A spent quota is not a broken job: snooze for as long as GitHub asked
   # instead of burning the retry budget on requests that cannot succeed.
-  # Anything else goes back to Oban, which retries with a backoff.
+  # When every repository failed, Oban retries with a backoff. When only some
+  # did, a retry would read the healthy ones again: their failures are
+  # already events, and the next cron run reads them again.
   defp outcome(results) do
-    case Enum.filter(results, &match?({:error, _exception}, &1)) do
-      [] ->
+    failures = Enum.filter(results, &match?({:error, _exception}, &1))
+
+    case Enum.find(failures, &match?({:error, %GitHub.RateLimited{}}, &1)) do
+      {:error, %GitHub.RateLimited{retry_after: seconds}} ->
+        {:snooze, seconds |> max(60) |> min(3_600)}
+
+      nil when failures != [] and length(failures) == length(results) ->
+        {:error, failures |> List.first() |> elem(1) |> Exception.message()}
+
+      nil ->
         :ok
-
-      failures ->
-        case Enum.find(failures, &match?({:error, %GitHub.RateLimited{}}, &1)) do
-          {:error, %GitHub.RateLimited{retry_after: seconds}} ->
-            {:snooze, seconds |> max(60) |> min(3_600)}
-
-          nil ->
-            {:error, failures |> List.first() |> elem(1) |> Exception.message()}
-        end
     end
   end
 

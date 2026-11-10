@@ -166,7 +166,14 @@ defmodule AgentBoard.Sync do
       from(e in AgentBoard.Board.Event,
         where:
           e.repository_id == ^repository.id and e.id > ^after_id and
-            e.kind in ["issue_error", "pull_error", "comment_error", "commit_error"]
+            e.kind in [
+              "issue_error",
+              "pull_error",
+              "review_error",
+              "check_error",
+              "comment_error",
+              "commit_error"
+            ]
       ),
       :count
     )
