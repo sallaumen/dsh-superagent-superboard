@@ -626,7 +626,8 @@ Agora and the detail):
   passes that sentence to `AgentBoard.Actions`, so a task that changed in
   between is refused ("Não fiz nada: algo mudou desde que perguntei" — "I did
   nothing: something changed since I asked") and the no is a recorded
-  refusal. `:voice_agent` refines a request itself (title, acceptance
+  refusal. The model's `confirm` runs nothing (a real yes is answered before
+  the model): the proposal is said again. `:voice_agent` refines a request itself (title, acceptance
   criteria, or one question): no second model call.
   The one exception is a **direct create**: only when the owner says so
   ("cria direto", "já cria", "sem perguntar": the model's `direct` flag

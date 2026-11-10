@@ -357,9 +357,11 @@ defmodule AgentBoard.Conversation.Agent do
 
   defp act("reply", json, _pending, ctx), do: say(reply(json, ctx), "reply")
 
-  defp act("confirm", json, %Turn{} = pending, ctx) do
-    _ = json
-    confirm(pending, ctx)
+  # A real yes is answered before the model (`quick_answer`), so a model
+  # "confirm" is only its reading of other words: say the proposal again.
+  defp act("confirm", _json, %Turn{proposal: proposal} = pending, ctx) do
+    lang = proposal["language"] || ctx.language
+    %{proposal(proposal, proposal["phrase"] || pending.text, lang) | reply: pending.text}
   end
 
   defp act("cancel", _json, %Turn{} = pending, ctx), do: cancel(pending, ctx.language)
