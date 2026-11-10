@@ -5,6 +5,7 @@ defmodule AgentBoardWeb.BoardComponents.Card do
   import AgentBoardWeb.BoardComponents.Presentation
 
   alias AgentBoardWeb.BoardComponents.DataAge
+  alias AgentBoardWeb.BoardComponents.MergeLog
 
   @impl true
   def render(assigns) do
@@ -19,6 +20,11 @@ defmodule AgentBoardWeb.BoardComponents.Card do
         <a :if={@item.url} href={@item.url} target="_blank" rel="noopener noreferrer">{@item.title ||
           "unknown"}<span class="sr-only">{gettext("(opens GitHub in a new tab)")}</span></a>
         <span :if={is_nil(@item.url)}>{@item.title || "unknown"}</span>
+        <MergeLog.task_door
+          :if={@state == :merged and Map.get(@item, :closes_issues, []) != []}
+          pull={@item.number}
+          issue={hd(@item.closes_issues)}
+        />
       </div>
       <div :if={review_badge(@item) || checks_badge(@item)} class="item-signals">
         <span :if={review_badge(@item)} class={review_badge_class(@item)}>{review_badge(@item)}</span>

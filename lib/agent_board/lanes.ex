@@ -689,6 +689,7 @@ defmodule AgentBoard.Lanes do
       number: pull.number,
       title: pull.title,
       url: pull.url,
+      closes: pull.closes_issues || [],
       ci: ci,
       ciNote: ci_note,
       ciTitle: ci_title,

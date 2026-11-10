@@ -1526,6 +1526,22 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  # A merged PR's way into its task: the first issue the PR closes that the
+  # board tracks (the rule of `Attribution.task_for_pull/2`), read on the click.
+  @impl true
+  def handle_event("open_pr_task", %{"number" => number}, socket) do
+    repo = socket.assigns.repo
+    pull = repo && Board.find_pull_request(repo, Board.parse_id(number) || 0)
+    task = pull && Enum.find_value(pull.closes_issues || [], &Board.find_task(repo, &1))
+
+    if task do
+      {:noreply, BoardNavigation.open_task(socket, task.id)}
+    else
+      {:noreply,
+       put_flash(socket, :info, gettext("The board does not track the issue this PR closes."))}
+    end
+  end
+
   @impl true
   def handle_event("load_more_merged", %{"id" => tail_id}, socket) do
     case {socket.assigns.repo, socket.assigns.board} do

@@ -54,9 +54,9 @@ Class: **D** confirmed defect, **F** UX friction with observable impact, **S** p
 
 | # | Class | Finding | Evidence | Status |
 |---|---|---|---|---|
-| 1 | F | A merged PR never leads to its task. `pull_requests.closes_issues` already says which task it closes (87 of 97 in arena-rogue, 9 of 478 in o_colmex) | `a.ab-pr[target=_blank]`, `.archive-row a` | proposal P1 |
+| 1 | F | A merged PR never leads to its task. `pull_requests.closes_issues` already says which task it closes (87 of 97 in arena-rogue, 9 of 478 in o_colmex) | `a.ab-pr[target=_blank]`, `.archive-row a` | fixed in the second delivery (P1) |
 | 2 | F | A concluded task is in no list. History is PRs only: 15 done tasks have no closing PR and appear nowhere; a stopped task and an issue closed without a merge cannot be told apart from a merge | `Board.@task_states`, `Archive` | proposal P2 |
-| 3 | F | Cost of a task takes: knowing the task URL, the "Chamadas de IA" tab, and the "Executor do agente" block under the board's own calls. No PR and no list row shows any cost | `inspector.ex` | proposal P3 |
+| 3 | F | Cost of a task takes: knowing the task URL, the "Chamadas de IA" tab, and the "Executor do agente" block under the board's own calls. No PR and no list row shows any cost | `inspector.ex` | header line in the second delivery (P3a); rows wait for P3b |
 | 4 | D | A board call under one cent read **$0.00**, in the row and in the total | `before-inspector-cost-1920.png` | fixed: `< $0.01` |
 | 5 | D | The "Execuções" tab said **0** until it was opened, then 2: the ledger is read only on that tab | same task, tabs `conversa` → `execucoes` | fixed: no number until read |
 | 6 | D | History trend counted only the loaded page and showed **0** for days with merges (4–7 Nov: 0, 0, 0, 0; the board beside it: 8, 3, 8, 14) | `before-history-panel-1920.png` | fixed: `?` for unread days, `≥` for the partial one |
@@ -64,7 +64,7 @@ Class: **D** confirmed defect, **F** UX friction with observable impact, **S** p
 | 8 | D | Inspector header: "atualizado há há 7 min" | `aside.ab-insp .ab-insp__facts` | fixed |
 | 9 | D | Throughput tile "concluído" beside "Issues abertas", "PRs mesclados" (the contract names it "Concluídas") | `#fold-flow` | fixed |
 | 10 | D | English is not complete: with the default locale the board mixes "Needs you" with "Desde hoje às 10:13 nada mudou", "Ontem, 9 nov", "sem revisão", "CI local ?", "desde yesterday at 08:00", "US$ 5,10". pt-BR is coherent. The strings live in `Lanes`, `Board` and `Time`, not in gettext | English walk at 1920 | proposal P5 |
-| 11 | F | Ultrawide: above a 2204 px window the extra width is margin only. The rail stays at x = 0 and the inspector at the right edge: at 5120 the content is 1458 px from the rail and 1190 px from the inspector, and it shifts 252 px when the inspector opens | `board-working-5120x1440.png`, `inspector-open-5120x1440.png` | proposal P4 |
+| 11 | F | Ultrawide: above a 2204 px window the extra width is margin only. The rail stays at x = 0 and the inspector at the right edge: at 5120 the content is 1458 px from the rail and 1190 px from the inspector, and it shifts 252 px when the inspector opens | `board-working-5120x1440.png`, `inspector-open-5120x1440.png` | fixed in the second delivery (P4) |
 | 12 | F | The same PR reads "CI FALHOU: GATES" in red in History (GitHub Actions, blocked by billing) and "CI local ok" in the merge log (#195) | both captures | proposal P6 |
 | 13 | F | Activity shows the raw kind `task_released`, and reads only the repository's last 50 events: an older task loses its own | `Board.task_repo_events/2` | proposal P6 |
 | 14 | F | DeepSeek cost is always `≥`: cache reads have no price, and on the sampled task they were 48.4 M tokens against 316 k of input. The minimum can be far from the cost | `before-inspector-cost-1920.png` | proposal P3c |
@@ -74,7 +74,7 @@ Class: **D** confirmed defect, **F** UX friction with observable impact, **S** p
 | 18 | S | A merged task's inspector still offers Perguntar, Parar and Arquivar | `after-inspector-cost-1920.png` | owner's call |
 | 19 | S | History keeps the old look: spaced capitals in "PRS MESCLADOS", bars in the primary blue | `after-history-panel-1920.png` | with P2 |
 | 20 | S | "Agente fora do ar" is the label and the title of the same card | `state-frozen-agent-offline-1920.png` | taste |
-| 21 | S | Opening the inspector above 2000 px widens the rail from 224 to 240 px | `board.css` `@container board (min-width: 1880px)` | with P4 |
+| 21 | S | Opening the inspector above 2000 px widens the rail from 224 to 240 px | `board.css` `@container board (min-width: 1880px)` | gone from 2204 px up (P4); still there between 2000 and 2203 |
 
 No finding blocks the main task on the current lanes: nothing overflows, is cut or is out of reach at any
 width tested, and no control lost its focus ring.
@@ -92,9 +92,36 @@ All in the web layer; no query, schema, sync, dispatch or click destination chan
 - Tests: `inspector_test.exs` (sub-cent), `executors_test.exs` (count), `board_live_test.exs` (partial
   trend; four assertions that pinned the English badges in a pt-BR render now assert the translation).
 
+## Second delivery: P1, P3a and P4
+
+The owner approved the three small proposals on 2026-11-10.
+
+- **P1.** A merged PR that closes an issue has a second, quiet link, "tarefa #184", in the merge log and
+  in History. The row still opens GitHub. The click reads the PR and the first closed issue the board
+  tracks (`Board.find_pull_request/2`, `Board.find_task/2`) and patches to the inspector; an untracked
+  issue answers with a notice. The board load gained no query. Walked: 17 of 20 rows in the log and 48
+  of 50 in History carry the link; back returns to the board or to History; the link is a Tab stop with
+  a focus ring, 68 × 25 px (`after-task-door-merge-log-1920.png`, `after-task-door-history-1920.png`).
+- **P3a.** The inspector header says "1 chamada · < $0.01" and "executor ≥ $0.17", two links to the
+  AI calls tab, from data the inspector already loads. Two numbers, never a sum; the executor one
+  appears only with a measured reading (`after-inspector-header-cost-1920.png`).
+- **P4.** From a 2204 px window up (the rail plus the cap) rail, content and inspector are one centred
+  block. The content sits where it sat; the rail and the inspector came to it. From 3244 px up opening
+  the inspector moves nothing; between 2204 and 3243 the block shifts as one piece, as the content alone
+  did before. No horizontal scroll at 2204, 2560, 3440 or 5120
+  (`after-board-5120x1440.png`, `after-inspector-open-3440x1440.png`, `after-inspector-open-5120x1440.png`).
+
+| Window | Rail | Content | Inspector | Moves on open |
+|---|---|---|---|---|
+| 2560 | 178–402 | 402–2382 | fills to the edge | block, 178 px |
+| 3440 | 618–842 | 842–2822 | 2822–3342 | nothing |
+| 5120 | 1458–1682 | 1682–3662 | 3662–4182 | nothing |
+
+The link adds one line under each such row: the merged band is about 90 px taller at 1920.
+
 ## Proposals, in priority order
 
-Each one changes behavior, a query or the layout, so none is implemented.
+Each one changes behavior, a query or the layout. P1, P3a and P4 are implemented (above); the rest wait.
 
 ### P1 — From a merged PR to its task (small)
 
