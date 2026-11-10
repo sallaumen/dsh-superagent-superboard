@@ -1,6 +1,7 @@
 defmodule AgentBoardWeb.BoardComponents.NowLane do
   @moduledoc """
-  The current step of each running assignment, never a progress bar.
+  The current step of each running assignment, never a progress bar: the
+  stages are the three the board can see (`AgentBoard.Tickets.stages/2`).
 
   A silent run keeps its place here (it is still running) and says so: the
   glyph stops pulsing, because motion that says "working" would misrepresent
@@ -53,9 +54,7 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
           phx-click="open"
           phx-value-id={task.id}
           data-panel-trigger
-          aria-label={
-            gettext("Open task #%{number}: %{title}", number: task.number, title: task.title)
-          }
+          aria-label={open_label(task)}
         >
           <div class="ab-run__status">
             <.glyph kind={:run} live={not @frozen and not task[:stalled]} />
@@ -89,11 +88,12 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
             <span
               :for={{name, state} <- task.phases}
               class={["ab-phase", state == "done" && "is-done", state == "now" && "is-now"]}
+              aria-current={state == "now" && "step"}
             >
               <.glyph :if={state == "done"} kind={:done} />
               <.glyph :if={state == "now"} kind={:run} />
               <.glyph :if={state == "todo"} kind={:queue} />
-              {name}
+              {phase_label(name)}
             </span>
           </div>
         </article>
@@ -125,6 +125,21 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
     </section>
     """
   end
+
+  # A button's content is not read: its name carries the current stage.
+  defp open_label(task) do
+    label = gettext("Open task #%{number}: %{title}", number: task.number, title: task.title)
+
+    case Enum.find(task.phases, &match?({_name, "now"}, &1)) do
+      {name, _now} -> label <> ". " <> gettext("Stage: %{stage}", stage: phase_label(name))
+      nil -> label
+    end
+  end
+
+  defp phase_label(:analysis), do: gettext("Analysis")
+  defp phase_label(:code), do: gettext("Code")
+  defp phase_label({:pull_request, nil}), do: gettext("PR")
+  defp phase_label({:pull_request, number}), do: gettext("PR #%{number}", number: number)
 
   defp retry_count([]), do: ""
   defp retry_count(retrying), do: gettext(" · %{count} retrying", count: length(retrying))

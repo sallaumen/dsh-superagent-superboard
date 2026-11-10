@@ -40,6 +40,49 @@ defmodule AgentBoard.Tickets do
     end
   end
 
+  @doc """
+  The stages of an assignment, each from evidence the board can see, never a
+  percentage: analysis until the worktree changes after the start, code until
+  the ticket opens its own PR, then the PR. `observation` is what
+  `AgentBoard.AgentWorktree.observe/1` read. No ticket, no stages.
+  """
+  @spec stages(map() | nil, map() | nil) :: [
+          {atom() | {:pull_request, integer() | nil}, String.t()}
+        ]
+  def stages(nil, _observation), do: []
+
+  def stages(ticket, observation) do
+    # the newest, as the review item picks it (`AgentBoard.Board`)
+    pull = Enum.max(ticket["own_threads"] || [], fn -> nil end)
+
+    current =
+      cond do
+        pull -> 2
+        worked_since?(observation, first_start(ticket)) -> 1
+        true -> 0
+      end
+
+    [:analysis, :code, {:pull_request, pull}]
+    |> Enum.with_index()
+    |> Enum.map(fn
+      {stage, index} when index < current -> {stage, "done"}
+      {stage, ^current} -> {stage, "now"}
+      {stage, _index} -> {stage, "todo"}
+    end)
+  end
+
+  # A later attempt continues the work of the first one.
+  defp first_start(ticket) do
+    Enum.find_value(ticket["assignments"] || [], & &1["started_at"]) || ticket["started_at"]
+  end
+
+  # The worktree starts on the base commit: only a change newer than the
+  # start is the agent's.
+  defp worked_since?(%{step: %{}, last_activity_at: %DateTime{} = at}, %DateTime{} = started_at),
+    do: DateTime.after?(at, started_at)
+
+  defp worked_since?(_observation, _started_at), do: false
+
   @pr_mention ~r/(?:\bPR\b|pull request|\/pull\/)\s*#?\s*\d+/i
   @review_word ~r/\b(review|revis(ão|ao|ar|ado|ada))\b/iu
 
