@@ -48,8 +48,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       {"conversa", gettext("Conversation"), length(assigns.comments)},
       {"atividade", gettext("Activity"), length(assigns.activity)},
       {"chamadas", gettext("AI calls"), length(assigns.calls)},
-      {"execucoes", gettext("Executions"),
-       length(assigns.executions) + length(assigns.runner_executions)},
+      {"execucoes", gettext("Executions"), executions_count(assigns)},
       {"pr", "PR", nil}
     ]
 
@@ -1119,8 +1118,17 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp duration(ms) when ms >= 1000, do: "#{Float.round(ms / 1000, 1)} s"
   defp duration(ms), do: "#{ms} ms"
 
+  # The ledger is read only while this tab is open: a number before that
+  # would be a zero nobody counted.
+  defp executions_count(%{tab: "execucoes"} = assigns),
+    do: length(assigns.executions) + length(assigns.runner_executions)
+
+  defp executions_count(_assigns), do: nil
+
   defp cost(nil), do: "—"
   defp cost(micros) when micros <= 0, do: "—"
+  # Under a cent is a cost, not "$0.00".
+  defp cost(micros) when micros < 10_000, do: "< $0.01"
 
   defp cost(micros) do
     dollars = div(micros, 1_000_000)
@@ -1129,6 +1137,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   end
 
   defp total_cost(%{known_cost: 0, missing_cost: true}), do: "—"
+  defp total_cost(%{known_cost: known, missing_cost: true}) when known < 10_000, do: "≥ $0.00"
   defp total_cost(%{known_cost: known, missing_cost: true}), do: "≥ #{cost(known)}"
   defp total_cost(%{known_cost: known}), do: cost(known)
 end

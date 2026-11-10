@@ -11,15 +11,15 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
   def review_badge(%{review_state: state})
       when state in ["approved", "changes_requested", "pending"] do
     case state do
-      "approved" -> "approved"
-      "changes_requested" -> "changes requested"
-      "pending" -> "review pending"
+      "approved" -> gettext("approved")
+      "changes_requested" -> gettext("changes requested")
+      "pending" -> gettext("review pending")
     end
   end
 
   # "none" is a real answer: the pull has no reviews. Saying it is more honest
   # than hiding the badge and letting the reader guess.
-  def review_badge(%{review_state: "none"}), do: "no review"
+  def review_badge(%{review_state: "none"}), do: gettext("no review")
   def review_badge(_), do: nil
 
   def review_badge_class(%{review_state: "approved"}), do: "text-success"
@@ -28,15 +28,15 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
 
   def checks_badge(%{checks_state: "failure", checks_failed: name})
       when is_binary(name) and name != "",
-      do: "ci failed: #{name}"
+      do: gettext("ci failed: %{name}", name: name)
 
-  def checks_badge(%{checks_state: "none"}), do: "no ci"
+  def checks_badge(%{checks_state: "none"}), do: gettext("no ci")
 
   def checks_badge(%{checks_state: state}) when state in ["success", "failure", "pending"] do
     case state do
-      "success" -> "ci passed"
-      "failure" -> "ci failed"
-      "pending" -> "ci running"
+      "success" -> gettext("ci passed")
+      "failure" -> gettext("ci failed")
+      "pending" -> gettext("ci running")
     end
   end
 

@@ -11,8 +11,11 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
       <header class="archive-heading">
         <div class="archive-title">
           <h2>{gettext("Merged PRs")}</h2>
-          <span class="archive-count" aria-label={"#{length(@items)} pull requests loaded"}>
-            {length(@items)} carregados
+          <span
+            class="archive-count"
+            aria-label={gettext("%{count} pull requests loaded", count: length(@items))}
+          >
+            {gettext("%{count} loaded", count: length(@items))}
           </span>
         </div>
         <span class="archive-scope">{gettext("Newest first")}</span>
@@ -22,6 +25,7 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
         module={AgentBoardWeb.BoardComponents.MergeTrend}
         id="merge-trend"
         items={@items}
+        has_more={@has_more}
       />
       <div
         id="merged-list"

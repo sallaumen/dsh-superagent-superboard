@@ -468,7 +468,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
       Enum.map_join(series, ", ", &Integer.to_string/1)
   end
 
-  defp tile_label(%{key: "done"}), do: gettext("Completed")
+  defp tile_label(%{key: "done"}), do: pgettext("throughput tile", "Completed")
   defp tile_label(%{key: "opened"}), do: gettext("Issues opened")
   defp tile_label(%{key: "merged"}), do: gettext("PRs merged")
   defp tile_label(%{key: "commits"}), do: gettext("Commits")
