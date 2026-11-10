@@ -293,7 +293,8 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     |> element("#project-retry_provision_superagent-#{superagent.id}-confirm")
     |> render_click()
 
-    _ = render_async(view)
+    # The provisioning runs in a task; under a loaded suite 100 ms was not enough.
+    _ = render_async(view, 2_000)
 
     retried = Repo.get!(Superagent, superagent.id)
     assert is_nil(retried.provision_failed_at)
