@@ -270,6 +270,36 @@ defmodule AgentBoard.TicketPollerTest do
     assert Repo.get(Task, t.id).state == "question"
   end
 
+  # An issue keeps every ticket it ever had: the open one speaks for it, an
+  # ended `ready` one must not take it back to review each poll, nor restart
+  # the clock the "taking long" alert counts from.
+  @ended_ready ~s({"id":"old","updatedAt":"2026-11-09T10:00:00.000Z","mandate":{"basis":{"scope":{"number":42}}},"assignments":[{"state":"ended","report":{"state":"ready","summary":"PR #30 ready for review."}}],"ended":{"at":"2026-11-09T10:00:00.000Z","by":"executor","outcome":"completed"}})
+  @running_new ~s({"id":"new","updatedAt":"2026-11-10T10:00:00.000Z","mandate":{"basis":{"scope":{"number":42}}},"assignments":[{"state":"running"}]})
+
+  for {label, rows} <- [
+        {"ended first", [@ended_ready, @running_new]},
+        {"open first", [@running_new, @ended_ready]}
+      ] do
+    test "an ended ticket does not override the open one (#{label})", %{db: db} do
+      repo = isolated_repo()
+      since = ~U[2026-11-10 09:00:00Z]
+
+      t =
+        repo
+        |> task()
+        |> Ecto.Changeset.change(state: "running", state_changed_at: since)
+        |> Repo.update!()
+
+      for row <- unquote(rows),
+          do: :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{row}')")
+
+      state = AgentBoard.TicketPoller.poll(%{})
+      AgentBoard.TicketPoller.poll(state)
+
+      assert %{state: "running", state_changed_at: ^since} = Repo.get(Task, t.id)
+    end
+  end
+
   test "the poller schedules the next tick", %{db: _db} do
     previous = Application.get_env(:agent_board, :ticket_poll_interval)
     Application.put_env(:agent_board, :ticket_poll_interval, 10)

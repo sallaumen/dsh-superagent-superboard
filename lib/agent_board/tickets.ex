@@ -16,7 +16,9 @@ defmodule AgentBoard.Tickets do
 
   A ticket whose PR merged is done, whatever its last report said: the
   runner keeps the `ready` or `waiting` report it ended on, and the merge
-  is the newer fact. Nothing else about an ended ticket imposes a state.
+  is the newer fact. No other ending imposes a state: an ended ticket's last
+  report still decides, and only when no open ticket speaks for the issue
+  (`by_number/1`).
 
   A `waiting` report means the executor needs input, not that it asked a
   question. When the newest agent comment is a workpad (`workpad`, the map
@@ -53,6 +55,25 @@ defmodule AgentBoard.Tickets do
       true -> nil
     end
   end
+
+  @doc """
+  The one ticket that speaks for each issue number, as `%{number => ticket}`:
+  an open one (not ended) if any, else the most recently updated. An issue
+  keeps every ticket it ever had; overlaying them all lets an ended one undo
+  the open one's state on every poll, in whatever order the rows come.
+  """
+  @spec by_number([map()]) :: %{integer() => map()}
+  def by_number(tickets) do
+    tickets
+    |> Enum.flat_map(fn ticket -> Enum.map(ticket["numbers"] || [], &{&1, ticket}) end)
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Map.new(fn {number, candidates} -> {number, Enum.max_by(candidates, &recency/1)} end)
+  end
+
+  defp recency(ticket), do: {is_nil(ticket["ended_at"]), unix(ticket["updated_at"])}
+
+  defp unix(%DateTime{} = at), do: DateTime.to_unix(at, :microsecond)
+  defp unix(_missing), do: 0
 
   @doc """
   When the worker read the person's answer to the report it is still showing

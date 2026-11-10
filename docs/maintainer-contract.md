@@ -115,8 +115,10 @@ differ. Change a general rule upstream, not here.
   `retrying`, `ready`, `blocked`) while the issue is open. `retrying` is a
   failure `AgentBoard.AutoRetry` will retry by itself, or a retry waiting
   for a worker ("Automatic retry" below). A ticket that ended `merged` is
-  `done` whatever its last report said. A stopped or archived task keeps its
-  state.
+  `done` whatever its last report said. An issue keeps every ticket it ever
+  had, and one speaks for it: the open one, else the most recently updated
+  (`Tickets.by_number/1`, used by the sync and the ticket poll). A stopped or
+  archived task keeps its state.
 - The sync's insert sets the baseline once and keeps the state on conflict,
   so an overlay is not reset to `queued` every five minutes. A **closed
   issue** is the exception: every sync moves its task to `done`, unless it
