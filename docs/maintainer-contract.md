@@ -1204,6 +1204,30 @@ what needs the owner in every repository, one list, repository on each item.
   currencies, the click that changes repository, another repository's
   broadcast).
 
+## History
+
+The History panel (`?panel=history`) is where ended work is found again.
+
+- **Ended tasks** is its first list: every issue task in `done`, `closed`,
+  `stopped` or `archived`, newest first by `tasks.state_changed_at` (the instant
+  the board observed the end; a row without one comes last and says so), grouped
+  by the reader's local day. Each row says how it ended: **merged** only when a
+  merged pull request closes the issue (`pull_requests.closes_issues`), else
+  **closed, no merged PR**, **stopped** or **archived**. The board does not
+  guess a merge from a title or a branch. The row opens the task's inspector.
+- **The search** takes a number (`12` or `#12`, the issue's number) or any
+  other text (the title, case-insensitive; `%` and `_` are characters). It is
+  answered by the server, 50 rows a page (`Board.ended_page/4`), and lives in
+  the URL (`q`), so back, a reload and a shared link reopen the same list.
+  Typing replaces the history entry instead of adding one per keystroke.
+- It is read when the panel shows it, never in the board load: one query for
+  the page and one for the pull requests of its rows. It does not refresh on a
+  broadcast while open; reopening the panel reads it again.
+- **Merged PRs** (`list=prs`) is the other list, as before; "and N more" in the
+  merged strip opens that one.
+- The tests: `board/ended_test.exs` (order, outcomes, search, cursor) and
+  `board_live_test.exs` ("history lists the tasks that ended").
+
 ## Objectives
 
 F3.4 of the Alfred plan: a group of tasks with one done criterion, progress

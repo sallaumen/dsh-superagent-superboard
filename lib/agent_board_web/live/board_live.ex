@@ -107,6 +107,9 @@ defmodule AgentBoardWeb.BoardLive do
         needs_expanded: false,
         queue_limit: 8,
         queue_filter: :all,
+        history_list: "tasks",
+        history_query: "",
+        ended: %{items: [], has_more: false},
         repo: nil,
         view: nil,
         dispatch_paused: false,
@@ -1712,8 +1715,41 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, BoardNavigation.open_panel(socket, "settings", section)}
   end
 
+  def handle_event("show_panel", %{"panel" => "history", "list" => list}, socket)
+      when not is_nil(socket.assigns.repo) do
+    {:noreply, push_patch(socket, to: BoardNavigation.history_path(socket.assigns.repo, list))}
+  end
+
   def handle_event("show_panel", %{"panel" => panel}, socket) do
     {:noreply, BoardNavigation.open_panel(socket, panel)}
+  end
+
+  # Typing in the search replaces the entry: back leaves History, it does not
+  # walk through every keystroke.
+  def handle_event("history_search", %{"q" => query}, socket) do
+    path = BoardNavigation.history_path(socket.assigns.repo, "tasks", String.trim(query))
+    {:noreply, push_patch(socket, to: path, replace: true)}
+  end
+
+  def handle_event("load_more_ended", _params, socket) do
+    case {socket.assigns.repo, socket.assigns.ended} do
+      {%{id: id}, %{has_more: true, items: [_ | _] = items}} ->
+        last = List.last(items)
+        size = Board.ended_page_size()
+
+        rows =
+          Board.ended_page(id, socket.assigns.history_query, {last.ended_at, last.id}, size + 1)
+
+        ended = %{
+          items: Enum.uniq_by(items ++ Enum.take(rows, size), & &1.id),
+          has_more: length(rows) > size
+        }
+
+        {:noreply, assign(socket, :ended, ended)}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("add_project", %{"owner" => owner, "name" => name} = params, socket) do
@@ -3557,17 +3593,24 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="history"
-          title={gettext("Merge History")}
+          title={gettext("History")}
           active={@panel == "history"}
           flash={@flash}
         >
-          <.live_component
+          <BoardComponents.Concluded.history
             :if={@repo}
-            module={BoardComponents.Archive}
-            id="merged-column-history"
-            items={@board.merged}
-            has_more={@board.merged_has_more}
-          />
+            list={@history_list}
+            query={@history_query}
+            ended={@ended}
+            offset={@tz_offset}
+          >
+            <.live_component
+              module={BoardComponents.Archive}
+              id="merged-column-history"
+              items={@board.merged}
+              has_more={@board.merged_has_more}
+            />
+          </BoardComponents.Concluded.history>
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
@@ -3887,6 +3930,16 @@ defmodule AgentBoardWeb.BoardLive do
   # The router reads the runner once per opening of the composer in a
   # repository, never per render: a runner that does not answer costs the
   # orchestrator's timeouts in the background, not in the form.
+  # The ended tasks are read when History shows them, for the search in the
+  # URL: one page, never on a board render.
+  defp load_panel(
+         %{assigns: %{panel: "history", history_list: "tasks", repo: %{id: id}}} = socket
+       ) do
+    size = Board.ended_page_size()
+    rows = Board.ended_page(id, socket.assigns.history_query, nil, size + 1)
+    assign(socket, :ended, %{items: Enum.take(rows, size), has_more: length(rows) > size})
+  end
+
   defp load_panel(socket), do: socket
 
   defp load_composer_routing(%{assigns: %{panel: "composer", repo: %{id: id}}} = socket) do

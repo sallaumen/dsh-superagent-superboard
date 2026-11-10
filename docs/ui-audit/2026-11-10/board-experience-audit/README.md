@@ -184,6 +184,23 @@ Portuguese branch of the sentences), `voice/commands` 26, `agent_control` 17, `r
 `auto_retry` 5 and `bot_access` 4 (stored text), `freshness` 19 and `Logs.summary/1` (not rendered).
 `merge_log` and `needs_you` pick a CSS class by comparing a note with a translated string.
 
+## Fifth delivery: ended tasks in History (finding 2, proposal P2)
+
+History now opens on **Ended tasks**: the tasks in `done`, `closed`, `stopped` or `archived`, newest
+first, under day headings, each saying how it ended (merged only with a merged PR that closes the
+issue; otherwise "closed, no merged PR", stopped or archived) and opening the task's inspector. A
+search by number or title is answered by the server and kept in the URL. **Merged PRs** is the second
+list, unchanged; "and N more" in the merged strip opens it.
+
+Walked on the copy of the real data (arena-rogue, 107 done, 1 stopped): 50 rows on the first page
+under "Today", "Yesterday, 9 Nov", "Sunday, 8 Nov"; `#184` finds one row and "arco" four; a row opens
+the inspector and back returns to History with the search in place; a reload keeps list and search;
+`Esc` closes the panel; no horizontal scroll at 390 px. Two new reads when the panel shows the list,
+none in the board load, no schema change. Captures in `concluded/`.
+
+Not done here: the list does not refresh on a broadcast while open, and no search across the tasks
+still in the lanes.
+
 ## Proposals, in priority order
 
 Each one changes behavior, a query or the layout. P1 and P3a are implemented and P4 was replaced by
