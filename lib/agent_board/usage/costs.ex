@@ -41,11 +41,12 @@ defmodule AgentBoard.Usage.Costs do
   # where the price is exact. The opus-4-8 lines are of sessions started from
   # 2026-10-02 to 2026-11-07: its older rows use the same rate unverified.
   # Haiku's web searches (US$ 0.01 each there) are not in the ledger, so a
-  # haiku row is a minimum.
+  # haiku row is a minimum. opus-5 is Anthropic's published price (as listed
+  # on 2026-10-06), which its three `cost-state` processes agree with.
   @claude_prices %{
     "claude-opus-5-5" => %{input: 2.30, output: 30.00},
     "claude-opus-5-5[1m]" => %{input: 2.30, output: 30.00},
-    "claude-opus-5" => %{input: 2.30, output: 30.00},
+    "claude-opus-5" => %{input: 5.00, output: 25.00},
     "claude-opus-4-8" => %{input: 5.00, output: 25.00},
     "claude-sonnet-5-5" => %{input: 1.62, output: 12.73},
     "claude-sonnet-5" => %{input: 1.62, output: 12.73},
