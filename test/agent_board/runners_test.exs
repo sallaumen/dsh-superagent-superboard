@@ -151,6 +151,38 @@ defmodule AgentBoard.RunnersTest do
     assert {:ok, %{timeout_seconds: 7200}} = Runners.check(task, "claude")
   end
 
+  # The ledger only sees a run after it ends. Until then its ceiling is what
+  # it may still spend, so two dispatches a minute apart cannot both pass a
+  # cap that only one of them fits under.
+  test "the ceilings of runs in flight count against the monthly cap", %{task: task} do
+    :ok = Settings.put("dispatch_monthly_usd", "10")
+    assert {:ok, _plan} = Runners.check(task, "claude")
+
+    other =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: task.repository_id,
+        kind: "issue",
+        number: 43,
+        title: "Outra tarefa",
+        state: "running",
+        executor: "claude"
+      })
+      |> Repo.insert!()
+
+    Repo.insert!(%AgentBoard.Runners.Execution{
+      task_id: other.id,
+      repository_id: other.repository_id,
+      executor: "claude",
+      status: "running",
+      ceiling_micros: 10_000_000,
+      run_dir: Path.join(System.tmp_dir!(), "in-flight-#{other.id}"),
+      started_at: DateTime.utc_now() |> DateTime.truncate(:microsecond)
+    })
+
+    assert {:error, :monthly_budget} = Runners.check(task, "claude")
+  end
+
   test "the confirmed action is the only door, and it records the decision", %{task: task} do
     test_pid = self()
 
