@@ -36,5 +36,11 @@ defmodule AgentBoard.AI.Budget do
   end
 
   @spec cap() :: non_neg_integer()
-  def cap, do: Application.get_env(:agent_board, :ai_daily_tokens, @default_tokens)
+  def cap do
+    # Anything but a whole number would compare false forever and lift the cap.
+    case Application.get_env(:agent_board, :ai_daily_tokens) do
+      cap when is_integer(cap) and cap >= 0 -> cap
+      _ -> @default_tokens
+    end
+  end
 end

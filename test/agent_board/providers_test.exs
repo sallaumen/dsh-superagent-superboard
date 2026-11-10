@@ -74,6 +74,25 @@ defmodule AgentBoard.ProvidersTest do
     end
   end
 
+  test "a provider only receives its own key, never DeepSeek's" do
+    Application.delete_env(:agent_board, :ai_api_key)
+    previous = Map.new(~w(DEEPSEEK_API_KEY GEMINI_API_KEY), &{&1, System.get_env(&1)})
+
+    on_exit(fn ->
+      Enum.each(previous, fn
+        {env, nil} -> System.delete_env(env)
+        {env, value} -> System.put_env(env, value)
+      end)
+    end)
+
+    System.put_env("DEEPSEEK_API_KEY", "deepseek-key")
+    System.delete_env("GEMINI_API_KEY")
+
+    assert Providers.key(:deepseek) == "deepseek-key"
+    assert Providers.key(:gemini) == ""
+    refute Providers.configured?(:gemini)
+  end
+
   test "every provider declares a price for both tiers" do
     for id <- Providers.ids() do
       assert {:ok, _provider} = Providers.fetch(id)

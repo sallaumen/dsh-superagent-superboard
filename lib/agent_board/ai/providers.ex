@@ -74,7 +74,11 @@ defmodule AgentBoard.AI.Providers do
     end
   end
 
-  @doc "The key, from the panel config first, then the environment."
+  @doc """
+  The provider's own key, from its environment variable. `:ai_api_key` is a
+  test override standing for every provider's key; no config sets it, since it
+  would send one provider's key to all of them.
+  """
   @spec key(atom()) :: String.t()
   def key(id) do
     case fetch(id) do
