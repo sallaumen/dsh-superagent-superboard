@@ -2,7 +2,7 @@ defmodule AgentBoard.MessagePollerTest do
   use AgentBoard.DataCase, async: false
 
   alias AgentBoard.{Board, MessagePoller}
-  alias AgentBoard.Board.Task
+  alias AgentBoard.Board.{Event, Task}
 
   @stub __MODULE__.Stub
 
@@ -122,6 +122,49 @@ defmodule AgentBoard.MessagePollerTest do
     due = put_in(second[repository.id].retry_at, DateTime.add(DateTime.utc_now(), -1))
     assert %{since: %DateTime{}} = recovered = MessagePoller.poll(due, client())[repository.id]
     refute Map.has_key?(recovered, :retry_at)
+  end
+
+  # The cursor lives in memory: after an outage the first read goes back to
+  # the last successful sync before this boot, not only ten minutes, so a
+  # question the agent posted while the board was down is still read.
+  test "the first poll reads back to the last sync before the boot", %{repository: repository} do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    sync_at = DateTime.add(now, -30 * 60)
+
+    for {kind, at} <- [{"sync", sync_at}, {"sync_error", now}, {"sync", DateTime.add(now, -60)}] do
+      {:ok, event} = Board.log_event(repository.id, kind, "sallaumen/inbox-fixture")
+      Repo.update_all(from(e in Event, where: e.id == ^event.id), set: [inserted_at: at])
+    end
+
+    test_pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      send(test_pid, {:since, conn.query_params["since"]})
+      Req.Test.json(conn, [])
+    end)
+
+    MessagePoller.poll(%{started_at: DateTime.add(now, -5 * 60)}, client())
+
+    assert_receive {:since, since}
+    assert since == DateTime.to_iso8601(DateTime.add(sync_at, -2))
+  end
+
+  test "a sync just before the boot still reads ten minutes back", %{repository: repository} do
+    {:ok, event} = Board.log_event(repository.id, "sync", "sallaumen/inbox-fixture")
+    at = DateTime.utc_now() |> DateTime.add(-60) |> DateTime.truncate(:second)
+    Repo.update_all(from(e in Event, where: e.id == ^event.id), set: [inserted_at: at])
+    test_pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      send(test_pid, {:since, conn.query_params["since"]})
+      Req.Test.json(conn, [])
+    end)
+
+    MessagePoller.poll(%{}, client())
+
+    assert_receive {:since, since}
+    {:ok, since, _} = DateTime.from_iso8601(since)
+    assert_in_delta DateTime.diff(DateTime.utc_now(), since), 10 * 60 + 2, 5
   end
 
   # More comments than the page limit since the cursor: what was read is
