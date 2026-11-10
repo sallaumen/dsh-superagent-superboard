@@ -471,6 +471,27 @@ defmodule AgentBoard.BoardOverviewTest do
     assert Overview.repo_overview()[repo.id].you == 1
   end
 
+  # The number alone is not the link: #42 of another repository says nothing
+  # about this repository's #42.
+  test "a link to another repository's PR does not resolve the task" do
+    {:ok, repo} = Board.add_repository("fixture", "foreign-link")
+    task = insert_task(repo, 2, "ready")
+    _merged = insert_merged(repo, 42, "success")
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: task.id,
+      github_id: 101,
+      author: "someone",
+      body: "Related upstream: https://github.com/other/lib/pull/42"
+    })
+    |> Repo.insert!()
+
+    assert Board.reconcile_resolved_tasks(repo) == 0
+    assert Repo.get(Task, task.id).state == "ready"
+    assert Board.task_pull_request(Repo.preload(task, :repository), Board.comments(task)) == nil
+  end
+
   test "a clean sync makes the repository known" do
     {:ok, repo} = Board.add_repository("sallaumen", "known")
     Board.log_event(repo.id, "sync", "sallaumen/known", %{"errors" => 0})
