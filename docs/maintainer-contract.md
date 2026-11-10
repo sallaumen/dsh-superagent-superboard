@@ -315,7 +315,10 @@ that already worked).
   per active repository every 30s when a GitHub token is configured. It follows
   pagination, stores only comments for tracked tasks, broadcasts only for new
   or edited content, and keeps its cursor and last good messages on failure.
-  GitHub's rate-limit response delays that repository's next read. The normal
+  The cursor lives in memory: after a restart the first read goes back to the
+  repository's last successful sync before the boot, never less than ten minutes,
+  so a reply posted while the board was down is read; a long backlog is read
+  in page-limited steps (`message_poller_test.exs`). GitHub's rate-limit response delays that repository's next read. The normal
   five-minute sync remains the fallback, including without a token.
 - The top-right message window reads the newest agent reply per task from the
   board's comments and uses a browser-local read version. Editing a workpad
