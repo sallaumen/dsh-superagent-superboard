@@ -7,7 +7,7 @@ set -eu
 LIMIT="${1:-10}"
 
 sqlite3 "$DB" "
-SELECT json_extract(value,'\$.assignments[0].report.state') || '  ' ||
-       substr(json_extract(value,'\$.title'),1,46) || '  ' ||
-       coalesce(substr(json_extract(value,'\$.assignments[0].report.at'),1,16),'-')
+SELECT coalesce(json_extract(value,'\$.assignments[#-1].report.state'),'-') || '  ' ||
+       coalesce(substr(json_extract(value,'\$.title'),1,46),'-') || '  ' ||
+       coalesce(substr(json_extract(value,'\$.assignments[#-1].report.at'),1,16),'-')
 FROM ticket ORDER BY rowid DESC LIMIT $LIMIT;" 2>&1

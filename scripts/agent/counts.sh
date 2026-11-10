@@ -8,5 +8,5 @@ for T in trigger thread decision ticket outbox; do
   printf "%-10s %s\n" "$T" "$(sqlite3 "$DB" "SELECT count(*) FROM $T")"
 done
 echo "outcomes"
-sqlite3 "$DB" "SELECT json_extract(value,'\$.assignments[0].report.state') AS s, count(*)
+sqlite3 "$DB" "SELECT coalesce(json_extract(value,'\$.assignments[#-1].report.state'),'-') AS s, count(*)
                FROM ticket GROUP BY s ORDER BY 2 DESC;" 2>&1
