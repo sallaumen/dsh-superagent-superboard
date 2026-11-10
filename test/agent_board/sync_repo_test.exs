@@ -907,6 +907,83 @@ defmodule AgentBoard.SyncRepoTest do
     assert %Task{state: "stopped"} = Repo.one(from t in Task, where: t.number == 23)
   end
 
+  # GitHub's updated_at for these issues: after the stored decisions the
+  # tests set to `@long_ago`, before any decision a sync makes now.
+  @long_ago ~U[2026-01-01 00:00:00Z]
+
+  defp sync_issue_states(repo, number, states) do
+    Enum.each(
+      states,
+      &sync_issue(repo, Map.put(issue(number, &1), "updated_at", "2026-11-04T00:00:00Z"))
+    )
+  end
+
+  defp sync_issue(repo, issue) do
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue])
+        _ -> Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+  end
+
+  test "a reopened issue goes back to the queue", %{repo: repo} do
+    sync_issue_states(repo, 24, ["closed"])
+    Repo.update_all(Task, set: [state_changed_at: @long_ago])
+
+    sync_issue_states(repo, 24, ["open"])
+
+    task = Repo.one(from t in Task, where: t.number == 24)
+    assert task.state == "queued"
+    assert DateTime.compare(task.state_changed_at, @long_ago) == :gt
+  end
+
+  test "a reopened issue of a stopped or archived task keeps its state", %{repo: repo} do
+    sync_issue_states(repo, 25, ["closed"])
+    Repo.update_all(Task, set: [archived: true])
+
+    sync_issue_states(repo, 25, ["open"])
+
+    assert %Task{state: "done", archived: true} = Repo.one(Task)
+  end
+
+  test "a reopened issue whose agent ticket merged stays done, once", %{repo: repo} do
+    path = Path.join(System.tmp_dir!(), "sync-reopen-#{System.unique_integer([:positive])}.db")
+    {:ok, db} = Exqlite.Sqlite3.open(path)
+    previous = Application.get_env(:agent_board, :state_db)
+
+    on_exit(fn ->
+      Exqlite.Sqlite3.close(db)
+      File.rm(path)
+      Application.put_env(:agent_board, :state_db, previous)
+    end)
+
+    merged =
+      ~s({"mandate":{"basis":{"scope":{"number":26}}},"assignments":[{"state":"ended"}],"ended":{"at":"2026-11-07T00:01:15.000Z","by":"executor","outcome":"merged"}})
+
+    :ok = Exqlite.Sqlite3.execute(db, "create table ticket (value text)")
+    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{merged}')")
+    Application.put_env(:agent_board, :state_db, path)
+
+    sync_issue_states(repo, 26, ["closed"])
+    Repo.update_all(Task, set: [state_changed_at: @long_ago])
+
+    # The reopen puts it back in the queue and the merged ticket makes it done.
+    sync_issue_states(repo, 26, ["open"])
+    decided = Repo.one(Task)
+    assert decided.state == "done"
+    assert DateTime.compare(decided.state_changed_at, @long_ago) == :gt
+
+    # The same issue again is no new reopen: the decision, stamped after the
+    # issue's updated_at, stands.
+    decided_at = ~U[2026-11-05 00:00:00Z]
+    Repo.update_all(Task, set: [state_changed_at: decided_at])
+    sync_issue_states(repo, 26, ["open"])
+    assert %Task{state: "done", state_changed_at: ^decided_at} = Repo.one(Task)
+  end
+
   test "a pull request becomes a merged task with its rollups", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do

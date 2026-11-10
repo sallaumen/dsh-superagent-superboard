@@ -124,7 +124,12 @@ differ. Change a general rule upstream, not here.
   issue** is the exception: every sync moves its task to `done`, unless it
   is stopped or archived (`Sync.close_task/2`). Before this, an issue closed
   after it entered the board stayed in Fila (the queue) while the runner had
-  nothing to do (`sync_repo_test.exs`). A reopened issue is not moved back yet.
+  nothing to do (`sync_repo_test.exs`). A **reopened issue** moves its `done`
+  task back to `queued`, unless it is stopped or archived
+  (`Sync.reopen_task/3`); the tickets and `Board.reconcile_resolved_tasks/1`
+  run after it in the same sync, so a merged ticket still makes it `done`.
+  Only an issue whose `updated_at` is newer than the task's
+  `state_changed_at` is reopened, so that `done` is not redone every sync.
 - A **blocker task** points at the task it unblocks through
   `tasks.blocker_for_task_id`. It is created through the same `create_tasks`
   action as any request, with the agent's mention and the link; the queue

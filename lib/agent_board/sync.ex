@@ -351,6 +351,27 @@ defmodule AgentBoard.Sync do
     )
   end
 
+  # A reopened issue is work again: its `done` task goes back to the queue.
+  # This runs before the tickets and `Board.reconcile_resolved_tasks/1`, so a
+  # merged ticket or a resolved linked PR still brings it back to `done`. Only
+  # an issue changed after the board last decided the state is reopened, so
+  # that `done` is not undone and redone on every sync.
+  defp reopen_task(_repository, _number, nil), do: 0
+
+  defp reopen_task(repository, number, issue_updated_at) do
+    now = DateTime.utc_now()
+
+    Repo.update_all(
+      from(t in Task,
+        where:
+          t.repository_id == ^repository.id and t.kind == "issue" and t.number == ^number and
+            not t.stopped and not t.archived and t.state == "done" and
+            (is_nil(t.state_changed_at) or t.state_changed_at < ^issue_updated_at)
+      ),
+      set: [state: "queued", state_changed_at: now, updated_at: now]
+    )
+  end
+
   defp upsert_issue(repository, issue) do
     closed = issue["state"] == "closed"
 
@@ -371,7 +392,10 @@ defmodule AgentBoard.Sync do
     )
     |> case do
       {:ok, _} ->
-        if closed, do: close_task(repository, issue["number"])
+        if closed,
+          do: close_task(repository, issue["number"]),
+          else: reopen_task(repository, issue["number"], to_dt(issue["updated_at"]))
+
         :ok
 
       {:error, changeset} ->
