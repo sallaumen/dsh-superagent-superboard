@@ -394,7 +394,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
           :if={@source != "codex" and not is_nil(@executor)}
           class="ab-executor__bars"
           role="img"
-          aria-label={gettext("Daily usage for %{name}", name: label_for(@source))}
+          aria-label={gettext("Usage per UTC day for %{name}", name: label_for(@source))}
         >
           <span
             :for={{day, row, index} <- bars(@daily, @source, @days)}
@@ -651,7 +651,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
 
   defp bar_label(day, index, days) do
     cond do
-      day == Date.utc_today() -> gettext("today")
+      # A UTC day, not the owner's today: in the evening in Brazil it is tomorrow.
+      day == Date.utc_today() -> Calendar.strftime(day, "%d/%m")
       days == 7 -> short_weekday(day)
       rem(index, 5) == 0 -> Calendar.strftime(day, "%d")
       true -> ""
@@ -670,8 +671,10 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
     end
   end
 
-  defp day_title(day, nil, _source), do: gettext("%{date}: unknown", date: Date.to_iso8601(day))
-  defp day_title(day, _row, _source), do: Date.to_iso8601(day)
+  defp day_title(day, nil, _source), do: gettext("%{date}: unknown", date: utc_date(day))
+  defp day_title(day, _row, _source), do: utc_date(day)
+
+  defp utc_date(day), do: "#{Date.to_iso8601(day)} UTC"
 
   defp ai_tone(:logged_in), do: "is-stale"
   defp ai_tone(_status), do: "is-faint"
