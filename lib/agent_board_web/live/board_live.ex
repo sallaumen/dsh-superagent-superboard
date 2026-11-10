@@ -3572,7 +3572,6 @@ defmodule AgentBoardWeb.BoardLive do
             tz_offset={@tz_offset}
             project_pending={@project_pending}
             board_locale={@board_locale}
-            return_to={BoardNavigation.path(@repo, "settings")}
           />
         </BoardComponents.Panel.shell>
 
