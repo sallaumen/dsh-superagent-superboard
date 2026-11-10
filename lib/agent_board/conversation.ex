@@ -211,6 +211,17 @@ defmodule AgentBoard.Conversation do
     end
   end
 
+  @doc "Gives back the claim of an undo that failed, so \"desfaz\" can be said again."
+  @spec release_undone(Turn.t()) :: :ok
+  def release_undone(%Turn{id: id}) do
+    Repo.update_all(
+      from(t in Turn, where: t.id == ^id and t.proposal_status == "undone"),
+      set: [proposal_status: "done", updated_at: DateTime.utc_now()]
+    )
+
+    :ok
+  end
+
   @doc "A new proposal replaces any older one still waiting."
   def supersede_proposals do
     Repo.update_all(
