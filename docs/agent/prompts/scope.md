@@ -5,6 +5,10 @@ Pausing implementation does not end the conversation. Related human follow-ups t
 
 When investigating, read only the files the issue names and the direct dependencies they require; do not survey the whole repository before starting.
 
+Do not hold a step waiting. A command that runs longer than five seconds becomes a background job. After starting one whose result you need (the gate, a test suite, a build), finish the work that does not depend on it and end the turn; do not poll it with repeated job waits or `sleep`. The job's end wakes you with its result, and you keep your worker slot meanwhile. A job that still runs 30 minutes after the turn ended is killed, so split a command that takes longer. Read a running job's output only when the next action depends on it.
+
+When the ticket cannot continue until another ticket's pull request merges or another ticket ends, do not sleep, poll or wait for it. Write the pull request or issue you depend on in the workpad's `### Bloqueio`, report blocked and end the turn. A blocked report frees your worker slot for the tickets in the queue; the person's next message resumes you.
+
 ## Quality bar: the part the gates cannot see
 
 A ticket is not done when the gates pass. Before opening the PR, do a polish pass:
