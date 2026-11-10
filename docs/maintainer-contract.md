@@ -1157,6 +1157,17 @@ flowchart TB
   issue the board does not track answers with a notice; a PR that closes no
   issue has no task, and its row stays the GitHub link.
 - A merged task's inspector offers no Stop: its issue is already closed.
+- **An ended task's row shows what its executors cost** (History → Ended
+  tasks; audit P3b, owner's choice 2026-11-10). The value is the
+  Executions tab's (`Usage.Report.executions/2`, the ledger's last 90 UTC
+  days with this attribution), summed per task and per executor, never
+  across executors: DeepSeek `≈` or `≥` (a missing cache price), Claude
+  Code a list price, Codex "cost unknown". `Usage.TaskCosts.refresh/1`
+  computes it after each ledger refresh (`Usage.Worker`, five minutes) and
+  keeps it in memory, so a render reads no ledger; after a boot, until the
+  first run, a row shows "—" and its tooltip says why, never a zero. No
+  attributed execution in the window is "—" too. The board's own calls stay
+  in the task's inspector (`ended_cost_test.exs`, `task_costs_test.exs`).
 - **Delivered issues lead the count.** An issue is delivered when a merged
   PR closes it (`Closes #n`), counted once however many PRs closed it; a PR
   that closes nothing delivers none (`Lanes.delivered/1`). Merged's header
