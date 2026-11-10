@@ -91,7 +91,7 @@ defmodule AgentBoard.AgentState do
   def read, do: read_path(path())
 
   defp read_path(path) do
-    with {:ok, conn} <- Exqlite.Sqlite3.open(path) do
+    with {:ok, conn} <- Exqlite.Sqlite3.open(path, mode: :readonly) do
       try do
         with {:ok, stmt} <- Exqlite.Sqlite3.prepare(conn, "SELECT value FROM ticket"),
              {:ok, rows} <- read_rows(conn, stmt, []) do

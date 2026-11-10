@@ -185,6 +185,19 @@ defmodule AgentBoard.AgentStateTest do
     assert %{ok: false, tickets: []} = AgentState.snapshot()
   end
 
+  # The database belongs to the agent: a read before the agent first boots
+  # must not create an empty one in its state folder.
+  test "reading a missing database in an existing folder does not create it" do
+    dir = Path.join(System.tmp_dir!(), "agent-state-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(dir)
+    on_exit(fn -> File.rm_rf!(dir) end)
+    db = Path.join(dir, "orchestrator.sqlite")
+    Application.put_env(:agent_board, :state_db, db)
+
+    assert {:error, _reason} = AgentState.read()
+    refute File.exists?(db)
+  end
+
   test "explicit state_db wins over the fallback" do
     Application.put_env(:agent_board, :state_db, "/tmp/explicit.sqlite")
     assert AgentState.path() == "/tmp/explicit.sqlite"
