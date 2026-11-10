@@ -204,7 +204,7 @@ and is recorded as `automatic`.
 
 | Action | Risk | Effect | Confirmation |
 |---|---|---|---|
-| `create_tasks` | red | opens GitHub issues that mention the agent (`Board.Requests.create_request/3`, once per request key) | UI: the composer shows the sentence above the send button and the send carries it; the intake panel's Create asks it in the browser (`data-confirm`). Voice: proposal and yes, or "cria direto". API: `428` then `confirm` |
+| `create_tasks` | red | opens GitHub issues that mention the agent (`Board.Requests.create_request/3`, once per request key while its task has not ended) | UI: the composer shows the sentence above the send button and the send carries it; the intake panel's Create asks it in the browser (`data-confirm`). Voice: proposal and yes, or "cria direto". API: `428` then `confirm` |
 | `ask_task` | red | comments on the issue with the mention | UI: the message form names the GitHub destination; Enviar confirms the typed text in one step. Voice: proposal and yes |
 | `stop_task` | red | closes the issue and marks the task stopped | UI: `AgentAction` "Parar". Voice: proposal and yes. API: `428` then `confirm` |
 | `undo_created_task` | red | closes the issue the voice just opened | Voice: "desfaz" within 10 minutes; a proposal when the model read an undo without the word |
