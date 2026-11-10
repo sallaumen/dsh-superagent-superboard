@@ -111,6 +111,39 @@ defmodule AgentBoard.LanesTest do
     assert need.why == "**O agente perguntou:** Devo manter o boss na arena ou tirar"
   end
 
+  describe "the next moment a running task needs attention" do
+    @now ~U[2026-11-10 12:00:00.000Z]
+
+    test "is the nearest future limit or silence, in milliseconds" do
+      started = DateTime.add(@now, -10 * 60, :second)
+      small = %{number: 1, size: "S", state_changed_at: started, started_at: started}
+      quiet = %{number: 2, size: "L", state_changed_at: started, started_at: started}
+      silences = %{2 => %{at: DateTime.add(@now, -60, :second)}}
+
+      assert Lanes.next_attention_in([small, quiet], silences, 121, @now) == 61_000
+      assert Lanes.next_attention_in([small], %{}, 121, @now) == 10 * 60 * 1000
+    end
+
+    test "a limit under a second away still counts, and a passed one never does" do
+      soon = DateTime.add(@now, -(20 * 60) + 1, :second) |> DateTime.add(-500, :millisecond)
+      passed = DateTime.add(@now, -30 * 60, :second)
+
+      assert Lanes.next_attention_in(
+               [%{number: 1, size: "S", state_changed_at: soon, started_at: soon}],
+               %{},
+               60,
+               @now
+             ) == 500
+
+      assert Lanes.next_attention_in(
+               [%{number: 1, size: "S", state_changed_at: passed, started_at: passed}],
+               %{},
+               60,
+               @now
+             ) == nil
+    end
+  end
+
   describe "a run past the time its size allows" do
     @now ~U[2026-11-10 15:00:00Z]
 

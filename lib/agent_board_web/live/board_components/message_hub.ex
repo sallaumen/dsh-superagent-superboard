@@ -216,6 +216,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
   defp alert_kind("blocked"), do: pgettext("attention kind", "Blocked")
   defp alert_kind("question"), do: pgettext("attention kind", "Question")
   defp alert_kind("ready"), do: pgettext("attention kind", "Review")
+  defp alert_kind("slow"), do: pgettext("attention kind", "Taking long")
 
   defp age(at), do: at |> then(&DateTime.diff(DateTime.utc_now(), &1)) |> max(0) |> Time.ago()
 end

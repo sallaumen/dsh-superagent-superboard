@@ -343,8 +343,8 @@ that already worked).
   checks the latest reply and accepts only the version shown when clicked, so
   an edited reply stays unread. The header controls remain reachable while
   scrolling the board. The separate bell counts active
-  blocked, question and review tasks across projects; it is a pending-work
-  count, not an unread count. Both lists follow the board's PubSub broadcasts.
+  blocked, question, review and long-running tasks across projects; it is a
+  pending-work count, not an unread count. Both lists follow the board's PubSub broadcasts.
 - Never poll the database from the browser; push.
 - The board is read once per render of the page (in `handle_params/3`, never
   also in `mount/3`), again on every task action and once per burst of
@@ -406,10 +406,12 @@ that already worked).
   spent waiting is not work. It never says the agent is stuck, and a task
   that is also silent shows only the silence. Derived on each read and
   written nowhere: it leaves when the task leaves `running`. The voice says
-  it once, like the silence. Its DOM id is `slow-<id>`. The item appears on
-  the next board reload after the limit (a ticket or worktree change, or the
-  five-minute sync), not on a timer (`lanes_test.exs`, `announcer_test.exs`,
-  `board_live_test.exs`).
+  it once, like the silence. Its DOM id is `slow-<id>`. The bell lists it
+  too, on every project, with the moment the limit passed. Nothing broadcasts
+  a task that goes quiet, so each open page holds one server timer for the
+  next long run or silence (`Lanes.next_attention_in/4`) and reloads at that
+  moment; the browser polls nothing (`lanes_test.exs`, `announcer_test.exs`,
+  `inbox_test.exs`, `board_live_test.exs`).
 - The tests: `agent_signal_test.exs` and `agent_worktree_test.exs` (the
   signal), `work_test.exs` (the lane, its text and its order),
   `announcer_test.exs` (spoken once) and `board_stall_test.exs` (rendered in

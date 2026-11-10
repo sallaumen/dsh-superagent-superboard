@@ -152,6 +152,7 @@ defmodule AgentBoardWeb.BoardLive do
         logs_timer: nil,
         logs_paused: false,
         reload_pending: false,
+        attention_timer: nil,
         conversation: nil,
         comments: [],
         ask_sending: %{},
@@ -331,6 +332,8 @@ defmodule AgentBoardWeb.BoardLive do
     agent_up = agent_status(orchestrator)
 
     %{
+      next_attention_ms:
+        Lanes.next_attention_in(board.running, run.silences, run.stall_after, now),
       running: Enum.map(board.running, &running_card(&1, run)),
       retrying:
         Lanes.retrying(board,
@@ -734,8 +737,22 @@ defmodule AgentBoardWeb.BoardLive do
   # (`agent_board.board.load`): every reload goes through here.
   defp load(socket, repo) do
     :telemetry.span([:agent_board, :board, :load], %{repository: repo_slug(repo)}, fn ->
-      {read_board(socket, repo), %{repository: repo_slug(repo)}}
+      {socket |> read_board(repo) |> watch_next_attention(), %{repository: repo_slug(repo)}}
     end)
+  end
+
+  # A task that goes quiet broadcasts nothing, so without this its item would
+  # wait for the next sync. One timer per page, replaced on every read.
+  defp watch_next_attention(socket) do
+    if timer = socket.assigns.attention_timer, do: Process.cancel_timer(timer)
+
+    timer =
+      case connected?(socket) && Map.get(socket.assigns.work, :next_attention_ms) do
+        ms when is_integer(ms) -> Process.send_after(self(), :board_updated, ms)
+        _none -> nil
+      end
+
+    assign(socket, :attention_timer, timer)
   end
 
   defp read_board(socket, repo) do

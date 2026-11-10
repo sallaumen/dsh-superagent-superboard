@@ -571,6 +571,45 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#sec-needs #slow-#{slow.id} button", "Ver detalhe")
   end
 
+  test "the open page keeps one timer for the next long run, and shows it when due", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "due-run")
+    Board.log_event(repo.id, "sync", "fixture/due-run", %{"errors" => 0})
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 32,
+        title: "Ajuste no limite",
+        state: "running",
+        size: "S",
+        state_changed_at: DateTime.add(DateTime.utc_now(), -10 * 60)
+      })
+      |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/due-run")
+    refute has_element?(view, "#slow-#{task.id}")
+
+    first = :sys.get_state(view.pid).socket.assigns.attention_timer
+    assert Process.read_timer(first) in (9 * 60 * 1000)..(10 * 60 * 1000)
+
+    # What the timer delivers, once the limit has passed.
+    task
+    |> Ecto.Changeset.change(state_changed_at: DateTime.add(DateTime.utc_now(:second), -25 * 60))
+    |> Repo.update!()
+
+    send(view.pid, :board_updated)
+    assert has_element?(view, "#sec-needs #slow-#{task.id}")
+    assert has_element?(view, ".ab-hub-item__meta", "Demorando")
+
+    # Replaced, not stacked; a passed limit arms nothing.
+    assert Process.read_timer(first) == false
+    assert :sys.get_state(view.pid).socket.assigns.attention_timer == nil
+  end
+
   test "History words a pull's CI as the merge log does: a red remote check alone is unknown", %{
     conn: conn
   } do

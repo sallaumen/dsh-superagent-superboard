@@ -3,7 +3,7 @@ defmodule AgentBoard.Board.Inbox do
   import Ecto.Query, warn: false
   use Gettext, backend: AgentBoardWeb.Gettext
 
-  alias AgentBoard.{Board, Repo, Workpad}
+  alias AgentBoard.{Board, Lanes, Repo, Workpad}
   alias AgentBoard.Board.{Comment, Task}
 
   @message_limit 30
@@ -54,7 +54,7 @@ defmodule AgentBoard.Board.Inbox do
         from t in Task,
           join: r in assoc(t, :repository),
           where:
-            r.active == true and t.state in ["blocked", "question", "ready"] and
+            r.active == true and t.state in ["blocked", "question", "ready", "running"] and
               t.stopped == false and t.archived == false,
           order_by: [desc: t.state_changed_at, desc: t.id],
           limit: 100,
@@ -62,20 +62,34 @@ defmodule AgentBoard.Board.Inbox do
       )
 
     resolved = tasks |> Enum.filter(&(&1.state == "ready")) |> Board.resolved_task_ids()
+    now = DateTime.utc_now()
 
     tasks
-    |> Enum.reject(&MapSet.member?(resolved, &1.id))
+    |> Enum.filter(&needs_attention?(&1, resolved, now))
     |> Enum.take(@alert_limit)
-    |> Enum.map(fn task ->
-      %{
-        task_id: task.id,
-        number: task.number,
-        title: task.title,
-        repo: "#{task.repository.owner}/#{task.repository.name}",
-        state: task.state,
-        at: task.state_changed_at || task.updated_at
-      }
-    end)
+    |> Enum.map(&alert/1)
+  end
+
+  defp needs_attention?(%Task{state: "running"} = task, _resolved, now),
+    do: Lanes.slow?(task, now)
+
+  defp needs_attention?(task, resolved, _now), do: not MapSet.member?(resolved, task.id)
+
+  # A running task is here only past the time its size allows.
+  defp alert(%Task{state: "running"} = task),
+    do: alert_item(task, "slow", Lanes.slow_at(task))
+
+  defp alert(task), do: alert_item(task, task.state, task.state_changed_at || task.updated_at)
+
+  defp alert_item(task, state, at) do
+    %{
+      task_id: task.id,
+      number: task.number,
+      title: task.title,
+      repo: "#{task.repository.owner}/#{task.repository.name}",
+      state: state,
+      at: at
+    }
   end
 
   defp preview(body) do
