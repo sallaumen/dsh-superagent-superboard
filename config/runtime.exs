@@ -92,6 +92,12 @@ end
 config :agent_board, AgentBoardWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# A worktree server on the shared database runs on the same Mac as the live
+# board, and Oban names a node by its hostname: the port tells their jobs
+# apart, so the boot rescue (`AgentBoard.ObanRescue`) takes only its own.
+{:ok, hostname} = :inet.gethostname()
+config :agent_board, Oban, node: "#{hostname}:#{System.get_env("PORT", "4000")}"
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
