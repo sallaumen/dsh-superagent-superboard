@@ -431,6 +431,56 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert body =~ "board-attachments"
   end
 
+  test "a file whose send failed does not follow the owner to another repository",
+       %{conn: conn} do
+    test_pid = self()
+    {:ok, _other} = Board.add_repository("fixture", "other")
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, raw, conn} = Plug.Conn.read_body(conn)
+
+      cond do
+        conn.method == "PUT" and String.contains?(conn.request_path, "/fixture/lifecycle/") ->
+          conn |> Plug.Conn.put_status(500) |> Req.Test.json(%{"message" => "boom"})
+
+        conn.method == "PUT" ->
+          send(test_pid, {:file_stored, conn.request_path})
+          conn |> Plug.Conn.put_status(201) |> Req.Test.json(%{})
+
+        conn.method == "POST" ->
+          send(test_pid, {:posted, Jason.decode!(raw)})
+
+          Req.Test.json(conn, %{
+            "number" => 300,
+            "html_url" => "https://github.com/fixture/other/issues/300"
+          })
+
+        true ->
+          Req.Test.json(conn, %{})
+      end
+    end)
+
+    view = open_composer(conn)
+    type(view, "Pedido do primeiro")
+
+    upload =
+      file_input(view, "#composer-form", :attachments, [
+        %{name: "segredo.png", content: "PNGDATA", type: "image/png"}
+      ])
+
+    render_upload(upload, "segredo.png")
+    submit(view, %{"text" => "Pedido do primeiro"})
+    refute_received {:posted, _}
+
+    render_patch(view, ~p"/?repo=fixture/other&panel=composer")
+    type(view, "Pedido do outro")
+    submit(view, %{"text" => "Pedido do outro"})
+
+    refute_received {:file_stored, _}
+    assert_received {:posted, %{"body" => body}}
+    refute body =~ "segredo"
+  end
+
   test "a type the board does not take is refused where it was chosen", %{conn: conn} do
     github_with_files()
     view = open_composer(conn)
