@@ -608,7 +608,7 @@ defmodule AgentBoard.Superagents do
     end
   end
 
-  defp profile_dir(profile), do: Path.expand("~/.dsh/profiles/#{profile}")
+  defp profile_dir(profile), do: Path.join(profiles_root(), profile)
 
   defp copy(source, target) do
     case :file.read_file_info(source) do
