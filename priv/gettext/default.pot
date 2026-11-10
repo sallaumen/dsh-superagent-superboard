@@ -5553,10 +5553,6 @@ msgstr ""
 msgid "Estimated from the executor's local transcripts; ≥ is a minimum, — has no price"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/merge_log.ex:162
-#, elixir-autogen, elixir-format
-msgid "Open task #%{number} on the board"
-msgstr ""
 
 #: lib/agent_board_web/live/board_live.ex:1560
 #, elixir-autogen, elixir-format
@@ -5573,10 +5569,6 @@ msgstr ""
 msgid "executor %{cost}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/merge_log.ex:164
-#, elixir-autogen, elixir-format
-msgid "task #%{number}"
-msgstr ""
 
 #: lib/agent_board_web/live/board_components/message_hub.ex:25
 #, elixir-autogen, elixir-format
@@ -7489,4 +7481,14 @@ msgstr ""
 #: lib/agent_board_web/live/voice_conversation.ex:207
 #, elixir-autogen, elixir-format
 msgid "Nothing was erased: confirm to forget."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "PR #%{number}: %{title}. Open task #%{issue} on the board"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "PR #%{number} on GitHub (opens in a new tab)"
 msgstr ""

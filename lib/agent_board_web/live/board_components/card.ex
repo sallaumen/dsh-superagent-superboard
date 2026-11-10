@@ -17,14 +17,27 @@ defmodule AgentBoardWeb.BoardComponents.Card do
     >
       <span class="item-number">{if @item.number, do: "##{@item.number}", else: "unknown"}</span>
       <div class="item-title">
-        <a :if={@item.url} href={@item.url} target="_blank" rel="noopener noreferrer">{@item.title ||
-          "unknown"}<span class="sr-only">{gettext("(opens GitHub in a new tab)")}</span></a>
-        <span :if={is_nil(@item.url)}>{@item.title || "unknown"}</span>
-        <MergeLog.task_door
-          :if={@state == :merged and Map.get(@item, :closes_issues, []) != []}
-          pull={@item.number}
-          issue={hd(@item.closes_issues)}
-        />
+        <%= if task_door?(@state, @item) do %>
+          <%!-- A merged PR that closes an issue opens its task on the board. --%>
+          <button
+            type="button"
+            class="item-title__open"
+            phx-click="open_pr_task"
+            phx-value-number={@item.number}
+            aria-label={
+              gettext("PR #%{number}: %{title}. Open task #%{issue} on the board",
+                number: @item.number,
+                title: @item.title || "unknown",
+                issue: hd(@item.closes_issues)
+              )
+            }
+          >{@item.title || "unknown"}</button>
+          <MergeLog.github_link :if={@item.url} number={@item.number} url={@item.url} />
+        <% else %>
+          <a :if={@item.url} href={@item.url} target="_blank" rel="noopener noreferrer">{@item.title ||
+            "unknown"}<span class="sr-only">{gettext("(opens GitHub in a new tab)")}</span></a>
+          <span :if={is_nil(@item.url)}>{@item.title || "unknown"}</span>
+        <% end %>
       </div>
       <div class="item-signals">
         <span :if={review_badge(@item)} class={review_badge_class(@item)}>{review_badge(@item)}</span>
@@ -46,4 +59,7 @@ defmodule AgentBoardWeb.BoardComponents.Card do
   defp ci_class({"pass", _note, _title}), do: "text-success"
   defp ci_class({"fail", _note, _title}), do: "text-error"
   defp ci_class(_ci), do: "text-base-content/75"
+
+  defp task_door?(:merged, item), do: Map.get(item, :closes_issues, []) not in [nil, []]
+  defp task_door?(_state, _item), do: false
 end

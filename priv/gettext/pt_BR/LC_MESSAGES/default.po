@@ -5553,10 +5553,6 @@ msgstr "Concluídas"
 msgid "Estimated from the executor's local transcripts; ≥ is a minimum, — has no price"
 msgstr "Estimado pelas transcrições locais do executor; ≥ é um mínimo, — não tem preço"
 
-#: lib/agent_board_web/live/board_components/merge_log.ex:162
-#, elixir-autogen, elixir-format
-msgid "Open task #%{number} on the board"
-msgstr "Abrir a tarefa #%{number} no board"
 
 #: lib/agent_board_web/live/board_live.ex:1560
 #, elixir-autogen, elixir-format
@@ -5573,10 +5569,6 @@ msgstr "Chamadas de modelo do próprio board para esta tarefa"
 msgid "executor %{cost}"
 msgstr "executor %{cost}"
 
-#: lib/agent_board_web/live/board_components/merge_log.ex:164
-#, elixir-autogen, elixir-format
-msgid "task #%{number}"
-msgstr "tarefa #%{number}"
 
 #: lib/agent_board_web/live/board_components/message_hub.ex:25
 #, elixir-autogen, elixir-format
@@ -7490,3 +7482,13 @@ msgstr "o que precisa de você, o que roda e o que está na fila"
 #, elixir-autogen, elixir-format
 msgid "Nothing was erased: confirm to forget."
 msgstr "Nada foi apagado: confirme para esquecer."
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "PR #%{number}: %{title}. Open task #%{issue} on the board"
+msgstr "PR #%{number}: %{title}. Abrir a tarefa #%{issue} no board"
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "PR #%{number} on GitHub (opens in a new tab)"
+msgstr "PR #%{number} no GitHub (abre em outra aba)"

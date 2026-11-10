@@ -1135,11 +1135,15 @@ flowchart TB
   chose field by field.
 - The first closed issue that is a task wins; a folder name two board
   repositories share picks neither.
-- **A merged PR offers its task.** In the merge log and in History a PR whose
-  body closes an issue shows "tarefa #N" beside the row; the row itself still
-  opens GitHub. The click (`open_pr_task`) reads the PR and the first closed
-  issue the board tracks and opens the inspector, so the board load reads
-  nothing more. An issue the board does not track answers with a notice.
+- **A merged PR opens its task.** In the merge log and in History a PR whose
+  body closes an issue opens that task in the inspector, where its whole
+  conversation, activity, executions and PR are (owner's decision,
+  2026-11-10; before, the row opened GitHub). GitHub is the small "GitHub"
+  link beside the row. The click (`open_pr_task`) reads the PR and the first
+  closed issue the board tracks, so the board load reads nothing more. An
+  issue the board does not track answers with a notice; a PR that closes no
+  issue has no task, and its row stays the GitHub link.
+- A merged task's inspector offers no Stop: its issue is already closed.
 - The tests: `attribution_test.exs` (each rule and keyword) and
   `sync_repo_test.exs` (the columns through the sync, the fork, a session
   attributed by branch).
