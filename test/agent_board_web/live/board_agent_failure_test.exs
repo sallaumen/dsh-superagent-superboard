@@ -268,6 +268,30 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     assert Repo.get(Task, blocked.id).stopped
   end
 
+  test "in English, Stop asks in English and the English sentence stops the task", %{
+    blocked: blocked
+  } do
+    orchestrator(:up)
+
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(base_url: "https://api.github.com", plug: {Req.Test, @github}, retry: false)
+    end)
+
+    Req.Test.stub(@github, fn conn -> Req.Test.json(conn, %{"state" => "closed"}) end)
+
+    conn = Phoenix.ConnTest.build_conn() |> Plug.Test.put_req_cookie("board_locale", "en")
+
+    {:ok, view, _html} =
+      live(conn, ~p"/?repo=fixture/failures&task=#{blocked.id}&panel=conversation")
+
+    view |> element("#stop-#{blocked.id}-trigger") |> render_click()
+    assert has_element?(view, "#stop-#{blocked.id} .ab-act__question", "Stop task #71")
+    refute has_element?(view, "#stop-#{blocked.id} .ab-act__question", "Parar a tarefa")
+
+    view |> element("#stop-#{blocked.id}-confirm") |> render_click()
+    assert Repo.get(Task, blocked.id).stopped
+  end
+
   test "with the orchestrator down, one item says so and restarts it after a confirmation",
        %{conn: conn, blocked: blocked} do
     orchestrator(:down)

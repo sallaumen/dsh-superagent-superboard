@@ -286,6 +286,43 @@ defmodule AgentBoard.ActionsTest do
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
+    test "the sentence is accepted in the language it was shown in", %{repo: repo, owner: owner} do
+      no_network()
+      task = task!(repo, 8)
+      english = Actions.phrase(:archive_task, %{task: task}, "en-US")
+      refute english == Actions.phrase(:archive_task, %{task: task})
+
+      assert {:ok, _} = Actions.run(:archive_task, %{task: task}, owner, confirm: english)
+      assert Repo.get!(Task, task.id).archived
+      # The row keeps the sentence the person read.
+      assert %Decision{decision: "confirmed", phrase: ^english} = last()
+    end
+
+    test "an English sentence for other values is refused too", %{repo: repo, owner: owner} do
+      no_network()
+      task = task!(repo, 9)
+      old = Actions.phrase(:stop_task, %{task: task}, "en-US")
+      renamed = task |> Ecto.Changeset.change(title: "Other") |> Repo.update!()
+
+      assert {:error, {:phrase_changed, _}} =
+               Actions.run(:stop_task, %{task: renamed}, owner, confirm: old)
+
+      refute Repo.get!(Task, task.id).stopped
+    end
+
+    test "every sentence a button shows exists in English", %{repo: repo} do
+      task = task!(repo, 10) |> Repo.preload(:repository)
+
+      for {name, params} <- [
+            {:dispatch_task, %{task: task, executor: "claude", repository: repo}},
+            {:retry_ticket, %{ticket_id: "t", number: 10}},
+            {:start_agent, %{}},
+            {:resume_task, %{task: task}}
+          ] do
+        refute Actions.phrase(name, params, "en-US") == Actions.phrase(name, params, "pt-BR")
+      end
+    end
+
     test "a sentence for other values is refused", %{repo: repo, owner: owner} do
       no_network()
       task = task!(repo, 7)

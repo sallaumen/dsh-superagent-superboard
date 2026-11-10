@@ -47,7 +47,13 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:superagent, fn -> nil end)
      |> assign_new(:login, fn -> nil end)
      |> assign_new(:rerun, fn -> [] end)
-     |> then(&assign(&1, :question, Actions.phrase(action(&1.assigns), params(&1.assigns))))}
+     |> then(
+       &assign(
+         &1,
+         :question,
+         Actions.phrase(action(&1.assigns), params(&1.assigns), AgentBoardWeb.Locale.language())
+       )
+     )}
   end
 
   @impl true
@@ -143,7 +149,11 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     do: {:noreply, assign(socket, step: :confirm, result: nil, refocus: false)}
 
   def handle_event("cancel", _params, %{assigns: %{step: :confirm} = assigns} = socket) do
-    :ok = Actions.decline(action(assigns), params(assigns), Actions.owner(:ui))
+    :ok =
+      Actions.decline(action(assigns), params(assigns), Actions.owner(:ui),
+        language: AgentBoardWeb.Locale.language()
+      )
+
     {:noreply, assign(socket, step: :idle, refocus: true)}
   end
 

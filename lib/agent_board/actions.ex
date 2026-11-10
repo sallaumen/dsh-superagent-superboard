@@ -425,9 +425,19 @@ defmodule AgentBoard.Actions do
       "Arquivar a tarefa ##{task.number}, #{q(short(task.title))}? " <>
         "Ela sai do quadro e o histórico fica."
 
+  def phrase(:resume_task, %{task: task}, "en-US"),
+    do: "Resume task ##{task.number}, #{q(short(task.title))}? It goes back to the board's queue."
+
   def phrase(:resume_task, %{task: task}, _lang),
     do:
       "Retomar a tarefa ##{task.number}, #{q(short(task.title))}? Ela volta para a fila do quadro."
+
+  def phrase(:retry_ticket, params, "en-US") do
+    target = if params[:number], do: "on ##{params.number}", else: "on the ticket"
+
+    "Ask the agent for another attempt #{target} now? " <>
+      "It opens a new round on the ticket and spends the executor's tokens."
+  end
 
   def phrase(:retry_ticket, params, _lang) do
     target = if params[:number], do: "de ##{params.number}", else: "do ticket"
@@ -440,6 +450,39 @@ defmodule AgentBoard.Actions do
     do:
       "Nova tentativa automática do ticket #{id} (#{params[:attempt] || "?"} de #{@max_retries}) " <>
         "depois de uma falha de rede ou do provedor."
+
+  def phrase(:dispatch_task, %{task: task, executor: executor} = params, "en-US") do
+    repo = params[:repository] || task.repository
+    repo_name = if repo, do: "#{repo.owner}/#{repo.name}", else: "the task's repository"
+    ceiling = params[:ceiling_usd]
+
+    fallback_text =
+      cond do
+        params[:fallback] ->
+          " The last executor failed (#{params[:reason]}); this is the confirmed switch."
+
+        params[:retry] ->
+          " The last execution failed (#{params[:reason]}); this is a confirmed new attempt."
+
+        true ->
+          ""
+      end
+
+    ceiling_text =
+      if is_number(ceiling) do
+        amount = :erlang.float_to_binary(ceiling / 1, decimals: 2)
+
+        " The board opens a worktree and the execution spends up to US$ #{amount} of the subscription."
+      else
+        " The board opens a worktree and the execution spends the subscription."
+      end
+
+    "Dispatch task ##{task.number}, #{q(short(task.title))}, to " <>
+      "#{Executors.name(executor)} in #{repo_name}?" <>
+      fallback_text <>
+      ceiling_text <>
+      " Nothing starts without this confirmation."
+  end
 
   def phrase(:dispatch_task, %{task: task, executor: executor} = params, _lang) do
     repo = params[:repository] || task.repository
@@ -474,6 +517,9 @@ defmodule AgentBoard.Actions do
       ceiling_text <>
       " Nada começa sem esta confirmação."
   end
+
+  def phrase(:start_agent, _params, "en-US"),
+    do: "Restart the agent on this machine? If you stopped it on purpose, this undoes the stop."
 
   def phrase(:start_agent, _params, _lang),
     do: "Religar o agente nesta máquina? Se você o parou de propósito, isso desfaz o stop."
@@ -543,15 +589,17 @@ defmodule AgentBoard.Actions do
   Runs an action through the gate and answers what its function answered,
   or `{:error, {:unconfirmed | :phrase_changed, phrase}}` when the gate
   refused it. Options: `confirm:` (the phrase the person agreed to, or
-  `{:words, utterance}`) and `language:` (of that phrase).
+  `{:words, utterance}`) and `language:` (of that phrase; without it the
+  sentence itself says which of the two languages it was shown in).
   """
   @spec run(name(), map(), actor(), keyword()) :: term() | {:error, refusal()}
   def run(name, params, %{by: _, via: _} = actor, opts \\ []) when is_map(params) do
     spec = spec(name)
-    lang = Keyword.get(opts, :language, "pt-BR")
+    confirm = present(Keyword.get(opts, :confirm))
+    lang = Keyword.get(opts, :language) || shown_language(name, params, confirm)
     phrase = phrase(name, params, lang)
 
-    case gate(name, spec, actor, present(Keyword.get(opts, :confirm)), phrase) do
+    case gate(name, spec, actor, confirm, phrase) do
       {:go, decision, evidence, words} ->
         row =
           insert!(name, spec, params, actor, %{
@@ -595,6 +643,14 @@ defmodule AgentBoard.Actions do
   @spec recent(pos_integer()) :: [Decision.t()]
   def recent(limit \\ 20),
     do: Repo.all(from d in Decision, order_by: [desc: d.id], limit: ^limit)
+
+  # The screen shows the sentence in the interface language. Both sentences
+  # are rebuilt from the same values, so matching either is the same proof.
+  defp shown_language(name, params, confirm) when is_binary(confirm) do
+    if squish(confirm) == squish(phrase(name, params, "en-US")), do: "en-US", else: "pt-BR"
+  end
+
+  defp shown_language(_name, _params, _confirm), do: "pt-BR"
 
   defp gate(_name, _spec, _actor, confirm, phrase) when is_binary(confirm) do
     if squish(confirm) == squish(phrase),
