@@ -13,3 +13,7 @@ test('a broadcast with the same values pulses nothing', () => {
 test('a key seen for the first time is a mount, not a change', () => {
   assert.deepEqual(changedKeys({}, {done: '2'}), [])
 })
+test('the first answer after "?" is a reading, not a change', () => {
+  assert.deepEqual(changedKeys({load: '?'}, {load: '2/3/0'}), [])
+  assert.deepEqual(changedKeys({load: '2/3/0'}, {load: '?'}), ['load'])
+})

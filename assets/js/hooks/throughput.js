@@ -1,8 +1,10 @@
 // A throughput value that changed gets one short tint. The same value rendered
 // again (a broadcast that changed something else) gets nothing: the DOM keeps
 // the element, this hook keeps the last values, and only a difference pulses.
+// "?" is not a value: the runner's first answer after the page opened is a
+// reading, not a change.
 export const changedKeys = (previous, next) =>
-  Object.keys(next).filter(key => key in previous && previous[key] !== next[key])
+  Object.keys(next).filter(key => key in previous && previous[key] !== "?" && previous[key] !== next[key])
 
 export const Throughput = {
   mounted() {

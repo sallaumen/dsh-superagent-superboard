@@ -102,6 +102,7 @@ defmodule AgentBoardWeb.BoardLive do
         tz_offset: tz_offset,
         work: empty_work(),
         flow: nil,
+        orchestrator: {:error, :unknown},
         digest: nil,
         daily_summary: nil,
         needs_expanded: false,
@@ -376,9 +377,10 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The orchestrator's answer, asked once per load (the throughput strip
   # reads the same answer): only a refused or broken API is "down"; a board
-  # with the API switched off does not know.
+  # with the API switched off, or not answered yet, does not know.
   defp agent_status({:ok, _load}), do: :up
   defp agent_status({:error, :not_configured}), do: :unknown
+  defp agent_status({:error, :unknown}), do: :unknown
   defp agent_status({:error, _reason}), do: :down
 
   # The silences are read once per render, with the real clock: the ticket
@@ -793,7 +795,9 @@ defmodule AgentBoardWeb.BoardLive do
             heads: Board.pull_heads(repo.id)
           )
 
-        orchestrator = Orchestrator.load()
+        # The last answer: a runner that accepts and never answers would hold
+        # this process (and every click behind it) for its timeouts.
+        orchestrator = socket.assigns.orchestrator
         work = work_for(repo, board, agent, freshness, socket, local_ci, orchestrator)
         flow = flow_for(repo, agent, socket.assigns.tz_offset, orchestrator)
 
@@ -819,6 +823,7 @@ defmodule AgentBoardWeb.BoardLive do
           ai_status: AI.status(),
           live: connected?(socket)
         )
+        |> start_async(:orchestrator, fn -> Orchestrator.load() end)
 
       _ ->
         assign(socket,
@@ -854,6 +859,13 @@ defmodule AgentBoardWeb.BoardLive do
     repo
     |> Observations.read(agent, now: now, load: orchestrator)
     |> Metrics.throughput(now, tz_offset)
+  end
+
+  defp with_load_tile(nil, _answer), do: nil
+
+  defp with_load_tile(flow, answer) do
+    tiles = Enum.map(flow.tiles, &if(&1.key == "load", do: Metrics.load_tile(answer), else: &1))
+    %{flow | tiles: tiles}
   end
 
   defp pagination_limits(socket, repo) do
@@ -2742,6 +2754,29 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_async({:unblock_ai, _id}, _outcome, socket), do: {:noreply, socket}
+
+  # The orchestrator's answer for the load that asked: the throughput tile
+  # takes it, and the lanes only when the agent went up or down.
+  def handle_async(:orchestrator, {:ok, answer}, %{assigns: %{orchestrator: answer}} = socket),
+    do: {:noreply, socket}
+
+  def handle_async(:orchestrator, {:ok, answer}, socket) do
+    %{repo: repo, board: board, agent_snapshot: agent, freshness: freshness} = socket.assigns
+    changed? = agent_status(answer) != agent_status(socket.assigns.orchestrator)
+    socket = assign(socket, :orchestrator, answer)
+
+    socket =
+      if changed? and repo do
+        work = work_for(repo, board, agent, freshness, socket, socket.assigns.local_ci, answer)
+        assign(socket, work: work, digest: work.digest)
+      else
+        socket
+      end
+
+    {:noreply, assign(socket, :flow, with_load_tile(socket.assigns.flow, answer))}
+  end
+
+  def handle_async(:orchestrator, {:exit, _reason}, socket), do: {:noreply, socket}
 
   def handle_async(:version_check, {:ok, {:ok, _sha}}, socket) do
     {:noreply, assign(socket, version: Version.status())}
