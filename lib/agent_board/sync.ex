@@ -363,8 +363,10 @@ defmodule AgentBoard.Sync do
       url: issue["html_url"],
       author: get_in(issue, ["user", "login"])
     })
+    # `updated_at` stays the board's: replacing it made every fetched task
+    # look changed now on every sync.
     |> Repo.insert(
-      on_conflict: {:replace, [:title, :url, :updated_at]},
+      on_conflict: {:replace, [:title, :body, :url]},
       conflict_target: [:repository_id, :kind, :number]
     )
     |> case do
