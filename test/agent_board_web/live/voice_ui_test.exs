@@ -555,7 +555,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     assert Process.alive?(view.pid)
     assert_receive {:voice_activity, %{stage: :ui, status: :error, detail: detail}}
-    assert detail =~ "evento ignorado: voice_pick"
+    assert detail =~ "event ignored: voice_pick"
   end
 
   test "a browser voice error reaches the live feed", %{conn: conn} do

@@ -242,21 +242,21 @@ defmodule AgentBoard.AutoRetry do
   end
 
   defp subject(number, attempt, plan) do
-    target = if number, do: " em ##{number}", else: ""
+    target = if number, do: " on ##{number}", else: ""
     what = AgentFailure.describe(plan.failure)
-    head = "Nova tentativa automática #{attempt.attempt} de #{plan.max}#{target}"
+    head = "Automatic retry #{attempt.attempt} of #{plan.max}#{target}"
 
     case attempt.outcome do
       "retried" -> "#{head}: #{lowercase_first(what)}"
-      outcome -> "#{head} não foi aceita (#{outcome_text(outcome, attempt.detail)})"
+      outcome -> "#{head} was not accepted (#{outcome_text(outcome, attempt.detail)})"
     end
   end
 
-  defp outcome_text("refused", code), do: "o agente recusou: #{code || "sem código"}"
-  defp outcome_text("unknown_ticket", _detail), do: "o agente não conhece o ticket"
-  defp outcome_text("unreachable", _detail), do: "o agente não respondeu"
-  defp outcome_text("timeout", _detail), do: "sem resposta a tempo"
-  defp outcome_text(_outcome, detail), do: detail || "erro"
+  defp outcome_text("refused", code), do: "the agent refused: #{code || "no code"}"
+  defp outcome_text("unknown_ticket", _detail), do: "the agent does not know the ticket"
+  defp outcome_text("unreachable", _detail), do: "the agent did not answer"
+  defp outcome_text("timeout", _detail), do: "no answer in time"
+  defp outcome_text(_outcome, detail), do: detail || "error"
 
   defp lowercase_first(<<first::utf8, rest::binary>>),
     do: String.downcase(<<first::utf8>>) <> rest

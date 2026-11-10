@@ -2598,8 +2598,8 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event(event, params, socket) do
     keys = params |> Map.keys() |> Enum.reject(&String.starts_with?(&1, "_")) |> Enum.join(", ")
 
-    Activity.record(:ui, :error, "evento ignorado: #{String.slice(to_string(event), 0, 60)}",
-      reason: "campos recebidos: [#{keys}]"
+    Activity.record(:ui, :error, "event ignored: #{String.slice(to_string(event), 0, 60)}",
+      reason: "fields received: [#{keys}]"
     )
 
     {:noreply, socket}

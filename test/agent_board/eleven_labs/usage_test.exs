@@ -65,8 +65,8 @@ defmodule AgentBoard.ElevenLabs.UsageTest do
     Usage.record_tts(50, :paid)
     assert Usage.over_cap?()
     assert_received {:voice_activity, %{stage: :tts, status: :info, detail: detail}}
-    assert detail =~ "teto diário atingido"
-    assert detail =~ "110 de 100"
+    assert detail =~ "daily cap reached"
+    assert detail =~ "110 of 100"
 
     # Past the cap the speech goes on and nothing is announced again.
     Usage.record_tts(40, :paid)

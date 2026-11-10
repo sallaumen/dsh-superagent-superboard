@@ -75,6 +75,17 @@ differ. Change a general rule upstream, not here.
   spoken, stored (events, retry notes, a superagent's last error), posted
   to GitHub or answered by the JSON API does not follow the interface
   language.
+- Text written for no reader in particular is **English** (owner's decision,
+  2026-11-10): what the board stores or logs once and shows later to any
+  viewer. That is the voice activity's details and reasons
+  (`Voice.Activity.record/4`), the subject of a retry event (`AutoRetry`,
+  `AgentControl`, `AgentFailure.describe/1`), and the stored error of a
+  superagent or a runner execution (`BotAccess`, `DshManager`, `Runners`). It
+  is written in English whoever caused it and never translated at storage;
+  rows written before that date stay in Portuguese. A screen that must read
+  in the viewer's language words the fact from the row's kind and values
+  (`Board.task_activity`, `AgentFailure.headline/1`), not from the stored
+  sentence.
 - What an action answers (`{:ok, text}` or `{:error, text}` from a retry, a
   restart, a grant, a dispatch) is written in the language of its
   confirmation: `Actions.run/4` runs the effect under that language, read

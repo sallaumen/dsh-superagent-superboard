@@ -284,7 +284,7 @@ defmodule AgentBoard.Runners do
           {:ok, execution}
 
         {:error, reason} ->
-          fail(execution, "não foi possível iniciar o runner: #{inspect(reason)}")
+          fail(execution, "could not start the runner: #{inspect(reason)}")
           {:error, reason}
       end
     end
@@ -617,8 +617,8 @@ defmodule AgentBoard.Runners do
     end
   end
 
-  defp stale_reason(nil), do: "o runner não escreveu o estado a tempo"
-  defp stale_reason(_status), do: "o runner passou do tempo sem terminar"
+  defp stale_reason(nil), do: "the runner did not write its state in time"
+  defp stale_reason(_status), do: "the runner ran past its time without finishing"
 
   defp stale?(execution) do
     timeout = execution.timeout_seconds || codex_timeout_minutes() * 60

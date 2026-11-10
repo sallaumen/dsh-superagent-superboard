@@ -198,7 +198,7 @@ defmodule AgentBoard.Superagents.DshManager do
   end
 
   def observation(_body),
-    do: %{state: "error", detail: "resposta inesperada do gerente", load: %{}, paused: false}
+    do: %{state: "error", detail: "unexpected answer from the manager", load: %{}, paused: false}
 
   defp health_errors(health) do
     health
@@ -219,7 +219,7 @@ defmodule AgentBoard.Superagents.DshManager do
       {false, "paused"} -> %{state: "paused", detail: nil, load: load, paused: true}
       {false, "starting"} -> %{state: "starting", detail: nil, load: load, paused: false}
       {false, "ready"} -> %{state: "ready", detail: nil, load: load, paused: false}
-      _ -> %{state: "error", detail: "runtime não está pronto", load: load, paused: paused}
+      _ -> %{state: "error", detail: "runtime is not ready", load: load, paused: paused}
     end
   end
 

@@ -226,7 +226,7 @@ defmodule AgentBoard.AutoRetryTest do
                Repo.all(from e in Event, where: e.repository_id == ^repo.id)
 
       assert subject ==
-               "Nova tentativa automática 1 de 3 em #53: falha de rede ao chamar o modelo"
+               "Automatic retry 1 of 3 on #53: network failure calling the model"
 
       assert %{"ticket_id" => "t1", "assignment_id" => "latest", "outcome" => "retried"} = payload
     end
@@ -288,7 +288,7 @@ defmodule AgentBoard.AutoRetryTest do
       assert [%Event{kind: "agent_retry_error", subject: subject}] =
                Repo.all(from e in Event, where: e.repository_id == ^repo.id)
 
-      assert subject =~ "não foi aceita (o agente recusou: notRetryable)"
+      assert subject =~ "was not accepted (the agent refused: notRetryable)"
     end
 
     test "a new failure on the next Assignment is attempt 2", %{client: client} do

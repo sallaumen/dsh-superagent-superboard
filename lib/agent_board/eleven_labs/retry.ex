@@ -47,7 +47,7 @@ defmodule AgentBoard.ElevenLabs.Retry do
       retryable?(response_or_exception) ->
         delay = delay(retries, response_or_exception)
 
-        Activity.record(stage, :retry, "nova tentativa em #{delay} ms",
+        Activity.record(stage, :retry, "retrying in #{delay} ms",
           attempt: retries + 2,
           reason: reason(response_or_exception)
         )

@@ -161,7 +161,10 @@ defmodule AgentBoardWeb.VoiceController do
     case SpeechCache.get(key) do
       {:ok, audio} ->
         Usage.record_tts(0, :cache)
-        Activity.record(:tts, :ok, "voz do cache (#{String.length(text)} caracteres)", ms: 0)
+
+        Activity.record(:tts, :ok, "voice from the cache (#{String.length(text)} characters)",
+          ms: 0
+        )
 
         conn
         |> put_resp_content_type("audio/mpeg", nil)
@@ -188,7 +191,7 @@ defmodule AgentBoardWeb.VoiceController do
         case SpeechCache.await(key, 10_000) do
           {:ok, audio} ->
             Usage.record_tts(0, :cache)
-            Activity.record(:tts, :ok, "mesma voz reaproveitada de um pedido simultâneo", ms: 0)
+            Activity.record(:tts, :ok, "same voice reused from a simultaneous request", ms: 0)
 
             conn
             |> put_resp_content_type("audio/mpeg", nil)
@@ -211,7 +214,7 @@ defmodule AgentBoardWeb.VoiceController do
       {conn, audio} = Process.get(:voice_stream)
 
       if conn.state != :chunked do
-        Activity.record(:tts, :info, "primeiro som a caminho",
+        Activity.record(:tts, :info, "first sound on its way",
           ms: System.monotonic_time(:millisecond) - started
         )
       end
@@ -242,27 +245,27 @@ defmodule AgentBoardWeb.VoiceController do
     audio = IO.iodata_to_binary(audio)
     SpeechCache.put(key, text, audio)
     Process.put(:voice_stream_audio, audio)
-    Activity.record(:tts, :ok, "voz gerada (#{String.length(text)} caracteres)", ms: ms)
+    Activity.record(:tts, :ok, "voice generated (#{String.length(text)} characters)", ms: ms)
     conn
   end
 
   defp finish_stream(%{state: :chunked} = conn, :ok, :abandoned, _text, _key, ms) do
-    Activity.record(:tts, :info, "o navegador parou de ouvir no meio", ms: ms)
+    Activity.record(:tts, :info, "the browser stopped listening midway", ms: ms)
     conn
   end
 
   defp finish_stream(%{state: :chunked} = conn, {:error, reason}, _audio, _text, _key, ms) do
-    Activity.record(:tts, :error, "a voz parou no meio", ms: ms, reason: reason)
+    Activity.record(:tts, :error, "the voice stopped midway", ms: ms, reason: reason)
     conn
   end
 
   defp finish_stream(conn, {:error, reason}, _audio, _text, _key, ms) do
-    Activity.record(:tts, :error, "a voz não foi gerada", ms: ms, reason: reason)
+    Activity.record(:tts, :error, "the voice was not generated", ms: ms, reason: reason)
     voice_error(conn, reason)
   end
 
   defp finish_stream(conn, _result, _audio, _text, _key, ms) do
-    Activity.record(:tts, :error, "a ElevenLabs não mandou áudio", ms: ms)
+    Activity.record(:tts, :error, "ElevenLabs sent no audio", ms: ms)
     voice_error(conn, :empty_audio)
   end
 
@@ -343,7 +346,7 @@ defmodule AgentBoardWeb.VoiceController do
         json(conn, transcript)
 
       {:error, reason} ->
-        Activity.record(:transcribe, :error, "a transcrição falhou",
+        Activity.record(:transcribe, :error, "the transcription failed",
           ms: System.monotonic_time(:millisecond) - started,
           reason: reason
         )
@@ -354,8 +357,8 @@ defmodule AgentBoardWeb.VoiceController do
 
   defp record_transcript(transcript, ms) do
     case transcript.text |> to_string() |> String.split() |> length() do
-      0 -> Activity.record(:transcribe, :info, "nenhuma palavra reconhecida", ms: ms)
-      words -> Activity.record(:transcribe, :ok, "ouvi #{words} palavras", ms: ms)
+      0 -> Activity.record(:transcribe, :info, "no word recognized", ms: ms)
+      words -> Activity.record(:transcribe, :ok, "heard #{words} words", ms: ms)
     end
   end
 

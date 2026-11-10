@@ -19,6 +19,8 @@ defmodule AgentBoardWeb.VoiceConversation do
   key press. The coding agent never sees this conversation.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   import Phoenix.Component, only: [assign: 3, assign: 2]
 
   import Phoenix.LiveView,
@@ -57,7 +59,7 @@ defmodule AgentBoardWeb.VoiceConversation do
     if text == "" do
       socket
     else
-      socket = cancel(socket, "substituída por uma fala nova")
+      socket = cancel(socket, "replaced by a new utterance")
       repo = socket.assigns.repo
       {:ok, turn} = Conversation.record("owner", text, repository_id: repo && repo.id)
 
@@ -65,7 +67,10 @@ defmodule AgentBoardWeb.VoiceConversation do
       Process.send_after(self(), {:voice_turn_timeout, ref}, timeout())
       ctx = socket |> context() |> Map.put(:turn_id, turn.id)
       words = text |> String.split() |> length()
-      Activity.record(:turn, :start, "fala recebida (#{words} palavras), pensando", turn: turn.id)
+
+      Activity.record(:turn, :start, "utterance received (#{words} words), thinking",
+        turn: turn.id
+      )
 
       socket
       |> assign(
@@ -94,7 +99,7 @@ defmodule AgentBoardWeb.VoiceConversation do
 
   defp apply_outcome(socket, turn, ms, {:ok, result}) do
     status = if result.action == "error", do: :error, else: :ok
-    Activity.record(:turn, status, "respondeu (#{result.action})", turn: turn.turn_id, ms: ms)
+    Activity.record(:turn, status, "answered (#{result.action})", turn: turn.turn_id, ms: ms)
 
     socket
     |> speak(result.reply, result.listen, kind(result.action))
@@ -103,7 +108,7 @@ defmodule AgentBoardWeb.VoiceConversation do
   end
 
   defp apply_outcome(socket, turn, ms, {:exit, reason}) do
-    Activity.record(:turn, :error, "o processo da resposta caiu",
+    Activity.record(:turn, :error, "the answer's process crashed",
       turn: turn.turn_id,
       ms: ms,
       reason: exit_reason(reason)
@@ -140,7 +145,7 @@ defmodule AgentBoardWeb.VoiceConversation do
         action: "agent_answered"
       )
 
-    Activity.record(:action, :ok, "o agente respondeu na tarefa ##{number}")
+    Activity.record(:action, :ok, "the agent answered on task ##{number}")
 
     socket
     |> assign(:voice_turns, Conversation.recent())
@@ -177,7 +182,7 @@ defmodule AgentBoardWeb.VoiceConversation do
   def timeout(socket, ref) do
     case socket.assigns.chat_turn do
       %{ref: ^ref} = turn ->
-        Activity.record(:turn, :error, "sem resposta a tempo, desisti",
+        Activity.record(:turn, :error, "no answer in time, gave up",
           turn: turn.turn_id,
           ms: timeout()
         )
@@ -195,18 +200,21 @@ defmodule AgentBoardWeb.VoiceConversation do
   @doc "The owner asked to forget the conversation from the UI."
   def forget(socket, confirm) do
     case Actions.run(:forget_conversation, %{}, Actions.owner(:ui), confirm: confirm) do
-      :ok -> socket |> cancel() |> assign(:voice_turns, [])
-      {:error, _refusal} -> put_flash(socket, :error, "Nada foi apagado: confirme para esquecer.")
+      :ok ->
+        socket |> cancel() |> assign(:voice_turns, [])
+
+      {:error, _refusal} ->
+        put_flash(socket, :error, gettext("Nothing was erased: confirm to forget."))
     end
   end
 
   @doc "The owner pressed Escape while the agent was thinking: drop the turn quietly."
-  def cancel_turn(socket), do: cancel(socket, "cancelada com Esc")
+  def cancel_turn(socket), do: cancel(socket, "cancelled with Esc")
 
   defp cancel(socket, why \\ nil)
 
   defp cancel(%{assigns: %{chat_turn: %{ref: ref} = turn}} = socket, why) do
-    if why, do: Activity.record(:turn, :info, "resposta #{why}", turn: turn.turn_id)
+    if why, do: Activity.record(:turn, :info, "answer #{why}", turn: turn.turn_id)
     socket |> cancel_async({:voice_turn, ref}) |> assign(:chat_turn, nil)
   end
 

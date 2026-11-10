@@ -29,7 +29,7 @@ defmodule AgentBoard.Voice.ActivityTest do
   end
 
   test "reasons read as words" do
-    assert Activity.reason(:usage_limit) == "limite de uso (429)"
+    assert Activity.reason(:usage_limit) == "usage limit (429)"
     assert Activity.reason({:http, 502}) == "HTTP 502"
     assert Activity.reason(%Req.TransportError{reason: :timeout}) =~ "timeout"
   end
