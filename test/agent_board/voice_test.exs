@@ -59,15 +59,9 @@ defmodule AgentBoard.VoiceTest do
     assert Voice.task_summary("Add a boss", "archive", "en-US") == "Archived Add a boss."
   end
 
-  test "language, volume and attention persist and refuse bad values" do
-    assert Voice.language() == "pt-BR"
+  test "volume and attention persist and refuse bad values" do
     assert Voice.volume() == 100
     assert Voice.attention?()
-
-    assert :ok = Voice.put_language("en-US")
-    assert Voice.language() == "en-US"
-    assert {:error, :invalid_language} = Voice.put_language("klingon")
-    assert Voice.language() == "en-US"
 
     assert :ok = Voice.put_volume("35")
     assert Voice.volume() == 35
@@ -80,10 +74,8 @@ defmodule AgentBoard.VoiceTest do
   end
 
   test "a stored value outside the offer falls back to the default" do
-    :ok = Settings.put("voice_language", "xx")
     :ok = Settings.put("voice_volume", "900")
 
-    assert Voice.language() == Phrases.default_language()
     assert Voice.volume() == 100
   end
 

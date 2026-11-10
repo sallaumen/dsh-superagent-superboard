@@ -314,14 +314,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                   >Português (Brasil)</button>
                 </.form>
                 <p class="settings-pane__note">
-                  {gettext("The voice language is in")}
-                  <button
-                    type="button"
-                    class="settings-link"
-                    phx-click="select_section"
-                    phx-value-section="voice"
-                    phx-target={@myself}
-                  >{gettext("Voice and summary")}</button>.
+                  {gettext("The voice speaks this language too.")}
                 </p>
               </div>
             </div>

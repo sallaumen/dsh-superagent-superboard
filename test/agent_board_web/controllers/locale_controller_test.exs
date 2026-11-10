@@ -15,11 +15,9 @@ defmodule AgentBoardWeb.LocaleControllerTest do
     assert get(conn, ~p"/").resp_body =~ ~s(lang="en")
   end
 
-  test "the Portuguese choice persists in a browser cookie and does not change voice settings", %{
+  test "the Portuguese choice persists in a browser cookie and stores nothing board-wide", %{
     conn: conn
   } do
-    original_voice = AgentBoard.Voice.language()
-
     conn = post(conn, ~p"/language", %{"locale" => "pt-BR", "return_to" => "/?panel=settings"})
 
     assert redirected_to(conn) == "/?panel=settings"
@@ -28,7 +26,8 @@ defmodule AgentBoardWeb.LocaleControllerTest do
     conn = conn |> recycle() |> get(~p"/")
     assert conn.resp_body =~ ~s(lang="pt-BR")
     assert conn.resp_body =~ "Idioma do board"
-    assert AgentBoard.Voice.language() == original_voice
+    # The voice follows this cookie in this browser; nothing is saved for the others.
+    assert AgentBoard.Settings.get("voice_language") == nil
   end
 
   test "invalid language is rejected and a bad return path cannot redirect off-site", %{

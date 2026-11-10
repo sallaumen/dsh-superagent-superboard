@@ -49,7 +49,9 @@ defmodule AgentBoardWeb.VoiceCommands do
   defp read_only(:unknown, _context) do
     reply(
       :unknown,
-      "Command not recognized. Try status, activity, AI calls, repo owner/name, task #42, or PR #42. Your draft is still here."
+      gettext(
+        "Command not recognized. Try status, activity, AI calls, repo owner/name, task #42, or PR #42. Your draft is still here."
+      )
     )
   end
 
@@ -159,8 +161,12 @@ defmodule AgentBoardWeb.VoiceCommands do
   defp open_panel(%{repo: nil}, _panel), do: missing_repository()
 
   defp open_panel(%{repo: repo}, panel) do
-    label = if panel == "ai", do: "AI calls", else: "Activity"
-    reply(:success, "Opened #{label} for #{slug(repo)}.", BoardNavigation.path(repo, panel))
+    text =
+      if panel == "ai",
+        do: gettext("Opened AI calls for %{repo}.", repo: slug(repo)),
+        else: gettext("Opened Activity for %{repo}.", repo: slug(repo))
+
+    reply(:success, text, BoardNavigation.path(repo, panel))
   end
 
   defp select_repository(%{repos: repos}, requested) do
@@ -168,11 +174,17 @@ defmodule AgentBoardWeb.VoiceCommands do
       nil ->
         reply(
           :unknown,
-          "Repository #{requested} is not tracked by this board. Your draft is still here."
+          gettext("Repository %{name} is not tracked by this board. Your draft is still here.",
+            name: requested
+          )
         )
 
       repo ->
-        reply(:success, "Selected #{slug(repo)}.", BoardNavigation.path(repo))
+        reply(
+          :success,
+          gettext("Selected %{repo}.", repo: slug(repo)),
+          BoardNavigation.path(repo)
+        )
     end
   end
 
@@ -183,16 +195,26 @@ defmodule AgentBoardWeb.VoiceCommands do
       nil ->
         reply(
           :unknown,
-          "Task ##{number} is not in the saved data for #{slug(repo)}. #{sync_note(sync_event)} Your draft is still here."
+          gettext(
+            "Task #%{number} is not in the saved data for %{repo}. %{sync} Your draft is still here.",
+            number: number,
+            repo: slug(repo),
+            sync: sync_note(sync_event)
+          )
         )
 
       task ->
         result = %{
           kind: :success,
           text:
-            "Task ##{number}: #{task.title || "unknown"}. Saved state: #{task.state || "unknown"}. Updated #{timestamp(task.updated_at)}.",
+            gettext("Task #%{number}: %{title}. Saved state: %{state}. Updated %{time}.",
+              number: number,
+              title: task.title || gettext("unknown"),
+              state: task.state || gettext("unknown"),
+              time: timestamp(task.updated_at)
+            ),
           as_of: task.updated_at,
-          source: "Task record updated"
+          source: gettext("Task record updated")
         }
 
         %{result: result, path: BoardNavigation.path(repo, "conversation", task.id)}
@@ -206,7 +228,12 @@ defmodule AgentBoardWeb.VoiceCommands do
       nil ->
         reply(
           :unknown,
-          "PR ##{number} is not in the saved data for #{slug(repo)}. #{sync_note(sync_event)} Your draft is still here."
+          gettext(
+            "PR #%{number} is not in the saved data for %{repo}. %{sync} Your draft is still here.",
+            number: number,
+            repo: slug(repo),
+            sync: sync_note(sync_event)
+          )
         )
 
       pr ->
@@ -214,9 +241,14 @@ defmodule AgentBoardWeb.VoiceCommands do
           result: %{
             kind: :success,
             text:
-              "PR ##{number}: #{pr.title || "unknown"}. Saved state: #{pr.state || "unknown"}. Updated #{timestamp(pr.updated_at)}.",
+              gettext("PR #%{number}: %{title}. Saved state: %{state}. Updated %{time}.",
+                number: number,
+                title: pr.title || gettext("unknown"),
+                state: pr.state || gettext("unknown"),
+                time: timestamp(pr.updated_at)
+              ),
             as_of: pr.updated_at,
-            source: "PR record updated",
+            source: gettext("PR record updated"),
             url: safe_url(pr.url)
           },
           path: nil
@@ -230,8 +262,15 @@ defmodule AgentBoardWeb.VoiceCommands do
     counts = board.task_counts
 
     text =
-      "Saved active lanes for #{slug(repo)}: #{counts.running} running, #{counts.ready} ready, " <>
-        "#{counts.blocked} blocked, #{counts.queued} queued. #{sync_note(sync_event)}"
+      gettext(
+        "Saved active lanes for %{repo}: %{running} running, %{ready} ready, %{blocked} blocked, %{queued} queued. %{sync}",
+        repo: slug(repo),
+        running: counts.running,
+        ready: counts.ready,
+        blocked: counts.blocked,
+        queued: counts.queued,
+        sync: sync_note(sync_event)
+      )
 
     reply(:success, text, nil, sync_time(sync_event), sync_source(sync_event))
   end
@@ -247,10 +286,22 @@ defmodule AgentBoardWeb.VoiceCommands do
       |> Enum.take(3)
       |> Enum.map_join(", ", &"##{&1.number || "unknown"} #{&1.title || "unknown"}")
 
-    detail = if recent == "", do: "", else: " Recent blocked cards: #{recent}."
-
     text =
-      "Saved board for #{slug(repo)}: #{count} blocked tasks.#{detail} #{sync_note(sync_event)}"
+      if recent == "" do
+        gettext("Saved board for %{repo}: %{count} blocked tasks. %{sync}",
+          repo: slug(repo),
+          count: count,
+          sync: sync_note(sync_event)
+        )
+      else
+        gettext(
+          "Saved board for %{repo}: %{count} blocked tasks. Recent blocked cards: %{recent}. %{sync}",
+          repo: slug(repo),
+          count: count,
+          recent: recent,
+          sync: sync_note(sync_event)
+        )
+      end
 
     reply(:success, text, nil, sync_time(sync_event), sync_source(sync_event))
   end
@@ -266,7 +317,8 @@ defmodule AgentBoardWeb.VoiceCommands do
     %{
       result: %{
         kind: :ask,
-        text: "Ask task ##{task.number}: #{question}",
+        text:
+          gettext("Ask task #%{number}: %{question}", number: task.number, question: question),
         question: question,
         task_number: task.number,
         task_id: task.id,
@@ -282,7 +334,9 @@ defmodule AgentBoardWeb.VoiceCommands do
     do:
       reply(
         :error,
-        "Choose a tracked repository before using this board command. Your draft is still here."
+        gettext(
+          "Choose a tracked repository before using this board command. Your draft is still here."
+        )
       )
 
   defp reply(kind, text, path \\ nil, as_of \\ nil, source \\ nil) do
@@ -294,18 +348,21 @@ defmodule AgentBoardWeb.VoiceCommands do
   defp sync_time(%{kind: "sync", inserted_at: at}), do: at
   defp sync_time(_), do: nil
 
-  defp sync_source(%{kind: "sync"}), do: "Last completed sync"
+  defp sync_source(%{kind: "sync"}), do: gettext("Last completed sync")
   defp sync_source(_), do: nil
 
   defp sync_note(%{kind: "sync", inserted_at: at}),
-    do: "Last completed sync: #{timestamp(at)}."
+    do: gettext("Last completed sync: %{time}.", time: timestamp(at))
 
   defp sync_note(%{kind: "sync_error", inserted_at: at}),
-    do: "Latest sync failed at #{timestamp(at)}; showing saved data of unknown age."
+    do:
+      gettext("Latest sync failed at %{time}; showing saved data of unknown age.",
+        time: timestamp(at)
+      )
 
-  defp sync_note(_), do: "No sync yet; saved data age is unknown."
+  defp sync_note(_), do: gettext("No sync yet; saved data age is unknown.")
 
-  defp timestamp(nil), do: "unknown"
+  defp timestamp(nil), do: gettext("unknown")
   defp timestamp(at), do: Calendar.strftime(at, "%Y-%m-%d %H:%M UTC")
 
   defp safe_url("https://github.com/" <> _ = url), do: url

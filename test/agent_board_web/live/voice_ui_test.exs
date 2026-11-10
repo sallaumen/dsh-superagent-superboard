@@ -98,7 +98,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(
       view,
       "voice_play",
-      %{url: "/api/voice/stream?text=Voz+escolhida.&voice=abc"},
+      %{url: "/api/voice/stream?text=Voz+escolhida.&voice=abc&language=pt-BR"},
       1_000
     )
   end
@@ -236,7 +236,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(
       view,
       "voice_play",
-      %{url: "/api/voice/stream?text=All+clear&voice=JBFqnCBsd6RMkjVDRZzb"},
+      %{url: "/api/voice/stream?text=All+clear&voice=JBFqnCBsd6RMkjVDRZzb&language=pt-BR"},
       1_000
     )
   end
@@ -251,7 +251,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(
       view,
       "voice_play",
-      %{url: "/api/voice/stream?text=Hello+agent&voice=JBFqnCBsd6RMkjVDRZzb"},
+      %{url: "/api/voice/stream?text=Hello+agent&voice=JBFqnCBsd6RMkjVDRZzb&language=pt-BR"},
       1_000
     )
   end
@@ -358,7 +358,7 @@ defmodule AgentBoardWeb.VoiceUITest do
       "voice_play",
       %{
         url:
-          "/api/voice/stream?text=All+good.+The+sync+is+clean+and+nothing+is+blocked.&voice=JBFqnCBsd6RMkjVDRZzb"
+          "/api/voice/stream?text=All+good.+The+sync+is+clean+and+nothing+is+blocked.&voice=JBFqnCBsd6RMkjVDRZzb&language=pt-BR"
       },
       1_000
     )
@@ -399,9 +399,9 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(view, "voice_play", %{url: "/api/voice/stream?text=" <> _}, 1_000)
   end
 
-  test "without a key the attention call uses the browser voice in the chosen language",
-       %{conn: conn} do
-    :ok = Settings.put("voice_language", "en-US")
+  test "without a key the attention call uses the browser voice in the tab's language" do
+    # a browser with no language cookie: the English interface, so an English voice
+    conn = Phoenix.ConnTest.build_conn()
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "running")
@@ -431,34 +431,20 @@ defmodule AgentBoardWeb.VoiceUITest do
     refute_receive {_, _, "voice_play", _}, 100
   end
 
-  test "the language picker saves and confirms in the new language", %{conn: conn} do
-    with_key()
+  test "the voice has no language of its own: it speaks the board language of the tab", %{
+    conn: conn
+  } do
+    # a value saved by an older version is ignored
+    :ok = Settings.put("voice_language", "en-US")
 
     {:ok, view, _html} = live(conn, ~p"/")
+    assert render(view) =~ ~s(data-lang="pt-BR")
+    refute has_element?(view, "#voice-language-form")
+    assert has_element?(view, "#voice-language-note", "A voz fala o idioma do board")
 
-    view |> element("#voice-language-form") |> render_change(%{"language" => "en-US"})
-
-    assert Settings.get("voice_language") == "en-US"
-    assert render(view) =~ ~s(data-lang="en-US")
-
-    assert_push_event(
-      view,
-      "voice_play",
-      %{
-        url:
-          "/api/voice/stream?text=Done.+From+now+on+I%27ll+speak+English.&voice=JBFqnCBsd6RMkjVDRZzb"
-      },
-      1_000
-    )
-  end
-
-  test "an unknown language is refused", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/")
-
-    view |> element("#voice-language-form") |> render_change(%{"language" => "xx"})
-
-    assert Settings.get("voice_language") == nil
-    assert render(view) =~ "Idioma não suportado"
+    {:ok, english, _html} = live(Phoenix.ConnTest.build_conn(), ~p"/")
+    assert render(english) =~ ~s(data-lang="en-US")
+    assert has_element?(english, "#voice-language-note", "The voice speaks the board language")
   end
 
   test "the volume slider persists and reaches the player", %{conn: conn} do
@@ -541,7 +527,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     panel = view |> element("#voice-panel") |> render()
 
     forms = Regex.scan(~r/<form[^>]*phx-change="voice_[a-z_]+"[^>]*>/, panel)
-    assert length(forms) >= 9
+    assert length(forms) >= 8
     assert Enum.all?(forms, fn [form] -> form =~ ~s(phx-auto-recover="ignore") end)
   end
 

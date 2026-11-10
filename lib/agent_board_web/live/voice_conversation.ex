@@ -29,7 +29,7 @@ defmodule AgentBoardWeb.VoiceConversation do
   alias AgentBoard.{Actions, AI, Conversation}
   alias AgentBoard.Conversation.Agent
   alias AgentBoard.Voice.{Activity, Phrases}
-  alias AgentBoardWeb.{BoardNavigation, VoiceCommands, VoiceSpeech}
+  alias AgentBoardWeb.{BoardNavigation, Locale, VoiceCommands, VoiceSpeech}
 
   @max_text 2_000
   @feed 25
@@ -225,7 +225,12 @@ defmodule AgentBoardWeb.VoiceConversation do
 
   # Without a model the conversation still takes the simple commands.
   defp respond(text, %{ai_status: :not_configured} = ctx) do
-    %{result: result, path: path} = VoiceCommands.resolve(text, ctx.assigns)
+    # The reply is spoken: it is worded in the turn's language, which this
+    # process (an async task) does not inherit from the LiveView.
+    %{result: result, path: path} =
+      Gettext.with_locale(AgentBoardWeb.Gettext, Locale.gettext_locale(ctx.language), fn ->
+        VoiceCommands.resolve(text, ctx.assigns)
+      end)
 
     reply = result.text
 

@@ -4,7 +4,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
   how the owner talks to the board, and how the board talks back.
 
   Presentation lives here; the events stay the ones `BoardLive` already
-  handles (`voice_input`, `voice_engine`, `voice_replies`, `voice_language`,
+  handles (`voice_input`, `voice_engine`, `voice_replies`,
   `voice_volume`, `voice_speed`, `voice_style`, `voice_pause`,
   `voice_earcons`, `voice_attention`, `voice_announce`, `voice_browse`,
   `voice_pick`, `voice_preview`, `voice_reset`, `voice_model` and
@@ -240,20 +240,11 @@ defmodule AgentBoardWeb.Components.VoicePanel do
         </p>
       </div>
 
-      <div class="voice-field">
-        <label for="voice-language" class="voice-field-label">{gettext("Voice language")}</label>
-        <form id="voice-language-form" phx-change="voice_language" phx-auto-recover="ignore">
-          <select id="voice-language" name="language" class="voice-select">
-            <option
-              :for={lang <- @voice.languages}
-              value={lang.id}
-              selected={lang.id == @voice.language}
-            >
-              {lang.name}
-            </option>
-          </select>
-        </form>
-      </div>
+      <p id="voice-language-note" class="voice-note">
+        {gettext(
+          "The voice speaks the board language of this browser. Change it in System, Board language."
+        )}
+      </p>
 
       <div :if={@voice.configured} class="voice-field">
         <span class="voice-field-label" id="voice-style-title">{gettext("Intonation")}</span>

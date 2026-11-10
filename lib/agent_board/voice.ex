@@ -6,7 +6,6 @@ defmodule AgentBoard.Voice do
   without a browser. The words themselves live in `AgentBoard.Voice.Phrases`;
   this module reads the owner's voice settings (`AgentBoard.Settings`):
 
-    * `voice_language` - `pt-BR` (default) or `en-US`
     * `voice_volume` - 0..100 (default 100)
     * `voice_attention` - `"0"` silences the calls for attention
     * `voice_speed` - the speaking rate, 0.8..1.2 (default 1.0)
@@ -31,7 +30,6 @@ defmodule AgentBoard.Voice do
   alias AgentBoard.Settings
   alias AgentBoard.Voice.Phrases
 
-  @language_key "voice_language"
   @volume_key "voice_volume"
   @attention_key "voice_attention"
   @default_volume 100
@@ -41,24 +39,6 @@ defmodule AgentBoard.Voice do
   @styles %{"steady" => 0.7, "natural" => 0.5, "expressive" => 0.3}
   @pauses %{"short" => 800, "normal" => 1200, "long" => 1800}
   @summary_order [:question, :blocked, :ready, :running, :queued, :merged]
-
-  @doc "The language the agent speaks (a saved pick, or the default)."
-  @spec language() :: String.t()
-  def language do
-    lang = Settings.get(@language_key)
-    if Phrases.valid_language?(lang), do: lang, else: Phrases.default_language()
-  end
-
-  @doc "Saves the voice language; only an offered language is accepted."
-  def put_language(lang) when is_binary(lang) do
-    lang = String.trim(lang)
-
-    if Phrases.valid_language?(lang),
-      do: Settings.put(@language_key, lang),
-      else: {:error, :invalid_language}
-  end
-
-  def put_language(_lang), do: {:error, :invalid_language}
 
   @doc "The playback volume, 0..100."
   @spec volume() :: 0..100
@@ -215,7 +195,7 @@ defmodule AgentBoard.Voice do
   """
   @spec spoken(map(), keyword()) :: String.t()
   def spoken(board, opts \\ []) do
-    lang = Keyword.get_lazy(opts, :language, &language/0)
+    lang = Keyword.get(opts, :language, Phrases.default_language())
     template = summary(board, Keyword.put(opts, :language, lang))
 
     case AgentBoard.AI.call(:summarize_board, %{state: template, language: lang}) do
@@ -226,7 +206,7 @@ defmodule AgentBoard.Voice do
 
   @doc "The template summary; see `spoken/2` for the options."
   def summary(board, opts \\ []) do
-    lang = Keyword.get_lazy(opts, :language, &language/0)
+    lang = Keyword.get(opts, :language, Phrases.default_language())
 
     hour =
       local_hour(Keyword.get(opts, :now, DateTime.utc_now()), Keyword.get(opts, :tz_offset, 0))
@@ -239,7 +219,7 @@ defmodule AgentBoard.Voice do
 
   @doc "The one-line confirmation spoken when a task is acted on."
   def task_summary(title, action, lang \\ nil),
-    do: Phrases.task_action(lang || language(), title, action)
+    do: Phrases.task_action(lang || Phrases.default_language(), title, action)
 
   @doc "The hour on the owner's clock (`tz_offset` is minutes west of UTC)."
   def local_hour(%DateTime{} = now, tz_offset) when is_integer(tz_offset),

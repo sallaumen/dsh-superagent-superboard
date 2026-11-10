@@ -57,7 +57,6 @@ defmodule AgentBoardWeb.VoiceController do
     with :ok <- put_voice(params),
          :ok <- put_model(params),
          :ok <- put_speak_events(params),
-         :ok <- put_pref(params, "language", & &1),
          :ok <- put_pref(params, "volume", & &1),
          :ok <- put_pref(params, "speed", & &1),
          :ok <- put_pref(params, "style", & &1),
@@ -83,7 +82,6 @@ defmodule AgentBoardWeb.VoiceController do
 
   defp voice_prefs do
     %{
-      language: Voice.language(),
       volume: Voice.volume(),
       attention: Voice.attention?(),
       speed: Voice.speed(),
@@ -150,7 +148,7 @@ defmodule AgentBoardWeb.VoiceController do
   """
   def stream(conn, params) do
     case speech_params(params) do
-      {:ok, text, voice} -> stream_cached(conn, text, speech_opts(voice))
+      {:ok, text, voice, language} -> stream_cached(conn, text, speech_opts(voice, language))
       {:error, reason} -> voice_error(conn, reason)
     end
   end
@@ -272,8 +270,8 @@ defmodule AgentBoardWeb.VoiceController do
   # The endpoint only ever answers mp3 (the fixed default output format), so
   # the content type is a literal, never derived from the request.
   defp speak(conn, params) do
-    with {:ok, text, voice} <- speech_params(params),
-         {:ok, audio} <- generate(text, voice) do
+    with {:ok, text, voice, language} <- speech_params(params),
+         {:ok, audio} <- generate(text, voice, language) do
       conn
       |> put_resp_content_type("audio/mpeg", nil)
       |> send_resp(200, audio)
@@ -286,19 +284,28 @@ defmodule AgentBoardWeb.VoiceController do
   # never reaches ElevenLabs.
   defp speech_params(%{"text" => text} = params) when is_binary(text) and byte_size(text) > 0 do
     voice = params["voice"]
+    language = params["language"]
 
     cond do
       not ElevenLabs.valid_text?(text) -> {:error, :text_too_long}
-      not is_nil(voice) and not ElevenLabs.valid_voice_id?(voice) -> {:error, :invalid_voice}
-      is_binary(voice) and voice != "" -> {:ok, text, voice}
-      true -> {:ok, text, nil}
+      not offered_voice?(voice) -> {:error, :invalid_voice}
+      not offered_language?(language) -> {:error, :invalid_language}
+      true -> {:ok, text, if(voice in [nil, ""], do: nil, else: voice), language}
     end
   end
 
   defp speech_params(_params), do: {:error, :missing_text}
 
-  defp generate(text, voice) do
-    opts = speech_opts(voice)
+  # Neither is required: no voice is the saved one, no language sends no
+  # hint. A value outside the offer is refused.
+  defp offered_voice?(nil), do: true
+  defp offered_voice?(voice), do: ElevenLabs.valid_voice_id?(voice)
+
+  defp offered_language?(nil), do: true
+  defp offered_language?(language), do: Phrases.valid_language?(language)
+
+  defp generate(text, voice, language) do
+    opts = speech_opts(voice, language)
     key = SpeechCache.key(text, opts)
 
     case SpeechCache.get(key) do
@@ -315,12 +322,14 @@ defmodule AgentBoardWeb.VoiceController do
   end
 
   # Every input that changes the audio is explicit here, so the cache key
-  # covers the voice, model and language even when they are defaults.
-  defp speech_opts(voice) do
+  # covers the voice, model and language even when they are defaults. The
+  # language is the request's (the tab that asks says which it speaks);
+  # without one no hint is sent and the model reads it from the text.
+  defp speech_opts(voice, language) do
     [
       voice: voice || ElevenLabs.voice_id(),
       model: ElevenLabs.tts_model(),
-      language: Phrases.tts_code(Voice.language()),
+      language: language && Phrases.tts_code(language),
       speed: Voice.speed(),
       stability: Voice.stability()
     ]

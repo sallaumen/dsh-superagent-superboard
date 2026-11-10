@@ -23,9 +23,9 @@ defmodule AgentBoardWeb.VoiceSpeech do
   alias AgentBoard.Voice.Speakable
 
   @doc "`/api/voice/stream?text=...&voice=...`"
-  def url(text, voice_id) do
-    "/api/voice/stream?text=" <>
-      URI.encode_www_form(text(text)) <> "&voice=" <> URI.encode_www_form(voice_id)
+  def url(text, voice_id, language) do
+    "/api/voice/stream?" <>
+      URI.encode_query([{"text", text(text)}, {"voice", voice_id}, {"language", language}])
   end
 
   @doc "The text as it should be read out loud (see `AgentBoard.Voice.Speakable`)."
@@ -43,7 +43,7 @@ defmodule AgentBoardWeb.VoiceSpeech do
     spoken = spoken(text, kind, Map.get(voice, :replies, "short"))
 
     if elevenlabs?(voice, kind) do
-      {"voice_play", %{url: url(spoken, voice.id), listen: listen, text: text}}
+      {"voice_play", %{url: url(spoken, voice.id, voice.language), listen: listen, text: text}}
     else
       {"speak",
        %{
