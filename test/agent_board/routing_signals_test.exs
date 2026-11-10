@@ -4,6 +4,19 @@ defmodule AgentBoard.RoutingSignalsTest do
 
   alias AgentBoard.{Routing, Routing.Signals}
 
+  # The Portuguese sentences below are the proof that pt-BR did not change.
+  setup do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+    :ok
+  end
+
+  test "the reason an executor is unavailable follows the reader's language" do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+
+    assert %{"dsh" => %{state: {:unavailable, "the orchestrator answered HTTP 503"}}} =
+             Signals.read(fn -> {:error, {:http, 503}} end, fn -> %{} end)
+  end
+
   test "the runner's state becomes its signal; Claude Code and Codex stay unknown" do
     state = %{
       repository: "sallaumen/arena-rogue",

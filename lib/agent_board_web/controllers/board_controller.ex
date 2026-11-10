@@ -57,7 +57,12 @@ defmodule AgentBoardWeb.BoardController do
       text = String.trim(params["body"] || "") <> "\n\n@sallaumen-agent"
       request = %{title: title, body: text, key: Board.request_key(repo, "api", [title, text])}
       # `executor` names who the task is for; without it the router suggests.
-      request = Routing.plan(repo, request, params["executor"], "api", Routing.Signals.read())
+      # The API has no interface language: the reasons it stores stay Portuguese.
+      request =
+        Gettext.with_locale(AgentBoardWeb.Gettext, "pt_BR", fn ->
+          Routing.plan(repo, request, params["executor"], "api", Routing.Signals.read())
+        end)
+
       action = %{repository: repo, requests: [request], client: client()}
 
       case Actions.run(:create_tasks, action, api(), confirm: confirmation(params)) do

@@ -7087,3 +7087,83 @@ msgstr ""
 msgctxt "ended task"
 msgid "Stopped"
 msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "You asked for %{executor}."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "You asked for %{executor}, but %{reason}"
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "DeepSeek only serves %{repository}."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "DeepSeek only serves %{repositories}."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "DeepSeek is paused."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "%{executor} is not available (%{why})."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "the orchestrator did not answer"
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "No executor can take the task now."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "Now: %{running} of %{max} running."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "DeepSeek serves this repository and is the only one the board dispatches on its own."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "Could not read which repository DeepSeek serves (%{why}): the board's default stays, the issue with the mention, which only moves if it watches this repository."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "%{executor} comes before %{next} in the fixed order."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "The availability of %{executor} is unknown."
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "the orchestrator's API is off"
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "the orchestrator answered in an unexpected format"
+msgstr ""
+
+#: lib/agent_board/routing.ex
+#, elixir-autogen, elixir-format
+msgid "the orchestrator answered HTTP %{status}"
+msgstr ""

@@ -3944,9 +3944,16 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp load_composer_routing(%{assigns: %{panel: "composer", repo: %{id: id}}} = socket) do
     if connected?(socket) and socket.assigns.composer_routing_for != id do
+      # The signals carry the reason an executor is unavailable, as a sentence:
+      # the task that reads them has no locale of its own.
+      locale = Gettext.get_locale(AgentBoardWeb.Gettext)
+
       socket
       |> assign(composer_routing_for: id)
-      |> start_async({:composer_routing, id}, fn -> Signals.read() end)
+      |> start_async({:composer_routing, id}, fn ->
+        Gettext.put_locale(AgentBoardWeb.Gettext, locale)
+        Signals.read()
+      end)
     else
       socket
     end

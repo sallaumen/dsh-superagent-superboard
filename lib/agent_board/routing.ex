@@ -31,6 +31,8 @@ defmodule AgentBoard.Routing do
   `:cost` when known, and for the runner `:repository` and `:load`.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   alias AgentBoard.Board.Task
   alias AgentBoard.Executors
   alias AgentBoard.Repo
@@ -154,11 +156,19 @@ defmodule AgentBoard.Routing do
     {executor, lead} =
       cond do
         requested in candidates ->
-          {requested, ["Você pediu o #{Executors.name(requested)}."]}
+          {requested,
+           [gettext("You asked for %{executor}.", executor: Executors.name(requested))]}
 
         requested ->
           reason = Enum.find_value(ruled_out, &(&1.executor == requested && &1.reason))
-          {List.first(candidates), ["Você pediu o #{Executors.name(requested)}, mas #{reason}"]}
+
+          {List.first(candidates),
+           [
+             gettext("You asked for %{executor}, but %{reason}",
+               executor: Executors.name(requested),
+               reason: reason
+             )
+           ]}
 
         true ->
           {List.first(candidates), []}
@@ -205,16 +215,16 @@ defmodule AgentBoard.Routing do
 
     cond do
       watched != [] and not Enum.any?(watched, &(String.downcase(to_string(&1)) == wanted)) ->
-        subject =
-          case watched do
-            [one] -> "o #{one}"
-            many -> Enum.join(many, ", ")
-          end
+        case watched do
+          [one] ->
+            gettext("DeepSeek only serves %{repository}.", repository: one)
 
-        "o DeepSeek só atende #{subject}."
+          many ->
+            gettext("DeepSeek only serves %{repositories}.", repositories: Enum.join(many, ", "))
+        end
 
       dsh[:state] == :paused ->
-        "o DeepSeek está pausado."
+        gettext("DeepSeek is paused.")
 
       true ->
         nil
@@ -223,15 +233,21 @@ defmodule AgentBoard.Routing do
 
   defp out_reason(executor, _task, signal) do
     case signal[:state] do
-      {:unavailable, why} -> "o #{Executors.name(executor)} não está disponível (#{why})."
-      _ -> nil
+      {:unavailable, why} ->
+        gettext("%{executor} is not available (%{why}).",
+          executor: Executors.name(executor),
+          why: why
+        )
+
+      _ ->
+        nil
     end
   end
 
   defp silence(%{state: {:unavailable, why}}), do: why
-  defp silence(_dsh), do: "o orquestrador não respondeu"
+  defp silence(_dsh), do: gettext("the orchestrator did not answer")
 
-  defp why(nil, _candidates, _signals), do: ["Nenhum executor pode receber a tarefa agora."]
+  defp why(nil, _candidates, _signals), do: [gettext("No executor can take the task now.")]
 
   defp why("dsh", _candidates, signals) do
     dsh = signal(signals, "dsh")
@@ -239,14 +255,24 @@ defmodule AgentBoard.Routing do
     if is_binary(dsh[:repository]) do
       load =
         case dsh[:load] do
-          %{running: running, max_workers: max} -> " Agora: #{running} de #{max} rodando."
-          _ -> ""
+          %{running: running, max_workers: max} ->
+            " " <> gettext("Now: %{running} of %{max} running.", running: running, max: max)
+
+          _ ->
+            ""
         end
 
-      ["O DeepSeek atende este repositório e é o único que o board despacha sozinho." <> load]
+      [
+        gettext(
+          "DeepSeek serves this repository and is the only one the board dispatches on its own."
+        ) <> load
+      ]
     else
       [
-        "Não deu para ler qual repositório o DeepSeek atende (#{silence(dsh)}): fica o padrão do board, a issue com a menção, que só anda se ele vigiar este repositório."
+        gettext(
+          "Could not read which repository DeepSeek serves (%{why}): the board's default stays, the issue with the mention, which only moves if it watches this repository.",
+          why: silence(dsh)
+        )
       ]
     end
   end
@@ -256,7 +282,10 @@ defmodule AgentBoard.Routing do
       case Enum.drop_while(candidates, &(&1 != executor)) do
         [^executor, next | _] ->
           [
-            "O #{Executors.name(executor)} vem antes do #{Executors.name(next)} na ordem fixa."
+            gettext("%{executor} comes before %{next} in the fixed order.",
+              executor: Executors.name(executor),
+              next: Executors.name(next)
+            )
           ]
 
         _ ->
@@ -272,7 +301,9 @@ defmodule AgentBoard.Routing do
   defp note(executor, signals) do
     if signal(signals, executor)[:state] == :ready,
       do: [],
-      else: ["A disponibilidade do #{Executors.name(executor)} é desconhecida."]
+      else: [
+        gettext("The availability of %{executor} is unknown.", executor: Executors.name(executor))
+      ]
   end
 
   defp cost(nil, _signals), do: :unknown

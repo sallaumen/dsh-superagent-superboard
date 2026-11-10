@@ -103,6 +103,10 @@ defmodule AgentBoardWeb.BoardControllerTest do
       Req.Test.json(conn, %{"number" => 56, "html_url" => "https://github.com/x/y/issues/56"})
     end)
 
+    # A real API request has no interface language (the test process is pinned
+    # to pt-BR by ConnCase, which would hide a reason stored in English).
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+
     params = %{repo: "sallaumen/arena-rogue", title: "Placar", body: "hi", executor: "codex"}
     first = post(conn, "/api/tasks", params)
     assert %{"confirm" => phrase} = json_response(first, 428)
@@ -114,8 +118,10 @@ defmodule AgentBoardWeb.BoardControllerTest do
     assert_received {:issue, %{"labels" => ["executor:codex"], "body" => "hi"}}
     task = Repo.get_by!(Task, repository_id: repo.id, number: 56)
 
-    assert %AgentBoard.Routing.Decision{chosen: "codex", decided_by: "api"} =
+    assert %AgentBoard.Routing.Decision{chosen: "codex", decided_by: "api", reasons: reasons} =
              Repo.get_by!(AgentBoard.Routing.Decision, task_id: task.id)
+
+    assert "Você pediu o Codex." in reasons
 
     bad = post(build_conn(), "/api/tasks", %{params | executor: "gpt"})
     assert %{"error" => error} = json_response(bad, 400)
