@@ -157,6 +157,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   # A silent run is also the card in Agora: one task, two items, two ids.
   defp dom_id(%{kind: :agent_down}), do: "need-agent-down"
   defp dom_id(%{kind: :stalled, id: id}) when not is_nil(id), do: "silence-#{id}"
+  defp dom_id(%{kind: :slow, id: id}) when not is_nil(id), do: "slow-#{id}"
   # A call nobody answered is also the row in Fila.
   defp dom_id(%{kind: :unanswered, id: id}) when not is_nil(id), do: "unanswered-#{id}"
   defp dom_id(%{id: id}) when not is_nil(id), do: "task-#{id}"
@@ -168,6 +169,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   defp kind_label(:cifail), do: pgettext("status", "CI failed")
   defp kind_label(:stalled), do: pgettext("status", "No signal")
   defp kind_label(:unanswered), do: pgettext("status", "No answer")
+  defp kind_label(:slow), do: pgettext("status", "Taking long")
   defp kind_label(:agent_down), do: pgettext("status", "Agent offline")
   defp kind_label(_kind), do: gettext("Attention")
 
@@ -176,6 +178,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   defp tone(:blocked), do: "is-halt"
   defp tone(:stalled), do: "is-halt"
   defp tone(:unanswered), do: "is-halt"
+  defp tone(:slow), do: "is-stale"
   defp tone(_kind), do: "is-you"
 
   defp action_class(:agent_down), do: "ab-btn--halt"

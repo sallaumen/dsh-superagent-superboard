@@ -27,7 +27,7 @@ defmodule AgentBoard.AgentSignalTest do
       "answered_at" => ~U[2026-11-07 11:50:00Z]
     }
 
-    assert AgentSignal.last_signal(ticket) == {~U[2026-11-07 11:50:00Z], :report}
+    assert AgentSignal.last_signal(ticket) == {~U[2026-11-07 11:50:00Z], :answer}
   end
 
   test "a ticket that only started has its start as the signal" do

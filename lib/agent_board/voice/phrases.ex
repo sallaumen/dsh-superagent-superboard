@@ -95,6 +95,18 @@ defmodule AgentBoard.Voice.Phrases do
         "Em %{t} eu sumi: nem relatório, nem commit. Dá uma espiada.",
         "Acho que travei em %{t}. Se puder, veja o que falta.",
         "%{t} está sem sinal meu há mais tempo que o normal. Quer olhar?"
+      ],
+      slow: [
+        "Estou em %{t} há mais tempo que o combinado. Vale acompanhar.",
+        "%{t} está demorando mais que o previsto para o tamanho dela.",
+        "Ainda estou em %{t}, e já passei do tempo esperado.",
+        "Aviso: %{t} passou do limite de tempo. Continuo trabalhando.",
+        "%{t} está levando mais tempo do que deveria. Quer dar uma olhada?",
+        "Passei do tempo em %{t}. Sigo nela, mas vale conferir.",
+        "Só para avisar: %{t} já estourou o tempo previsto.",
+        "Continuo em %{t}, mais demorada do que o tamanho indicava.",
+        "%{t} ainda não saiu, e o tempo dela já passou.",
+        "Estou demorando em %{t}. Se quiser acompanhar, é uma boa hora."
       ]
     },
     "en-US" => %{
@@ -145,12 +157,27 @@ defmodule AgentBoard.Voice.Phrases do
         "On %{t} I went dark: no report, no commit. Have a peek.",
         "I think I'm stuck on %{t}. If you can, see what's missing.",
         "%{t} has had no signal from me for longer than usual. Want to look?"
+      ],
+      slow: [
+        "I've been on %{t} longer than agreed. Worth keeping an eye on.",
+        "%{t} is taking longer than its size suggested.",
+        "Still on %{t}, and already past the expected time.",
+        "Heads-up: %{t} went past its time limit. I'm still working.",
+        "%{t} is taking more time than it should. Want to take a look?",
+        "I'm over time on %{t}. Still at it, but worth a check.",
+        "Just so you know: %{t} has gone over its expected time.",
+        "Still working on %{t}, slower than its size indicated.",
+        "%{t} isn't out yet, and its time is already up.",
+        "I'm running long on %{t}. A good moment to follow along if you like."
       ]
     }
   }
 
-  @doc "The attention kinds: the states where the agent needs the owner, and the silence."
-  def attention_kinds, do: [:question, :blocked, :ready, :stalled]
+  @doc """
+  The attention kinds: the states where the agent needs the owner, the
+  silence, and the run that passed the time its size allows.
+  """
+  def attention_kinds, do: [:question, :blocked, :ready, :stalled, :slow]
 
   @doc "The pool of attention phrases for a language and kind."
   def attention_pool(lang, kind), do: @attention |> lang_map(lang) |> Map.fetch!(kind)

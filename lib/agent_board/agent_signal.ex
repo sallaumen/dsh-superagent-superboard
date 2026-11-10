@@ -13,7 +13,7 @@ defmodule AgentBoard.AgentSignal do
 
   @default_after_ms 15 * 60 * 1000
 
-  @type source :: :report | :start | :worktree
+  @type source :: :report | :answer | :start | :worktree
   @type silence :: %{at: DateTime.t(), source: source(), seconds: non_neg_integer()}
 
   @doc "Seconds of silence before a running ticket needs the owner (`:stall_after_ms`, 15 min)."
@@ -56,7 +56,7 @@ defmodule AgentBoard.AgentSignal do
       {ticket["report_at"], :report},
       {ticket["idle_at"], :report},
       # a person's answer the worker read: it is alive since then
-      {ticket["answered_at"], :report},
+      {ticket["answered_at"], :answer},
       {ticket["started_at"], :start},
       {AgentWorktree.last_activity_at(ticket), :worktree}
     ]
