@@ -71,4 +71,34 @@ defmodule AgentBoard.ObanRescueTest do
 
     assert Repo.get!(Oban.Job, sync.id).state == "retryable"
   end
+
+  # A worktree server on the shared database boots beside the live board: the
+  # live board's running job is not an orphan of this boot.
+  test "a job another board is running is left alone" do
+    now = DateTime.utc_now()
+
+    jobs =
+      for node <- [Oban.config().node, "another-board:4003"] do
+        job =
+          %Oban.Job{worker: "AgentBoard.Sync.Worker", queue: "sync", args: %{}, scheduled_at: now}
+          |> Repo.insert!()
+
+        Repo.update_all(
+          from(j in Oban.Job, where: j.id == ^job.id),
+          set: [state: "executing", attempt: 1, attempted_by: [node, "producer"]]
+        )
+
+        job
+      end
+
+    assert {1, nil} = ObanRescue.rescue_orphans()
+
+    [own, other] = Enum.map(jobs, &Repo.get!(Oban.Job, &1.id))
+    assert own.state == "retryable"
+    assert other.state == "executing"
+  end
+
+  test "each board on this machine has its own Oban node" do
+    assert Oban.config().node =~ ~r/:\d+$/
+  end
 end
