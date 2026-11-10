@@ -49,9 +49,11 @@ defmodule AgentBoard.Usage.Ledger do
   ]
   @counts [:requests | @tokens]
 
-  # What the Claude Code reader takes from a transcript. A file read by an
-  # older reader is read again in full: 2 added the 1-hour cache writes.
+  # What each reader takes from a file. A file read by an older reader is
+  # read again in full: Claude Code's 2 added the 1-hour cache writes, the
+  # harness's 3 the model of a session with no `model/selection`.
   @claude_reader 2
+  @readers %{"claude_code" => @claude_reader, "codex" => 1, "dsh" => 3}
   @fingerprint_bytes 4_096
   @chunk 2_000
 
@@ -217,8 +219,7 @@ defmodule AgentBoard.Usage.Ledger do
     end
   end
 
-  defp outdated?(%{source: "claude_code"}, %{reader: reader}), do: reader < @claude_reader
-  defp outdated?(_file, _previous), do: false
+  defp outdated?(file, %{reader: reader}), do: reader < Map.fetch!(@readers, file.source)
 
   ## Ingest
 
@@ -417,7 +418,7 @@ defmodule AgentBoard.Usage.Ledger do
           fingerprint: state.fingerprint,
           skipped: state.skipped,
           error: error,
-          reader: @claude_reader,
+          reader: Map.fetch!(@readers, file.source),
           read_at: now,
           inserted_at: now,
           updated_at: now
@@ -493,6 +494,7 @@ defmodule AgentBoard.Usage.Ledger do
            %{
              id: m.id,
              execution_id: m.execution_id,
+             model: m.model,
              input_tokens: m.input_tokens,
              output_tokens: m.output_tokens,
              cache_read_tokens: m.cache_read_tokens,
@@ -504,9 +506,13 @@ defmodule AgentBoard.Usage.Ledger do
   end
 
   defp raise_counts(old, row, affected) do
-    merged = Map.new(@tokens, &{&1, max(Map.fetch!(old, &1), Map.fetch!(row, &1))})
+    merged =
+      @tokens
+      |> Map.new(&{&1, max(Map.fetch!(old, &1), Map.fetch!(row, &1))})
+      # A read fills a model an older reader missed, never replaces one.
+      |> Map.put(:model, old.model || row.model)
 
-    if merged == Map.take(old, @tokens) do
+    if merged == Map.take(old, [:model | @tokens]) do
       affected
     else
       Repo.update_all(from(m in "usage_messages", where: m.id == ^old.id),

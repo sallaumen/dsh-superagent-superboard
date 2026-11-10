@@ -9,7 +9,8 @@ defmodule AgentBoard.Usage.Harness do
   (depth 1). Every `assistant/message` event carries the model's usage in
   `data.usage` (`inputTokens`, `outputTokens`, `cacheReadTokens`,
   `cacheWriteTokens`; input excludes cache reads) and its id in
-  `data.message.id`, and a `model/selection` event names the model.
+  `data.message.id`, and a `model/selection` or `request/context` event
+  names the model (a subagent's transcript has only the second).
 
   The tokens are measured. The cost is an estimate from the board's price
   table (`AgentBoard.AI.Providers`): a token kind with no price makes the
@@ -365,8 +366,10 @@ defmodule AgentBoard.Usage.Harness do
   defp take(%{"type" => "session"} = event, acc),
     do: %{acc | subagent?: (event["delegationDepth"] || 0) > 0, cwd: event["cwd"]}
 
-  defp take(%{"type" => "model/selection", "data" => %{"model" => model}}, acc)
-       when is_binary(model),
+  # A subagent's transcript has no `model/selection`: the model is named in
+  # each request's `request/context`.
+  defp take(%{"type" => type, "data" => %{"model" => model}}, acc)
+       when type in ["model/selection", "request/context"] and is_binary(model),
        do: %{acc | model: model}
 
   defp take(%{"type" => "assistant/message", "data" => %{"usage" => usage} = data} = event, acc)

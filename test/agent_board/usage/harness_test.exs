@@ -63,6 +63,16 @@ defmodule AgentBoard.Usage.HarnessTest do
       assert usage.subagent? == false
     end
 
+    test "a session with no model/selection takes its model from request/context" do
+      lines = [
+        session_line("9d07fa0a", 1),
+        ~s({"type":"request/context","seq":2,"data":{"provider":"deepseek-account","model":"deepseek-flash"}}),
+        assistant_line("m1", 100, 10, 1_000)
+      ]
+
+      assert %{model: "deepseek-flash", requests: 1} = Harness.parse(Enum.join(lines, "\n"))
+    end
+
     test "a session that switched models is unpriced, not priced at the last one" do
       lines = [
         session_line("worker-mixed", 0),
