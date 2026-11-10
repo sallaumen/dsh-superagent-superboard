@@ -3886,12 +3886,12 @@ msgstr "Não foi possível chegar ao serviço; confira a rede."
 msgid "The connection dropped before an answer."
 msgstr "A conexão caiu antes da resposta."
 
-#: lib/agent_board_web/failure_text.ex:44
+#: lib/agent_board_web/failure_text.ex:47
 #, elixir-autogen, elixir-format
 msgid "GitHub answered with an error (HTTP %{status})."
 msgstr "O GitHub respondeu com erro (HTTP %{status})."
 
-#: lib/agent_board_web/failure_text.ex:56
+#: lib/agent_board_web/failure_text.ex:59
 #, elixir-autogen, elixir-format
 msgid "Something unexpected went wrong; the detail is in the log."
 msgstr "Algo inesperado aconteceu; o detalhe ficou no registro."
@@ -5425,3 +5425,8 @@ msgstr "PR #%{number}"
 #, elixir-autogen, elixir-format
 msgid "Stage: %{stage}"
 msgstr "Etapa: %{stage}"
+
+#: lib/agent_board_web/failure_text.ex:44
+#, elixir-autogen, elixir-format
+msgid "GitHub refused the board's token (HTTP %{status})."
+msgstr "O GitHub recusou o token do board (HTTP %{status})."

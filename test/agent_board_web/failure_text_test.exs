@@ -30,6 +30,15 @@ defmodule AgentBoardWeb.FailureTextTest do
     refute text =~ "%{"
   end
 
+  test "a refused token is named, not just numbered" do
+    for status <- [401, 403] do
+      text = FailureText.text(%RuntimeError{message: "GitHub HTTP #{status}: %{}"})
+
+      assert text =~ "recusou o token"
+      assert text =~ "#{status}"
+    end
+  end
+
   test "nothing internal reaches the screen" do
     text = FailureText.text({:error, %{some: :internal, term: [1, 2, 3]}})
 

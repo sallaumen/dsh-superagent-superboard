@@ -27,6 +27,33 @@ defmodule AgentBoard.CommentDedupeTest do
     assert length(Board.comments(task)) == 1
   end
 
+  test "comments stored in the same second keep the order they arrived in" do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 8,
+        title: "T",
+        state: "queued"
+      })
+      |> Repo.insert!()
+
+    comment = fn id, body ->
+      %{"id" => id, "user" => %{"login" => "sallaumen"}, "body" => body}
+    end
+
+    for {id, body} <- [{1, "first"}, {2, "second"}, {3, "third"}],
+        do: Board.upsert_comment(task, comment.(id, body), "sallaumen-agent")
+
+    # an edit rewrites the row: without the id, the first comment comes back last
+    Board.upsert_comment(task, comment.(1, "first, edited"), "sallaumen-agent")
+
+    assert Enum.map(Board.comments(task), & &1.body) == ["first, edited", "second", "third"]
+  end
+
   test "an edited comment updates the stored body" do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 

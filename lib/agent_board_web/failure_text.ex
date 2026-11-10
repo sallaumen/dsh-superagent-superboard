@@ -40,6 +40,9 @@ defmodule AgentBoardWeb.FailureText do
 
   def text(%{__exception__: true} = exception) do
     case Regex.run(~r/\AGitHub HTTP (\d+)/, Exception.message(exception)) do
+      [_match, status] when status in ["401", "403"] ->
+        gettext("GitHub refused the board's token (HTTP %{status}).", status: status)
+
       [_match, status] ->
         gettext("GitHub answered with an error (HTTP %{status}).", status: status)
 
