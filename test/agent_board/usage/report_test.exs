@@ -257,6 +257,25 @@ defmodule AgentBoard.Usage.ReportTest do
     assert %{used_percent: 90.0} = Costs.codex_weekly([new, old])
   end
 
+  # A reading taken before the window reset says nothing about this week: the
+  # board's own Codex runs are refused by it, so nothing would read it again.
+  test "a weekly window that already reset is not the current quota" do
+    now = DateTime.utc_now()
+
+    expired = %{
+      source: "codex",
+      primary_used_percent: 60.0,
+      primary_window_minutes: 10_080,
+      primary_resets_at: DateTime.add(now, -2, :day),
+      observed_at: DateTime.add(now, -3, :day)
+    }
+
+    assert Costs.codex_weekly([expired]) == nil
+
+    current = %{expired | primary_resets_at: DateTime.add(now, 2, :day)}
+    assert %{used_percent: 60.0} = Costs.codex_weekly([current])
+  end
+
   test "the cost module never invents a price" do
     assert %{micros: 700_000, complete?: true} =
              Costs.cost("dsh", [
