@@ -2787,7 +2787,6 @@ msgid "tasks in queue now"
 msgstr ""
 
 #: lib/agent_board/time.ex:96
-#: lib/agent_board_web/live/board_components/settings/execution.ex:654
 #, elixir-autogen, elixir-format
 msgid "today"
 msgstr ""
@@ -4753,7 +4752,7 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/execution.ex:397
 #, elixir-autogen, elixir-format
-msgid "Daily usage for %{name}"
+msgid "Usage per UTC day for %{name}"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/execution.ex:243
