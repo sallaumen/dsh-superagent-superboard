@@ -79,9 +79,10 @@ defmodule AgentBoard.AutoRetry do
   def streak(ticket), do: Plan.streak(ticket)
 
   @doc """
-  One pass: retry every ticket whose plan is due. Asks the orchestrator
-  nothing when nothing is due, and retries nothing when `GET /state` does
-  not answer. Returns `[{ticket_id, outcome}]` for the requests it made.
+  One pass: retry every ticket whose plan is due, on the agent of its
+  repository. Asks nothing when nothing is due, and retries nothing on an
+  agent whose `GET /state` does not answer. Returns
+  `[{ticket_id, outcome}]` for the requests it made.
 
   Options: `:now`, `:tickets` (normalized), `:client`, and the `plan/2`
   options.
@@ -111,11 +112,21 @@ defmodule AgentBoard.AutoRetry do
   defp due?(%{due_at: nil}, _now), do: true
   defp due?(%{due_at: due_at}, now), do: DateTime.compare(due_at, now) != :gt
 
-  defp retry_due([], _opts, _now), do: []
-
+  # Each agent holds its own tickets and answers for itself: one that is down
+  # must not stop the retries of another.
   defp retry_due(due, opts, now) do
-    client = Keyword.get_lazy(opts, :client, &Orchestrator.client/0)
+    due
+    |> Enum.group_by(fn {ticket, _plan} -> client_for(ticket, opts) end)
+    |> Enum.flat_map(fn {client, due} -> retry_agent(client, due, now) end)
+  end
 
+  defp client_for(ticket, opts) do
+    Keyword.get_lazy(opts, :client, fn ->
+      Orchestrator.client_for(Board.repository_by_slug(ticket["repository"]))
+    end)
+  end
+
+  defp retry_agent(client, due, now) do
     case Orchestrator.load(client) do
       {:ok, _load} ->
         Enum.flat_map(due, fn {ticket, plan} -> retry_one(client, ticket, plan, now) end)

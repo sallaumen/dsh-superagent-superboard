@@ -8,6 +8,8 @@ defmodule AgentBoard.Orchestrator do
   `{:error, reason}` and the board shows `?` for the value, not a guess.
   """
 
+  alias AgentBoard.Superagents
+
   @default_api "http://127.0.0.1:3082/orchestrator/api"
 
   @min_workers 1
@@ -185,6 +187,21 @@ defmodule AgentBoard.Orchestrator do
     case Application.get_env(:agent_board, :orchestrator_client) do
       builder when is_function(builder, 0) -> builder.()
       _ -> build()
+    end
+  end
+
+  @doc """
+  The client of the agent that serves a repository (a struct or its id): its
+  superagent's port, or the primary (`client/0`) when it has none.
+  """
+  @spec client_for(integer() | %{id: integer()} | nil) :: Req.Request.t() | nil
+  def client_for(repository) do
+    case {client(), Superagents.get_by_repository(repository)} do
+      {%Req.Request{} = client, %{port: port}} ->
+        Req.merge(client, base_url: "http://127.0.0.1:#{port}/orchestrator/api")
+
+      {client, _no_superagent} ->
+        client
     end
   end
 

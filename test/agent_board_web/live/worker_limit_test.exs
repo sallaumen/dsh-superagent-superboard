@@ -6,6 +6,8 @@ defmodule AgentBoardWeb.WorkerLimitTest do
 
   alias AgentBoard.{Board, Orchestrator, Repo}
   alias AgentBoard.Board.Task
+  alias AgentBoard.Superagents.Superagent
+  alias AgentBoardWeb.BoardLive
 
   @stub AgentBoardWeb.WorkerLimitTest.Stub
 
@@ -40,6 +42,12 @@ defmodule AgentBoardWeb.WorkerLimitTest do
     # The strip shows only on a board with tasks.
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
+    insert_task(repo)
+
+    %{runner: runner, repo: repo}
+  end
+
+  defp insert_task(repo) do
     %Task{}
     |> Task.changeset(%{
       repository_id: repo.id,
@@ -49,15 +57,120 @@ defmodule AgentBoardWeb.WorkerLimitTest do
       state: "queued"
     })
     |> Repo.insert!()
+  end
 
-    %{runner: runner}
+  defp own_agent(repo, port) do
+    %Superagent{}
+    |> Superagent.changeset(%{
+      repository_id: repo.id,
+      profile: "superagent-colmex",
+      port: port,
+      state_dir: "/tmp/superagent-colmex"
+    })
+    |> Repo.insert!()
+  end
+
+  test "the ceiling and the load use the repository's agent, with the primary down", %{
+    conn: conn,
+    repo: repo,
+    runner: runner
+  } do
+    own_agent(repo, 3083)
+    test = self()
+
+    Req.Test.stub(@stub, fn
+      %{port: 3083} = conn ->
+        send(test, {:agent, conn.method, conn.request_path})
+        runner(conn, runner)
+
+      conn ->
+        Req.Test.transport_error(conn, :econnrefused)
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    render_async(view, 2_000)
+
+    assert_receive {:agent, "GET", "/orchestrator/api/state"}
+    assert has_element?(view, "#flow-load [data-key='load-max']", "3")
+
+    view |> element("#flow-load button[aria-label='Mais um agente']") |> render_click()
+
+    assert_receive {:agent, "PUT", "/orchestrator/api/settings/executor"}
+    assert [%{"value" => %{"maxWorkers" => 4}}] = Agent.get(runner, & &1.puts)
+  end
+
+  test "the repository's agent down reads as unknown, with the primary up", %{
+    conn: conn,
+    repo: repo,
+    runner: runner
+  } do
+    own_agent(repo, 3083)
+
+    Req.Test.stub(@stub, fn
+      %{port: 3083} = conn -> Req.Test.transport_error(conn, :econnrefused)
+      conn -> runner(conn, runner)
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    render_async(view, 2_000)
+
+    assert has_element?(view, "#flow-load [data-key='load-max']", "?")
+  end
+
+  test "switching repository does not show the previous repository's answer", %{
+    conn: conn,
+    repo: repo,
+    runner: runner
+  } do
+    own_agent(repo, 3083)
+    {:ok, other} = Board.add_repository("sallaumen", "o_colmex")
+    insert_task(other)
+    test = self()
+
+    # The other repository's agent (the primary) answers when the test says.
+    Req.Test.stub(@stub, fn
+      %{port: 3083} = conn ->
+        runner(conn, runner)
+
+      conn ->
+        send(test, {:held, self()})
+
+        receive do
+          :answer ->
+            Req.Test.json(conn, %{"load" => %{"running" => 0, "queued" => 0, "maxWorkers" => 9}})
+        after
+          2_000 -> Req.Test.transport_error(conn, :timeout)
+        end
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    render_async(view, 2_000)
+    assert has_element?(view, "#flow-load [data-key='load-max']", "3")
+
+    render_patch(view, ~p"/?repo=sallaumen/o_colmex")
+    assert_receive {:held, agent}
+    assert has_element?(view, "#flow-load [data-key='load-max']", "?")
+
+    send(agent, :answer)
+    render_async(view, 2_000)
+    assert has_element?(view, "#flow-load [data-key='load-max']", "9")
+  end
+
+  test "an answer for another repository is dropped" do
+    socket = %Phoenix.LiveView.Socket{
+      assigns: %{__changed__: %{}, repo: %{id: 1}, orchestrator: {:error, :unknown}}
+    }
+
+    answer = {:ok, %{running: 0, queued: 0, max_workers: 9}}
+    assert BoardLive.handle_async(:orchestrator, {:ok, {2, answer}}, socket) == {:noreply, socket}
   end
 
   test "plus and minus save the new ceiling in the runner and the tile shows it", %{
     conn: conn,
     runner: runner
   } do
-    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    html = render_async(view, 2_000)
     assert html =~ "Mais um agente"
 
     view |> element("#flow-load button[aria-label='Mais um agente']") |> render_click()
@@ -73,6 +186,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
   test "the minus button stops at one agent", %{conn: conn, runner: runner} do
     Agent.update(runner, &%{&1 | max: 1})
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    render_async(view, 2_000)
 
     assert has_element?(view, "#flow-load button[aria-label='Menos um agente'][disabled]")
   end
@@ -80,6 +194,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
   test "a conflict says the settings changed and writes nothing", %{conn: conn, runner: runner} do
     Agent.update(runner, &Map.put(&1, :conflict, true))
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    render_async(view, 2_000)
 
     html = view |> element("#flow-load button[aria-label='Mais um agente']") |> render_click()
 

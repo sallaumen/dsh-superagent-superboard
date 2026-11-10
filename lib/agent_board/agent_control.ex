@@ -33,7 +33,9 @@ defmodule AgentBoard.AgentControl do
     do: {:error, gettext("The board did not find the agent's ticket for this task.")}
 
   def retry(ticket_id, opts) do
-    client = Keyword.get_lazy(opts, :client, &Orchestrator.client/0)
+    client =
+      Keyword.get_lazy(opts, :client, fn -> Orchestrator.client_for(opts[:repository_id]) end)
+
     result = Orchestrator.retry(client, ticket_id)
     record(ticket_id, Keyword.get(opts, :repository_id), Keyword.get(opts, :number), result)
 

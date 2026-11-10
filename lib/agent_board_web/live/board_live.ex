@@ -558,7 +558,9 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The runner's ceiling, saved through its API; the tile re-reads the load.
   defp set_max_workers(socket, max) do
-    case Actions.run(:set_max_workers, %{max: max}, ui()) do
+    params = %{max: max, client: Orchestrator.client_for(socket.assigns.repo)}
+
+    case Actions.run(:set_max_workers, params, ui()) do
       {:ok, max} ->
         socket
         |> load(socket.assigns.repo)
@@ -741,6 +743,7 @@ defmodule AgentBoardWeb.BoardLive do
       if socket.assigns.repo != repo,
         do:
           assign(socket,
+            orchestrator: {:error, :unknown},
             conversation: nil,
             comments: [],
             intake: nil,
@@ -821,7 +824,7 @@ defmodule AgentBoardWeb.BoardLive do
           ai_status: AI.status(),
           live: connected?(socket)
         )
-        |> start_async(:orchestrator, fn -> Orchestrator.load() end)
+        |> start_async(:orchestrator, load_for(repo))
 
       _ ->
         assign(socket,
@@ -847,6 +850,12 @@ defmodule AgentBoardWeb.BoardLive do
           ai_status: AI.status()
         )
     end
+  end
+
+  # The answer travels with the repository it is about.
+  defp load_for(repo) do
+    client = Orchestrator.client_for(repo)
+    fn -> {repo.id, Orchestrator.load(client)} end
   end
 
   # The throughput strip: read once per load, from the tables, the agent's
@@ -2749,18 +2758,23 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_async({:unblock_ai, _id}, _outcome, socket), do: {:noreply, socket}
 
-  # The orchestrator's answer for the load that asked: the throughput tile
-  # takes it, and the lanes only when the agent went up or down.
-  def handle_async(:orchestrator, {:ok, answer}, %{assigns: %{orchestrator: answer}} = socket),
-    do: {:noreply, socket}
+  # The answer of the shown repository's agent: the throughput tile takes it,
+  # and the lanes only when the agent went up or down. Another repository's
+  # answer is dropped by the last clause.
+  def handle_async(
+        :orchestrator,
+        {:ok, {id, answer}},
+        %{assigns: %{repo: %{id: id}, orchestrator: answer}} = socket
+      ),
+      do: {:noreply, socket}
 
-  def handle_async(:orchestrator, {:ok, answer}, socket) do
+  def handle_async(:orchestrator, {:ok, {id, answer}}, %{assigns: %{repo: %{id: id}}} = socket) do
     %{repo: repo, board: board, agent_snapshot: agent, freshness: freshness} = socket.assigns
     changed? = agent_status(answer) != agent_status(socket.assigns.orchestrator)
     socket = assign(socket, :orchestrator, answer)
 
     socket =
-      if changed? and repo do
+      if changed? do
         work = work_for(repo, board, agent, freshness, socket, socket.assigns.local_ci, answer)
         assign(socket, work: work, digest: work.digest)
       else
@@ -2770,7 +2784,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, assign(socket, :flow, with_load_tile(socket.assigns.flow, answer))}
   end
 
-  def handle_async(:orchestrator, {:exit, _reason}, socket), do: {:noreply, socket}
+  def handle_async(:orchestrator, _dropped, socket), do: {:noreply, socket}
 
   def handle_async(:version_check, {:ok, {:ok, _sha}}, socket) do
     {:noreply, assign(socket, version: Version.status())}
