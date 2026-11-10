@@ -1084,7 +1084,12 @@ Claude Code charges it at twice the input price and a 5-minute write at
   otherwise from the start. A transcript read by an older Claude Code reader
   (`usage_files.reader` below the current one) is read once more in full, so
   a count the reader learned later reaches the rows already stored; until
-  then those rows hold zero for it and are priced as a minimum. A Codex
+  then those rows hold zero for it and are priced as a minimum. A harness
+  session read before the reader took the model from `request/context` (a
+  subagent's transcript has no `model/selection`) is read once more the same
+  way: the read fills a stored message's missing model, never replaces one,
+  and that execution's ledger rows are rebuilt from the messages, so no count
+  changes; until then the row has no model and no price. A Codex
   thread is read whole when any of its files changed. Files are read oldest first, so a session's original is
   stored before a later copy.
 - **Reading the same files again changes no row.** A ledger row is written
