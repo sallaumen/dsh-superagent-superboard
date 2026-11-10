@@ -35,15 +35,15 @@ defmodule AgentBoard.Usage.Costs do
   # read from the `modelUsage` entries of its `cost-state` lines (observed
   # 2026-11-07) by least squares with the cache ratios below. A family whose
   # samples did not separate the rates uses the family's main model; a model
-  # absent here is unpriced, not free. fable-5-2 and haiku-5-5 were read on
-  # 2026-11-10 from lines that split 5-minute and 1-hour cache writes, where
-  # the price is exact. Haiku's web searches (US$ 0.01 each there) are not in
+  # absent here is unpriced, not free. opus-4-8, fable-5-2 and haiku-5-5 were
+  # read on 2026-11-10 from lines that split 5-minute and 1-hour cache writes,
+  # where the price is exact. Haiku's web searches (US$ 0.01 each there) are not in
   # the ledger, so a haiku row is a minimum.
   @claude_prices %{
     "claude-opus-5-5" => %{input: 2.30, output: 30.00},
     "claude-opus-5-5[1m]" => %{input: 2.30, output: 30.00},
     "claude-opus-5" => %{input: 2.30, output: 30.00},
-    "claude-opus-4-8" => %{input: 2.30, output: 30.00},
+    "claude-opus-4-8" => %{input: 5.00, output: 25.00},
     "claude-sonnet-5-5" => %{input: 1.62, output: 12.73},
     "claude-sonnet-5" => %{input: 1.62, output: 12.73},
     "claude-fable-5-1" => %{input: 5.29, output: 42.57},
