@@ -1396,7 +1396,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp worker_count(value) do
     case Integer.parse(to_string(value || "")) do
-      {count, ""} when count >= 1 -> min(count, 32)
+      {count, ""} when count >= 1 -> min(count, Orchestrator.worker_range().last)
       _ -> 1
     end
   end
@@ -1858,7 +1858,7 @@ defmodule AgentBoardWeb.BoardLive do
 
     with %AgentBoard.Superagents.Superagent{} <- superagent,
          {delta, ""} <- Integer.parse(delta),
-         workers = max(1, min(32, superagent.max_workers + delta)),
+         workers = max(1, min(Orchestrator.worker_range().last, superagent.max_workers + delta)),
          true <- workers != superagent.max_workers do
       language = Locale.language()
 

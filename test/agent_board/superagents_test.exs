@@ -149,6 +149,25 @@ defmodule AgentBoard.SuperagentsTest do
 
     assert {:error, changeset} = Superagents.create(Map.put(base, :max_workers, 0))
     assert changeset.errors[:max_workers]
+
+    assert {:error, changeset} = Superagents.create(Map.put(base, :max_workers, 17))
+    assert changeset.errors[:max_workers]
+  end
+
+  test "scale refuses a ceiling above the agent's own limit", %{repo: repo} do
+    {:ok, pid} = FakeManager.start()
+    on_exit(fn -> if Process.alive?(pid), do: Agent.stop(pid) end)
+
+    {:ok, superagent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "superagent-ceiling",
+        port: 3195,
+        state_dir: "/tmp/superagent-ceiling",
+        max_workers: 16
+      })
+
+    assert {:error, :invalid_workers} = Superagents.scale(superagent, 17, FakeManager)
   end
 
   test "tick records the manager observation", %{repo: repo} do

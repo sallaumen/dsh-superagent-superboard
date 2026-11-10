@@ -14,6 +14,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
+  alias AgentBoard.Orchestrator
   alias AgentBoardWeb.BoardComponents.AgentAction
   alias AgentBoardWeb.BoardComponents.Settings.ProjectAccess
   alias AgentBoardWeb.Time
@@ -68,7 +69,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
     delta = if to_string(delta) == "-1", do: -1, else: 1
     workers = socket.assigns.workers + delta
 
-    {:noreply, assign(socket, :workers, workers |> max(1) |> min(32))}
+    {:noreply, assign(socket, :workers, workers |> max(1) |> min(max_workers()))}
   end
 
   @impl true
@@ -169,7 +170,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                 phx-click="superagent_scale"
                 phx-value-id={superagent.id}
                 phx-value-delta="1"
-                disabled={superagent.max_workers >= 32}
+                disabled={superagent.max_workers >= max_workers()}
               >+</button>
             </div>
 
@@ -433,7 +434,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               name="workers"
               value={@workers}
               min="1"
-              max="32"
+              max={max_workers()}
               step="1"
               aria-label={gettext("Initial agents")}
               disabled={not @create_agent or @provisioning}
@@ -445,7 +446,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               phx-click="change_workers"
               phx-value-delta="1"
               phx-target={@myself}
-              disabled={@workers >= 32 or @provisioning or not @create_agent}
+              disabled={@workers >= max_workers() or @provisioning or not @create_agent}
             >+</button>
           </div>
 
@@ -498,6 +499,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
     </div>
     """
   end
+
+  defp max_workers, do: Orchestrator.worker_range().last
 
   defp tracked_only(repos, superagents) do
     with_agent = MapSet.new(superagents, & &1.repository_id)

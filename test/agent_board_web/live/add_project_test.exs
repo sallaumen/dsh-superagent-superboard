@@ -65,6 +65,32 @@ defmodule AgentBoardWeb.AddProjectTest do
     end)
   end
 
+  test "the workers typed above the agent's limit are provisioned at the limit", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("fixture", "base-limit")
+
+    with_sources(fn ->
+      {:ok, view, _html} =
+        live(conn, ~p"/?repo=fixture/base-limit&panel=settings&section=repositories")
+
+      view
+      |> form("#track-repo", %{
+        "owner" => "fixture",
+        "name" => "limit",
+        "path" => "/tmp/limit-checkout",
+        "create_agent" => "true",
+        "workers" => "20"
+      })
+      |> render_submit()
+
+      view |> element("#add-project-confirm button", "Criar superagente") |> render_click()
+      Process.sleep(150)
+      _ = render(view)
+
+      repository = Board.repository_by_slug("fixture/limit")
+      assert Superagents.get_by_repository(repository).max_workers == 16
+    end)
+  end
+
   test "track only adds the repository without a confirmation or an agent", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "base-track")
 

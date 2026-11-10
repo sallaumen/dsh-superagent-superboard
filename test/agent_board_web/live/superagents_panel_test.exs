@@ -137,6 +137,35 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert Repo.get!(Superagent, superagent.id).max_workers == superagent.max_workers + 1
   end
 
+  test "the card stops at the agent's limit and sends nothing above it", %{conn: conn} do
+    {:ok, pid} = FakeManager.start()
+    previous = Application.get_env(:agent_board, :superagent_manager)
+    Application.put_env(:agent_board, :superagent_manager, FakeManager)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:agent_board, :superagent_manager, previous),
+        else: Application.delete_env(:agent_board, :superagent_manager)
+
+      if Process.alive?(pid), do: Agent.stop(pid)
+    end)
+
+    {:ok, repo} = Board.add_repository("fixture", "ceiling")
+    superagent = superagent!(repo, %{max_workers: 16})
+
+    {:ok, view, _html} = live(conn, "/?repo=fixture/ceiling&panel=settings&section=projects")
+
+    assert has_element?(
+             view,
+             "#project-#{superagent.id} button[phx-value-delta='1'][disabled]"
+           )
+
+    render_hook(view, "superagent_scale", %{"id" => to_string(superagent.id), "delta" => "1"})
+    render_async(view, 2_000)
+
+    assert Repo.get!(Superagent, superagent.id).max_workers == 16
+  end
+
   test "the add-project form previews the sentence, the workers and confirms", %{conn: conn} do
     {:ok, _source_repo} = Board.add_repository("fixture", "source-panel")
     {:ok, target} = Board.add_repository("fixture", "target-panel")
