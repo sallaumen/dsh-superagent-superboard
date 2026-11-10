@@ -310,6 +310,14 @@ defmodule AgentBoard.RunnersTest do
     assert Runners.fallback(content) == :none
     assert Runners.fallback(author) == :none
     assert Runners.fallback(nil) == nil
+
+    # A status code is a word: a count or an issue number that contains one is
+    # a content failure, with no proposal.
+    for error <- ["3 of 512 assertions failed", "PR #4031 has a conflict"] do
+      assert Runners.fallback(%{content | error: error}) == :none, error
+    end
+
+    assert %{kind: :retry} = Runners.fallback(%{content | error: "HTTP 503 from the API"})
   end
 
   test "a confirmed switch changes the task's executor before it starts", %{task: task} do
