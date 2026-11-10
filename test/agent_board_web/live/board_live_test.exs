@@ -1048,6 +1048,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     assert has_element?(view, ".ab-rail .ab-brand", "Agent Board")
     assert has_element?(view, ".ab-top__repo h1", "arena-rogue")
+    # The page's first heading is its h1; the rail's owner is a label.
+    assert has_element?(view, ".ab-rail p.ab-label", "sallaumen")
+    refute has_element?(view, ".ab-rail h3")
   end
 
   test "the browser tab names the board and what it shows", %{conn: conn} do
