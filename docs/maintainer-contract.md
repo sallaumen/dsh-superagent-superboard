@@ -938,7 +938,9 @@ that watches one GitHub repository and picks the issues whose body mentions
   `econnrefused` error, is started again, at most once every ten minutes
   (each automatic start is a `start` event by `board`): a start whose health
   check times out still answers `:ok`, and an agent that dies at boot would
-  otherwise be started on every tick. Per-profile LaunchAgents are no
+  otherwise be started on every tick. One reconcile runs at a time: a tick
+  that finds the previous one still waiting on the manager starts none, so
+  the same agent is never stopped or started twice. Per-profile LaunchAgents are no
   longer required; the board LaunchAgent is the single boot entry.
 - **The board has a Superagentes (Superagents) panel.** It lists one card per
   registered project (repository, profile, port, workers, desired/observed
