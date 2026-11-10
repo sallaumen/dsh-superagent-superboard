@@ -3037,330 +3037,331 @@ defmodule AgentBoardWeb.BoardLive do
               tz_offset={@tz_offset}
             />
 
-            <header :if={@repo && @view != "hoje"} class="ab-top">
-              <details :if={@repo} id="mobile-nav" data-board-menu class="ab-mobilebar">
-                <summary>
-                  <span class="ab-mobilebar__repo">{@repo.name}</span>
-                  <.ico name="menu" />
-                  <span class="ab-sr">{gettext("Repositories")}</span>
-                </summary>
-                <div class="ab-mobilebar__list">
-                  <button
-                    type="button"
-                    class="ab-repo"
-                    aria-current={to_string(@view == "hoje")}
-                    phx-click="select"
-                    phx-value-view="hoje"
-                  >
-                    <span class="ab-repo__name">{gettext("Today")}</span>
-                  </button>
-                  <button
-                    :for={r <- @repos}
-                    type="button"
-                    class="ab-repo"
-                    aria-current={to_string(@repo && @repo.id == r.id)}
-                    phx-click="select"
-                    phx-value-repo={"#{r.owner}/#{r.name}"}
-                  >
-                    <span class="ab-repo__name">{r.owner}/{r.name}</span>
-                  </button>
+            <div :if={@repo && @view != "hoje"} class="ab-stage">
+              <div class="ab-pane ab-pane--work">
+                <header class="ab-top">
+                  <details :if={@repo} id="mobile-nav" data-board-menu class="ab-mobilebar">
+                    <summary>
+                      <span class="ab-mobilebar__repo">{@repo.name}</span>
+                      <.ico name="menu" />
+                      <span class="ab-sr">{gettext("Repositories")}</span>
+                    </summary>
+                    <div class="ab-mobilebar__list">
+                      <button
+                        type="button"
+                        class="ab-repo"
+                        aria-current={to_string(@view == "hoje")}
+                        phx-click="select"
+                        phx-value-view="hoje"
+                      >
+                        <span class="ab-repo__name">{gettext("Today")}</span>
+                      </button>
+                      <button
+                        :for={r <- @repos}
+                        type="button"
+                        class="ab-repo"
+                        aria-current={to_string(@repo && @repo.id == r.id)}
+                        phx-click="select"
+                        phx-value-repo={"#{r.owner}/#{r.name}"}
+                      >
+                        <span class="ab-repo__name">{r.owner}/{r.name}</span>
+                      </button>
 
-                  <button
-                    :if={@agent_access.count > 0}
-                    id="mobile-panel-agent-access"
-                    type="button"
-                    class="ab-btn ab-btn--quiet ab-btn--sm"
-                    phx-click="show_panel"
-                    phx-value-panel="settings"
-                    phx-value-section="projects"
-                    data-panel-trigger
-                    aria-haspopup="dialog"
-                    aria-controls="panel-settings"
-                  >
-                    {ngettext(
-                      "%{count} waiting for access",
-                      "%{count} waiting for access",
-                      @agent_access.count
-                    )}
-                  </button>
-                  <button
-                    id="mobile-panel-superagents"
-                    type="button"
-                    class="ab-btn ab-btn--quiet ab-btn--sm"
-                    phx-click="show_panel"
-                    phx-value-panel="settings"
-                    phx-value-section="projects"
-                    data-panel-trigger
-                    aria-haspopup="dialog"
-                    aria-controls="panel-settings"
-                  >
-                    <.ico name="grip" />{gettext("Superagents")}
-                  </button>
-                  <button
-                    id="mobile-panel-shortcuts"
-                    type="button"
-                    class="ab-btn ab-btn--quiet ab-btn--sm"
-                    phx-click="show_panel"
-                    phx-value-panel="shortcuts"
-                    data-panel-trigger
-                    aria-haspopup="dialog"
-                    aria-controls="panel-shortcuts"
-                  >
-                    <.ico name="keys" />{gettext("Shortcuts")}
-                  </button>
-                  <button
-                    id="mobile-panel-logs"
-                    type="button"
-                    class="ab-btn ab-btn--quiet ab-btn--sm"
-                    phx-click="show_panel"
-                    phx-value-panel="logs"
-                    data-panel-trigger
-                    aria-haspopup="dialog"
-                    aria-controls="panel-logs"
-                  >
-                    <.ico name="log" />{gettext("Logs")}
-                  </button>
-                  <button
-                    id="mobile-panel-voice"
-                    type="button"
-                    class="ab-btn ab-btn--quiet ab-btn--sm"
-                    phx-click="show_panel"
-                    phx-value-panel="voice"
-                  >
-                    <.ico name="mic" />{gettext("Voice conversation")}
-                  </button>
-                  <button
-                    id="mobile-panel-settings"
-                    type="button"
-                    class="ab-btn ab-btn--quiet ab-btn--sm"
-                    phx-click="show_panel"
-                    phx-value-panel="settings"
-                    data-panel-trigger
-                    aria-haspopup="dialog"
-                    aria-controls="panel-settings"
-                  >
-                    <.ico name="cog" />{gettext("Settings")}
-                  </button>
-                </div>
-              </details>
-              <div class="ab-top__repo">
-                <span class="ab-top__owner">{@repo.owner}/</span>
-                <h1>{@repo.name}</h1>
-              </div>
-              <.beacon freshness={@freshness} tz_offset={@tz_offset} />
-              <.version_badge version={@version} />
-              <span class="ab-top__spacer"></span>
-              <div id="board-tools" class="ab-top__actions" aria-label={gettext("Board Actions")}>
-                <button
-                  id="open-intake"
-                  type="button"
-                  class="ab-btn"
-                  phx-click="open_composer"
-                  phx-value-split="true"
-                  data-panel-trigger
-                  aria-haspopup="dialog"
-                  aria-controls="panel-composer"
-                >
-                  <.ico name="split" />{gettext("Split request")}
-                </button>
-                <button
-                  id="open-create"
-                  type="button"
-                  class="ab-btn ab-btn--primary"
-                  phx-click="open_composer"
-                  phx-value-split="false"
-                  data-panel-trigger
-                  aria-haspopup="dialog"
-                  aria-controls="panel-composer"
-                >
-                  <.ico name="plus" />{gettext("New request")}<.kbd key="N" />
-                </button>
-              </div>
-            </header>
-
-            <.summary :if={@repo && @view != "hoje"} digest={@digest} />
-
-            <div
-              :if={@repo && @view != "hoje" && (@objectives != [] or @daily_summary)}
-              class={["ab-context", @objectives == [] && "is-daily-only"]}
-            >
-              <section
-                :if={@objectives != []}
-                id="objectives"
-                class="ab-objectives"
-                aria-label={gettext("Objectives")}
-              >
-                <article
-                  :for={objective <- @objectives}
-                  :if={not objective.done?}
-                  class="ab-objective"
-                >
-                  <div class="ab-objective__head">
-                    <span class="ab-label">{gettext("Objective")}</span>
-                    <b>{objective.title}</b>
-                    <span class="ab-objective__count">
-                      {gettext("%{merged} of %{total} tasks merged",
-                        merged: objective.merged,
-                        total: objective.total
-                      )}
-                    </span>
-                  </div>
-                  <p class="ab-meta">
-                    {gettext("criterion: %{criterion}", criterion: objective.done_criterion)}
-                  </p>
-                  <div
-                    class="ab-objective__bar"
-                    role="progressbar"
-                    aria-valuenow={objective.merged}
-                    aria-valuemin="0"
-                    aria-valuemax={objective.total}
-                    aria-label={gettext("Progress of objective %{title}", title: objective.title)}
-                  >
-                    <span style={"width: #{progress(objective)}%"}></span>
-                  </div>
-                  <.objective_tree :if={objective.edges != []} objective={objective} repo={@repo} />
-                </article>
-
-                <details
-                  :if={Enum.any?(@objectives, & &1.done?)}
-                  class="ab-objective-done"
-                >
-                  <summary>
-                    {ngettext(
-                      "%{count} completed objective",
-                      "%{count} completed objectives",
-                      Enum.count(@objectives, & &1.done?)
-                    )}
-                  </summary>
-                  <ul class="ab-objective-done__list">
-                    <li :for={objective <- @objectives} :if={objective.done?}>
-                      <span class="ab-objective-done__title">{objective.title}</span>
-                      <span class="ab-objective-done__count">
-                        {gettext("%{merged} of %{total} ✓",
-                          merged: objective.merged,
-                          total: objective.total
+                      <button
+                        :if={@agent_access.count > 0}
+                        id="mobile-panel-agent-access"
+                        type="button"
+                        class="ab-btn ab-btn--quiet ab-btn--sm"
+                        phx-click="show_panel"
+                        phx-value-panel="settings"
+                        phx-value-section="projects"
+                        data-panel-trigger
+                        aria-haspopup="dialog"
+                        aria-controls="panel-settings"
+                      >
+                        {ngettext(
+                          "%{count} waiting for access",
+                          "%{count} waiting for access",
+                          @agent_access.count
                         )}
-                      </span>
-                    </li>
-                  </ul>
-                </details>
-              </section>
+                      </button>
+                      <button
+                        id="mobile-panel-superagents"
+                        type="button"
+                        class="ab-btn ab-btn--quiet ab-btn--sm"
+                        phx-click="show_panel"
+                        phx-value-panel="settings"
+                        phx-value-section="projects"
+                        data-panel-trigger
+                        aria-haspopup="dialog"
+                        aria-controls="panel-settings"
+                      >
+                        <.ico name="grip" />{gettext("Superagents")}
+                      </button>
+                      <button
+                        id="mobile-panel-shortcuts"
+                        type="button"
+                        class="ab-btn ab-btn--quiet ab-btn--sm"
+                        phx-click="show_panel"
+                        phx-value-panel="shortcuts"
+                        data-panel-trigger
+                        aria-haspopup="dialog"
+                        aria-controls="panel-shortcuts"
+                      >
+                        <.ico name="keys" />{gettext("Shortcuts")}
+                      </button>
+                      <button
+                        id="mobile-panel-logs"
+                        type="button"
+                        class="ab-btn ab-btn--quiet ab-btn--sm"
+                        phx-click="show_panel"
+                        phx-value-panel="logs"
+                        data-panel-trigger
+                        aria-haspopup="dialog"
+                        aria-controls="panel-logs"
+                      >
+                        <.ico name="log" />{gettext("Logs")}
+                      </button>
+                      <button
+                        id="mobile-panel-voice"
+                        type="button"
+                        class="ab-btn ab-btn--quiet ab-btn--sm"
+                        phx-click="show_panel"
+                        phx-value-panel="voice"
+                      >
+                        <.ico name="mic" />{gettext("Voice conversation")}
+                      </button>
+                      <button
+                        id="mobile-panel-settings"
+                        type="button"
+                        class="ab-btn ab-btn--quiet ab-btn--sm"
+                        phx-click="show_panel"
+                        phx-value-panel="settings"
+                        data-panel-trigger
+                        aria-haspopup="dialog"
+                        aria-controls="panel-settings"
+                      >
+                        <.ico name="cog" />{gettext("Settings")}
+                      </button>
+                    </div>
+                  </details>
+                  <div class="ab-top__repo">
+                    <span class="ab-top__owner">{@repo.owner}/</span>
+                    <h1>{@repo.name}</h1>
+                  </div>
+                  <.beacon freshness={@freshness} tz_offset={@tz_offset} />
+                  <.version_badge version={@version} />
+                  <span class="ab-top__spacer"></span>
+                  <div id="board-tools" class="ab-top__actions" aria-label={gettext("Board Actions")}>
+                    <button
+                      id="open-intake"
+                      type="button"
+                      class="ab-btn"
+                      phx-click="open_composer"
+                      phx-value-split="true"
+                      data-panel-trigger
+                      aria-haspopup="dialog"
+                      aria-controls="panel-composer"
+                    >
+                      <.ico name="split" />{gettext("Split request")}
+                    </button>
+                    <button
+                      id="open-create"
+                      type="button"
+                      class="ab-btn ab-btn--primary"
+                      phx-click="open_composer"
+                      phx-value-split="false"
+                      data-panel-trigger
+                      aria-haspopup="dialog"
+                      aria-controls="panel-composer"
+                    >
+                      <.ico name="plus" />{gettext("New request")}<.kbd key="N" />
+                    </button>
+                  </div>
+                </header>
 
-              <details
-                :if={@daily_summary}
-                id="fold-daily"
-                class="ab-fold ab-fold--daily"
-                data-mobile-fold
-                open
-                phx-hook="BoardFold"
-              >
-                <summary class="ab-fold__summary">
-                  <span>{gettext("Daily Summary")}</span>
-                  <span class="ab-meta">{gettext("from the board")}</span>
-                </summary>
-                <div class="ab-fold__body">
-                  <.daily_summary entry={@daily_summary} tz_offset={@tz_offset} />
+                <.summary digest={@digest} />
+
+                <div
+                  :if={@objectives != [] or @daily_summary}
+                  class={["ab-context", @objectives == [] && "is-daily-only"]}
+                >
+                  <section
+                    :if={@objectives != []}
+                    id="objectives"
+                    class="ab-objectives"
+                    aria-label={gettext("Objectives")}
+                  >
+                    <article
+                      :for={objective <- @objectives}
+                      :if={not objective.done?}
+                      class="ab-objective"
+                    >
+                      <div class="ab-objective__head">
+                        <span class="ab-label">{gettext("Objective")}</span>
+                        <b>{objective.title}</b>
+                        <span class="ab-objective__count">
+                          {gettext("%{merged} of %{total} tasks merged",
+                            merged: objective.merged,
+                            total: objective.total
+                          )}
+                        </span>
+                      </div>
+                      <p class="ab-meta">
+                        {gettext("criterion: %{criterion}", criterion: objective.done_criterion)}
+                      </p>
+                      <div
+                        class="ab-objective__bar"
+                        role="progressbar"
+                        aria-valuenow={objective.merged}
+                        aria-valuemin="0"
+                        aria-valuemax={objective.total}
+                        aria-label={gettext("Progress of objective %{title}", title: objective.title)}
+                      >
+                        <span style={"width: #{progress(objective)}%"}></span>
+                      </div>
+                      <.objective_tree :if={objective.edges != []} objective={objective} repo={@repo} />
+                    </article>
+
+                    <details
+                      :if={Enum.any?(@objectives, & &1.done?)}
+                      class="ab-objective-done"
+                    >
+                      <summary>
+                        {ngettext(
+                          "%{count} completed objective",
+                          "%{count} completed objectives",
+                          Enum.count(@objectives, & &1.done?)
+                        )}
+                      </summary>
+                      <ul class="ab-objective-done__list">
+                        <li :for={objective <- @objectives} :if={objective.done?}>
+                          <span class="ab-objective-done__title">{objective.title}</span>
+                          <span class="ab-objective-done__count">
+                            {gettext("%{merged} of %{total} ✓",
+                              merged: objective.merged,
+                              total: objective.total
+                            )}
+                          </span>
+                        </li>
+                      </ul>
+                    </details>
+                  </section>
+
+                  <details
+                    :if={@daily_summary}
+                    id="fold-daily"
+                    class="ab-fold ab-fold--daily"
+                    data-mobile-fold
+                    open
+                    phx-hook="BoardFold"
+                  >
+                    <summary class="ab-fold__summary">
+                      <span>{gettext("Daily Summary")}</span>
+                      <span class="ab-meta">{gettext("from the board")}</span>
+                    </summary>
+                    <div class="ab-fold__body">
+                      <.daily_summary entry={@daily_summary} tz_offset={@tz_offset} />
+                    </div>
+                  </details>
                 </div>
-              </details>
-            </div>
 
-            <div :if={@repo && @view != "hoje" && empty?(@board)} class="ab-empty">
-              <h2>
-                {if @sync_snapshot.last_success,
-                  do: gettext("Nothing has happened here yet."),
-                  else: gettext("No data yet.")}
-              </h2>
-              <p>
-                {if @sync_snapshot.last_success,
-                  do:
-                    gettext(
-                      "The agent watches this repository but has not received a task yet. Write or dictate the first request; it enters the queue and appears in Now when the agent picks it up."
-                    ),
-                  else:
-                    gettext(
-                      "Waiting for the first sync. When GitHub responds, the board will show tasks, merges, and what needs your attention."
-                    )}
-              </p>
-              <button
-                type="button"
-                class="ab-btn ab-btn--primary"
-                phx-click="open_composer"
-                phx-value-split="false"
-                data-panel-trigger
-                aria-haspopup="dialog"
-                aria-controls="panel-composer"
-              >
-                <.ico name="plus" />{gettext("New request")}
-              </button>
-            </div>
+                <div :if={empty?(@board)} class="ab-empty">
+                  <h2>
+                    {if @sync_snapshot.last_success,
+                      do: gettext("Nothing has happened here yet."),
+                      else: gettext("No data yet.")}
+                  </h2>
+                  <p>
+                    {if @sync_snapshot.last_success,
+                      do:
+                        gettext(
+                          "The agent watches this repository but has not received a task yet. Write or dictate the first request; it enters the queue and appears in Now when the agent picks it up."
+                        ),
+                      else:
+                        gettext(
+                          "Waiting for the first sync. When GitHub responds, the board will show tasks, merges, and what needs your attention."
+                        )}
+                  </p>
+                  <button
+                    type="button"
+                    class="ab-btn ab-btn--primary"
+                    phx-click="open_composer"
+                    phx-value-split="false"
+                    data-panel-trigger
+                    aria-haspopup="dialog"
+                    aria-controls="panel-composer"
+                  >
+                    <.ico name="plus" />{gettext("New request")}
+                  </button>
+                </div>
 
-            <div
-              :if={@repo && @view != "hoje" && not empty?(@board)}
-              class="ab-cols"
-            >
-              <div class="ab-lanes">
-                <.now_lane
-                  running={@work.running}
-                  retrying={@work.retrying}
-                  frozen={@freshness.frozen?}
-                  frozen_at={@freshness.at}
-                  sync_at={@freshness.at}
-                  tz_offset={@tz_offset}
-                  next_queued={@work.queue.items |> List.first() |> then(&(&1 && &1.number))}
-                />
-                <.needs_you
-                  needs={@work.needs}
-                  max={if @needs_expanded, do: 999, else: 5}
-                  selected={@conversation && @conversation.id}
-                  last_visit={@last_visit}
-                  frozen={@freshness.frozen?}
-                  frozen_at={@freshness.at}
-                  tz_offset={@tz_offset}
-                />
-                <.queue_list
-                  queue={@work.queue}
-                  frozen={@freshness.frozen?}
-                  frozen_at={@freshness.at}
-                  tz_offset={@tz_offset}
-                  selected={@conversation && @conversation.id}
-                />
-              </div>
-
-              <.merge_log
-                log={@work.log}
-                frozen={@freshness.frozen?}
-                has_history={@board.merged != []}
-              />
-
-              <details
-                :if={@flow}
-                id="fold-flow"
-                class="ab-fold ab-fold--flow"
-                data-mobile-fold
-                open
-                phx-hook="BoardFold"
-              >
-                <summary class="ab-fold__summary">
-                  <span>{gettext("Throughput")}</span>
-                  <span class="ab-meta">{if @freshness.frozen?,
-                    do:
-                      gettext("per hour · frozen at %{time}",
-                        time: Time.local_time(@flow.computed_at, @tz_offset)
-                      ),
-                    else:
-                      gettext("per hour · calculated at %{time}",
-                        time: Time.local_time(@flow.computed_at, @tz_offset)
-                      )}</span>
-                </summary>
-                <div class="ab-fold__body">
-                  <.throughput
-                    flow={@flow}
-                    tz_offset={@tz_offset}
+                <div :if={not empty?(@board)} class="ab-lanes">
+                  <.now_lane
+                    running={@work.running}
+                    retrying={@work.retrying}
                     frozen={@freshness.frozen?}
-                    superagents={@superagents}
+                    frozen_at={@freshness.at}
+                    sync_at={@freshness.at}
+                    tz_offset={@tz_offset}
+                    next_queued={@work.queue.items |> List.first() |> then(&(&1 && &1.number))}
+                  />
+                  <.needs_you
+                    needs={@work.needs}
+                    max={if @needs_expanded, do: 999, else: 5}
+                    selected={@conversation && @conversation.id}
+                    last_visit={@last_visit}
+                    frozen={@freshness.frozen?}
+                    frozen_at={@freshness.at}
+                    tz_offset={@tz_offset}
+                  />
+                  <.queue_list
+                    queue={@work.queue}
+                    frozen={@freshness.frozen?}
+                    frozen_at={@freshness.at}
+                    tz_offset={@tz_offset}
+                    selected={@conversation && @conversation.id}
                   />
                 </div>
-              </details>
+              </div>
+
+              <%= if not empty?(@board) do %>
+                <.merge_log
+                  log={@work.log}
+                  frozen={@freshness.frozen?}
+                  has_history={@board.merged != []}
+                />
+
+                <details
+                  :if={@flow}
+                  id="fold-flow"
+                  class="ab-fold ab-fold--flow"
+                  data-mobile-fold
+                  open
+                  phx-hook="BoardFold"
+                >
+                  <summary class="ab-fold__summary">
+                    <span>{gettext("Throughput")}</span>
+                    <span class="ab-meta">{if @freshness.frozen?,
+                      do:
+                        gettext("per hour · frozen at %{time}",
+                          time: Time.local_time(@flow.computed_at, @tz_offset)
+                        ),
+                      else:
+                        gettext("per hour · calculated at %{time}",
+                          time: Time.local_time(@flow.computed_at, @tz_offset)
+                        )}</span>
+                  </summary>
+                  <div class="ab-fold__body">
+                    <.throughput
+                      flow={@flow}
+                      tz_offset={@tz_offset}
+                      frozen={@freshness.frozen?}
+                      superagents={@superagents}
+                    />
+                  </div>
+                </details>
+              <% end %>
             </div>
           </main>
 

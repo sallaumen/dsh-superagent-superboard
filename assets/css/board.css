@@ -266,7 +266,7 @@ body { margin: 0; background: var(--paper); }
 }
 .ab-frozen strong { color: var(--stale); }
 .ab-frozen .ab-top__spacer { flex: 1; }
-[data-frozen="true"] .ab-cols { filter: saturate(.55); }
+[data-frozen="true"] :is(.ab-lanes, #sec-log, #fold-flow) { filter: saturate(.55); }
 [data-frozen="true"] .ab-g--run.is-live { background: transparent; border: 1.5px solid var(--stale); background: repeating-linear-gradient(135deg, var(--stale) 0 1.5px, transparent 1.5px 3.5px); }
 
 /* ---------- toast (one at a time, bottom-left) ---------- */
@@ -784,10 +784,6 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-rail__foot .ab-btn { justify-content: flex-start; }
 
 .ab-ci-local { color: var(--agent); font-weight: 500; }
-/* ultrawide: center the reading area; the lanes use the width */
-@container board (min-width: 1600px) {
-  .ab-main { width: 100%; max-width: 1980px; margin-inline: auto; }
-}
 
 
 /* ---------- vazão: the hourly instrument strip ---------- */
@@ -816,7 +812,7 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-flow__capacity rect { fill: var(--paper-sunk); stroke: var(--line-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .ab-flow__capacity rect.is-now { fill: var(--agent); stroke: var(--agent); }
 .ab-flow__win { margin: 0; display: grid; gap: 1px; font-family: var(--font-mono); font-size: 11.5px; line-height: 16px; font-variant-numeric: tabular-nums; }
-.ab-flow__win div { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; }
+.ab-flow__win div { display: grid; grid-template-columns: minmax(34px, max-content) minmax(0, 1fr); gap: 8px; }
 .ab-flow__win dt { color: var(--ink-faint); }
 .ab-flow__win dd { margin: 0; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ab-flow__win dd b { font-weight: 500; color: var(--ink); }
@@ -1571,6 +1567,26 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 }
 @container main (min-width: 950px) {
   .ab-today__insights { grid-template-columns: minmax(0, 1.7fr) minmax(310px, 1fr); }
+}
+/* Wide: what needs the owner on the left, the projects and the week on the
+   right, the day's spending beside the title. */
+@container main (min-width: 2000px) {
+  .ab-today {
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "head spend"
+      "overview insights"
+      "work insights";
+    column-gap: var(--space-8);
+    align-items: start;
+  }
+  .ab-today__head { grid-area: head; }
+  #today-spend { grid-area: spend; align-self: end; border-top: 0; padding-top: 0; }
+  #today-overview { grid-area: overview; }
+  .ab-today__work { grid-area: work; }
+  .ab-today__insights { grid-area: insights; }
 }
 .ab-today__work:not(.ab-today__work--with-report) .ab-today__worklists { gap: var(--space-5); }
 .ab-today__projects-wrap { overflow-x: auto; }
@@ -2763,12 +2779,15 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
    at every width. Only the width of the `main` container changes the columns;
    no content state (idle or working) changes the structure.
    ========================================================================== */
-.ab-cols {
-  display: flex;
-  flex-direction: column;
+.ab-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-7);
-  min-width: 0;
+  align-items: start;
 }
+.ab-pane { min-width: 0; }
+/* The rows a day shows only when the window is wide (below). */
+.ab-day__extra, .ab-day__more--wide, .ab-day__count--wide { display: none; }
 
 .ab-lanes {
   display: grid;
@@ -2924,7 +2943,7 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
 }
 
 @container main (max-width: 999px) {
-  .ab-cols { gap: var(--space-6); }
+  .ab-stage { gap: var(--space-6); }
 }
 
 @container main (min-width: 640px) {
@@ -2956,6 +2975,41 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
   .ab-day:nth-child(n) { border-left: 1px solid var(--line); padding-left: 16px; }
   .ab-day:first-child { border-left: 0; padding-left: 0; }
   .ab-flow__grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+}
+
+/* Ultrawide: two panes that fill the window. Left, the work: header, context,
+   lanes and, under them, the throughput in two rows. Right, the record: seven
+   days with up to eight merges each instead of three. The record keeps the
+   wider share; the lanes go back to two columns until their pane fits three. */
+@container main (min-width: 2500px) {
+  .ab-stage {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "work log"
+      "flow log";
+    column-gap: 0;
+  }
+  .ab-pane--work { grid-area: work; padding-right: var(--space-7); }
+  #fold-flow { grid-area: flow; align-self: start; padding-right: var(--space-7); }
+  #sec-log { grid-area: log; padding-left: var(--space-7); border-left: 1px solid var(--line); }
+  .ab-lanes {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "now queue"
+      "needs queue";
+  }
+  .ab-flow__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ab-day__extra { display: contents; }
+  .ab-day__more--wide { display: flex; }
+  .ab-day__count--wide { display: inline; }
+  .ab-day__more--short, .ab-day__count--short { display: none; }
+}
+@container main (min-width: 2860px) {
+  .ab-lanes {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+    grid-template-areas: "now needs queue";
+  }
 }
 
 /* ---------- Settings → System: version, browser, activity ---------- */
