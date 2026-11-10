@@ -145,7 +145,6 @@ defmodule AgentBoard.Usage.Harness do
   def parse(jsonl, opts \\ []) do
     transcript = read_transcript(jsonl)
     messages = Enum.filter(transcript.messages, &in_window?(&1, Keyword.get(opts, :window)))
-    sum = fn key -> messages |> Enum.map(&Map.fetch!(&1, key)) |> Enum.sum() end
 
     models =
       messages
@@ -153,8 +152,8 @@ defmodule AgentBoard.Usage.Harness do
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
 
-    # A session that switched models cannot be priced as one of them: the
-    # cost becomes unknown instead of silently using the last selection.
+    # A session that switched models has no one model: `parts` keeps each
+    # model's tokens, so each pays its own price, as in the ledger.
     model =
       case models do
         [] -> transcript.model
@@ -162,17 +161,35 @@ defmodule AgentBoard.Usage.Harness do
         _many -> nil
       end
 
-    %{
+    messages
+    |> totals()
+    |> Map.merge(%{
       requests: length(messages),
+      model: model,
+      subagent?: transcript.subagent?,
+      parts: parts(messages, models)
+    })
+  end
+
+  defp totals(messages) do
+    sum = fn key -> messages |> Enum.map(&Map.fetch!(&1, key)) |> Enum.sum() end
+
+    %{
       input: sum.(:input),
       output: sum.(:output),
       cache_read: sum.(:cache_read),
       cache_write: sum.(:cache_write),
       peak: peak_tokens(messages),
-      timed?: Enum.all?(messages, & &1.at),
-      model: model,
-      subagent?: transcript.subagent?
+      timed?: Enum.all?(messages, & &1.at)
     }
+  end
+
+  defp parts(_messages, models) when length(models) < 2, do: nil
+
+  defp parts(messages, _models) do
+    messages
+    |> Enum.group_by(& &1.model)
+    |> Enum.map(fn {model, mine} -> mine |> totals() |> Map.put(:model, model) end)
   end
 
   # The tokens of the messages sent in the provider's peak hours.
@@ -235,7 +252,10 @@ defmodule AgentBoard.Usage.Harness do
   """
   @spec cost([map()]) :: cost()
   def cost(sessions) do
-    priced = Enum.map(sessions, &{&1, Providers.prices_for_model(&1.model)})
+    priced =
+      sessions
+      |> Enum.flat_map(&priced_parts/1)
+      |> Enum.map(&{&1, Providers.prices_for_model(&1.model)})
 
     if Enum.all?(priced, fn {_session, prices} -> is_nil(prices) end) do
       nil
@@ -246,6 +266,8 @@ defmodule AgentBoard.Usage.Harness do
       end)
     end
   end
+
+  defp priced_parts(session), do: Map.get(session, :parts) || [session]
 
   defp add_cost(acc, session, prices) do
     peak = Map.get(session, :peak, %{input: 0, output: 0, cache_read: 0})
@@ -340,7 +362,12 @@ defmodule AgentBoard.Usage.Harness do
         cache_read: sum.(:cache_read),
         cache_write: sum.(:cache_write),
         models:
-          sessions |> Enum.map(& &1.model) |> Enum.reject(&is_nil/1) |> Enum.uniq() |> Enum.sort(),
+          sessions
+          |> Enum.flat_map(&priced_parts/1)
+          |> Enum.map(& &1.model)
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
+          |> Enum.sort(),
         cost: cost(sessions)
     }
   end
