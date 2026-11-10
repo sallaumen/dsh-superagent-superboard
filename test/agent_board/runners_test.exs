@@ -347,6 +347,39 @@ defmodule AgentBoard.RunnersTest do
     assert execution.error =~ "não escreveu o estado a tempo"
   end
 
+  # A reboot kills the tmux session but leaves "running" in the status file.
+  # The CLI runs under `timeout`, so past that limit the run is over.
+  for status <- ["running", "starting"] do
+    test "a run still \"#{status}\" past its time limit is failed and frees the task",
+         %{task: task} do
+      {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher(self()))
+      File.write!(Path.join(execution.run_dir, "status"), unquote(status))
+
+      Repo.update_all(
+        from(e in AgentBoard.Runners.Execution, where: e.id == ^execution.id),
+        set: [started_at: DateTime.add(DateTime.utc_now(), -(7_200 + 121), :second)]
+      )
+
+      Runners.tick()
+
+      execution = Repo.get!(AgentBoard.Runners.Execution, execution.id)
+      assert execution.status == "failed"
+      assert execution.error =~ "passou do tempo"
+      assert Repo.get!(Task, task.id).state == "blocked"
+
+      task = Repo.preload(Repo.get!(Task, task.id), :repository, force: true)
+      assert {:ok, _again} = Runners.dispatch(task, "claude", launcher: launcher(self()))
+    end
+  end
+
+  test "a running run inside its time limit is left alone", %{task: task} do
+    {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher(self()))
+
+    Runners.tick()
+
+    assert Repo.get!(AgentBoard.Runners.Execution, execution.id).status == "running"
+  end
+
   test "a runner that fails records the error", %{task: task} do
     test_pid = self()
     {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher(test_pid))
