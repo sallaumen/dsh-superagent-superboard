@@ -499,6 +499,25 @@ defmodule AgentBoard.BoardOverviewTest do
     refute Overview.repo_overview()[repo.id].unknown
   end
 
+  test "a repository's last sync is found behind many newer events" do
+    {:ok, repo} = Board.add_repository("sallaumen", "quiet")
+    {:ok, busy} = Board.add_repository("sallaumen", "busy")
+    {:ok, sync} = Board.log_event(repo.id, "sync", "sallaumen/quiet", %{"errors" => 0})
+
+    for i <- 1..30 do
+      Board.log_event(busy.id, "sync", "sallaumen/busy", %{"errors" => 0})
+      Board.log_event(repo.id, "comment", "sallaumen/quiet##{i}", %{})
+    end
+
+    {:ok, busy_error} = Board.log_event(busy.id, "sync_error", "sallaumen/busy", %{})
+
+    overview = Overview.repo_overview()
+    assert overview[repo.id].last_sync.id == sync.id
+    refute overview[repo.id].unknown
+    assert overview[busy.id].last_sync.id == busy_error.id
+    assert overview[busy.id].unknown
+  end
+
   test "the sync snapshot keeps the last success apart from the failed attempt" do
     {:ok, repo} = Board.add_repository("sallaumen", "snapshot")
     Board.log_event(repo.id, "sync", "sallaumen/snapshot", %{"errors" => 0})
