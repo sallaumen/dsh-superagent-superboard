@@ -183,6 +183,46 @@ defmodule AgentBoard.RunnersTest do
     assert {:error, :monthly_budget} = Runners.check(task, "claude")
   end
 
+  defp claude_ledger(execution, model, output_tokens) do
+    at = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    Repo.insert_all("usage_ledger", [
+      %{
+        source: "claude_code",
+        execution_id: execution,
+        day: Date.utc_today(),
+        cwd: "/tmp/arena",
+        model: model,
+        requests: 1,
+        input_tokens: 0,
+        output_tokens: output_tokens,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        first_at: at,
+        last_at: at,
+        inserted_at: at,
+        updated_at: at
+      }
+    ])
+  end
+
+  test "the month's priced spend at the cap refuses a Claude dispatch", %{task: task} do
+    :ok = Settings.put("dispatch_monthly_usd", "10")
+    # 1M output tokens of opus at US$ 30 per million.
+    claude_ledger("session-priced", "claude-opus-5-5", 1_000_000)
+
+    assert {:error, :monthly_budget} = Runners.check(task, "claude")
+  end
+
+  # A day with one unpriced model is not its priced part: the spend is
+  # unknown, the same answer as a day with no price at all.
+  test "a month with any unpriced Claude row refuses as unknown", %{task: task} do
+    claude_ledger("session-priced", "claude-opus-5-5", 1_000)
+    claude_ledger("session-unpriced", "model-without-a-price", 1_000)
+
+    assert {:error, :budget_unknown} = Runners.check(task, "claude")
+  end
+
   test "the confirmed action is the only door, and it records the decision", %{task: task} do
     test_pid = self()
 

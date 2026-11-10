@@ -176,8 +176,8 @@ defmodule AgentBoard.Runners do
   end
 
   # Only the Claude Code rows are summed: the board never adds two
-  # currencies. A month with an unpriced row is unknown and refuses rather
-  # than pretending the budget is empty.
+  # currencies. A month with an unpriced row (a whole day or one model in it)
+  # is unknown and refuses rather than counting only what has a price.
   defp claude_month_usd do
     start = Date.new!(Date.utc_today().year, Date.utc_today().month, 1)
 
@@ -188,7 +188,7 @@ defmodule AgentBoard.Runners do
 
     cond do
       rows == [] -> {:ok, 0.0}
-      Enum.any?(rows, &is_nil(&1.cost)) -> {:error, :budget_unknown}
+      Enum.any?(rows, &(is_nil(&1.cost) or not &1.cost.complete?)) -> {:error, :budget_unknown}
       true -> {:ok, rows |> Enum.map(& &1.cost.micros) |> Enum.sum() |> Kernel./(1_000_000)}
     end
   end
