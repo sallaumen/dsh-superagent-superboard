@@ -473,9 +473,9 @@ Agora and the detail):
 - When the retries ran out or the failure is not transient, the task is
   `blocked` and its item in Precisa de você says what failed and the step
   left to the owner, never only the raw error.
-- When the orchestrator does not answer `GET /state` (asked once per load,
-  the same answer as the throughput strip), the blocks and silences collapse
-  into **one** item, "Agente fora do ar" ("Agent offline"), with "Religar o
+- When the orchestrator does not answer `GET /state` (asked in the background
+  once per load, the same answer as the throughput strip), the blocks and
+  silences collapse into **one** item, "Agente fora do ar" ("Agent offline"), with "Religar o
   agente" ("Restart the agent"). A board with the API switched off does not
   know, and collapses nothing.
 - The detail of a failed task shows the headline, what the system will do,
@@ -1489,13 +1489,17 @@ the 10 s poller), never on a browser timer, and says when it was computed.
 | Tickets encerrados (Closed tickets) | the agent's tickets with `ended.outcome` in `merged`, `completed` | `ended.at` (`AgentState`, `"ended_at"`) | the runner's sqlite, read-only, filtered to the tickets whose channel is one of this repository's issues | `?` when the sqlite did not answer (`agent.ok == false`); a ticket with no channel URL belongs to no repository |
 | Fila (Queue) | tasks queued at the instant (depth, not a rate) | queued from `inserted_at` until `started_at` (the ticket's clock) or, failing that, `state_changed_at` | tasks | a task that left the queue at an unknown instant is left out; **24 h** and **7 d** are the peak depth at hour ends |
 | Ciclo (Cycle) | mean issue → PR and PR → merge | `tasks.inserted_at` → `pull_requests.opened_at` → `pull_requests.merged_at` | one cycle per ticket that ended `merged`: its channel issue, the newest PR in its `own_threads`, that PR's merge | over the tickets whose PR merged in the window; a leg with a missing instant is left out of that mean, never counted as zero |
-| Paralelismo (Parallelism) | `load.running` of `load.maxWorkers`, plus `load.queued` | now | `AgentBoard.Orchestrator.load/0`: `GET $SUPERAGENT_API/state` with `x-orchestrator-request: 1`, 500 ms to connect, 1 s to answer | no history: the value is the instant of the render; `?` with the reason when the API is off (`orchestrator_api: false`), unreachable or malformed |
+| Paralelismo (Parallelism) | `load.running` of `load.maxWorkers`, plus `load.queued` | now | `AgentBoard.Orchestrator.load/0`: `GET $SUPERAGENT_API/state` with `x-orchestrator-request: 1`, 500 ms to connect, 1 s to answer | no history: the value is the runner's last answer; `?` with the reason when the API is off (`orchestrator_api: false`), unreachable or malformed |
 
 - A commit read that fails is one `commit_error` event; the issues, pulls and
   tickets still sync, and the `sync` event has no `commits` key for that run.
   `commit_error` counts in the header's `N errors`.
 - The orchestrator is never asked from the browser and never retried in the
-  same render; a dead runner costs a render at most the connect timeout.
+  same render. Each load asks it in the background (`start_async`) and renders
+  with the last answer (`?`, "no observed data", until the first one); the
+  answer then replaces the Parallelism tile, and the lanes only when the agent
+  went up or down. A runner that accepts and never answers therefore holds no
+  render and no click (`board_agent_failure_test.exs`).
 - The tests: `metrics_test.exs` (windows, the reader's clock including a
   half-hour offset, empty and unknown sources), `metrics_observations_test.exs`
   (each source against the tables), `sync_commits_test.exs` (paging, dedupe,

@@ -354,4 +354,45 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     assert render_async(view) =~ "O agente está de pé."
     assert_received :agent_started
   end
+
+  # The runner accepts the connection and does not answer: the tab reads it
+  # in the background and keeps the last answer on screen meanwhile.
+  test "a runner that does not answer never holds the page", %{conn: conn} do
+    test = self()
+
+    Application.put_env(:agent_board, :orchestrator_client, fn ->
+      Req.new(
+        base_url: "http://orchestrator.test/orchestrator/api",
+        plug: {Req.Test, @orchestrator},
+        retry: false
+      )
+    end)
+
+    Req.Test.stub(@orchestrator, fn conn ->
+      send(test, {:orchestrator_get, self()})
+
+      receive do
+        {:answer, running} ->
+          Req.Test.json(conn, %{
+            "load" => %{"running" => running, "queued" => 0, "maxWorkers" => 3}
+          })
+      after
+        2_000 -> Req.Test.transport_error(conn, :timeout)
+      end
+    end)
+
+    {elapsed, {:ok, view, _html}} = :timer.tc(fn -> live(conn, ~p"/?repo=fixture/failures") end)
+    assert elapsed < 1_000_000
+
+    assert_receive {:orchestrator_get, runner}
+    send(runner, {:answer, 2})
+    render_async(view)
+    assert has_element?(view, ~s([data-key="load"][data-value="2/3/0"]))
+
+    send(view.pid, :board_updated)
+    {elapsed, _html} = :timer.tc(fn -> render(view) end)
+    assert elapsed < 500_000
+    assert_receive {:orchestrator_get, _silent}
+    assert has_element?(view, ~s([data-key="load"][data-value="2/3/0"]))
+  end
 end

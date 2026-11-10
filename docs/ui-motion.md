@@ -49,7 +49,7 @@ exists, not before.
 | Hover, focus and button/link state | 110 ms of background and border, `--ease-standard` | `button, a` |
 | Settings and section chevron | 160 ms of rotation; the state remains readable without motion | `.settings-chevron`, `.settings-fold-chevron` |
 | Attention dot and voice bars | slow loop only under `no-preference`; it communicates real state, not decoration | keyframes `attention-breathe` and `voice-flow` |
-| Throughput value that changed | 600 ms of color, `--agent` → `--ink`, `--ease-standard`; the `Throughput` hook compares the previous value and only then applies `.is-changed`, so a broadcast with no change moves nothing; the new sparkline bar just appears | `.ab-flow__value.is-changed` |
+| Throughput value that changed | 600 ms of color, `--agent` → `--ink`, `--ease-standard`; the `Throughput` hook compares the previous value and only then applies `.is-changed`, so a broadcast with no change moves nothing, and nor does the runner's first answer after `?`; the new sparkline bar just appears | `.ab-flow__value.is-changed` |
 
 ## What does not move
 
