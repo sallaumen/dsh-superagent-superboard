@@ -20,7 +20,8 @@ defmodule AgentBoard.System.GitTest do
 
   test "commits between two revisions carry the sha and title" do
     case Git.commits("HEAD~1", "HEAD") do
-      {:ok, [commit]} ->
+      # A merge commit at HEAD brings several: the newest is enough to check.
+      {:ok, [commit | _older]} ->
         assert commit.sha =~ ~r/^[0-9a-f]{7,}$/
         assert is_binary(commit.title)
 
