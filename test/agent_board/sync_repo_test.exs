@@ -425,6 +425,31 @@ defmodule AgentBoard.SyncRepoTest do
       assert Sync.sync_repo(client(), repo) == :ok
       refute_received {:read, _kind, _path}
     end
+
+    # The header, Activity and the voice read this count: a check or review
+    # read that failed is an error of this sync, like an issue or pull read.
+    test "a failed check or review read counts in the sync's errors", %{repo: repo} do
+      stub_github(fn conn ->
+        cond do
+          conn.request_path == "/repos/sallaumen/arena-rogue/pulls" ->
+            Req.Test.json(conn, [recent_pull(31, "abc", nil)])
+
+          String.ends_with?(conn.request_path, "/reviews") ->
+            Plug.Conn.send_resp(conn, 500, "boom")
+
+          String.ends_with?(conn.request_path, "/check-runs") ->
+            Plug.Conn.send_resp(conn, 500, "boom")
+
+          true ->
+            Req.Test.json(conn, [])
+        end
+      end)
+
+      assert Sync.sync_repo(client(), repo) == :ok
+
+      sync = Enum.find(Board.events(repo), &(&1.kind == "sync"))
+      assert sync.payload["errors"] == 2
+    end
   end
 
   test "an old merged pull skips its reviews", %{repo: repo} do

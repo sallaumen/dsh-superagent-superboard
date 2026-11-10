@@ -83,6 +83,22 @@ defmodule AgentBoard.Sync.WorkerTest do
       %{repo: repo}
     end
 
+    # A retry re-reads every repository. When only some of them failed, the
+    # failures are already events and the next cron run reads them again.
+    test "one broken repository does not send the whole run back to Oban", %{repo: repo} do
+      {:ok, broken} = Board.add_repository("sallaumen", "renamed")
+
+      Req.Test.stub(@stub, fn conn ->
+        if String.starts_with?(conn.request_path, "/repos/sallaumen/renamed"),
+          do: Plug.Conn.send_resp(conn, 404, "not found"),
+          else: Req.Test.json(conn, [])
+      end)
+
+      assert Worker.perform(%Oban.Job{args: %{}}) == :ok
+      assert Enum.any?(Board.events(broken), &(&1.kind == "sync_error"))
+      assert Enum.any?(Board.events(repo), &(&1.kind == "sync"))
+    end
+
     test "goes back to Oban to be retried", %{repo: repo} do
       Req.Test.stub(@stub, &Plug.Conn.send_resp(&1, 502, "bad gateway"))
 
