@@ -89,6 +89,52 @@ defmodule AgentBoard.TicketPollerTest do
     refute_receive :board_updated, 150
   end
 
+  test "a worktree change broadcasts while the ticket stays the same", %{db: db} do
+    repo = isolated_repo()
+    task(repo)
+
+    directory =
+      Path.join(System.tmp_dir!(), "ticket-worktree-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(directory)
+    {_, 0} = System.cmd("git", ["init", "-q", directory])
+
+    previous_ttl = Application.get_env(:agent_board, :worktree_ttl_ms)
+    Application.put_env(:agent_board, :worktree_ttl_ms, 0)
+
+    on_exit(fn ->
+      File.rm_rf!(directory)
+
+      if previous_ttl,
+        do: Application.put_env(:agent_board, :worktree_ttl_ms, previous_ttl),
+        else: Application.delete_env(:agent_board, :worktree_ttl_ms)
+    end)
+
+    ticket =
+      Jason.encode!(%{
+        id: "ticket-worktree-change",
+        mandate: %{basis: %{scope: %{number: 42}}},
+        assignments: [%{state: "running"}],
+        execution: %{directory: directory}
+      })
+
+    {:ok, statement} = Exqlite.Sqlite3.prepare(db, "insert into ticket (value) values (?)")
+    :ok = Exqlite.Sqlite3.bind(statement, [ticket])
+    :done = Exqlite.Sqlite3.step(db, statement)
+    :ok = Exqlite.Sqlite3.release(db, statement)
+
+    Board.subscribe(repo.id)
+    state = AgentBoard.TicketPoller.poll(%{})
+    assert_receive :board_updated
+
+    File.write!(Path.join(directory, "progress.txt"), "first edit")
+    state = AgentBoard.TicketPoller.poll(state)
+    assert_receive :board_updated
+
+    _state = AgentBoard.TicketPoller.poll(state)
+    refute_receive :board_updated, 150
+  end
+
   test "a stopped ticket is not overlaid", %{db: db} do
     repo = isolated_repo()
     t = task(repo)

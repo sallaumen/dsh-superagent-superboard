@@ -1,13 +1,14 @@
 defmodule AgentBoard.TicketPoller do
   @moduledoc """
-  The ticket poll: reads the runner's tickets and pushes the board when one
-  changed — the real-time shortcut, not only the five-minute sync.
+  The ticket poll: reads the runner's tickets and pushes the board when a
+  ticket or its active worktree changes — the real-time shortcut, not only
+  the five-minute sync.
 
   It applies the ticket overlay to the tasks and broadcasts to the LiveView.
   """
   use GenServer
 
-  alias AgentBoard.{AgentState, Board, TicketOverlay, Tickets}
+  alias AgentBoard.{AgentState, AgentWorktree, Board, TicketOverlay, Tickets}
   alias AgentBoard.Board.Repository
   alias AgentBoard.Repo
 
@@ -33,7 +34,7 @@ defmodule AgentBoard.TicketPoller do
 
   defp interval, do: Application.get_env(:agent_board, :ticket_poll_interval, 10_000)
 
-  @doc "One poll: overlay the tickets on the tasks and broadcast when the hash changed."
+  @doc "One poll: overlay the tickets on the tasks and broadcast when a visible signal changed."
   def poll(state \\ %{}) do
     poll_tickets(state)
   rescue
@@ -48,7 +49,7 @@ defmodule AgentBoard.TicketPoller do
     Repo.all(Repository)
     |> Enum.reduce(state, fn repo, acc ->
       overlay_tasks(repo, tickets)
-      hash = :erlang.phash2({repo.id, tickets})
+      hash = :erlang.phash2({repo.id, tickets, active_worktrees(repo, tickets)})
 
       if Map.get(acc, repo.id) != hash do
         Board.broadcast(repo.id)
@@ -57,6 +58,15 @@ defmodule AgentBoard.TicketPoller do
         acc
       end
     end)
+  end
+
+  defp active_worktrees(repo, tickets) do
+    for ticket <- tickets,
+        ticket["assignment"] == "running",
+        is_nil(ticket["ended_at"]),
+        AgentState.same_repository?(ticket, repo) do
+      {ticket["id"], AgentWorktree.observe(ticket)}
+    end
   end
 
   defp overlay_tasks(repo, tickets) do
