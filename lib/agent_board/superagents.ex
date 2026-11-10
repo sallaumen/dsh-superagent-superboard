@@ -11,6 +11,8 @@ defmodule AgentBoard.Superagents do
   alias AgentBoard.Repo
   alias AgentBoard.Superagents.{Manager, Provisioner, Superagent, SuperagentEvent}
 
+  @auto_start_pause_seconds 600
+
   @dsh_state Path.expand("~/.dsh/state")
   @dsh_profiles Path.expand("~/.dsh/profiles")
   @archive_root Path.expand("~/.agent_board/archived-superagents")
@@ -516,8 +518,8 @@ defmodule AgentBoard.Superagents do
   @doc """
   Reconcile the desired state after a board restart: start a stopped agent
   whose owner wants it running, stop a running agent whose owner stopped it,
-  and pause a ready one whose owner paused it. An error is left for a person,
-  not restarted in a loop.
+  and pause a ready one whose owner paused it. An error is left for a person;
+  an unreachable agent is started again at most once every ten minutes.
   """
   def reconcile(manager \\ Manager.impl()) do
     list()
@@ -528,10 +530,10 @@ defmodule AgentBoard.Superagents do
   defp reconcile_one(superagent, manager) do
     case {superagent.desired_state, superagent.observed_state} do
       {"running", state} when state in ["stopped", "unknown"] ->
-        start(superagent, manager)
+        auto_start(superagent, manager)
 
       {"running", "error"} ->
-        if unreachable?(superagent.last_error), do: start(superagent, manager), else: :ok
+        if unreachable?(superagent.last_error), do: auto_start(superagent, manager), else: :ok
 
       {"stopped", state} when state in ["ready", "paused", "starting"] ->
         stop(superagent, manager)
@@ -541,6 +543,28 @@ defmodule AgentBoard.Superagents do
 
       _ ->
         :ok
+    end
+  end
+
+  # A start whose health check times out still answers :ok, so an agent that
+  # dies at boot would be started again on every tick. The board's own starts
+  # are recorded and wait @auto_start_pause_seconds between them.
+  defp auto_start(superagent, manager) do
+    since = DateTime.add(DateTime.utc_now(), -@auto_start_pause_seconds, :second)
+
+    recent? =
+      Repo.exists?(
+        from e in SuperagentEvent,
+          where:
+            e.superagent_id == ^superagent.id and e.action == "start" and e.actor == "board" and
+              e.inserted_at > ^since
+      )
+
+    if recent? do
+      :ok
+    else
+      event(superagent, "start", superagent.observed_state, "starting", "board", "reconcile")
+      start(superagent, manager)
     end
   end
 

@@ -223,6 +223,18 @@ defmodule AgentBoard.SuperagentsTest do
     {:ok, unreachable} =
       Superagents.observe(unreachable, %{state: "error", detail: "econnrefused"})
 
+    # A start that times out still answers :ok, so an agent that dies at boot
+    # would be started on every tick: the board waits before trying again.
+    Superagents.reconcile(FakeManager)
+    assert Repo.get!(Superagent, unreachable.id).observed_state == "error"
+
+    Repo.update_all(
+      from(e in AgentBoard.Superagents.SuperagentEvent,
+        where: e.superagent_id == ^superagent.id and e.action == "start" and e.actor == "board"
+      ),
+      set: [inserted_at: DateTime.add(DateTime.utc_now(), -601, :second)]
+    )
+
     Superagents.reconcile(FakeManager)
     assert Repo.get!(Superagent, unreachable.id).observed_state == "starting"
 
