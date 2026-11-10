@@ -153,6 +153,31 @@ defmodule AgentBoard.RoutingTest do
       assert planned.routing.signals["claude"]["state"] == "unknown"
     end
 
+    test "a requested runner that does not watch the repository is not followed" do
+      planned = Routing.plan(%{owner: "x", name: "watched"}, %{}, "dsh", "api", @ready)
+
+      assert planned.executor == "claude"
+      assert planned.routing.suggestion.executor == "claude"
+
+      assert hd(planned.routing.suggestion.reasons) ==
+               "Você pediu o DeepSeek, mas o DeepSeek só atende o sallaumen/arena-rogue."
+    end
+
+    test "a requested runner that is only paused still gets the task" do
+      signals = put_in(@ready, ["dsh", :state], :paused)
+
+      planned = Routing.plan(@repo, %{}, "dsh", "api", signals)
+
+      assert planned.executor == "dsh"
+      assert planned.routing.suggestion.executor == "claude"
+    end
+
+    test "a requested runner in a repository nobody could read stays the choice" do
+      signals = Map.put(@ready, "dsh", %{state: {:unavailable, "sem resposta"}})
+
+      assert Routing.plan(@repo, %{}, "dsh", "api", signals).executor == "dsh"
+    end
+
     test "uses the suggestion when the request has no executor" do
       planned = Routing.plan(@repo, %{}, nil, "api", @ready)
 
