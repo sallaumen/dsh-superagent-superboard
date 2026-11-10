@@ -41,8 +41,8 @@ defmodule AgentBoard.ElevenLabs.RetryTest do
       n = Agent.get_and_update(calls, &{&1, &1 + 1})
 
       case Enum.at(statuses, n, List.last(statuses)) do
-        :transport ->
-          Req.Test.transport_error(conn, :timeout)
+        {:transport, reason} ->
+          Req.Test.transport_error(conn, reason)
 
         200 ->
           conn
@@ -66,11 +66,24 @@ defmodule AgentBoard.ElevenLabs.RetryTest do
     assert %{tts_requests: 1, tts_characters: 2} = Usage.today()
   end
 
-  test "a dropped connection is tried again", %{calls: calls} do
-    script(calls, [:transport, 200])
+  test "a connection that never opened is tried again", %{calls: calls} do
+    script(calls, [{:transport, :econnrefused}, 200])
 
     assert {:ok, _} = ElevenLabs.speech("oi")
     assert Agent.get(calls, & &1) == 2
+  end
+
+  # The request may have reached ElevenLabs and been billed: sending it again could pay twice.
+  test "a timeout or a dropped connection after sending is final", %{calls: calls} do
+    for reason <- [:timeout, :closed] do
+      Agent.update(calls, fn _ -> 0 end)
+      script(calls, [{:transport, reason}, 200])
+
+      assert {:error, _} = ElevenLabs.speech("oi")
+      assert Agent.get(calls, & &1) == 1
+    end
+
+    refute_received {:voice_activity, %{status: :retry}}
   end
 
   test "a refused key is final: one call, no retry", %{calls: calls} do
