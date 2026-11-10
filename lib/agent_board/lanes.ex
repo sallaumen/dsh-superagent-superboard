@@ -408,7 +408,11 @@ defmodule AgentBoard.Lanes do
     items =
       Enum.map(rows, fn row ->
         item = queue_item(row, merged, origins, blockers, now, last_visit)
-        Map.merge(item, %{sub: held_sub(row, waits) || item.sub, stuck: stuck(row, calls)})
+
+        Map.merge(item, %{
+          sub: held_sub(row, waits) || join_sub([item.sub, call_sub(row, calls)]),
+          stuck: stuck(row, calls)
+        })
       end)
 
     counts = queue_counts(items)
@@ -444,8 +448,16 @@ defmodule AgentBoard.Lanes do
       age_seconds: Time.age_seconds(row.inserted_at, now),
       is_new: new?(row.inserted_at, last_visit),
       sub: sub,
+      split: not is_nil(sub),
       note: duplicate && "Parece repetir ##{duplicate.number}, já mesclado"
     }
+  end
+
+  defp join_sub(parts) do
+    case Enum.reject(parts, &is_nil/1) do
+      [] -> nil
+      said -> Enum.join(said, " · ")
+    end
   end
 
   # A held task names what it still waits for; one with every dependency
@@ -474,6 +486,42 @@ defmodule AgentBoard.Lanes do
         )
         |> Repo.all()
         |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    end
+  end
+
+  # A called task between the call and the start: who holds it now. One
+  # nobody answered says so in `stuck/2`; a ticket that started or ended is
+  # the overlay's to place (`AgentBoard.Tickets.state/2`).
+  defp call_sub(row, calls) do
+    called = Release.called_at(row)
+    ticket = Map.get(calls.tickets, row.number)
+
+    cond do
+      is_nil(called) or unanswered?(row, calls) ->
+        nil
+
+      is_nil(ticket) ->
+        "chamado #{Time.ago(DateTime.diff(calls.now, called))}, aguardando o agente"
+
+      ticket["stopped"] || ticket["archived"] ->
+        nil
+
+      is_nil(ticket["started_at"]) and is_nil(ticket["ended_at"]) ->
+        agent_queue(ticket, calls.now)
+
+      true ->
+        nil
+    end
+  end
+
+  # The runner took the call and has no free worker yet.
+  defp agent_queue(ticket, now) do
+    case List.last(ticket["assignments"] || []) do
+      %{"created_at" => %DateTime{} = at} ->
+        "na fila do agente #{Time.ago(DateTime.diff(now, at))}"
+
+      _no_assignment ->
+        "na fila do agente"
     end
   end
 
@@ -513,7 +561,7 @@ defmodule AgentBoard.Lanes do
     %{
       all: length(items),
       new: Enum.count(items, & &1.is_new),
-      split: Enum.count(items, &(!is_nil(&1.sub))),
+      split: Enum.count(items, & &1.split),
       dupes: Enum.count(items, &(!is_nil(&1.note)))
     }
   end
@@ -530,7 +578,7 @@ defmodule AgentBoard.Lanes do
   end
 
   defp filter_items(items, :new), do: Enum.filter(items, & &1.is_new)
-  defp filter_items(items, :split), do: Enum.filter(items, &(!is_nil(&1.sub)))
+  defp filter_items(items, :split), do: Enum.filter(items, & &1.split)
   defp filter_items(items, :dupes), do: Enum.filter(items, &(!is_nil(&1.note)))
   defp filter_items(items, _all), do: items
 

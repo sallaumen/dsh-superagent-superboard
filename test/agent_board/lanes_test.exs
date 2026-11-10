@@ -450,6 +450,49 @@ defmodule AgentBoard.LanesTest do
       assert phrase == AgentBoard.Actions.phrase(:release_task, %{task: stuck, repository: repo})
     end
 
+    test "the queue says who holds a called task before it starts", %{repo: repo, now: now} do
+      recent = DateTime.add(now, -600, :second)
+      first = called(repo, 1, recent)
+      called(repo, 2, recent)
+      called(repo, 3, recent)
+      called(repo, 4, recent, %{executor: "claude", released_at: nil})
+      called(repo, 5, recent)
+      split = called(repo, 6, recent)
+      Repo.update_all(from(t in Task, where: t.id == ^split.id), set: [origin_task_id: first.id])
+      called(repo, 7, recent)
+
+      queue =
+        Lanes.queue(repo, %{},
+          now: now,
+          stall_after: 900,
+          tickets_by_number: %{
+            # the wait is the assignment's, not the call's
+            2 => %{
+              "numbers" => [2],
+              "assignments" => [%{"created_at" => DateTime.add(now, -300, :second)}]
+            },
+            5 => %{"numbers" => [5], "assignment" => "pending"},
+            7 => %{"numbers" => [7], "stopped" => true},
+            3 => %{"numbers" => [3], "started_at" => recent, "ended_at" => now}
+          }
+        )
+
+      assert Map.new(queue.items, &{&1.number, &1.sub}) == %{
+               1 => "chamado há 10 min, aguardando o agente",
+               2 => "na fila do agente há 5 min",
+               3 => nil,
+               4 => nil,
+               5 => "na fila do agente",
+               6 => "dividido de #1 · chamado há 10 min, aguardando o agente",
+               7 => nil
+             }
+
+      # a call line is not a split
+      assert queue.counts.split == 1
+
+      assert Enum.all?(queue.items, &is_nil(&1.stuck))
+    end
+
     test "is only a task with no ticket, called long enough ago", %{repo: repo, now: now} do
       taken = called(repo, 1, ~U[2026-11-09 20:47:31Z])
       fresh = called(repo, 2, DateTime.add(now, -600, :second))

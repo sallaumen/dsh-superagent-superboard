@@ -29,6 +29,7 @@ defmodule AgentBoardWeb.BoardLive do
     Runners,
     Settings,
     Superagents,
+    Tickets,
     Time,
     Titles,
     Unblock,
@@ -391,16 +392,18 @@ defmodule AgentBoardWeb.BoardLive do
     ticket = Map.get(run.tickets, task.number)
     silence = Map.get(run.silences, task.number)
 
+    worktree = AgentWorktree.observe(ticket)
+
     %{
       id: task.id,
       number: task.number,
       title: task.title,
-      step: AgentWorktree.step(ticket),
+      step: worktree && worktree.step,
       elapsed: task.started_at && Time.age_seconds(task.started_at, run.frozen_at || run.now),
       silence: silence,
       stalled: AgentSignal.stalled?(silence, run.stall_after),
       agent: nil,
-      phases: []
+      phases: Tickets.stages(ticket, worktree)
     }
   end
 

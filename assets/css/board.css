@@ -214,7 +214,7 @@ body { margin: 0; background: var(--paper); }
 .ab-run__step .ab-meta { flex: none; }
 .ab-run__clock { font-family: var(--font-mono); font-size: 12.5px; color: var(--agent); font-variant-numeric: tabular-nums; text-align: right; }
 .ab-run__clock small { font-family: var(--font-sans); color: var(--ink-muted); font-size: 12px; margin-left: 8px; }
-.ab-phases { grid-column: 3; grid-row: 2; justify-self: end; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ab-phases { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .ab-phase { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-muted); }
 .ab-phase.is-done { color: var(--ink); }
 .ab-phase.is-now { color: var(--agent); font-weight: 600; }
@@ -460,7 +460,6 @@ body { margin: 0; background: var(--paper); }
   .ab-need__side { grid-column: 2; grid-row: auto; }
   .ab-need__title span:last-child { white-space: normal; }
   .ab-run__step { flex-wrap: wrap; grid-column: 2 / span 2; }
-  .ab-phases { grid-column: 2 / span 2; grid-row: auto; justify-self: start; }
   .ab-need__actions { grid-column: 2; grid-row: auto; justify-self: start; margin: 0 0 0 -8px; }
   .ab-row { grid-template-columns: 22px 12px minmax(0, 1fr); }
   .ab-row__side { display: none; }
