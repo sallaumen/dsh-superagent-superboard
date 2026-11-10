@@ -270,6 +270,34 @@ defmodule AgentBoardWeb.InspectorTest do
     refute view |> element("#conversation") |> render() =~ "<script>"
   end
 
+  test "a merged task keeps Ask and Archive, drops Stop, and warns that a message resumes it", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-merged")
+    merged = task(repo, 43, "Entregue", "done")
+    open = task(repo, 44, "Em andamento", "ready")
+
+    {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", merged.id))
+
+    assert has_element?(view, ".ab-insp__actions button", "Perguntar")
+    assert has_element?(view, ".ab-insp__actions .ab-insp__archive", "Arquivar")
+    refute has_element?(view, ".ab-insp__actions", "Parar")
+
+    assert has_element?(
+             view,
+             "#ask-merged-hint",
+             "A tarefa #43 está mesclada. Esta mensagem vai para a issue fechada e menciona o agente, que retoma o trabalho no mesmo ticket."
+           )
+
+    {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", open.id))
+    refute has_element?(view, "#ask-merged-hint")
+    assert has_element?(view, "#ask-agent .ab-compose__hint", "issue #44 do GitHub")
+
+    english = Phoenix.ConnTest.build_conn()
+    {:ok, view, _html} = live(english, BoardNavigation.path(repo, "conversation", merged.id))
+    assert has_element?(view, "#ask-merged-hint", "Task #43 is merged.")
+  end
+
   test "Send sits inside the message box, beside the words", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "inspector-send")
     task = task(repo, 42, "Responder", "ready")

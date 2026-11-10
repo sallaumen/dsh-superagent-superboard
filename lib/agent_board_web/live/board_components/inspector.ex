@@ -494,9 +494,17 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               <.kbd :if={is_nil(@ask_sending)} key="↵" />
             </button>
           </div>
-          <p class="ab-compose__hint">
+          <%!-- A merged task's issue is closed, and a person's comment there
+               resumes its ticket in the runner (ADR 0003): say so before it is sent. --%>
+          <p :if={@task.state != "done"} class="ab-compose__hint">
             {gettext(
               "This message is posted on GitHub issue #%{number} and mentions the agent when you send it.",
+              number: @task.number
+            )}
+          </p>
+          <p :if={@task.state == "done"} id="ask-merged-hint" class="ab-compose__hint">
+            {gettext(
+              "Task #%{number} is merged. This message is posted on its closed issue and mentions the agent, which resumes the work on the same ticket.",
               number: @task.number
             )}
           </p>
