@@ -1150,8 +1150,17 @@ defmodule AgentBoardWeb.BoardLive do
         do: load(socket, repo),
         else: socket
 
-    {:noreply, mark_open_conversation_seen(socket)}
+    {:noreply, socket |> assign_page_title() |> mark_open_conversation_seen()}
   end
+
+  # The browser tab says what this tab shows, so several open boards differ.
+  defp assign_page_title(%{assigns: %{view: "hoje"}} = socket),
+    do: assign(socket, :page_title, gettext("Today") <> " · Agent Board")
+
+  defp assign_page_title(%{assigns: %{repo: %{name: name}}} = socket),
+    do: assign(socket, :page_title, name <> " · Agent Board")
+
+  defp assign_page_title(socket), do: assign(socket, :page_title, nil)
 
   # The Codex quota moves while the board runs. Reading it when the settings
   # panel opens keeps the navigation hint fresh without a query per render.
