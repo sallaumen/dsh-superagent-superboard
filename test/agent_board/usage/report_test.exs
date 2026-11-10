@@ -295,4 +295,20 @@ defmodule AgentBoard.Usage.ReportTest do
     assert Costs.cost("dsh", [%{model: "not-in-the-table"}]) == nil
     assert Costs.cost("codex", [%{model: "gpt-6-sol"}]) == nil
   end
+
+  # Read from Claude Code's own `cost-state` lines on 2026-11-10, on the lines
+  # that split 5-minute and 1-hour cache writes: fable-5-2 matches on 3 of 3
+  # and haiku-5-5 on 7 of 8, to five decimals.
+  test "fable-5-2 and haiku-5-5 have the list price Claude Code itself uses" do
+    assert %{input: 5.0, output: 25.0, cache_read: 0.5, cache_write: 6.25} =
+             Costs.prices("claude_code", "claude-fable-5-2")
+
+    # A real haiku line: 1,009,421 in, 106,421 out, 13 web searches, US$ 0.28415.
+    # The ledger does not count searches (US$ 0.01 each), so the tokens alone
+    # are 0.28415 - 0.13.
+    assert %{micros: 154_153, complete?: true} =
+             Costs.cost("claude_code", [
+               %{model: "claude-haiku-5-5", input_tokens: 1_009_421, output_tokens: 106_421}
+             ])
+  end
 end
