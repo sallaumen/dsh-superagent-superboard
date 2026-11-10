@@ -3886,12 +3886,12 @@ msgstr ""
 msgid "The connection dropped before an answer."
 msgstr ""
 
-#: lib/agent_board_web/failure_text.ex:44
+#: lib/agent_board_web/failure_text.ex:47
 #, elixir-autogen, elixir-format
 msgid "GitHub answered with an error (HTTP %{status})."
 msgstr ""
 
-#: lib/agent_board_web/failure_text.ex:56
+#: lib/agent_board_web/failure_text.ex:59
 #, elixir-autogen, elixir-format
 msgid "Something unexpected went wrong; the detail is in the log."
 msgstr ""
@@ -5424,4 +5424,9 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/now_lane.ex:134
 #, elixir-autogen, elixir-format
 msgid "Stage: %{stage}"
+msgstr ""
+
+#: lib/agent_board_web/failure_text.ex:44
+#, elixir-autogen, elixir-format
+msgid "GitHub refused the board's token (HTTP %{status})."
 msgstr ""

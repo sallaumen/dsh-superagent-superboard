@@ -459,7 +459,10 @@ defmodule AgentBoard.Board do
 
   @doc "The conversation of a task: its comments, oldest first."
   def comments(task) do
-    Repo.all(from c in Comment, where: c.task_id == ^task.id, order_by: [asc: c.inserted_at])
+    # A sync stores a whole thread in one second: the id keeps GitHub's order within it.
+    Repo.all(
+      from c in Comment, where: c.task_id == ^task.id, order_by: [asc: c.inserted_at, asc: c.id]
+    )
   end
 
   @doc "Open prerequisite tasks that point at this blocked task, oldest first."
