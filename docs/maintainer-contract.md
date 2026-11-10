@@ -290,7 +290,7 @@ that already worked).
   (`sync_test.exs`, `ticket_poller_test.exs`, `board_stall_test.exs`).
 - Validação (validation) is the local CI of the PRs the ticket and the
   workpad name (`LocalCI.by_pr/3`, scope `:workpad`): the command, its result
-  and the sha it ran on. The sha is checked against the PR's head
+  and the sha it ran on. Without a `mix precommit` line, any failing gate is the result. The sha is checked against the PR's head
   (`pull_requests.head_sha`, written by the sync): a gate on another commit
   is `:stale`, shown as `CI local ?` with both shas in the tooltip, never as
   a pass. A head the sync has not written yet cannot contradict the gate.

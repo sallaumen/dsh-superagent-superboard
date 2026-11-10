@@ -170,6 +170,24 @@ defmodule AgentBoard.LocalCITest do
     assert status == %{}
   end
 
+  for {summary, state} <- [
+        {"PR #21: mix precommit: passou, nenhum teste falhou", :pass},
+        {"PR #21: mix precommit: passou (0 failed)", :pass},
+        {"PR #21: mix precommit passed with no failing tests", :pass},
+        {"PR #21: mix precommit não passou", :fail},
+        {"PR #21: mix precommit nao passou", :fail},
+        {"PR #21: mix precommit did not pass", :fail},
+        {"PR #21: mix precommit didn't pass", :fail},
+        {"PR #21: mix precommit falhou (2 falhas)", :fail},
+        {"PR #21: mix precommit failed: 2 failures", :fail}
+      ] do
+    test "a report reads #{inspect(summary)}" do
+      status = LocalCI.by_pr(@repo, [ticket([{unquote(summary), ~U[2026-11-06 12:00:00Z]}])])
+
+      assert %{21 => %{state: unquote(state)}} = status
+    end
+  end
+
   test "another repository and a report without precommit stay unknown" do
     other =
       ticket([{"mix precommit passed (1 test, 0 failures).", ~U[2026-11-06 12:00:00Z]}], [
