@@ -272,6 +272,9 @@ defmodule AgentBoard.Board do
 
   def ended_page_size, do: @ended_page_size
 
+  @doc "The task states that mean the work is over."
+  def ended_states, do: @ended_states
+
   @doc """
   A page of the tasks that ended, newest first by the instant the board saw
   the end, each with how it ended and the pull request that closes it.

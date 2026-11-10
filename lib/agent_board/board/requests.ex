@@ -5,7 +5,8 @@ defmodule AgentBoard.Board.Requests do
   The claim is a `draft` task with the request key, inserted before the
   GitHub call; the same words submitted twice (a double click, a reload, a
   retry after a partial split) find that row and answer the receipt instead
-  of opening a second issue. The GitHub failure removes the claim.
+  of opening a second issue. The GitHub failure removes the claim, and a task
+  that ended gives its key back: the same words later open a new issue.
 
   This is the Board context's command side for a new task: it writes the
   task row, records the router line and broadcasts. It is a module of the
@@ -249,12 +250,25 @@ defmodule AgentBoard.Board.Requests do
 
     body = if Map.get(request, :held), do: Executors.held_body(body), else: body
     request = %{request | title: title, body: body}
+    release_ended_key(repository, key)
 
     case existing_request(repository, key, title, body) do
       %Task{number: nil} = claim -> retake_or_wait(claim, repository, request, client)
       %Task{} = task -> {:ok, task, :existing}
       nil -> claim_and_create(repository, request, client)
     end
+  end
+
+  # The key guards a double submit, not the words forever: asking again after
+  # the task ended is new work, and the old row stays without its key.
+  defp release_ended_key(repository, key) do
+    Repo.update_all(
+      from(t in Task,
+        where: t.repository_id == ^repository.id and t.request_key == ^key,
+        where: t.state in ^Board.ended_states() or t.stopped or t.archived
+      ),
+      set: [request_key: nil]
+    )
   end
 
   # If the process died after GitHub answered, retaking opens a second issue;

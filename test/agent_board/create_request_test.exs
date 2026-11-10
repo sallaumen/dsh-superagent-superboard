@@ -94,6 +94,74 @@ defmodule AgentBoard.CreateRequestTest do
     assert Repo.get(Task, first.id).request_key == key
   end
 
+  for {state, flags} <- [
+        {"done", []},
+        {"closed", []},
+        {"stopped", [stopped: true]},
+        {"archived", [archived: true]}
+      ] do
+    test "the same words after a #{state} task open a new issue", %{repo: repo} do
+      {:ok, counter} = Agent.start_link(fn -> 0 end)
+      count_issues(counter)
+
+      key = Board.request_key(repo, "single", ["Add a boss", "Corpo"])
+      request = %{title: "Add a boss", body: "Corpo", key: key}
+
+      assert {:ok, first, :created} = Board.Requests.create_request(repo, request, client())
+
+      first
+      |> Ecto.Changeset.change([state: unquote(state)] ++ unquote(flags))
+      |> Repo.update!()
+
+      assert {:ok, second, :created} = Board.Requests.create_request(repo, request, client())
+
+      assert second.id != first.id
+      assert Agent.get(counter, & &1) == 2
+      assert Repo.get(Task, first.id).request_key == nil
+      assert Repo.get(Task, second.id).request_key == key
+    end
+  end
+
+  test "the same words while the task is still open answer the receipt", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+    count_issues(counter)
+
+    key = Board.request_key(repo, "single", ["Add a boss", "Corpo"])
+    request = %{title: "Add a boss", body: "Corpo", key: key}
+
+    assert {:ok, first, :created} = Board.Requests.create_request(repo, request, client())
+    first |> Ecto.Changeset.change(state: "running") |> Repo.update!()
+
+    assert {:ok, again, :existing} = Board.Requests.create_request(repo, request, client())
+    assert again.id == first.id
+    assert Agent.get(counter, & &1) == 1
+    assert Repo.get(Task, first.id).request_key == key
+  end
+
+  test "the same words while the first is being created wait for it", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+    count_issues(counter)
+
+    key = Board.request_key(repo, "single", ["Add a boss", "Corpo"])
+
+    claim =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        title: "Add a boss",
+        body: "Corpo",
+        state: "draft",
+        request_key: key
+      })
+      |> Repo.insert!()
+
+    request = %{title: "Add a boss", body: "Corpo", key: key}
+
+    assert {:error, :in_progress} = Board.Requests.create_request(repo, request, client())
+    assert Agent.get(counter, & &1) == 0
+    assert Repo.get(Task, claim.id).request_key == key
+  end
+
   test "a split with more than one task creates one objective", %{repo: repo} do
     {:ok, counter} = Agent.start_link(fn -> 0 end)
     count_issues(counter)
