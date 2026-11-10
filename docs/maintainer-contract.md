@@ -944,10 +944,11 @@ that watches one GitHub repository and picks the issues whose body mentions
   (`~/.dsh/state/superagent*/orchestrator.sqlite`); tickets are merged by
   repository, so the DeepSeek lane shows both. `AgentState.paths/0` also
   accepts an explicit `:state_dbs` list.
-- **A retry goes to the agent that holds the ticket.**
+- **A retry, the load and the ceiling go to the repository's agent.**
   `Orchestrator.client_for/1` binds the client to the port of the repository's
   superagent row, and a repository without a row uses the primary
-  (`Orchestrator.client/0`).
+  (`Orchestrator.client/0`). The board drops an answer that is not about the
+  repository it shows.
 - **A new project is provisioned from the panel.** The form picks an existing
   repository, a ready source profile, the local checkout and the initial
   workers. The red `provision_superagent` action reserves the row, copies the
@@ -1519,7 +1520,7 @@ the 10 s poller), never on a browser timer, and says when it was computed.
 | Tickets encerrados (Closed tickets) | the agent's tickets with `ended.outcome` in `merged`, `completed` | `ended.at` (`AgentState`, `"ended_at"`) | the runner's sqlite, read-only, filtered to the tickets whose channel is one of this repository's issues | `?` when the sqlite did not answer (`agent.ok == false`); a ticket with no channel URL belongs to no repository |
 | Fila (Queue) | tasks queued at the instant (depth, not a rate) | queued from `inserted_at` until `started_at` (the ticket's clock) or, failing that, `state_changed_at` | tasks | a task that left the queue at an unknown instant is left out; **24 h** and **7 d** are the peak depth at hour ends |
 | Ciclo (Cycle) | mean issue → PR and PR → merge | `tasks.inserted_at` → `pull_requests.opened_at` → `pull_requests.merged_at` | one cycle per ticket that ended `merged`: its channel issue, the newest PR in its `own_threads`, that PR's merge | over the tickets whose PR merged in the window; a leg with a missing instant is left out of that mean, never counted as zero |
-| Paralelismo (Parallelism) | `load.running` of `load.maxWorkers`, plus `load.queued` | now | `AgentBoard.Orchestrator.load/0`: `GET $SUPERAGENT_API/state` with `x-orchestrator-request: 1`, 500 ms to connect, 1 s to answer | no history: the value is the runner's last answer; `?` with the reason when the API is off (`orchestrator_api: false`), unreachable or malformed |
+| Paralelismo (Parallelism) | `load.running` of `load.maxWorkers`, plus `load.queued` | now | `AgentBoard.Orchestrator.load/1` on `client_for(repository)`: `GET /state` on the port of the repository's superagent, or `$SUPERAGENT_API` without one, with `x-orchestrator-request: 1`, 500 ms to connect, 1 s to answer | no history: the value is the runner's last answer; `?` with the reason when the API is off (`orchestrator_api: false`), unreachable or malformed |
 
 - A commit read that fails is one `commit_error` event; the issues, pulls and
   tickets still sync, and the `sync` event has no `commits` key for that run.
