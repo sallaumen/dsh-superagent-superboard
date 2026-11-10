@@ -234,14 +234,15 @@ defmodule AgentBoard.Runners do
         }
 
       text =~
-          ~r/quota|rate limit|usage limit|401|402|403|429|login|not logged|unauthorized|authentication/i ->
+          ~r/quota|rate limit|usage limit|\b(401|402|403|429)\b|login|not logged|unauthorized|authentication/i ->
         %{
           kind: :switch,
           executor: other,
           reason: "A última execução parou por cota ou login (#{short(text)})."
         }
 
-      text =~ ~r/timeout|timed out|transport|network|dns|resolve|connection|temporar|5\d\d/i ->
+      text =~
+          ~r/timeout|timed out|transport|network|dns|resolve|connection|temporar|\b(http|status|code|error)\W{0,3}5\d\d\b/i ->
         %{
           kind: :retry,
           executor: execution.executor,
