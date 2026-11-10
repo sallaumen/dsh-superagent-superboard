@@ -44,7 +44,7 @@ msgstr ""
 msgid "Executors"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:125
+#: lib/agent_board_web/live/board_components/inspector.ex:124
 #, elixir-autogen, elixir-format
 msgid "Local dispatch"
 msgstr ""
@@ -54,7 +54,7 @@ msgstr ""
 msgid "Owner"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:176
+#: lib/agent_board_web/live/board_components/inspector.ex:175
 #, elixir-autogen, elixir-format
 msgid "Pause dispatch"
 msgstr ""
@@ -70,7 +70,7 @@ msgstr ""
 msgid "Restart pending"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:176
+#: lib/agent_board_web/live/board_components/inspector.ex:175
 #, elixir-autogen, elixir-format
 msgid "Resume dispatch"
 msgstr ""
@@ -117,7 +117,7 @@ msgstr ""
 msgid "AI not configured. Split is unavailable until a model is configured."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:368
+#: lib/agent_board_web/live/board_components/inspector.ex:367
 #, elixir-autogen, elixir-format
 msgid "AI not configured; write the response below or create the blocking task."
 msgstr ""
@@ -138,14 +138,14 @@ msgstr ""
 msgid "Add project"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:159
+#: lib/agent_board_web/live/board_components/inspector.ex:158
 #, elixir-autogen, elixir-format
 msgid "Adjust the per-task cap in Settings before trying again; the board won't start another run on its own."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:896
-#: lib/agent_board_web/live/board_components/inspector.ex:905
-#: lib/agent_board_web/live/board_components/inspector.ex:916
+#: lib/agent_board_web/live/board_components/inspector.ex:895
+#: lib/agent_board_web/live/board_components/inspector.ex:904
+#: lib/agent_board_web/live/board_components/inspector.ex:915
 #, elixir-autogen, elixir-format
 msgid "Agent Executor"
 msgstr ""
@@ -160,12 +160,12 @@ msgstr ""
 msgid "Agents"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:255
+#: lib/agent_board_web/live/board_components/inspector.ex:254
 #, elixir-autogen, elixir-format
 msgid "Archive"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:198
+#: lib/agent_board_web/live/board_components/inspector.ex:197
 #, elixir-autogen, elixir-format
 msgid "Ask"
 msgstr ""
@@ -186,7 +186,7 @@ msgstr ""
 msgid "Average time from issue to PR and from PR to merge, for tickets whose PR was merged in the window"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:440
+#: lib/agent_board_web/live/board_components/inspector.ex:439
 #, elixir-autogen, elixir-format
 msgid "Back and edit"
 msgstr ""
@@ -196,28 +196,28 @@ msgstr ""
 msgid "Based on the Mac clock. If it is asleep at that time, the summary is generated once when it wakes up."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:329
+#: lib/agent_board_web/live/board_components/inspector.ex:328
 #, elixir-autogen, elixir-format
 msgid "Block"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:726
+#: lib/agent_board_web/live/board_components/inspector.ex:725
 #, elixir-autogen, elixir-format
 msgid "Board dispatches"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:924
+#: lib/agent_board_web/live/board_components/inspector.ex:923
 #, elixir-autogen, elixir-format
 msgid "Cache reads"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:694
+#: lib/agent_board_web/live/board_components/inspector.ex:693
 #, elixir-autogen, elixir-format
 msgid "Calls made by the board."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/composer.ex:166
-#: lib/agent_board_web/live/board_components/inspector.ex:412
+#: lib/agent_board_web/live/board_components/inspector.ex:411
 #: lib/agent_board_web/live/board_components/settings/project_access.ex:482
 #, elixir-autogen, elixir-format
 msgid "Cancel"
@@ -272,14 +272,14 @@ msgstr ""
 msgid "Collapse"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:666
-#: lib/agent_board_web/live/board_components/inspector.ex:783
+#: lib/agent_board_web/live/board_components/inspector.ex:665
+#: lib/agent_board_web/live/board_components/inspector.ex:782
 #: lib/agent_board_web/live/board_components/settings/execution.ex:311
 #, elixir-autogen, elixir-format
 msgid "Cost"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:372
+#: lib/agent_board_web/live/board_components/inspector.ex:371
 #, elixir-autogen, elixir-format
 msgid "Could not generate suggestions. Write the response or create the blocking task."
 msgstr ""
@@ -289,12 +289,12 @@ msgstr ""
 msgid "Create"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:363
+#: lib/agent_board_web/live/board_components/inspector.ex:362
 #, elixir-autogen, elixir-format
 msgid "Create blocking task"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:433
+#: lib/agent_board_web/live/board_components/inspector.ex:432
 #, elixir-autogen, elixir-format
 msgid "Create task"
 msgstr ""
@@ -330,17 +330,17 @@ msgstr ""
 msgid "Empty queue."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/archive.ex:49
+#: lib/agent_board_web/live/board_components/archive.ex:53
 #, elixir-autogen, elixir-format
 msgid "End of saved history"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:503
+#: lib/agent_board_web/live/board_components/inspector.ex:502
 #, elixir-autogen, elixir-format
 msgid "Errors and attempts"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:925
+#: lib/agent_board_web/live/board_components/inspector.ex:924
 #, elixir-autogen, elixir-format
 msgid "Estimated Cost"
 msgstr ""
@@ -370,7 +370,7 @@ msgstr ""
 msgid "GitHub is checked every 5 minutes; the agent process, every 10 seconds."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:117
+#: lib/agent_board_web/live/board_components/inspector.ex:116
 #, elixir-autogen, elixir-format
 msgid "GitHub issue"
 msgstr ""
@@ -380,14 +380,14 @@ msgstr ""
 msgid "History"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:126
+#: lib/agent_board_web/live/board_components/inspector.ex:125
 #, elixir-autogen, elixir-format
 msgid "In Progress"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:663
-#: lib/agent_board_web/live/board_components/inspector.ex:777
-#: lib/agent_board_web/live/board_components/inspector.ex:922
+#: lib/agent_board_web/live/board_components/inspector.ex:662
+#: lib/agent_board_web/live/board_components/inspector.ex:776
+#: lib/agent_board_web/live/board_components/inspector.ex:921
 #, elixir-autogen, elixir-format
 msgid "Input"
 msgstr ""
@@ -434,7 +434,7 @@ msgstr ""
 msgid "Logs"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1041
+#: lib/agent_board_web/live/board_components/inspector.ex:1040
 #: lib/agent_board_web/live/board_components/merge_log.ex:25
 #, elixir-autogen, elixir-format
 msgid "Merged"
@@ -445,12 +445,12 @@ msgstr ""
 msgid "Merged PRs"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:695
+#: lib/agent_board_web/live/board_components/inspector.ex:694
 #, elixir-autogen, elixir-format
 msgid "Missing cost appears as —; the total is a minimum."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:662
+#: lib/agent_board_web/live/board_components/inspector.ex:661
 #: lib/agent_board_web/live/board_components/settings/execution.ex:459
 #: lib/agent_board_web/live/board_components/settings/execution.ex:483
 #, elixir-autogen, elixir-format
@@ -482,7 +482,7 @@ msgstr ""
 msgid "New request"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/archive.ex:18
+#: lib/agent_board_web/live/board_components/archive.ex:21
 #, elixir-autogen, elixir-format
 msgid "Newest first"
 msgstr ""
@@ -492,7 +492,7 @@ msgstr ""
 msgid "Next / Previous"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:648
+#: lib/agent_board_web/live/board_components/inspector.ex:647
 #, elixir-autogen, elixir-format
 msgid "No AI calls recorded for this task."
 msgstr ""
@@ -502,7 +502,7 @@ msgstr ""
 msgid "No AI calls recorded yet."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:625
+#: lib/agent_board_web/live/board_components/inspector.ex:624
 #, elixir-autogen, elixir-format
 msgid "No activity recorded."
 msgstr ""
@@ -512,12 +512,12 @@ msgstr ""
 msgid "No agents working."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:602
+#: lib/agent_board_web/live/board_components/inspector.ex:601
 #, elixir-autogen, elixir-format
 msgid "No conversation in this task."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:897
+#: lib/agent_board_web/live/board_components/inspector.ex:896
 #, elixir-autogen, elixir-format
 msgid "No executor transcript for this task."
 msgstr ""
@@ -532,12 +532,12 @@ msgstr ""
 msgid "No repositories being tracked."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:606
+#: lib/agent_board_web/live/board_components/inspector.ex:605
 #, elixir-autogen, elixir-format
 msgid "No response yet. The agent receives the message via GitHub."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:717
+#: lib/agent_board_web/live/board_components/inspector.ex:716
 #, elixir-autogen, elixir-format
 msgid "No runs for this task in the usage ledger."
 msgstr ""
@@ -593,7 +593,7 @@ msgstr ""
 msgid "One source could not be read; the reason is in the list of sources above."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1042
+#: lib/agent_board_web/live/board_components/inspector.ex:1041
 #: lib/agent_board_web/live/board_components/today.ex:125
 #: lib/agent_board_web/live/board_components/today.ex:361
 #, elixir-autogen, elixir-format
@@ -621,7 +621,7 @@ msgstr ""
 msgid "Open issue"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1008
+#: lib/agent_board_web/live/board_components/inspector.ex:1007
 #, elixir-autogen, elixir-format
 msgid "Open on GitHub"
 msgstr ""
@@ -631,9 +631,9 @@ msgstr ""
 msgid "Or edit the request above and split again."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:664
-#: lib/agent_board_web/live/board_components/inspector.ex:780
-#: lib/agent_board_web/live/board_components/inspector.ex:923
+#: lib/agent_board_web/live/board_components/inspector.ex:663
+#: lib/agent_board_web/live/board_components/inspector.ex:779
+#: lib/agent_board_web/live/board_components/inspector.ex:922
 #, elixir-autogen, elixir-format
 msgid "Output"
 msgstr ""
@@ -658,7 +658,7 @@ msgstr ""
 msgid "Play"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:405
+#: lib/agent_board_web/live/board_components/inspector.ex:404
 #, elixir-autogen, elixir-format
 msgid "Prepare task"
 msgstr ""
@@ -673,8 +673,8 @@ msgstr ""
 msgid "Project"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:324
-#: lib/agent_board_web/live/board_components/inspector.ex:1026
+#: lib/agent_board_web/live/board_components/inspector.ex:323
+#: lib/agent_board_web/live/board_components/inspector.ex:1025
 #, elixir-autogen, elixir-format
 msgid "Question"
 msgstr ""
@@ -702,7 +702,7 @@ msgstr ""
 msgid "Receipt"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/merge_trend.ex:31
+#: lib/agent_board_web/live/board_components/merge_trend.ex:45
 #, elixir-autogen, elixir-format
 msgid "Recent merges"
 msgstr ""
@@ -738,8 +738,8 @@ msgstr ""
 msgid "Request"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:774
-#: lib/agent_board_web/live/board_components/inspector.ex:921
+#: lib/agent_board_web/live/board_components/inspector.ex:773
+#: lib/agent_board_web/live/board_components/inspector.ex:920
 #, elixir-autogen, elixir-format
 msgid "Requests"
 msgstr ""
@@ -754,7 +754,7 @@ msgstr ""
 msgid "Respond here"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:235
+#: lib/agent_board_web/live/board_components/inspector.ex:234
 #: lib/agent_board_web/live/board_components/settings/projects.ex:210
 #, elixir-autogen, elixir-format
 msgid "Resume"
@@ -772,7 +772,7 @@ msgstr ""
 msgid "Review the questions below and edit the request."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1025
+#: lib/agent_board_web/live/board_components/inspector.ex:1024
 #: lib/agent_board_web/live/board_components/now_lane.ex:61
 #: lib/agent_board_web/live/board_components/repo_rail.ex:70
 #: lib/agent_board_web/live/board_components/settings_menu.ex:158
@@ -792,12 +792,12 @@ msgstr ""
 msgid "Save limits"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/archive.ex:47
+#: lib/agent_board_web/live/board_components/archive.ex:51
 #, elixir-autogen, elixir-format
 msgid "Scroll to older PRs"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:467
+#: lib/agent_board_web/live/board_components/inspector.ex:466
 #: lib/agent_board_web/live/board_components/voice_conversation_log.ex:73
 #, elixir-autogen, elixir-format
 msgid "Send"
@@ -808,7 +808,7 @@ msgstr ""
 msgid "Send as a single request"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:920
+#: lib/agent_board_web/live/board_components/inspector.ex:919
 #, elixir-autogen, elixir-format
 msgid "Sessions"
 msgstr ""
@@ -836,7 +836,7 @@ msgstr ""
 msgid "Showing last saved data; time is stopped."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:945
+#: lib/agent_board_web/live/board_components/inspector.ex:944
 #, elixir-autogen, elixir-format
 msgid "Some token type has no price in the table (cache read today); cost is a minimum."
 msgstr ""
@@ -897,7 +897,7 @@ msgstr ""
 msgid "State folder"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:378
+#: lib/agent_board_web/live/board_components/inspector.ex:377
 #, elixir-autogen, elixir-format
 msgid "Suggestions — click to edit before sending"
 msgstr ""
@@ -924,17 +924,17 @@ msgstr ""
 msgid "Talk to Wispr"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:537
+#: lib/agent_board_web/live/board_components/inspector.ex:536
 #, elixir-autogen, elixir-format
 msgid "Task"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:715
+#: lib/agent_board_web/live/board_components/inspector.ex:714
 #, elixir-autogen, elixir-format
 msgid "Task Result:"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:392
+#: lib/agent_board_web/live/board_components/inspector.ex:391
 #, elixir-autogen, elixir-format
 msgid "Task title"
 msgstr ""
@@ -970,7 +970,7 @@ msgstr ""
 msgid "The agent is thinking..."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:320
+#: lib/agent_board_web/live/board_components/inspector.ex:319
 #, elixir-autogen, elixir-format
 msgid "The agent stopped and asked for your decision."
 msgstr ""
@@ -980,12 +980,12 @@ msgstr ""
 msgid "The dashboard continues reading from the end of files while open."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:154
+#: lib/agent_board_web/live/board_components/inspector.ex:153
 #, elixir-autogen, elixir-format
 msgid "The last execution failed due to content (test, block, or question): the board does not switch executors automatically. Check the result in Executions."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:947
+#: lib/agent_board_web/live/board_components/inspector.ex:946
 #, elixir-autogen, elixir-format
 msgid "The model has no price in the table; cost unknown."
 msgstr ""
@@ -1000,7 +1000,7 @@ msgstr ""
 msgid "This request needs more detail before proposing tasks."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:981
+#: lib/agent_board_web/live/board_components/inspector.ex:980
 #, elixir-autogen, elixir-format
 msgid "This task has not opened a PR yet."
 msgstr ""
@@ -1011,7 +1011,7 @@ msgstr ""
 msgid "Throughput"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:661
+#: lib/agent_board_web/live/board_components/inspector.ex:660
 #, elixir-autogen, elixir-format
 msgid "Time"
 msgstr ""
@@ -1029,12 +1029,12 @@ msgstr ""
 msgid "Today"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:790
+#: lib/agent_board_web/live/board_components/inspector.ex:789
 #, elixir-autogen, elixir-format
 msgid "Tokens measured. Cost is estimated in each executor's currency; \"list\" is the reference price for Claude Max, not the invoice. Codex has no USD: weekly allowance appears on the Executors panel. A session without a PR branch or direct link does not appear as a task, and the ledger does not store each session's result."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:907
+#: lib/agent_board_web/live/board_components/inspector.ex:906
 #, elixir-autogen, elixir-format
 msgid "Transcripts exist, but the board can't read them: missing the"
 msgstr ""
@@ -1051,12 +1051,12 @@ msgstr ""
 msgid "Try now"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:334
+#: lib/agent_board_web/live/board_components/inspector.ex:333
 #, elixir-autogen, elixir-format
 msgid "Unblocking task"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:319
+#: lib/agent_board_web/live/board_components/inspector.ex:318
 #, elixir-autogen, elixir-format
 msgid "Unlock"
 msgstr ""
@@ -1112,7 +1112,7 @@ msgstr ""
 msgid "What can I ask?"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:401
+#: lib/agent_board_web/live/board_components/inspector.ex:400
 #, elixir-autogen, elixir-format
 msgid "What needs to be resolved"
 msgstr ""
@@ -1168,12 +1168,12 @@ msgstr ""
 msgid "oldest first"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:127
+#: lib/agent_board_web/live/board_components/inspector.ex:126
 #, elixir-autogen, elixir-format
 msgid "paused dispatch"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:829
+#: lib/agent_board_web/live/board_components/inspector.ex:828
 #: lib/agent_board_web/live/board_components/objective_tree.ex:192
 #: lib/agent_board_web/live/board_components/today.ex:356
 #, elixir-autogen, elixir-format
@@ -1206,7 +1206,7 @@ msgstr ""
 msgid "waiting"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:907
+#: lib/agent_board_web/live/board_components/inspector.ex:906
 #, elixir-autogen, elixir-format
 msgid "zstd"
 msgstr ""
@@ -1221,12 +1221,12 @@ msgstr ""
 msgid "· set in .env.local"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:665
+#: lib/agent_board_web/live/board_components/inspector.ex:664
 #, elixir-autogen, elixir-format
 msgid "Duration"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:656
+#: lib/agent_board_web/live/board_components/inspector.ex:655
 #, elixir-autogen, elixir-format
 msgid "AI Calls"
 msgstr ""
@@ -1267,7 +1267,7 @@ msgstr ""
 msgid "Close logs"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:84
+#: lib/agent_board_web/live/board_components/inspector.ex:83
 #, elixir-autogen, elixir-format
 msgid "Close panel (Esc)"
 msgstr ""
@@ -1277,7 +1277,7 @@ msgstr ""
 msgid "Collapse the logs panel"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:431
+#: lib/agent_board_web/live/board_components/inspector.ex:430
 #: lib/agent_board_web/live/board_components/intake.ex:112
 #: lib/agent_board_web/live/board_components/settings/projects.ex:469
 #, elixir-autogen, elixir-format
@@ -1335,12 +1335,12 @@ msgstr ""
 msgid "Hold the Wispr key and speak..."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:740
+#: lib/agent_board_web/live/board_components/inspector.ex:739
 #, elixir-autogen, elixir-format
 msgid "List price provided by CLI; not the invoice"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/merge_trend.ex:34
+#: lib/agent_board_web/live/board_components/merge_trend.ex:52
 #, elixir-autogen, elixir-format
 msgid "Loaded merges per UTC day"
 msgstr ""
@@ -1360,7 +1360,7 @@ msgstr ""
 msgid "Merged PR History"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/archive.ex:31
+#: lib/agent_board_web/live/board_components/archive.ex:35
 #, elixir-autogen, elixir-format
 msgid "Merged PR List"
 msgstr ""
@@ -1370,7 +1370,7 @@ msgstr ""
 msgid "Merges per day, last 7 days"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:453
+#: lib/agent_board_web/live/board_components/inspector.ex:452
 #, elixir-autogen, elixir-format
 msgid "Message to the agent"
 msgstr ""
@@ -1415,7 +1415,7 @@ msgstr ""
 msgid "Resize log panel"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:454
+#: lib/agent_board_web/live/board_components/inspector.ex:453
 #, elixir-autogen, elixir-format
 msgid "Respond to agent..."
 msgstr ""
@@ -1455,7 +1455,7 @@ msgstr ""
 msgid "Sync details"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:258
+#: lib/agent_board_web/live/board_components/inspector.ex:257
 #, elixir-autogen, elixir-format
 msgid "Task details"
 msgstr ""
@@ -1491,7 +1491,7 @@ msgstr ""
 msgid "Type something to hear the agent..."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:316
+#: lib/agent_board_web/live/board_components/inspector.ex:315
 #, elixir-autogen, elixir-format
 msgid "Unlock Task"
 msgstr ""
@@ -1714,8 +1714,7 @@ msgstr ""
 msgid "Choose from the saved list. This voice speaks everything."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:830
-#: lib/agent_board_web/live/board_components/throughput.ex:471
+#: lib/agent_board_web/live/board_components/inspector.ex:829
 #, elixir-autogen, elixir-format
 msgid "Completed"
 msgstr ""
@@ -1796,7 +1795,7 @@ msgstr ""
 msgid "GitHub (PRs, CI)"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1065
+#: lib/agent_board_web/live/board_components/inspector.ex:1064
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions failed (billing/no credit); no evidence of local CI."
 msgstr ""
@@ -2179,7 +2178,8 @@ msgstr ""
 msgid "age unknown"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1083
+#: lib/agent_board_web/live/board_components/inspector.ex:1082
+#: lib/agent_board_web/live/board_components/presentation.ex:15
 #, elixir-autogen, elixir-format
 msgid "changes requested"
 msgstr ""
@@ -2258,7 +2258,8 @@ msgstr ""
 msgid "main advanced: 1 commit"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1085
+#: lib/agent_board_web/live/board_components/inspector.ex:1084
+#: lib/agent_board_web/live/board_components/presentation.ex:22
 #, elixir-autogen, elixir-format
 msgid "no review"
 msgstr ""
@@ -2288,7 +2289,7 @@ msgstr ""
 msgid "orchestrator did not respond"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1084
+#: lib/agent_board_web/live/board_components/inspector.ex:1083
 #, elixir-autogen, elixir-format
 msgid "pending review"
 msgstr ""
@@ -2320,10 +2321,10 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/daily_summary.ex:167
 #: lib/agent_board_web/live/board_components/executor_picker.ex:118
-#: lib/agent_board_web/live/board_components/inspector.ex:672
+#: lib/agent_board_web/live/board_components/inspector.ex:671
+#: lib/agent_board_web/live/board_components/inspector.ex:859
 #: lib/agent_board_web/live/board_components/inspector.ex:860
-#: lib/agent_board_web/live/board_components/inspector.ex:861
-#: lib/agent_board_web/live/board_components/inspector.ex:887
+#: lib/agent_board_web/live/board_components/inspector.ex:886
 #: lib/agent_board_web/live/board_components/presentation.ex:106
 #: lib/agent_board_web/live/board_components/presentation.ex:112
 #: lib/agent_board_web/live/board_components/presentation.ex:129
@@ -2664,7 +2665,7 @@ msgstr ""
 msgid "before your last visit"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:878
+#: lib/agent_board_web/live/board_components/inspector.ex:877
 #: lib/agent_board_web/live/board_components/objective_tree.ex:196
 #: lib/agent_board_web/live/board_components/today.ex:353
 #, elixir-autogen, elixir-format
@@ -2739,14 +2740,14 @@ msgstr ""
 msgid "previous hour: %{count}%{unit}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:879
+#: lib/agent_board_web/live/board_components/inspector.ex:878
 #: lib/agent_board_web/live/board_components/objective_tree.ex:194
 #: lib/agent_board_web/live/board_components/today.ex:354
 #, elixir-autogen, elixir-format
 msgid "question"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:880
+#: lib/agent_board_web/live/board_components/inspector.ex:879
 #: lib/agent_board_web/live/board_components/objective_tree.ex:195
 #: lib/agent_board_web/live/board_components/today.ex:355
 #, elixir-autogen, elixir-format
@@ -2813,7 +2814,7 @@ msgstr[1] ""
 msgid "%{count} from cache"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/merge_trend.ex:32
+#: lib/agent_board_web/live/board_components/merge_trend.ex:47
 #, elixir-autogen, elixir-format
 msgid "%{count} in the last 7 UTC days · loaded history"
 msgstr ""
@@ -2832,7 +2833,7 @@ msgid_plural "%{count} retries"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:949
+#: lib/agent_board_web/live/board_components/inspector.ex:948
 #, elixir-autogen, elixir-format
 msgid "%{count} unreadable transcript; these numbers are a minimum."
 msgid_plural "%{count} unreadable transcripts; these numbers are a minimum."
@@ -2846,7 +2847,7 @@ msgid_plural "%{count} were already queued"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/merge_trend.ex:37
+#: lib/agent_board_web/live/board_components/merge_trend.ex:76
 #, elixir-autogen, elixir-format
 msgid "%{date}: %{count} loaded merges"
 msgstr ""
@@ -2861,7 +2862,7 @@ msgstr ""
 msgid "%{minutes} min transcribed"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:964
+#: lib/agent_board_web/live/board_components/inspector.ex:963
 #, elixir-autogen, elixir-format
 msgid "%{workers} worker + %{subagents} subagents"
 msgstr ""
@@ -2891,7 +2892,7 @@ msgstr ""
 msgid "AI returned an unexpected format. Nothing was created."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:573
+#: lib/agent_board_web/live/board_components/inspector.ex:572
 #: lib/agent_board_web/live/board_components/voice_conversation_log.ex:54
 #, elixir-autogen, elixir-format
 msgid "Agent"
@@ -2902,7 +2903,7 @@ msgstr ""
 msgid "Choose from the saved list. With Mixed mode, this voice speaks alerts and code-agent replies; conversation uses the browser voice."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:165
+#: lib/agent_board_web/live/board_components/inspector.ex:164
 #, elixir-autogen, elixir-format
 msgid "Claude Code or Codex runs in a worktree outside the board, with a %{ceiling} per-task cap. The session and result appear in Executions; nothing starts before confirmation."
 msgstr ""
@@ -2963,17 +2964,17 @@ msgstr ""
 msgid "From the request's first sentence; edit if you like."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:354
+#: lib/agent_board_web/live/board_components/inspector.ex:353
 #, elixir-autogen, elixir-format
 msgid "Generating suggestions…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1053
+#: lib/agent_board_web/live/board_components/inspector.ex:1052
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions did not run (billing/no credit). "
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1067
+#: lib/agent_board_web/live/board_components/inspector.ex:1066
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions passed."
 msgstr ""
@@ -2988,17 +2989,17 @@ msgstr ""
 msgid "Loading…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1060
+#: lib/agent_board_web/live/board_components/inspector.ex:1059
 #, elixir-autogen, elixir-format
 msgid "Local CI failed: %{detail}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1072
+#: lib/agent_board_web/live/board_components/inspector.ex:1071
 #, elixir-autogen, elixir-format
 msgid "Local CI passed on the ticket (report cites #%{number}); this PR is from the same work: "
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1077
+#: lib/agent_board_web/live/board_components/inspector.ex:1076
 #, elixir-autogen, elixir-format
 msgid "Local CI passed: "
 msgstr ""
@@ -3008,7 +3009,7 @@ msgstr ""
 msgid "Long · 1.8 s"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:940
+#: lib/agent_board_web/live/board_components/inspector.ex:939
 #, elixir-autogen, elixir-format
 msgid "Measured from local executor transcripts (%{models}). Cost uses the board's pricing table."
 msgstr ""
@@ -3028,7 +3029,7 @@ msgstr ""
 msgid "No PRs merged yet."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1068
+#: lib/agent_board_web/live/board_components/inspector.ex:1067
 #, elixir-autogen, elixir-format
 msgid "No remote checks configured."
 msgstr ""
@@ -3073,10 +3074,10 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/composer.ex:633
 #: lib/agent_board_web/live/board_components/composer.ex:634
-#: lib/agent_board_web/live/board_components/inspector.ex:463
-#: lib/agent_board_web/live/board_components/inspector.ex:466
-#: lib/agent_board_web/live/board_components/inspector.ex:581
-#: lib/agent_board_web/live/board_components/inspector.ex:592
+#: lib/agent_board_web/live/board_components/inspector.ex:462
+#: lib/agent_board_web/live/board_components/inspector.ex:465
+#: lib/agent_board_web/live/board_components/inspector.ex:580
+#: lib/agent_board_web/live/board_components/inspector.ex:591
 #, elixir-autogen, elixir-format
 msgid "Sending…"
 msgstr ""
@@ -3107,13 +3108,13 @@ msgstr ""
 msgid "Splitting…"
 msgstr ""
 
+#: lib/agent_board_web/live/board_components/inspector.ex:222
 #: lib/agent_board_web/live/board_components/inspector.ex:223
-#: lib/agent_board_web/live/board_components/inspector.ex:224
 #, elixir-autogen, elixir-format
 msgid "Stop execution"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:355
+#: lib/agent_board_web/live/board_components/inspector.ex:354
 #, elixir-autogen, elixir-format
 msgid "Suggest a response"
 msgstr ""
@@ -3143,8 +3144,8 @@ msgstr ""
 msgid "Working…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:573
-#: lib/agent_board_web/live/board_components/inspector.ex:590
+#: lib/agent_board_web/live/board_components/inspector.ex:572
+#: lib/agent_board_web/live/board_components/inspector.ex:589
 #: lib/agent_board_web/live/board_components/voice_conversation_log.ex:53
 #, elixir-autogen, elixir-format
 msgid "You"
@@ -3190,7 +3191,7 @@ msgstr ""
 msgid "no events"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:94
+#: lib/agent_board_web/live/board_components/inspector.ex:93
 #, elixir-autogen, elixir-format
 msgid "opened %{age}"
 msgstr ""
@@ -3201,7 +3202,7 @@ msgid "orchestrator API is off"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/composer.ex:582
-#: lib/agent_board_web/live/board_components/inspector.ex:883
+#: lib/agent_board_web/live/board_components/inspector.ex:882
 #, elixir-autogen, elixir-format
 msgid "queued"
 msgstr ""
@@ -3221,7 +3222,7 @@ msgstr ""
 msgid "screen"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:752
+#: lib/agent_board_web/live/board_components/inspector.ex:751
 #, elixir-autogen, elixir-format
 msgid "session %{id} · "
 msgstr ""
@@ -3241,7 +3242,7 @@ msgstr ""
 msgid "speech"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:100
+#: lib/agent_board_web/live/board_components/inspector.ex:99
 #, elixir-autogen, elixir-format
 msgid "started at %{time}"
 msgstr ""
@@ -3266,7 +3267,7 @@ msgstr ""
 msgid "unexpected response"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:969
+#: lib/agent_board_web/live/board_components/inspector.ex:968
 #, elixir-autogen, elixir-format
 msgid "unknown model"
 msgstr ""
@@ -3276,7 +3277,7 @@ msgstr ""
 msgid "unnamed"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:96
+#: lib/agent_board_web/live/board_components/inspector.ex:95
 #, elixir-autogen, elixir-format
 msgid "updated %{age}"
 msgstr ""
@@ -3316,34 +3317,34 @@ msgstr ""
 msgid "API key missing"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1048
+#: lib/agent_board_web/live/board_components/inspector.ex:1047
 #, elixir-autogen, elixir-format
 msgid "CI passed"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1050
+#: lib/agent_board_web/live/board_components/inspector.ex:1049
 #, elixir-autogen, elixir-format
 msgid "CI unknown"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:818
+#: lib/agent_board_web/live/board_components/inspector.ex:817
 #, elixir-autogen, elixir-format
 msgid "Dispatch to %{executor}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1040
-#: lib/agent_board_web/live/board_components/inspector.ex:1045
+#: lib/agent_board_web/live/board_components/inspector.ex:1039
+#: lib/agent_board_web/live/board_components/inspector.ex:1044
 #, elixir-autogen, elixir-format
 msgid "Local CI failed"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1044
+#: lib/agent_board_web/live/board_components/inspector.ex:1043
 #, elixir-autogen, elixir-format
 msgid "Local CI passed"
 msgstr ""
 
+#: lib/agent_board_web/live/board_components/inspector.ex:1045
 #: lib/agent_board_web/live/board_components/inspector.ex:1046
-#: lib/agent_board_web/live/board_components/inspector.ex:1047
 #, elixir-autogen, elixir-format
 msgid "Local CI unknown"
 msgstr ""
@@ -3358,13 +3359,13 @@ msgstr ""
 msgid "Nothing blocked."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:885
+#: lib/agent_board_web/live/board_components/inspector.ex:884
 #: lib/agent_board_web/live/board_components/objective_tree.ex:198
 #, elixir-autogen, elixir-format
 msgid "archived"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:886
+#: lib/agent_board_web/live/board_components/inspector.ex:885
 #, elixir-autogen, elixir-format
 msgid "closed without merge"
 msgstr ""
@@ -3374,19 +3375,19 @@ msgstr ""
 msgid "estimated"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:831
+#: lib/agent_board_web/live/board_components/inspector.ex:830
 #: lib/agent_board_web/live/board_components/today.ex:237
 #, elixir-autogen, elixir-format
 msgid "failed"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:881
+#: lib/agent_board_web/live/board_components/inspector.ex:880
 #, elixir-autogen, elixir-format
 msgid "in progress"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:864
-#: lib/agent_board_web/live/board_components/inspector.ex:867
+#: lib/agent_board_web/live/board_components/inspector.ex:863
+#: lib/agent_board_web/live/board_components/inspector.ex:866
 #, elixir-autogen, elixir-format
 msgid "list price"
 msgstr ""
@@ -3396,13 +3397,13 @@ msgstr ""
 msgid "measured"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:877
+#: lib/agent_board_web/live/board_components/inspector.ex:876
 #: lib/agent_board_web/live/board_components/objective_tree.ex:189
 #, elixir-autogen, elixir-format
 msgid "merged"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1049
+#: lib/agent_board_web/live/board_components/inspector.ex:1048
 #, elixir-autogen, elixir-format
 msgid "no CI"
 msgstr ""
@@ -3418,24 +3419,24 @@ msgstr ""
 msgid "rehearsal · local fixtures"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:882
+#: lib/agent_board_web/live/board_components/inspector.ex:881
 #: lib/agent_board_web/live/board_components/objective_tree.ex:193
 #, elixir-autogen, elixir-format
 msgid "retrying"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1082
+#: lib/agent_board_web/live/board_components/inspector.ex:1081
 #, elixir-autogen, elixir-format
 msgid "reviewed"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:828
+#: lib/agent_board_web/live/board_components/inspector.ex:827
 #, elixir-autogen, elixir-format
 msgid "starting"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:832
-#: lib/agent_board_web/live/board_components/inspector.ex:884
+#: lib/agent_board_web/live/board_components/inspector.ex:831
+#: lib/agent_board_web/live/board_components/inspector.ex:883
 #: lib/agent_board_web/live/board_components/objective_tree.ex:197
 #, elixir-autogen, elixir-format
 msgid "stopped"
@@ -3718,7 +3719,7 @@ msgstr ""
 msgid "Question sent"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:472
+#: lib/agent_board_web/live/board_components/inspector.ex:471
 #, elixir-autogen, elixir-format
 msgid "This message is posted on GitHub issue #%{number} and mentions the agent when you send it."
 msgstr ""
@@ -3733,25 +3734,25 @@ msgstr ""
 msgid "Write in the field above; the agent replies and waits for your confirmation before acting."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:108
+#: lib/agent_board_web/live/board_components/inspector.ex:107
 #, elixir-autogen, elixir-format
 msgid "%{count} call"
 msgid_plural "%{count} calls"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1033
+#: lib/agent_board_web/live/board_components/inspector.ex:1032
 #, elixir-autogen, elixir-format
 msgid "Archived"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:212
+#: lib/agent_board_web/live/board_components/inspector.ex:211
 #: lib/agent_board_web/live/board_components/needs_you.ex:117
 #, elixir-autogen, elixir-format
 msgid "Asking the agent…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1028
+#: lib/agent_board_web/live/board_components/inspector.ex:1027
 #, elixir-autogen, elixir-format
 msgid "Blocked"
 msgstr ""
@@ -3761,81 +3762,81 @@ msgstr ""
 msgid "Conversation"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:146
+#: lib/agent_board_web/live/board_components/inspector.ex:145
 #, elixir-autogen, elixir-format
 msgid "Dispatch"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:225
+#: lib/agent_board_web/live/board_components/inspector.ex:224
 #, elixir-autogen, elixir-format
 msgid "Keep running"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1030
+#: lib/agent_board_web/live/board_components/inspector.ex:1029
 #, elixir-autogen, elixir-format
 msgid "Queued"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1027
+#: lib/agent_board_web/live/board_components/inspector.ex:1026
 #, elixir-autogen, elixir-format
 msgid "Ready for review"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:211
+#: lib/agent_board_web/live/board_components/inspector.ex:210
 #: lib/agent_board_web/live/board_components/needs_you.ex:116
 #, elixir-autogen, elixir-format
 msgid "Request another attempt"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1029
+#: lib/agent_board_web/live/board_components/inspector.ex:1028
 #, elixir-autogen, elixir-format
 msgid "Retrying"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:147
+#: lib/agent_board_web/live/board_components/inspector.ex:146
 #, elixir-autogen, elixir-format
 msgid "Starting runner…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:244
+#: lib/agent_board_web/live/board_components/inspector.ex:243
 #: lib/agent_board_web/live/board_components/settings/projects.ex:621
 #, elixir-autogen, elixir-format
 msgid "Stop"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:245
+#: lib/agent_board_web/live/board_components/inspector.ex:244
 #, elixir-autogen, elixir-format
 msgid "Stop task"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1032
+#: lib/agent_board_web/live/board_components/inspector.ex:1031
 #: lib/agent_board_web/live/board_components/settings/projects.ex:549
 #, elixir-autogen, elixir-format
 msgid "Stopped"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:226
-#: lib/agent_board_web/live/board_components/inspector.ex:246
+#: lib/agent_board_web/live/board_components/inspector.ex:225
+#: lib/agent_board_web/live/board_components/inspector.ex:245
 #, elixir-autogen, elixir-format
 msgid "Stopping…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:68
+#: lib/agent_board_web/live/board_components/inspector.ex:67
 #, elixir-autogen, elixir-format
 msgid "Task #%{number} details"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1034
+#: lib/agent_board_web/live/board_components/inspector.ex:1033
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:104
+#: lib/agent_board_web/live/board_components/inspector.ex:103
 #, elixir-autogen, elixir-format
 msgid "for %{executor}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:1031
+#: lib/agent_board_web/live/board_components/inspector.ex:1030
 #, elixir-autogen, elixir-format
 msgctxt "task status"
 msgid "Merged"
@@ -4014,7 +4015,7 @@ msgstr ""
 msgid "Repository access not checked"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:188
+#: lib/agent_board_web/live/board_components/inspector.ex:187
 #, elixir-autogen, elixir-format
 msgid "Review access"
 msgstr ""
@@ -4157,7 +4158,7 @@ msgstr ""
 msgid "Repository access: %{role}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:181
+#: lib/agent_board_web/live/board_components/inspector.ex:180
 #, elixir-autogen, elixir-format
 msgid "The agent ignored this issue: its author is not allowed on this project."
 msgstr ""
@@ -4353,7 +4354,7 @@ msgstr ""
 msgid "Waits for %{tasks}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/inspector.ex:548
+#: lib/agent_board_web/live/board_components/inspector.ex:547
 #, elixir-autogen, elixir-format
 msgid "Open %{name}"
 msgstr ""
@@ -5449,4 +5450,77 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/settings/projects.ex:188
 #, elixir-autogen, elixir-format
 msgid "panel"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/archive.ex:18
+#, elixir-autogen, elixir-format
+msgid "%{count} loaded"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/archive.ex:16
+#, elixir-autogen, elixir-format
+msgid "%{count} pull requests loaded"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/merge_trend.ex:73
+#, elixir-autogen, elixir-format
+msgid "%{date}: at least %{count} loaded merges"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/merge_trend.ex:70
+#, elixir-autogen, elixir-format
+msgid "%{date}: not loaded yet; scroll the list to load it"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/presentation.ex:14
+#, elixir-autogen, elixir-format
+msgid "approved"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/presentation.ex:38
+#, elixir-autogen, elixir-format
+msgid "ci failed"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/presentation.ex:31
+#, elixir-autogen, elixir-format
+msgid "ci failed: %{name}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/presentation.ex:37
+#, elixir-autogen, elixir-format
+msgid "ci passed"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/presentation.ex:39
+#, elixir-autogen, elixir-format
+msgid "ci running"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/presentation.ex:33
+#, elixir-autogen, elixir-format
+msgid "no ci"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/presentation.ex:16
+#, elixir-autogen, elixir-format
+msgid "review pending"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/card.ex:31
+#, elixir-autogen, elixir-format
+msgctxt "stamp"
+msgid "Merged"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/card.ex:31
+#, elixir-autogen, elixir-format
+msgctxt "stamp"
+msgid "Updated"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/throughput.ex:471
+#, elixir-autogen, elixir-format
+msgctxt "throughput tile"
+msgid "Completed"
 msgstr ""

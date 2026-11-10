@@ -228,7 +228,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     assert has_element?(
              view,
-             "#merged-column-history .archive-count[aria-label='7 pull requests loaded']"
+             "#merged-column-history .archive-count[aria-label='7 pull requests carregados']"
            )
 
     assert has_element?(view, "#merge-trend", "7 nos últimos 7 dias UTC · histórico carregado")
@@ -294,6 +294,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/scroll-history")
     assert has_element?(view, "#merged-list[phx-viewport-bottom=load_more_merged]")
     assert has_element?(view, "#merged-column-history .archive-count", "50 carregados")
+    # Older pages are unread: the oldest loaded day is a minimum, not a total.
+    assert has_element?(view, "#merge-trend figcaption", "≥ ")
+    assert has_element?(view, "#merge-trend .merge-trend-count", "≥")
 
     first_tail = view |> element("#merged-list .archive-tail") |> render() |> tail_id()
     render_hook(view, "load_more_merged", %{"id" => first_tail})
@@ -534,7 +537,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "Badge PR"
-    assert html =~ "changes requested"
+    assert html =~ "mudanças pedidas"
   end
 
   test "a merged pull shows its CI badge", %{conn: conn} do
@@ -554,7 +557,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "CI PR"
-    assert html =~ "ci failed"
+    assert html =~ "CI falhou"
   end
 
   test "a failed CI names the check", %{conn: conn} do
@@ -574,7 +577,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "ci failed: compile"
+    assert html =~ "CI falhou: compile"
   end
 
   test "a pull with no reviews says so instead of hiding the badge", %{conn: conn} do
@@ -598,8 +601,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     # the board opens on o_colmex; switch to arena-rogue
     view |> element("#repo-select") |> render_change(%{"repo" => "sallaumen/arena-rogue"})
 
-    assert render(view) =~ "no review"
-    assert render(view) =~ "no ci"
+    assert render(view) =~ "sem revisão"
+    assert render(view) =~ "sem CI"
   end
 
   test "the board sends a content security policy", %{conn: conn} do
