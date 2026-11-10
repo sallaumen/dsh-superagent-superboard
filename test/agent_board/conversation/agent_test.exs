@@ -368,6 +368,35 @@ defmodule AgentBoard.Conversation.AgentTest do
     assert id == task.id
   end
 
+  test "a model confirm on a question stops nothing and asks again", %{repo: repo} do
+    {:ok, task} =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        number: 7,
+        title: "Placar",
+        state: "running",
+        kind: "issue"
+      })
+      |> Repo.insert()
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, %{"number" => 7}) end)
+    script(fn %{name: :voice_agent} -> agent_answer("stop_task", %{"task_number" => 7}) end)
+    proposed = turn("para a tarefa sete", repo)
+
+    script(fn %{name: :voice_agent} -> agent_answer("confirm") end)
+    asked = turn("qual era o título dessa tarefa?", repo)
+
+    assert asked.reply == proposed.reply
+    assert asked.listen
+    assert %Task{stopped: false} = Repo.get!(Task, task.id)
+    assert %Turn{proposal: %{"kind" => "stop_task"}} = Conversation.pending_proposal()
+
+    script(fn _ -> flunk("a yes is local") end)
+    assert %{action: "stop_task"} = turn("sim", repo)
+    assert %Task{stopped: true} = Repo.get!(Task, task.id)
+  end
+
   test "a model failure is said, never raised", %{repo: repo} do
     script(fn %{name: :voice_agent} -> {:error, :usage_limit} end)
     # Every provider failed: the board says it could not think, in words.
