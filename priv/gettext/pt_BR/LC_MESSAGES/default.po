@@ -1967,6 +1967,7 @@ msgstr "Motivo não registrado"
 msgid "Request #%{number} queued"
 msgstr "Pedido #%{number} na fila"
 
+#: lib/agent_board_web/live/board_live.ex:2250
 #: lib/agent_board_web/live/board_live.ex:4070
 #, elixir-autogen, elixir-format
 msgid "Select a repository before splitting."
@@ -7623,3 +7624,24 @@ msgstr "A voz também fala este idioma."
 #, elixir-autogen, elixir-format
 msgid "creates at once, without asking; \"undo\" closes the issue for 10 minutes"
 msgstr "cria na hora, sem perguntar; \"desfaz\" fecha a issue por 10 minutos"
+
+#: lib/agent_board_web/live/board_live.ex:2260
+#: lib/agent_board_web/live/board_live.ex:2283
+#, elixir-autogen, elixir-format
+msgid "Add a request before splitting."
+msgstr "Escreva um pedido antes de dividir."
+
+#: lib/agent_board_web/live/board_live.ex:2421
+#, elixir-autogen, elixir-format
+msgid "Choose a voice from the list"
+msgstr "Escolha uma voz da lista"
+
+#: lib/agent_board_web/live/board_live.ex:2301
+#, elixir-autogen, elixir-format
+msgid "Task created: %{title}"
+msgstr "Tarefa criada: %{title}"
+
+#: lib/agent_board_web/live/board_live.ex:2430
+#, elixir-autogen, elixir-format
+msgid "Voice saved: %{name}"
+msgstr "Voz salva: %{name}"

@@ -2247,7 +2247,7 @@ defmodule AgentBoardWeb.BoardLive do
 
     cond do
       is_nil(repo) ->
-        {:noreply, put_flash(socket, :error, "Select a repository before splitting.")}
+        {:noreply, put_flash(socket, :error, gettext("Select a repository before splitting."))}
 
       params["source_repo"] && params["source_repo"] != to_string(repo.id) ->
         {:noreply,
@@ -2257,7 +2257,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, put_flash(socket, :error, gettext("AI not configured. Split is unavailable."))}
 
       String.trim(text) == "" ->
-        {:noreply, put_flash(socket, :error, "Add a request before splitting.")}
+        {:noreply, put_flash(socket, :error, gettext("Add a request before splitting."))}
 
       true ->
         case Intake.run(text) do
@@ -2280,7 +2280,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      socket
      |> assign(:intake, nil)
-     |> put_flash(:error, "Add a request before splitting.")}
+     |> put_flash(:error, gettext("Add a request before splitting."))}
   end
 
   @impl true
@@ -2298,7 +2298,7 @@ defmodule AgentBoardWeb.BoardLive do
          },
          {:ok, [{_request, {:ok, _task, _outcome}}]} <-
            Actions.run(:create_tasks, action, ui(), confirm: params["confirm"]) do
-      {:noreply, put_flash(socket, :info, "Task created: #{task.title}")}
+      {:noreply, put_flash(socket, :info, gettext("Task created: %{title}", title: task.title))}
     else
       _ -> {:noreply, put_flash(socket, :error, gettext("Unable to create the task"))}
     end
@@ -2418,7 +2418,7 @@ defmodule AgentBoardWeb.BoardLive do
 
     cond do
       not ElevenLabs.valid_voice_id?(id) ->
-        {:noreply, put_flash(socket, :error, "Escolha uma voz da lista")}
+        {:noreply, put_flash(socket, :error, gettext("Choose a voice from the list"))}
 
       id == voice.id and voice.source == :saved ->
         {:noreply, socket}
@@ -2427,7 +2427,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply,
          socket
          |> assign(voice: refreshed_voice(voice))
-         |> put_flash(:info, "Voz salva: #{name || id}")
+         |> put_flash(:info, gettext("Voice saved: %{name}", name: name || id))
          |> push_event("voice_play", %{
            url: speech_url(Phrases.voice_saved(voice.language), id, voice.language)
          })}
