@@ -343,11 +343,14 @@ that already worked).
   count, not an unread count. Both lists follow the board's PubSub broadcasts.
 - Never poll the database from the browser; push.
 - The board is read once per render of the page (in `handle_params/3`, never
-  also in `mount/3`), again on every `:board_updated` and task action, and
-  never for a patch inside the same repository: opening a task, a panel or a
-  tab changes only the panel. Every read is the `[:agent_board, :board,
-  :load]` telemetry span, on the dashboard as `agent_board.board.load`
-  (`board_load_test.exs`).
+  also in `mount/3`), again on every task action and once per burst of
+  `:board_updated` (and of Hoje's `{:today_updated, _}`), and never for a
+  patch inside the same repository: opening a task, a panel or a tab changes
+  only the panel. The first broadcast schedules the reload `:board_reload_ms`
+  later (300 ms; 0 in tests, which reloads at once) and the broadcasts until
+  then join it, so a burst costs one read and one announcement of the whole
+  change. Every read is the `[:agent_board, :board, :load]` telemetry span, on
+  the dashboard as `agent_board.board.load` (`board_load_test.exs`).
 - The **runner** writes its status in a run directory; `Runners.Ticker`
   reads it and calls `Board.broadcast/1` on the task's repository, so the
   inspector and the Execuções (Executions) tab follow without a reload.

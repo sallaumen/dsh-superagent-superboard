@@ -150,6 +150,7 @@ defmodule AgentBoardWeb.BoardLive do
         logs_status: %{},
         logs_timer: nil,
         logs_paused: false,
+        reload_pending: false,
         conversation: nil,
         comments: [],
         ask_sending: %{},
@@ -1026,7 +1027,7 @@ defmodule AgentBoardWeb.BoardLive do
     current = socket.assigns.repo && socket.assigns.repo.id
 
     if socket.assigns.view == "hoje" and current != repository_id do
-      {:noreply, load(socket, socket.assigns.repo)}
+      handle_info(:board_updated, socket)
     else
       if current != repository_id do
         {:noreply, assign(socket, :inbox, Board.inbox())}
@@ -1073,7 +1074,26 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  # Broadcasts come in bursts (poller, sync, actions) and a reload costs dozens
+  # of queries, the runner's files and the orchestrator: one reload per burst.
+  # The assigns still hold the pre-burst board, so announce/4 sees the whole
+  # burst as one change.
   def handle_info(:board_updated, socket) do
+    case Application.get_env(:agent_board, :board_reload_ms, 300) do
+      0 ->
+        handle_info(:reload_board, socket)
+
+      _ms when socket.assigns.reload_pending ->
+        {:noreply, socket}
+
+      ms ->
+        Process.send_after(self(), :reload_board, ms)
+        {:noreply, assign(socket, :reload_pending, true)}
+    end
+  end
+
+  def handle_info(:reload_board, socket) do
+    socket = assign(socket, :reload_pending, false)
     old_board = socket.assigns.board
     old_sync = socket.assigns.sync_event
     old_needs = socket.assigns.work.needs

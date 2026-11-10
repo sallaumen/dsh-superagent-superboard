@@ -1,9 +1,11 @@
 defmodule AgentBoardWeb.BoardLoadTest do
   @moduledoc """
   When the board reads everything again: once per render of the page, on
-  :board_updated, and never for a patch inside the same repository.
+  :board_updated (a burst of them once), and never for a patch inside the
+  same repository.
   """
-  use AgentBoardWeb.ConnCase, async: true
+  # Not async: the burst test sets the global :board_reload_ms knob.
+  use AgentBoardWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
 
@@ -65,6 +67,23 @@ defmodule AgentBoardWeb.BoardLoadTest do
     render(view)
 
     assert loads() == 1
+  end
+
+  test "a burst of broadcasts reads the board once, after it", %{conn: conn, repo: repo} do
+    Application.put_env(:agent_board, :board_reload_ms, 50)
+    on_exit(fn -> Application.put_env(:agent_board, :board_reload_ms, 0) end)
+
+    {:ok, view, _html} = live(conn, BoardNavigation.path(repo))
+    loads()
+
+    task(repo, 32, "Chegou na rajada", "ready")
+    for _ <- 1..3, do: send(view.pid, :board_updated)
+    render(view)
+    assert loads() == 0
+
+    assert_receive :board_loaded, 1_000
+    assert render(view) =~ "Chegou na rajada"
+    refute_receive :board_loaded, 200
   end
 
   defp loads(count \\ 0) do
