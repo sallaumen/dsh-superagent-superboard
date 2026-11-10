@@ -34,6 +34,7 @@ defmodule AgentBoardWeb.InspectorTest do
 
     call(repo, task, "claude-opus", 18_200, 1_100, 310_000, 6_400)
     call(repo, task, "claude-haiku", 3_200, 200, 0, 800)
+    call(repo, task, "deepseek-flash", 425, 123, 155, 2_000)
 
     {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", task.id))
 
@@ -46,6 +47,9 @@ defmodule AgentBoardWeb.InspectorTest do
     assert has_element?(view, "#conversation", "—")
     assert has_element?(view, "#conversation", "≥ $0.31")
     assert has_element?(view, "#conversation", "Chamadas feitas pelo board")
+    # A call under a cent is a cost: never "$0.00".
+    assert has_element?(view, "#inspector-panel-chamadas tbody td", "< $0.01")
+    refute has_element?(view, "#inspector-panel-chamadas", "$0.00")
 
     view |> element("#conversation button", "Atividade") |> render_click()
     assert has_element?(view, "#conversation", "Entrou na fila")

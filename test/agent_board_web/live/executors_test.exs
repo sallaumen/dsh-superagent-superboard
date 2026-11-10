@@ -150,9 +150,17 @@ defmodule AgentBoardWeb.ExecutorsTest do
 
   test "a task's Execuções tab lists its ledger execution, attributed by the PR branch",
        %{conn: conn, task: task} do
+    # The ledger is read when the tab opens: before that the tab shows no
+    # count, never a zero nobody counted.
+    {:ok, closed, _html} =
+      live(conn, "/?repo=fixture/executors&panel=conversation&task=#{task.id}")
+
+    refute has_element?(closed, "#inspector-tab-execucoes .ab-num")
+
     {:ok, view, _html} =
       live(conn, "/?repo=fixture/executors&panel=conversation&task=#{task.id}&tab=execucoes")
 
+    assert has_element?(view, "#inspector-tab-execucoes .ab-num")
     panel = view |> element("#inspector-panel-execucoes") |> render()
 
     assert panel =~ "mesclado"
