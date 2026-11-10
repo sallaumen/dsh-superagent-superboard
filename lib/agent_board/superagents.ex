@@ -8,6 +8,7 @@ defmodule AgentBoard.Superagents do
   import Ecto.Query, warn: false
 
   alias AgentBoard.Board
+  alias AgentBoard.Orchestrator
   alias AgentBoard.Repo
   alias AgentBoard.Superagents.{Manager, Provisioner, Superagent, SuperagentEvent}
 
@@ -473,7 +474,8 @@ defmodule AgentBoard.Superagents do
 
   @doc "Change the worker ceiling through the manager."
   def scale(%Superagent{} = superagent, workers, manager \\ Manager.impl()) do
-    with true <- is_integer(workers) and workers > 0 and workers <= 32,
+    with true <-
+           is_integer(workers) and workers > 0 and workers <= Orchestrator.worker_range().last,
          :ok <- manager.scale(superagent, workers) do
       set_max_workers(superagent, workers)
       {:ok, superagent}
