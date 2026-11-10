@@ -269,8 +269,15 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     {:ok, view, html} =
       live(conn, "/?repo=fixture/failed-panel&panel=settings&section=projects")
 
-    assert html =~ "@bot cannot push"
     assert html =~ "a configuração não terminou"
+    # The reason is said in words where the problem shows, once, with the way out beside it.
+    assert has_element?(view, "#project-#{superagent.id}-error p", "@bot cannot push")
+    refute has_element?(view, "#project-#{superagent.id} details", "Detalhes técnicos")
+
+    assert has_element?(
+             view,
+             "#project-#{superagent.id}-error #project-retry_provision_superagent-#{superagent.id}-trigger"
+           )
 
     trigger = "#project-retry_provision_superagent-#{superagent.id}-trigger"
     assert view |> element(trigger) |> render() =~ "Tentar de novo"

@@ -174,7 +174,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             </div>
 
             <div class="ab-project__profile">
-              <code>{superagent.profile}</code>
+              <code title={superagent.profile}>{superagent.profile}</code>
               <a
                 class="ab-link ab-data-sm"
                 href={"http://127.0.0.1:#{superagent.port}/"}
@@ -238,10 +238,21 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             id={"project-#{superagent.id}-error"}
           >
             <p>{error_text(superagent)}</p>
-            <details :if={superagent.last_error} class="ab-project__error-details">
+            <details :if={technical_details?(superagent)} class="ab-project__error-details">
               <summary>{gettext("Technical details")}</summary>
               <code>{superagent.last_error}</code>
             </details>
+            <.live_component
+              :if={remote_action(superagent) == :retry_provision_superagent}
+              module={AgentAction}
+              id={"project-retry_provision_superagent-#{superagent.id}"}
+              mode={:retry_provision_superagent}
+              tone={:primary}
+              superagent={superagent}
+              label={remote_label(superagent)}
+              confirm_label={remote_label(superagent)}
+              busy_label={gettext("Applying…")}
+            />
             <button
               :if={is_nil(superagent.last_error)}
               type="button"
@@ -282,13 +293,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                 </p>
                 <code>scripts/agent/panel.sh {superagent.profile}</code>
               </details>
-              <details :if={superagent.last_error} class="ab-project__fold">
+              <details :if={technical_details?(superagent)} class="ab-project__fold">
                 <summary>{gettext("Technical details")}</summary>
                 <code>{superagent.last_error}</code>
               </details>
               <div class="ab-project__foot-actions">
                 <.live_component
-                  :if={remote_action(superagent)}
+                  :if={remote_action(superagent) in [:start_superagent, :stop_superagent]}
                   module={AgentAction}
                   id={"project-#{remote_action(superagent)}-#{superagent.id}"}
                   mode={remote_action(superagent)}
@@ -573,6 +584,10 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   defp desired_line(%{desired_state: "stopped"}), do: gettext("should be stopped")
   defp desired_line(_superagent), do: nil
 
+  # A failed setup already says, in words, what to fix: show it, not a pointer to it.
+  defp error_text(%{provision_failed_at: %DateTime{}, last_error: error}) when is_binary(error),
+    do: error
+
   defp error_text(%{last_error: nil, observed_state: "error"}) do
     gettext("The agent is in an error state. Open the controls to try again.")
   end
@@ -599,6 +614,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         error
     end
   end
+
+  defp technical_details?(%{last_error: nil}), do: false
+  defp technical_details?(superagent), do: error_text(superagent) != superagent.last_error
 
   # A project whose setup failed has nothing to start: it is set up again.
   defp remote_action(%{provision_failed_at: %DateTime{}, observed_state: "error"} = superagent)
