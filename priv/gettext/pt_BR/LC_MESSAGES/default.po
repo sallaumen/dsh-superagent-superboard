@@ -6688,3 +6688,263 @@ msgstr "O comando que religa o agente falhou: %{reason}"
 #, elixir-autogen, elixir-format
 msgid "The agent did not answer in %{seconds} s. It may still be coming up; check in a moment."
 msgstr "O agente não respondeu em %{seconds} s. Ele pode estar subindo; confira em instantes."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Dispatch started on %{executor} (session %{session}). Progress appears under Executions."
+msgstr "Despacho iniciado no %{executor} (sessão %{session}). O progresso aparece em Execuções."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Execution stopped. The task is blocked for you to decide."
+msgstr "Execução parada. A tarefa ficou bloqueada para você decidir."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "The execution has already ended; see the result under Executions."
+msgstr "A execução já terminou; veja o resultado em Execuções."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "That execution is no longer active."
+msgstr "Essa execução não está mais ativa."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not stop the execution: %{reason}"
+msgstr "Não foi possível parar a execução: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Superagent %{profile} reserved on port %{port}; the status updates on the ticker."
+msgstr "Superagent %{profile} reservado na porta %{port}; o status atualiza no ticker."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not provision: %{reason}"
+msgstr "Não foi possível provisionar: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Provisioned again; the status updates on the ticker."
+msgstr "Provisionado de novo; o status atualiza no ticker."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Superagent removed; profile/state archived in %{archive}."
+msgstr "Superagent removido; profile/state arquivados em %{archive}."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not remove: %{reason}"
+msgstr "Não foi possível remover: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Superagent started. The status updates on the next read."
+msgstr "Superagent iniciado. O status atualiza na próxima leitura."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not start: %{reason}"
+msgstr "Não foi possível iniciar: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Superagent stopped."
+msgstr "Superagent parado."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not stop: %{reason}"
+msgstr "Não foi possível parar: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Superagent paused."
+msgstr "Superagent pausado."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not pause: %{reason}"
+msgstr "Não foi possível pausar: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Superagent resumed."
+msgstr "Superagent retomado."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not resume: %{reason}"
+msgstr "Não foi possível retomar: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Session limit updated."
+msgstr "Limite de sessões atualizado."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not change the limit: %{reason}"
+msgstr "Não foi possível mudar o limite: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not allow @%{login}: %{reason}"
+msgstr "Não foi possível liberar @%{login}: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "@%{login} was removed from the list of %{project}."
+msgstr "@%{login} saiu da lista de %{project}."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not revoke @%{login}: %{reason}"
+msgstr "Não foi possível revogar @%{login}: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Request from @%{login} set aside."
+msgstr "Pedido de @%{login} dispensado."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not set aside: %{reason}"
+msgstr "Não foi possível dispensar: %{reason}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Dispatch is paused"
+msgstr "o despacho está pausado"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "This task already has an execution in progress"
+msgstr "esta tarefa já tem uma execução em andamento"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "This month's spend has reached the Claude Code ceiling"
+msgstr "o gasto do mês já chegou ao teto do Claude Code"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "This month's spend has a model without a price; the ceiling cannot be checked"
+msgstr "o gasto do mês tem um modelo sem preço; o teto não pode ser conferido"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "The weekly Codex quota is within the owner's reserve"
+msgstr "a cota semanal do Codex está dentro da reserva do dono"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "The task has already ended or is stopped"
+msgstr "a tarefa já terminou ou está parada"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "The task belongs to another executor; choose the executor on the task before dispatching"
+msgstr "a tarefa é de outro executor; escolha o executor na tarefa antes de despachar"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "The executor binary does not exist or is not executable on this Mac; check the path in Settings"
+msgstr "o binário do executor não existe ou não é executável neste Mac; confira o caminho em Configurações"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "The local checkout of the repository does not exist"
+msgstr "o checkout local do repositório não existe"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "The task has no repository"
+msgstr "a tarefa não tem repositório"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "project %{id}"
+msgstr "projeto %{id}"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "@%{login} allowed on %{project}."
+msgstr "@%{login} liberado em %{project}."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Running again: %{numbers}."
+msgstr "Rodando de novo: %{numbers}."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "Could not reprocess %{numbers}: ask for a new mention."
+msgstr "Não consegui reprocessar %{numbers}: peça uma nova menção."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "the list changed in the agent's panel; check and try again."
+msgstr "a lista mudou no painel do agente; confira e tente de novo."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "that GitHub login is not valid."
+msgstr "esse login do GitHub não é válido."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "the repository owner cannot be revoked."
+msgstr "o dono do repositório não pode ser revogado."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "this project's agent does not have GitHub configured."
+msgstr "o agente deste projeto não tem o GitHub configurado."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "the agent did not answer; is it running?"
+msgstr "o agente não respondeu; ele está ligado?"
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "the agent took too long to answer."
+msgstr "o agente demorou demais para responder."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "the agent answered with an error (HTTP %{status})."
+msgstr "o agente respondeu com erro (HTTP %{status})."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "the agent gave an answer the board does not understand."
+msgstr "o agente deu uma resposta que o board não entende."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "the agent refused the request."
+msgstr "o agente recusou o pedido."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "this project's setup did not finish; use Try again."
+msgstr "a configuração deste projeto não terminou; use Tentar de novo."
+
+#: lib/agent_board/actions.ex
+#, elixir-autogen, elixir-format
+msgid "this project has no provisioning to redo."
+msgstr "este projeto não tem provisionamento para refazer."
+
+#: lib/agent_board_web/live/board_live.ex
+#, elixir-autogen, elixir-format
+msgid "Executor limit: %{agents}."
+msgstr "Limite do executor: %{agents}."
+
+#: lib/agent_board_web/live/board_live.ex
+#, elixir-autogen, elixir-format
+msgid "Executor limit: %{agents}. The orchestrator will restart."
+msgstr "Limite do executor: %{agents}. O orquestrador vai reiniciar."

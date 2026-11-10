@@ -703,6 +703,75 @@ defmodule AgentBoard.ActionsTest do
                )
     end
 
+    test "a superagent command answers in the language of its confirmation",
+         %{repo: repo, owner: owner} do
+      {:ok, pid} = FakeManager.start()
+      previous = Application.get_env(:agent_board, :superagent_manager)
+      Application.put_env(:agent_board, :superagent_manager, FakeManager)
+
+      on_exit(fn ->
+        if previous,
+          do: Application.put_env(:agent_board, :superagent_manager, previous),
+          else: Application.delete_env(:agent_board, :superagent_manager)
+
+        if Process.alive?(pid), do: Agent.stop(pid)
+      end)
+
+      params = %{superagent: superagent!(repo, :start_superagent)}
+
+      assert {:ok, "Superagent started. The status updates on the next read."} =
+               Actions.run(:start_superagent, params, owner,
+                 confirm: Actions.phrase(:start_superagent, params, "en-US")
+               )
+
+      assert {:ok, "Superagent stopped."} =
+               Actions.run(:stop_superagent, params, owner,
+                 confirm: Actions.phrase(:stop_superagent, params, "en-US")
+               )
+
+      assert {:ok, "Superagent parado."} =
+               Actions.run(:stop_superagent, params, owner,
+                 confirm: Actions.phrase(:stop_superagent, params, "pt-BR")
+               )
+
+      # A yellow action asks nothing: the door names the language, or the
+      # answer is Portuguese as before.
+      assert {:ok, "Superagent paused."} =
+               Actions.run(:pause_superagent, params, owner, language: "en-US")
+
+      assert {:ok, "Superagent retomado."} = Actions.run(:resume_superagent, params, owner)
+    end
+
+    test "a refused dispatch and a refused grant say why in the language of the confirmation",
+         %{repo: repo, owner: owner} do
+      no_network()
+      dispatch = dispatch_params(task!(repo, 61), repo)
+
+      assert {:error,
+              "The task belongs to another executor; choose the executor on the task before dispatching"} =
+               Actions.run(:dispatch_task, dispatch, owner,
+                 confirm: Actions.phrase(:dispatch_task, dispatch, "en-US")
+               )
+
+      assert {:error,
+              "a tarefa é de outro executor; escolha o executor na tarefa antes de despachar"} =
+               Actions.run(:dispatch_task, dispatch, owner,
+                 confirm: Actions.phrase(:dispatch_task, dispatch, "pt-BR")
+               )
+
+      grant = %{superagent: superagent!(repo, :grant_agent_access), login: "sem login", rerun: []}
+
+      assert {:error, "Could not allow @sem login: that GitHub login is not valid."} =
+               Actions.run(:grant_agent_access, grant, owner,
+                 confirm: Actions.phrase(:grant_agent_access, grant, "en-US")
+               )
+
+      assert {:error, "Não foi possível liberar @sem login: esse login do GitHub não é válido."} =
+               Actions.run(:grant_agent_access, grant, owner,
+                 confirm: Actions.phrase(:grant_agent_access, grant, "pt-BR")
+               )
+    end
+
     test "start_agent runs the manager after the confirmation", %{owner: owner} do
       test_pid = self()
       params = %{opts: [starter: fn -> send(test_pid, :started) && {"ok", 0} end]}

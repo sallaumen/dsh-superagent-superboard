@@ -553,12 +553,17 @@ defmodule AgentBoardWeb.BoardLive do
       {:ok, max} ->
         socket
         |> load(socket.assigns.repo)
-        |> put_flash(:info, "Limite do executor: #{agents(max)}.")
+        |> put_flash(:info, gettext("Executor limit: %{agents}.", agents: agents(max)))
 
       {:ok, max, :restarting} ->
         socket
         |> load(socket.assigns.repo)
-        |> put_flash(:info, "Limite do executor: #{agents(max)}. O orquestrador vai reiniciar.")
+        |> put_flash(
+          :info,
+          gettext("Executor limit: %{agents}. The orchestrator will restart.",
+            agents: agents(max)
+          )
+        )
 
       {:error, :conflict} ->
         socket
@@ -1750,9 +1755,12 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, superagent_gone(socket)}
 
       superagent ->
+        # Read here: the task that runs the action has no locale of its own.
+        language = Locale.language()
+
         {:noreply,
          start_async(socket, {:superagent_command, superagent.id}, fn ->
-           Actions.run(name, %{superagent: superagent}, ui())
+           Actions.run(name, %{superagent: superagent}, ui(), language: language)
          end)}
     end
   end
@@ -1764,9 +1772,13 @@ defmodule AgentBoardWeb.BoardLive do
          {delta, ""} <- Integer.parse(delta),
          workers = max(1, min(32, superagent.max_workers + delta)),
          true <- workers != superagent.max_workers do
+      language = Locale.language()
+
       {:noreply,
        start_async(socket, {:superagent_scale, superagent.id}, fn ->
-         Actions.run(:scale_superagent, %{superagent: superagent, workers: workers}, ui())
+         Actions.run(:scale_superagent, %{superagent: superagent, workers: workers}, ui(),
+           language: language
+         )
        end)}
     else
       false -> {:noreply, socket}
