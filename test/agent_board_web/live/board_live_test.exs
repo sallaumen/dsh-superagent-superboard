@@ -1090,6 +1090,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, ".ab-stage > .ab-pane--work .ab-lanes")
     assert has_element?(view, ".ab-stage > .ab-pane--work > header.ab-top")
     assert has_element?(view, ".ab-stage > #sec-log")
+    # On a phone the merged lane folds to one line, like the throughput.
+    assert has_element?(view, "#sec-log > details#fold-log[phx-hook=BoardFold] .ab-day")
     assert has_element?(view, ".ab-stage > #fold-flow")
 
     html = render(view)

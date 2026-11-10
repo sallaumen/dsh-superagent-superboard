@@ -465,7 +465,10 @@ body { margin: 0; background: var(--paper); }
   .ab-run__step { flex-wrap: wrap; grid-column: 2 / span 2; }
   .ab-need__actions { grid-column: 2; grid-row: auto; justify-self: start; margin: 0 0 0 -8px; }
   .ab-row { grid-template-columns: 22px 12px minmax(0, 1fr); }
-  .ab-row__side { display: none; }
+  /* A phone has the height for the whole title and its age, not the width. */
+  .ab-row__title > span:first-child { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
+  .ab-row { row-gap: 2px; }
+  .ab-row__side { grid-column: 3; }
   .ab-board[data-inspector="open"] .ab-insp { position: absolute; inset: 0; width: 100%; border-left: 0; border-radius: 0; }
   .ab-mobilebar { display: flex; }
   .ab-insp__bar .ab-kbd { display: none; }
@@ -1955,8 +1958,8 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 /* Folds: the day summary and throughput are one-line disclosures on a phone;
    on wider screens the hook opens them and the summary disappears. */
 .ab-fold > .ab-fold__summary { display: none; }
-.ab-fold--flow { display: block; }
-.ab-fold--flow > .ab-fold__body { display: block; }
+.ab-fold--flow, .ab-fold--log { display: block; }
+.ab-fold--flow > .ab-fold__body, .ab-fold--log > .ab-fold__body { display: block; }
 .ab-fold__summary {
   display: flex;
   align-items: baseline;
@@ -1980,6 +1983,8 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   .ab-fold[open] > .ab-fold__body { display: block; }
   .ab-fold:not([open]) > .ab-fold__body { display: none; }
   .ab-fold--flow .ab-fold__body #sec-flow .ab-sec__head { display: none; }
+  /* The summary already names the lane; the History button stays. */
+  .ab-fold--log .ab-sec__head :is(h2, .ab-sec__count) { display: none; }
 }
 
 @container board (max-width: 640px) {
@@ -3082,3 +3087,12 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
   .ab-segmented--sm .ab-segment { min-height: 40px; }
 }
 
+/* Phone: whatever you tap is at least 44 px tall. Links inside a line of text
+   keep their size and get a larger hit area instead, so rows do not grow. */
+@media (max-width: 640px) {
+  .ab-btn, .ab-chip, .ab-filter .ab-chip, .ab-row, .ab-tab, .ab-segment, .ab-segmented--sm .ab-segment, .ab-more, .ab-beacon, .ab-version-behind,
+  .board-dialog .panel-close, .ab-insp__actions .ab-btn, .ab-compose__head .ab-btn, .ab-top__actions .ab-btn, .ab-fold__summary, .ab-objective-done > summary { min-height: 44px; }
+  .ab-btn--icon { min-width: 44px; }
+  .ab-more.ab-pr__task, .ab-digest__link { position: relative; min-height: 0; }
+  .ab-more.ab-pr__task::after, .ab-digest__link::after { content: ""; position: absolute; inset: -10px -4px; }
+}
