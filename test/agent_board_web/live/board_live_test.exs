@@ -1050,6 +1050,18 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, ".ab-top__repo h1", "arena-rogue")
   end
 
+  test "the browser tab names the board and what it shows", %{conn: conn} do
+    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+
+    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+
+    assert page_title(view) == "arena-rogue · Agent Board"
+    refute html =~ "Phoenix Framework"
+
+    view |> element(".ab-repo--today") |> render_click()
+    assert page_title(view) == "Hoje · Agent Board"
+  end
+
   test "the board renders the work sections", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
 
