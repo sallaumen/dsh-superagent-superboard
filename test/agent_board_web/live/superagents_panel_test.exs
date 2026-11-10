@@ -260,7 +260,9 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     superagent =
       superagent!(repo, %{
         observed_state: "error",
-        last_error: "@bot cannot push",
+        # Longer than the summary limit: only the failed-setup rule shows it whole.
+        last_error:
+          "@bot cannot push to fixture/failed-panel. Add the bot at https://github.com/fixture/failed-panel/settings/access with write access, wait for it to accept the invitation, and try again.",
         provision_failed_at: DateTime.utc_now() |> DateTime.truncate(:second),
         checkout_path: "/tmp/checkout",
         source_profile: "superagent"
@@ -329,5 +331,25 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     refute has_element?(view, ".ab-projects__empty")
     assert has_element?(view, ".ab-projects__list", "fixture/only-tracked")
+  end
+
+  test "a failed setup whose reason is not a sentence keeps the summary and the details", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "failed-term")
+
+    superagent =
+      superagent!(repo, %{
+        observed_state: "error",
+        last_error: "{:manager, 1, \"" <> String.duplicate("traceback ", 20) <> "\"}",
+        provision_failed_at: DateTime.utc_now() |> DateTime.truncate(:second),
+        checkout_path: "/tmp/checkout",
+        source_profile: "superagent"
+      })
+
+    {:ok, view, _html} = live(conn, "/?repo=fixture/failed-term&panel=settings&section=projects")
+
+    refute has_element?(view, "#project-#{superagent.id}-error p", "traceback")
+    assert has_element?(view, "#project-#{superagent.id}-error details code", "traceback")
   end
 end

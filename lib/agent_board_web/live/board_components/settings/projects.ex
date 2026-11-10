@@ -584,10 +584,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   defp desired_line(%{desired_state: "stopped"}), do: gettext("should be stopped")
   defp desired_line(_superagent), do: nil
 
-  # A failed setup already says, in words, what to fix: show it, not a pointer to it.
-  defp error_text(%{provision_failed_at: %DateTime{}, last_error: error}) when is_binary(error),
-    do: error
-
   defp error_text(%{last_error: nil, observed_state: "error"}) do
     gettext("The agent is in an error state. Open the controls to try again.")
   end
@@ -596,6 +592,10 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   defp error_text(%{last_error: error} = superagent) do
     cond do
+      # A failed setup that says in words what to fix is shown, not pointed at.
+      superagent.provision_failed_at && words?(error) ->
+        error
+
       String.contains?(String.downcase(error), "rate limit") ->
         gettext("GitHub reached its reading limit. Wait for the quota to renew and check again.")
 
@@ -614,6 +614,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         error
     end
   end
+
+  # An Elixir term (`{:manager, 1, ...}`, `%Req.TransportError{}`, `:timeout`) is not a sentence.
+  defp words?(error), do: not String.starts_with?(error, ["{", "%", ":"])
 
   defp technical_details?(%{last_error: nil}), do: false
   defp technical_details?(superagent), do: error_text(superagent) != superagent.last_error

@@ -2513,6 +2513,7 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
 .ab-projects { display: grid; gap: var(--space-5); }
 .ab-projects__empty { margin: 0; padding: var(--space-5); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); color: var(--ink-muted); font-size: 13px; line-height: 20px; }
 .ab-projects__list { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(7.5rem, 0.7fr) auto minmax(8rem, 0.9fr) auto; gap: 0 var(--space-4); margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+/* shortcut: subgrid needs Safari 16 / Chrome 117; an older browser stacks a row's cells. Add an @supports fallback if one must be supported. */
 .ab-project { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; border-bottom: 1px solid var(--line); }
 .ab-project > * { grid-column: 1 / -1; }
 .ab-project__row { display: grid; grid-template-columns: subgrid; align-items: center; row-gap: var(--space-4); padding: 14px 0; }
@@ -2610,7 +2611,7 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
   .ab-projects__list { grid-template-columns: minmax(0, 1fr) auto; }
   .ab-project__agents, .ab-project__actions { grid-column: 2; justify-self: end; }
   .ab-project__profile { grid-column: 1; }
-  .ab-project__actions, .ab-project--tracked .ab-project__actions { grid-row: 3; }
+  .ab-project__actions { grid-row: 3; }
   .ab-project--tracked .ab-project__actions { grid-column: 2; grid-row: 2; }
   .ab-project__fold summary, .ab-project__error-details summary, .ab-project-access__guide summary { padding: 7px 0; }
   .ab-project__foot-actions { margin-left: 0; }

@@ -1040,7 +1040,7 @@ msgid "Transcripts exist, but the board can't read them: missing the"
 msgstr "As transcrições existem, mas o board não consegue lê-las: falta o"
 
 #: lib/agent_board_web/live/board_components/composer.ex:117
-#: lib/agent_board_web/live/board_components/settings/projects.ex:637
+#: lib/agent_board_web/live/board_components/settings/projects.ex:640
 #, elixir-autogen, elixir-format
 msgid "Try again"
 msgstr "Tentar de novo"
@@ -3798,7 +3798,7 @@ msgid "Starting runner…"
 msgstr "Iniciando o runner…"
 
 #: lib/agent_board_web/live/board_components/inspector.ex:244
-#: lib/agent_board_web/live/board_components/settings/projects.ex:639
+#: lib/agent_board_web/live/board_components/settings/projects.ex:642
 #, elixir-autogen, elixir-format
 msgid "Stop"
 msgstr "Parar"
@@ -4602,7 +4602,7 @@ msgstr "Abrir controles"
 msgid "Paused"
 msgstr "Pausado"
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:638
+#: lib/agent_board_web/live/board_components/settings/projects.ex:641
 #, elixir-autogen, elixir-format
 msgid "Start"
 msgstr "Ligar"
@@ -4617,7 +4617,7 @@ msgstr "Subindo"
 msgid "The GitHub source does not point to any repository, so the agent does not start. Its %{count} agents stay stopped until this is fixed."
 msgstr "A fonte do GitHub não aponta para nenhum repositório, então o agente não sobe. Os %{count} agentes ficam parados até isso ser corrigido."
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:592
+#: lib/agent_board_web/live/board_components/settings/projects.ex:588
 #, elixir-autogen, elixir-format
 msgid "The agent is in an error state. Open the controls to try again."
 msgstr "O agente está em erro. Abra os controles para tentar de novo."
