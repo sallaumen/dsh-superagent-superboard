@@ -242,6 +242,17 @@ defmodule AgentBoardWeb.UpdateFlowTest do
     assert AgentBoardWeb.DevReload.call(conn, AgentBoardWeb.DevReload.init([])) == conn
   end
 
+  # A socket connect ran Phoenix.CodeReloader outside DevReload: any page open
+  # during an update recompiled the new sources into the serving node, which
+  # then answered 500 and queried columns the migration had not created yet.
+  test "no socket recompiles on connect, so the hold covers every reload" do
+    for {_path, _socket, opts} <- AgentBoardWeb.Endpoint.__sockets__(),
+        transport <- [:websocket, :longpoll],
+        is_list(opts[transport]) do
+      assert opts[transport][:code_reloader] == false
+    end
+  end
+
   test "the explicit restart button schedules the same path", %{conn: conn} do
     {:ok, _} = Board.add_repository("fixture", "restart")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/restart")

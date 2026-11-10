@@ -774,37 +774,6 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .panel-shortcuts .ab-keys dt { justify-content: flex-start; }
 .ab-rail__foot .ab-btn { justify-content: flex-start; }
 
-/* Shown after a restart, once the new server has answered the LiveView. */
-.ab-reload-notice {
-  position: fixed;
-  left: 50%;
-  bottom: 20px;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  transform: translateX(-50%);
-  padding: 8px 10px 8px 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-layer);
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.ab-reload-notice button {
-  padding: 6px 10px;
-  border: 0;
-  border-radius: var(--radius-xs);
-  background: var(--you);
-  color: var(--on-you);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 .ab-ci-local { color: var(--agent); font-weight: 500; }
 /* ultrawide: center the reading area; the lanes use the width */
 @container board (min-width: 1600px) {

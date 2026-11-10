@@ -16,7 +16,7 @@ export const BoardConnection = {
 
     // LiveView 1.2 hooks register server events through the core handleEvent
     // method; defining a handleEvent property overwrote it and warned on every
-    // connect. The restart event only marks the tab for a reload after boot.
+    // connect. The restart event only marks the tab; it reloads after the new boot.
     this.handleEvent("restart", () => {
       sessionStorage.setItem("ab:reload-after-restart", "1")
     })
@@ -43,23 +43,12 @@ export const BoardConnection = {
     this.reloadIfRestarted()
   },
 
-  // A reload can catch a socket that is still closing and leave the browser
-  // on chrome-error. The new server has already answered the LiveView; give
-  // the person the explicit reload that also fetches the new assets.
+  // Called only once the new server has answered the LiveView, so the reload
+  // cannot land on a dead port; it fetches the new assets without an F5.
   reloadIfRestarted() {
     if (sessionStorage.getItem("ab:reload-after-restart") !== "1") return
     sessionStorage.removeItem("ab:reload-after-restart")
-    setTimeout(() => this.showRestartNotice(), 500)
-  },
-  showRestartNotice() {
-    if (document.querySelector(".ab-reload-notice")) return
-    const notice = document.createElement("div")
-    notice.className = "ab-reload-notice"
-    notice.setAttribute("role", "status")
-    notice.innerHTML =
-      '<span>Servidor atualizado.</span><button type="button" class="ab-btn ab-btn--sm ab-btn--primary">Recarregar</button>'
-    notice.querySelector("button").addEventListener("click", () => window.location.reload())
-    document.body.appendChild(notice)
+    window.location.reload()
   },
   mark(state) {
     const page = document.querySelector("#board-page")
