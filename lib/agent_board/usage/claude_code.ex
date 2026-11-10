@@ -19,7 +19,9 @@ defmodule AgentBoard.Usage.ClaudeCode do
     * A copy keeps the session, cwd and branch of the first copy read.
     * `input_tokens` excludes the cache; `cache_creation_input_tokens` is
       the cache write and `cache_read_input_tokens` the cache read;
-      `output_tokens` includes thinking.
+      `output_tokens` includes thinking. `cache_write_1h` is the part of the
+      cache write kept for one hour (`cache_creation.ephemeral_1h_input_tokens`),
+      which Claude Code charges at a higher rate.
 
   The tokens are measured. Claude Code runs on the owner's Claude Max
   subscription, so there is no bill per token here: the `cost-state` lines
@@ -48,7 +50,8 @@ defmodule AgentBoard.Usage.ClaudeCode do
           input: non_neg_integer(),
           output: non_neg_integer(),
           cache_read: non_neg_integer(),
-          cache_write: non_neg_integer()
+          cache_write: non_neg_integer(),
+          cache_write_1h: non_neg_integer()
         }
 
   @type group :: %{
@@ -196,7 +199,8 @@ defmodule AgentBoard.Usage.ClaudeCode do
       | input: max(first.input, other.input),
         output: max(first.output, other.output),
         cache_read: max(first.cache_read, other.cache_read),
-        cache_write: max(first.cache_write, other.cache_write)
+        cache_write: max(first.cache_write, other.cache_write),
+        cache_write_1h: max(first.cache_write_1h, other.cache_write_1h)
     }
   end
 
@@ -302,6 +306,13 @@ defmodule AgentBoard.Usage.ClaudeCode do
     case time(event["timestamp"]) do
       {:ok, at} ->
         usage = body["usage"] || %{}
+        cache_write = count(usage["cache_creation_input_tokens"])
+        cache_creation = usage["cache_creation"]
+
+        one_hour =
+          if is_map(cache_creation),
+            do: count(cache_creation["ephemeral_1h_input_tokens"]),
+            else: 0
 
         %{
           id: id,
@@ -313,7 +324,8 @@ defmodule AgentBoard.Usage.ClaudeCode do
           input: count(usage["input_tokens"]),
           output: count(usage["output_tokens"]),
           cache_read: count(usage["cache_read_input_tokens"]),
-          cache_write: count(usage["cache_creation_input_tokens"])
+          cache_write: cache_write,
+          cache_write_1h: min(one_hour, cache_write)
         }
 
       :error ->

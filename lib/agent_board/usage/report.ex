@@ -71,6 +71,7 @@ defmodule AgentBoard.Usage.Report do
         output_tokens: l.output_tokens,
         cache_read_tokens: l.cache_read_tokens,
         cache_write_tokens: l.cache_write_tokens,
+        cache_write_1h_tokens: l.cache_write_1h_tokens,
         first_at: type(l.first_at, :utc_datetime_usec),
         last_at: type(l.last_at, :utc_datetime_usec)
       }
@@ -445,7 +446,8 @@ defmodule AgentBoard.Usage.Report do
             input_tokens: m.input_tokens,
             output_tokens: m.output_tokens,
             cache_read_tokens: m.cache_read_tokens,
-            cache_write_tokens: m.cache_write_tokens
+            cache_write_tokens: m.cache_write_tokens,
+            cache_write_1h_tokens: m.cache_write_1h_tokens
           }
       )
 

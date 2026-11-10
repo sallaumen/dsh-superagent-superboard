@@ -40,8 +40,18 @@ defmodule AgentBoard.Usage.Ledger do
   require Logger
 
   @sources ~w(claude_code codex dsh)
-  @counts [:requests, :input_tokens, :output_tokens, :cache_read_tokens, :cache_write_tokens]
-  @tokens [:input_tokens, :output_tokens, :cache_read_tokens, :cache_write_tokens]
+  @tokens [
+    :input_tokens,
+    :output_tokens,
+    :cache_read_tokens,
+    :cache_write_tokens,
+    :cache_write_1h_tokens
+  ]
+  @counts [:requests | @tokens]
+
+  # What the Claude Code reader takes from a transcript. A file read by an
+  # older reader is read again in full: 2 added the 1-hour cache writes.
+  @claude_reader 2
   @fingerprint_bytes 4_096
   @chunk 2_000
 
@@ -190,7 +200,8 @@ defmodule AgentBoard.Usage.Ledger do
              mtime: f.mtime,
              offset: f.offset,
              fingerprint: f.fingerprint,
-             error: f.error
+             error: f.error,
+             reader: f.reader
            }}
     )
     |> Map.new()
@@ -198,10 +209,16 @@ defmodule AgentBoard.Usage.Ledger do
 
   defp changed?(file, known) do
     case Map.get(known, file.path) do
-      %{size: size, mtime: mtime, error: nil} -> size != file.size or mtime != file.mtime
-      _ -> true
+      %{size: size, mtime: mtime, error: nil} = previous ->
+        size != file.size or mtime != file.mtime or outdated?(file, previous)
+
+      _ ->
+        true
     end
   end
+
+  defp outdated?(%{source: "claude_code"}, %{reader: reader}), do: reader < @claude_reader
+  defp outdated?(_file, _previous), do: false
 
   ## Ingest
 
@@ -314,6 +331,7 @@ defmodule AgentBoard.Usage.Ledger do
             output_tokens: day.output,
             cache_read_tokens: day.cached_input,
             cache_write_tokens: day.cache_write,
+            cache_write_1h_tokens: 0,
             first_at: day.first_at,
             last_at: day.last_at
           }
@@ -351,6 +369,7 @@ defmodule AgentBoard.Usage.Ledger do
   # A transcript that only grew is read from where the last read stopped,
   # when the bytes just before that point are the ones read then.
   defp resume_offset(_file, nil), do: 0
+  defp resume_offset(_file, %{reader: reader}) when reader < @claude_reader, do: 0
 
   defp resume_offset(file, %{offset: offset, fingerprint: print}) when offset > 0 do
     if file.size >= offset and print != nil and fingerprint(file.path, offset) == print,
@@ -398,6 +417,7 @@ defmodule AgentBoard.Usage.Ledger do
           fingerprint: state.fingerprint,
           skipped: state.skipped,
           error: error,
+          reader: @claude_reader,
           read_at: now,
           inserted_at: now,
           updated_at: now
@@ -405,7 +425,18 @@ defmodule AgentBoard.Usage.Ledger do
       ],
       on_conflict:
         {:replace,
-         [:source, :size, :mtime, :offset, :fingerprint, :skipped, :error, :read_at, :updated_at]},
+         [
+           :source,
+           :size,
+           :mtime,
+           :offset,
+           :fingerprint,
+           :skipped,
+           :error,
+           :reader,
+           :read_at,
+           :updated_at
+         ]},
       conflict_target: :path
     )
   end
@@ -424,7 +455,9 @@ defmodule AgentBoard.Usage.Ledger do
       input_tokens: message.input,
       output_tokens: message.output,
       cache_read_tokens: message.cache_read,
-      cache_write_tokens: message.cache_write
+      cache_write_tokens: message.cache_write,
+      # Only Claude Code tells a 1-hour write from a 5-minute one.
+      cache_write_1h_tokens: Map.get(message, :cache_write_1h, 0)
     }
   end
 
@@ -463,7 +496,8 @@ defmodule AgentBoard.Usage.Ledger do
              input_tokens: m.input_tokens,
              output_tokens: m.output_tokens,
              cache_read_tokens: m.cache_read_tokens,
-             cache_write_tokens: m.cache_write_tokens
+             cache_write_tokens: m.cache_write_tokens,
+             cache_write_1h_tokens: m.cache_write_1h_tokens
            }}
     )
     |> Map.new()
@@ -503,6 +537,7 @@ defmodule AgentBoard.Usage.Ledger do
             output_tokens: type(sum(m.output_tokens), :integer),
             cache_read_tokens: type(sum(m.cache_read_tokens), :integer),
             cache_write_tokens: type(sum(m.cache_write_tokens), :integer),
+            cache_write_1h_tokens: type(sum(m.cache_write_1h_tokens), :integer),
             first_at: type(min(m.at), :utc_datetime_usec),
             last_at: type(max(m.at), :utc_datetime_usec)
           }
@@ -533,6 +568,7 @@ defmodule AgentBoard.Usage.Ledger do
             output_tokens: l.output_tokens,
             cache_read_tokens: l.cache_read_tokens,
             cache_write_tokens: l.cache_write_tokens,
+            cache_write_1h_tokens: l.cache_write_1h_tokens,
             first_at: type(l.first_at, :utc_datetime_usec),
             last_at: type(l.last_at, :utc_datetime_usec)
           }

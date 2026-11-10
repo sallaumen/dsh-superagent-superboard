@@ -327,4 +327,21 @@ defmodule AgentBoard.Usage.ReportTest do
                }
              ])
   end
+
+  # A real opus-4-8 line whose cache writes were all 1-hour ones: Claude Code's
+  # own cost is US$ 4.98922. At the 5-minute rate the same row gave 3.27.
+  test "1-hour cache writes are priced at twice the input, as Claude Code does" do
+    day = ~D[2026-11-07]
+
+    ledger("claude_code", "session-1h", day, %{
+      model: "claude-opus-4-8",
+      input_tokens: 8,
+      output_tokens: 4_130,
+      cache_read_tokens: 607_287,
+      cache_write_tokens: 458_229,
+      cache_write_1h_tokens: 458_229
+    })
+
+    assert [%{cost: %{micros: 4_989_224, complete?: true}}] = Report.daily(day)
+  end
 end

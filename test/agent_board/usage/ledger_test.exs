@@ -144,6 +144,24 @@ defmodule AgentBoard.Usage.LedgerTest do
       assert file_row(path).offset == File.stat!(path).size
     end
 
+    # Rows the ledger wrote before it knew the 1-hour writes hold zero there.
+    # The file is read once more, in full, and its rows are filled.
+    test "1-hour cache writes reach the ledger, also for a file read before the reader knew them",
+         %{claude: dir} do
+      write(dir, "p/s1.jsonl", [assistant("m1", "s1", "2026-11-07T10:00:00.000Z", write_1h: 30)])
+
+      assert %{read: 1, failed: 0} = Ledger.refresh()
+      assert one_hour_writes() == {[30], [30]}
+
+      Repo.update_all("usage_messages", set: [cache_write_1h_tokens: 0])
+      Repo.update_all("usage_ledger", set: [cache_write_1h_tokens: 0])
+      Repo.update_all("usage_files", set: [reader: 1])
+
+      assert %{read: 1, failed: 0} = Ledger.refresh()
+      assert one_hour_writes() == {[30], [30]}
+      assert %{read: 0} = Ledger.refresh()
+    end
+
     test "a later copy of a message never counts twice nor moves it", %{claude: dir} do
       write(dir, "p/s1.jsonl", [assistant("m1", "s1"), assistant("m2", "s1")])
       assert %{read: 1} = Ledger.refresh()
@@ -368,6 +386,11 @@ defmodule AgentBoard.Usage.LedgerTest do
     }
   end
 
+  defp one_hour_writes do
+    {Repo.all(from m in "usage_messages", select: m.cache_write_1h_tokens),
+     Repo.all(from l in "usage_ledger", select: l.cache_write_1h_tokens)}
+  end
+
   defp file_row(path) do
     Repo.one!(
       from f in "usage_files", where: f.path == ^path, select: %{offset: f.offset, error: f.error}
@@ -396,7 +419,11 @@ defmodule AgentBoard.Usage.LedgerTest do
           input_tokens: 10,
           output_tokens: Keyword.get(opts, :output, 100),
           cache_read_input_tokens: 1_000,
-          cache_creation_input_tokens: 50
+          cache_creation_input_tokens: 50,
+          cache_creation: %{
+            ephemeral_5m_input_tokens: 50 - Keyword.get(opts, :write_1h, 0),
+            ephemeral_1h_input_tokens: Keyword.get(opts, :write_1h, 0)
+          }
         }
       }
     })
