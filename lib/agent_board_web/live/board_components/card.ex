@@ -27,7 +27,9 @@ defmodule AgentBoardWeb.BoardComponents.Card do
       <DataAge.stamp
         id={"#{@id}-age"}
         at={if @state == :merged, do: @item.merged_at, else: @item.updated_at}
-        label={if @state == :merged, do: "Merged", else: "Updated"}
+        label={
+          if @state == :merged, do: pgettext("stamp", "Merged"), else: pgettext("stamp", "Updated")
+        }
       />
     </article>
     """
