@@ -81,7 +81,8 @@ Body: `{"action": "stop"}`. The value of `action` can also be `"archive"` or `"r
 
 - `200` — `{"ok": true}`.
 - `428` — `stop` without `confirm`, or with the sentence for other values.
-- `404` — `{"error": "task not found"}` for a missing task, an unknown action or a GitHub failure when closing the issue.
+- `404` — `{"error": "task not found"}` for a missing task or an unknown action.
+- `502` — `{"error": "<reason>"}` when the action failed, such as a GitHub failure when closing the issue; the task stays as it was.
 - Real effects: `stop` closes the issue and sets the stop flag; `archive` archives the task; `resume` clears the stop/archive flags and puts the task back in `queued` locally. It does not reopen the issue on GitHub (see [Board.resume_task/1](../lib/agent_board/board.ex)).
 
 ## Contract and limits
