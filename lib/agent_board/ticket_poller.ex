@@ -50,10 +50,14 @@ defmodule AgentBoard.TicketPoller do
     |> Enum.reduce(state, fn repo, acc ->
       # Only this repository's tickets: another one's change reloads its own tabs.
       own = Enum.filter(tickets, &AgentState.same_repository?(&1, repo))
-      overlay_tasks(repo, own)
-      hash = :erlang.phash2({repo.id, own, active_worktrees(repo, own)})
+      # The overlays are computed every poll (they read comments, not only
+      # tickets) but written only when something changed: an unchanged poll
+      # writes nothing. A restart's empty state writes them all once.
+      overlays = overlays(repo, own)
+      hash = :erlang.phash2({repo.id, own, overlays, active_worktrees(repo, own)})
 
       if Map.get(acc, repo.id) != hash do
+        apply_overlays(repo, overlays)
         Board.broadcast(repo.id)
         Map.put(acc, repo.id, hash)
       else
@@ -71,24 +75,21 @@ defmodule AgentBoard.TicketPoller do
     end
   end
 
-  defp overlay_tasks(repo, tickets) do
-    for {number, ticket} <- Tickets.by_number(tickets), do: overlay_ticket(repo, ticket, number)
-
-    :ok
-  end
-
   # The workpad and the question check read the conversation only for a
   # waiting ticket: Tickets.state calls them lazily.
-  defp overlay_ticket(repo, ticket, number) do
-    case Tickets.state(ticket,
-           workpad: fn -> Board.agent_workpad(repo.id, number) end,
-           asked?: fn -> Board.agent_asked?(repo.id, number) end
-         ) do
-      nil -> :ok
-      overlay -> overlay_number(repo, number, overlay, ticket["started_at"])
-    end
+  defp overlays(repo, tickets) do
+    for {number, ticket} <- Tickets.by_number(tickets),
+        overlay =
+          Tickets.state(ticket,
+            workpad: fn -> Board.agent_workpad(repo.id, number) end,
+            asked?: fn -> Board.agent_asked?(repo.id, number) end
+          ),
+        overlay != nil,
+        do: {number, overlay, ticket["started_at"]}
   end
 
-  defp overlay_number(repo, number, overlay, started_at),
-    do: TicketOverlay.apply(repo, number, overlay, started_at)
+  defp apply_overlays(repo, overlays) do
+    for {number, overlay, started_at} <- overlays,
+        do: TicketOverlay.apply(repo, number, overlay, started_at)
+  end
 end

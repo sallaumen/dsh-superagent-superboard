@@ -89,6 +89,34 @@ defmodule AgentBoard.TicketPollerTest do
     refute_receive :board_updated, 150
   end
 
+  # The live runner keeps every ticket it ever had: re-applying them all every
+  # 10 s was ~1.7 M statements a day for no change.
+  test "a second poll with the same tickets writes nothing", %{db: db} do
+    repo = isolated_repo()
+    task(repo)
+
+    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @running <> "')")
+    state = AgentBoard.TicketPoller.poll(%{})
+
+    test = self()
+    id = "ticket-poll-writes-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach(
+      id,
+      [:agent_board, :repo, :query],
+      fn _event, _measurements, %{query: sql}, _config ->
+        if self() == test and sql =~ ~r/^UPDATE/i, do: send(test, {:update, sql})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(id) end)
+
+    AgentBoard.TicketPoller.poll(state)
+
+    refute_received {:update, _sql}
+  end
+
   test "a worktree change broadcasts while the ticket stays the same", %{db: db} do
     repo = isolated_repo()
     task(repo)
@@ -268,6 +296,35 @@ defmodule AgentBoard.TicketPollerTest do
     AgentBoard.TicketPoller.poll(%{})
 
     assert Repo.get(Task, t.id).state == "question"
+  end
+
+  # The comment lookups are part of what the overlay reads: a question that
+  # arrives while the ticket stays the same still moves the task.
+  test "a new agent comment moves the task while the ticket stays the same", %{db: db} do
+    repo = isolated_repo()
+    t = task(repo)
+
+    :ok =
+      Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> @waiting_pr <> "')")
+
+    state = AgentBoard.TicketPoller.poll(%{})
+    assert Repo.get(Task, t.id).state == "ready"
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: t.id,
+      github_id: 2,
+      author: "sallaumen-agent",
+      body: "Devo manter o chefe na onda 5?\n\n<!-- dsh-superagent:abc -->",
+      kind: "agent"
+    })
+    |> Repo.insert!()
+
+    Board.subscribe(repo.id)
+    AgentBoard.TicketPoller.poll(state)
+
+    assert Repo.get(Task, t.id).state == "question"
+    assert_receive :board_updated
   end
 
   # An issue keeps every ticket it ever had: the open one speaks for it, an

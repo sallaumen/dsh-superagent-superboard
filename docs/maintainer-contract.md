@@ -308,7 +308,10 @@ that already worked).
   reloads on `:board_updated`.
 - `AgentBoard.TicketPoller` polls the agent's tickets every 10s and broadcasts only
   when their hash changed — the runner state reaches the board without waiting
-  for the sync. It is idempotent: the same tickets never broadcast twice
+  for the sync. It is idempotent: the same tickets never broadcast twice and
+  are never written twice; the hash covers the overlay it computes (which
+  reads the agent's comments), so a new comment still moves the task, and a
+  task changed by another writer is set back by the next sync
   (`ticket_poller_test.exs`). The interval is the `:ticket_poll_interval` knob; the test
   environment stretches it to an hour so the supervised poller never ticks
   into the sandboxed database mid-suite.
