@@ -642,4 +642,49 @@ defmodule AgentBoard.SuperagentsTest do
       assert {:error, :nothing_to_retry} = Superagents.retry_provision(healthy, FakeProvisioner)
     end
   end
+
+  # The profile lives under the configured root; a hard-coded ~/.dsh/profiles
+  # would archive the real profile of the same name instead.
+  test "remove archives the profile from the configured root and the state", %{repo: repo} do
+    {:ok, _pid} = FakeManager.start()
+    root = Path.join(System.tmp_dir!(), "remove-#{System.unique_integer([:positive])}")
+    profiles = Path.join(root, "profiles")
+    profile = "superagent-remove-#{System.unique_integer([:positive])}"
+    state = Path.join(root, "state")
+    File.mkdir_p!(Path.join(profiles, profile))
+    File.write!(Path.join([profiles, profile, "marker"]), "profile")
+    File.mkdir_p!(state)
+
+    for {key, value} <- [
+          dsh_profiles_dir: profiles,
+          superagent_archive_root: Path.join(root, "archive")
+        ] do
+      previous = Application.get_env(:agent_board, key)
+      Application.put_env(:agent_board, key, value)
+
+      on_exit(fn ->
+        if previous,
+          do: Application.put_env(:agent_board, key, previous),
+          else: Application.delete_env(:agent_board, key)
+      end)
+    end
+
+    on_exit(fn -> File.rm_rf!(root) end)
+
+    {:ok, superagent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: profile,
+        port: 3197,
+        state_dir: state
+      })
+
+    FakeManager.put(superagent.id, "stopped")
+
+    assert {:ok, archive} = Superagents.remove(superagent, FakeManager)
+    assert File.read!(Path.join([archive, "profile", "marker"])) == "profile"
+    refute File.exists?(Path.join(profiles, profile))
+    assert File.dir?(Path.join(archive, "state"))
+    assert Repo.get(Superagent, superagent.id) == nil
+  end
 end
