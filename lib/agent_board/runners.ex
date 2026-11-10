@@ -556,11 +556,13 @@ defmodule AgentBoard.Runners do
       status in ["done", "failed"] ->
         finish(execution, status, session)
 
+      # The CLI runs under `timeout`: still running past it, the session died
+      # (a reboot) and nothing will ever write the final state.
+      stale?(execution) ->
+        finish(execution, "failed", session, stale_reason(status))
+
       status == "running" and (session != execution.session_id or execution.status != "running") ->
         save(execution, %{status: "running", session_id: session || execution.session_id})
-
-      status == nil and stale?(execution) ->
-        finish(execution, "failed", session, "o runner não escreveu o estado a tempo")
 
       true ->
         :ok
@@ -612,6 +614,9 @@ defmodule AgentBoard.Runners do
         :ok
     end
   end
+
+  defp stale_reason(nil), do: "o runner não escreveu o estado a tempo"
+  defp stale_reason(_status), do: "o runner passou do tempo sem terminar"
 
   defp stale?(execution) do
     timeout = execution.timeout_seconds || codex_timeout_minutes() * 60

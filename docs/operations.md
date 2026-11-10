@@ -32,7 +32,7 @@ the compose file, or `docker update --restart unless-stopped <container>`):
 without it Docker leaves it stopped after a reboot and the board never comes
 back. `scripts/service.sh` waits for the database before migrating, for up to
 `AGENT_BOARD_DB_WAIT` seconds (300), and then exits so launchd tries again. The
-**Update and restart** button is in **Settings → Version** and appears after **Check** when the
+**Update and restart** button is in **Settings → System** and appears after **Check** when the
 checkout is behind; the service log records the deps/migrate/boot sequence.
 
 ```sh
@@ -55,8 +55,11 @@ under `scripts/service.sh` the updater uses `AGENT_BOARD_RESTART_MODE=supervised
 stops the service, and lets launchd start the new code (the script refreshes
 deps and migrations first). A standalone `mix phx.server` starts a detached
 shell and logs to `agent-board-update-restart.log` in the system temp
-directory. The page keeps the old assets until you accept the **Reload** prompt,
-so a restart does not leave the browser in a dead navigation.
+directory. While the update prepares, the old node keeps serving the code it
+has loaded: no request or socket recompiles it. The page reloads on its own
+once the new server answers its LiveView, so it picks up the new assets and
+never navigates to a dead port. A tab with unsent text in a text area is not
+reloaded; it keeps the text and gets the new assets on its next load.
 
 ## Logs
 

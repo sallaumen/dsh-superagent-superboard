@@ -10,7 +10,7 @@ defmodule AgentBoardWeb.BoardNavigation do
 
   # The rail shows these on a board with no repository: Settings is where the
   # first one is added, and the others do not depend on one.
-  @panels_without_repo ~w(voice logs settings shortcuts superagents)
+  @panels_without_repo ~w(voice logs settings shortcuts)
   @settings_sections ~w(projects execution voice system)
 
   # Old links keep working: each key maps to the section that now holds it.
@@ -59,6 +59,10 @@ defmodule AgentBoardWeb.BoardNavigation do
   @doc "The section a URL names, including the keys the old menu used."
   def canonical_settings_section(section) when section in @settings_sections, do: section
   def canonical_settings_section(section), do: Map.get(@settings_aliases, section)
+
+  # The standalone Superagents panel (until #454) is Settings → Projects now.
+  def apply_params(socket, %{"panel" => "superagents"} = params),
+    do: apply_params(socket, Map.merge(params, %{"panel" => "settings", "section" => "projects"}))
 
   # The voice panel is where a spoken question is reviewed: opening it must
   # not forget the task the owner was reading, or the ask has no target.

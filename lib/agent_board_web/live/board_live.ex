@@ -3553,6 +3553,7 @@ defmodule AgentBoardWeb.BoardLive do
             module={BoardComponents.SettingsMenu}
             id="board-settings-panel"
             repo={@repo}
+            repos={@repos}
             version={@version}
             codex_quota={@codex_quota}
             busy={@busy}
@@ -3572,7 +3573,6 @@ defmodule AgentBoardWeb.BoardLive do
             tz_offset={@tz_offset}
             project_pending={@project_pending}
             board_locale={@board_locale}
-            return_to={BoardNavigation.path(@repo, "settings")}
           />
         </BoardComponents.Panel.shell>
 

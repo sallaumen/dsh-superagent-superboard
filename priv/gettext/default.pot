@@ -5366,3 +5366,20 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "setup did not finish"
 msgstr ""
+
+msgid "No agent"
+msgstr ""
+
+msgid "Create agent…"
+msgstr ""
+
+msgid "Create agent for %{project}"
+msgstr ""
+
+msgid "The board follows it; no agent works on it."
+msgstr ""
+
+msgid "%{count} without an agent"
+msgid_plural "%{count} without an agent"
+msgstr[0] ""
+msgstr[1] ""

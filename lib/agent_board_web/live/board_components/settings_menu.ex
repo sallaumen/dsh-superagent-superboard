@@ -20,6 +20,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :dispatch_paused, :boolean, default: false
   attr :progress, :list, default: []
   attr :superagents, :list, default: []
+  attr :repos, :list, default: []
   attr :access_waiting, :integer, default: 0
   attr :access_projects, :list, default: []
   attr :tickets, :list, default: []
@@ -31,7 +32,6 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :tz_offset, :integer, default: 0
   attr :project_pending, :any, default: nil
   attr :board_locale, :string, default: "en"
-  attr :return_to, :string, default: "/"
 
   @impl true
   def mount(socket), do: {:ok, assign(socket, section: "projects")}
@@ -185,6 +185,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
             id="settings-projects"
             active={@active == true and @section == "projects"}
             superagents={@superagents}
+            repos={@repos}
             access_projects={@access_projects}
             project_pending={@project_pending}
             provisioning={@provisioning}
@@ -292,7 +293,11 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                   role="group"
                   aria-label={gettext("Board language")}
                 >
-                  <input type="hidden" name="return_to" value={@return_to} />
+                  <input
+                    type="hidden"
+                    name="return_to"
+                    value={BoardNavigation.settings_path(@repo, @section)}
+                  />
                   <button
                     type="submit"
                     name="locale"

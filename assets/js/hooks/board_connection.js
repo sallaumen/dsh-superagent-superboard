@@ -1,6 +1,15 @@
 // The socket state is client-side knowledge: the server cannot render
 // "reconnecting" while it is not connected. The beacon and the frozen banner
 // read this attribute; the server is told on reconnect so it can count changes.
+// An update can compile for minutes between the click and the stop.
+const RESTART_CLICK_WINDOW_MS = 10 * 60 * 1000
+
+export const restartRequested = (requestedAt, now) =>
+  requestedAt > 0 && now - requestedAt < RESTART_CLICK_WINDOW_MS
+
+// A reload would erase text the person has typed and not sent.
+export const holdsDraft = fields => Array.from(fields).some(field => field.value.trim() !== "")
+
 export const BoardConnection = {
   mounted() {
     this.mark("live")
@@ -16,7 +25,7 @@ export const BoardConnection = {
 
     // LiveView 1.2 hooks register server events through the core handleEvent
     // method; defining a handleEvent property overwrote it and warned on every
-    // connect. The restart event only marks the tab for a reload after boot.
+    // connect. The restart event only marks the tab; it reloads after the new boot.
     this.handleEvent("restart", () => {
       sessionStorage.setItem("ab:reload-after-restart", "1")
     })
@@ -29,7 +38,7 @@ export const BoardConnection = {
     // A click on Update/Restart is the reliable signal that the server is
     // going away; the pushed event can be lost during the VM stop.
     const requested = Number(sessionStorage.getItem("ab:restart-requested-at") || 0)
-    if (requested && Date.now() - requested < 30000) {
+    if (restartRequested(requested, Date.now())) {
       sessionStorage.setItem("ab:reload-after-restart", "1")
     }
     sessionStorage.removeItem("ab:restart-requested-at")
@@ -43,23 +52,15 @@ export const BoardConnection = {
     this.reloadIfRestarted()
   },
 
-  // A reload can catch a socket that is still closing and leave the browser
-  // on chrome-error. The new server has already answered the LiveView; give
-  // the person the explicit reload that also fetches the new assets.
+  // Called only once the new server has answered the LiveView, so the reload
+  // cannot land on a dead port; it fetches the new assets without an F5. A tab
+  // holding unsent text keeps it (LiveView restores the form) and gets the new
+  // assets on its next load.
   reloadIfRestarted() {
     if (sessionStorage.getItem("ab:reload-after-restart") !== "1") return
     sessionStorage.removeItem("ab:reload-after-restart")
-    setTimeout(() => this.showRestartNotice(), 500)
-  },
-  showRestartNotice() {
-    if (document.querySelector(".ab-reload-notice")) return
-    const notice = document.createElement("div")
-    notice.className = "ab-reload-notice"
-    notice.setAttribute("role", "status")
-    notice.innerHTML =
-      '<span>Servidor atualizado.</span><button type="button" class="ab-btn ab-btn--sm ab-btn--primary">Recarregar</button>'
-    notice.querySelector("button").addEventListener("click", () => window.location.reload())
-    document.body.appendChild(notice)
+    if (holdsDraft(document.querySelectorAll("textarea"))) return
+    window.location.reload()
   },
   mark(state) {
     const page = document.querySelector("#board-page")

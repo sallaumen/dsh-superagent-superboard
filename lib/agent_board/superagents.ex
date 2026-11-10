@@ -11,6 +11,8 @@ defmodule AgentBoard.Superagents do
   alias AgentBoard.Repo
   alias AgentBoard.Superagents.{Manager, Provisioner, Superagent, SuperagentEvent}
 
+  @auto_start_pause_seconds 600
+
   @dsh_state Path.expand("~/.dsh/state")
   @dsh_profiles Path.expand("~/.dsh/profiles")
   @archive_root Path.expand("~/.agent_board/archived-superagents")
@@ -154,9 +156,10 @@ defmodule AgentBoard.Superagents do
 
   @doc """
   Reserve one row and ask the provisioner to create the external profile,
-  port, state and setup. A failure the provisioner could undo leaves no row and
-  returns the reason, so the owner sees what happened and can try the same
-  repository again. An agent that would not stop keeps its row in `error`.
+  port, state and setup. A failure keeps the row in `error`, marked for
+  "Tentar de novo", and returns the reason; a missing checkout removes the row
+  instead, since a retry would use the same path. An agent that would not stop
+  keeps an ordinary row in `error`.
   """
   def provision(repository, source, attrs, provisioner \\ Provisioner.impl()) do
     with nil <- get_by_repository(repository),
@@ -254,6 +257,15 @@ defmodule AgentBoard.Superagents do
     observe(stopped, %{state: "error", detail: detail})
     log_provision_error(stopped, detail)
     {:error, detail}
+  end
+
+  # A retry would use the same missing path again, so the row goes and the
+  # repository returns to the form where the path is typed. Nothing was created.
+  defp settle_provision({:error, :checkout_missing} = error, superagent, _from) do
+    {:ok, _} = Repo.delete(superagent)
+    broadcast()
+    log_provision_error(superagent, "no git checkout at #{superagent.checkout_path}")
+    error
   end
 
   # The provisioner undid its work. The row stays, with what a retry needs, and
@@ -506,8 +518,8 @@ defmodule AgentBoard.Superagents do
   @doc """
   Reconcile the desired state after a board restart: start a stopped agent
   whose owner wants it running, stop a running agent whose owner stopped it,
-  and pause a ready one whose owner paused it. An error is left for a person,
-  not restarted in a loop.
+  and pause a ready one whose owner paused it. An error is left for a person;
+  an unreachable agent is started again at most once every ten minutes.
   """
   def reconcile(manager \\ Manager.impl()) do
     list()
@@ -518,10 +530,10 @@ defmodule AgentBoard.Superagents do
   defp reconcile_one(superagent, manager) do
     case {superagent.desired_state, superagent.observed_state} do
       {"running", state} when state in ["stopped", "unknown"] ->
-        start(superagent, manager)
+        auto_start(superagent, manager)
 
       {"running", "error"} ->
-        if unreachable?(superagent.last_error), do: start(superagent, manager), else: :ok
+        if unreachable?(superagent.last_error), do: auto_start(superagent, manager), else: :ok
 
       {"stopped", state} when state in ["ready", "paused", "starting"] ->
         stop(superagent, manager)
@@ -531,6 +543,28 @@ defmodule AgentBoard.Superagents do
 
       _ ->
         :ok
+    end
+  end
+
+  # A start whose health check times out still answers :ok, so an agent that
+  # dies at boot would be started again on every tick. The board's own starts
+  # are recorded and wait @auto_start_pause_seconds between them.
+  defp auto_start(superagent, manager) do
+    since = DateTime.add(DateTime.utc_now(), -@auto_start_pause_seconds, :second)
+
+    recent? =
+      Repo.exists?(
+        from e in SuperagentEvent,
+          where:
+            e.superagent_id == ^superagent.id and e.action == "start" and e.actor == "board" and
+              e.inserted_at > ^since
+      )
+
+    if recent? do
+      :ok
+    else
+      event(superagent, "start", superagent.observed_state, "starting", "board", "reconcile")
+      start(superagent, manager)
     end
   end
 

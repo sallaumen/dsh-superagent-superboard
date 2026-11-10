@@ -163,13 +163,14 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   end
 
   defp float(value, label, opts \\ []) do
-    value = String.trim(to_string(value || ""))
+    # The board shows money with a decimal comma, and so does a pt-BR keypad.
+    value = value |> to_string() |> String.trim() |> String.replace(",", ".")
 
     if value == "" and Keyword.get(opts, :empty) == :zero do
       {:ok, 0.0}
     else
       case Float.parse(value) do
-        {number, _} when number >= 0 ->
+        {number, ""} when number >= 0 ->
           {:ok, number}
 
         _ ->

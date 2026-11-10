@@ -11,9 +11,12 @@ defmodule AgentBoardWeb.Endpoint do
     same_site: "Lax"
   ]
 
+  # No socket reloads code on connect: AgentBoardWeb.DevReload is the only
+  # reload, so an update can hold it (a page opened mid-update recompiled the
+  # new sources into the serving node).
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
-    longpoll: [connect_info: [session: @session_options]]
+    websocket: [connect_info: [session: @session_options], code_reloader: false],
+    longpoll: [connect_info: [session: @session_options], code_reloader: false]
 
   # Serve at "/" the static files from "priv/static" directory.
   #
@@ -30,7 +33,9 @@ defmodule AgentBoardWeb.Endpoint do
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do
-    socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
+    socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket,
+      websocket: [code_reloader: false]
+
     plug Phoenix.LiveReloader
     plug AgentBoardWeb.DevReload
   end

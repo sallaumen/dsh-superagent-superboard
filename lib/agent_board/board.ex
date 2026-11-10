@@ -119,17 +119,26 @@ defmodule AgentBoard.Board do
   def resolved_task_ids(tasks) do
     ids = Enum.map(tasks, & &1.id)
 
+    # Oldest first, so the last comment with a link is the newest one.
     comments_by_task =
-      Repo.all(from c in Comment, where: c.task_id in ^ids)
+      Repo.all(
+        from c in Comment, where: c.task_id in ^ids, order_by: [asc: c.inserted_at, asc: c.id]
+      )
       |> Enum.group_by(& &1.task_id)
+
+    repositories =
+      Repo.all(
+        from r in Repository, where: r.id in ^Enum.uniq(Enum.map(tasks, & &1.repository_id))
+      )
+      |> Map.new(&{&1.id, &1})
 
     # One read for every linked PR, not one per task: the overview filters
     # all ready tasks at once and the query count stays bounded.
-    pulls = linked_pulls(tasks, comments_by_task)
+    pulls = linked_pulls(tasks, comments_by_task, repositories)
 
     tasks
     |> Enum.filter(fn task ->
-      number = linked_number(task, Map.get(comments_by_task, task.id, []))
+      number = linked_number(task, Map.get(comments_by_task, task.id, []), repositories)
 
       case Map.get(pulls, {task.repository_id, number}) do
         %PullRequest{state: state} when state in ["merged", "closed"] -> true
@@ -139,11 +148,12 @@ defmodule AgentBoard.Board do
     |> MapSet.new(& &1.id)
   end
 
-  defp linked_pulls(tasks, comments_by_task) do
+  defp linked_pulls(tasks, comments_by_task, repositories) do
     candidates =
       tasks
       |> Enum.map(fn task ->
-        {task.repository_id, linked_number(task, Map.get(comments_by_task, task.id, []))}
+        {task.repository_id,
+         linked_number(task, Map.get(comments_by_task, task.id, []), repositories)}
       end)
       |> Enum.filter(fn {_repository_id, number} -> is_integer(number) end)
       |> Enum.uniq()
@@ -162,8 +172,11 @@ defmodule AgentBoard.Board do
     end
   end
 
-  defp linked_number(task, comments) do
-    Enum.find_value(Enum.reverse(comments), &pull_number(&1.body)) || pull_number(task.body)
+  defp linked_number(task, comments, repositories) do
+    repository = Map.get(repositories, task.repository_id)
+
+    Enum.find_value(Enum.reverse(comments), &pull_number(&1.body, repository)) ||
+      pull_number(task.body, repository)
   end
 
   @doc """
@@ -701,18 +714,24 @@ defmodule AgentBoard.Board do
       end
 
     number =
-      Enum.find_value(Enum.reverse(comments), &pull_number(&1.body)) || pull_number(task.body)
+      Enum.find_value(Enum.reverse(comments), &pull_number(&1.body, repository)) ||
+        pull_number(task.body, repository)
 
     if repository && number, do: find_pull_request(repository, number)
   end
 
-  defp pull_number(nil), do: nil
+  # Only a link to the task's own repository counts: the number alone would
+  # match this repository's PR of the same number.
+  defp pull_number(nil, _repository), do: nil
+  defp pull_number(_text, nil), do: nil
 
-  defp pull_number(text) do
-    case Regex.run(~r{https://github\.com/[^/\s]+/[^/\s]+/pull/(\d+)}, text) do
-      [_, number] -> GitHub.number(number)
-      _ -> nil
-    end
+  defp pull_number(text, %Repository{owner: owner, name: name}) do
+    ~r{https://github\.com/([^/\s]+)/([^/\s]+)/pull/(\d+)}
+    |> Regex.scan(text)
+    |> Enum.find_value(fn [_, link_owner, link_name, number] ->
+      if String.downcase("#{link_owner}/#{link_name}") == String.downcase("#{owner}/#{name}"),
+        do: GitHub.number(number)
+    end)
   end
 
   @doc """
