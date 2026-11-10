@@ -448,9 +448,9 @@ authorizations the gate knows ("Board actions" above): it covers the actor
   while the same Assignment is still the latest failure. The runner's
   `canRetry` is the second guard: it refuses a ticket whose latest
   Assignment did not fail.
-- **Only when the orchestrator answers.** A tick with something due asks
-  `GET /state` first and sends nothing when it fails; a tick with nothing
-  due sends nothing at all.
+- **Only when the ticket's agent answers.** A tick with something due asks
+  each agent that holds a due ticket `GET /state` first and sends that agent
+  nothing when it fails; a tick with nothing due sends nothing at all.
 - **Every request is recorded**: the row, a log line `auto_retry ticket=…
   outcome=…`, and an `agent_retry` event (`agent_retry_error` when the
   runner refused or did not answer) in the activity of each repository the
@@ -940,6 +940,10 @@ that watches one GitHub repository and picks the issues whose body mentions
   (`~/.dsh/state/superagent*/orchestrator.sqlite`); tickets are merged by
   repository, so the DeepSeek lane shows both. `AgentState.paths/0` also
   accepts an explicit `:state_dbs` list.
+- **A retry goes to the agent that holds the ticket.**
+  `Orchestrator.client_for/1` binds the client to the port of the repository's
+  superagent row, and a repository without a row uses the primary
+  (`Orchestrator.client/0`).
 - **A new project is provisioned from the panel.** The form picks an existing
   repository, a ready source profile, the local checkout and the initial
   workers. The red `provision_superagent` action reserves the row, copies the
