@@ -18,6 +18,7 @@ defmodule AgentBoardWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug :refuse_cross_site
   end
 
   # Audio responses are not JSON: the browser fetches the speech endpoint
@@ -25,6 +26,7 @@ defmodule AgentBoardWeb.Router do
   # the error bodies are still JSON.
   pipeline :voice do
     plug :accepts, ["json", "mp3"]
+    plug :refuse_cross_site
   end
 
   scope "/", AgentBoardWeb do
@@ -74,6 +76,23 @@ defmodule AgentBoardWeb.Router do
       pipe_through :browser
 
       live_dashboard "/dashboard", metrics: AgentBoardWeb.Telemetry
+    end
+  end
+
+  # The API has no login and listens on 127.0.0.1 only, but a page on another
+  # site can still reach localhost with a form or an <audio src>. The browser
+  # says where a request comes from; the board's page is same-origin and a
+  # script sends no header.
+  defp refuse_cross_site(conn, _opts) do
+    case get_req_header(conn, "sec-fetch-site") do
+      [site] when site in ["cross-site", "same-site"] ->
+        conn
+        |> put_status(:forbidden)
+        |> Phoenix.Controller.json(%{error: "cross_site_request"})
+        |> halt()
+
+      _ ->
+        conn
     end
   end
 end
