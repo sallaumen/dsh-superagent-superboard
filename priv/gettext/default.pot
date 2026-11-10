@@ -7492,3 +7492,38 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "PR #%{number} on GitHub (opens in a new tab)"
 msgstr ""
+
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "%{amount} issue"
+msgid_plural "%{amount} issues"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "%{amount} PR"
+msgid_plural "%{amount} PRs"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "Issues delivered today"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "closed by a merged PR"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "%{issues} delivered"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "%{prs} in 7 days"
+msgstr ""

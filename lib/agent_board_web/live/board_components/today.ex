@@ -32,6 +32,7 @@ defmodule AgentBoardWeb.BoardComponents.Today do
       |> assign(:trend, trend_bars(Map.get(assigns.today, :trend, [])))
       |> assign(:trend_total, Enum.sum(Enum.map(Map.get(assigns.today, :trend, []), & &1.count)))
       |> assign(:merged_today, Map.get(assigns.today, :merged_today, 0))
+      |> assign(:delivered_today, Map.get(assigns.today, :delivered_today, 0))
       |> assign(:seen_today, Map.get(assigns.today, :seen_today, 0))
       |> assign(:queued, length(Map.get(assigns.today, :queue, [])))
 
@@ -49,6 +50,11 @@ defmodule AgentBoardWeb.BoardComponents.Today do
       </header>
 
       <section id="today-overview" class="ab-today__overview" aria-label={gettext("Today so far")}>
+        <div class="ab-today__metric">
+          <span class="ab-label">{gettext("Issues delivered today")}</span>
+          <strong>{@delivered_today}</strong>
+          <span class="ab-meta">{gettext("closed by a merged PR")}</span>
+        </div>
         <div class="ab-today__metric">
           <span class="ab-label">{gettext("PRs merged today")}</span>
           <strong>{@merged_today}</strong>

@@ -104,7 +104,8 @@ defmodule AgentBoard.TodayTest do
         number: number,
         title: "PR #{number}",
         state: "merged",
-        merged_at: at
+        merged_at: at,
+        closes_issues: if(number == 30, do: [5, 6], else: [7])
       })
       |> Repo.insert!()
     end
@@ -112,6 +113,8 @@ defmodule AgentBoard.TodayTest do
     today = Overview.today(180, now)
 
     assert today.merged_today == 1
+    # Only PR 30 merged today, and it closed two issues.
+    assert today.delivered_today == 2
     assert today.seen_today == 1
     assert Enum.map(today.trend, & &1.count) == [0, 0, 0, 0, 0, 1, 1]
     assert Enum.map(today.trend, & &1.date) |> List.last() == ~D[2026-11-08]

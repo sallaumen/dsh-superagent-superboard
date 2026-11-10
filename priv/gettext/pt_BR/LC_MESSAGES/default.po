@@ -7492,3 +7492,38 @@ msgstr "PR #%{number}: %{title}. Abrir a tarefa #%{issue} no board"
 #, elixir-autogen, elixir-format
 msgid "PR #%{number} on GitHub (opens in a new tab)"
 msgstr "PR #%{number} no GitHub (abre em outra aba)"
+
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "%{amount} issue"
+msgid_plural "%{amount} issues"
+msgstr[0] "%{amount} issue"
+msgstr[1] "%{amount} issues"
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "%{amount} PR"
+msgid_plural "%{amount} PRs"
+msgstr[0] "%{amount} PR"
+msgstr[1] "%{amount} PRs"
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "Issues delivered today"
+msgstr "Issues entregues hoje"
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "closed by a merged PR"
+msgstr "fechadas por um PR mesclado"
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "%{issues} delivered"
+msgstr "%{issues} entregues"
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "%{prs} in 7 days"
+msgstr "%{prs} em 7 dias"

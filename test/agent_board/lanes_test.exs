@@ -762,6 +762,29 @@ defmodule AgentBoard.LanesTest do
     assert group.more_wide == 2
   end
 
+  test "the week counts the issues its PRs delivered, each once" do
+    {:ok, repo} = Board.add_repository("fixture", "delivered")
+    now = ~U[2026-11-06 15:00:00Z]
+
+    for {number, closes, minutes} <- [
+          {1, [7], 5},
+          {2, [7, 8], 10},
+          {3, [], 15},
+          {4, [9], 60 * 24 * 9}
+        ] do
+      repo
+      |> merged(number, "PR #{number}", "success", DateTime.add(now, -minutes, :minute))
+      |> Ecto.Changeset.change(closes_issues: closes)
+      |> Repo.update!()
+    end
+
+    log = Lanes.merge_log(repo, now: now, tz_offset: 0)
+
+    # PR 4 is older than the week; PR 3 closes nothing; #7 is closed twice.
+    assert log.total == 3
+    assert log.issues == 2
+  end
+
   test "a red remote check without local evidence is quiet, not a red day" do
     {:ok, repo} = Board.add_repository("fixture", "remote-only")
     now = ~U[2026-11-06 15:00:00Z]

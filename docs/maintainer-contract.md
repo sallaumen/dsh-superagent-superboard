@@ -1144,6 +1144,14 @@ flowchart TB
   issue the board does not track answers with a notice; a PR that closes no
   issue has no task, and its row stays the GitHub link.
 - A merged task's inspector offers no Stop: its issue is already closed.
+- **Delivered issues lead the count.** An issue is delivered when a merged
+  PR closes it (`Closes #n`), counted once however many PRs closed it; a PR
+  that closes nothing delivers none (`Lanes.delivered/1`). Merged's header
+  says "N issues delivered · M PRs in 7 days", and Today shows "Issues
+  delivered today" before "PRs merged today" (owner's decision, 2026-11-10:
+  an issue is the delivery of value, a PR is how it got there). The
+  Throughput tile "Completed" still counts every task that ended done,
+  closed without a merge included.
 - The tests: `attribution_test.exs` (each rule and keyword) and
   `sync_repo_test.exs` (the columns through the sync, the fork, a session
   attributed by branch).
