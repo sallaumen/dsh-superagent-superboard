@@ -2861,7 +2861,7 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
 }
 .ab-pane { min-width: 0; }
 /* The rows a day shows only when the window is wide (below). */
-.ab-day__extra, .ab-day__more--wide, .ab-day__count--wide { display: none; }
+.ab-day__extra, .ab-day__more--wide { display: none; }
 
 .ab-lanes {
   display: grid;
@@ -2889,13 +2889,17 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
   border-bottom: 1px solid var(--line);
 }
 .ab-day:last-child { border-bottom: 0; }
+/* A narrow column puts the count under the day, and its PRs under the issues:
+   nothing runs into the next column. */
 .ab-day__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 0 8px;
 }
 .ab-day__label {
+  white-space: nowrap;
   font-size: 12px;
   line-height: 16px;
   font-weight: 600;
@@ -2907,8 +2911,8 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
   font-size: 11.5px;
   line-height: 16px;
   color: var(--ink-faint);
-  white-space: nowrap;
 }
+.ab-day__count > b, .ab-day__prs { white-space: nowrap; }
 .ab-day__dots {
   display: flex;
   flex-wrap: wrap;
@@ -3076,8 +3080,7 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
   .ab-flow__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .ab-day__extra { display: contents; }
   .ab-day__more--wide { display: flex; }
-  .ab-day__count--wide { display: inline; }
-  .ab-day__more--short, .ab-day__count--short { display: none; }
+  .ab-day__more--short { display: none; }
 }
 @container main (min-width: 2860px) {
   .ab-lanes {

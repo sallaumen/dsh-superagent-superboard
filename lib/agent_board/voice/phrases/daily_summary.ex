@@ -15,7 +15,11 @@ defmodule AgentBoard.Voice.Phrases.DailySummary do
   @spec say(String.t(), map()) :: String.t()
   def say(lang, content) do
     [
-      merged(lang, get_in(content, ["merged", "count"]) || 0),
+      merged(
+        lang,
+        get_in(content, ["merged", "count"]) || 0,
+        get_in(content, ["merged", "issues"])
+      ),
       needs(lang, content["needs"] || %{}),
       sync(lang, content["sync_errors"] || 0),
       retries(lang, content["retries"] || %{}),
@@ -27,6 +31,27 @@ defmodule AgentBoard.Voice.Phrases.DailySummary do
   end
 
   # ---- what was done --------------------------------------------------------
+
+  # A row stored before the issues were counted says the PRs alone.
+  defp merged(lang, count, nil), do: merged(lang, count)
+
+  defp merged("en-US", count, issues),
+    do: "Daily summary: #{issues("en-US", issues)}, #{prs("en-US", count)}."
+
+  defp merged(lang, count, issues),
+    do: "Resumo do dia: #{issues(lang, issues)}, #{prs(lang, count)}."
+
+  defp issues("en-US", 0), do: "no issues delivered"
+  defp issues("en-US", 1), do: "1 issue delivered"
+  defp issues("en-US", n), do: "#{n} issues delivered"
+  defp issues(_lang, 0), do: "nenhuma issue entregue"
+  defp issues(_lang, 1), do: "1 issue entregue"
+  defp issues(_lang, n), do: "#{n} issues entregues"
+
+  defp prs("en-US", 1), do: "1 PR merged"
+  defp prs("en-US", n), do: "#{n} PRs merged"
+  defp prs(_lang, 1), do: "1 PR mesclado"
+  defp prs(_lang, n), do: "#{n} PRs mesclados"
 
   defp merged("en-US", 0), do: "Daily summary: no PRs merged."
   defp merged("en-US", 1), do: "Daily summary: 1 PR merged."
