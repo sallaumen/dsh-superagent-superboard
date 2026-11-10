@@ -45,7 +45,8 @@ defmodule AgentBoard.Conversation.Agent do
   @yes ~w(sim pode claro confirmo confirma isso ok okay manda fechado beleza perfeito
           certo faz cria criar yes sure yep yeah confirm)
   @yes_phrases ["pode criar", "pode sim", "manda ver", "pode mandar", "go ahead", "do it"]
-  @no ~w(nao cancela cancelar cancele deixa esquece negativo no nope cancel)
+  @fillers ["por favor", "valeu", "obrigado", "obrigada", "please", "thanks", "thank you"]
+  @no ~w(nao cancela cancelar cancele deixa esquece negativo nope cancel)
   @no_phrases ["deixa pra la", "deixa para la", "melhor nao", "agora nao", "not now"]
 
   @type context :: %{
@@ -101,10 +102,24 @@ defmodule AgentBoard.Conversation.Agent do
     cond do
       words == [] or length(words) > 6 -> :none
       String.starts_with?(phrase, ["nao sei", "no idea"]) -> :none
-      starts_with_any?(phrase, words, @no, @no_phrases) -> :no
-      starts_with_any?(phrase, words, @yes, @yes_phrases) -> :yes
+      Enum.any?(words, &(&1 in @no)) or String.contains?(phrase, @no_phrases) -> :no
+      only?(phrase, ["no"]) -> :no
+      only?(phrase, @yes) -> :yes
       true -> :none
     end
+  end
+
+  # Every word is one of `allowed` or filler, and at least one is not filler
+  # ("valeu" alone confirms nothing). English "no" is checked here, whole: in
+  # Portuguese it means "in the" ("cria no colmex").
+  defp only?(phrase, allowed) do
+    words =
+      phrase
+      |> String.replace(@yes_phrases, "sim")
+      |> String.replace(@fillers, " ")
+      |> String.split()
+
+    words != [] and Enum.all?(words, &(&1 in allowed))
   end
 
   # Short commands about the conversation itself never need the model:
@@ -295,10 +310,6 @@ defmodule AgentBoard.Conversation.Agent do
 
   defp quick_answer(_text, nil), do: :none
   defp quick_answer(text, %Turn{}), do: yes_or_no(text)
-
-  defp starts_with_any?(phrase, [first | _], words, phrases) do
-    first in words or Enum.any?(phrases, &String.starts_with?(phrase, &1))
-  end
 
   # ---- the model ------------------------------------------------------------
 

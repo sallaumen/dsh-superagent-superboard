@@ -92,7 +92,11 @@ defmodule AgentBoard.Conversation do
     |> Enum.reverse()
   end
 
-  @doc "The proposal waiting for a yes, if it is recent enough; older ones expire."
+  @doc """
+  The proposal waiting for a yes: only while it is the last thing the agent
+  said ("repete" says it again, so it does not count) and recent enough; older
+  ones expire.
+  """
   @spec pending_proposal(DateTime.t()) :: Turn.t() | nil
   def pending_proposal(now \\ DateTime.utc_now()) do
     cutoff = DateTime.add(now, -@proposal_ttl_seconds, :second)
@@ -102,12 +106,15 @@ defmodule AgentBoard.Conversation do
       set: [proposal_status: "expired"]
     )
 
-    Repo.one(
-      from t in Turn,
-        where: t.proposal_status == "proposed",
-        order_by: [desc: t.id],
-        limit: 1
-    )
+    newest =
+      Repo.one(
+        from t in Turn,
+          where: t.role == "agent" and (is_nil(t.action) or t.action != "repeat"),
+          order_by: [desc: t.id],
+          limit: 1
+      )
+
+    if newest && newest.proposal_status == "proposed", do: newest
   end
 
   @doc """

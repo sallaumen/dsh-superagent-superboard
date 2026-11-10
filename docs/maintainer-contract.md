@@ -618,7 +618,11 @@ Agora and the detail):
   **Writes wait for a spoken yes**: create, stop, archive, ask and forget
   become a proposal (`proposal_status`) that says the registry's sentence
   (`Actions.phrase/3`, kept in the proposal with its language), settled
-  once by a conditional update; yes and no are recognized locally. The yes
+  once by a conditional update; yes and no are recognized locally. A yes is
+  an answer made only of affirmative and filler words ("ok, valeu"), a no
+  word anywhere is a no ("pode cancelar"; English "no" only alone, it is
+  Portuguese for "in the"), anything else goes to the model. A proposal
+  waits only while it is the agent's last turn ("repete" keeps it). The yes
   passes that sentence to `AgentBoard.Actions`, so a task that changed in
   between is refused ("Não fiz nada: algo mudou desde que perguntei" — "I did
   nothing: something changed since I asked") and the no is a recorded
