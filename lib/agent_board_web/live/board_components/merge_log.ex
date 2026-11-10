@@ -61,37 +61,39 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
             <% end %>
           </div>
 
-          <a
-            :for={pr <- group_items(day.group)}
-            class="ab-pr"
-            href={pr.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={
-              "PR ##{pr.number}: #{pr.title} " <>
-                gettext("(opens GitHub in a new tab)")
-            }
-          >
-            <.glyph kind={:done} />
-            <span class="ab-pr__title">
-              <span class="ab-need__id">#{pr.number}</span> {pr.title}
-            </span>
-            <span class="ab-pr__meta">
-              <span
-                class={[
-                  "ab-tag",
-                  pr.ci == "fail" && "ab-tag--halt",
-                  pr.ci == "pass" && pr.ciNote == "CI local ok" && "ab-tag--agent"
-                ]}
-                title={pr.ciTitle}
-              >
-                <.glyph :if={pr.ci == "fail"} kind={:cifail} />
-                {pr.ciNote}
+          <%= for pr <- group_items(day.group) do %>
+            <a
+              class="ab-pr"
+              href={pr.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={
+                "PR ##{pr.number}: #{pr.title} " <>
+                  gettext("(opens GitHub in a new tab)")
+              }
+            >
+              <.glyph kind={:done} />
+              <span class="ab-pr__title">
+                <span class="ab-need__id">#{pr.number}</span> {pr.title}
               </span>
-              <span class="ab-meta">{pr.review}</span>
-              <span class="ab-data-sm ab-faint">{pr.at}</span>
-            </span>
-          </a>
+              <span class="ab-pr__meta">
+                <span
+                  class={[
+                    "ab-tag",
+                    pr.ci == "fail" && "ab-tag--halt",
+                    pr.ci == "pass" && pr.ciNote == "CI local ok" && "ab-tag--agent"
+                  ]}
+                  title={pr.ciTitle}
+                >
+                  <.glyph :if={pr.ci == "fail"} kind={:cifail} />
+                  {pr.ciNote}
+                </span>
+                <span class="ab-meta">{pr.review}</span>
+                <span class="ab-data-sm ab-faint">{pr.at}</span>
+              </span>
+            </a>
+            <.task_door :if={pr.closes != []} pull={pr.number} issue={hd(pr.closes)} />
+          <% end %>
 
           <button
             :if={group_more(day.group) > 0}
@@ -108,6 +110,24 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
         </div>
       </div>
     </section>
+    """
+  end
+
+  @doc "The way from a merged PR into the task it closes; the row itself opens GitHub."
+  attr :pull, :integer, required: true
+  attr :issue, :integer, required: true
+
+  def task_door(assigns) do
+    ~H"""
+    <button
+      type="button"
+      class="ab-more ab-pr__task"
+      phx-click="open_pr_task"
+      phx-value-number={@pull}
+      aria-label={gettext("Open task #%{number} on the board", number: @issue)}
+    >
+      {gettext("task #%{number}", number: @issue)}
+    </button>
     """
   end
 

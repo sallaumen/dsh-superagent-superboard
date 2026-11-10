@@ -1136,6 +1136,42 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert day_columns(view) == 7
   end
 
+  test "a merged PR leads to the task it closes, in the log and in history", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "pr-door")
+    task = insert_task(repo, 7, "done")
+
+    repo
+    |> insert_merged(41, "success")
+    |> Ecto.Changeset.change(closes_issues: [7])
+    |> Repo.update!()
+
+    # #99 is an issue the board never tracked; PR 43 closes nothing.
+    repo
+    |> insert_merged(42, "success")
+    |> Ecto.Changeset.change(closes_issues: [99])
+    |> Repo.update!()
+
+    insert_merged(repo, 43, "success")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/pr-door")
+
+    # The row itself still opens GitHub; the task is a second door.
+    assert has_element?(view, "#sec-log a.ab-pr[target=_blank]", "PR 41")
+    assert has_element?(view, "#sec-log button[phx-value-number='41']", "tarefa #7")
+    refute has_element?(view, "#sec-log button[phx-value-number='43']")
+
+    view |> element("#sec-log button[phx-value-number='41']") |> render_click()
+    assert_patch(view, AgentBoardWeb.BoardNavigation.path(repo, "conversation", task.id))
+    assert has_element?(view, "#conversation-title", "Task 7")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/pr-door&panel=history")
+    assert has_element?(view, "#merged-list button[phx-value-number='41']", "tarefa #7")
+
+    html = view |> element("#merged-list button[phx-value-number='42']") |> render_click()
+    assert html =~ "O board não acompanha a issue que este PR fecha."
+    refute has_element?(view, "#conversation")
+  end
+
   test "a busy day shows three PRs, twelve dots and the rest in history", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "busy-day")
 
