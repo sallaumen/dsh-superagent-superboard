@@ -272,6 +272,40 @@ defmodule AgentBoard.Usage.LedgerTest do
   end
 
   describe "the harness" do
+    # A subagent's transcript names its model only in `request/context`. Rows
+    # read before the reader knew that hold no model: the file is read once
+    # more and they are filled, counted once.
+    @tag skip: is_nil(@zstd) && "zstd is not installed"
+    test "the model from request/context reaches rows read before the reader knew it",
+         %{dsh: dir} do
+      folder = "--Users-me-.dsh-state-superagent-work-audio-1a2b--"
+
+      dsh_session(dir, folder, "9d07fa0a", [
+        ~s({"type":"session","cwd":"/w","delegationDepth":1}),
+        ~s({"type":"request/context","seq":2,"time":1794072000000,"data":{"model":"deepseek-flash"}}),
+        dsh_assistant("s1", 1_794_072_002_000, 7, 1)
+      ])
+
+      assert %{read: 1, failed: 0} = Ledger.refresh()
+      assert [{^folder, _, _, _, "deepseek-flash", 1, 7, 1, _, _}] = ledger("dsh")
+
+      Repo.update_all("usage_messages", set: [model: nil])
+      Repo.update_all("usage_ledger", set: [model: nil])
+      Repo.update_all("usage_files", set: [reader: 2])
+
+      assert %{read: 1, failed: 0} = Ledger.refresh()
+      assert [{^folder, _, _, _, "deepseek-flash", 1, 7, 1, _, _}] = ledger("dsh")
+      assert Repo.aggregate("usage_messages", :count) == 1
+      assert %{read: 0} = Ledger.refresh()
+
+      # A model already stored is never replaced by a later read.
+      Repo.update_all("usage_messages", set: [model: "deepseek-v4-pro"])
+      Repo.update_all("usage_files", set: [reader: 2])
+
+      assert %{read: 1, failed: 0} = Ledger.refresh()
+      assert Repo.all(from m in "usage_messages", select: m.model) == ["deepseek-v4-pro"]
+    end
+
     @tag skip: is_nil(@zstd) && "zstd is not installed"
     test "a ticket's sessions are one execution, counted by Harness's parser", %{dsh: dir} do
       folder = "--Users-me-.dsh-state-superagent-work-audio-1a2b--"
