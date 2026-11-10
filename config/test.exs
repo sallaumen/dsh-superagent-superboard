@@ -89,3 +89,8 @@ config :agent_board, voice_retry_base_ms: 0
 # The header badge's fetch is network work; the component test drives the
 # rendered state directly, and LiveView tests keep their original timing.
 config :agent_board, version_check_on_mount: false
+
+# A broadcast reloads the board at once in tests: the suite sends
+# :board_updated and reads the page right after. board_load_test covers the
+# coalesced burst with its own delay.
+config :agent_board, board_reload_ms: 0
