@@ -28,6 +28,21 @@ defmodule AgentBoard.Board.Activity do
     )
   end
 
+  @doc """
+  The newest events about one issue or pull number, whatever else happened in
+  the repository since: a subject is `#12`, or a sentence that names `#12`
+  (never `#123`).
+  """
+  def for_number(repository, number, limit \\ 10) do
+    Repo.all(
+      from e in Event,
+        where: e.repository_id == ^repository.id,
+        where: fragment("? ~ ?", e.subject, ^"##{number}(\\D|$)"),
+        order_by: [desc: e.inserted_at, desc: e.id],
+        limit: ^limit
+    )
+  end
+
   @doc "The latest sync outcome, independent of the activity window."
   def latest_sync(repository) do
     Repo.one(

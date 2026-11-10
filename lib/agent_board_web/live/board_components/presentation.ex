@@ -26,26 +26,6 @@ defmodule AgentBoardWeb.BoardComponents.Presentation do
   def review_badge_class(%{review_state: "changes_requested"}), do: "text-error"
   def review_badge_class(_), do: "text-base-content/75"
 
-  def checks_badge(%{checks_state: "failure", checks_failed: name})
-      when is_binary(name) and name != "",
-      do: gettext("CI failed: %{name}", name: name)
-
-  def checks_badge(%{checks_state: "none"}), do: gettext("no CI")
-
-  def checks_badge(%{checks_state: state}) when state in ["success", "failure", "pending"] do
-    case state do
-      "success" -> gettext("CI passed")
-      "failure" -> gettext("CI failed")
-      "pending" -> gettext("CI running")
-    end
-  end
-
-  def checks_badge(_), do: nil
-
-  def checks_badge_class(%{checks_state: "success"}), do: "text-success"
-  def checks_badge_class(%{checks_state: "failure"}), do: "text-error"
-  def checks_badge_class(_), do: "text-base-content/75"
-
   def last_sync(nil), do: "no sync yet"
 
   def last_sync(%{kind: "sync_error"} = event),

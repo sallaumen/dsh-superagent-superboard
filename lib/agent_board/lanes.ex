@@ -728,6 +728,12 @@ defmodule AgentBoard.Lanes do
     %{days: days, groups: groups, total: Enum.sum(Enum.map(days, & &1.n))}
   end
 
+  @doc """
+  How a pull's CI reads, the local gate first: `{state, note, title}`. One
+  wording for every list of merged pulls (the merge log and History).
+  """
+  def ci(pull, local_ci), do: ci_status(pull, Map.get(local_ci, pull.number))
+
   defp merged_pr(pull, offset, local_ci) do
     {ci, ci_note, ci_title} = ci_status(pull, Map.get(local_ci, pull.number))
 
