@@ -114,10 +114,11 @@ defmodule AgentBoard.AI.Engines.OpenAI do
        input_tokens: usage["prompt_tokens"] || 0,
        output_tokens: usage["completion_tokens"] || 0,
        duration_ms: elapsed,
+       # Priced by the catalog id asked for: OpenAI answers a dated one.
        cost_micros:
          Providers.cost_micros(
            request.provider,
-           body["model"] || request.model,
+           request.model,
            usage["prompt_tokens"] || 0,
            usage["completion_tokens"] || 0
          ),

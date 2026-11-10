@@ -74,6 +74,31 @@ defmodule AgentBoard.ProvidersTest do
     end
   end
 
+  test "a dated model id in the answer is priced by the model the tier asked for" do
+    Application.put_env(:agent_board, :ai_provider, :openai)
+
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, %{
+        "model" => "gpt-4.1-mini-2025-04-14",
+        "choices" => [
+          %{
+            "message" => %{
+              "content" =>
+                ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"})
+            }
+          }
+        ],
+        "usage" => %{"prompt_tokens" => 10, "completion_tokens" => 20}
+      })
+    end)
+
+    assert {:ok, _result} = AI.call(:refine_request, %{text: "x"})
+
+    call = Repo.one(Call)
+    assert call.model == "gpt-4.1-mini-2025-04-14"
+    assert call.cost_micros > 0
+  end
+
   test "every provider declares a price for both tiers" do
     for id <- Providers.ids() do
       assert {:ok, _provider} = Providers.fetch(id)
