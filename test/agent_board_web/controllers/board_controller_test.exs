@@ -161,18 +161,30 @@ defmodule AgentBoardWeb.BoardControllerTest do
     assert Repo.get(Task, t.id).archived
   end
 
-  test "PATCH /api/tasks stop with a failing GitHub is not a 500", %{conn: conn} do
+  test "PATCH /api/tasks stop with a failing GitHub is a 502, not a missing task", %{conn: conn} do
     {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
     t = task(repo, 3, "Stop me", "queued")
 
-    Req.Test.stub(AgentBoard.BoardControllerTest.Stub, fn conn ->
+    previous = Application.get_env(:agent_board, :github_client)
+    on_exit(fn -> Application.put_env(:agent_board, :github_client, previous) end)
+
+    Application.put_env(:agent_board, :github_client, fn ->
+      Req.new(
+        base_url: "https://api.github.com",
+        plug: {Req.Test, AgentBoardWeb.BoardControllerTest.Stub3},
+        retry: false
+      )
+    end)
+
+    Req.Test.stub(AgentBoardWeb.BoardControllerTest.Stub3, fn conn ->
       Plug.Conn.send_resp(conn, 500, "boom")
     end)
 
     phrase = AgentBoard.Actions.phrase(:stop_task, %{task: t})
     conn = patch(conn, "/api/tasks/#{t.id}", %{action: "stop", confirm: phrase})
 
-    assert json_response(conn, 404)
+    assert %{"error" => "GitHub HTTP 500" <> _} = json_response(conn, 502)
+    refute Repo.get(Task, t.id).stopped
   end
 
   test "PATCH /api/tasks resumes an archived task", %{conn: conn} do
