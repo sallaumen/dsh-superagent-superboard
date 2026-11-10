@@ -1321,6 +1321,8 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-need__title span:last-child { white-space: normal; }
 .ab-need__why { grid-column: 1; grid-row: 3; }
 .ab-need__actions { grid-column: 2; grid-row: 2 / span 2; align-self: center; justify-self: end; margin: 0; }
+/* An open confirmation or its result takes its own row: beside the reason it squeezes the text into a strip. */
+.ab-need__actions:has(.ab-act:not([data-step="idle"])) { grid-column: 1 / -1; grid-row: auto; justify-self: start; }
 .ab-need__side { color: var(--ink-muted); white-space: nowrap; }
 .ab-need[aria-current="true"] { background: var(--you-wash); border-color: var(--you); }
 .ab-need__why .ab-tag { margin-left: 6px; }

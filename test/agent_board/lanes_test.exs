@@ -268,6 +268,20 @@ defmodule AgentBoard.LanesTest do
 
       assert whys[61] =~
                "Não parece falha de rede: leia o erro no detalhe antes de tentar de novo."
+
+      # the attempt is asked for on the card, without opening the detail
+      retry = %{ticket_id: "t61", repository_id: repo.id, number: 61}
+
+      assert [%{label: "Tentar de novo", retry: ^retry}, %{label: "Ver detalhe"}] =
+               Enum.find(needs, &(&1.number == 61)).actions
+    end
+
+    test "a block with no ticket has only the detail" do
+      {:ok, repo} = Board.add_repository("fixture", "failure-no-ticket")
+      blocked = task(repo, 66, "Blocked", "blocked", ~U[2026-11-07 17:00:00Z])
+
+      assert [%{actions: [%{label: "Ver detalhe"}]}] =
+               Lanes.needs(repo, %{blocked: [blocked]}, now: ~U[2026-11-07 18:00:00Z])
     end
 
     test "a retrying task is a row in Agora with its next attempt, not an item for the owner" do
@@ -509,6 +523,36 @@ defmodule AgentBoard.LanesTest do
 
       # an issue opened with the mention was called when it was created
       assert Enum.map(needs, & &1.number) == [5]
+    end
+
+    test "a call the board could not finish is the owner's within a minute",
+         %{repo: repo, now: now} do
+      at = DateTime.add(now, -120, :second)
+      failed = called(repo, 190, at, %{held: true})
+      called(repo, 191, DateTime.add(now, -20, :second), %{held: true})
+
+      [need] =
+        Lanes.needs(repo, %{queued: [failed]}, now: now, stall_after: 900, tz_offset: 180)
+
+      assert need.kind == :unanswered
+
+      assert need.why ==
+               "**A chamada ao agente não foi concluída.** " <>
+                 "O board tentou hoje às 08:25 e não tenta de novo sozinho."
+
+      assert need.age_seconds == 120
+
+      assert [%{label: "Chamar de novo", release: _phrase}, %{label: "Ver detalhe"}] =
+               need.actions
+
+      queue = Lanes.queue(repo, %{}, now: now, stall_after: 900)
+
+      # the comment may still be on its way
+      assert %{190 => "a chamada ao agente não foi concluída", 191 => nil} =
+               Map.new(queue.items, &{&1.number, &1.stuck})
+
+      assert %{190 => nil, 191 => "espera as dependências"} =
+               Map.new(queue.items, &{&1.number, &1.sub})
     end
 
     test "waits with everything else when the agent is down", %{repo: repo, now: now} do
