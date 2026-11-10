@@ -14,7 +14,7 @@ defmodule AgentBoard.Conversation.Lookup do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{AgentState, AgentWorktree, Board, Repo, Workpad}
+  alias AgentBoard.{AgentState, AgentWorktree, Board, Repo, Tickets, Workpad}
   alias AgentBoard.Board.{Comment, PullRequest, Repository, Task}
   alias AgentBoard.Voice.Activity
 
@@ -77,7 +77,7 @@ defmodule AgentBoard.Conversation.Lookup do
   defp task_facts(task, now) do
     comments = Board.comments(task)
     pull = Board.task_pull_request(task, comments)
-    ticket = ticket_for(task.number)
+    ticket = ticket_for(task)
     workpad = Board.agent_workpad(task.repository_id, task.number)
 
     %{
@@ -138,7 +138,7 @@ defmodule AgentBoard.Conversation.Lookup do
 
   defp runs_facts(ctx, now) do
     snapshot = AgentState.snapshot()
-    by_number = by_number(snapshot.tickets)
+    by_number = snapshot.tickets |> own_tickets(ctx[:repo]) |> Tickets.by_number()
     board = ctx[:board] || %{}
     counts = Map.get(board, :task_counts) || %{}
     running = Map.get(board, :running) || []
@@ -198,7 +198,8 @@ defmodule AgentBoard.Conversation.Lookup do
   defp failures_facts(ctx, now) do
     repo = ctx.repo
     snapshot = AgentState.snapshot()
-    by_number = by_number(snapshot.tickets)
+    tickets = own_tickets(snapshot.tickets, repo)
+    by_number = Tickets.by_number(tickets)
     board = ctx[:board] || %{}
 
     %{
@@ -236,7 +237,7 @@ defmodule AgentBoard.Conversation.Lookup do
       # An open run whose last report failed: the board retries a transient
       # one by itself (AgentBoard.AutoRetry); the rest wait for a person.
       failed_runs:
-        snapshot.tickets
+        tickets
         |> Enum.filter(&(&1["report"] == "failed" and is_nil(&1["ended_at"])))
         |> Enum.take(@sample)
         |> Enum.map(fn ticket ->
@@ -445,11 +446,18 @@ defmodule AgentBoard.Conversation.Lookup do
 
   # ---- shared ---------------------------------------------------------------
 
-  defp ticket_for(number), do: AgentState.tickets() |> by_number() |> Map.get(number)
-
-  defp by_number(tickets) do
-    for ticket <- tickets, number <- ticket["numbers"] || [], into: %{}, do: {number, ticket}
+  defp ticket_for(task) do
+    AgentState.tickets()
+    |> own_tickets(Board.repository(task.repository_id))
+    |> Tickets.by_number()
+    |> Map.get(task.number)
   end
+
+  # Issue numbers repeat across repositories; without one (Today) all count.
+  defp own_tickets(tickets, nil), do: tickets
+
+  defp own_tickets(tickets, repo),
+    do: Enum.filter(tickets, &AgentState.same_repository?(&1, repo))
 
   defp ticket_fact(nil, _now), do: nil
 

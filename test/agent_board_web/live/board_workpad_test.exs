@@ -191,6 +191,35 @@ defmodule AgentBoardWeb.BoardWorkpadTest do
       )
   end
 
+  test "the card speaks for the open ticket, not an older one that ended", %{
+    conn: conn,
+    path: path
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "workpad")
+    Board.log_event(repo.id, "sync", "fixture/workpad", %{"errors" => 0})
+    task = task(repo, 7, "Boss fight") |> Task.changeset(%{state: "ready"}) |> Repo.update!()
+
+    open = put_report(waiting(7, "", []), "ready", "The new run is ready.")
+
+    ended =
+      waiting(7, "", [])
+      |> put_report("ready", "The old run was ready.")
+      |> Map.put("ended", %{"outcome" => "completed", "at" => "2026-11-06T10:00:00.000Z"})
+
+    write_tickets(path, [open, ended])
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/workpad")
+
+    assert has_element?(view, "#sec-needs #task-#{task.id}", "The new run is ready.")
+    refute has_element?(view, "#sec-needs #task-#{task.id}", "The old run was ready.")
+  end
+
+  defp put_report(ticket, state, summary) do
+    update_in(ticket, ["assignments", Access.at(0), "report"], fn report ->
+      %{report | "state" => state, "summary" => summary}
+    end)
+  end
+
   defp waiting(number, summary, own_threads) do
     %{
       "mandate" => %{"basis" => %{"scope" => %{"number" => number}}},
@@ -219,11 +248,17 @@ defmodule AgentBoardWeb.BoardWorkpadTest do
     }
   end
 
-  defp write_ticket(path, ticket) do
+  defp write_ticket(path, ticket), do: write_tickets(path, [ticket])
+
+  defp write_tickets(path, tickets) do
     {:ok, db} = Exqlite.Sqlite3.open(path)
     :ok = Exqlite.Sqlite3.execute(db, "create table ticket (value text);")
-    json = ticket |> Jason.encode!() |> String.replace("'", "''")
-    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> json <> "')")
+
+    for ticket <- tickets do
+      json = ticket |> Jason.encode!() |> String.replace("'", "''")
+      :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('" <> json <> "')")
+    end
+
     Exqlite.Sqlite3.close(db)
   end
 end

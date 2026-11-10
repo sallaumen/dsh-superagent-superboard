@@ -117,7 +117,8 @@ differ. Change a general rule upstream, not here.
   for a worker ("Automatic retry" below). A ticket that ended `merged` is
   `done` whatever its last report said. An issue keeps every ticket it ever
   had, and one speaks for it: the open one, else the most recently updated
-  (`Tickets.by_number/1`, used by the sync and the ticket poll). A stopped or
+  (`Tickets.by_number/1`, used by the sync, the ticket poll, the board and
+  the voice lookups, each over its own repository's tickets). A stopped or
   archived task keeps its state.
 - The sync's insert sets the baseline once and keeps the state on conflict,
   so an overlay is not reset to `queued` every five minutes. A **closed
