@@ -25,7 +25,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommandList do
         <span class="voice-commands-hint">{gettext("· or say \"help\"")}</span>
       </summary>
       <div :for={group <- @groups} class="voice-commands-group">
-        <h4 id={"voice-commands-#{group.id}"}>{group.title}</h4>
+        <h4 id={"voice-commands-#{group.id}"}>{translated(group.title)}</h4>
         <ul aria-labelledby={"voice-commands-#{group.id}"}>
           <li :for={item <- group.items} class="voice-command" data-mode={item.mode}>
             <button
@@ -39,7 +39,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommandList do
               “{item.say}”
             </button>
             <span :if={!item.try} class="voice-command-say">“{item.say}”</span>
-            <span class="voice-command-does">{item.does}</span>
+            <span class="voice-command-does">{translated(item.does)}</span>
             <span class="voice-command-mode">{Commands.mode_label(item.mode)}</span>
           </li>
         </ul>
@@ -47,4 +47,9 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommandList do
     </details>
     """
   end
+
+  # The list is data (`Commands.groups/0`, English msgids marked for the
+  # catalog); what to say stays in the voice's language, the rest follows
+  # the interface.
+  defp translated(msgid), do: Gettext.gettext(AgentBoardWeb.Gettext, msgid)
 end

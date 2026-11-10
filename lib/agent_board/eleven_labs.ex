@@ -10,6 +10,8 @@ defmodule AgentBoard.ElevenLabs do
   of times by `AgentBoard.ElevenLabs.Retry`; a 4xx about the request is final.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   require Logger
 
   alias AgentBoard.ElevenLabs.{Retry, Usage}
@@ -30,9 +32,13 @@ defmodule AgentBoard.ElevenLabs do
   # The pickers offer these; an id not in the catalog is refused, so the
   # saved value can never grow into a wrong request.
   @tts_models [
-    %{id: "eleven_flash_v2_5", name: "Flash v2.5", note: "rápido, ~75 ms"},
-    %{id: "eleven_v4", name: "v4", note: "maior qualidade"},
-    %{id: "eleven_multilingual_v2", name: "Multilingual v2", note: "estável, textos longos"}
+    %{id: "eleven_flash_v2_5", name: "Flash v2.5", note: gettext_noop("fast, ~75 ms")},
+    %{id: "eleven_v4", name: "v4", note: gettext_noop("highest quality")},
+    %{
+      id: "eleven_multilingual_v2",
+      name: "Multilingual v2",
+      note: gettext_noop("stable, long texts")
+    }
   ]
 
   @max_voice_id 64

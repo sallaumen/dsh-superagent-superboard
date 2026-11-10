@@ -328,7 +328,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
               value={model.id}
               selected={model.id == @voice.model}
             >
-              {model.name} — {model.note}
+              {model.name} — {Gettext.gettext(AgentBoardWeb.Gettext, model.note)}
             </option>
           </select>
         </form>
