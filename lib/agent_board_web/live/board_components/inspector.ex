@@ -103,9 +103,32 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             {gettext("for %{executor}", executor: AgentBoard.Executors.name(@task.executor))}
           </span>
           <span :if={@pr} class="ab-meta">PR #{@pr.number}</span>
-          <span :if={@calls != []} class="ab-meta">
-            {ngettext("%{count} call", "%{count} calls", length(@calls), count: length(@calls))}
-          </span>
+          <button
+            :if={@calls != []}
+            type="button"
+            class="ab-meta ab-insp__cost"
+            phx-click="inspector_tab"
+            phx-value-tab="chamadas"
+            title={gettext("The board's own model calls for this task")}
+          >
+            {ngettext("%{count} call", "%{count} calls", length(@calls), count: length(@calls))} · {total_cost(
+              @totals
+            )}
+          </button>
+          <button
+            :if={match?(%{status: :measured}, @usage)}
+            type="button"
+            class="ab-meta ab-insp__cost"
+            phx-click="inspector_tab"
+            phx-value-tab="chamadas"
+            title={
+              gettext(
+                "Estimated from the executor's local transcripts; ≥ is a minimum, — has no price"
+              )
+            }
+          >
+            {gettext("executor %{cost}", cost: usage_cost(@usage.cost))}
+          </button>
           <a
             :if={@task.url}
             href={@task.url}

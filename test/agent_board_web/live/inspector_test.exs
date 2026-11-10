@@ -39,6 +39,13 @@ defmodule AgentBoardWeb.InspectorTest do
     {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", task.id))
 
     assert has_element?(view, "#conversation-title", "Salvar replays")
+    # The header says what the board's calls cost before any tab is opened.
+    assert has_element?(
+             view,
+             ".ab-insp__facts button[phx-value-tab=chamadas]",
+             "3 chamadas · ≥ $0.31"
+           )
+
     assert has_element?(view, "#conversation", "Conversa")
 
     view |> element("#conversation button", "Chamadas de IA") |> render_click()
@@ -158,6 +165,8 @@ defmodule AgentBoardWeb.InspectorTest do
     html = render_inspector(task, "chamadas", usage)
 
     assert html =~ "Executor do agente"
+    # The estimate is in the header too, with its floor sign.
+    assert html =~ "executor ≥ $0.16"
     assert html =~ "1 worker + 1 subagente(s)"
     assert html =~ "303.4k"
     assert html =~ "80.0M"
