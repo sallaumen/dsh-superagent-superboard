@@ -169,8 +169,31 @@ defmodule AgentBoard.Usage.CodexTest do
       assert rollout.total.total == 22_000
       assert [%{total: 10_000}, %{total: 12_000, requests: 2}] = rollout.days
 
-      # Read alone, the second file would count the first one's tokens again.
-      assert {:ok, %{days: [%{total: 22_000}]}} = Codex.read_rollout(second)
+      # Read alone, the second file still counts only its own usage.
+      assert {:ok, %{days: [%{total: 12_000}]}} = Codex.read_rollout(second)
+    end
+
+    test "a subagent's first total, inherited from its parent, counts only its own usage",
+         %{root: root} do
+      path =
+        write(root, "rollout-2026-09-08T12-11-13-#{@thread}.jsonl", [
+          token_count_line(
+            "2026-09-08T12:11:13.000Z",
+            total(1_084_647_509, 0, 0, 0),
+            nil,
+            total(28_028, 0, 0, 0)
+          ),
+          token_count_line(
+            "2026-09-08T12:12:13.000Z",
+            total(1_084_700_000, 0, 0, 0),
+            nil,
+            total(52_491, 0, 0, 0)
+          )
+        ])
+
+      assert {:ok, rollout} = Codex.read_thread([path])
+      assert [%{total: 80_519, requests: 2}] = rollout.days
+      assert rollout.total.total == 1_084_700_000
     end
 
     test "a continuation that forks from an earlier point counts only its own growth",
