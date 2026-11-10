@@ -175,7 +175,17 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
             <div class="ab-project__profile">
               <code>{superagent.profile}</code>
-              <span class="ab-data-sm ab-faint">· :{superagent.port}</span>
+              <a
+                class="ab-link ab-data-sm"
+                href={"http://127.0.0.1:#{superagent.port}/"}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={
+                  gettext("Open the dsh panel of %{project} in a new tab",
+                    project: project_name(superagent)
+                  )
+                }
+              >{gettext("panel")} :{superagent.port}</a>
             </div>
 
             <div class="ab-project__actions">
@@ -262,6 +272,15 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               <details class="ab-project__fold">
                 <summary>{gettext("State folder")}</summary>
                 <code>{superagent.state_dir}</code>
+              </details>
+              <details class="ab-project__fold">
+                <summary>{gettext("dsh panel")}</summary>
+                <p>
+                  {gettext(
+                    "The first time in each browser the panel asks for dsh's launch key. Run this command in a terminal on this machine, in the board's folder: it opens the panel signed in, and after that the link in the row opens it directly."
+                  )}
+                </p>
+                <code>scripts/agent/panel.sh {superagent.profile}</code>
               </details>
               <details :if={superagent.last_error} class="ab-project__fold">
                 <summary>{gettext("Technical details")}</summary>

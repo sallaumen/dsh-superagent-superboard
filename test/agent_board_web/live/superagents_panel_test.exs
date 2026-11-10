@@ -36,6 +36,20 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert html =~ "Não sobe"
     assert has_element?(view, "#settings-projects-title")
 
+    # The row links the project to its own dsh panel; the link carries no key.
+    assert has_element?(
+             view,
+             "#project-#{superagent.id} .ab-project__profile " <>
+               "a[href='http://127.0.0.1:#{superagent.port}/'][target=_blank]",
+             "painel :#{superagent.port}"
+           )
+
+    assert has_element?(
+             view,
+             "#project-#{superagent.id}-details .ab-project__fold code",
+             "scripts/agent/panel.sh superagent-panel"
+           )
+
     assert has_element?(
              view,
              "#project-#{superagent.id} .ab-project__error",
