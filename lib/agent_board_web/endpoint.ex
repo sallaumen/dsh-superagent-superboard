@@ -18,6 +18,11 @@ defmodule AgentBoardWeb.Endpoint do
     websocket: [connect_info: [session: @session_options], code_reloader: false],
     longpoll: [connect_info: [session: @session_options], code_reloader: false]
 
+  # Before everything but the sockets, which Phoenix dispatches first (their
+  # Origin check covers them): a DNS-rebound page at evil.example:4099 is
+  # same-origin to every other check, so only this machine's names get in.
+  plug :refuse_foreign_host
+
   # Serve at "/" the static files from "priv/static" directory.
   #
   # When code reloading is disabled (e.g., in production),
@@ -56,4 +61,13 @@ defmodule AgentBoardWeb.Endpoint do
   plug Plug.Head
   plug Plug.Session, @session_options
   plug AgentBoardWeb.Router
+
+  defp refuse_foreign_host(%Plug.Conn{host: host} = conn, _opts) do
+    if host in ["localhost", "127.0.0.1", "[::1]", config(:url)[:host]] or
+         String.ends_with?(host, ".localhost") do
+      conn
+    else
+      conn |> Plug.Conn.send_resp(403, "") |> Plug.Conn.halt()
+    end
+  end
 end
