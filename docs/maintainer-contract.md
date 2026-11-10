@@ -749,9 +749,16 @@ tree; `release_task` is the second standing authorization, for the actor
   `data.message.id`), summing `data.usage` input, output, cache read and
   cache write. Input excludes cache reads.
 - **Cost is an estimate** from `AI.Providers` prices, matched by model id
-  (`prices_for_model/1`). A token kind without a price (cache reads today)
-  makes the cost a minimum, shown `≥`; a model without a price makes it
-  unknown, shown `—`. Never zero for "no price".
+  (`prices_for_model/1`), the rates DeepSeek publishes (source and date in the
+  table). DeepSeek charges half outside its peak hours (`Providers.peak?/1`):
+  every token pays the rate of its own hour, from the message's time, in the
+  inspector, the ledger (`Report.rows/2` gives each day-long row its peak
+  tokens) and the summary of the day. Chinese public holidays, off-peak for
+  DeepSeek, are priced as peak: the board has no such calendar. A token kind
+  without a price, or a message with no time, makes the cost a minimum, shown
+  `≥`; a model without a price makes it unknown, shown `—`. Never zero for
+  "no price". A price change reaches every ledger reading at once; a board
+  call stores the price of its moment.
 - It is read only while a task is open in the inspector, and a reading is
   reused while no transcript changed (same files, sizes, mtimes). The one
   other reader is the summary of the day, once a day (`window/2`, below). Without
@@ -1184,7 +1191,7 @@ flowchart TB
   tasks; audit P3b, owner's choice 2026-11-10). The value is the
   Executions tab's (`Usage.Report.executions/2`, the ledger's last 90 UTC
   days with this attribution), summed per task and per executor, never
-  across executors: DeepSeek `≈` or `≥` (a missing cache price), Claude
+  across executors: DeepSeek `≈` or `≥` (a message with no model), Claude
   Code a list price, Codex "cost unknown". `Usage.TaskCosts.refresh/1`
   computes it after each ledger refresh (`Usage.Worker`, five minutes) and
   keeps it in memory, so a render reads no ledger; after a boot, until the

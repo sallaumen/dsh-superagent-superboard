@@ -167,9 +167,18 @@ defmodule AgentBoard.Usage.Harness do
       output: sum.(:output),
       cache_read: sum.(:cache_read),
       cache_write: sum.(:cache_write),
+      peak: peak_tokens(messages),
+      timed?: Enum.all?(messages, & &1.at),
       model: model,
       subagent?: transcript.subagent?
     }
+  end
+
+  # The tokens of the messages sent in the provider's peak hours.
+  defp peak_tokens(messages) do
+    peak = Enum.filter(messages, &(&1.at && Providers.peak?(&1.at)))
+    sum = fn key -> peak |> Enum.map(&Map.fetch!(&1, key)) |> Enum.sum() end
+    %{input: sum.(:input), output: sum.(:output), cache_read: sum.(:cache_read)}
   end
 
   @doc """
@@ -219,8 +228,9 @@ defmodule AgentBoard.Usage.Harness do
 
   @doc """
   The estimated cost of these sessions, in microdollars, from the board's
-  price table. `complete?` is false when a token kind or a model had no
-  price; nil when no session's model has a price.
+  price table, each token at the rate of its hour. `complete?` is false when
+  a token kind or a model had no price, or a message has no time (it is then
+  priced off-peak); nil when no session's model has a price.
   """
   @spec cost([map()]) :: cost()
   def cost(sessions) do
@@ -237,17 +247,25 @@ defmodule AgentBoard.Usage.Harness do
   end
 
   defp add_cost(acc, session, prices) do
-    {cache_read, read_known?} = priced(session.cache_read, prices[:cache_read])
+    peak = Map.get(session, :peak, %{input: 0, output: 0, cache_read: 0})
+    timed? = is_nil(prices[:off_peak]) or Map.get(session, :timed?, false)
+    read = Providers.at_full_rate(session.cache_read, peak.cache_read, prices)
+    {cache_read, read_known?} = priced(read, prices[:cache_read])
     {cache_write, write_known?} = priced(session.cache_write, prices[:cache_write])
 
     micros =
-      round(session.input * prices.input + session.output * prices.output) + cache_read +
-        cache_write
+      round(
+        Providers.at_full_rate(session.input, peak.input, prices) * prices.input +
+          Providers.at_full_rate(session.output, peak.output, prices) * prices.output
+      ) + cache_read + cache_write
 
-    %{micros: acc.micros + micros, complete?: acc.complete? and read_known? and write_known?}
+    %{
+      micros: acc.micros + micros,
+      complete?: acc.complete? and timed? and read_known? and write_known?
+    }
   end
 
-  defp priced(0, _price), do: {0, true}
+  defp priced(tokens, _price) when tokens == 0, do: {0, true}
   defp priced(_tokens, nil), do: {0, false}
   defp priced(tokens, price), do: {round(tokens * price), true}
 

@@ -1041,7 +1041,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           models: models(@usage.models)
         )}
         <span :if={@usage.cost && not @usage.cost.complete?}>
-          {gettext("Some token type has no price in the table (cache read today); cost is a minimum.")}
+          {gettext("Some tokens have no price or no time to price them by; cost is a minimum.")}
         </span>
         <span :if={@usage.cost == nil}>{gettext("The model has no price in the table; cost unknown.")}</span>
         <span :if={@usage.unreadable > 0}>

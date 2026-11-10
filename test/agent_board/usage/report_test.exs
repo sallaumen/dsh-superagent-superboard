@@ -38,14 +38,53 @@ defmodule AgentBoard.Usage.ReportTest do
 
     assert [dsh, claude] = Report.daily(day)
 
+    # a row with no messages cannot say its hours: off-peak, and a minimum
     assert dsh.source == "dsh"
-    assert dsh.cost.micros == 700_000
-    assert dsh.cost.complete?
+    assert dsh.cost.micros == 750_000
+    refute dsh.cost.complete?
 
     assert claude.source == "claude_code"
     assert claude.cost.micros > 0
     assert claude.cost.complete?
     refute claude.cost.micros == dsh.cost.micros
+  end
+
+  test "a day-long ledger row pays each token at the rate of its message's hour" do
+    day = ~D[2026-11-10]
+
+    ledger("dsh", "ticket-1", day, %{
+      input_tokens: 2_000_000,
+      output_tokens: 1_000_000,
+      cache_read_tokens: 2_000_000
+    })
+
+    message = fn id, at, output ->
+      %{
+        source: "dsh",
+        message_id: id,
+        execution_id: "ticket-1",
+        at: at,
+        day: day,
+        cwd: "/tmp/arena-rogue",
+        git_branch: "feat/x",
+        model: "deepseek-flash",
+        input_tokens: 1_000_000,
+        output_tokens: output,
+        cache_read_tokens: 1_000_000,
+        cache_write_tokens: 0
+      }
+    end
+
+    Repo.insert_all("usage_messages", [
+      message.("peak", ~U[2026-11-10 07:30:00.000000Z], 0),
+      message.("off-peak", ~U[2026-11-10 12:30:00.000000Z], 1_000_000)
+    ])
+
+    assert [row] = Report.rows(day, day)
+    assert row.peak == %{input: 1_000_000, output: 0, cache_read: 1_000_000}
+
+    # peak 0.30 + cache 0.006; off-peak 0.15 + 0.60 + cache 0.003
+    assert [%{cost: %{micros: 1_059_000, complete?: true}}] = Report.daily(day)
   end
 
   test "an unpriced model makes the total a minimum, never zero" do
@@ -60,13 +99,13 @@ defmodule AgentBoard.Usage.ReportTest do
   test "the expected cost is the median execution cost of that executor" do
     day = Date.utc_today()
 
-    # 1M input + 1M output = US$ 0.70; two more at US$ 1.40 and US$ 2.10.
+    # 1M input + 1M output off-peak = US$ 0.75; two more at US$ 1.50 and US$ 2.25.
     ledger("dsh", "ticket-1", day)
     ledger("dsh", "ticket-2", day, %{input_tokens: 2_000_000, output_tokens: 2_000_000})
     ledger("dsh", "ticket-3", day, %{input_tokens: 3_000_000, output_tokens: 3_000_000})
 
     costs = Report.expected_costs()
-    assert %{micros: 1_400_000, complete?: true} = costs["dsh"]
+    assert %{micros: 1_500_000, complete?: false} = costs["dsh"]
     assert costs["codex"] == :unknown
   end
 
@@ -277,20 +316,26 @@ defmodule AgentBoard.Usage.ReportTest do
   end
 
   test "the cost module never invents a price" do
-    assert %{micros: 700_000, complete?: true} =
-             Costs.cost("dsh", [
-               %{model: "deepseek-flash", input_tokens: 1_000_000, output_tokens: 1_000_000}
-             ])
+    message = %{
+      model: "deepseek-flash",
+      input_tokens: 1_000_000,
+      output_tokens: 1_000_000,
+      cache_read_tokens: 1_000_000
+    }
 
-    assert %{complete?: false} =
-             Costs.cost("dsh", [
-               %{
-                 model: "deepseek-flash",
-                 input_tokens: 1_000_000,
-                 output_tokens: 1_000_000,
-                 cache_read_tokens: 1_000_000
-               }
-             ])
+    # a message pays the rate of its hour, cache reads included
+    assert %{micros: 1_506_000, complete?: true} =
+             Costs.cost("dsh", [Map.put(message, :at, ~U[2026-11-10 07:00:00Z])])
+
+    assert %{micros: 753_000, complete?: true} =
+             Costs.cost("dsh", [Map.put(message, :at, ~U[2026-11-10 12:00:00Z])])
+
+    # no time to price it by: the off-peak rate, said to be a minimum
+    assert %{micros: 753_000, complete?: false} = Costs.cost("dsh", [message])
+
+    # a model with one rate needs no hour, and a message with no model has no price
+    assert %{complete?: true} =
+             Costs.cost("claude_code", [%{model: "claude-opus-5-5", input_tokens: 1}])
 
     assert Costs.cost("dsh", [%{model: "not-in-the-table"}]) == nil
     assert Costs.cost("codex", [%{model: "gpt-6-sol"}]) == nil
