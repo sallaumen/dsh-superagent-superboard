@@ -53,12 +53,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
             >
               <div class="ab-day__head">
                 <b class="ab-day__label">{day.label}</b>
-                <span class={["ab-day__count", group_extra(day.group) != [] && "ab-day__count--short"]}>
-                  {day_count(day)}
-                </span>
-                <span :if={group_extra(day.group) != []} class="ab-day__count ab-day__count--wide">
-                  {day_count_wide(day)}
-                </span>
+                <span class="ab-day__count"><.day_count day={day} /></span>
               </div>
 
               <div class="ab-day__dots" aria-hidden="true">
@@ -211,22 +206,17 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
   defp group_more_wide(nil), do: 0
   defp group_more_wide(group), do: group.more_wide
 
-  defp day_count_wide(%{n: n, group: %{items: items, extra: extra, more_wide: more}})
-       when more > 0,
-       do: gettext("%{shown} of %{total}", shown: length(items) + length(extra), total: n)
+  # The day says what it delivered first; "and N more" below says what is hidden.
+  attr :day, :map, required: true
 
-  defp day_count_wide(%{n: n}), do: "#{n}"
+  defp day_count(%{day: %{n: 0}} = assigns), do: ~H"0"
 
-  defp day_count(%{n: 0}), do: "0"
-
-  defp day_count(%{n: n, group: %{items: items, more: more}}) when more > 0,
-    do:
-      gettext("%{shown} of %{total}",
-        shown: length(items),
-        total: n
-      )
-
-  defp day_count(%{n: n}), do: "#{n}"
+  defp day_count(assigns) do
+    ~H"""
+    <b class="ab-delivered">{delivered(@day.issues, @day.issues)}</b>
+    <span class="ab-day__prs">· {ngettext("%{amount} PR", "%{amount} PRs", @day.n, amount: @day.n)}</span>
+    """
+  end
 
   # Issues lead: an issue is a delivery; a PR is how it got there.
   attr :log, :map, required: true
@@ -234,17 +224,18 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
 
   defp week(assigns) do
     ~H"""
-    <b class="ab-delivered">{gettext("%{issues} delivered",
-      issues:
-        ngettext("%{amount} issue", "%{amount} issues", @log.issues,
-          amount: count(@log.issues, @frozen)
-        )
-    )}</b>
+    <b class="ab-delivered">{delivered(@log.issues, count(@log.issues, @frozen))}</b>
     · {gettext("%{prs} in 7 days",
       prs: ngettext("%{amount} PR", "%{amount} PRs", @log.total, amount: count(@log.total, @frozen))
     )}
     """
   end
+
+  @doc "How many issues were delivered, as Merged and the daily summary say it."
+  def delivered(0, _shown), do: gettext("no issues delivered")
+
+  def delivered(n, shown),
+    do: ngettext("%{amount} issue delivered", "%{amount} issues delivered", n, amount: shown)
 
   defp count(0, _frozen), do: "0"
   defp count(n, true), do: "≥#{n}"

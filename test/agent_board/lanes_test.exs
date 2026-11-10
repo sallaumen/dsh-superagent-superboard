@@ -783,6 +783,9 @@ defmodule AgentBoard.LanesTest do
     # PR 4 is older than the week; PR 3 closes nothing; #7 is closed twice.
     assert log.total == 3
     assert log.issues == 2
+    # The same rule for the day: today's three PRs delivered #7 and #8.
+    assert List.last(log.days).issues == 2
+    assert List.last(log.days).n == 3
   end
 
   test "a red remote check without local evidence is quiet, not a red day" do

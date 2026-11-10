@@ -64,6 +64,9 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
         <div>
           <dt>{gettext("Done")}</dt>
           <dd>
+            <span :if={is_integer(@merged["issues"])} class="ab-delivered">
+              {AgentBoardWeb.BoardComponents.MergeLog.delivered(@merged["issues"], @merged["issues"])} ·
+            </span>
             {merged_text(@merged["count"] || 0)}<.refs items={@merged["items"] || []} />
           </dd>
         </div>

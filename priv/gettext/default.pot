@@ -7470,12 +7470,6 @@ msgstr ""
 msgid "PR #%{number} on GitHub (opens in a new tab)"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/merge_log.ex:239
-#, elixir-autogen, elixir-format
-msgid "%{amount} issue"
-msgid_plural "%{amount} issues"
-msgstr[0] ""
-msgstr[1] ""
 
 #: lib/agent_board_web/live/board_components/merge_log.ex:244
 #, elixir-autogen, elixir-format
@@ -7494,10 +7488,6 @@ msgstr ""
 msgid "closed by a merged PR"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/merge_log.ex:237
-#, elixir-autogen, elixir-format
-msgid "%{issues} delivered"
-msgstr ""
 
 #: lib/agent_board_web/live/board_components/merge_log.ex:243
 #, elixir-autogen, elixir-format
@@ -7622,4 +7612,17 @@ msgstr ""
 #: lib/agent_board/voice/commands.ex:169
 #, elixir-autogen, elixir-format
 msgid "creates at once, without asking; \"undo\" closes the issue for 10 minutes"
+msgstr ""
+
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "%{amount} issue delivered"
+msgid_plural "%{amount} issues delivered"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/merge_log.ex
+#, elixir-autogen, elixir-format
+msgid "no issues delivered"
 msgstr ""

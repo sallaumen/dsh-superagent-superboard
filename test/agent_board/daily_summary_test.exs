@@ -168,14 +168,16 @@ defmodule AgentBoard.DailySummaryTest do
     end
 
     test "counts the merges of the window only", %{repo: repo} do
-      pull(repo, 10, "Fora da janela", "2026-11-06T10:00:00Z")
-      pull(repo, 11, "Mesclado ontem à noite", "2026-11-07T01:00:00Z")
-      pull(repo, 12, "Mesclado de manhã", "2026-11-07T10:30:00Z")
+      pull(repo, 10, "Fora da janela", "2026-11-06T10:00:00Z", [4])
+      pull(repo, 11, "Mesclado ontem à noite", "2026-11-07T01:00:00Z", [5, 6])
+      pull(repo, 12, "Mesclado de manhã", "2026-11-07T10:30:00Z", [6])
 
       {:generated, entry} = tick("2026-11-07T11:00:00Z")
       merged = entry.content["merged"]
 
       assert merged["count"] == 2
+      # #4 was outside the window; #6 was closed twice and counts once.
+      assert merged["issues"] == 2
       assert Enum.map(merged["items"], & &1["number"]) == [12, 11]
       assert hd(merged["items"])["repo"] == "sallaumen/agent-board"
     end
@@ -367,11 +369,12 @@ defmodule AgentBoard.DailySummaryTest do
     end
   end
 
-  defp pull(repo, number, title, merged_at) do
+  defp pull(repo, number, title, merged_at, closes \\ []) do
     Repo.insert!(%PullRequest{
       repository_id: repo.id,
       number: number,
       title: title,
+      closes_issues: closes,
       state: "merged",
       url: "https://github.com/sallaumen/agent-board/pull/#{number}",
       merged_at: utc(merged_at)

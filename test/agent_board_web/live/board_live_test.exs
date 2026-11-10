@@ -1293,7 +1293,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/busy-day")
     day = view |> element("#log-day-#{Date.utc_today()}") |> render()
 
-    assert day =~ "3 de 15"
+    # No PR here closes an issue: the day says so, and how many PRs it had.
+    assert day =~ ~r/nenhuma issue entregue<\/b><span[^>]*class="ab-day__prs">· 15 PRs</
     assert day =~ "+3"
     assert day =~ "e mais 12"
 
@@ -1302,7 +1303,6 @@ defmodule AgentBoardWeb.BoardLiveTest do
     # their own count and their own "more".
     assert tree |> LazyHTML.query(".ab-day > .ab-pr") |> Enum.count() == 3
     assert tree |> LazyHTML.query(".ab-day__extra .ab-pr") |> Enum.count() == 5
-    assert tree |> LazyHTML.query(".ab-day__count--wide") |> LazyHTML.text() =~ "8 de 15"
     assert tree |> LazyHTML.query(".ab-day__more--wide") |> LazyHTML.text() =~ "e mais 7"
 
     dots =

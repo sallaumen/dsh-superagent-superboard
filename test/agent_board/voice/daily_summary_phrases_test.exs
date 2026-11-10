@@ -41,6 +41,21 @@ defmodule AgentBoard.Voice.DailySummaryPhrasesTest do
                "DeepSeek spent about 1.23 dollars. Claude and Codex are not measured yet."
   end
 
+  test "the issues delivered come first, when the row has them" do
+    with_issues = content(%{"merged" => %{"count" => 3, "issues" => 2, "items" => []}})
+
+    assert Phrases.daily_summary("pt-BR", with_issues) =~
+             "Resumo do dia: 2 issues entregues, 3 PRs mesclados."
+
+    assert Phrases.daily_summary("en-US", with_issues) =~
+             "Daily summary: 2 issues delivered, 3 PRs merged."
+
+    one = content(%{"merged" => %{"count" => 1, "issues" => 1, "items" => []}})
+
+    assert Phrases.daily_summary("pt-BR", one) =~
+             "Resumo do dia: 1 issue entregue, 1 PR mesclado."
+  end
+
   test "a quiet day is short and never invents work" do
     quiet =
       content(%{
