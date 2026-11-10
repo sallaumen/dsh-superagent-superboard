@@ -3,7 +3,8 @@
 # requirements -- are the agent's policy. The orchestrator holds the active
 # text; git holds docs/agent/prompts/{communication,scope,delivery}.md plus
 # `revision`, the revision those files were read from. This script moves the
-# text between the two:
+# text between the two. A second agent keeps its own directory: name it in
+# SUPERAGENT_PROMPTS_DIR together with that agent's DSH_SUPERAGENT_PORT.
 #
 #   prompts.sh get    write the active sections and their revision to the files
 #   prompts.sh diff   compare the files with the active revision; exit 1 if they differ
@@ -18,7 +19,7 @@ set -eu
 . "$(dirname "$0")/_common.sh"
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-DIR="$ROOT/docs/agent/prompts"
+DIR="${SUPERAGENT_PROMPTS_DIR:-$ROOT/docs/agent/prompts}"
 SECTIONS="communication scope delivery"
 HEADER="x-orchestrator-request: 1"
 
@@ -40,7 +41,7 @@ get() {
     printf '%s' "$PROMPTS" | jq -r ".current.config.$S" > "$DIR/$S.md"
   done
   echo "$ACTIVE" > "$DIR/revision"
-  echo "revision $ACTIVE -> docs/agent/prompts/"
+  echo "revision $ACTIVE -> $DIR/"
 }
 
 # Prints each difference between the files and the active revision; returns 1
@@ -111,7 +112,7 @@ put() {
   fi
   NEW=$(jq -r '.revision' "$OUT")
   echo "$NEW" > "$DIR/revision"
-  echo "saved revision $NEW (was $ACTIVE); commit docs/agent/prompts/revision"
+  echo "saved revision $NEW (was $ACTIVE); commit $DIR/revision"
 }
 
 case "${1:-}" in

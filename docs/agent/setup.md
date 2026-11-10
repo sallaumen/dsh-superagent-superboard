@@ -254,6 +254,18 @@ review the change, commit it, then `put` again. To change the policy, edit
 the file in a PR, merge it, run `put`, and commit the new `revision`. Team
 skills and overrides of built-in parts stay in the orchestrator only.
 
+The second agent (`superagent-colmex`, port 3083) holds its own three
+sections, versioned in [`prompts/colmex/`](prompts/colmex/). The same
+commands reach it with its port and directory:
+
+```sh
+DSH_SUPERAGENT_PORT=3083 SUPERAGENT_PROMPTS_DIR=docs/agent/prompts/colmex scripts/agent/prompts.sh diff
+```
+
+Its Delivery section names a different gate, the one `o_colmex`'s AGENTS.md
+asks for: `mix format --check-formatted`, `mix lint` and the focused tests,
+with the full `mix precommit` for a broad-risk change.
+
 The built-in text lets a person merge every PR. This deployment delegates
 merging to the agent: [`prompts/delivery.md`](prompts/delivery.md) says that nobody
 reviews PRs by hand and that the executor merges each PR it opened, as the
