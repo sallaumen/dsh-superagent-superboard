@@ -25,7 +25,24 @@ defmodule AgentBoard.Board.InboxTest do
     assert id == b.id
   end
 
-  defp task(repository, number, title, state) do
+  test "a running task enters the attention list only past the time its size allows" do
+    {:ok, repo} = Board.add_repository("sallaumen", "long-runs")
+    now = DateTime.utc_now(:second)
+    limit_passed = DateTime.add(now, -21 * 60, :second)
+
+    long = task(repo, 21, "Long", "running", %{size: "S", state_changed_at: limit_passed})
+
+    task(repo, 22, "Within", "running", %{
+      size: "L",
+      state_changed_at: DateTime.add(now, -21 * 60, :second)
+    })
+
+    assert [%{task_id: id, state: "slow", at: at}] = Board.inbox().alerts
+    assert id == long.id
+    assert at == DateTime.add(limit_passed, 20 * 60, :second)
+  end
+
+  defp task(repository, number, title, state, attrs \\ %{}) do
     %Task{}
     |> Task.changeset(%{
       repository_id: repository.id,
@@ -34,6 +51,7 @@ defmodule AgentBoard.Board.InboxTest do
       title: title,
       state: state
     })
+    |> Ecto.Changeset.change(attrs)
     |> Repo.insert!()
   end
 

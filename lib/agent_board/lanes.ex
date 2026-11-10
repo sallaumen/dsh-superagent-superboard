@@ -165,11 +165,46 @@ defmodule AgentBoard.Lanes do
   # owner's answer starts it again, and the time it waited is not work.
   defp working_since(task), do: task.state_changed_at || task.started_at
 
-  defp slow?(task, now) do
+  @doc "The moment a running task passes the time its size allows, or nil."
+  @spec slow_at(map()) :: DateTime.t() | nil
+  def slow_at(task) do
     case working_since(task) do
-      %DateTime{} = since -> DateTime.diff(now, since) >= slow_after(task.size)
+      %DateTime{} = since -> DateTime.add(since, slow_after(task.size), :second)
+      nil -> nil
+    end
+  end
+
+  @doc "Whether a running task has passed the time its size allows."
+  @spec slow?(map(), DateTime.t()) :: boolean()
+  def slow?(task, now) do
+    case slow_at(task) do
+      %DateTime{} = at -> DateTime.compare(now, at) != :lt
       nil -> false
     end
+  end
+
+  @doc """
+  Milliseconds until the next running task becomes a long run or goes silent, nil
+  when none will. Nothing broadcasts a task that goes quiet, so the open board
+  sets one timer for this moment instead of waiting for the next sync.
+  """
+  @spec next_attention_in([map()], map(), pos_integer(), DateTime.t()) :: pos_integer() | nil
+  def next_attention_in(running, silences, stall_after, now) do
+    long_runs = Enum.map(running, &slow_at/1)
+
+    quiet =
+      Enum.map(running, fn task ->
+        case silences[task.number] do
+          %{at: at} -> DateTime.add(at, stall_after, :second)
+          nil -> nil
+        end
+      end)
+
+    (long_runs ++ quiet)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&DateTime.diff(&1, now, :millisecond))
+    |> Enum.filter(&(&1 > 0))
+    |> Enum.min(fn -> nil end)
   end
 
   defp slow_lane(board, context) do
