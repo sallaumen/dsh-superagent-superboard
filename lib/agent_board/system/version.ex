@@ -13,6 +13,9 @@ defmodule AgentBoard.System.Version do
 
   @served :agent_board_served_sha
   @available :agent_board_available
+  @fetched_at :agent_board_fetched_at
+  # Under the tabs' five-minute tick, so one of them still fetches every round.
+  @shared_fetch_ms 4 * 60 * 1000
 
   @type status :: %{
           served: String.t() | nil,
@@ -58,6 +61,34 @@ defmodule AgentBoard.System.Version do
 
       error ->
         error
+    end
+  end
+
+  @doc """
+  `refresh/0` for the periodic check of every open tab. After the Mac wakes
+  they all ask at once, and git allows one ref update at a time: one fetches,
+  the others keep the last answer.
+  """
+  @spec refresh_shared((-> {:ok, String.t() | nil} | {:error, term()})) ::
+          {:ok, String.t() | nil} | {:error, term()}
+  def refresh_shared(fetch \\ &refresh/0) do
+    case :global.trans({__MODULE__, self()}, fn -> fetch_unless_recent(fetch) end, [node()], 0) do
+      :aborted -> {:ok, available()}
+      result -> result
+    end
+  end
+
+  defp fetch_unless_recent(fetch) do
+    now = System.monotonic_time(:millisecond)
+    last = :persistent_term.get(@fetched_at, nil)
+
+    if last && now - last < @shared_fetch_ms do
+      {:ok, available()}
+    else
+      with {:ok, _sha} = fetched <- fetch.() do
+        :persistent_term.put(@fetched_at, now)
+        fetched
+      end
     end
   end
 
