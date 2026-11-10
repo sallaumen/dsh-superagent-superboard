@@ -58,9 +58,19 @@ differ. Change a general rule upstream, not here.
   to the LiveView session. The LiveView sets its own Gettext locale on mount,
   because the HTTP request and connected LiveView run in different processes.
   The root HTML `lang` attribute follows the same validated preference.
-- Interface language is per browser. `AgentBoard.Settings` continues to own
-  board-wide voice language; changing interface language must never update the
-  spoken-language preference, provider requests, stored task data, or JSON API.
+- Interface language is per browser, and **the voice speaks it** (owner's
+  decision, 2026-11-10; before, a board-wide `voice_language` setting spoke
+  Portuguese under an English interface). There is no separate spoken-language
+  setting: `BoardLive` reads the tab's language (`Locale.language/0`,
+  `pt-BR` or `en-US`) into `@voice.language`, and every stage takes it from
+  there: the phrases and the Announcer, the `language` given to the voice
+  agent and to the inspector's answer, the transcription hint, the browser
+  voice and the `language` of the speech URL, and what "What can I ask?"
+  tells the owner to say. Code that runs outside the LiveView process (an
+  async turn, a Task) carries the language in and sets its own locale. A
+  saved `voice_language` row from an older version is ignored, never
+  deleted. Changing the interface language never changes stored task data
+  or anything the JSON API stores.
 - User-facing interface copy uses Gettext, with English as the default message
   and `priv/gettext/pt_BR/LC_MESSAGES/default.po` for Brazilian Portuguese.
   Keep both languages complete when adding or changing a control, status,
@@ -72,9 +82,9 @@ differ. Change a general rule upstream, not here.
   comes from `Actions.phrase/3` in the interface language
   (`AgentBoardWeb.Locale.language/0`); the gate accepts it in either
   supported language and records the one the person read. Text that is
-  spoken, stored (events, retry notes, a superagent's last error), posted
-  to GitHub or answered by the JSON API does not follow the interface
-  language.
+  stored (events, retry notes, a superagent's last error), posted to GitHub
+  or answered by the JSON API does not follow the interface language;
+  spoken text does (above).
 - Text written for no reader in particular is **English** (owner's decision,
   2026-11-10): what the board stores or logs once and shows later to any
   viewer. That is the voice activity's details and reasons
@@ -152,7 +162,7 @@ in a prompt, and it is the prerequisite of any dispatch that spends money.
   contract first.
 - **One sentence on the screen and in the voice**: `Actions.phrase/3`. The
   confirmation in the interface shows it, the voice proposal says it (in the
-  voice language; `Speakable` reads `#12` as "12"), the API answers it.
+  tab's language; `Speakable` reads `#12` as "12"), the API answers it.
 - **Every decision is a row** in `action_decisions`
   (`AgentBoard.Actions.Decision`): `confirmed`, `automatic` or `refused`;
   by whom (`owner`, `auto_retry`) and through which door (`ui`, `voice`,
@@ -549,11 +559,14 @@ Agora and the detail):
   broadcasts `{:setting_changed, key}` on the `"settings"` topic and every
   `BoardLive` re-reads its voice assign, so a change in another tab, by the
   API or by a spoken command reaches every open board without a reload.
-- **Every spoken word comes from `AgentBoard.Voice.Phrases`**, in the voice
-  language (`voice_language`: `pt-BR` default, `en-US`). A sentence typed
-  in English inside a caller is the language mix this rule prevents. The
-  summary prompt receives the language; the TTS sends `language_code` only
-  to Flash v2.5 (another model answers 400). The greeting uses the
+- **Every spoken word comes from `AgentBoard.Voice.Phrases`**, or from
+  Gettext under the turn's language (the replies given without a model,
+  `VoiceCommands`), in the language of the tab that speaks ("Interface
+  language" above). A sentence typed in one language inside a caller is the
+  mix this rule prevents. The prompts receive the language and name both;
+  the speech endpoint takes the `language` of the request and sends
+  `language_code` only to Flash v2.5 (another model answers 400); without
+  one it sends no hint and the model reads the language from the text. The greeting uses the
   browser's clock (`tz_offset`), never the UTC hour.
 - **Automatic speech** is `AgentBoard.Announcer`: a pure diff between the
   previous and the current board, spoken as **one utterance per update**
@@ -563,7 +576,7 @@ Agora and the detail):
     comes first, rotates through ten phrases per kind (`voice_turn`, a
     random start per socket) and has its own toggle (`voice_attention`,
     `"0"` disables). Without an ElevenLabs key it falls back to the
-    browser's voice, in the voice language.
+    browser's voice, in the tab's language.
   - **events**: a task starting or going back to the queue and sync
     outcomes getting worse, plus the confirmations of user actions and the
     spoken answers; toggled by `elevenlabs_speak_events` (`"0"` disables,

@@ -115,7 +115,6 @@ defmodule AgentBoard.Actions do
   ]
 
   @settings %{
-    "language" => {Voice, :put_language},
     "volume" => {Voice, :put_volume},
     "speed" => {Voice, :put_speed},
     "style" => {Voice, :put_style},

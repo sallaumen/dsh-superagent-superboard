@@ -2429,7 +2429,7 @@ defmodule AgentBoardWeb.BoardLive do
          |> assign(voice: refreshed_voice(voice))
          |> put_flash(:info, "Voz salva: #{name || id}")
          |> push_event("voice_play", %{
-           url: speech_url(Phrases.voice_saved(voice.language), id)
+           url: speech_url(Phrases.voice_saved(voice.language), id, voice.language)
          })}
 
       true ->
@@ -2443,7 +2443,12 @@ defmodule AgentBoardWeb.BoardLive do
 
     {:noreply,
      push_event(socket, "voice_play", %{
-       url: speech_url(Phrases.preview(socket.assigns.voice.language), id)
+       url:
+         speech_url(
+           Phrases.preview(socket.assigns.voice.language),
+           id,
+           socket.assigns.voice.language
+         )
      })}
   end
 
@@ -2487,7 +2492,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply, put_flash(socket, :error, gettext("The phrase is too long for a request"))}
 
       true ->
-        url = speech_url(phrase, socket.assigns.voice.id)
+        url = speech_url(phrase, socket.assigns.voice.id, socket.assigns.voice.language)
         {:noreply, push_event(socket, "voice_play", %{url: url})}
     end
   end
@@ -2504,19 +2509,6 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("voice_attention", %{"attention" => value}, socket) do
     :ok = save_setting("attention", value == "true")
     {:noreply, assign(socket, voice: %{socket.assigns.voice | attention: Voice.attention?()})}
-  end
-
-  @impl true
-  def handle_event("voice_language", %{"language" => lang}, socket) do
-    case save_setting("language", lang) do
-      :ok ->
-        lang = Voice.language()
-        socket = assign(socket, voice: %{socket.assigns.voice | language: lang})
-        {:noreply, say(socket, Phrases.language_switched(lang), kind: :confirm)}
-
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, gettext("Unsupported language"))}
-    end
   end
 
   @impl true
@@ -2764,10 +2756,17 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The model answers on another process: the question is already on GitHub,
   # and blocking the LiveView for it freezes the whole board.
+  # The answer is shown and spoken to this viewer: the Task carries the
+  # tab's language, which a new process does not inherit.
   defp ask_in_background(task, body) do
     parent = self()
     id = task.id
-    Elixir.Task.start(fn -> send(parent, {:answer, id, answer(task, body)}) end)
+    language = Locale.language()
+
+    Elixir.Task.start(fn ->
+      Gettext.put_locale(AgentBoardWeb.Gettext, Locale.gettext_locale(language))
+      send(parent, {:answer, id, answer(task, body, language)})
+    end)
   end
 
   defp ask_failed(socket, task_id, body, message) do
@@ -2813,8 +2812,8 @@ defmodule AgentBoardWeb.BoardLive do
       models: ElevenLabs.tts_models(),
       speak_events: ElevenLabs.speak_events?(),
       attention: Voice.attention?(),
-      language: Voice.language(),
-      languages: Phrases.languages(),
+      # the voice speaks the interface language of this tab
+      language: Locale.language(),
       volume: Voice.volume(),
       speed: Voice.speed(),
       style: Voice.style(),
@@ -2962,7 +2961,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp voice_reason({:http, status}), do: "HTTP #{status}"
   defp voice_reason(reason), do: FailureText.text(reason)
 
-  defp speech_url(text, voice_id), do: VoiceSpeech.url(text, voice_id)
+  defp speech_url(text, voice_id, language), do: VoiceSpeech.url(text, voice_id, language)
 
   # A question that reached GitHub is a success even when the model cannot
   # answer it: the failure is shown as an error and never overwrites the
@@ -2982,10 +2981,11 @@ defmodule AgentBoardWeb.BoardLive do
     |> refresh_ai()
   end
 
-  defp answer(task, question) do
+  defp answer(task, question, language) do
     case AI.call(
            :answer_question,
            %{
+             language: language,
              question: question,
              title: task.title,
              state: task.state,
@@ -2997,7 +2997,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:ok, text}
 
       {:ok, _} ->
-        {:ok, "The model answered, but not with text."}
+        {:ok, gettext("The model answered, but not with text.")}
 
       {:error, :not_configured} ->
         {:error, gettext("AI is not configured.")}
@@ -3713,7 +3713,10 @@ defmodule AgentBoardWeb.BoardLive do
                   )}
             </span>
           </div>
-          <BoardComponents.VoiceCommandList.list open={@voice_commands_open} />
+          <BoardComponents.VoiceCommandList.list
+            open={@voice_commands_open}
+            language={@voice.language}
+          />
           <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} tz_offset={@tz_offset} />
         </BoardComponents.Panel.shell>
 

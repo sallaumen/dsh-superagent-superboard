@@ -149,35 +149,50 @@ defmodule AgentBoardWeb.VoiceControllerTest do
              json_response(put(conn, "/api/voice/settings", %{"tts_model" => "not-a-model"}), 400)
   end
 
-  test "PUT /api/voice/settings stores the language, volume and attention", %{conn: conn} do
-    assert %{"language" => "pt-BR", "volume" => 100, "attention" => true} =
-             json_response(get(conn, "/api/voice/status"), 200)
+  test "PUT /api/voice/settings stores the volume and attention; the language is not a setting",
+       %{conn: conn} do
+    status = json_response(get(conn, "/api/voice/status"), 200)
+    assert %{"volume" => 100, "attention" => true} = status
+    refute Map.has_key?(status, "language")
 
-    assert %{"language" => "en-US", "volume" => 30, "attention" => false} =
-             json_response(
-               put(conn, "/api/voice/settings", %{
-                 "language" => "en-US",
-                 "volume" => 30,
-                 "attention" => false
-               }),
-               200
-             )
+    # a `language` an older client still sends is ignored, whatever it says
+    saved =
+      json_response(
+        put(conn, "/api/voice/settings", %{
+          "language" => "xx",
+          "volume" => 30,
+          "attention" => false
+        }),
+        200
+      )
 
-    assert %{"error" => "an offered voice language is required"} =
-             json_response(put(conn, "/api/voice/settings", %{"language" => "xx"}), 400)
+    assert %{"volume" => 30, "attention" => false} = saved
+    refute Map.has_key?(saved, "language")
+    assert AgentBoard.Settings.get("voice_language") == nil
 
     assert %{"error" => "the volume must be 0 to 100"} =
              json_response(put(conn, "/api/voice/settings", %{"volume" => 101}), 400)
 
-    assert AgentBoard.Voice.language() == "en-US"
     assert AgentBoard.Voice.volume() == 30
   end
 
-  test "GET /api/voice/speech reads the text in the voice language", %{conn: conn} do
-    :ok = AgentBoard.Voice.put_language("en-US")
-
+  test "GET /api/voice/speech reads the text in the language the request names", %{conn: conn} do
     Req.Test.stub(@stub, fn conn ->
       assert conn.body_params["language_code"] == "en"
+      Plug.Conn.put_resp_content_type(conn, "audio/mpeg") |> Plug.Conn.send_resp(200, "ID3")
+    end)
+
+    assert response(get(conn, "/api/voice/speech?text=hi&language=en-US"), 200) == "ID3"
+
+    assert %{"error" => "an offered voice language is required"} =
+             json_response(get(conn, "/api/voice/speech?text=hi&language=xx"), 400)
+  end
+
+  test "GET /api/voice/speech without a language sends no hint: the model reads the text", %{
+    conn: conn
+  } do
+    Req.Test.stub(@stub, fn conn ->
+      refute Map.has_key?(conn.body_params, "language_code")
       Plug.Conn.put_resp_content_type(conn, "audio/mpeg") |> Plug.Conn.send_resp(200, "ID3")
     end)
 
@@ -194,7 +209,7 @@ defmodule AgentBoardWeb.VoiceControllerTest do
       |> Plug.Conn.send_resp(200, "ID3stream")
     end)
 
-    conn = get(conn, "/api/voice/stream?text=oi")
+    conn = get(conn, "/api/voice/stream?text=oi&language=pt-BR")
 
     assert response(conn, 200) == "ID3stream"
     assert get_resp_header(conn, "content-type") == ["audio/mpeg"]
@@ -299,8 +314,9 @@ defmodule AgentBoardWeb.VoiceControllerTest do
     assert %{tts_characters: 8, tts_requests: 1, cache_hits: 2} = Usage.today()
 
     # Another language is another audio: a miss, never the cached one.
-    :ok = AgentBoard.Voice.put_language("en-US")
-    assert response(get(build_conn(), "/api/voice/stream?text=Tudo+bem"), 200) == "ID3once"
+    assert response(get(build_conn(), "/api/voice/stream?text=Tudo+bem&language=en-US"), 200) ==
+             "ID3once"
+
     assert Agent.get(calls, & &1) == 2
   end
 

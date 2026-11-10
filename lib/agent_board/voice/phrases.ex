@@ -240,10 +240,6 @@ defmodule AgentBoard.Voice.Phrases do
     end
   end
 
-  @doc "The confirmation spoken when the owner switches the voice language."
-  def language_switched("en-US"), do: "Done. From now on I'll speak English."
-  def language_switched(_lang), do: "Pronto. A partir de agora eu falo em português."
-
   @doc "The phrase the voice preview speaks."
   def preview("en-US"), do: "Hi! This is how I'll sound when I talk to you."
   def preview(_lang), do: "Oi! É assim que eu vou soar quando falar com você."

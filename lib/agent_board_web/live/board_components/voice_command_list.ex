@@ -14,9 +14,10 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommandList do
   alias AgentBoard.Voice.Commands
 
   attr :open, :boolean, default: false
+  attr :language, :string, default: "pt-BR"
 
   def list(assigns) do
-    assigns = assign(assigns, :groups, Commands.groups())
+    assigns = assign(assigns, :groups, Commands.groups(assigns.language))
 
     ~H"""
     <details id="voice-commands" class="voice-commands" open={@open}>
@@ -48,8 +49,8 @@ defmodule AgentBoardWeb.BoardComponents.VoiceCommandList do
     """
   end
 
-  # The list is data (`Commands.groups/0`, English msgids marked for the
-  # catalog); what to say stays in the voice's language, the rest follows
-  # the interface.
+  # The list is data (`Commands.groups/1`, English msgids marked for the
+  # catalog). The voice speaks the interface language of the tab, so what to
+  # say comes in that language too.
   defp translated(msgid), do: Gettext.gettext(AgentBoardWeb.Gettext, msgid)
 end

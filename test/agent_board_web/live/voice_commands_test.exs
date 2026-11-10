@@ -49,7 +49,12 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
     context = %{repo: repo, sync_event: nil}
 
     assert %{
-             result: %{kind: :success, text: text, as_of: at, source: "Task record updated"},
+             result: %{
+               kind: :success,
+               text: text,
+               as_of: at,
+               source: "Registro da tarefa atualizado"
+             },
              path: path
            } = VoiceCommands.resolve("tarefa #81", context)
 
@@ -75,10 +80,10 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
     assert %{result: result, path: nil} =
              VoiceCommands.resolve("find PR 72", %{repo: repo, sync_event: nil})
 
-    assert result.text =~ "Saved state: merged"
+    assert result.text =~ "Estado salvo: merged"
     assert result.url == pull.url
     assert result.as_of == pull.updated_at
-    assert result.source == "PR record updated"
+    assert result.source == "Registro do PR atualizado"
 
     %PullRequest{}
     |> PullRequest.changeset(%{
@@ -102,16 +107,16 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
     synced = %{repo: repo, board: board, sync_event: %{kind: "sync", inserted_at: at}}
     failed = %{repo: repo, board: board, sync_event: %{kind: "sync_error", inserted_at: at}}
 
-    assert %{result: %{text: text, as_of: ^at, source: "Last completed sync"}} =
+    assert %{result: %{text: text, as_of: ^at, source: "Última sincronização concluída"}} =
              VoiceCommands.resolve("status", synced)
 
-    assert text =~ "3 blocked"
-    assert text =~ "Last completed sync"
+    assert text =~ "3 bloqueadas"
+    assert text =~ "Última sincronização concluída"
 
     assert %{result: %{text: failed_text, as_of: nil}} =
              VoiceCommands.resolve("status", failed)
 
-    assert failed_text =~ "showing saved data of unknown age"
+    assert failed_text =~ "mostrando dados salvos de idade desconhecida"
   end
 
   test "blocked answer names loaded cards while keeping the exact total" do
@@ -129,16 +134,24 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
                sync_event: nil
              })
 
-    assert text =~ "4 blocked tasks"
+    assert text =~ "4 tarefas bloqueadas"
     assert text =~ "#7 Fix failing check"
-    assert text =~ "No sync yet"
+    assert text =~ "Nenhuma sincronização ainda"
   end
 
   test "unknown text is retained as a draft and cannot act on a task" do
     assert %{result: %{kind: :unknown, text: text}, path: nil} =
              VoiceCommands.resolve("pare a tarefa 42", %{})
 
-    assert text =~ "Your draft is still here"
+    assert text =~ "Seu rascunho continua aqui"
+
+    # the same reply in English for a tab in English
+    english =
+      Gettext.with_locale(AgentBoardWeb.Gettext, "en", fn ->
+        VoiceCommands.resolve("pare a tarefa 42", %{})
+      end)
+
+    assert english.result.text =~ "Your draft is still here"
   end
 
   test "a question draft becomes an ask intent only without a read-only match" do

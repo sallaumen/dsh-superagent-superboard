@@ -14,7 +14,7 @@ Workflow: `house-patterns` (Elixir Agent Kit 0.8.0), medium.
 
 | Site | Lines | Disposition |
 |---|---|---|
-| "What can I ask?": group titles, what each command does, how it runs (`Voice.Commands`) | 35 | **conformed**: English msgids marked in the data, translated where shown. What to say stays in the voice's language |
+| "What can I ask?": group titles, what each command does, how it runs (`Voice.Commands`) | 35 | **conformed**: English msgids marked in the data, translated where shown. What to say was Portuguese only at the time (this line first said "stays in the voice's language", which was wrong); since the voice follows the interface language, it comes in both |
 | Flashes and composer errors in `BoardLive` | 5 | **conformed** |
 | Voice model notes in the settings picker (`ElevenLabs`) | 3 | **conformed** |
 | `Actions`: confirmation sentences and results | 71 | cleared: already two languages by the `lang` argument (#529, #533); the `does` catalog is not shown anywhere |

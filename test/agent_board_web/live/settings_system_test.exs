@@ -38,9 +38,8 @@ defmodule AgentBoardWeb.SettingsSystemTest do
     assert has_element?(view, "#settings-activity-title", "Atividade")
     assert has_element?(view, "#settings-activity", "Últimos 20 eventos")
 
-    view |> element(".settings-link") |> render_click()
-
-    assert_patch(view, "/?panel=settings&repo=fixture%2Fsystem&section=voice")
-    assert has_element?(view, ".settings-nav__item.is-current", "Voz e resumo")
+    # The language chosen here is the voice's too: no second control to send to.
+    assert has_element?(view, ".settings-pane__note", "A voz também fala este idioma.")
+    refute has_element?(view, ".settings-link")
   end
 end
