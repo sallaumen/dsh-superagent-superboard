@@ -6,6 +6,12 @@ defmodule AgentBoard.LocalCITest do
 
   @repo %{owner: "fixture", name: "local-ci"}
 
+  # The Portuguese sentences below are the proof that pt-BR did not change.
+  setup do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
+    :ok
+  end
+
   defp ticket(reports, urls \\ ["https://github.com/fixture/local-ci/issues/1"]) do
     %{
       "channel_urls" => urls,
@@ -92,6 +98,20 @@ defmodule AgentBoard.LocalCITest do
 
     assert detail ==
              "mix precommit: passou (326 testes) em 44653e8, mas o head do PR é 9f1c2ab: o gate não cobre o commit atual."
+  end
+
+  test "the note the board adds to a stale gate follows the viewer's language" do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+    ticket = ticket([{"PR #21 opened.", ~U[2026-11-06 12:00:00Z]}]) |> Map.put("numbers", [1])
+    gate = gate("mix precommit: passed in 44653e8", true, "44653e8")
+    heads = %{21 => "9f1c2ab0000000000000000000000000000000000"}
+
+    assert %{21 => %{detail: detail}} =
+             LocalCI.by_pr(@repo, [ticket], workpads: %{1 => workpad(gate)}, heads: heads)
+
+    assert detail ==
+             "mix precommit: passed in 44653e8, but the PR's head is 9f1c2ab: " <>
+               "the gate does not cover the current commit."
   end
 
   test "an unknown head cannot contradict the gate, and a failed gate fails" do

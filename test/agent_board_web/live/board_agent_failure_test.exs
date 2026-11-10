@@ -284,6 +284,14 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     {:ok, view, _html} =
       live(conn, ~p"/?repo=fixture/failures&task=#{blocked.id}&panel=conversation")
 
+    # The lanes, written by the domain layer, follow the interface language too.
+    html = render(view)
+    assert html =~ "Needs you"
+    refute html =~ "Precisa de você"
+    refute html =~ "Ver detalhe"
+    refute html =~ "Todas"
+    refute html =~ "Bloqueado"
+
     view |> element("#stop-#{blocked.id}-trigger") |> render_click()
     assert has_element?(view, "#stop-#{blocked.id} .ab-act__question", "Stop task #71")
     refute has_element?(view, "#stop-#{blocked.id} .ab-act__question", "Parar a tarefa")

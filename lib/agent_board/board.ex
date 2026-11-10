@@ -6,6 +6,8 @@ defmodule AgentBoard.Board do
   broadcast.
   """
   import Ecto.Query, warn: false
+  # The inspector's activity lines are interface copy.
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   alias AgentBoard.Board.{
     Activity,
@@ -746,25 +748,27 @@ defmodule AgentBoard.Board do
 
     events =
       [
-        task.inserted_at && %{at: task.inserted_at, text: "Entrou na fila", tone: :queue},
-        task.started_at && %{at: task.started_at, text: "O agente começou", tone: :agent},
+        task.inserted_at &&
+          %{at: task.inserted_at, text: gettext("Entered the queue"), tone: :queue},
+        task.started_at &&
+          %{at: task.started_at, text: gettext("The agent started"), tone: :agent},
         task.state_changed_at &&
           %{
             at: task.state_changed_at,
-            text: "Estado atual: #{state_label(task.state)}",
+            text: gettext("Current state: %{state}", state: state_label(task.state)),
             tone: state_tone(task.state)
           },
         pull_request && pull_request.opened_at &&
           %{
             at: pull_request.opened_at,
-            text: "PR ##{pull_request.number} aberto",
+            text: gettext("PR #%{number} opened", number: pull_request.number),
             tone: :agent,
             url: pull_request.url
           },
         pull_request && pull_request.merged_at &&
           %{
             at: pull_request.merged_at,
-            text: "PR ##{pull_request.number} mesclado",
+            text: gettext("PR #%{number} merged", number: pull_request.number),
             tone: :done,
             url: pull_request.url
           },
@@ -818,28 +822,28 @@ defmodule AgentBoard.Board do
     %{
       at: pull.checks_changed_at,
       text:
-        "CI falhou" <>
+        pgettext("activity", "CI failed") <>
           if(pull.checks_failed in [nil, ""], do: "", else: " · #{pull.checks_failed}"),
       tone: :halt
     }
   end
 
   defp checks_activity(%PullRequest{checks_state: "success"} = pull) do
-    %{at: pull.checks_changed_at, text: "CI passou", tone: :agent}
+    %{at: pull.checks_changed_at, text: pgettext("activity", "CI passed"), tone: :agent}
   end
 
   defp checks_activity(_pull), do: nil
 
-  defp state_label("running"), do: "rodando"
-  defp state_label("question"), do: "pergunta"
-  defp state_label("ready"), do: "para revisar"
-  defp state_label("blocked"), do: "bloqueado"
-  defp state_label("retrying"), do: "tentando de novo"
-  defp state_label("queued"), do: "na fila"
-  defp state_label("done"), do: "mesclado"
-  defp state_label("stopped"), do: "parado"
-  defp state_label("archived"), do: "arquivado"
-  defp state_label(state), do: state || "desconhecido"
+  defp state_label("running"), do: pgettext("activity state", "running")
+  defp state_label("question"), do: pgettext("activity state", "question")
+  defp state_label("ready"), do: pgettext("activity state", "to review")
+  defp state_label("blocked"), do: pgettext("activity state", "blocked")
+  defp state_label("retrying"), do: pgettext("activity state", "trying again")
+  defp state_label("queued"), do: pgettext("activity state", "queued")
+  defp state_label("done"), do: pgettext("activity state", "merged")
+  defp state_label("stopped"), do: pgettext("activity state", "stopped")
+  defp state_label("archived"), do: pgettext("activity state", "archived")
+  defp state_label(state), do: state || pgettext("activity state", "unknown")
 
   defp state_tone("blocked"), do: :halt
   defp state_tone("retrying"), do: :agent

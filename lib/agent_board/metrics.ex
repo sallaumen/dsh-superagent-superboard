@@ -10,6 +10,8 @@ defmodule AgentBoard.Metrics do
   one), so a bar is "14:00–15:00" and the shape reads like a clock.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   @hour 3600
   @day 86_400
   @week 7 * @day
@@ -275,15 +277,11 @@ defmodule AgentBoard.Metrics do
   def count(nil), do: "?"
   def count(n) when is_integer(n), do: Integer.to_string(n)
 
-  @doc "A per-hour rate with one decimal and the board's comma: 1,7."
+  @doc "A per-hour rate with one decimal and the viewer's decimal mark: 1,7 or 1.7."
   def rate(nil), do: "—"
 
-  def rate(value) when is_number(value) do
-    (value / 1)
-    |> Float.round(1)
-    |> :erlang.float_to_binary(decimals: 1)
-    |> String.replace(".", ",")
-  end
+  def rate(value) when is_number(value),
+    do: (value / 1) |> Float.round(1) |> AgentBoardWeb.Numbers.decimal(1)
 
   @doc "The change against the previous hour: +2, −1 or = for no change."
   def delta(nil), do: "—"
@@ -303,11 +301,11 @@ defmodule AgentBoard.Metrics do
   def duration(sec), do: "#{div(sec, @day)} d #{div(rem(sec, @day), @hour)} h"
 
   @doc "Why a value is unknown, in words."
-  def reason(:never_synced), do: "ainda sem leitura dos commits"
-  def reason(:not_configured), do: "orquestrador não configurado"
-  def reason(:unreachable), do: "orquestrador fora do ar"
-  def reason(:malformed), do: "resposta do orquestrador sem load"
-  def reason({:http, status}), do: "orquestrador respondeu HTTP #{status}"
-  def reason(:agent_unavailable), do: "estado do agente indisponível"
-  def reason(_other), do: "sem dados observados"
+  def reason(:never_synced), do: gettext("no commit reading yet")
+  def reason(:not_configured), do: gettext("orchestrator not configured")
+  def reason(:unreachable), do: gettext("orchestrator unreachable")
+  def reason(:malformed), do: gettext("orchestrator response lacks load")
+  def reason({:http, status}), do: gettext("orchestrator returned HTTP %{status}", status: status)
+  def reason(:agent_unavailable), do: gettext("agent status unavailable")
+  def reason(_other), do: gettext("no observed data")
 end

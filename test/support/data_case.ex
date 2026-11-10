@@ -29,6 +29,9 @@ defmodule AgentBoard.DataCase do
 
   setup tags do
     AgentBoard.DataCase.setup_sandbox(tags)
+    # The domain's screen sentences are asserted in the original Portuguese;
+    # a test of the English default sets the locale itself.
+    Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
     :ok
   end
 

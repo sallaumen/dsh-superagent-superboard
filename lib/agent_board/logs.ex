@@ -21,6 +21,8 @@ defmodule AgentBoard.Logs do
   `:unreadable`; the panel shows that state instead of inventing lines.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   @board_default "~/Library/Logs/AgentBoard.log"
   @logs_dir_default "~/Library/Logs"
   @initial_bytes 256 * 1024
@@ -235,16 +237,28 @@ defmodule AgentBoard.Logs do
     Enum.join([plural(warnings, "aviso", "avisos"), plural(errors, "erro", "erros")], " · ")
   end
 
-  @doc "The Portuguese label for a level."
+  @doc "The label for a level, in the viewer's language."
   @spec level_label(:warning | :error) :: String.t()
-  def level_label(:warning), do: "aviso"
-  def level_label(:error), do: "erro"
+  def level_label(:warning),
+    do: pgettext("log level", "warning")
 
-  @doc "The Portuguese label for a source status."
+  def level_label(:error),
+    do: pgettext("log level", "error")
+
+  @doc "The label for a source status, in the viewer's language."
   @spec status_label(status()) :: String.t()
-  def status_label(:ok), do: "lendo"
-  def status_label(:missing), do: "arquivo ainda não existe"
-  def status_label(:unreadable), do: "não foi possível ler"
+  def status_label(:ok),
+    do: pgettext("log source", "reading")
+
+  def status_label(:missing),
+    do:
+      pgettext(
+        "log source",
+        "the file does not exist yet"
+      )
+
+  def status_label(:unreadable),
+    do: pgettext("log source", "could not be read")
 
   @doc """
   Parse complete lines from one source. Exposed so the parser and its

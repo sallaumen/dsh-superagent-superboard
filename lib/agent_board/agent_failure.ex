@@ -10,8 +10,11 @@ defmodule AgentBoard.AgentFailure do
   unknown text, needs a person: a guess never earns an automatic retry.
 
   Pure: no network, no database. `AgentBoard.AutoRetry` decides what to do
-  with the result; the board says it in Portuguese with `describe/1`.
+  with the result and stores it in Portuguese with `describe/1`; the screen
+  says it in the viewer's language with `headline/1`.
   """
+
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   @type cause ::
           :model_transport
@@ -95,4 +98,34 @@ defmodule AgentBoard.AgentFailure do
   def describe(%{stage: :prepare}), do: "O preparo do worktree falhou"
   def describe(%{stage: :model}), do: "O modelo devolveu um erro"
   def describe(_failure), do: "O agente relatou uma falha"
+
+  @doc """
+  The sentence of `describe/1` in the viewer's language, for the screen.
+  `describe/1` stays Portuguese: its text is stored with the retry.
+  """
+  @spec headline(t()) :: String.t()
+  def headline(%{transient: true, stage: :model, cause: :rate_limit}),
+    do: gettext("The model provider rate-limited the requests")
+
+  def headline(%{transient: true, stage: :model, cause: :provider_unavailable}),
+    do: gettext("The model provider is down")
+
+  def headline(%{transient: true, stage: :model}),
+    do: gettext("Network failure calling the model")
+
+  def headline(%{transient: true, stage: :prepare, cause: :dns}),
+    do: gettext("No network preparing the worktree: GitHub did not resolve")
+
+  def headline(%{transient: true, stage: :prepare}),
+    do: gettext("No network preparing the worktree")
+
+  def headline(%{transient: true, cause: :rate_limit}), do: gettext("Request limit reached")
+  def headline(%{transient: true}), do: gettext("Network failure")
+
+  def headline(%{cause: :hung, stage: :prepare}),
+    do: gettext("Preparing the worktree timed out")
+
+  def headline(%{stage: :prepare}), do: gettext("Preparing the worktree failed")
+  def headline(%{stage: :model}), do: gettext("The model returned an error")
+  def headline(_failure), do: gettext("The agent reported a failure")
 end

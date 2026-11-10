@@ -325,6 +325,43 @@ defmodule AgentBoard.LanesTest do
     end
   end
 
+  test "the English board reads the lanes in English" do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+    {:ok, repo} = Board.add_repository("fixture", "english")
+    now = ~U[2026-11-06 15:00:00Z]
+    blocked = task(repo, 63, "Blocked", "blocked", DateTime.add(now, -60, :second))
+    review = task(repo, 64, "Review", "ready", DateTime.add(now, -60, :second))
+    merged(repo, 1, "Merged since", "failure", DateTime.add(now, -60, :second))
+    board = %{running: [], ready: [review], blocked: [blocked], question: [], retrying: []}
+
+    assert [down, %{kind: :review, actions: [%{label: "Review"}]}] =
+             Lanes.needs(repo, board, now: now, agent: :down)
+
+    assert down.title == "Agent offline"
+
+    assert down.why ==
+             "**The orchestrator is not responding.** 1 task waits for it to come back; network failures are retried on their own."
+
+    assert [%{label: "Restart the agent"}] = down.actions
+
+    digest =
+      Lanes.digest(repo, board,
+        now: now,
+        last_visit: DateTime.add(now, -3600, :second),
+        tz_offset: 0
+      )
+
+    assert digest.prefix == "Since today at 14:00 "
+
+    assert Enum.map_join(digest.segments, "", & &1.text) ==
+             "the agent merged 1 PR and #63 is still blocked"
+
+    log = Lanes.merge_log(repo, now: now, tz_offset: 0)
+    assert [%{label: "Today", items: [item]}] = log.groups
+    assert item.ciNote == "Local CI unknown"
+    assert item.review == "no review"
+  end
+
   test "a running task that went silent needs the owner; a fresh one is quiet" do
     {:ok, repo} = Board.add_repository("fixture", "silence")
     now = ~U[2026-11-07 12:00:00Z]

@@ -831,10 +831,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp dispatch_executor(task, _fallback), do: task.executor
 
   defp dispatch_label(_task, %{kind: :switch, executor: executor}),
-    do: "Mandar para o #{AgentBoard.Executors.name(executor)}"
+    do: gettext("Send to %{executor}", executor: AgentBoard.Executors.name(executor))
 
   defp dispatch_label(_task, %{kind: :retry, executor: executor}),
-    do: "Tentar de novo no #{AgentBoard.Executors.name(executor)}"
+    do: gettext("Try again on %{executor}", executor: AgentBoard.Executors.name(executor))
 
   defp dispatch_label(task, _fallback),
     do: gettext("Dispatch to %{executor}", executor: AgentBoard.Executors.name(task.executor))

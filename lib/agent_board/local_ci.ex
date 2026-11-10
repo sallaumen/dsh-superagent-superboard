@@ -20,6 +20,8 @@ defmodule AgentBoard.LocalCI do
   workpad, or with Validação empty, the reports decide as before.
   """
 
+  use Gettext, backend: AgentBoardWeb.Gettext
+
   @pr ~r/(?:PR\s*#|pull\/)(\d+)/i
   @pass ~r/\b(passed|passes|green|0 failures|0 issues)\b/i
   @fail ~r/\b(failed|failing)\b|[1-9]\d*\s+(failures|issues)/i
@@ -129,7 +131,9 @@ defmodule AgentBoard.LocalCI do
 
   defp workpad_detail(:stale, validation, head) do
     String.slice(validation.detail, 0, @report_limit) <>
-      ", mas o head do PR é #{String.slice(head, 0, 7)}: o gate não cobre o commit atual."
+      gettext(", but the PR's head is %{head}: the gate does not cover the current commit.",
+        head: String.slice(head, 0, 7)
+      )
   end
 
   defp workpad_detail(_state, validation, _head),
