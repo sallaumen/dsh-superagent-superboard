@@ -14,7 +14,7 @@ defmodule AgentBoard.ElevenLabs do
 
   require Logger
 
-  alias AgentBoard.ElevenLabs.{Retry, Usage}
+  alias AgentBoard.ElevenLabs.{Account, Retry, Usage}
 
   @base_url "https://api.elevenlabs.io"
 
@@ -43,6 +43,45 @@ defmodule AgentBoard.ElevenLabs do
 
   @max_voice_id 64
   @max_text 5_000
+
+  @doc """
+  The account's character allowance this period: used, limit, plan tier and
+  when it renews. Reading it spends no characters.
+  """
+  @spec subscription() :: {:ok, map()} | {:error, term()}
+  def subscription do
+    if configured?() do
+      case Req.get(client(), url: "/v1/user/subscription") do
+        {:ok,
+         %Req.Response{
+           status: 200,
+           body: %{"character_count" => used, "character_limit" => limit} = body
+         }}
+        when is_integer(used) and is_integer(limit) ->
+          {:ok,
+           %{
+             used: used,
+             limit: limit,
+             tier: body["tier"],
+             resets_at: renewal(body["next_character_count_reset_unix"])
+           }}
+
+        {:ok, %Req.Response{status: 401}} ->
+          {:error, :auth_expired}
+
+        {:ok, %Req.Response{status: status}} ->
+          {:error, {:http, status}}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    else
+      {:error, :not_configured}
+    end
+  end
+
+  defp renewal(unix) when is_integer(unix), do: DateTime.from_unix!(unix)
+  defp renewal(_unix), do: nil
 
   @doc "A client bound to the API and the configured key, if any."
   def client do
@@ -204,8 +243,8 @@ defmodule AgentBoard.ElevenLabs do
              request_id: header_string(headers, "request-id")
            }}
 
-        {:ok, %Req.Response{status: 401}} ->
-          {:error, :auth_expired}
+        {:ok, %Req.Response{status: status, body: body}} when status in [400, 401] ->
+          refused(status, body)
 
         {:ok, %Req.Response{status: 429}} ->
           {:error, :usage_limit}
@@ -277,7 +316,10 @@ defmodule AgentBoard.ElevenLabs do
   defp record_stream(_result, _text), do: :ok
 
   defp stream_result({:ok, %Req.Response{status: 200}}), do: :ok
-  defp stream_result({:ok, %Req.Response{status: 401}}), do: {:error, :auth_expired}
+
+  defp stream_result({:ok, %Req.Response{status: status, body: body}}) when status in [400, 401],
+    do: refused(status, body, "elevenlabs stream")
+
   defp stream_result({:ok, %Req.Response{status: 429}}), do: {:error, :usage_limit}
 
   defp stream_result({:ok, %Req.Response{status: status, body: body}}) do
@@ -287,7 +329,30 @@ defmodule AgentBoard.ElevenLabs do
 
   defp stream_result({:error, reason}), do: {:error, reason}
 
+  # Spent credits answer 400 or 401 with `quota_exceeded`: the plan ran out,
+  # not the key. The board switches to the computer voice for a while.
+  defp refused(status, body, source \\ "elevenlabs") do
+    case error_code(body) do
+      "quota_exceeded" ->
+        Account.mark_spent()
+        {:error, :quota_exceeded}
+
+      _code when status == 401 ->
+        {:error, :auth_expired}
+
+      code ->
+        Logger.warning("#{source} status=#{status} code=#{code}")
+        {:error, {:http, status}}
+    end
+  end
+
   # The provider's own code and nothing else: its message can quote the text.
+  defp error_code(%{"detail" => %{"status" => code}}) when is_binary(code), do: code
+  defp error_code(%{"detail" => [%{"type" => code} | _rest]}) when is_binary(code), do: code
+  defp error_code(%{}), do: "unknown"
+
+  defp error_code(body) when not is_binary(body), do: "unknown"
+
   defp error_code(body) do
     case Jason.decode(body) do
       {:ok, %{"detail" => %{"status" => code}}} when is_binary(code) -> code
@@ -357,8 +422,8 @@ defmodule AgentBoard.ElevenLabs do
           Usage.record_stt(transcript.audio_duration_secs)
           {:ok, transcript}
 
-        {:ok, %Req.Response{status: 401}} ->
-          {:error, :auth_expired}
+        {:ok, %Req.Response{status: status, body: body}} when status in [400, 401] ->
+          refused(status, body)
 
         {:ok, %Req.Response{status: 429}} ->
           {:error, :usage_limit}
@@ -433,8 +498,8 @@ defmodule AgentBoard.ElevenLabs do
       {:ok, %Req.Response{status: 200, body: %{"voices" => list}}} ->
         {:ok, Enum.map(list, &%{id: &1["voice_id"], name: &1["name"]})}
 
-      {:ok, %Req.Response{status: 401}} ->
-        {:error, :auth_expired}
+      {:ok, %Req.Response{status: status, body: body}} when status in [400, 401] ->
+        refused(status, body)
 
       {:ok, %Req.Response{status: 429}} ->
         {:error, :usage_limit}
