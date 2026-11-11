@@ -54,6 +54,7 @@ defmodule AgentBoard.Actions do
   alias AgentBoard.{
     AgentAccess,
     AgentControl,
+    AutoRetry,
     Board,
     Conversation,
     DailySummary,
@@ -463,7 +464,7 @@ defmodule AgentBoard.Actions do
 
   def phrase(:auto_retry_ticket, %{ticket_id: id} = params, _lang),
     do:
-      "Nova tentativa automática do ticket #{id} (#{params[:attempt] || "?"} de #{AgentBoard.AutoRetry.Plan.max_retries()}) " <>
+      "Nova tentativa automática do ticket #{id} (#{params[:attempt] || "?"} de #{AutoRetry.max_retries()}) " <>
         "depois de uma falha de rede ou do provedor."
 
   def phrase(:dispatch_task, %{task: task, executor: executor} = params, "en-US") do
