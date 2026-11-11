@@ -624,13 +624,15 @@ Agora and the detail):
     browser's voice, in the tab's language.
   - **events**: a task starting or going back to the queue and sync
     outcomes getting worse, plus the confirmations of user actions and the
-    spoken answers; toggled by `elevenlabs_speak_events` (`"0"` disables,
-    absent is on). User actions speak their own confirmations, so they are
-    not announced twice.
+    spoken answers; toggled by `voice_narrate` (`"1"` narrates, absent is
+    off; `speak_events` in the API maps to it). User actions speak their own
+    confirmations, so they are not announced twice.
   The volume (`voice_volume`, 0..100) rides on `#voice-panel[data-volume]`;
   the `VoicePlayer` hook and the browser fallback read it, so a change
   applies to the audio already playing. `PUT /api/voice/settings` accepts
-  `speak_events`, `attention`, `language` and `volume`.
+  `voice_id`, `tts_model`, `speak_events`, `attention`, `volume`, `speed`,
+  `style` and `pause`; the language is not a setting, the voice follows the
+  tab's interface language.
 - **The spoken conversation** (`docs/voice-conversation.md`) is the default
   for a double Space outside the composer: the `VoiceCommand` hook ends the
   turn on silence and pushes `voice_turn`; `AgentBoardWeb.VoiceConversation`

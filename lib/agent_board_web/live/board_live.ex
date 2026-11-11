@@ -2648,7 +2648,7 @@ defmodule AgentBoardWeb.BoardLive do
     :ok = save_setting("narrate", value == "true")
 
     {:noreply,
-     assign(socket, voice: %{socket.assigns.voice | speak_events: ElevenLabs.speak_events?()})}
+     assign(socket, voice: %{socket.assigns.voice | speak_events: Voice.narrate?()})}
   end
 
   @impl true
@@ -2984,7 +2984,7 @@ defmodule AgentBoardWeb.BoardLive do
       model: ElevenLabs.tts_model(),
       model_source: ElevenLabs.tts_source(),
       models: ElevenLabs.tts_models(),
-      speak_events: ElevenLabs.speak_events?(),
+      speak_events: Voice.narrate?(),
       attention: Voice.attention?(),
       # the voice speaks the interface language of this tab
       language: Locale.language(),
