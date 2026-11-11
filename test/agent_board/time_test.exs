@@ -49,6 +49,15 @@ defmodule AgentBoard.TimeTest do
       assert Time.ago(7 * 60) == "7 min ago"
     end
 
+    test "a frozen board says when it saw the row and only at least how many" do
+      assert Time.age_or_seen(420, false, ~U[2026-11-10 22:10:00Z], 0) == "7 min ago"
+      assert Time.age_or_seen(420, true, ~U[2026-11-10 22:10:00Z], 0) == "22:10"
+      assert Time.age_or_seen(420, true, nil, 0) == "7 min ago"
+      assert Time.frozen_count(0, true) == "0"
+      assert Time.frozen_count(3, true) == "≥3"
+      assert Time.frozen_count(3, false) == "3"
+    end
+
     test "since when, month before day" do
       assert Time.since_label(nil, 0, @now) == "before your last visit"
       assert Time.since_label(~U[2026-11-10 22:10:00Z], 0, @now) == "today at 22:10"

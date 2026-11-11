@@ -36,7 +36,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
     <section id="sec-needs" aria-labelledby="sec-needs-title">
       <div class="ab-sec__head">
         <h2 id="sec-needs-title">{gettext("Needs you")}</h2>
-        <span class="ab-sec__count">{count(length(@needs), @frozen)}</span>
+        <span class="ab-sec__count">{Time.frozen_count(length(@needs), @frozen)}</span>
       </div>
 
       <div :if={@needs == []} class="ab-sec__empty">
@@ -55,11 +55,6 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
             aria-current={to_string(not is_nil(@selected) and @selected == need[:id])}
             data-task={need[:id]}
             tabindex={if need[:id], do: "0"}
-            role={if need[:id], do: "button"}
-            phx-click={if need[:id], do: "open"}
-            phx-value-id={need[:id]}
-            phx-value-tab={if need.kind == :review, do: "pr"}
-            data-panel-trigger={need[:id] && "conversation"}
           >
             <div class="ab-need__top">
               <.glyph kind={need.kind} />
@@ -68,11 +63,27 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
               <span class="ab-top__spacer"></span>
               <span class="ab-need__side ab-meta">
                 <span :if={need.is_new} class="ab-new">{gettext("new")}</span>
-                <span :if={need.age_seconds}>{age(need.age_seconds, @frozen, @frozen_at, @tz_offset)}</span>
+                <span :if={need.age_seconds}>{Time.age_or_seen(
+                  need.age_seconds,
+                  @frozen,
+                  @frozen_at,
+                  @tz_offset
+                )}</span>
               </span>
             </div>
 
-            <div class="ab-need__title">{need.title}</div>
+            <%!-- The title is the native control that opens the task; the card
+            itself only carries focus for J/K. --%>
+            <button
+              :if={need[:id]}
+              type="button"
+              class="ab-need__title"
+              phx-click="open"
+              phx-value-id={need.id}
+              phx-value-tab={if need.kind == :review, do: "pr"}
+              data-panel-trigger="conversation"
+            >{need.title}</button>
+            <div :if={is_nil(need[:id])} class="ab-need__title">{need.title}</div>
 
             <div class={["ab-need__why", tone(need.kind)]}>
               <.markup text={need.why} />
@@ -81,8 +92,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                 class={[
                   "ab-tag",
                   need.ci.state == "fail" && "ab-tag--halt",
-                  need.ci.state == "pass" && need.ci.note == gettext("Local CI passed") &&
-                    "ab-tag--agent"
+                  need.ci.state == "pass" && need.ci.local && "ab-tag--agent"
                 ]}
                 title={need.ci.title}
               >
@@ -148,7 +158,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
         </div>
 
         <button :if={@hidden > 0} type="button" class="ab-more" phx-click="needs_more">
-          Mostrar mais {@hidden}
+          {ngettext("Show %{count} more", "Show %{count} more", @hidden)}
         </button>
       </div>
     </section>
@@ -188,11 +198,4 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   defp action_class(:stalled), do: "ab-btn--halt"
   defp action_class(:unanswered), do: "ab-btn--halt"
   defp action_class(_kind), do: "ab-btn--quiet"
-
-  defp age(_seconds, true, %DateTime{} = at, offset), do: Time.local_time(at, offset)
-  defp age(seconds, _frozen, _at, _offset), do: Time.ago(seconds)
-
-  defp count(0, _frozen), do: "0"
-  defp count(n, true), do: "≥#{n}"
-  defp count(n, false), do: "#{n}"
 end

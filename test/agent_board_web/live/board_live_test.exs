@@ -573,6 +573,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/slow-run")
 
     assert has_element?(view, "#sec-now #task-#{slow.id}", "Ajuste pequeno")
+    # The title button opens the panel; focus returns to the card that holds it.
+    assert has_element?(view, "#sec-now #task-#{slow.id}[data-task] button[data-panel-trigger]")
     assert has_element?(view, "#sec-needs #slow-#{slow.id} .ab-need__kind", "Demorando")
 
     assert has_element?(
@@ -1696,7 +1698,7 @@ defmodule AgentBoardWeb.BoardShellTest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/review-tab")
 
-    view |> element("#task-#{task.id}") |> render_click()
+    view |> element("#task-#{task.id} button[data-panel-trigger]") |> render_click()
 
     assert has_element?(view, "#conversation .ab-tab[aria-selected=true]", "PR")
   end

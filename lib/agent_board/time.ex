@@ -21,6 +21,15 @@ defmodule AgentBoard.Time do
   def ago(sec) when sec < 86_400, do: gettext("%{count} h ago", count: div(sec, 3600))
   def ago(sec), do: gettext("%{count} d ago", count: div(sec, 86_400))
 
+  @doc "A row's age; a frozen board says instead when it last saw the row."
+  def age_or_seen(_seconds, true, %DateTime{} = at, offset), do: local_time(at, offset)
+  def age_or_seen(seconds, _frozen, _at, _offset), do: ago(seconds)
+
+  @doc "A lane's count; a frozen board can only say at least that many."
+  def frozen_count(0, _frozen), do: "0"
+  def frozen_count(n, true), do: "≥#{n}"
+  def frozen_count(n, false), do: "#{n}"
+
   @doc "Elapsed time for a running task: m:ss, or h mm min past an hour."
   def duration(nil), do: "—"
   def duration(sec) when sec < 0, do: "0:00"

@@ -25,6 +25,18 @@ defmodule AgentBoardWeb.FailureText do
   def text(:timeout), do: gettext("The service did not respond in time.")
   def text(:unreachable), do: gettext("The service did not respond.")
 
+  # Preparing a project (`AgentBoard.Superagents`): the dsh profile and the form.
+  def text({:profile_port_missing, name}),
+    do: gettext("The dsh profile %{name} has no port yet; open it once in dsh.", name: name)
+
+  def text(:profile_missing), do: gettext("That dsh profile is not on this machine.")
+  def text(:source_required), do: gettext("Choose the dsh profile the project starts from.")
+
+  def text(:invalid_workers),
+    do: gettext("The number of workers must be from %{min} to %{max}.", range())
+
+  def text(%Ecto.Changeset{}), do: gettext("Some values were not accepted; check the form.")
+
   def text({:http, status}) when is_integer(status),
     do: gettext("The service answered with an error (HTTP %{status}).", status: status)
 
@@ -48,6 +60,11 @@ defmodule AgentBoardWeb.FailureText do
   def text(%{__exception__: true} = exception), do: unexpected(exception)
   def text(reason) when is_binary(reason), do: String.slice(reason, 0, 200)
   def text(reason), do: unexpected(reason)
+
+  defp range do
+    first..last//_step = AgentBoard.Orchestrator.worker_range()
+    [min: first, max: last]
+  end
 
   defp unexpected(reason) do
     Logger.warning("panel failure: #{inspect(reason)}")

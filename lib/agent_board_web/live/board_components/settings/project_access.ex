@@ -253,26 +253,28 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectAccess do
           <a
             href={profile(request.login)}
             target="_blank"
-            rel="noopener"
+            rel="noopener noreferrer"
             class="ab-project-access__login"
           >
-            @{request.login}
+            @{request.login}<span class="ab-sr">{gettext("(opens GitHub in a new tab)")}</span>
           </a>
           {gettext("called the agent in")}
           <span
             :for={{issue, index} <- Enum.with_index(request.issues)}
             class="ab-project-access__issue"
           >
-            <a href={issue.url} target="_blank" rel="noopener">#{issue.number}</a><span :if={
-              index < length(request.issues) - 1
-            }>{gettext("and")}</span>
+            <a href={issue.url} target="_blank" rel="noopener noreferrer">#{issue.number}<span class="ab-sr">{gettext(
+              "(opens GitHub in a new tab)"
+            )}</span></a><span :if={index < length(request.issues) - 1}>{gettext("and")}</span>
           </span>
           <span :if={request.issues == []}>{gettext("an issue")}</span>
           {gettext("without access.")}
         </p>
         <ul :if={Enum.any?(request.issues, & &1.title)} class="ab-project-access__issues">
           <li :for={issue <- request.issues} :if={issue.title}>
-            <a href={issue.url} target="_blank" rel="noopener">#{issue.number}</a>
+            <a href={issue.url} target="_blank" rel="noopener noreferrer">#{issue.number}<span class="ab-sr">{gettext(
+              "(opens GitHub in a new tab)"
+            )}</span></a>
             <span class="ab-project-access__issue-title">{issue.title}</span>
             <span :if={not issue.runnable} class="ab-meta">· {gettext("already handled")}</span>
           </li>
@@ -368,10 +370,10 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectAccess do
             <a
               href={profile(person.login)}
               target="_blank"
-              rel="noopener"
+              rel="noopener noreferrer"
               class="ab-project-access__login"
             >
-              @{person.login}
+              @{person.login}<span class="ab-sr">{gettext("(opens GitHub in a new tab)")}</span>
             </a>
             <span class="ab-meta">
               <span :if={person.name}>{person.name} ·</span>

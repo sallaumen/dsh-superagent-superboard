@@ -473,8 +473,11 @@ defmodule AgentBoard.Lanes do
   # remote check is quiet, and no local report is a `?`, not a pass.
   defp need_ci(pull, local) do
     {state, note, title} = ci_status(pull, local)
-    %{state: state, note: note, title: title}
+    %{state: state, note: note, title: title, local: local_pass?(local)}
   end
+
+  # The tag's tone reads this, never the note's words.
+  defp local_pass?(local), do: match?(%{state: :pass}, local)
 
   defp checks_label(%PullRequest{checks_failed: failed}) when is_binary(failed) do
     failed
@@ -850,7 +853,8 @@ defmodule AgentBoard.Lanes do
   def ci(pull, local_ci), do: ci_status(pull, Map.get(local_ci, pull.number))
 
   defp merged_pr(pull, offset, local_ci, costs) do
-    {ci, ci_note, ci_title} = ci_status(pull, Map.get(local_ci, pull.number))
+    local = Map.get(local_ci, pull.number)
+    {ci, ci_note, ci_title} = ci_status(pull, local)
 
     %{
       id: pull.id,
@@ -861,6 +865,7 @@ defmodule AgentBoard.Lanes do
       ci: ci,
       ciNote: ci_note,
       ciTitle: ci_title,
+      ciLocal: local_pass?(local),
       review: review_label(pull.review_state),
       at: Time.local_time(pull.merged_at, offset),
       cost: Map.get(costs, pull.number)

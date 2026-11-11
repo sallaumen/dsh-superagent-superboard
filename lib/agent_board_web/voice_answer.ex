@@ -2,8 +2,9 @@ defmodule AgentBoardWeb.VoiceAnswer do
   @moduledoc """
   A bounded board snapshot for a registered natural-language answer.
 
-  The LiveView decides when a question is not a deterministic command. This
-  module never navigates, writes a task, or starts speech output.
+  No board screen calls this module; it feeds the board AI evaluation
+  (`scripts/eval-board-ai.exs`, see the maintainer contract). It never
+  navigates, writes a task, or starts speech output.
   """
 
   alias AgentBoard.AI

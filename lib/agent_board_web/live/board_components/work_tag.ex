@@ -16,19 +16,15 @@ defmodule AgentBoardWeb.BoardComponents.WorkTag do
     "infra" => "infra"
   }
 
-  @sizes %{"S" => {"S", "small"}, "M" => {"M", "medium"}, "L" => {"L", "large"}}
-
   @doc "The kind of work as the board says it; nil when unknown."
   def work_type_label("research"), do: gettext("research")
   def work_type_label(work_type), do: Map.get(@work_types, work_type)
 
   @doc "The size as the board says it (P, M, G); nil when unknown."
-  def size_label(size) do
-    case Map.get(@sizes, size) do
-      {short, _long} -> if(pt?(), do: %{"S" => "P", "M" => "M", "L" => "G"}[short], else: short)
-      nil -> nil
-    end
-  end
+  def size_label("S"), do: pgettext("size", "S")
+  def size_label("M"), do: pgettext("size", "M")
+  def size_label("L"), do: pgettext("size", "L")
+  def size_label(_size), do: nil
 
   attr :work_type, :string, default: nil
   attr :size, :string, default: nil
@@ -57,14 +53,8 @@ defmodule AgentBoardWeb.BoardComponents.WorkTag do
     """
   end
 
-  defp size_pair(size) do
-    case Map.get(@sizes, size) do
-      {_short, "small"} -> {size_label(size), gettext("small")}
-      {_short, "medium"} -> {size_label(size), gettext("medium")}
-      {_short, "large"} -> {size_label(size), gettext("large")}
-      nil -> nil
-    end
-  end
-
-  defp pt?, do: Gettext.get_locale(AgentBoardWeb.Gettext) == "pt_BR"
+  defp size_pair("S"), do: {size_label("S"), gettext("small")}
+  defp size_pair("M"), do: {size_label("M"), gettext("medium")}
+  defp size_pair("L"), do: {size_label("L"), gettext("large")}
+  defp size_pair(_size), do: nil
 end
