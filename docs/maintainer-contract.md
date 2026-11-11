@@ -557,13 +557,16 @@ Agora and the detail):
 - **The ElevenLabs plan is read, not guessed** (`AgentBoard.ElevenLabs.Account`):
   every 15 minutes the board reads `GET /v1/user/subscription`, which spends
   no characters, and keeps the period's used and limit characters, the tier
-  and the renewal; the voice summary prints them. A speech refused with
+  and the renewal; the voice summary and the Voice settings print them, as
+  the last board reload read them. A speech refused with
   `quota_exceeded` (ElevenLabs answers it as 400 or 401) is
   `:quota_exceeded`, never "the key was rejected", and makes the paid voice
   spent for an hour; a plan with no characters left is spent until it
   renews. While spent the voice routing sends every utterance to the
-  computer voice, and a paid audio that fails in the browser is spoken
-  there with the same text instead of going silent (`account_test.exs`).
+  computer voice, and a paid audio that fails before any of it played is
+  spoken there with the payload the browser voice would have had (`fallback`
+  in `voice_play`: the same cleaned, shortened text and the owner's speed)
+  instead of going silent (`account_test.exs`, `voice_speech_test.exs`).
 - **Voice activity** (`AgentBoard.Voice.Activity`): each stage of a turn,
   every retry and every failure (server, or browser via
   `voice_client_error`) is one event: a log line `voice stage=… status=…`,

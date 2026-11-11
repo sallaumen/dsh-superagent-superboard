@@ -42,17 +42,20 @@ defmodule AgentBoardWeb.VoiceSpeech do
     listen = Keyword.get(opts, :listen, false)
     spoken = spoken(text, kind, Map.get(voice, :replies, "short"))
 
+    speak = %{
+      text: text(spoken),
+      display: text,
+      lang: voice.language,
+      rate: Map.get(voice, :speed, 1.0),
+      listen: listen
+    }
+
+    # `fallback` is what the browser voice says if the paid audio fails.
     if elevenlabs?(voice, kind) do
-      {"voice_play", %{url: url(spoken, voice.id, voice.language), listen: listen, text: text}}
+      {"voice_play",
+       %{url: url(spoken, voice.id, voice.language), listen: listen, text: text, fallback: speak}}
     else
-      {"speak",
-       %{
-         text: text(spoken),
-         display: text,
-         lang: voice.language,
-         rate: Map.get(voice, :speed, 1.0),
-         listen: listen
-       }}
+      {"speak", speak}
     end
   end
 

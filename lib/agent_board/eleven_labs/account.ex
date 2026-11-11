@@ -80,10 +80,12 @@ defmodule AgentBoard.ElevenLabs.Account do
 
   def plan_spent?(_state, _now), do: false
 
-  defp refused?(%{refused_until: %DateTime{} = until}, now),
+  @doc "Whether a speech refused for credits still holds the computer voice."
+  @spec refused?(t() | nil, DateTime.t()) :: boolean()
+  def refused?(%{refused_until: %DateTime{} = until}, now),
     do: DateTime.compare(now, until) == :lt
 
-  defp refused?(_state, _now), do: false
+  def refused?(_state, _now), do: false
 
   @doc """
   A speech was refused for credits: the computer voice speaks for the next

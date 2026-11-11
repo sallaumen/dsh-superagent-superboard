@@ -92,7 +92,7 @@ defmodule AgentBoardWeb.BoardLive do
         message_seen: message_seen,
         inbox_filter: "all",
         inbox_notice: nil,
-        inbox: %{messages: [], alerts: [], providers: []},
+        inbox: %{messages: [], alerts: [], providers: [], account: nil},
         tz_offset: tz_offset,
         work: empty_work(),
         flow: nil,
@@ -3307,6 +3307,7 @@ defmodule AgentBoardWeb.BoardLive do
           <.live_component
             module={BoardComponents.SettingsMenu}
             id="board-settings-panel"
+            voice_account={@inbox.account}
             repo={@repo}
             repos={@repos}
             version={@version}

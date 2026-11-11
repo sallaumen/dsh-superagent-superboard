@@ -36,6 +36,19 @@ defmodule AgentBoardWeb.VoiceSpeechTest do
     end
   end
 
+  test "if the paid audio fails, the browser says what the browser voice would have said" do
+    reply = "**Pronto.** O PR está em https://github.com/x/y/pull/1 e falta revisar."
+
+    assert {"voice_play", %{fallback: fallback, text: ^reply}} =
+             VoiceSpeech.push(voice(%{engine: "elevenlabs", speed: 1.2}), reply, kind: :reply)
+
+    assert {"speak", ^fallback} =
+             VoiceSpeech.push(voice(%{speed: 1.2}), reply, kind: :reply)
+
+    refute fallback.text =~ "**"
+    assert fallback.rate == 1.2
+  end
+
   test "without a key everything goes to the browser" do
     assert {"speak", _} =
              VoiceSpeech.push(voice(%{engine: "elevenlabs", configured: false}), "Oi.",

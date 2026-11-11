@@ -6,7 +6,6 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
-  alias AgentBoard.ElevenLabs.Account
   alias AgentBoardWeb.BoardComponents.Settings.{Activity, Execution, Projects, Setup}
   alias AgentBoardWeb.BoardComponents.VoiceActivityFeed
   alias AgentBoardWeb.BoardNavigation
@@ -24,6 +23,11 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :superagents, :list, default: []
   attr :repos, :list, default: []
   attr :access_waiting, :integer, default: 0
+
+  attr :voice_account, :map,
+    default: nil,
+    doc: "`ElevenLabs.Account.snapshot/0`, read with the inbox"
+
   attr :access_projects, :list, default: []
   attr :tickets, :list, default: []
   attr :ai_calls, :list, default: []
@@ -268,7 +272,11 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                   "How you talk to the board, when it answers aloud and the summary of the day."
                 )}
               </p>
-              <p :if={plan = plan_line(@tz_offset)} id="voice-plan" class="settings-pane__intro">
+              <p
+                :if={plan = plan_line(@voice_account, @tz_offset)}
+                id="voice-plan"
+                class="settings-pane__intro"
+              >
                 ElevenLabs · {plan}
               </p>
             </div>
@@ -375,10 +383,10 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
     """
   end
 
-  # The ElevenLabs plan as last read (`Account`): what this period used, when
-  # it renews, or that the computer voice speaks. Nothing before a first read.
-  defp plan_line(offset),
-    do: VoiceActivityFeed.account(Account.snapshot(), DateTime.utc_now(), offset)
+  # The ElevenLabs plan as the last board reload read it (`Inbox.snapshot/0`):
+  # what this period used, when it renews, or that the computer voice speaks.
+  defp plan_line(account, offset),
+    do: VoiceActivityFeed.account(account, DateTime.utc_now(), offset)
 
   defp sections do
     [

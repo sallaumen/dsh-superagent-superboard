@@ -12,7 +12,7 @@ defmodule AgentBoard.Board.Inbox do
   @alert_limit 30
 
   def snapshot do
-    %{messages: messages(), alerts: alerts(), providers: providers()}
+    %{messages: messages(), alerts: alerts(), providers: providers(), account: Account.snapshot()}
   end
 
   @doc """
