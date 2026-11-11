@@ -575,6 +575,9 @@ body.board-panel-open .ab-toast,
   .ab-sync-pop, .ab-toast { animation: none; }
 }
 
+/* BoardMotion: a card changing lane is lifted above the cards making room. */
+.is-traveling { position: relative; z-index: 2; box-shadow: 0 6px 18px -10px rgb(0 0 0 / .35); }
+
 /* ---------- the reading lanes: links, reasons and record rows ---------- */
 
 .ab-digest__link {
