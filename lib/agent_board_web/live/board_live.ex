@@ -1423,7 +1423,7 @@ defmodule AgentBoardWeb.BoardLive do
          put_flash(
            socket,
            :error,
-           gettext("Could not prepare the project: %{reason}", reason: inspect(reason))
+           gettext("Could not prepare the project: %{reason}", reason: FailureText.text(reason))
          )}
     end
   end
