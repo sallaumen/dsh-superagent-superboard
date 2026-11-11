@@ -86,6 +86,23 @@ against free fixtures. Tests never read `.env.local`. `AGENT_BOARD_ENV_FILE`
 chooses another file (for example, in a worktree). The loader lives in
 [config/runtime.exs](../config/runtime.exs).
 
+A key changes only after a restart. **Settings → AI and setup** shows which
+AI does what and, on "Check the setup", proves each part without spending:
+
+| Part | Needs | Fix it with |
+|---|---|---|
+| GitHub | `GITHUB_TOKEN` | a token at github.com/settings/tokens |
+| Projects | a tracked repository | Settings → Projects |
+| DeepSeek agents (optional) | a superagent per project | Settings → Projects, "Create a DeepSeek agent"; its model is in the profile ([agent setup](agent/setup.md)) |
+| Claude Code (optional) | the CLI at `CLAUDE_BIN`, signed in | `claude auth login` |
+| Codex (optional) | the CLI at `CODEX_BIN`, signed in | `codex login` |
+| The board's own AI | `DEEPSEEK_API_KEY`, `GEMINI_API_KEY` or `OPENAI_API_KEY` | the provider's key page (linked in `.env`) |
+| Voice (optional) | `ELEVENLABS_API_KEY`; without it the browser speaks for free | elevenlabs.io API keys |
+
+The board runs Claude Code and Codex from `CLAUDE_BIN` and `CODEX_BIN`
+(defaults in `lib/agent_board/runners.ex`); point them to the CLIs on this Mac
+if they live elsewhere.
+
 ## What it costs
 
 - **The sync** reads a bounded window of issues and PRs updated per repository,
