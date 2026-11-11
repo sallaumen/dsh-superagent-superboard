@@ -919,13 +919,17 @@ defmodule AgentBoard.ActionsTest do
       {~r/\bBoard\.Requests\.(create_task|create_request)\(/, []},
       {~r/\bBoard\.(stop_task|archive_task|resume_task|ask|add_repository|delete_repository)\(/,
        []},
-      {~r/\bGitHub\.(create_issue|close_issue|create_comment)\(/,
+      {~r/\bGitHub\.(create_issue|close_issue|create_comment|put_new_file|create_branch_from_head|add_sub_issue|add_blocked_by|invite_collaborator)\(/,
        [
          "lib/agent_board/board.ex",
+         "lib/agent_board/board/attachments.ex",
          "lib/agent_board/board/requests.ex",
          "lib/agent_board/board/split_graph.ex",
-         "lib/agent_board/release.ex"
+         "lib/agent_board/release.ex",
+         "lib/agent_board/superagents/bot_access.ex"
        ]},
+      {~r/\bAttachments\.store\(/, []},
+      {~r/\bBotAccess\.ensure\(/, ["lib/agent_board/superagents/dsh_provisioner.ex"]},
       # AgentControl.retry is the owner's retry, itself reachable only from here.
       {~r/\bOrchestrator\.(retry|set_max_workers)\(/, ["lib/agent_board/agent_control.ex"]},
       {~r/\bAgentControl\.(retry|start_agent)\(/, []},
