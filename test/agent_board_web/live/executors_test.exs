@@ -161,7 +161,7 @@ defmodule AgentBoardWeb.ExecutorsTest do
       "/?costs=calls&days=7&panel=settings&repo=fixture%2Fexecutors&section=costs"
     )
 
-    assert has_element?(view, "#settings-costs", "Nenhuma chamada de IA registrada ainda.")
+    assert has_element?(view, "#settings-costs", "Nenhuma chamada bate com estes filtros.")
   end
 
   test "Agents lists each execution with its task, and the executor filter lives in the URL",

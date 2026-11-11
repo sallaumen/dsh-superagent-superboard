@@ -140,6 +140,11 @@ defmodule AgentBoardWeb.BoardNavigation do
     %{
       source: params["source"],
       project: params["project"],
+      engine: params["engine"],
+      name: params["name"],
+      status: params["status"],
+      kind: params["kind"],
+      outcome: params["outcome"],
       page: params["costs"],
       days:
         case Integer.parse(params["days"] || "") do

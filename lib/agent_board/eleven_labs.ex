@@ -244,7 +244,7 @@ defmodule AgentBoard.ElevenLabs do
            }}
 
         other ->
-          failure(other)
+          Usage.record_refusal(:tts, failure(other))
       end
     else
       {:error, :not_configured}
@@ -279,6 +279,7 @@ defmodule AgentBoard.ElevenLabs do
       |> tap(fn _ -> Retry.reset_streamed() end)
       |> tap(&record_stream(&1, text))
       |> stream_result()
+      |> then(&Usage.record_refusal(:tts, &1))
     else
       {:error, :not_configured}
     end
@@ -423,7 +424,7 @@ defmodule AgentBoard.ElevenLabs do
           {:ok, transcript}
 
         other ->
-          failure(other)
+          Usage.record_refusal(:stt, failure(other))
       end
     else
       {:error, :not_configured}

@@ -15,6 +15,12 @@ defmodule AgentBoard.ElevenLabs.Usage do
   switch to the free browser voice, and the call that crosses it records one
   voice activity event a day. A ledger failure is logged and skipped; it
   never fails the speech it was counting.
+
+  Each request is also one row of `voice_requests` (`request/4`, read by
+  `requests/2`): kind (`tts`, `stt`), outcome (`paid`, `cache`, `refused`),
+  characters or seconds, and a refusal's reason. Counts only, never the text.
+  Rows exist from the day the table was created; older days have only the
+  daily totals.
   """
 
   import Ecto.Query
@@ -25,7 +31,9 @@ defmodule AgentBoard.ElevenLabs.Usage do
   require Logger
 
   @table "eleven_labs_usage"
+  @requests "voice_requests"
   @default_cap 20_000
+  @shown_requests 100
 
   @type day :: %{
           day: Date.t(),
@@ -86,6 +94,8 @@ defmodule AgentBoard.ElevenLabs.Usage do
   """
   @spec record_tts(non_neg_integer(), :paid | :cache) :: :ok
   def record_tts(characters, :paid) when is_integer(characters) and characters >= 0 do
+    request("tts", "paid", characters: characters)
+
     case add(tts_characters: characters, tts_requests: 1) do
       %{tts_characters: total} -> maybe_announce_cap(total, characters)
       _ -> :ok
@@ -93,6 +103,7 @@ defmodule AgentBoard.ElevenLabs.Usage do
   end
 
   def record_tts(_characters, :cache) do
+    request("tts", "cache")
     add(cache_hits: 1)
     :ok
   end
@@ -100,12 +111,112 @@ defmodule AgentBoard.ElevenLabs.Usage do
   @doc "Records one transcription and its audio seconds (nil when not reported)."
   @spec record_stt(number() | nil) :: :ok
   def record_stt(seconds) do
-    add(
-      stt_seconds: if(is_number(seconds) and seconds > 0, do: seconds * 1.0, else: 0.0),
-      stt_requests: 1
-    )
+    seconds = if is_number(seconds) and seconds > 0, do: seconds * 1.0, else: 0.0
+    request("stt", "paid", seconds: seconds)
+    add(stt_seconds: seconds, stt_requests: 1)
 
     :ok
+  end
+
+  @doc """
+  Records a refused or failed request of `kind` (`:tts`, `:stt`) from the
+  result it returned; anything but `{:error, reason}` records nothing. Answers
+  the result, so it can sit in a pipeline.
+  """
+  @spec record_refusal(:tts | :stt, term()) :: term()
+  def record_refusal(kind, {:error, reason} = result) when kind in [:tts, :stt] do
+    request(Atom.to_string(kind), "refused", reason: reason_word(reason))
+    result
+  end
+
+  def record_refusal(_kind, result), do: result
+
+  defp reason_word(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp reason_word({:http, status}), do: "http #{status}"
+
+  defp reason_word(%{__exception__: true} = error),
+    do: error.__struct__ |> inspect() |> String.slice(0, 80)
+
+  defp reason_word(_reason), do: "error"
+
+  @doc """
+  The requests from `since` (a UTC day) that `filters` select (`kind`,
+  `outcome`, `"all"` for any): the newest #{@shown_requests}, how many there
+  are, and when the first row of the table was written (nil when empty). A
+  failed read is nil.
+  """
+  @spec requests(Date.t(), map()) :: map() | nil
+  def requests(%Date{} = since, filters) do
+    start = DateTime.new!(since, ~T[00:00:00], "Etc/UTC")
+
+    selected =
+      from(r in @requests, where: r.inserted_at >= ^start)
+      |> narrow(:kind, filters[:kind])
+      |> narrow(:outcome, filters[:outcome])
+
+    %{
+      rows:
+        Repo.all(
+          from r in selected,
+            order_by: [desc: r.inserted_at, desc: r.id],
+            limit: @shown_requests,
+            select: %{
+              id: r.id,
+              kind: r.kind,
+              outcome: r.outcome,
+              characters: r.characters,
+              seconds: r.seconds,
+              reason: r.reason,
+              at: type(r.inserted_at, :utc_datetime_usec)
+            }
+        ),
+      count: Repo.aggregate(selected, :count),
+      first_at:
+        Repo.one(from r in @requests, select: type(min(r.inserted_at), :utc_datetime_usec))
+    }
+  rescue
+    e in [DBConnection.ConnectionError, Postgrex.Error] -> failed(:read, e, nil)
+  end
+
+  defp narrow(query, _field, value) when value in [nil, "all"], do: query
+  defp narrow(query, field, value), do: where(query, [r], field(r, ^field) == ^value)
+
+  @doc "One row per UTC day from `since` with anything recorded, oldest first. A failed read is nil."
+  @spec daily(Date.t()) :: [day()] | nil
+  def daily(%Date{} = since) do
+    Repo.all(
+      from u in @table,
+        where: u.day >= ^since,
+        order_by: u.day,
+        select: %{
+          day: u.day,
+          tts_characters: u.tts_characters,
+          tts_requests: u.tts_requests,
+          cache_hits: u.cache_hits,
+          stt_seconds: u.stt_seconds,
+          stt_requests: u.stt_requests
+        }
+    )
+  rescue
+    e in [DBConnection.ConnectionError, Postgrex.Error] -> failed(:read, e, nil)
+  end
+
+  # One row per request; a failed write is logged and skipped like the totals.
+  defp request(kind, outcome, fields \\ []) do
+    Repo.insert_all(@requests, [
+      %{
+        kind: kind,
+        outcome: outcome,
+        characters: Keyword.get(fields, :characters, 0),
+        seconds: Keyword.get(fields, :seconds, 0.0),
+        reason: Keyword.get(fields, :reason),
+        inserted_at: DateTime.utc_now()
+      }
+    ])
+
+    :ok
+  rescue
+    e in [DBConnection.ConnectionError, Postgrex.Error] -> failed(:write, e, :ok)
   end
 
   @doc "The daily character cap; 0 means none."

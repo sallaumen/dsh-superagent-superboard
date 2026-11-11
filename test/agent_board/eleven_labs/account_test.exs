@@ -8,7 +8,7 @@ defmodule AgentBoard.ElevenLabs.AccountTest do
   alias AgentBoard.AI.Call
   alias AgentBoard.Board.Inbox
   alias AgentBoard.ElevenLabs
-  alias AgentBoard.ElevenLabs.Account
+  alias AgentBoard.ElevenLabs.{Account, Usage}
   alias AgentBoardWeb.BoardComponents.Settings.Costs
   alias AgentBoardWeb.VoiceSpeech
 
@@ -90,6 +90,11 @@ defmodule AgentBoard.ElevenLabs.AccountTest do
     refuse(401)
     assert ElevenLabs.speech("Olá") == {:error, :quota_exceeded}
     assert Account.spent?()
+
+    # The refusal is a request row of its own, with its reason and no text.
+    assert [%{kind: "tts", outcome: "refused", reason: "quota_exceeded"}] =
+             Usage.requests(Date.utc_today(), %{}).rows
+
     refute Account.spent?(DateTime.add(DateTime.utc_now(), 3_601, :second))
 
     Account.clear()

@@ -2527,6 +2527,7 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
 .ab-costs__stack { display: flex; flex-direction: column-reverse; justify-content: flex-start; min-height: 0; border-bottom: 1px solid var(--line-strong); }
 .ab-costs__seg { display: block; flex: none; width: 100%; }
 .ab-costs__seg.is-agent { border-radius: 2px 2px 0 0; }
+.ab-costs__seg.is-voice { border-radius: 2px 2px 0 0; background: var(--ink-muted); }
 .ab-costs__day.is-unknown .ab-costs__stack { background: repeating-linear-gradient(135deg, transparent 0 3px, var(--line) 3px 4px); }
 .ab-costs__day-label { overflow: visible; color: var(--ink-faint); font: 10.5px/16px var(--font-mono); text-align: center; white-space: nowrap; }
 /* The newest day's date is the longest label: it grows to the left, never past the edge. */

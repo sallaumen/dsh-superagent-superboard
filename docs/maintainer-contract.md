@@ -1242,18 +1242,31 @@ currencies.
 | Agent · DeepSeek | `usage_ledger` `dsh` rows (`Report.daily/1`) | UTC days from `Report.since/1` | US$ estimated at the published price; `≥` when a row lacks a price; `?` when none is priced; `—` when it did not run |
 | … of it at the peak rate | `usage_messages` `dsh`, summed per UTC hour and model, priced with `Costs.cost/2` | same | share of that US$ |
 | Board AI | `ai_calls.cost_micros` (price of the call's moment) | same, by `inserted_at` | US$ estimated; a call with tokens and cost 0 had no price and makes the total `≥` |
+| Board AI calls: totals per function, the newest 100 | `Overview.calls/2` over `ai_calls`, narrowed by engine, function and status | same | calls, errors, tokens, average latency, US$ as above; under a cent is `< US$ 0,01` |
 | Claude Code | `usage_ledger` `claude_code` rows | same | US$ list-price reference, not a bill |
 | Codex | `Costs.codex_weekly/1` over `usage_limits` | the plan's week | measured %; no reading is `?` |
 | ElevenLabs | `Account.snapshot/0` (plan) and `ElevenLabs.Usage.window/1` (`eleven_labs_usage`) | plan period; UTC days | measured characters and seconds; no US$ |
+| Voice: each request | `voice_requests` via `Usage.requests/2` (kind, outcome), with daily paid characters from `Usage.daily/1` | same | measured characters or seconds; a refusal keeps its reason word, never the text |
 | Daily bars | agent DeepSeek + board AI per UTC day | same | US$ stacked; a day with a missing price is hatched |
 | Tasks that cost the most | `Report.executions/2` `dsh` with a task, top 5 | same | US$ estimated |
 | Agents: each execution | `Overview.executions/2` (`Report.executions/2` with its task and project), filtered by `Overview.select/3` | same | the executor's own: US$ estimated, US$ list for Claude Code, quota for Codex; the filter total per source via `costs_by_source/1` |
 
-- The page, the window and the Agents filters live in the URL
-  (`section=costs&costs=summary|agents|calls&days=7|30|90&source=…&project=…`,
-  `BoardNavigation.settings_path/3`); the default is the summary over 30 days.
-  Data is read when the section opens or the page or window changes; a
-  broadcast re-render keeps what was read, and nothing polls.
+- The page, the window and each page's filters live in the URL
+  (`section=costs&costs=summary|agents|calls&days=7|30|90`; Agents `source`,
+  `project`; calls `engine`, `name`, `status`; voice `kind`, `outcome`;
+  `BoardNavigation.settings_path/3`);
+  the default is the summary over 30 days. Data is read when the section
+  opens or the page, window or a calls filter changes (an Agents filter only
+  narrows what was read); a broadcast re-render keeps what was read, and
+  nothing polls.
+- `voice_requests` (migration `20261111220000`) holds one row per ElevenLabs
+  request: a paid speech (`record_tts/2` `:paid`), a cache hit, a
+  transcription (`record_stt/1`) or a refusal (`record_refusal/2`, from the
+  failure paths of `speech/2`, `speech_stream/3` and `transcribe/3`, after
+  retries). Counts and a reason word only; the text and audio never reach it.
+  It starts empty on the day it is created, and the page says since when it
+  records; older days keep only the daily totals. It is not pruned: at a few
+  hundred voice requests a day it stays small.
 - Today is a partial UTC day and the scope line says so. A failed voice read
   is `?`, not zero.
 - The tests: `overview_test.exs` (minimum, unknown, voice window, peak share),
