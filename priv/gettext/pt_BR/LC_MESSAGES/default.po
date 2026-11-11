@@ -2642,8 +2642,8 @@ msgstr "quarta"
 msgid "Yesterday, %{date} %{month}"
 msgstr "Ontem, %{date} %{month}"
 
-#: lib/agent_board/metrics.ex:309
-#: lib/agent_board_web/live/board_components/throughput.ex:494
+#: lib/agent_board/metrics.ex:303
+#: lib/agent_board_web/live/board_components/throughput.ex:493
 #, elixir-autogen, elixir-format
 msgid "agent status unavailable"
 msgstr "estado do agente indisponível"
@@ -2681,38 +2681,38 @@ msgstr "main avançou: %{count} commits"
 msgid "main downloaded; restart"
 msgstr "main baixada; reinicie"
 
-#: lib/agent_board/metrics.ex:304
-#: lib/agent_board_web/live/board_components/throughput.ex:486
+#: lib/agent_board/metrics.ex:298
+#: lib/agent_board_web/live/board_components/throughput.ex:485
 #, elixir-autogen, elixir-format
 msgid "no commit reading yet"
 msgstr "ainda sem leitura dos commits"
 
-#: lib/agent_board/metrics.ex:310
-#: lib/agent_board_web/live/board_components/throughput.ex:495
+#: lib/agent_board/metrics.ex:304
+#: lib/agent_board_web/live/board_components/throughput.ex:494
 #, elixir-autogen, elixir-format
 msgid "no observed data"
 msgstr "sem dados observados"
 
-#: lib/agent_board/metrics.ex:305
-#: lib/agent_board_web/live/board_components/throughput.ex:487
+#: lib/agent_board/metrics.ex:299
+#: lib/agent_board_web/live/board_components/throughput.ex:486
 #, elixir-autogen, elixir-format
 msgid "orchestrator not configured"
 msgstr "orquestrador não configurado"
 
-#: lib/agent_board/metrics.ex:307
-#: lib/agent_board_web/live/board_components/throughput.ex:489
+#: lib/agent_board/metrics.ex:301
+#: lib/agent_board_web/live/board_components/throughput.ex:488
 #, elixir-autogen, elixir-format
 msgid "orchestrator response lacks load"
 msgstr "resposta do orquestrador sem load"
 
-#: lib/agent_board/metrics.ex:308
-#: lib/agent_board_web/live/board_components/throughput.ex:492
+#: lib/agent_board/metrics.ex:302
+#: lib/agent_board_web/live/board_components/throughput.ex:491
 #, elixir-autogen, elixir-format
 msgid "orchestrator returned HTTP %{status}"
 msgstr "orquestrador respondeu HTTP %{status}"
 
-#: lib/agent_board/metrics.ex:306
-#: lib/agent_board_web/live/board_components/throughput.ex:488
+#: lib/agent_board/metrics.ex:300
+#: lib/agent_board_web/live/board_components/throughput.ex:487
 #: lib/agent_board_web/live/board_live.ex:633
 #, elixir-autogen, elixir-format
 msgid "orchestrator unreachable"
@@ -6514,37 +6514,37 @@ msgctxt "activity state"
 msgid "unknown"
 msgstr "desconhecido"
 
-#: lib/agent_board/logs.ex:243
+#: lib/agent_board/logs.ex:221
 #, elixir-autogen, elixir-format
 msgctxt "log level"
 msgid "warning"
 msgstr "aviso"
 
-#: lib/agent_board/logs.ex:246
+#: lib/agent_board/logs.ex:224
 #, elixir-autogen, elixir-format
 msgctxt "log level"
 msgid "error"
 msgstr "erro"
 
-#: lib/agent_board/logs.ex:251
+#: lib/agent_board/logs.ex:229
 #, elixir-autogen, elixir-format
 msgctxt "log source"
 msgid "reading"
 msgstr "lendo"
 
-#: lib/agent_board/logs.ex:255
+#: lib/agent_board/logs.ex:233
 #, elixir-autogen, elixir-format
 msgctxt "log source"
 msgid "the file does not exist yet"
 msgstr "arquivo ainda não existe"
 
-#: lib/agent_board/logs.ex:261
+#: lib/agent_board/logs.ex:239
 #, elixir-autogen, elixir-format
 msgctxt "log source"
 msgid "could not be read"
 msgstr "não foi possível ler"
 
-#: lib/agent_board/local_ci.ex:134
+#: lib/agent_board/local_ci.ex:130
 #, elixir-autogen, elixir-format
 msgid ", but the PR's head is %{head}: the gate does not cover the current commit."
 msgstr ", mas o head do PR é %{head}: o gate não cobre o commit atual."
@@ -6797,127 +6797,127 @@ msgstr "Pedido de @%{login} dispensado."
 msgid "Could not set aside: %{reason}"
 msgstr "Não foi possível dispensar: %{reason}"
 
-#: lib/agent_board/actions.ex:1137
+#: lib/agent_board/actions.ex:1139
 #, elixir-autogen, elixir-format
 msgid "Dispatch is paused"
 msgstr "o despacho está pausado"
 
-#: lib/agent_board/actions.ex:1140
+#: lib/agent_board/actions.ex:1142
 #, elixir-autogen, elixir-format
 msgid "This task already has an execution in progress"
 msgstr "esta tarefa já tem uma execução em andamento"
 
-#: lib/agent_board/actions.ex:1143
+#: lib/agent_board/actions.ex:1145
 #, elixir-autogen, elixir-format
 msgid "This month's spend has reached the Claude Code ceiling"
 msgstr "o gasto do mês já chegou ao teto do Claude Code"
 
-#: lib/agent_board/actions.ex:1146
+#: lib/agent_board/actions.ex:1148
 #, elixir-autogen, elixir-format
 msgid "This month's spend has a model without a price; the ceiling cannot be checked"
 msgstr "o gasto do mês tem um modelo sem preço; o teto não pode ser conferido"
 
-#: lib/agent_board/actions.ex:1149
+#: lib/agent_board/actions.ex:1151
 #, elixir-autogen, elixir-format
 msgid "The weekly Codex quota is within the owner's reserve"
 msgstr "a cota semanal do Codex está dentro da reserva do dono"
 
-#: lib/agent_board/actions.ex:1151
+#: lib/agent_board/actions.ex:1153
 #, elixir-autogen, elixir-format
 msgid "The task has already ended or is stopped"
 msgstr "a tarefa já terminou ou está parada"
 
-#: lib/agent_board/actions.ex:1155
+#: lib/agent_board/actions.ex:1157
 #, elixir-autogen, elixir-format
 msgid "The task belongs to another executor; choose the executor on the task before dispatching"
 msgstr "a tarefa é de outro executor; escolha o executor na tarefa antes de despachar"
 
-#: lib/agent_board/actions.ex:1161
+#: lib/agent_board/actions.ex:1163
 #, elixir-autogen, elixir-format
 msgid "The executor binary does not exist or is not executable on this Mac; check the path in Settings"
 msgstr "o binário do executor não existe ou não é executável neste Mac; confira o caminho em Configurações"
 
-#: lib/agent_board/actions.ex:1166
+#: lib/agent_board/actions.ex:1168
 #, elixir-autogen, elixir-format
 msgid "The local checkout of the repository does not exist"
 msgstr "o checkout local do repositório não existe"
 
-#: lib/agent_board/actions.ex:1168
+#: lib/agent_board/actions.ex:1170
 #, elixir-autogen, elixir-format
 msgid "The task has no repository"
 msgstr "a tarefa não tem repositório"
 
-#: lib/agent_board/actions.ex:1185
+#: lib/agent_board/actions.ex:1187
 #, elixir-autogen, elixir-format
 msgid "project %{id}"
 msgstr "projeto %{id}"
 
-#: lib/agent_board/actions.ex:1198
+#: lib/agent_board/actions.ex:1200
 #, elixir-autogen, elixir-format
 msgid "@%{login} allowed on %{project}."
 msgstr "@%{login} liberado em %{project}."
 
-#: lib/agent_board/actions.ex:1204
+#: lib/agent_board/actions.ex:1206
 #, elixir-autogen, elixir-format
 msgid "Running again: %{numbers}."
 msgstr "Rodando de novo: %{numbers}."
 
-#: lib/agent_board/actions.ex:1210
+#: lib/agent_board/actions.ex:1212
 #, elixir-autogen, elixir-format
 msgid "Could not reprocess %{numbers}: ask for a new mention."
 msgstr "Não consegui reprocessar %{numbers}: peça uma nova menção."
 
-#: lib/agent_board/actions.ex:1220
+#: lib/agent_board/actions.ex:1222
 #, elixir-autogen, elixir-format
 msgid "the list changed in the agent's panel; check and try again."
 msgstr "a lista mudou no painel do agente; confira e tente de novo."
 
-#: lib/agent_board/actions.ex:1222
+#: lib/agent_board/actions.ex:1224
 #, elixir-autogen, elixir-format
 msgid "that GitHub login is not valid."
 msgstr "esse login do GitHub não é válido."
 
-#: lib/agent_board/actions.ex:1225
+#: lib/agent_board/actions.ex:1227
 #, elixir-autogen, elixir-format
 msgid "the repository owner cannot be revoked."
 msgstr "o dono do repositório não pode ser revogado."
 
-#: lib/agent_board/actions.ex:1228
+#: lib/agent_board/actions.ex:1230
 #, elixir-autogen, elixir-format
 msgid "this project's agent does not have GitHub configured."
 msgstr "o agente deste projeto não tem o GitHub configurado."
 
-#: lib/agent_board/actions.ex:1231
+#: lib/agent_board/actions.ex:1233
 #, elixir-autogen, elixir-format
 msgid "the agent did not answer; is it running?"
 msgstr "o agente não respondeu; ele está ligado?"
 
-#: lib/agent_board/actions.ex:1233
+#: lib/agent_board/actions.ex:1235
 #, elixir-autogen, elixir-format
 msgid "the agent took too long to answer."
 msgstr "o agente demorou demais para responder."
 
-#: lib/agent_board/actions.ex:1236
+#: lib/agent_board/actions.ex:1238
 #, elixir-autogen, elixir-format
 msgid "the agent answered with an error (HTTP %{status})."
 msgstr "o agente respondeu com erro (HTTP %{status})."
 
-#: lib/agent_board/actions.ex:1239
+#: lib/agent_board/actions.ex:1241
 #, elixir-autogen, elixir-format
 msgid "the agent gave an answer the board does not understand."
 msgstr "o agente deu uma resposta que o board não entende."
 
-#: lib/agent_board/actions.ex:1243
+#: lib/agent_board/actions.ex:1245
 #, elixir-autogen, elixir-format
 msgid "the agent refused the request."
 msgstr "o agente recusou o pedido."
 
-#: lib/agent_board/actions.ex:1249
+#: lib/agent_board/actions.ex:1251
 #, elixir-autogen, elixir-format
 msgid "this project's setup did not finish; use Try again."
 msgstr "a configuração deste projeto não terminou; use Tentar de novo."
 
-#: lib/agent_board/actions.ex:1251
+#: lib/agent_board/actions.ex:1253
 #, elixir-autogen, elixir-format
 msgid "this project has no provisioning to redo."
 msgstr "este projeto não tem provisionamento para refazer."
@@ -7042,8 +7042,8 @@ msgid "%{executor} is not available (%{why})."
 msgstr "o %{executor} não está disponível (%{why})."
 
 #: lib/agent_board/routing.ex:284
-#: lib/agent_board/routing/signals.ex:90
-#: lib/agent_board/routing/signals.ex:96
+#: lib/agent_board/routing/signals.ex:99
+#: lib/agent_board/routing/signals.ex:105
 #, elixir-autogen, elixir-format
 msgid "the orchestrator did not answer"
 msgstr "o orquestrador não respondeu"
@@ -7078,17 +7078,17 @@ msgstr "O %{executor} vem antes do %{next} na ordem fixa."
 msgid "The availability of %{executor} is unknown."
 msgstr "A disponibilidade do %{executor} é desconhecida."
 
-#: lib/agent_board/routing/signals.ex:89
+#: lib/agent_board/routing/signals.ex:98
 #, elixir-autogen, elixir-format
 msgid "the orchestrator's API is off"
 msgstr "a API do orquestrador está desligada"
 
-#: lib/agent_board/routing/signals.ex:91
+#: lib/agent_board/routing/signals.ex:100
 #, elixir-autogen, elixir-format
 msgid "the orchestrator answered in an unexpected format"
 msgstr "o orquestrador respondeu num formato inesperado"
 
-#: lib/agent_board/routing/signals.ex:94
+#: lib/agent_board/routing/signals.ex:103
 #, elixir-autogen, elixir-format
 msgid "the orchestrator answered HTTP %{status}"
 msgstr "o orquestrador respondeu HTTP %{status}"

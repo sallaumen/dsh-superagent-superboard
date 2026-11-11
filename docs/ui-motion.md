@@ -44,11 +44,9 @@ exists, not before.
 | Change | Treatment | Surface |
 |---|---|---|
 | Opening a panel or dialog | 200 ms, opacity + 6 px + scale 0.995, `--ease-enter` | `.board-dialog[open]` |
-| Opening the settings menu | 160 ms, opacity + 4 px up, `--ease-enter` | `.board-settings-body` |
-| Temporary notice (toast) | 200 ms, opacity + 4 px, `--ease-enter` | `.toast .alert` |
-| Hover, focus and button/link state | 110 ms of background and border, `--ease-standard` | `button, a` |
-| Settings and section chevron | 160 ms of rotation; the state remains readable without motion | `.settings-chevron`, `.settings-fold-chevron` |
-| Attention dot and voice bars | slow loop only under `no-preference`; it communicates real state, not decoration | keyframes `attention-breathe` and `voice-flow` |
+| Temporary notice (toast) | 200 ms, opacity + 4 px, `--ease-enter` | `.toast .alert`, `.ab-toast` |
+| Hover, focus and button/link state | 110 ms of background and border, `--ease-standard` | `button, a`, `.ab-btn`, `.ab-need` |
+| Voice bars | slow loop only under `no-preference`; it communicates real state, not decoration | keyframes `voice-flow` |
 | DeepSeek peak flame | 2.6 s flicker of the flame's scale from its base, `--ease-standard`, only under `no-preference` and only while `Providers.peak?/1` is true; off-peak the moon is still. The switch itself is a cut: the icon changes at the hour | `.ab-peak.is-peak .hero-fire` |
 | Throughput value that changed | 600 ms of color, `--agent` → `--ink`, `--ease-standard`; the `Throughput` hook compares the previous value and only then applies `.is-changed`, so a broadcast with no change moves nothing, and nor does the runner's first answer after `?`; the new sparkline bar just appears | `.ab-flow__value.is-changed` |
 
@@ -65,14 +63,14 @@ exists, not before.
 ## Reduced motion
 
 Under `prefers-reduced-motion: reduce`, animations and transitions are turned off
-in the global block. The state remains readable: panel and menu open at once, the
-chevron turns at once, the notice appears, and the loading feedback stays textual
-and visual. Remove the motion, never the feedback.
+in the global block. The state remains readable: the panel opens at once, the
+notice appears, and the loading feedback stays textual and visual. Remove the
+motion, never the feedback.
 
 ## How to validate
 
 1. Run `make frontend` to generate the assets (the CSS has no separate step).
-2. In the browser, open a panel, the settings menu and a notice; check the curves
+2. In the browser, open a panel and a notice; check the curves
    and durations in the DevTools Animations panel or in a trace.
 3. Emulate `prefers-reduced-motion: reduce` and repeat: nothing animates and the
    states remain clear.

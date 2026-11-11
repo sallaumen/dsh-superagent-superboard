@@ -70,6 +70,10 @@ behavior (`dropdown`, `modal`, `tabs`, `toggle`); the look comes from the tokens
 | data-lg | 22/28 mono | 400 | throughput cell value (new) |
 | data-small | 11.5/16 mono | 450 | #number, kbd |
 
+The scale is a reference, not a set of utility classes: `assets/css/tokens.css`
+carries no `.t-*` rules (they had no consumer), and each `.ab-*` component rule
+in `board.css` states its own size and line height from this table.
+
 ### Space and shape
 
 `space-1..8` = 2, 4, 8, 12, 16, 24, 40, 64 px. Radius: 6 controls · 10 attention cards and focused row ·

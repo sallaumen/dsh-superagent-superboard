@@ -528,6 +528,21 @@ defmodule AgentBoard.BoardOverviewTest do
     refute Overview.repo_overview()[repo.id].unknown
   end
 
+  # The header calls a rate limit a delay that lifts by itself; the rail must
+  # not call the same repository unknown.
+  test "a rate-limited attempt keeps the repository known" do
+    {:ok, repo} = Board.add_repository("sallaumen", "limited")
+    Board.log_event(repo.id, "sync", "sallaumen/limited", %{"errors" => 0})
+
+    Board.log_event(repo.id, "sync_error", "sallaumen/limited", %{
+      "reason" => "GitHub rate limited",
+      "rate_limited" => true,
+      "retry_after" => 300
+    })
+
+    refute Overview.repo_overview()[repo.id].unknown
+  end
+
   test "a repository's last sync is found behind many newer events" do
     {:ok, repo} = Board.add_repository("sallaumen", "quiet")
     {:ok, busy} = Board.add_repository("sallaumen", "busy")
