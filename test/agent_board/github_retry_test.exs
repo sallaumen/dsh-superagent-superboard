@@ -63,7 +63,7 @@ defmodule AgentBoard.GitHubRetryTest do
     test "gives up after two more tries and says why", %{calls: calls} do
       stub(calls, 99, status(502))
 
-      assert_raise RuntimeError, ~r/GitHub HTTP 502/, fn ->
+      assert_raise GitHub.HTTPError, ~r/GitHub HTTP 502/, fn ->
         GitHub.reviews(client(), "a", "b", 1)
       end
 
@@ -74,7 +74,7 @@ defmodule AgentBoard.GitHubRetryTest do
       test "does not repeat a #{code}", %{calls: calls} do
         stub(calls, 99, status(unquote(code)))
 
-        assert_raise RuntimeError, fn -> GitHub.reviews(client(), "a", "b", 1) end
+        assert_raise GitHub.HTTPError, fn -> GitHub.reviews(client(), "a", "b", 1) end
         assert Agent.get(calls, & &1) == 1
       end
     end
@@ -146,7 +146,7 @@ defmodule AgentBoard.GitHubRetryTest do
         })
       end)
 
-      assert_raise RuntimeError, ~r/GitHub HTTP 403/, fn ->
+      assert_raise GitHub.HTTPError, ~r/GitHub HTTP 403/, fn ->
         GitHub.reviews(client(), "a", "b", 1)
       end
     end

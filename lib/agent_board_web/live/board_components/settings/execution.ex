@@ -14,7 +14,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
 
   alias AgentBoard.{Actions, Runners}
   alias AgentBoard.Usage.Report
-  alias AgentBoardWeb.Time
+  alias AgentBoardWeb.{FailureText, Time}
 
   @days [7, 30]
   @draft_keys ~w(monthly_usd task_usd timeout_minutes reserve_percent claude_model codex_model)
@@ -705,11 +705,24 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   defp failure_reason(reason) when is_binary(reason) do
     case String.trim(reason) do
       "" -> gettext("Reason not recorded")
-      value -> value
+      word -> FailureText.text(stored_reason(word))
     end
   end
 
   defp failure_reason(_reason), do: gettext("Reason not recorded")
+
+  # `AgentBoard.AI` stores a failure as a word; this is the word back as the
+  # reason `FailureText` has a sentence for. An unknown word is shown as is.
+  @reason_words %{
+    "not_configured" => :not_configured,
+    "auth_expired" => :auth_expired,
+    "usage_limit" => :usage_limit,
+    "timeout" => :timeout,
+    "unreachable" => :unreachable
+  }
+
+  defp stored_reason("http " <> status), do: {:http, String.to_integer(status)}
+  defp stored_reason(word), do: Map.get(@reason_words, word, word)
 
   defp latency_text(nil), do: "—"
   defp latency_text(ms) when is_integer(ms), do: AgentBoardWeb.Numbers.grouped(ms) <> " ms"

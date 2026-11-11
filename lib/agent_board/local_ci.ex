@@ -96,10 +96,6 @@ defmodule AgentBoard.LocalCI do
     |> Map.new(&{&1, workpad_status(workpad.validation, Map.get(heads, &1))})
   end
 
-  # Defensive totality: a missing validation has no state to report. The
-  # guard above keeps this path out of `workpad_statuses/3`.
-  defp workpad_status(nil, _head), do: nil
-
   defp workpad_status(validation, head) do
     state = workpad_state(validation, head)
 

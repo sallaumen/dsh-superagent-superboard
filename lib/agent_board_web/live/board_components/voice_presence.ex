@@ -25,7 +25,7 @@ defmodule AgentBoardWeb.BoardComponents.VoicePresence do
         </span>
         <div class="voice-presence-copy">
           <span class="voice-presence-phase">{gettext("Voice")}</span>
-          <h2 id={"#{@id}-title"} class="voice-presence-title">{gettext("Voice")}</h2>
+          <h2 id={"#{@id}-title"} class="voice-presence-title" role="status">{gettext("Voice")}</h2>
           <p class="voice-presence-detail"></p>
         </div>
         <button type="button" class="voice-presence-control">

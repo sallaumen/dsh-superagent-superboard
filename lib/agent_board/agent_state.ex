@@ -9,21 +9,7 @@ defmodule AgentBoard.AgentState do
   caller gets `{:error, reason}` and the UI marks that source unavailable.
   """
 
-  @local_default Path.expand("~/.dsh/state/superagent/orchestrator.sqlite")
   @prod_default "/state/superagent/orchestrator.sqlite"
-
-  @doc """
-  The ticket database path.
-
-  An explicit `:state_db` config wins (the tests use it). Otherwise the local
-  runner path is used when it exists, so a development checkout reads the
-  agent it actually has; the production path is the fallback.
-  """
-  @spec path() :: String.t()
-  def path do
-    Application.get_env(:agent_board, :state_db) ||
-      if(File.exists?(@local_default), do: @local_default, else: @prod_default)
-  end
 
   @doc """
   The ticket databases the board reads: an explicit `:state_dbs` list, the
@@ -85,10 +71,6 @@ defmodule AgentBoard.AgentState do
          |> Enum.map(&normalize/1)}
     end
   end
-
-  @doc "The raw JSON values in the ticket table."
-  @spec read() :: {:ok, [String.t()]} | {:error, term()}
-  def read, do: read_path(path())
 
   defp read_path(path) do
     with {:ok, conn} <- Exqlite.Sqlite3.open(path, mode: :readonly) do
@@ -161,14 +143,6 @@ defmodule AgentBoard.AgentState do
     |> Enum.reject(&is_nil/1)
     |> Enum.max(DateTime, fn -> nil end)
   end
-
-  @doc """
-  The repository a ticket names in its channel URLs, or nil for a ticket
-  without one. Two board repositories can share an issue number; the URL is
-  the identity.
-  """
-  @spec repository(map()) :: String.t() | nil
-  def repository(ticket), do: ticket["repository"]
 
   defp repository_from(urls) do
     Enum.find_value(urls, fn url ->

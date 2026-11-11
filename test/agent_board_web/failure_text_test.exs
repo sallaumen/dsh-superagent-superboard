@@ -1,7 +1,7 @@
 defmodule AgentBoardWeb.FailureTextTest do
   use ExUnit.Case, async: false
 
-  alias AgentBoard.GitHub.RateLimited
+  alias AgentBoard.GitHub.{HTTPError, RateLimited}
   alias AgentBoardWeb.FailureText
 
   setup do
@@ -23,8 +23,7 @@ defmodule AgentBoardWeb.FailureTextTest do
   end
 
   test "a GitHub answer is said without its body" do
-    text =
-      FailureText.text(%RuntimeError{message: ~s(GitHub HTTP 404: %{"message" => "Not Found"})})
+    text = FailureText.text(%HTTPError{status: 404, body: %{"message" => "Not Found"}})
 
     assert text =~ "404"
     refute text =~ "%{"
@@ -32,7 +31,7 @@ defmodule AgentBoardWeb.FailureTextTest do
 
   test "a refused token is named, not just numbered" do
     for status <- [401, 403] do
-      text = FailureText.text(%RuntimeError{message: "GitHub HTTP #{status}: %{}"})
+      text = FailureText.text(%HTTPError{status: status, body: %{}})
 
       assert text =~ "recusou o token"
       assert text =~ "#{status}"
