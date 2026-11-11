@@ -8,7 +8,7 @@ defmodule AgentBoard.MessagePoller do
   require Logger
 
   alias AgentBoard.{AgentAccess, Board, GitHub, Repo}
-  alias AgentBoard.Board.{Comment, Event, Repository, Task}
+  alias AgentBoard.Board.{Event, Repository, Task}
 
   @interval 30_000
   @bootstrap_window 10 * 60
@@ -25,8 +25,11 @@ defmodule AgentBoard.MessagePoller do
 
   @impl true
   def handle_info(:poll, state) do
+    # The work comes first so the interval runs between polls: a slow GitHub
+    # hour does not queue the next tick behind this one.
+    state = if GitHub.configured?(), do: poll(state), else: state
     schedule()
-    {:noreply, if(token_available?(), do: poll(state), else: state)}
+    {:noreply, state}
   end
 
   defp schedule do
@@ -35,11 +38,6 @@ defmodule AgentBoard.MessagePoller do
       :poll,
       Application.get_env(:agent_board, :message_poll_interval, @interval)
     )
-  end
-
-  defp token_available? do
-    token = Application.get_env(:agent_board, :github_token, System.get_env("GITHUB_TOKEN", ""))
-    is_binary(token) and token != ""
   end
 
   @doc "One bounded read per active repository; errors keep the last good cursor."
@@ -168,29 +166,14 @@ defmodule AgentBoard.MessagePoller do
           is_integer(comment["id"]),
           do: {task, comment}
 
-    task_ids = Enum.map(candidates, fn {task, _} -> task.id end)
-    github_ids = Enum.map(candidates, fn {_, comment} -> comment["id"] end)
-
-    existing =
-      Repo.all(
-        from c in Comment,
-          where: c.task_id in ^task_ids and c.github_id in ^github_ids,
-          select: {c.task_id, c.github_id, c.author, c.body}
-      )
-      |> Map.new(fn {task_id, id, author, body} -> {{task_id, id}, {author, body}} end)
-
     agent_login = AgentAccess.bot_login()
 
-    Enum.reduce(candidates, false, fn {task, comment}, changed? ->
-      author = get_in(comment, ["user", "login"]) || "unknown"
-      key = {task.id, comment["id"]}
-
-      if Map.get(existing, key) == {author, comment["body"] || ""} do
-        changed?
-      else
-        {:ok, _} = Board.upsert_comment(task, comment, agent_login)
-        true
-      end
+    # The store is per task; every task's comments are stored, whatever an
+    # earlier one answered.
+    candidates
+    |> Enum.group_by(fn {task, _} -> task end, fn {_, comment} -> comment end)
+    |> Enum.reduce(false, fn {task, comments}, changed? ->
+      Board.store_comments(task, comments, agent_login) or changed?
     end)
   end
 

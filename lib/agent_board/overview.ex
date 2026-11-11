@@ -54,10 +54,6 @@ defmodule AgentBoard.Overview do
       # deleted, so a distinct over every sync event grows with the table.
       sync = Board.latest_sync(repository)
 
-      unknown =
-        is_nil(sync) or sync.kind == "sync_error" or
-          DateTime.diff(now, sync.inserted_at, :second) > Freshness.stale_ttl()
-
       {repository.id,
        %{
          id: repository.id,
@@ -66,7 +62,7 @@ defmodule AgentBoard.Overview do
          running: Map.get(by_state, "running", 0),
          you: Map.get(ready_by_repository, repository.id, 0) + Map.get(by_state, "question", 0),
          halt: Map.get(by_state, "blocked", 0),
-         unknown: unknown,
+         unknown: Freshness.untrusted?(sync, now),
          last_sync: sync
        }}
     end)

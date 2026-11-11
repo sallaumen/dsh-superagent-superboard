@@ -284,7 +284,10 @@ defmodule AgentBoardWeb.VoiceCommands do
       board
       |> Map.get(:blocked, [])
       |> Enum.take(3)
-      |> Enum.map_join(", ", &"##{&1.number || "unknown"} #{&1.title || "unknown"}")
+      |> Enum.map_join(
+        ", ",
+        &"##{&1.number || gettext("unknown")} #{&1.title || gettext("unknown")}"
+      )
 
     text =
       if recent == "" do

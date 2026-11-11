@@ -11,11 +11,14 @@ defmodule AgentBoard.AI.Engine do
 
   @type reason ::
           :not_configured
+          | :no_provider
+          | :no_fixture
           | :auth_expired
           | :usage_limit
+          | :timeout
+          | :unreachable
           | :malformed_output
           | {:http, integer()}
-          | term()
 
   @type status :: :logged_in | :not_configured | :unavailable | :rehearsal
 

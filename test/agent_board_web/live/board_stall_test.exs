@@ -100,7 +100,7 @@ defmodule AgentBoardWeb.BoardStallTest do
 
     # no change in the worktree since the start: still the first stage
     assert has_element?(view, "#sec-now #task-#{task.id} .ab-phase.is-now", "Análise")
-    assert has_element?(view, ~s(#task-#{task.id}[aria-label$="Etapa: Análise"]))
+    assert has_element?(view, ~s(#task-#{task.id} [aria-label$="Etapa: Análise"]))
     assert has_element?(view, "#sec-now #task-#{task.id} .ab-phase:not(.is-now)", "PR")
 
     refute has_element?(view, "#sec-now #task-#{task.id} .ab-g.is-live")

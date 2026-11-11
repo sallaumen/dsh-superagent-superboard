@@ -624,13 +624,15 @@ Agora and the detail):
     browser's voice, in the tab's language.
   - **events**: a task starting or going back to the queue and sync
     outcomes getting worse, plus the confirmations of user actions and the
-    spoken answers; toggled by `elevenlabs_speak_events` (`"0"` disables,
-    absent is on). User actions speak their own confirmations, so they are
-    not announced twice.
+    spoken answers; toggled by `voice_narrate` (`"1"` narrates, absent is
+    off; `speak_events` in the API maps to it). User actions speak their own
+    confirmations, so they are not announced twice.
   The volume (`voice_volume`, 0..100) rides on `#voice-panel[data-volume]`;
   the `VoicePlayer` hook and the browser fallback read it, so a change
   applies to the audio already playing. `PUT /api/voice/settings` accepts
-  `speak_events`, `attention`, `language` and `volume`.
+  `voice_id`, `tts_model`, `speak_events`, `attention`, `volume`, `speed`,
+  `style` and `pause`; the language is not a setting, the voice follows the
+  tab's interface language.
 - **The spoken conversation** (`docs/voice-conversation.md`) is the default
   for a double Space outside the composer: the `VoiceCommand` hook ends the
   turn on silence and pushes `voice_turn`; `AgentBoardWeb.VoiceConversation`
@@ -1048,7 +1050,7 @@ repository (`Orchestrator.client_for/1`), never another project's.
 | Rule | Signal | Effect |
 |---|---|---|
 | hard restriction | the runner's `setup.accounts.repository` (`Orchestrator.dispatch_state/1`) | the DeepSeek runner is out in any other repository the board read; when the orchestrator does not answer the repository is unknown and the runner stays the default, as before the router (a mention waits for it to come back, and does nothing where it does not watch), with the reason said |
-| explicit choice | the owner named an executor | decides, unless the restriction rules it out; then the reason says so. A request that reaches the write door with its executor already set (the blocker task, a confirmed voice proposal) and ruled out is refused with that reason and opens nothing, never swapped for the suggestion; the composer's pick carries its own line and stays allowed and warned |
+| explicit choice | the owner named an executor | decides, unless the restriction rules it out; then the reason says so. A request that reaches the write door with its executor already set (the blocker task, a confirmed voice proposal) and ruled out is refused. The composer does not offer the runner where no agent watches the repository (`suggestion.unwatched`): the option is off, and the note opens Settings → Projects to set one up; a pause still lets it be chosen, with the warning with that reason and opens nothing, never swapped for the suggestion; the composer's pick carries its own line and stays allowed and warned |
 | availability | the runner paused | out (the owner paused it); Claude Code and Codex have no reader yet: `:unknown`, which never rules them out and never counts as available |
 | budget, kind and size, history | the usage ledger (F1.3) | the expected cost (`Usage.Report.expected_costs/0`); the other signals do not order yet |
 | order | — | the runner first (the only executor the board dispatches), then `Executors.all/0` |
@@ -1612,8 +1614,10 @@ the 10 s poller), never on a browser timer, and says when it was computed.
 ## Network paths
 
 - Every GitHub call goes through `AgentBoard.GitHub`. A 4xx/5xx is **not** a
-  body: `body!/1` raises `GitHub HTTP <status>` (or `GitHub rate limited: retry
-  after <n>s` for 403/429), so the caller sees the real cause.
+  body: `body!/1` raises `GitHub.HTTPError` (message `GitHub HTTP <status>`,
+  the status as a field) or `GitHub.RateLimited` (`GitHub rate limited: retry
+  after <n>s` for 403/429), so the caller sees the real cause and matches on
+  the struct, never on the text.
 - Every function that touches the network must survive a raise: `Sync.sync_repo`
   logs a `sync_error` event and returns `{:error, exception}` so Oban retries;
   `Board.ask` deletes its optimistic placeholder and returns the error. A raise

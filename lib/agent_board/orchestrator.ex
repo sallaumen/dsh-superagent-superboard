@@ -219,9 +219,11 @@ defmodule AgentBoard.Orchestrator do
     end
   end
 
+  @doc false
   # The orchestrator is local: a short connect timeout keeps a dead runner
-  # from holding a board render.
-  defp new(url) do
+  # from holding a board render. Public for the adapter of a registered
+  # superagent (`DshManager`), which binds the same client to its port.
+  def new(url) do
     Req.new(
       base_url: url,
       headers: [{"x-orchestrator-request", "1"}],

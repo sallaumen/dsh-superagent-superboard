@@ -48,13 +48,8 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
           id={"task-#{task.id}"}
           class={["ab-run", @frozen && "is-frozen", task[:stalled] && "is-stalled"]}
           tabindex="0"
-          role="button"
           data-task={task.id}
           data-silence={task[:silence] && task.silence.seconds}
-          phx-click="open"
-          phx-value-id={task.id}
-          data-panel-trigger
-          aria-label={open_label(task)}
         >
           <div class="ab-run__status">
             <.glyph kind={:run} live={not @frozen and not task[:stalled]} />
@@ -71,7 +66,14 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
             </div>
           </div>
 
-          <div class="ab-run__title">{task.title}</div>
+          <button
+            type="button"
+            class="ab-run__title"
+            phx-click="open"
+            phx-value-id={task.id}
+            data-panel-trigger
+            aria-label={open_label(task)}
+          >{task.title}</button>
 
           <div :if={task[:answered_at]} class="ab-run__answered ab-meta">
             {gettext("Back to work: read your answer at %{time}",
@@ -109,14 +111,7 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
           id={"task-#{task.id}"}
           class="ab-run ab-run--retry"
           tabindex="0"
-          role="button"
           data-task={task.id}
-          phx-click="open"
-          phx-value-id={task.id}
-          data-panel-trigger
-          aria-label={
-            gettext("Open task #%{number}: %{title}", number: task.number, title: task.title)
-          }
         >
           <div class="ab-run__status">
             <.glyph kind={:retrying} />
@@ -124,7 +119,16 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
             <span class="ab-need__id">#{task.number}</span>
           </div>
 
-          <div class="ab-run__title">{task.title}</div>
+          <button
+            type="button"
+            class="ab-run__title"
+            phx-click="open"
+            phx-value-id={task.id}
+            data-panel-trigger
+            aria-label={
+              gettext("Open task #%{number}: %{title}", number: task.number, title: task.title)
+            }
+          >{task.title}</button>
           <div class="ab-run__retry"><.markup text={task.line} /></div>
         </article>
       </div>
@@ -132,7 +136,7 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
     """
   end
 
-  # A button's content is not read: its name carries the current stage.
+  # The button's name carries the current stage as well as the title.
   defp open_label(task) do
     label = gettext("Open task #%{number}: %{title}", number: task.number, title: task.title)
 

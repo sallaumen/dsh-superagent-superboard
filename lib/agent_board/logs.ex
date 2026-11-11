@@ -118,23 +118,8 @@ defmodule AgentBoard.Logs do
     end
   end
 
-  def superagent_source(profile) when is_binary(profile) do
-    case superagent_log_path(profile) do
-      nil ->
-        []
-
-      path ->
-        [
-          %{
-            id: "superagent:" <> profile,
-            kind: :superagent,
-            label: "Superagente #{profile}",
-            path: path,
-            profile: profile
-          }
-        ]
-    end
-  end
+  def superagent_source(profile) when is_binary(profile),
+    do: superagent_source(%{profile: profile})
 
   def superagent_source(_other), do: []
 
@@ -228,13 +213,6 @@ defmodule AgentBoard.Logs do
       %Entry{level: level}, acc -> Map.update!(acc, level, &(&1 + 1))
       _other, acc -> acc
     end)
-  end
-
-  @doc "A short count for the sheet's header."
-  @spec summary([Entry.t()]) :: String.t()
-  def summary(entries) do
-    %{warning: warnings, error: errors} = counts(entries)
-    Enum.join([plural(warnings, "aviso", "avisos"), plural(errors, "erro", "erros")], " · ")
   end
 
   @doc "The label for a level, in the viewer's language."
@@ -512,8 +490,4 @@ defmodule AgentBoard.Logs do
     do: "Superagente #{owner}/#{name}"
 
   defp superagent_label(%{profile: profile}), do: "Superagente #{profile}"
-  defp superagent_label(profile) when is_binary(profile), do: "Superagente #{profile}"
-
-  defp plural(1, one, _many), do: "1 " <> one
-  defp plural(count, _one, many), do: "#{count} " <> many
 end

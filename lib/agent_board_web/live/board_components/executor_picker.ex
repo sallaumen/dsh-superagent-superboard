@@ -24,6 +24,7 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
       |> assign(:executors, Executors.all())
       |> assign(:reasons, (assigns.suggestion && assigns.suggestion.reasons) || [])
       |> assign(:ruled_out, ruled_out(assigns.suggestion, assigns.chosen))
+      |> assign(:blocked, (assigns.suggestion && assigns.suggestion[:unwatched]) || [])
 
     ~H"""
     <fieldset id="composer-executor" class="ab-exec" disabled={@disabled}>
@@ -32,7 +33,7 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
         <label
           :for={executor <- @executors}
           for={"composer-executor-" <> executor}
-          class={["ab-exec__opt", executor == @chosen && "is-on"]}
+          class={["ab-exec__opt", executor == @chosen && "is-on", executor in @blocked && "is-off"]}
         >
           <input
             type="radio"
@@ -40,6 +41,7 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
             name="executor"
             value={executor}
             checked={executor == @chosen}
+            disabled={executor in @blocked}
             class="ab-sr"
           />
           <span>{Executors.name(executor)}</span>
@@ -66,6 +68,19 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
         </details>
         <p :if={@suggestion} class="ab-meta">
           {gettext("Expected cost:")} {cost_label(@suggestion.cost)}
+        </p>
+        <p :if={@blocked != []} id="composer-executor-blocked" class="ab-meta ab-exec__warn">
+          {gettext("No agent watches this project, so DeepSeek is off here.")}
+          <button
+            type="button"
+            class="ab-more"
+            phx-click="show_panel"
+            phx-value-panel="settings"
+            phx-value-section="projects"
+            data-panel-trigger
+          >
+            {gettext("Set up an agent")}
+          </button>
         </p>
         <p :if={@ruled_out} id="composer-executor-warning" class="ab-meta ab-exec__warn" role="alert">
           {gettext("Note:")} {@ruled_out} {gettext("The issue opens, but work does not start.")}

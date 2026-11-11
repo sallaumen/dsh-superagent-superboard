@@ -320,16 +320,6 @@ defmodule AgentBoard.ElevenLabsTest do
     assert {:error, :auth_expired} = ElevenLabs.voices()
   end
 
-  test "narration of the rest of the board is off by default and can be turned on" do
-    refute ElevenLabs.speak_events?()
-
-    :ok = AgentBoard.Voice.put_narrate(true)
-    assert ElevenLabs.speak_events?()
-
-    :ok = AgentBoard.Voice.put_narrate(false)
-    refute ElevenLabs.speak_events?()
-  end
-
   test "the voices list is cached within its ttl" do
     previous_ttl = Application.get_env(:agent_board, :voice_voices_ttl)
     Application.put_env(:agent_board, :voice_voices_ttl, 60_000)

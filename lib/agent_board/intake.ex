@@ -117,7 +117,6 @@ defmodule AgentBoard.Intake do
   end
 
   defp normalize(:refine_request, %{} = spec), do: spec
-  defp normalize(:refine_request, _other), do: %{}
 
   defp normalize(:propose_tasks, %{"tasks" => tasks}) when is_list(tasks) do
     kept = tasks |> Enum.with_index() |> Enum.reject(fn {task, _at} -> incomplete?(task) end)

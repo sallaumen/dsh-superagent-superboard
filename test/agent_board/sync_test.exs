@@ -2,30 +2,30 @@ defmodule AgentBoard.SyncTest do
   @moduledoc "The pure state mapping: tickets, reviews and checks."
   use ExUnit.Case, async: true
 
-  alias AgentBoard.Sync
+  alias AgentBoard.{Sync, Tickets}
 
   defp ticket(assignment, report, outcome) do
     %{"assignment" => assignment, "report" => report, "ended_outcome" => outcome}
   end
 
   test "a running ticket wins" do
-    assert Sync.ticket_state(ticket("running", nil, nil)) == "running"
+    assert Tickets.state(ticket("running", nil, nil)) == "running"
   end
 
   test "a ready report wins over a queued assignment" do
-    assert Sync.ticket_state(ticket("queued", "ready", nil)) == "ready"
+    assert Tickets.state(ticket("queued", "ready", nil)) == "ready"
   end
 
   test "a blocked report wins" do
-    assert Sync.ticket_state(ticket("blocked", "blocked", nil)) == "blocked"
+    assert Tickets.state(ticket("blocked", "blocked", nil)) == "blocked"
   end
 
   test "a merged outcome is done" do
-    assert Sync.ticket_state(ticket("ended", nil, "merged")) == "done"
+    assert Tickets.state(ticket("ended", nil, "merged")) == "done"
   end
 
   test "a merged outcome is done even when the last report is ready" do
-    assert Sync.ticket_state(ticket("ended", "ready", "merged")) == "done"
+    assert Tickets.state(ticket("ended", "ready", "merged")) == "done"
   end
 
   test "a merged outcome is done even when the ticket was waiting on its own PR" do
@@ -34,15 +34,15 @@ defmodule AgentBoard.SyncTest do
       |> waiting()
       |> Map.merge(%{"ended_outcome" => "merged", "own_threads" => [28]})
 
-    assert Sync.ticket_state(ticket) == "done"
+    assert Tickets.state(ticket) == "done"
   end
 
   test "an ended ticket without an outcome has no overlay" do
-    assert Sync.ticket_state(ticket("ended", nil, nil)) == nil
+    assert Tickets.state(ticket("ended", nil, nil)) == nil
   end
 
   test "a stopped ticket has no overlay" do
-    assert Sync.ticket_state(ticket("ended", nil, "stopped")) == nil
+    assert Tickets.state(ticket("ended", nil, "stopped")) == nil
   end
 
   describe "a failed ticket" do
@@ -77,14 +77,14 @@ defmodule AgentBoard.SyncTest do
     end
 
     test "is retrying while the board retries a transient failure by itself" do
-      assert Sync.ticket_state(failed("LlmError: DeepSeek Messages transport failed")) ==
+      assert Tickets.state(failed("LlmError: DeepSeek Messages transport failed")) ==
                "retrying"
     end
 
     test "is blocked when the failure needs a person or the retries ran out" do
-      assert Sync.ticket_state(failed("Tests failed: 3")) == "blocked"
+      assert Tickets.state(failed("Tests failed: 3")) == "blocked"
 
-      assert Sync.ticket_state(
+      assert Tickets.state(
                failed("LlmError: DeepSeek Messages transport failed", ~w(retried retried retried))
              ) == "blocked"
     end
@@ -104,7 +104,7 @@ defmodule AgentBoard.SyncTest do
           ]
         })
 
-      assert Sync.ticket_state(ticket) == "retrying"
+      assert Tickets.state(ticket) == "retrying"
     end
   end
 
@@ -160,38 +160,38 @@ defmodule AgentBoard.SyncTest do
   # question put #27 in "Precisa de você" with nothing to answer: the
   # ticket had opened PR #28 and was waiting for a review.
   test "a waiting report with a question in it is a question" do
-    assert Sync.ticket_state(waiting("Which API should the board use?")) == "question"
+    assert Tickets.state(waiting("Which API should the board use?")) == "question"
   end
 
   test "a waiting report whose newest agent comment asks is a question" do
-    assert Sync.ticket_state(waiting("Asked the owner about the API."), asked?: true) ==
+    assert Tickets.state(waiting("Asked the owner about the API."), asked?: true) ==
              "question"
 
-    assert Sync.ticket_state(waiting("Asked the owner about the API."),
+    assert Tickets.state(waiting("Asked the owner about the API."),
              asked?: fn -> true end
            ) == "question"
   end
 
   test "a waiting ticket that opened its own PR is ready for review" do
     ticket = waiting("CI confirmed as the billing failure. No code change made.")
-    assert Sync.ticket_state(Map.put(ticket, "own_threads", [28])) == "ready"
+    assert Tickets.state(Map.put(ticket, "own_threads", [28])) == "ready"
   end
 
   test "a waiting report that names a PR for review is ready without the thread" do
-    assert Sync.ticket_state(waiting("PR #28 remains ready for human review.")) == "ready"
+    assert Tickets.state(waiting("PR #28 remains ready for human review.")) == "ready"
   end
 
   test "a waiting report without a question or a PR is blocked" do
-    assert Sync.ticket_state(waiting("Cannot reach the package registry.")) == "blocked"
+    assert Tickets.state(waiting("Cannot reach the package registry.")) == "blocked"
   end
 
   test "a waiting report with no summary is blocked, not a question" do
-    assert Sync.ticket_state(waiting(nil)) == "blocked"
+    assert Tickets.state(waiting(nil)) == "blocked"
   end
 
   test "a question beats the open PR when the agent asks" do
     ticket = waiting("PR #28 is open. Should it also cover the boss?")
-    assert Sync.ticket_state(Map.put(ticket, "own_threads", [28])) == "question"
+    assert Tickets.state(Map.put(ticket, "own_threads", [28])) == "question"
   end
 
   # The workpad says it in a field: no "?" in the summary is needed, and a
@@ -199,35 +199,35 @@ defmodule AgentBoard.SyncTest do
   test "a waiting ticket whose workpad has a question is a question without any ?" do
     ticket = waiting("Waiting for the owner.") |> Map.put("own_threads", [28])
 
-    assert Sync.ticket_state(ticket, workpad: workpad(question: "Devo manter o boss")) ==
+    assert Tickets.state(ticket, workpad: workpad(question: "Devo manter o boss")) ==
              "question"
 
-    assert Sync.ticket_state(ticket, workpad: fn -> workpad(question: "Devo manter o boss") end) ==
+    assert Tickets.state(ticket, workpad: fn -> workpad(question: "Devo manter o boss") end) ==
              "question"
   end
 
   test "a waiting ticket whose workpad has a blockage is blocked even with its own PR" do
     ticket = waiting("PR #28 is open for review.") |> Map.put("own_threads", [28])
 
-    assert Sync.ticket_state(ticket, workpad: workpad(blockage: "Sem acesso ao registry")) ==
+    assert Tickets.state(ticket, workpad: workpad(blockage: "Sem acesso ao registry")) ==
              "blocked"
   end
 
   test "a workpad with both fields empty leaves the text heuristic in charge" do
     ticket = waiting("PR #28 remains ready for human review.")
 
-    assert Sync.ticket_state(ticket, workpad: workpad([])) == "ready"
-    assert Sync.ticket_state(waiting("Which API?"), workpad: workpad([])) == "question"
+    assert Tickets.state(ticket, workpad: workpad([])) == "ready"
+    assert Tickets.state(waiting("Which API?"), workpad: workpad([])) == "question"
 
-    assert Sync.ticket_state(waiting("Cannot reach the registry."), workpad: workpad([])) ==
+    assert Tickets.state(waiting("Cannot reach the registry."), workpad: workpad([])) ==
              "blocked"
   end
 
   test "a ticket without a workpad behaves as before" do
     ticket = waiting("Asked the owner about the API.")
 
-    assert Sync.ticket_state(ticket, workpad: nil) == "blocked"
-    assert Sync.ticket_state(ticket, workpad: fn -> nil end, asked?: true) == "question"
+    assert Tickets.state(ticket, workpad: nil) == "blocked"
+    assert Tickets.state(ticket, workpad: fn -> nil end, asked?: true) == "question"
   end
 
   defp workpad(fields) do
@@ -255,38 +255,38 @@ defmodule AgentBoard.SyncTest do
     end
 
     test "puts a waiting ticket back to work, whatever the agent wrote since" do
-      assert Sync.ticket_state(answered()) == "running"
+      assert Tickets.state(answered()) == "running"
       # the workpad still carries the old block, and "On it" asks nothing
-      assert Sync.ticket_state(answered(), workpad: %{blockage: "sem créditos"}) == "running"
-      assert Sync.ticket_state(answered(), workpad: %{question: "Qual chave?"}) == "running"
-      assert Sync.ticket_state(answered(), asked?: false) == "running"
+      assert Tickets.state(answered(), workpad: %{blockage: "sem créditos"}) == "running"
+      assert Tickets.state(answered(), workpad: %{question: "Qual chave?"}) == "running"
+      assert Tickets.state(answered(), asked?: false) == "running"
     end
 
     test "puts a blocked report back to work too" do
-      assert Sync.ticket_state(answered("blocked")) == "running"
+      assert Tickets.state(answered("blocked")) == "running"
     end
 
     test "does not count before it is read, or when it is older than the report" do
-      assert Sync.ticket_state(Map.put(answered(), "answered_at", nil)) == "blocked"
+      assert Tickets.state(Map.put(answered(), "answered_at", nil)) == "blocked"
 
       asks_again = Map.put(answered(), "report_at", DateTime.add(@read, 48, :second))
-      assert Sync.ticket_state(asks_again) == "blocked"
-      assert Sync.ticket_state(asks_again, workpad: %{question: "E agora?"}) == "question"
+      assert Tickets.state(asks_again) == "blocked"
+      assert Tickets.state(asks_again, workpad: %{question: "E agora?"}) == "question"
     end
 
     test "does not count once the worker went idle after it, or the ticket ended" do
       idle_again = Map.put(answered(), "idle_at", DateTime.add(@read, 600, :second))
-      assert Sync.ticket_state(idle_again) == "blocked"
+      assert Tickets.state(idle_again) == "blocked"
 
       ended = Map.put(answered(), "ended_at", DateTime.add(@read, 60, :second))
-      assert Sync.ticket_state(ended) == "blocked"
+      assert Tickets.state(ended) == "blocked"
     end
 
     test "changes nothing for a report that is not waiting for anyone" do
       ticket = Map.merge(answered(), %{"report" => "ready", "own_threads" => [28]})
-      assert Sync.ticket_state(ticket) == "ready"
-      assert AgentBoard.Tickets.answered_at(ticket) == nil
-      assert AgentBoard.Tickets.answered_at(answered()) == @read
+      assert Tickets.state(ticket) == "ready"
+      assert Tickets.answered_at(ticket) == nil
+      assert Tickets.answered_at(answered()) == @read
     end
   end
 

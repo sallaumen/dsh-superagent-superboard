@@ -68,7 +68,26 @@ defmodule AgentBoard.AskTest do
       Plug.Conn.send_resp(conn, 500, "boom")
     end)
 
-    assert {:error, %RuntimeError{}} = Board.ask(task, "hello", client())
+    assert {:error, %AgentBoard.GitHub.HTTPError{status: 500}} =
+             Board.ask(task, "hello", client())
+
     assert Board.comments(task) == []
+  end
+
+  test "a failed request keeps a synced comment stored under a negative id", %{task: task} do
+    {:ok, synced} =
+      Board.upsert_comment(task, %{"body" => "no id from GitHub"}, "sallaumen-agent")
+
+    assert synced.github_id < 0
+
+    Req.Test.stub(@stub, fn conn ->
+      Plug.Conn.send_resp(conn, 500, "boom")
+    end)
+
+    assert {:error, %AgentBoard.GitHub.HTTPError{status: 500}} =
+             Board.ask(task, "hello", client())
+
+    assert [%{id: id}] = Board.comments(task)
+    assert id == synced.id
   end
 end
