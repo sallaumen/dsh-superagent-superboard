@@ -13,7 +13,7 @@ defmodule AgentBoardWeb.BoardComponents.Shortcuts do
         <dt><.kbd key="↵" /></dt>
         <dd>{gettext("Open in dashboard")}</dd>
         <dt><.kbd key="Esc" /></dt>
-        <dd>{gettext("Close panel or layer")}</dd>
+        <dd>{gettext("Close the panel or layer, or stop the speech or answer")}</dd>
         <dt><.kbd key="N" /></dt>
         <dd>{gettext("New request")}</dd>
         <dt><.kbd key={gettext("Space")} /><.kbd key={gettext("Space")} /></dt>
@@ -22,8 +22,6 @@ defmodule AgentBoardWeb.BoardComponents.Shortcuts do
             "Chat with the agent: speak and pause; it sends automatically. Say \"help\" for the request list."
           )}
         </dd>
-        <dt><.kbd key="Esc" /></dt>
-        <dd>{gettext("Cancel ongoing speech or response")}</dd>
         <dt><.kbd key="V" /></dt>
         <dd>{gettext("Dictate a request in the composer")}</dd>
         <dt><.kbd key="1" />–<.kbd key="5" /></dt>

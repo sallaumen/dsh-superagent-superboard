@@ -224,10 +224,6 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/shortcuts.ex:26
-#, elixir-autogen, elixir-format
-msgid "Cancel ongoing speech or response"
-msgstr ""
 
 #: lib/agent_board_web/live/board_components/shortcuts.ex:21
 #, elixir-autogen, elixir-format
@@ -261,7 +257,7 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/shortcuts.ex:16
 #, elixir-autogen, elixir-format
-msgid "Close panel or layer"
+msgid "Close the panel or layer, or stop the speech or answer"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/execution.ex:729

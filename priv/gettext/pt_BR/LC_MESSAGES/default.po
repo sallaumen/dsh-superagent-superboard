@@ -224,10 +224,6 @@ msgstr "Chamadas feitas pelo board."
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: lib/agent_board_web/live/board_components/shortcuts.ex:26
-#, elixir-autogen, elixir-format
-msgid "Cancel ongoing speech or response"
-msgstr "Cancelar a fala ou a resposta em andamento"
 
 #: lib/agent_board_web/live/board_components/shortcuts.ex:21
 #, elixir-autogen, elixir-format
@@ -261,8 +257,8 @@ msgstr "Fechar"
 
 #: lib/agent_board_web/live/board_components/shortcuts.ex:16
 #, elixir-autogen, elixir-format
-msgid "Close panel or layer"
-msgstr "Fechar painel ou camada"
+msgid "Close the panel or layer, or stop the speech or answer"
+msgstr "Fecha o painel ou a camada, ou para a fala ou a resposta"
 
 #: lib/agent_board_web/live/board_components/settings/execution.ex:729
 #, elixir-autogen, elixir-format
