@@ -66,6 +66,47 @@ defmodule AgentBoardWeb.SettingsSetupTest do
     refute_received :checked
   end
 
+  test "a closed Settings reads nothing; each opening reads the configuration once", %{
+    conn: conn
+  } do
+    test = self()
+    readers = Application.get_env(:agent_board, :setup_readers)
+
+    Application.put_env(
+      :agent_board,
+      :setup_readers,
+      Keyword.update!(readers, :config, fn config ->
+        Keyword.put(config, :github, fn ->
+          send(test, :config_read)
+          true
+        end)
+      end)
+    )
+
+    {:ok, view, _html} = live(conn, "/?repo=sallaumen/arena-rogue")
+    refute_received :config_read
+
+    render_patch(view, "/?repo=sallaumen/arena-rogue&panel=settings&section=projects")
+    assert_received :config_read
+    flush(:config_read)
+
+    # Moving between sections of an open panel is not a new opening.
+    render_patch(view, "/?repo=sallaumen/arena-rogue&panel=settings&section=execution")
+    refute_received :config_read
+
+    render_patch(view, "/?repo=sallaumen/arena-rogue")
+    render_patch(view, "/?repo=sallaumen/arena-rogue&panel=settings&section=projects")
+    assert_received :config_read
+  end
+
+  defp flush(message) do
+    receive do
+      ^message -> flush(message)
+    after
+      0 -> :ok
+    end
+  end
+
   test "the check proves each part and points to the next step", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/?repo=sallaumen/arena-rogue&panel=settings&section=setup")
 

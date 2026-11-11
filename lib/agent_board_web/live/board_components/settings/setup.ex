@@ -23,11 +23,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
 
   @impl true
   def update(assigns, socket) do
+    showing = assigns[:active] == true and socket.assigns[:active] != true
     socket = assign(socket, assigns)
 
-    # Configuration only, read when the section shows; a check's result stays.
+    # Configuration only, read each time the section comes into view (not on
+    # every board render); a check's result stays.
     socket =
-      if assigns[:active] and is_nil(socket.assigns.checked_at),
+      if showing and is_nil(socket.assigns.checked_at),
         do: assign(socket, rows: Setup.checklist()),
         else: socket
 

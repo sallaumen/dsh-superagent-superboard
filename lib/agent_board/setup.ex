@@ -479,5 +479,6 @@ defmodule AgentBoard.Setup do
     end
   end
 
-  defp logged_in?("codex", output), do: output =~ ~r/logged in/i
+  # "Not logged in" also contains "logged in": the verdict starts the line.
+  defp logged_in?("codex", output), do: output =~ ~r/^\s*logged in/im
 end
