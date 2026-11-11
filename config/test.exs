@@ -102,5 +102,9 @@ config :agent_board, board_reload_ms: 0
 config :agent_board, elevenlabs_account_refresh: false
 
 # Settings opens on AI and setup when a required part is missing; the suite
-# has no GitHub token, so the configuration reading counts it as set.
-config :agent_board, :setup_readers, config: [github: fn -> true end]
+# has no GitHub token nor AI key (CI), so the configuration reading counts them as set.
+config :agent_board, :setup_readers,
+  config: [
+    github: fn -> true end,
+    board_ai: fn -> %{provider: :deepseek, model: "deepseek-flash", fallbacks: []} end
+  ]
