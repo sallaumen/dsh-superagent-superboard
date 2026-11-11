@@ -56,6 +56,7 @@ defmodule AgentBoard.Runners.Execution do
     |> validate_required([:task_id, :repository_id, :executor, :run_dir])
     |> validate_inclusion(:executor, ~w(claude codex))
     |> validate_inclusion(:status, @statuses)
+    |> unique_constraint(:task_id, name: :runner_executions_one_active_per_task)
   end
 
   def statuses, do: @statuses
