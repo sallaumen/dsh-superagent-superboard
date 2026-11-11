@@ -12,6 +12,7 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
 
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{Event, Task}
+  alias AgentBoard.Superagents.FakeManager
 
   @orchestrator AgentBoardWeb.BoardAgentFailureTest.Orchestrator
   @github AgentBoardWeb.BoardAgentFailureTest.GitHub
@@ -356,6 +357,52 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     view |> element("#agent-restart-confirm", "Religar") |> render_click()
     assert render_async(view, 2_000) =~ "O agente está de pé."
     assert_received :agent_started
+  end
+
+  test "with a project's own superagent down, the item starts that superagent, not the primary",
+       %{conn: conn, repo: repo} do
+    orchestrator(:down)
+    test = self()
+    {:ok, pid} = FakeManager.start()
+    previous = Application.get_env(:agent_board, :superagent_manager)
+    Application.put_env(:agent_board, :superagent_manager, FakeManager)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:agent_board, :superagent_manager, previous),
+        else: Application.delete_env(:agent_board, :superagent_manager)
+
+      if Process.alive?(pid), do: Agent.stop(pid)
+    end)
+
+    Application.put_env(:agent_board, :agent_starter, fn ->
+      send(test, :primary_started)
+      {"", 0}
+    end)
+
+    {:ok, superagent} =
+      AgentBoard.Superagents.create(%{
+        repository_id: repo.id,
+        profile: "superagent-failures",
+        port: 3083,
+        state_dir: "/tmp/superagent-failures"
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/failures")
+    render_async(view, 5_000)
+
+    view |> element("#agent-restart-trigger", "Religar o agente") |> render_click()
+
+    assert has_element?(
+             view,
+             "#agent-restart .ab-act__question",
+             "Ligar o DeepSeek em fixture/failures? O superagent superagent-failures fica na porta 3083"
+           )
+
+    view |> element("#agent-restart-confirm", "Religar") |> render_click()
+    assert render_async(view, 2_000) =~ "Superagent iniciado."
+    refute_received :primary_started
+    assert FakeManager.status(superagent) == {:ok, %{state: "ready"}}
   end
 
   # The runner accepts the connection and does not answer: the tab reads it

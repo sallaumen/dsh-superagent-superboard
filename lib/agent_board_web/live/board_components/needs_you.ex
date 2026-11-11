@@ -98,6 +98,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                   module={AgentAction}
                   id="agent-restart"
                   mode={:restart}
+                  superagent={action.superagent}
                   tone={:halt}
                   label={action.label}
                   confirm_label={gettext("Restart")}

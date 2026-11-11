@@ -7,7 +7,8 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   the refusal.
 
     * `:retry` - "Tentar de novo" / "Tentar agora" (`:retry_ticket`)
-    * `:restart` - "Religar o agente" (`:start_agent`)
+    * `:restart` - "Religar o agente": the repository's own superagent
+      (`:start_superagent`) when it has one, else the primary (`:start_agent`)
     * `:dispatch` - "Despachar" para o Claude Code ou o Codex (`:dispatch_task`)
     * `:stop` - "Parar" (`:stop_task`): only the confirmation lives here;
       the confirmed click is BoardLive's `act` event, carrying the sentence.
@@ -21,6 +22,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
 
   alias AgentBoard.{Actions, Board, Superagents}
   alias AgentBoard.Board.{Repository, Task}
+  alias AgentBoard.Superagents.Superagent
   alias Phoenix.LiveView.JS
 
   @impl true
@@ -214,6 +216,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   defp outliving_page(_name, run), do: run
 
   defp action(%{mode: :retry}), do: :retry_ticket
+  defp action(%{mode: :restart, superagent: %Superagent{}}), do: :start_superagent
   defp action(%{mode: :restart}), do: :start_agent
   defp action(%{mode: :dispatch}), do: :dispatch_task
   defp action(%{mode: :stop_execution}), do: :stop_execution
@@ -231,6 +234,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
       repository_id: assigns.repository_id,
       number: assigns.number
     }
+
+  defp params(%{mode: :restart, superagent: %Superagent{} = superagent}),
+    do: %{superagent: superagent}
 
   defp params(%{mode: :restart}), do: %{}
 

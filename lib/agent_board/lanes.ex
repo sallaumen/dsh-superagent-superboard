@@ -11,7 +11,18 @@ defmodule AgentBoard.Lanes do
 
   import Ecto.Query, warn: false
 
-  alias AgentBoard.{Actions, AgentBlock, AgentSignal, Board, Release, Repo, Titles, Workpad}
+  alias AgentBoard.{
+    Actions,
+    AgentBlock,
+    AgentSignal,
+    Board,
+    Release,
+    Repo,
+    Superagents,
+    Titles,
+    Workpad
+  }
+
   alias AgentBoard.Board.{Comment, PullRequest, Task, TaskDependency}
   alias AgentBoard.Usage.TaskCosts
   # The locale-aware times: these sentences are read on the screen.
@@ -74,7 +85,12 @@ defmodule AgentBoard.Lanes do
 
   defp collapse_agent_down(needs, _board, _context), do: needs
 
-  defp agent_down_need(waiting, _context) do
+  defp agent_down_need(waiting, context) do
+    # The board read this repository's own superagent when it has one: that
+    # is the agent the button starts, not the primary.
+    superagent =
+      context.repository |> Superagents.get_by_repository() |> Repo.preload(:repository)
+
     tail =
       case waiting do
         0 ->
@@ -99,7 +115,9 @@ defmodule AgentBoard.Lanes do
       age_seconds: nil,
       is_new: false,
       waiting: waiting,
-      actions: [%{label: gettext("Restart the agent"), restart_agent: true}]
+      actions: [
+        %{label: gettext("Restart the agent"), restart_agent: true, superagent: superagent}
+      ]
     }
   end
 
