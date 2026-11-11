@@ -17,9 +17,9 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
       <div class="ab-sec__head">
         <h2 id="sec-queue-title">{gettext("Queue")}</h2>
         <span class="ab-sec__count">
-          {count(@queue.total, @frozen)}
+          {Time.frozen_count(@queue.total, @frozen)}
           <span :if={@queue.filter != :all} class="ab-meta">
-            {gettext("of %{total}", total: count(@queue.counts.all, @frozen))}
+            {gettext("of %{total}", total: Time.frozen_count(@queue.counts.all, @frozen))}
           </span>
         </span>
         <span class="ab-top__spacer"></span>
@@ -83,7 +83,7 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
             <span :if={is_nil(task.note) and task.sub} class="ab-meta">{task.sub}</span>
           </span>
           <span class="ab-row__side">
-            <span class="ab-meta">{age(task.age_seconds, @frozen, @frozen_at, @tz_offset)}</span>
+            <span class="ab-meta">{Time.age_or_seen(task.age_seconds, @frozen, @frozen_at, @tz_offset)}</span>
           </span>
         </button>
       </div>
@@ -95,9 +95,6 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
     """
   end
 
-  defp age(_seconds, true, %DateTime{} = at, offset), do: Time.local_time(at, offset)
-  defp age(seconds, _frozen, _at, _offset), do: Time.ago(seconds)
-
   defp filter_buttons(filters) do
     filters
     |> Enum.with_index()
@@ -105,8 +102,4 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
       {label, Enum.at(~w(all new split dupes), index), n}
     end)
   end
-
-  defp count(0, _frozen), do: "0"
-  defp count(n, true), do: "≥#{n}"
-  defp count(n, false), do: "#{n}"
 end

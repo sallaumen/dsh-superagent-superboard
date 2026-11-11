@@ -1,4 +1,4 @@
-import {localize, isPortuguese} from "../i18n"
+import {localize} from "../i18n"
 
 const phaseLabels = {
   permission: ["Microfone", "Cancelar"],
@@ -52,9 +52,7 @@ export const VoicePresence = {
     this.el.dataset.phase = phase
     this.el.dataset.source = source
     this.phaseLabel.textContent = localize(phaseLabels[phase]?.[0] || "Voz")
-    this.control.textContent = source === "browser-dictation" && phase === "listening"
-      ? (isPortuguese() ? "Concluir ditado" : "Finish dictation")
-      : localize(phaseLabels[phase]?.[1] || "Fechar")
+    this.control.textContent = localize(phaseLabels[phase]?.[1] || "Fechar")
     this.title.textContent = title
     this.detail.textContent = detail
     this.el.hidden = false

@@ -359,7 +359,7 @@ defmodule AgentBoardWeb.BoardLive do
           agent: agent_up
         ),
       queue:
-        Lanes.queue(repo, board,
+        Lanes.queue(repo,
           now: now,
           last_visit: last_visit,
           filter: socket.assigns.queue_filter,
@@ -1421,7 +1421,7 @@ defmodule AgentBoardWeb.BoardLive do
          put_flash(
            socket,
            :error,
-           gettext("Could not prepare the project: %{reason}", reason: inspect(reason))
+           gettext("Could not prepare the project: %{reason}", reason: FailureText.text(reason))
          )}
     end
   end
@@ -2628,8 +2628,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("voice_announce", %{"speak_events" => value}, socket) do
     :ok = save_setting("narrate", value == "true")
 
-    {:noreply,
-     assign(socket, voice: %{socket.assigns.voice | speak_events: ElevenLabs.speak_events?()})}
+    {:noreply, assign(socket, voice: %{socket.assigns.voice | speak_events: Voice.narrate?()})}
   end
 
   @impl true
@@ -2965,7 +2964,7 @@ defmodule AgentBoardWeb.BoardLive do
       model: ElevenLabs.tts_model(),
       model_source: ElevenLabs.tts_source(),
       models: ElevenLabs.tts_models(),
-      speak_events: ElevenLabs.speak_events?(),
+      speak_events: Voice.narrate?(),
       attention: Voice.attention?(),
       # the voice speaks the interface language of this tab
       language: Locale.language(),

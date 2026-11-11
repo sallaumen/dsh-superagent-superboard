@@ -39,7 +39,7 @@ defmodule AgentBoardWeb.BoardActionsTest do
 
   defp open(conn, task) do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/gate")
-    view |> element("[data-task]") |> render_click()
+    view |> element(~s([data-panel-trigger][phx-value-id="#{task.id}"])) |> render_click()
     assert has_element?(view, "#conversation")
     {view, task}
   end

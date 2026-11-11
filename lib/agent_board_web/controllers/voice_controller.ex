@@ -31,7 +31,7 @@ defmodule AgentBoardWeb.VoiceController do
         tts_model: ElevenLabs.tts_model(),
         tts_source: ElevenLabs.tts_source(),
         stt_model: ElevenLabs.stt_model(),
-        speak_events: ElevenLabs.speak_events?(),
+        speak_events: Voice.narrate?(),
         usage: Usage.today(),
         daily_char_cap: Usage.cap()
       }
@@ -48,10 +48,13 @@ defmodule AgentBoardWeb.VoiceController do
   end
 
   @doc """
-  PUT /api/voice/settings -- stores the picked voice and TTS model.
+  PUT /api/voice/settings -- stores the voice settings.
 
-  A blank `voice_id` clears the pick (back to the default); `tts_model`,
-  when present, must be one of the offered models.
+  Accepts any combination of `voice_id`, `tts_model`, `speak_events`,
+  `volume`, `speed`, `style`, `pause` and `attention`; the language is not a
+  setting (the voice follows the interface language of the tab). A blank
+  `voice_id` clears the pick (back to the default); `tts_model`, when present,
+  must be one of the offered models; `speak_events` saves `voice_narrate`.
   """
   def update(conn, params) do
     with :ok <- put_voice(params),
@@ -70,7 +73,7 @@ defmodule AgentBoardWeb.VoiceController do
             voice_source: ElevenLabs.voice_source(),
             tts_model: ElevenLabs.tts_model(),
             tts_source: ElevenLabs.tts_source(),
-            speak_events: ElevenLabs.speak_events?()
+            speak_events: Voice.narrate?()
           },
           voice_prefs()
         )
@@ -125,8 +128,6 @@ defmodule AgentBoardWeb.VoiceController do
 
   defp put_model(_params), do: :ok
 
-  # "0" in the settings disables the automatic speech; anything else (or
-  # nothing stored) leaves the default on.
   # The narration of the rest of the board; off unless asked (it costs voice).
   defp put_speak_events(%{"speak_events" => value}),
     do: save("narrate", value in [true, "true", "1"])

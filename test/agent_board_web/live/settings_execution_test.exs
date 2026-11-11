@@ -72,6 +72,42 @@ defmodule AgentBoardWeb.SettingsExecutionTest do
   # The board writes money with a decimal comma and a pt-BR phone keypad has
   # only the comma: "2,75" is 2.75, and a partly numeric cap is refused
   # instead of being saved as its leading digits.
+  # The same sentence the dispatch gate answers with: the screen never stays
+  # silent about a month the board cannot price.
+  test "a month with an unpriced Claude row says the total is unknown", context do
+    :ok = Settings.put("dispatch_monthly_usd", "0")
+    at = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    AgentBoard.Repo.insert_all("usage_ledger", [
+      %{
+        source: "claude_code",
+        execution_id: "session-unpriced",
+        day: Date.utc_today(),
+        cwd: "/tmp/arena",
+        model: "model-without-a-price",
+        requests: 1,
+        input_tokens: 0,
+        output_tokens: 1_000,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        first_at: at,
+        last_at: at,
+        inserted_at: at,
+        updated_at: at
+      }
+    ])
+
+    {:ok, view, _html} = open(context.conn, context.path)
+
+    assert has_element?(
+             view,
+             "#executor-claude_code .ab-executor__warning",
+             "O gasto do mês tem um modelo sem preço; o teto não pode ser conferido"
+           )
+
+    refute has_element?(view, "#executor-claude_code .ab-executor__warning", "Sem teto do mês")
+  end
+
   test "a cap with a decimal comma keeps its cents; a malformed one is refused", context do
     {:ok, view, _html} = open(context.conn, context.path)
 

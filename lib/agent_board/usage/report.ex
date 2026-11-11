@@ -370,14 +370,17 @@ defmodule AgentBoard.Usage.Report do
     |> Enum.sort_by(fn {name, count} -> {-count, name} end)
   end
 
-  defp median([]), do: nil
+  defp median(values), do: median_by(values, & &1, &((&1 + &2) / 2))
 
-  defp median(values) do
-    sorted = Enum.sort(values)
+  # The median by `key`; `merge` combines the two middle entries of an even count.
+  defp median_by([], _key, _merge), do: nil
+
+  defp median_by(values, key, merge) do
+    sorted = Enum.sort_by(values, key)
     middle = div(length(sorted), 2)
 
     if rem(length(sorted), 2) == 0 do
-      (Enum.at(sorted, middle - 1) + Enum.at(sorted, middle)) / 2
+      merge.(Enum.at(sorted, middle - 1), Enum.at(sorted, middle))
     else
       Enum.at(sorted, middle)
     end
@@ -431,7 +434,7 @@ defmodule AgentBoard.Usage.Report do
       day: day,
       by_source:
         Map.new(lines, fn {source, line} -> {source, Map.put(line, :source, source)} end),
-      quota: Costs.codex_weekly(Ledger.limits())
+      quota: lines["codex"].quota
     }
   end
 
@@ -473,16 +476,9 @@ defmodule AgentBoard.Usage.Report do
         :unknown
 
       costs ->
-        sorted = Enum.sort_by(costs, & &1.micros)
-        middle = div(length(sorted), 2)
-
-        if rem(length(sorted), 2) == 0 do
-          a = Enum.at(sorted, middle - 1)
-          b = Enum.at(sorted, middle)
+        median_by(costs, & &1.micros, fn a, b ->
           %{a | micros: div(a.micros + b.micros, 2), complete?: a.complete? and b.complete?}
-        else
-          Enum.at(sorted, middle)
-        end
+        end)
     end
   end
 
@@ -577,46 +573,44 @@ defmodule AgentBoard.Usage.Report do
     if dsh == [] or tickets == [] do
       %{}
     else
-      dsh
-      |> Enum.flat_map(&exact_task_rows(&1, tickets))
-      |> Map.new()
+      pairs = for row <- dsh, ticket <- tickets, transcript_match?(row, ticket), do: {row, ticket}
+      ids = task_ids_by_number(Enum.flat_map(pairs, fn {_row, ticket} -> numbers(ticket) end))
+
+      for {row, ticket} <- pairs,
+          number <- numbers(ticket),
+          task_id = ids[number],
+          task_id != nil,
+          into: %{},
+          do: {{"dsh", row.execution_id}, task_id}
     end
   end
 
-  defp exact_task_rows(row, tickets), do: Enum.flat_map(tickets, &exact_task_row(row, &1))
-
-  defp exact_task_row(row, ticket) do
+  defp transcript_match?(row, ticket) do
     directory = get_in(ticket, ["execution", "directory"])
 
-    if is_binary(directory) and
-         Path.basename(Harness.transcript_dir(directory)) == row.execution_id do
-      task_ids(ticket, row)
-    else
-      []
-    end
+    is_binary(directory) and
+      Path.basename(Harness.transcript_dir(directory)) == row.execution_id
   end
 
-  defp task_ids(ticket, row) do
-    for number <- ticket["numbers"] || [],
-        task_id = task_id_for_number(number),
-        task_id != nil,
-        do: {{"dsh", row.execution_id}, task_id}
-  end
+  defp numbers(ticket), do: ticket["numbers"] || []
 
-  # A ticket number with more than one task on the board is ambiguous and
-  # picks none: the board never guesses which repository it came from.
-  defp task_id_for_number(number) do
-    tasks =
-      Repo.all(
-        from t in "tasks",
-          where: t.number == ^number and t.kind == "issue" and not is_nil(t.number),
-          select: t.id
-      )
+  # One query for every number. A ticket number with more than one task on
+  # the board is ambiguous and picks none: the board never guesses which
+  # repository it came from.
+  defp task_ids_by_number([]), do: %{}
 
-    case tasks do
-      [id] -> id
-      _ -> nil
-    end
+  defp task_ids_by_number(numbers) do
+    Repo.all(
+      from t in "tasks",
+        where: t.number in ^Enum.uniq(numbers) and t.kind == "issue",
+        select: {t.number, t.id}
+    )
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.flat_map(fn
+      {number, [id]} -> [{number, id}]
+      _ambiguous -> []
+    end)
+    |> Map.new()
   end
 
   defp repository_names do

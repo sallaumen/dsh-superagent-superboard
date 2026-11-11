@@ -409,8 +409,10 @@ poller, duplicating it; (c) give the rule one owner and the decision another.
 workpad and the `asked?` as values/functions, it does not read the board);
 `AutoRetry.Plan` is the pure decision, without `Actions`; `AutoRetry` keeps the
 tick, the claim and the effect. The poller reads `AgentState.tickets/0` and
-`Tickets.state/2` directly; `Sync` keeps `ticket_state/2` as a delegate so old
-callers do not break. `Sync` no longer calls `AutoRetry`.
+`Tickets.state/2` directly, as does `Sync`: the `ticket_state/2`,
+`normalized_tickets/0` and `ticket_numbers_for/1` delegates it kept for old
+callers were removed once only tests called them. `Sync` no longer calls
+`AutoRetry`.
 
 **Gain.** The poller stops depending on the sync and the last domain cycle
 disappears; the retry decision is testable without a database/network. **Cost.**
