@@ -4722,10 +4722,6 @@ msgstr "Teto por tarefa · US$"
 msgid "The DeepSeek limits live in each project: how many agents and who may call them."
 msgstr "Os limites do DeepSeek ficam em cada projeto: quantos agentes e quem pode chamá-los."
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:288
-#, elixir-autogen, elixir-format
-msgid "The board uses deepseek-flash to answer, suggest unblocks and speak. Costs are estimated by the model price."
-msgstr "O board usa deepseek-flash para responder, sugerir destravamentos e falar. Custos estimados pelo preço do modelo."
 
 #: lib/agent_board_web/live/board_components/settings/execution.ex:286
 #: lib/agent_board_web/live/board_components/settings/execution.ex:308
@@ -8356,3 +8352,29 @@ msgstr "Os agentes que escrevem o código de cada tarefa, no GitHub. O DeepSeek 
 #, elixir-autogen, elixir-format
 msgid "AI provider"
 msgstr "Provedor de IA"
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex
+#, elixir-autogen, elixir-format
+msgid "No AI key: the board's own calls answer an error. Set one in .env.local; AI and setup says which."
+msgstr "Sem chave de IA: as chamadas do próprio board respondem com erro. Defina uma no .env.local; IAs e setup diz qual."
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex
+#, elixir-autogen, elixir-format
+msgid "The board answers in rehearsal, from local fixtures: no key, no cost."
+msgstr "O board responde em ensaio, com fixtures locais: sem chave, sem custo."
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex
+#, elixir-autogen, elixir-format
+msgid "The board uses %{provider} (%{model}) to answer, suggest unblocks and speak"
+msgstr "O board usa %{provider} (%{model}) para responder, sugerir destravamentos e falar"
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex
+#, elixir-autogen, elixir-format
+msgid "%{others} if it fails"
+msgstr "%{others} se falhar"
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex
+#, elixir-autogen, elixir-format
+msgid "Costs are estimated by the model price."
+msgstr "Os custos são estimados pelo preço do modelo."
+

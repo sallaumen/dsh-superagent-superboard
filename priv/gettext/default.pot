@@ -4722,10 +4722,6 @@ msgstr ""
 msgid "The DeepSeek limits live in each project: how many agents and who may call them."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:288
-#, elixir-autogen, elixir-format
-msgid "The board uses deepseek-flash to answer, suggest unblocks and speak. Costs are estimated by the model price."
-msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/execution.ex:286
 #: lib/agent_board_web/live/board_components/settings/execution.ex:308
@@ -8356,3 +8352,29 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "AI provider"
 msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex
+#, elixir-autogen, elixir-format
+msgid "No AI key: the board's own calls answer an error. Set one in .env.local; AI and setup says which."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex
+#, elixir-autogen, elixir-format
+msgid "The board answers in rehearsal, from local fixtures: no key, no cost."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex
+#, elixir-autogen, elixir-format
+msgid "The board uses %{provider} (%{model}) to answer, suggest unblocks and speak"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex
+#, elixir-autogen, elixir-format
+msgid "%{others} if it fails"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex
+#, elixir-autogen, elixir-format
+msgid "Costs are estimated by the model price."
+msgstr ""
+
