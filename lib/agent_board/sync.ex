@@ -14,6 +14,7 @@ defmodule AgentBoard.Sync do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{
+    AgentAccess,
     AgentState,
     Attribution,
     Board,
@@ -23,7 +24,7 @@ defmodule AgentBoard.Sync do
     Tickets
   }
 
-  alias AgentBoard.Board.{Comment, Commit, PullRequest, Repository, SplitGraph, Task}
+  alias AgentBoard.Board.{Commit, PullRequest, Repository, SplitGraph, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()), do: client |> run() |> length()
@@ -80,6 +81,27 @@ defmodule AgentBoard.Sync do
 
   defp error_payload(exception), do: %{"reason" => Exception.message(exception)}
 
+  # A repository can have Issues disabled (404 or 410). That is not a sync
+  # failure: the pulls still matter. Any other failure read no issue state,
+  # so it is a `sync_error`, never a fresh sync.
+  defp fetch_issues(client, repository, since) do
+    GitHub.issues(client, repository.owner, repository.name, since)
+  rescue
+    exception in GitHub.HTTPError ->
+      if exception.status in [404, 410] do
+        Board.log_event(
+          repository.id,
+          "issues_unavailable",
+          "#{repository.owner}/#{repository.name}",
+          error_payload(exception)
+        )
+
+        []
+      else
+        reraise exception, __STACKTRACE__
+      end
+  end
+
   defp do_sync(client, repository) do
     # Errors from earlier runs are history, not this run's outcome. Take the
     # last event id before the first read; the summary counts only rows above
@@ -92,29 +114,7 @@ defmodule AgentBoard.Sync do
       ) || 0
 
     since = updated_since(repository)
-
-    # A repository can have Issues disabled (404 or 410). That is not a sync
-    # failure: the pulls still matter. Any other failure read no issue state,
-    # so it is a `sync_error`, never a fresh sync.
-    issues =
-      try do
-        GitHub.issues(client, repository.owner, repository.name, since)
-      rescue
-        exception in RuntimeError ->
-          if String.starts_with?(exception.message, ["GitHub HTTP 404", "GitHub HTTP 410"]) do
-            Board.log_event(
-              repository.id,
-              "issues_unavailable",
-              "#{repository.owner}/#{repository.name}",
-              %{"reason" => Exception.message(exception)}
-            )
-
-            []
-          else
-            reraise exception, __STACKTRACE__
-          end
-      end
-
+    issues = fetch_issues(client, repository, since)
     pulls = GitHub.pulls(client, repository.owner, repository.name, since)
 
     issues
@@ -285,39 +285,16 @@ defmodule AgentBoard.Sync do
   # -- the conversation -------------------------------------------------------
 
   defp sync_comments(repository, client) do
-    agent_login = Application.get_env(:agent_board, :agent_login, "sallaumen-agent")
+    agent_login = AgentAccess.bot_login()
 
     repository.id
     |> active_tasks()
     |> Enum.each(fn task ->
       # One broken conversation must not kill the whole sync.
       try do
-        case AgentBoard.GitHub.issue_comments(
-               client,
-               repository.owner,
-               repository.name,
-               task.number
-             ) do
-          comments when is_list(comments) ->
-            existing =
-              Repo.all(
-                from c in Comment,
-                  where: c.task_id == ^task.id,
-                  select: {c.github_id, c.author, c.body}
-              )
-              |> Map.new(fn {id, author, body} -> {id, {author, body}} end)
-
-            Enum.each(comments, fn comment ->
-              id = comment["id"] || -:erlang.phash2({task.id, comment["body"]})
-              author = get_in(comment, ["user", "login"]) || "unknown"
-
-              if Map.get(existing, id) != {author, comment["body"] || ""} do
-                Board.upsert_comment(task, comment, agent_login)
-              end
-            end)
-
-          _ ->
-            :ok
+        case GitHub.issue_comments(client, repository.owner, repository.name, task.number) do
+          comments when is_list(comments) -> Board.store_comments(task, comments, agent_login)
+          _ -> :ok
         end
       rescue
         error in GitHub.RateLimited ->
@@ -601,11 +578,11 @@ defmodule AgentBoard.Sync do
   def apply_tickets(repository, issues) do
     by_number = Map.new(issues, &{&1["number"], &1})
 
-    normalized_tickets()
+    AgentState.tickets()
     |> Enum.filter(&AgentState.same_repository?(&1, repository))
     |> Tickets.by_number()
     |> Enum.each(fn {number, ticket} ->
-      case ticket_state(ticket,
+      case Tickets.state(ticket,
              workpad: fn -> Board.agent_workpad(repository.id, number) end,
              asked?: fn -> Board.agent_asked?(repository.id, number) end
            ) do
@@ -632,13 +609,6 @@ defmodule AgentBoard.Sync do
     do: existing.checks_changed_at
 
   defp checks_changed_at(_existing, _checks_state, now), do: now
-
-  @doc """
-  The state a ticket imposes on the task; the rule lives in
-  `AgentBoard.Tickets.state/2` and this keeps the Sync API for callers that
-  already used it.
-  """
-  def ticket_state(ticket, opts \\ []), do: Tickets.state(ticket, opts)
 
   @doc "The strongest review state."
   def review_rollup(reviews) do
@@ -674,13 +644,6 @@ defmodule AgentBoard.Sync do
     |> Enum.filter(&(&1["conclusion"] in ["failure", "timed_out", "cancelled"]))
     |> Enum.map_join(", ", &(&1["name"] || "check"))
   end
-
-  # -- the agent's tickets (sqlite, read-only) --------------------------------
-
-  @doc "The agent's tickets, normalized: the numbers, the assignment and the outcome."
-  def normalized_tickets, do: AgentState.tickets()
-
-  def ticket_numbers_for(ticket), do: AgentState.ticket_numbers(ticket)
 
   defp to_dt(nil), do: nil
 

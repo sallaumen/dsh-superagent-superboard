@@ -66,6 +66,10 @@ config :agent_board, runner_tick_interval: 3_600_000
 # process outside the test).
 config :agent_board, superagent_tick_interval: :manual
 
+# A status read the ticker kills (6 s in production) is exercised with a fake
+# that answers late; the suite must not wait those seconds.
+config :agent_board, superagent_status_timeout_ms: 300
+
 # A stubbed 5xx must not cost the suite the real wait between GitHub retries.
 config :agent_board, github_retry_base_ms: 1
 

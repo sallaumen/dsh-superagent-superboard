@@ -18,6 +18,15 @@ defmodule AgentBoard.Routing.Signals do
   alias AgentBoard.Superagents
   alias AgentBoard.Usage.Report
 
+  @doc """
+  The signals for a repository: the state of the agent that serves it
+  (`Orchestrator.client_for/1`), so another project's pause or outage never
+  routes this one.
+  """
+  @spec read_for(map() | integer() | nil, (-> map())) :: AgentBoard.Routing.signals()
+  def read_for(repository, expected \\ &Report.expected_costs/0),
+    do: read(fn -> Orchestrator.dispatch_state(Orchestrator.client_for(repository)) end, expected)
+
   @doc "The signals for `AgentBoard.Routing.suggest/2`."
   @spec read((-> {:ok, map()} | {:error, term()}), (-> map())) :: AgentBoard.Routing.signals()
   def read(dispatch_state \\ &Orchestrator.dispatch_state/0, expected \\ &Report.expected_costs/0) do

@@ -637,19 +637,55 @@ defmodule AgentBoard.Board do
       {:error, exception}
   end
 
+  @doc """
+  Store the comments GitHub returned for one task, writing a row only when its
+  author or body changed; `true` when something was written. The sync and the
+  message poller share this rule so an unchanged conversation writes nothing.
+  """
+  @spec store_comments(Task.t(), [map()], String.t()) :: boolean()
+  def store_comments(_task, [], _agent_login), do: false
+
+  def store_comments(task, comments, agent_login) do
+    existing =
+      Repo.all(
+        from c in Comment,
+          where: c.task_id == ^task.id,
+          select: {c.github_id, c.author, c.body}
+      )
+      |> Map.new(fn {id, author, body} -> {id, {author, body}} end)
+
+    Enum.reduce(comments, false, fn comment, changed? ->
+      stored = Map.get(existing, comment_github_id(task, comment))
+
+      if stored == {comment_author(comment), comment["body"] || ""} do
+        changed?
+      else
+        {:ok, _} = upsert_comment(task, comment, agent_login)
+        true
+      end
+    end)
+  end
+
+  @doc """
+  The id a GitHub comment is stored under: its own, or a stable negative one
+  derived from the task and the body when the API path omitted it, so such a
+  comment still dedupes.
+  """
+  @spec comment_github_id(Task.t(), map()) :: integer()
+  def comment_github_id(task, comment),
+    do: comment["id"] || -:erlang.phash2({task.id, comment["body"]})
+
+  defp comment_author(comment), do: get_in(comment, ["user", "login"]) || "unknown"
+
   @doc "Upsert a comment pulled from GitHub."
   def upsert_comment(task, comment, agent_login) do
-    author = get_in(comment, ["user", "login"]) || "unknown"
+    author = comment_author(comment)
     kind = if author == agent_login, do: "agent", else: "user"
-
-    # A comment without an id (some API paths omit it) must still dedupe:
-    # derive a stable negative id from the task and the body.
-    github_id = comment["id"] || -:erlang.phash2({task.id, comment["body"]})
 
     %Comment{}
     |> Comment.changeset(%{
       task_id: task.id,
-      github_id: github_id,
+      github_id: comment_github_id(task, comment),
       author: author,
       body: comment["body"] || "",
       kind: kind

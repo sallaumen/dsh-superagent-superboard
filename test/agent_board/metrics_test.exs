@@ -68,14 +68,13 @@ defmodule AgentBoard.MetricsTest do
     end
   end
 
-  describe "rate_tile/5" do
+  describe "rate_tile/4" do
     test "measures the hour, the previous hour, the day, the week and the trend" do
       stamps = [at(60), at(120), at(4000), at(50_000), at(3 * 86_400)]
 
       tile =
         Metrics.rate_tile(
           "merged",
-          "PRs mesclados",
           {:ok, stamps},
           @now,
           Metrics.hour_buckets(@now, 0)
@@ -93,7 +92,7 @@ defmodule AgentBoard.MetricsTest do
     end
 
     test "an unknown source is unknown, not zero" do
-      tile = Metrics.rate_tile("commits", "Commits", {:unknown, :never_synced}, @now, [])
+      tile = Metrics.rate_tile("commits", {:unknown, :never_synced}, @now, [])
 
       assert tile.status == :unknown
       assert tile.reason == :never_synced

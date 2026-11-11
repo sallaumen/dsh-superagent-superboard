@@ -101,11 +101,11 @@ defmodule AgentBoard.GitHub do
         if limited?(response) do
           raise AgentBoard.GitHub.RateLimited, retry_after: wait_seconds(response)
         else
-          raise "GitHub HTTP 403: #{inspect(response.body)}"
+          raise AgentBoard.GitHub.HTTPError, status: 403, body: response.body
         end
 
       status ->
-        raise "GitHub HTTP #{status}: #{inspect(response.body)}"
+        raise AgentBoard.GitHub.HTTPError, status: status, body: response.body
     end
   end
 

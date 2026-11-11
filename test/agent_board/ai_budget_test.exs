@@ -54,6 +54,20 @@ defmodule AgentBoard.AIBudgetTest do
     assert Repo.aggregate(Call, :count) == 1
   end
 
+  test "an exhausted cap still serves a cached answer: it costs nothing" do
+    Application.put_env(:agent_board, :ai_daily_tokens, 30)
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer()) end)
+
+    assert {:ok, _} = AI.call(:refine_request, %{text: "x"})
+    assert {:error, :budget_exhausted} = AI.call(:refine_request, %{text: "y"})
+
+    assert {:ok, %{engine: :cache, json: %{"goal" => "x"}}} =
+             AI.call(:refine_request, %{text: "x"})
+
+    assert Repo.aggregate(Call, :count) == 1
+  end
+
   test "a cap that is not a whole number keeps the default, it does not lift the cap" do
     Application.put_env(:agent_board, :ai_daily_tokens, "30")
     assert Budget.cap() == 5_000_000

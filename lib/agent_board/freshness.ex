@@ -22,6 +22,20 @@ defmodule AgentBoard.Freshness do
   def stale_ttl, do: @stale_ttl
 
   @doc """
+  Whether the repository's stored counts can no longer be shown as current:
+  no attempt yet, a failed attempt, or a success older than `stale_ttl/0`.
+  A rate limit is a delay that lifts by itself, so it keeps the data trusted,
+  exactly as `snapshot/1` does for the header.
+  """
+  @spec untrusted?(map() | nil, DateTime.t()) :: boolean()
+  def untrusted?(nil, _now), do: true
+
+  def untrusted?(last_attempt, now) do
+    not rate_limited?(last_attempt) and
+      (last_attempt.kind == "sync_error" or age_sec(now, last_attempt.inserted_at) > @stale_ttl)
+  end
+
+  @doc """
   The board's freshness snapshot.
 
   `last_attempt` is the newest sync event (success or error), `last_success`
@@ -46,8 +60,6 @@ defmodule AgentBoard.Freshness do
       at: at,
       frozen?: state == :offline,
       live?: state == :live,
-      title: title(state),
-      note: note(state, at),
       sources: sources(now, state, last_attempt, last_success, age, agent)
     }
   end
@@ -82,42 +94,13 @@ defmodule AgentBoard.Freshness do
 
   defp running_without_heartbeat?(_now, _agent), do: false
 
-  defp title(:live), do: "Tudo em dia"
-  defp title(:delayed), do: "Dados atrasados"
-  defp title(:reconnecting), do: "Reconectando"
-  defp title(:offline), do: "Sem conexão com o GitHub"
-  defp title(:unknown), do: "Sem dados ainda"
-
-  defp note(:live, _at),
-    do: "GitHub, processo do agente e fila local responderam dentro da cadência."
-
-  defp note(:delayed, _at),
-    do: "Uma das fontes passou da cadência; os tempos abaixo estão parados."
-
-  defp note(:reconnecting, _at),
-    do: "A conexão com o board caiu. O que está na tela é o último estado conhecido."
-
-  defp note(:offline, nil),
-    do:
-      "Não houve uma sincronia bem-sucedida; os dados salvos são os últimos que chegaram. Nada abaixo mudou desde então — pode ter mudado lá fora."
-
-  defp note(:offline, at),
-    do:
-      "O último dado completo é de #{time(at)}. Nada abaixo mudou desde então — pode ter mudado lá fora."
-
-  defp note(:unknown, _at),
-    do: "Ainda não houve uma sincronia concluída para este repositório."
-
   defp sources(now, state, last_attempt, last_success, age, agent) do
     [
       github_source(now, state, last_attempt, last_success, age),
       agent_source(now, agent),
       %{
         code: :queue_current,
-        label: "Fila local",
         kind: :run,
-        word: "OK",
-        detail: "consultada agora",
         age_sec: 0
       }
     ]
@@ -128,10 +111,7 @@ defmodule AgentBoard.Freshness do
       is_nil(last_attempt) ->
         %{
           code: :github_waiting,
-          label: "GitHub (PRs, CI)",
           kind: :unknown,
-          word: "Sem dados",
-          detail: "aguardando a primeira sincronia",
           age_sec: nil
         }
 
@@ -139,10 +119,7 @@ defmodule AgentBoard.Freshness do
         %{
           code: :github_rate_limited,
           retry_after: last_attempt.payload["retry_after"],
-          label: "GitHub (PRs, CI)",
           kind: :stale,
-          word: "Limitado",
-          detail: "limitando as chamadas; o board tenta de novo sozinho",
           age_sec: age
         }
 
@@ -150,10 +127,7 @@ defmodule AgentBoard.Freshness do
         %{
           code: :github_failed,
           attempted_at: last_attempt.inserted_at,
-          label: "GitHub (PRs, CI)",
           kind: :blocked,
-          word: "Falhou",
-          detail: "última tentativa às #{time(last_attempt.inserted_at)}",
           age_sec: age
         }
 
@@ -161,30 +135,21 @@ defmodule AgentBoard.Freshness do
         %{
           code: :github_errors,
           error_count: errors(last_success),
-          label: "GitHub (PRs, CI)",
           kind: :stale,
-          word: "Com erros",
-          detail: "#{errors(last_success)} #{plural(errors(last_success))} no último sync",
           age_sec: age
         }
 
       state == :delayed ->
         %{
           code: :github_delayed,
-          label: "GitHub (PRs, CI)",
           kind: :stale,
-          word: "Atrasado",
-          detail: "último dado #{ago(age)}",
           age_sec: age
         }
 
       true ->
         %{
           code: :github_current,
-          label: "GitHub (PRs, CI)",
           kind: :run,
-          word: "OK",
-          detail: "há #{short_age(age)}",
           age_sec: age
         }
     end
@@ -199,9 +164,6 @@ defmodule AgentBoard.Freshness do
   defp errors(%{payload: %{"errors" => n}}) when is_integer(n), do: n
   defp errors(_event), do: 0
 
-  defp plural(1), do: "erro"
-  defp plural(_n), do: "erros"
-
   defp agent_source(_now, %{ok: false}), do: agent_unavailable()
 
   defp agent_source(now, %{ok: true, at: at, tickets: tickets}) do
@@ -212,30 +174,21 @@ defmodule AgentBoard.Freshness do
       running? and is_integer(age) and age > @agent_running_ttl ->
         %{
           code: :agent_stale,
-          label: "Processo do agente",
           kind: :stale,
-          word: "Sem sinal",
-          detail: "há #{short_age(age)}; há tarefa em execução sem batimento",
           age_sec: age
         }
 
       is_nil(at) ->
         %{
           code: :agent_empty,
-          label: "Processo do agente",
           kind: :run,
-          word: "OK",
-          detail: "lido agora; nenhum ticket ainda",
           age_sec: 0
         }
 
       true ->
         %{
           code: :agent_current,
-          label: "Processo do agente",
           kind: :run,
-          word: "OK",
-          detail: "lido agora; último ticket #{ago(age)}",
           age_sec: 0
         }
     end
@@ -244,10 +197,7 @@ defmodule AgentBoard.Freshness do
   defp agent_unavailable do
     %{
       code: :agent_unavailable,
-      label: "Processo do agente",
       kind: :blocked,
-      word: "Indisponível",
-      detail: "o banco do executor não respondeu",
       age_sec: nil
     }
   end
@@ -259,22 +209,4 @@ defmodule AgentBoard.Freshness do
   end
 
   defp age_sec(_now, _at), do: nil
-
-  defp ago(nil), do: "desconhecido"
-  defp ago(sec) when sec < 60, do: "há #{sec} s"
-  defp ago(sec) when sec < 3600, do: "há #{div(sec, 60)} min"
-  defp ago(sec) when sec < 86_400, do: "há #{div(sec, 3600)} h"
-  defp ago(sec), do: "há #{div(sec, 86_400)} d"
-
-  defp short_age(nil), do: "indeterminado"
-  defp short_age(sec) when sec < 60, do: "#{sec} s"
-  defp short_age(sec) when sec < 3600, do: "#{div(sec, 60)} min"
-  defp short_age(sec), do: "#{div(sec, 3600)} h"
-
-  defp time(nil), do: "desconhecido"
-
-  defp time(%DateTime{} = at),
-    do: at |> DateTime.to_time() |> Time.to_string() |> String.slice(0, 5)
-
-  defp time(_other), do: "desconhecido"
 end

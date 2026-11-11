@@ -4109,9 +4109,10 @@ defmodule AgentBoardWeb.BoardLive do
   defp for_executor(requests, _assigns), do: requests
 
   defp choose_executor(socket, executor) do
-    if Executors.valid?(executor) and executor != socket.assigns.composer_executor,
-      do: assign(socket, composer_executor: executor, composer_executor_touched: true),
-      else: socket
+    if Executors.valid?(executor) and executor != socket.assigns.composer_executor and
+         executor not in unwatched(socket.assigns.composer_routing),
+       do: assign(socket, composer_executor: executor, composer_executor_touched: true),
+       else: socket
   end
 
   # The router reads the runner once per opening of the composer in a
@@ -4129,7 +4130,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp load_panel(socket), do: socket
 
-  defp load_composer_routing(%{assigns: %{panel: "composer", repo: %{id: id}}} = socket) do
+  defp load_composer_routing(%{assigns: %{panel: "composer", repo: %{id: id} = repo}} = socket) do
     if connected?(socket) and socket.assigns.composer_routing_for != id do
       # The signals carry the reason an executor is unavailable, as a sentence:
       # the task that reads them has no locale of its own.
@@ -4139,7 +4140,7 @@ defmodule AgentBoardWeb.BoardLive do
       |> assign(composer_routing_for: id)
       |> start_async({:composer_routing, id}, fn ->
         Gettext.put_locale(AgentBoardWeb.Gettext, locale)
-        Signals.read()
+        Signals.read_for(repo)
       end)
     else
       socket
@@ -4152,7 +4153,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp ensure_composer_routing(%{assigns: %{composer_routing: nil, repo: %{} = repo}} = socket) do
     socket
     |> assign(composer_routing_for: repo.id)
-    |> put_composer_routing(Signals.read())
+    |> put_composer_routing(Signals.read_for(repo))
   end
 
   defp ensure_composer_routing(socket), do: socket
@@ -4163,11 +4164,16 @@ defmodule AgentBoardWeb.BoardLive do
     socket
     |> assign(composer_routing: routed.routing)
     |> then(fn socket ->
-      if socket.assigns.composer_executor_touched,
-        do: socket,
-        else: assign(socket, composer_executor: routed.executor)
+      # A choice the owner made stays, unless no agent watches it here.
+      if socket.assigns.composer_executor_touched and
+           socket.assigns.composer_executor not in unwatched(routed.routing),
+         do: socket,
+         else: assign(socket, composer_executor: routed.executor)
     end)
   end
+
+  defp unwatched(%{suggestion: %{unwatched: executors}}), do: executors
+  defp unwatched(_routing), do: []
 
   defp single_requests(repo, text, title) do
     title = title || Titles.from_request(text)

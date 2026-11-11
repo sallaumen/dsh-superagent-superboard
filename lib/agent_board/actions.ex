@@ -990,7 +990,9 @@ defmodule AgentBoard.Actions do
   # (or the one this door builds now). A request without an executor is
   # opened as given, with no label and no line, as before.
   defp route_requests(repo, requests) do
-    signals = if Enum.any?(requests, &needs_route?/1), do: Routing.Signals.read(), else: nil
+    signals =
+      if Enum.any?(requests, &needs_route?/1), do: Routing.Signals.read_for(repo), else: nil
+
     Enum.map(requests, &route_request(repo, &1, signals))
   end
 
