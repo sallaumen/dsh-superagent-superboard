@@ -83,12 +83,7 @@ defmodule AgentBoard.System.Updater do
   running old node.
   """
   @spec prepare() :: :ok | {:error, term()}
-  def prepare do
-    case run_mix(["deps.get"]) do
-      :ok -> :ok
-      error -> error
-    end
-  end
+  def prepare, do: run_mix(["deps.get"])
 
   @doc """
   Compiles the new checkout and its assets into `_build/next`, without
@@ -99,9 +94,7 @@ defmodule AgentBoard.System.Updater do
   def prepare_build do
     env = [{"MIX_BUILD_PATH", @next_build}, {"MIX_ENV", mix_env()}]
 
-    with :ok <- run_mix(["deps.get"]) do
-      run_mix(["compile"], env: env, timeout: 600_000)
-    end
+    run_mix(["compile"], env: env, timeout: 600_000)
   end
 
   @doc "Builds the assets into priv/static while the old node still serves them."
@@ -233,12 +226,7 @@ defmodule AgentBoard.System.Updater do
     """
   end
 
-  defp fast_forward do
-    case Git.run(["merge", "--ff-only", "origin/main"]) do
-      {:ok, output} -> {:ok, output}
-      error -> error
-    end
-  end
+  defp fast_forward, do: Git.run(["merge", "--ff-only", "origin/main"])
 
   defp sh_quote(value), do: "'" <> String.replace(value, "'", "'\\''") <> "'"
 end

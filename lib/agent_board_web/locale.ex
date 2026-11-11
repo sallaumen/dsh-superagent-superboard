@@ -1,7 +1,6 @@
 defmodule AgentBoardWeb.Locale do
   @moduledoc """
-  The board interface locale belongs to the viewer's browser. It is separate
-  from the board-wide spoken-language setting.
+  The board interface locale belongs to the viewer's browser.
   """
 
   import Plug.Conn
