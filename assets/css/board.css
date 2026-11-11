@@ -3045,6 +3045,8 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
 @container main (min-width: 960px) {
   .ab-lanes {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    /* A long queue spans both rows: its extra height goes under Needs you. */
+    grid-template-rows: auto 1fr;
     grid-template-areas:
       "now queue"
       "needs queue";
@@ -3058,6 +3060,7 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
 @container main (min-width: 1300px) {
   .ab-lanes {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+    grid-template-rows: auto;
     grid-template-areas: "now needs queue";
   }
   .ab-days { grid-template-columns: repeat(7, minmax(0, 1fr)); }
