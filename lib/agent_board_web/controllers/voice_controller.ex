@@ -180,9 +180,12 @@ defmodule AgentBoardWeb.VoiceController do
     case SpeechCache.claim(key) do
       :leader ->
         try do
-          stream_fresh(conn, text, opts, key)
+          {conn, audio} = stream_fresh(conn, text, opts, key)
+          SpeechCache.release(key, audio)
+          conn
         after
-          SpeechCache.release(key, Process.delete(:voice_stream_audio))
+          # A crash midway leaves no claim behind; after a release this is a no-op.
+          SpeechCache.release(key, nil)
         end
 
       :follower ->
@@ -197,13 +200,15 @@ defmodule AgentBoardWeb.VoiceController do
             |> send_resp(200, audio)
 
           _gone_or_timeout ->
-            stream_fresh(conn, text, opts, key)
+            {conn, _audio} = stream_fresh(conn, text, opts, key)
+            conn
         end
     end
   end
 
   # The conn and the audio so far live in this request process's dictionary
   # while Req calls back with each chunk; both are read back right after.
+  # Answers the conn and the whole audio, or nil when there is none to keep.
   defp stream_fresh(conn, text, opts, key) do
     Process.put(:voice_stream, {conn, []})
     started = System.monotonic_time(:millisecond)
@@ -211,16 +216,16 @@ defmodule AgentBoardWeb.VoiceController do
     on_chunk = fn data ->
       {conn, audio} = Process.get(:voice_stream)
 
-      if conn.state != :chunked do
-        Activity.record(:tts, :info, "first sound on its way",
-          ms: System.monotonic_time(:millisecond) - started
-        )
-      end
-
       conn =
-        if conn.state == :chunked,
-          do: conn,
-          else: conn |> put_resp_content_type("audio/mpeg", nil) |> send_chunked(200)
+        if conn.state == :chunked do
+          conn
+        else
+          Activity.record(:tts, :info, "first sound on its way",
+            ms: System.monotonic_time(:millisecond) - started
+          )
+
+          conn |> put_resp_content_type("audio/mpeg", nil) |> send_chunked(200)
+        end
 
       case chunk(conn, data) do
         {:ok, conn} ->
@@ -242,29 +247,28 @@ defmodule AgentBoardWeb.VoiceController do
   defp finish_stream(%{state: :chunked} = conn, :ok, audio, text, key, ms) when is_list(audio) do
     audio = IO.iodata_to_binary(audio)
     SpeechCache.put(key, text, audio)
-    Process.put(:voice_stream_audio, audio)
     Activity.record(:tts, :ok, "voice generated (#{String.length(text)} characters)", ms: ms)
-    conn
+    {conn, audio}
   end
 
   defp finish_stream(%{state: :chunked} = conn, :ok, :abandoned, _text, _key, ms) do
     Activity.record(:tts, :info, "the browser stopped listening midway", ms: ms)
-    conn
+    {conn, nil}
   end
 
   defp finish_stream(%{state: :chunked} = conn, {:error, reason}, _audio, _text, _key, ms) do
     Activity.record(:tts, :error, "the voice stopped midway", ms: ms, reason: reason)
-    conn
+    {conn, nil}
   end
 
   defp finish_stream(conn, {:error, reason}, _audio, _text, _key, ms) do
     Activity.record(:tts, :error, "the voice was not generated", ms: ms, reason: reason)
-    voice_error(conn, reason)
+    {voice_error(conn, reason), nil}
   end
 
   defp finish_stream(conn, _result, _audio, _text, _key, ms) do
     Activity.record(:tts, :error, "ElevenLabs sent no audio", ms: ms)
-    voice_error(conn, :empty_audio)
+    {voice_error(conn, :empty_audio), nil}
   end
 
   # The endpoint only ever answers mp3 (the fixed default output format), so
@@ -283,14 +287,14 @@ defmodule AgentBoardWeb.VoiceController do
   # The request is validated before any paid call: a wrong text or voice
   # never reaches ElevenLabs.
   defp speech_params(%{"text" => text} = params) when is_binary(text) and byte_size(text) > 0 do
-    voice = params["voice"]
+    voice = if params["voice"] in [nil, ""], do: nil, else: params["voice"]
     language = params["language"]
 
     cond do
       not ElevenLabs.valid_text?(text) -> {:error, :text_too_long}
       not offered_voice?(voice) -> {:error, :invalid_voice}
       not offered_language?(language) -> {:error, :invalid_language}
-      true -> {:ok, text, if(voice in [nil, ""], do: nil, else: voice), language}
+      true -> {:ok, text, voice, language}
     end
   end
 
@@ -337,19 +341,28 @@ defmodule AgentBoardWeb.VoiceController do
 
   @doc "POST /api/voice/transcribe -- the audio body transcribed (JSON)."
   def transcribe(conn, params) do
-    with {:ok, body, conn} <- read_body(conn, length: audio_max_bytes()),
+    # The hint is refused before the audio is read: a wrong one costs nothing.
+    with {:hint, true} <- {:hint, offered_hint?(params["language"])},
+         {:ok, body, conn} <- read_body(conn, length: audio_max_bytes()),
          true <- byte_size(body) > 0 do
       transcribed(conn, body, params)
     else
+      {:hint, false} -> voice_error(conn, :invalid_language)
       {:more, _body, _conn} -> voice_error(conn, :audio_too_large)
       _ -> voice_error(conn, :missing_audio)
     end
   end
 
+  # The STT hint is the two-letter code the TTS uses (`pt`, `en`); none is allowed.
+  defp offered_hint?(nil), do: true
+  defp offered_hint?(language), do: language in Enum.map(Phrases.languages(), & &1.tts)
+
   defp transcribed(conn, body, params) do
     started = System.monotonic_time(:millisecond)
 
-    case ElevenLabs.transcribe(body, filename(conn, params), language: params["language"]) do
+    case ElevenLabs.transcribe(body, filename_for_content_type(conn),
+           language: params["language"]
+         ) do
       {:ok, transcript} ->
         record_transcript(transcript, System.monotonic_time(:millisecond) - started)
         json(conn, transcript)
@@ -403,15 +416,7 @@ defmodule AgentBoardWeb.VoiceController do
   defp status_and_message({:http, status}), do: {502, "ElevenLabs HTTP #{status}"}
   defp status_and_message(other), do: {502, "ElevenLabs error: #{inspect(other)}"}
 
-  # The upload can name itself (`?filename=...`); otherwise the content type
-  # picks the extension. ElevenLabs sniffs the bytes anyway.
-  defp filename(conn, params) do
-    case params["filename"] do
-      name when is_binary(name) and name != "" -> name
-      _ -> filename_for_content_type(conn)
-    end
-  end
-
+  # The content type picks the extension; ElevenLabs sniffs the bytes anyway.
   defp filename_for_content_type(conn) do
     case get_req_header(conn, "content-type") |> List.first() do
       nil -> "recording.audio"

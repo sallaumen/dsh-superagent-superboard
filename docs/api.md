@@ -137,10 +137,11 @@ The same parameters, validations and errors as `GET /api/voice/speech`, but the 
 
 ### POST /api/voice/transcribe
 
-Body: the raw audio bytes (content-type `audio/*`); optional query: `language` (ISO 639 code, e.g. `pt`) and `filename`.
+Body: the raw audio bytes (content-type `audio/*`); optional query: `language` (the two-letter code the voice uses, `pt` or `en`).
 
 - `200` — `{"text": "...", "language_code": "...", "language_probability": <0-1>, "audio_duration_secs": <seconds>}`.
 - `400` — `{"error": "an audio body is required"}` without a body.
+- `400` — `{"error": "an offered voice language is required"}` when `language` is outside the offer (refused before the audio is read).
 - `413` — `{"error": "the audio is too large"}` above the limit (10MB by default, configurable via `:voice_audio_max_bytes`).
 - ElevenLabs errors follow the same error mapping as speech (401/429/502/503).
 

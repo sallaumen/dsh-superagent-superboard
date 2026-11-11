@@ -282,6 +282,44 @@ defmodule AgentBoardWeb.VoiceControllerTest do
     assert Agent.get(calls, & &1) == 1
   end
 
+  test "a follower whose leader failed speaks on its own, and leaves nothing for the next text",
+       %{conn: conn} do
+    {:ok, calls} = Agent.start_link(fn -> 0 end)
+    test_pid = self()
+
+    # The leader of "Sozinho" fails (a final 401, never retried) after the follower
+    # arrived; the follower's own call succeeds; "Outro" fails outright.
+    Req.Test.stub(@stub, fn conn ->
+      case {conn.body_params["text"], Agent.get_and_update(calls, &{&1 + 1, &1 + 1})} do
+        {"Sozinho", 1} ->
+          send(test_pid, :generating)
+          Process.sleep(150)
+          Plug.Conn.send_resp(conn, 401, "{}")
+
+        {"Sozinho", _} ->
+          conn
+          |> Plug.Conn.put_resp_content_type("audio/mpeg")
+          |> Plug.Conn.send_resp(200, "ID3alone")
+
+        {"Outro", _} ->
+          Plug.Conn.send_resp(conn, 401, "{}")
+      end
+    end)
+
+    first = Task.async(fn -> get(conn, "/api/voice/stream?text=Sozinho") end)
+    assert_receive :generating, 1_000
+    second = get(build_conn(), "/api/voice/stream?text=Sozinho")
+
+    assert response(second, 200) == "ID3alone"
+    assert json_response(Task.await(first), 401)
+
+    # The follower's audio belongs to its text only: a failure on the next
+    # request from the same process is not answered with it.
+    assert json_response(get(build_conn(), "/api/voice/stream?text=Outro"), 401)
+    assert json_response(get(build_conn(), "/api/voice/stream?text=Outro"), 401)
+    assert Agent.get(calls, & &1) == 4
+  end
+
   test "a repeated text is served from the speech cache, once paid", %{conn: conn} do
     Application.put_env(:agent_board, :voice_speech_cache_entries, 10)
     SpeechCache.clear()
@@ -346,6 +384,16 @@ defmodule AgentBoardWeb.VoiceControllerTest do
     conn = get(conn, "/api/voice/speech?text=hi&voice=custom-voice")
 
     assert response(conn, 200) == "ID3voice"
+  end
+
+  test "GET /api/voice/speech with a blank voice speaks with the saved one", %{conn: conn} do
+    Req.Test.stub(@stub, fn conn ->
+      assert conn.request_path == "/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb"
+
+      Plug.Conn.put_resp_content_type(conn, "audio/mpeg") |> Plug.Conn.send_resp(200, "ID3saved")
+    end)
+
+    assert response(get(conn, "/api/voice/speech?text=hi&voice="), 200) == "ID3saved"
   end
 
   test "GET /api/voice/status reports not configured without a key", %{conn: conn} do
@@ -455,6 +503,17 @@ defmodule AgentBoardWeb.VoiceControllerTest do
       |> post("/api/voice/transcribe?language=pt", "fake-audio-bytes")
 
     assert %{"text" => "ok"} = json_response(conn, 200)
+  end
+
+  test "POST /api/voice/transcribe refuses a language hint outside the offer", %{conn: conn} do
+    Req.Test.stub(@stub, fn _conn -> flunk("ElevenLabs must not be called") end)
+
+    conn =
+      conn
+      |> put_req_header("content-type", "audio/webm")
+      |> post("/api/voice/transcribe?language=xx", "fake-audio-bytes")
+
+    assert %{"error" => "an offered voice language is required"} = json_response(conn, 400)
   end
 
   test "POST /api/voice/transcribe without a body is 400", %{conn: conn} do
