@@ -78,6 +78,19 @@ defmodule AgentBoard.Usage.OverviewTest do
     assert_in_delta share, 2 / 3, 0.001
   end
 
+  test "select/3 narrows by executor and project; outside is the sessions with no project" do
+    runs = [
+      %{source: "dsh", project: "arena-rogue"},
+      %{source: "claude_code", project: "arena-rogue"},
+      %{source: "codex", project: nil}
+    ]
+
+    assert length(Overview.select(runs, "all", "all")) == 3
+    assert [%{source: "dsh"}] = Overview.select(runs, "dsh", "arena-rogue")
+    assert [%{source: "codex"}] = Overview.select(runs, "all", "outside")
+    assert Overview.select(runs, "codex", "arena-rogue") == []
+  end
+
   defp call(attrs) do
     %Call{}
     |> Call.changeset(Map.merge(%{name: "refine_request", engine: "deepseek"}, attrs))

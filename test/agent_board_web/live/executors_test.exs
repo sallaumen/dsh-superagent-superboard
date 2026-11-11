@@ -164,6 +164,36 @@ defmodule AgentBoardWeb.ExecutorsTest do
     assert has_element?(view, "#settings-costs", "Nenhuma chamada de IA registrada ainda.")
   end
 
+  test "Agents lists each execution with its task, and the executor filter lives in the URL",
+       %{conn: conn} do
+    {:ok, view, _html} = live(conn, @costs <> "&costs=agents")
+
+    assert has_element?(view, "#costs-run-dsh-ticket-1", "#7 Mapa")
+    assert has_element?(view, "#costs-run-claude_code-session-1", "lista")
+    assert has_element?(view, "#costs-run-codex-thread-1", "cota")
+    assert has_element?(view, "#costs-agents-total", "3 execuções em 30 dias")
+
+    view
+    |> element("#costs-agents-filters")
+    |> render_change(%{"source" => "dsh", "project" => "all"})
+
+    assert_patch(
+      view,
+      "/?costs=agents&days=30&panel=settings&repo=fixture%2Fexecutors&section=costs&source=dsh"
+    )
+
+    assert has_element?(view, "#costs-run-dsh-ticket-1")
+    refute has_element?(view, "#costs-run-claude_code-session-1")
+    assert has_element?(view, "#costs-agents-total", "1 execução em 30 dias")
+
+    # A task's execution belongs to the task's repository, written owner/name.
+    view
+    |> element("#costs-agents-filters")
+    |> render_change(%{"source" => "all", "project" => "fixture/executors"})
+
+    assert has_element?(view, "#costs-run-dsh-ticket-1")
+  end
+
   test "a task's Execuções tab lists its ledger execution, attributed by the PR branch",
        %{conn: conn, task: task} do
     # The ledger is read when the tab opens: before that the tab shows no

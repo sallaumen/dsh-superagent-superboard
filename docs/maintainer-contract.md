@@ -1247,8 +1247,10 @@ currencies.
 | ElevenLabs | `Account.snapshot/0` (plan) and `ElevenLabs.Usage.window/1` (`eleven_labs_usage`) | plan period; UTC days | measured characters and seconds; no US$ |
 | Daily bars | agent DeepSeek + board AI per UTC day | same | US$ stacked; a day with a missing price is hatched |
 | Tasks that cost the most | `Report.executions/2` `dsh` with a task, top 5 | same | US$ estimated |
+| Agents: each execution | `Overview.executions/2` (`Report.executions/2` with its task and project), filtered by `Overview.select/3` | same | the executor's own: US$ estimated, US$ list for Claude Code, quota for Codex; the filter total per source via `costs_by_source/1` |
 
-- The page and the window live in the URL (`section=costs&costs=summary|calls&days=7|30|90`,
+- The page, the window and the Agents filters live in the URL
+  (`section=costs&costs=summary|agents|calls&days=7|30|90&source=…&project=…`,
   `BoardNavigation.settings_path/3`); the default is the summary over 30 days.
   Data is read when the section opens or the page or window changes; a
   broadcast re-render keeps what was read, and nothing polls.
