@@ -139,6 +139,28 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
     assert text =~ "Nenhuma sincronização ainda"
   end
 
+  test "a blocked card without a title is said in the turn's language" do
+    {:ok, repo} = Board.add_repository("fixture", "blocked-untitled")
+
+    board = %{
+      task_counts: %{running: 0, ready: 0, blocked: 1, queued: 0},
+      blocked: [%{number: nil, title: nil}]
+    }
+
+    context = %{repo: repo, board: board, sync_event: nil}
+
+    assert %{result: %{text: text}} = VoiceCommands.resolve("o que está bloqueado?", context)
+    assert text =~ "#desconhecido desconhecido"
+    refute text =~ "unknown"
+
+    english =
+      Gettext.with_locale(AgentBoardWeb.Gettext, "en", fn ->
+        VoiceCommands.resolve("what is blocked?", context)
+      end)
+
+    assert english.result.text =~ "#unknown unknown"
+  end
+
   test "unknown text is retained as a draft and cannot act on a task" do
     assert %{result: %{kind: :unknown, text: text}, path: nil} =
              VoiceCommands.resolve("pare a tarefa 42", %{})

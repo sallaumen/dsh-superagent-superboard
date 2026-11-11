@@ -34,6 +34,7 @@ const english = {
   "Ouvindo": "Listening",
   "Fale e pare: quando você terminar, eu envio. Esc cancela.": "Speak and pause: I will send when you finish. Esc cancels.",
   "Microfone indisponível": "Microphone unavailable",
+  "Microfone desconectado": "Microphone disconnected",
   "Confira a permissão ou escreva no painel de voz.": "Check permission or type in the voice panel.",
   "Não ouvi nada": "I heard nothing",
   "Entendendo…": "Transcribing…",
