@@ -344,7 +344,11 @@ that already worked).
   checks the latest reply and accepts only the version shown when clicked, so
   an edited reply stays unread. The header controls remain reachable while
   scrolling the board. The separate bell counts active
-  blocked, question, review and long-running tasks across projects; it is a
+  blocked, question, review and long-running tasks across projects, and
+  first the providers that cannot serve now (`Inbox.providers/1`: the
+  ElevenLabs plan spent, the board's AI budget spent, a provider whose
+  newest board call of the last day was refused for limit or balance), each
+  opening the settings section that explains it; it is a
   pending-work count, not an unread count. Both lists follow the board's PubSub broadcasts.
   Before them sits DeepSeek's rate (`BoardComponents.PeakRate`): a flame
   while `Providers.peak?/1` holds, a moon while every token costs half, the
@@ -550,6 +554,16 @@ Agora and the detail):
   routing reads `over_cap?/0`. A ledger write that fails is logged and
   skipped, never a failed speech. `GET /api/voice/status` and the
   "Bastidores da voz" (Voice backstage) summary show today's totals.
+- **The ElevenLabs plan is read, not guessed** (`AgentBoard.ElevenLabs.Account`):
+  every 15 minutes the board reads `GET /v1/user/subscription`, which spends
+  no characters, and keeps the period's used and limit characters, the tier
+  and the renewal; the voice summary prints them. A speech refused with
+  `quota_exceeded` (ElevenLabs answers it as 400 or 401) is
+  `:quota_exceeded`, never "the key was rejected", and makes the paid voice
+  spent for an hour; a plan with no characters left is spent until it
+  renews. While spent the voice routing sends every utterance to the
+  computer voice, and a paid audio that fails in the browser is spoken
+  there with the same text instead of going silent (`account_test.exs`).
 - **Voice activity** (`AgentBoard.Voice.Activity`): each stage of a turn,
   every retry and every failure (server, or browser via
   `voice_client_error`) is one event: a log line `voice stage=… status=…`,
@@ -1027,7 +1041,9 @@ that watches one GitHub repository and picks the issues whose body mentions
 
 `AgentBoard.Routing.suggest/2` is pure: rules in the plan's order
 (`docs/research/alfred.md`, 3.5), no model, a suggestion and never a
-dispatch.
+dispatch. Its signals are read per repository (`Routing.Signals.read_for/1`):
+the pause, the load and an outage are those of the agent that serves the
+repository (`Orchestrator.client_for/1`), never another project's.
 
 | Rule | Signal | Effect |
 |---|---|---|

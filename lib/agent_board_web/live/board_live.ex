@@ -102,7 +102,7 @@ defmodule AgentBoardWeb.BoardLive do
         message_seen: message_seen,
         inbox_filter: "all",
         inbox_notice: nil,
-        inbox: %{messages: [], alerts: []},
+        inbox: %{messages: [], alerts: [], providers: []},
         tz_offset: tz_offset,
         work: empty_work(),
         flow: nil,
@@ -3132,6 +3132,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp voice_reason(:not_configured), do: gettext("API key missing")
   defp voice_reason(:auth_expired), do: gettext("the key was rejected")
   defp voice_reason(:usage_limit), do: gettext("usage limit reached")
+  defp voice_reason(:quota_exceeded), do: gettext("credits spent")
   defp voice_reason({:http, status}), do: "HTTP #{status}"
   defp voice_reason(reason), do: FailureText.text(reason)
 
@@ -3245,6 +3246,7 @@ defmodule AgentBoardWeb.BoardLive do
               <BoardComponents.MessageHub.hub
                 messages={@inbox.messages}
                 alerts={@inbox.alerts}
+                providers={@inbox.providers}
                 seen={@message_seen}
                 filter={@inbox_filter}
                 notice={@inbox_notice}
@@ -4127,7 +4129,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp load_panel(socket), do: socket
 
-  defp load_composer_routing(%{assigns: %{panel: "composer", repo: %{id: id}}} = socket) do
+  defp load_composer_routing(%{assigns: %{panel: "composer", repo: %{id: id} = repo}} = socket) do
     if connected?(socket) and socket.assigns.composer_routing_for != id do
       # The signals carry the reason an executor is unavailable, as a sentence:
       # the task that reads them has no locale of its own.
@@ -4137,7 +4139,7 @@ defmodule AgentBoardWeb.BoardLive do
       |> assign(composer_routing_for: id)
       |> start_async({:composer_routing, id}, fn ->
         Gettext.put_locale(AgentBoardWeb.Gettext, locale)
-        Signals.read()
+        Signals.read_for(repo)
       end)
     else
       socket
@@ -4150,7 +4152,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp ensure_composer_routing(%{assigns: %{composer_routing: nil, repo: %{} = repo}} = socket) do
     socket
     |> assign(composer_routing_for: repo.id)
-    |> put_composer_routing(Signals.read())
+    |> put_composer_routing(Signals.read_for(repo))
   end
 
   defp ensure_composer_routing(socket), do: socket

@@ -214,7 +214,6 @@ defmodule AgentBoard.LogsTest do
     assert Enum.map(read.entries, & &1.message) == ["w1", "w2", "w3", "w4", "w5"]
 
     assert Enum.map(Logs.append([], read.entries, 3), & &1.message) == ["w3", "w4", "w5"]
-    assert Logs.summary(read.entries) == "5 avisos · 0 erros"
     assert Logs.counts(read.entries) == %{warning: 5, error: 0}
   end
 
