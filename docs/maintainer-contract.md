@@ -1517,16 +1517,22 @@ records are the `ai_calls` rows (the split) and the tasks with their
   `<root>/<owner>/<repo>/<dir>/` (`notes.md`, `files/`), the root outside
   every repository (`~/.local/share/agent-board/private`,
   `AGENT_BOARD_PRIVATE_DIR`), folders 0700 and files 0600. The folder name is
-  the board's (`req-<hash of the words>` from the composer, so a retry
-  reuses it; `issue-<n>` from the inspector), a file name goes through
+  the board's (`req-<random>` from the composer, chosen when the draft
+  starts and kept until it is sent, so a retry reuses it and a later request
+  with the same words never sees its secrets; `issue-<n>` from the
+  inspector), a file name goes through
   `Attachments.safe_name/1`, and a role prefixes it (`before--`, `after--`).
   A local folder is copied, never linked, only from under `$HOME`, never
   from a hidden folder, without following links and without `.git`,
   `node_modules`, `_build` or `deps`, at most 2,000 files and 200 MB. The
-  issue gets only the path, the rule and an invisible marker
+  issue gets only the path (from `~`, so no user name reaches GitHub;
+  `PrivateContext.shared_path/2`), the rule and an invisible marker
   (`IssueBody.with_private/4`), written before the issue opens: a context
   that cannot be written opens no issue (`:private_failed`). An issue made
   without one learns its path only through the red `share_private_context`.
+  The agent's worker reads it: the DeepSeek harness's sandbox
+  (`dsh-bash-sandbox` on Seatbelt, `dsh-fs-sandbox`) confines writes only,
+  never reads, so the folder is readable and never writable by the agent.
   The content never reaches GitHub, the model, an event or a log; the page
   shows a private image only through `/private/...`
   (`PrivateFileController`, raster only, same-origin); the note is never

@@ -40,12 +40,13 @@ defmodule AgentBoard.Board.PrivateContext do
       Path.expand("~/.local/share/agent-board/private")
   end
 
-  @doc "The folder of a request from the composer: the same words, the same folder."
-  @spec request_dir(map(), String.t()) :: dir()
-  def request_dir(%{id: id}, text) do
-    hash = :crypto.hash(:sha256, "#{id}\0#{String.trim(text)}") |> Base.encode16(case: :lower)
-    "req-" <> binary_part(hash, 0, 16)
-  end
+  @doc """
+  A new folder name for one request from the composer. The composer keeps it
+  until the request is sent, so a retry writes to the same folder and a new
+  request, even with the same words, never sees an older one's secrets.
+  """
+  @spec new_request_dir() :: dir()
+  def new_request_dir, do: "req-" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
 
   @doc "The folder made for an issue that has none."
   @spec issue_dir(pos_integer()) :: dir()
@@ -76,6 +77,20 @@ defmodule AgentBoard.Board.PrivateContext do
   def path(%{owner: owner, name: name}, dir) do
     true = valid_dir?(dir) and String.match?(owner, @segment) and String.match?(name, @segment)
     Path.join([root(), owner, name, dir])
+  end
+
+  @doc """
+  The path as GitHub may read it: under the home folder it starts with `~`, so
+  an issue never carries the machine's user name.
+  """
+  @spec shared_path(map(), dir()) :: String.t()
+  def shared_path(repository, dir) do
+    path = path(repository, dir)
+    home = Path.expand("~")
+
+    if String.starts_with?(path, home <> "/"),
+      do: "~/" <> Path.relative_to(path, home),
+      else: path
   end
 
   @doc "Whether the folder exists."
