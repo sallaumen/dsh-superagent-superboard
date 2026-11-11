@@ -17,5 +17,14 @@ System.at_exit(fn _status ->
   for suffix <- ["", "-wal", "-shm"], do: File.rm(state_db <> suffix)
 end)
 
+# Private contexts (`AgentBoard.Board.PrivateContext`) go to a folder of this
+# run, emptied first: never the owner's, never the last run's files.
+private_root =
+  Path.join(System.tmp_dir!(), "agent-board-private-test#{System.get_env("MIX_TEST_PARTITION")}")
+
+File.rm_rf!(private_root)
+Application.put_env(:agent_board, :private_root, private_root)
+System.at_exit(fn _status -> File.rm_rf(private_root) end)
+
 ExUnit.start()
 Ecto.Adapters.SQL.Sandbox.mode(AgentBoard.Repo, :manual)
