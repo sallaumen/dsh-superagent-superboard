@@ -185,6 +185,16 @@ defmodule AgentBoard.AITest do
     assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000, 2_000, peak) == 2_700
     assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000_000, 0, off_peak) == 150_000
     assert Providers.cost_micros(:deepseek, "deepseek-v4-pro", 0, 1_000_000, peak) == 3_960_000
+    # the part served from the provider's cache pays its own price
+    assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000_000, 0, peak, 500_000) ==
+             153_000
+
+    assert Providers.cost_micros(:deepseek, "deepseek-flash", 1_000_000, 0, off_peak, 500_000) ==
+             76_500
+
+    # a model with no cache price charges them as input; never more than the input
+    assert Providers.cost_micros(:openai, "gpt-4.1-mini", 1_000_000, 0, peak, 500_000) == 400_000
+    assert Providers.cost_micros(:deepseek, "deepseek-flash", 10, 0, peak, 99) == 0
     assert Providers.cost_micros(:deepseek, "not-a-model", 1_000, 1_000) == 0
     assert Providers.cost_micros(:nope, "x", 1_000, 1_000) == 0
   end
@@ -197,6 +207,22 @@ defmodule AgentBoard.AITest do
     assert {:ok, _} = AI.call(:refine_request, %{text: "x"})
     call = Repo.one(Call)
     assert call.cost_micros > 0
+  end
+
+  test "the prompt the provider served from its cache is priced as cached" do
+    Req.Test.stub(@stub, fn conn ->
+      usage = %{
+        "prompt_tokens" => 1_000_000,
+        "completion_tokens" => 0,
+        "prompt_cache_hit_tokens" => 1_000_000
+      }
+
+      Req.Test.json(conn, Map.put(answer(~s({"goal":"x"})), "usage", usage))
+    end)
+
+    assert {:ok, _} = AI.call(:refine_request, %{text: "x"})
+    # the highest cached price at peak; the same prompt uncached is at least 150_000
+    assert Repo.one(Call).cost_micros in 1..44_000
   end
 
   test "a spent quota moves to the next provider with a key" do
