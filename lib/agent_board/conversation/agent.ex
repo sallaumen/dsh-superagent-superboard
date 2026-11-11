@@ -326,10 +326,9 @@ defmodule AgentBoard.Conversation.Agent do
       board: snapshot(ctx)
     }
 
-    # Compact JSON, without the default's indentation.
     started = System.monotonic_time(:millisecond)
 
-    case AI.call(:voice_agent, %{prompt: "Inputs:\n" <> Jason.encode!(inputs)}) do
+    case AI.call(:voice_agent, inputs) do
       {:ok, %{json: %{"action" => action} = json}} ->
         Activity.record(:model, :ok, "decided: #{action}",
           turn: ctx[:turn_id],
@@ -471,7 +470,7 @@ defmodule AgentBoard.Conversation.Agent do
       facts: facts
     }
 
-    case AI.call(:voice_explain, %{prompt: "Inputs:\n" <> Jason.encode!(inputs)}) do
+    case AI.call(:voice_explain, inputs) do
       {:ok, %{json: %{"reply" => text}}} when is_binary(text) and text != "" ->
         Activity.record(:model, :ok, "explained from the board (#{kind})",
           turn: ctx[:turn_id],
