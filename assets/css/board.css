@@ -3028,7 +3028,7 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
   white-space: nowrap;
 }
 
-@container main (max-width: 999px) {
+@container main (max-width: 959px) {
   .ab-stage { gap: var(--space-6); }
 }
 
@@ -3040,7 +3040,9 @@ body.ab-logs-resizing { cursor: ns-resize; user-select: none; }
   .ab-day__head { flex-direction: column; align-items: flex-start; }
 }
 
-@container main (min-width: 1000px) {
+/* The container is main's content box: 960 is a 1264 px window. A 1280 px one
+   (1920 at 150 %) reads two lanes side by side. */
+@container main (min-width: 960px) {
   .ab-lanes {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
