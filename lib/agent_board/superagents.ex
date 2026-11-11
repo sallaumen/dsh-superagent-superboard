@@ -61,6 +61,26 @@ defmodule AgentBoard.Superagents do
     |> Task.await(:infinity)
   end
 
+  @doc """
+  The model the superagent's profile gives its agent (`agent-default-model`
+  in `cordis.patch.yml`), or nil when the file cannot be read. The board only
+  reads it: the profile stays the agent's.
+  """
+  @spec profile_model(Superagent.t(), String.t()) :: String.t() | nil
+  def profile_model(%Superagent{profile: profile}, root \\ profiles_root())
+      when is_binary(profile) do
+    with {:ok, text} <- :file.read_file(Path.join([root, profile, "cordis.patch.yml"])),
+         [block] <-
+           Regex.run(~r/- id: agent-default-model\n((?:[ \t]+.*\n?)*)/, text,
+             capture: :all_but_first
+           ),
+         [model] <- Regex.run(~r/^\s+model:\s*(\S+)/m, block, capture: :all_but_first) do
+      model
+    else
+      _ -> nil
+    end
+  end
+
   @doc "The directory the DSH profiles live in; overridable in tests."
   def profiles_root, do: Application.get_env(:agent_board, :dsh_profiles_dir, @dsh_profiles)
 

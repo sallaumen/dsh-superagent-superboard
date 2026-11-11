@@ -725,6 +725,29 @@ Agora and the detail):
 - **A task that cannot close on its own is dropped**, not created
   half-written (see `AgentBoard.Intake`).
 
+## Setup
+
+What the board needs to work, in dependency order, is one contract
+(`AgentBoard.Setup`), read by Settings and by nothing else that computes it on
+its own. Each row has a class (`:base` GitHub; `:work` the projects, the
+DeepSeek superagents, Claude Code and Codex; `:board_ai` the board's own calls;
+`:voice` ElevenLabs or the browser), a state and the fix for the next step.
+
+- `checklist/1` reads configuration only and may run on a render: a key that is
+  set is `:configured`, never `:ok`.
+- `verify/1` is the "check" button: GitHub `/user`, the answering provider's
+  `/models` (`AI.answering/0`), each superagent's `/state`, `claude auth status`,
+  `codex login status`, ElevenLabs' subscription. Free reads only; it runs on
+  the owner's click, never on mount or when a section opens, and it is not an
+  AI call (no `ai_calls` row, no budget). The CLI output names the account:
+  only the verdict is kept.
+- Claude Code, Codex, the superagents and ElevenLabs are optional (`:off` when
+  absent: the board routes elsewhere or uses the browser voice); GitHub, a
+  tracked project and a key for the board's own AI are required.
+  `next_step/1` is the first required row that is missing or failing.
+- The superagent's model is read from its profile (`agent-default-model` in
+  `cordis.patch.yml`, `Superagents.profile_model/2`); the board never writes it.
+
 ## Release in order
 
 `AgentBoard.Release` (ADR 0005). The agent has no queue and a mention starts it
