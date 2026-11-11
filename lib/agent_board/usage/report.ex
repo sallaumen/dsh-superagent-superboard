@@ -527,7 +527,8 @@ defmodule AgentBoard.Usage.Report do
     rows =
       Repo.all(
         from l in "usage_ledger",
-          where: l.source == "codex" and l.last_at >= ^since and l.first_at < ^until,
+          # A Codex row is a whole UTC day with no per-message time: it counts once, in the window holding its first_at.
+          where: l.source == "codex" and l.first_at >= ^since and l.first_at < ^until,
           select: %{
             source: l.source,
             model: l.model,
