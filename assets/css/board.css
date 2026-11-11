@@ -1552,14 +1552,16 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .settings-pane--execution[hidden] { display: none; }
 .settings-pane h3 { margin: 0; color: var(--ink); font-size: 17px; line-height: 23px; font-weight: 600; }
 .settings-pane__intro { max-width: 62ch; margin: 6px 0 24px; color: var(--ink-muted); font-size: 13px; line-height: 20px; }
-/* Settings → AI and setup: the check, the next step and one row per part. */
+/* Settings → AI and setup: the check, a pointer to the next step and one row per part. */
 .setup { display: grid; gap: var(--space-5); }
 .setup__check { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); }
 .setup__check .ab-meta { margin: 0; max-width: 60ch; }
-.setup__next { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); padding: 12px 14px; border-radius: var(--radius-sm); background: var(--halt-wash); color: var(--ink); font-size: 13px; line-height: 20px; }
+.setup__jump { flex-basis: 100%; font-size: 13px; font-weight: 600; color: var(--halt); }
 .setup__rows { list-style: none; margin: 0; padding: 0; display: grid; }
 .setup__row { display: grid; grid-template-columns: 9rem minmax(0, 1fr) auto; gap: var(--space-2) var(--space-4); align-items: baseline; padding: 10px 0; border-top: 1px solid var(--line); }
 .setup__row:first-child { border-top: 0; }
+.setup__row[data-next] { margin-inline: -14px; padding-inline: 14px; border-radius: var(--radius-sm); border-top-color: transparent; background: var(--halt-wash); scroll-margin-top: var(--space-5); }
+.setup__row[data-next] + .setup__row { border-top-color: transparent; }
 .setup__state { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-muted); }
 .setup__state--ok { color: var(--ink); }
 .setup__state--failed, .setup__state--missing { color: var(--halt); }

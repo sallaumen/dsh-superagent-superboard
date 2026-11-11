@@ -8225,11 +8225,6 @@ msgstr "Ainda não verificado: uma chave definida ainda pode ser recusada. A ver
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
 #, elixir-autogen, elixir-format
-msgid "Next step:"
-msgstr "Próximo passo:"
-
-#: lib/agent_board_web/live/board_components/settings/setup.ex
-#, elixir-autogen, elixir-format
 msgid "In the Terminal:"
 msgstr "No Terminal:"
 

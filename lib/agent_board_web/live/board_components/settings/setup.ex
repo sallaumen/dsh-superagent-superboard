@@ -94,12 +94,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
               )}
           <% end %>
         </p>
-      </div>
-
-      <div :if={@next} id="setup-next" class="setup__next" role="status">
-        <b>{gettext("Next step:")}</b>
-        <span>{@next.title}. {@next.detail}</span>
-        <.fix fix={@next.fix} parent={@parent} />
+        <a :if={@next} class="setup__jump" href={"#setup-row-#{@next.id}"}>
+          {gettext("Next step: %{part}", part: @next.title)}
+        </a>
       </div>
 
       <section
@@ -117,6 +114,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
             id={"setup-row-#{row.id}"}
             class="setup__row"
             data-state={row.state}
+            data-next={@next && @next.id == row.id}
           >
             <span class={["setup__state", "setup__state--#{row.state}"]}>
               <.glyph kind={mark(row.state)} />{state_word(row.state)}
