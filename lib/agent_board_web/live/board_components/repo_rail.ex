@@ -173,7 +173,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
           phx-value-panel="voice"
-          aria-label={gettext("Voice Conversation")}
+          aria-label={gettext("Voice conversation")}
         >
           <.ico name="mic" /><span>{gettext("Voice conversation")}</span>
         </button>

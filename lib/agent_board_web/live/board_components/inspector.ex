@@ -144,7 +144,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         <div :if={dispatchable?(@task)} class="ab-insp__dispatch" id="task-dispatch">
           <div class="ab-insp__dispatch-head">
             <span class="ab-label">{gettext("Local dispatch")}</span>
-            <span :if={@dispatch_active} class="ab-tag ab-tag--agent">{gettext("In Progress")}</span>
+            <span :if={@dispatch_active} class="ab-tag ab-tag--agent">{gettext("In progress")}</span>
             <span :if={@dispatch_paused} class="ab-tag ab-tag--stale">{gettext("paused dispatch")}</span>
           </div>
 
@@ -341,7 +341,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           }
           id="unblock-panel"
           class="ab-unblock"
-          aria-label={gettext("Unlock Task")}
+          aria-label={gettext("Unlock task")}
         >
           <div class="ab-unblock__head">
             <strong>{gettext("Unlock")}</strong>
@@ -992,7 +992,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp executor_usage(%{usage: %{status: :none}} = assigns) do
     ~H"""
     <section id="executor-usage" class="ab-insp__usage">
-      <h3 class="ab-label">{gettext("Agent Executor")}</h3>
+      <h3 class="ab-label">{gettext("Agent executor")}</h3>
       <p class="ab-meta">{gettext("No executor transcript for this task.")}</p>
     </section>
     """
@@ -1001,7 +1001,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp executor_usage(%{usage: %{status: :unavailable}} = assigns) do
     ~H"""
     <section id="executor-usage" class="ab-insp__usage">
-      <h3 class="ab-label">{gettext("Agent Executor")}</h3>
+      <h3 class="ab-label">{gettext("Agent executor")}</h3>
       <p class="ab-meta">
         {gettext("Transcripts exist, but the board can't read them: missing the")} <code>{gettext("zstd")}</code>.
       </p>
@@ -1012,7 +1012,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp executor_usage(assigns) do
     ~H"""
     <section id="executor-usage" class="ab-insp__usage">
-      <h3 class="ab-label">{gettext("Agent Executor")}</h3>
+      <h3 class="ab-label">{gettext("Agent executor")}</h3>
       <table class="ab-table">
         <thead>
           <tr>
@@ -1021,7 +1021,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             <th class="r">{gettext("Input")}</th>
             <th class="r">{gettext("Output")}</th>
             <th class="r">{gettext("Cache reads")}</th>
-            <th class="r">{gettext("Estimated Cost")}</th>
+            <th class="r">{gettext("Estimated cost")}</th>
           </tr>
         </thead>
         <tbody>
