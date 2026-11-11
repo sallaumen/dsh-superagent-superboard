@@ -14,6 +14,7 @@ defmodule AgentBoard.Sync do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{
+    AgentAccess,
     AgentState,
     Attribution,
     Board,
@@ -23,7 +24,7 @@ defmodule AgentBoard.Sync do
     Tickets
   }
 
-  alias AgentBoard.Board.{Comment, Commit, PullRequest, Repository, SplitGraph, Task}
+  alias AgentBoard.Board.{Commit, PullRequest, Repository, SplitGraph, Task}
 
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()), do: client |> run() |> length()
@@ -284,39 +285,16 @@ defmodule AgentBoard.Sync do
   # -- the conversation -------------------------------------------------------
 
   defp sync_comments(repository, client) do
-    agent_login = Application.get_env(:agent_board, :agent_login, "sallaumen-agent")
+    agent_login = AgentAccess.bot_login()
 
     repository.id
     |> active_tasks()
     |> Enum.each(fn task ->
       # One broken conversation must not kill the whole sync.
       try do
-        case AgentBoard.GitHub.issue_comments(
-               client,
-               repository.owner,
-               repository.name,
-               task.number
-             ) do
-          comments when is_list(comments) ->
-            existing =
-              Repo.all(
-                from c in Comment,
-                  where: c.task_id == ^task.id,
-                  select: {c.github_id, c.author, c.body}
-              )
-              |> Map.new(fn {id, author, body} -> {id, {author, body}} end)
-
-            Enum.each(comments, fn comment ->
-              id = comment["id"] || -:erlang.phash2({task.id, comment["body"]})
-              author = get_in(comment, ["user", "login"]) || "unknown"
-
-              if Map.get(existing, id) != {author, comment["body"] || ""} do
-                Board.upsert_comment(task, comment, agent_login)
-              end
-            end)
-
-          _ ->
-            :ok
+        case GitHub.issue_comments(client, repository.owner, repository.name, task.number) do
+          comments when is_list(comments) -> Board.store_comments(task, comments, agent_login)
+          _ -> :ok
         end
       rescue
         error in GitHub.RateLimited ->

@@ -7,8 +7,8 @@ defmodule AgentBoard.MessagePoller do
   import Ecto.Query, warn: false
   require Logger
 
-  alias AgentBoard.{Board, GitHub, Repo}
-  alias AgentBoard.Board.{Comment, Event, Repository, Task}
+  alias AgentBoard.{AgentAccess, Board, GitHub, Repo}
+  alias AgentBoard.Board.{Event, Repository, Task}
 
   @interval 30_000
   @bootstrap_window 10 * 60
@@ -166,29 +166,14 @@ defmodule AgentBoard.MessagePoller do
           is_integer(comment["id"]),
           do: {task, comment}
 
-    task_ids = Enum.map(candidates, fn {task, _} -> task.id end)
-    github_ids = Enum.map(candidates, fn {_, comment} -> comment["id"] end)
+    agent_login = AgentAccess.bot_login()
 
-    existing =
-      Repo.all(
-        from c in Comment,
-          where: c.task_id in ^task_ids and c.github_id in ^github_ids,
-          select: {c.task_id, c.github_id, c.author, c.body}
-      )
-      |> Map.new(fn {task_id, id, author, body} -> {{task_id, id}, {author, body}} end)
-
-    agent_login = Application.get_env(:agent_board, :agent_login, "sallaumen-agent")
-
-    Enum.reduce(candidates, false, fn {task, comment}, changed? ->
-      author = get_in(comment, ["user", "login"]) || "unknown"
-      key = {task.id, comment["id"]}
-
-      if Map.get(existing, key) == {author, comment["body"] || ""} do
-        changed?
-      else
-        {:ok, _} = Board.upsert_comment(task, comment, agent_login)
-        true
-      end
+    # The store is per task; every task's comments are stored, whatever an
+    # earlier one answered.
+    candidates
+    |> Enum.group_by(fn {task, _} -> task end, fn {_, comment} -> comment end)
+    |> Enum.reduce(false, fn {task, comments}, changed? ->
+      Board.store_comments(task, comments, agent_login) or changed?
     end)
   end
 
