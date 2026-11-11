@@ -10,22 +10,12 @@ defmodule AgentBoardWeb.BoardController do
   """
   use AgentBoardWeb, :controller
 
-  alias AgentBoard.{Actions, Board, Executors, Routing}
+  alias AgentBoard.{Actions, Board, Executors, GitHub, Routing}
   alias AgentBoard.Board.Task
 
   # The task actions the API accepts, mapped explicitly (never to_atom).
   @task_actions %{"stop" => :stop_task, "archive" => :archive_task, "resume" => :resume_task}
   @refusals [:unconfirmed, :phrase_changed]
-
-  # The client is injectable so the controller can be tested without GitHub.
-  defp client do
-    # get_env/3 only falls back when the key is MISSING; a key set to nil
-    # (a test that deleted it) would crash here.
-    case Application.get_env(:agent_board, :github_client) do
-      nil -> AgentBoard.GitHub.client()
-      builder -> builder.()
-    end
-  end
 
   def board(conn, params) do
     case Board.board(params["repo"]) do
@@ -51,7 +41,7 @@ defmodule AgentBoardWeb.BoardController do
       when is_binary(slug) and is_binary(title) do
     with true <- is_nil(params["body"]) or is_binary(params["body"]),
          [owner, name] <- String.split(slug, "/", parts: 2),
-         repo when not is_nil(repo) <- Board.find_repository(owner, name),
+         {:repo, repo} when not is_nil(repo) <- {:repo, Board.find_repository(owner, name)},
          true <- String.trim(title) != "",
          true <- params["executor"] in [nil, "" | Executors.all()] do
       text = String.trim(params["body"] || "") <> "\n\n@sallaumen-agent"
@@ -63,7 +53,7 @@ defmodule AgentBoardWeb.BoardController do
           Routing.plan(repo, request, params["executor"], "api", Routing.Signals.read_for(repo))
         end)
 
-      action = %{repository: repo, requests: [request], client: client()}
+      action = %{repository: repo, requests: [request], client: GitHub.client()}
 
       case Actions.run(:create_tasks, action, api(), confirm: confirmation(params)) do
         {:ok, [{_request, {:ok, task, outcome}}]} ->
@@ -76,6 +66,9 @@ defmodule AgentBoardWeb.BoardController do
           needs_confirmation(conn, refusal)
       end
     else
+      {:repo, nil} ->
+        conn |> put_status(404) |> json(%{error: "repository not tracked"})
+
       _ ->
         conn
         |> put_status(400)
@@ -95,7 +88,9 @@ defmodule AgentBoardWeb.BoardController do
     result =
       case {Map.get(@task_actions, action), task} do
         {name, %Task{}} when not is_nil(name) ->
-          Actions.run(name, %{task: task, client: client()}, api(), confirm: confirmation(params))
+          Actions.run(name, %{task: task, client: GitHub.client()}, api(),
+            confirm: confirmation(params)
+          )
 
         _ ->
           {:error, :not_found}

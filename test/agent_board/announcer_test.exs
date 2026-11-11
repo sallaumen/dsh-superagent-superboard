@@ -128,6 +128,18 @@ defmodule AgentBoard.AnnouncerTest do
     assert Announcer.board_changes(old, new, nil, nil, attention: false) == ["Comecei A."]
   end
 
+  test "a call for attention is told apart from the other news" do
+    old = board([task(1, "A", :queued), task(2, "B", :running)])
+
+    assert Announcer.attention?(old, board([task(1, "A", :running), task(2, "B", :blocked)]))
+    refute Announcer.attention?(old, board([task(1, "A", :running), task(2, "B", :running)]))
+
+    stalled = %{kind: :stalled, key: "b", title: "B"}
+    assert Announcer.attention?(old, old, {[], [stalled]})
+    refute Announcer.attention?(old, old, {[stalled], [stalled]})
+    refute Announcer.attention?(old, old, nil)
+  end
+
   test "a task that appears is not announced" do
     assert Announcer.board_changes(board([]), board([task(1, "Ship it", :queued)]), nil, nil) ==
              []
