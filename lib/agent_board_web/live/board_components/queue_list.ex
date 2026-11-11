@@ -13,10 +13,10 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
 
   def queue_list(assigns) do
     ~H"""
-    <section id="sec-queue" aria-labelledby="sec-queue-title">
+    <section id="sec-queue" aria-labelledby="sec-queue-title" phx-hook="ValueChange">
       <div class="ab-sec__head">
         <h2 id="sec-queue-title">{gettext("Queue")}</h2>
-        <span class="ab-sec__count">
+        <span class="ab-sec__count" data-key="queue" data-value={@queue.total}>
           {Time.frozen_count(@queue.total, @frozen)}
           <span :if={@queue.filter != :all} class="ab-meta">
             {gettext("of %{total}", total: Time.frozen_count(@queue.counts.all, @frozen))}

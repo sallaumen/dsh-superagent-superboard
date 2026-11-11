@@ -24,7 +24,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
       id="sec-flow"
       class="ab-flow"
       aria-labelledby="sec-flow-title"
-      phx-hook="Throughput"
+      phx-hook="ValueChange"
       data-computed-at={DateTime.to_iso8601(@flow.computed_at)}
     >
       <div class="ab-sec__head">

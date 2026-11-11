@@ -273,6 +273,48 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, ~s(#board-stage[data-motion-scope="#{other.id}"]))
   end
 
+  # ValueChange tints a count only when its data-value differs from the last
+  # render: the values must follow the data, and the hook must be on the lanes
+  # and on the two inbox badges.
+  test "lane counts and inbox badges carry the value the motion compares", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "counts")
+
+    queue = fn number ->
+      Repo.insert!(
+        Task.changeset(%Task{}, %{
+          repository_id: repo.id,
+          kind: "issue",
+          number: number,
+          title: "Counted #{number}",
+          state: "queued"
+        })
+      )
+    end
+
+    queue.(9)
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/counts")
+
+    for lane <- ~w(sec-now sec-needs sec-queue) do
+      assert has_element?(view, ~s(##{lane}[phx-hook="ValueChange"] .ab-sec__count[data-key]))
+    end
+
+    assert has_element?(
+             view,
+             ~s(#message-inbox-summary[phx-hook="ValueChange"][data-key="unread"])
+           )
+
+    assert has_element?(
+             view,
+             ~s(#attention-inbox-summary[phx-hook="ValueChange"][data-key="attention"])
+           )
+
+    assert has_element?(view, ~s(#sec-queue .ab-sec__count[data-value="1"]))
+
+    queue.(10)
+    send(view.pid, :board_updated)
+    assert has_element?(view, ~s(#sec-queue .ab-sec__count[data-value="2"]))
+  end
+
   test "the merge log links to the full history only when there is one", %{conn: conn} do
     {:ok, repo} = Board.add_repository("fixture", "empty-work")
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/empty-work")
