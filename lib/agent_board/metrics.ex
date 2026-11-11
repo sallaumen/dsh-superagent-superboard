@@ -25,16 +25,16 @@ defmodule AgentBoard.Metrics do
   @type bucket :: %{from: DateTime.t(), to: DateTime.t()}
 
   @doc """
-  The rate tiles, in display order: the key, the label and the observation
-  the tile counts. Documented, with each source, in docs/maintainer-contract.md.
+  The rate tiles, in display order: the key and the observation the tile
+  counts; the component translates the label by key. Documented, with each source, in docs/maintainer-contract.md.
   """
   def rate_keys,
     do: [
-      {"done", "Concluídas", :done},
-      {"opened", "Issues abertas", :opened},
-      {"merged", "PRs mesclados", :merged},
-      {"commits", "Commits", :commits},
-      {"tickets", "Tickets encerrados", :tickets}
+      {"done", :done},
+      {"opened", :opened},
+      {"merged", :merged},
+      {"commits", :commits},
+      {"tickets", :tickets}
     ]
 
   @doc """
@@ -48,8 +48,8 @@ defmodule AgentBoard.Metrics do
     buckets = hour_buckets(now, offset)
 
     rates =
-      Enum.map(rate_keys(), fn {key, label, field} ->
-        rate_tile(key, label, Map.get(observations, field, {:unknown, :missing}), now, buckets)
+      Enum.map(rate_keys(), fn {key, field} ->
+        rate_tile(key, Map.get(observations, field, {:unknown, :missing}), now, buckets)
       end)
 
     %{
@@ -124,7 +124,7 @@ defmodule AgentBoard.Metrics do
   end
 
   @doc "A rate tile: the last hour, the hour before, 24 h, 7 d and the sparkline."
-  def rate_tile(key, label, {:ok, timestamps}, now, buckets) do
+  def rate_tile(key, {:ok, timestamps}, now, buckets) do
     hour = within(timestamps, now, @hour)
     previous = within(timestamps, now, @hour, @hour)
     day = within(timestamps, now, @day)
@@ -132,7 +132,6 @@ defmodule AgentBoard.Metrics do
 
     %{
       key: key,
-      label: label,
       kind: :rate,
       status: :measured,
       reason: nil,
@@ -147,10 +146,9 @@ defmodule AgentBoard.Metrics do
     }
   end
 
-  def rate_tile(key, label, {:unknown, reason}, _now, _buckets) do
+  def rate_tile(key, {:unknown, reason}, _now, _buckets) do
     %{
       key: key,
-      label: label,
       kind: :rate,
       status: :unknown,
       reason: reason,
@@ -185,7 +183,6 @@ defmodule AgentBoard.Metrics do
 
     %{
       key: "queue",
-      label: "Fila",
       kind: :depth,
       status: :measured,
       reason: nil,
@@ -206,7 +203,6 @@ defmodule AgentBoard.Metrics do
   def cycle_tile(cycles, now) do
     %{
       key: "cycle",
-      label: "Ciclo",
       kind: :cycle,
       status: :measured,
       reason: nil,
@@ -248,7 +244,6 @@ defmodule AgentBoard.Metrics do
   def load_tile({:ok, %{running: running, queued: queued, max_workers: max}}) do
     %{
       key: "load",
-      label: "Paralelismo",
       kind: :load,
       status: :measured,
       reason: nil,
@@ -261,7 +256,6 @@ defmodule AgentBoard.Metrics do
   def load_tile({:error, reason}) do
     %{
       key: "load",
-      label: "Paralelismo",
       kind: :load,
       status: :unknown,
       reason: reason,

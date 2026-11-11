@@ -6,7 +6,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
+  alias AgentBoard.ElevenLabs.Account
   alias AgentBoardWeb.BoardComponents.Settings.{Activity, Execution, Projects}
+  alias AgentBoardWeb.BoardComponents.VoiceActivityFeed
   alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
@@ -230,6 +232,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                   "How you talk to the board, when it answers aloud and the summary of the day."
                 )}
               </p>
+              <p :if={plan = plan_line(@tz_offset)} id="voice-plan" class="settings-pane__intro">
+                ElevenLabs · {plan}
+              </p>
             </div>
             <button
               id="speak-status"
@@ -333,6 +338,11 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
     </div>
     """
   end
+
+  # The ElevenLabs plan as last read (`Account`): what this period used, when
+  # it renews, or that the computer voice speaks. Nothing before a first read.
+  defp plan_line(offset),
+    do: VoiceActivityFeed.account(Account.snapshot(), DateTime.utc_now(), offset)
 
   defp sections do
     [

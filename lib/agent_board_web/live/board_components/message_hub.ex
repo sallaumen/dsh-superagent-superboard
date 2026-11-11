@@ -6,6 +6,11 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
 
   attr :messages, :list, default: []
   attr :alerts, :list, default: []
+
+  attr :providers, :list,
+    default: [],
+    doc: "providers that cannot serve now (`Inbox.providers/1`)"
+
   attr :seen, :map, default: %{}
   attr :filter, :string, default: "all"
   attr :notice, :string, default: nil
@@ -17,6 +22,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
     assigns =
       assigns
       |> assign(:unread, length(unread_messages))
+      |> assign(:open_count, length(assigns.alerts) + length(assigns.providers))
       |> assign(
         :visible_messages,
         if(assigns.filter == "unread", do: unread_messages, else: assigns.messages)
@@ -133,15 +139,15 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
       </details>
 
       <details id="attention-inbox" class="ab-hub-menu" data-board-menu phx-hook="BoardMenu">
-        <summary aria-label={alert_label(length(@alerts))} title={gettext("General notifications")}>
+        <summary aria-label={alert_label(@open_count)} title={gettext("General notifications")}>
           <.icon name="hero-bell" class="size-5" />
           <span class="ab-hub-menu__name">{gettext("Attention")}</span>
           <span
-            :if={@alerts != []}
+            :if={@open_count > 0}
             class="ab-hub-menu__count ab-hub-menu__count--attention"
             aria-hidden="true"
           >
-            {count(length(@alerts))}
+            {count(@open_count)}
           </span>
         </summary>
         <div class="ab-hub-menu__popover">
@@ -151,10 +157,27 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
               <p>{gettext("Open items from every project")}</p>
             </div>
           </header>
-          <p :if={@alerts == []} class="ab-hub-menu__empty">
+          <p :if={@open_count == 0} class="ab-hub-menu__empty">
             {gettext("Nothing is waiting for you now.")}
           </p>
-          <ol :if={@alerts != []} class="ab-hub-menu__list">
+          <ol :if={@open_count > 0} class="ab-hub-menu__list">
+            <li :for={item <- @providers} id={"attention-#{item.key}"}>
+              <button
+                type="button"
+                class="ab-hub-item"
+                phx-click="show_panel"
+                phx-value-panel="settings"
+                phx-value-section={item.section}
+                data-board-menu-link
+              >
+                <span class="ab-hub-item__meta"><span>{pgettext("attention kind", "Provider")}</span></span>
+                <strong>{item.title}</strong>
+                <span class="ab-hub-item__detail">{item.detail}</span>
+                <span class="ab-hub-item__action">
+                  {gettext("Open settings")} <span aria-hidden="true">→</span>
+                </span>
+              </button>
+            </li>
             <li :for={item <- @alerts}>
               <button
                 type="button"

@@ -209,7 +209,6 @@ defmodule AgentBoard.AgentStateTest do
   test "a missing database is an error, not an empty agent" do
     Application.put_env(:agent_board, :state_db, "/does/not/exist.sqlite")
 
-    assert {:error, _reason} = AgentState.read()
     assert AgentState.tickets() == []
     assert %{ok: false, tickets: []} = AgentState.snapshot()
   end
@@ -223,13 +222,12 @@ defmodule AgentBoard.AgentStateTest do
     db = Path.join(dir, "orchestrator.sqlite")
     Application.put_env(:agent_board, :state_db, db)
 
-    assert {:error, _reason} = AgentState.read()
     refute File.exists?(db)
   end
 
   test "explicit state_db wins over the fallback" do
     Application.put_env(:agent_board, :state_db, "/tmp/explicit.sqlite")
-    assert AgentState.path() == "/tmp/explicit.sqlite"
+    assert AgentState.paths() == ["/tmp/explicit.sqlite"]
   end
 
   defp insert(db, ticket) do

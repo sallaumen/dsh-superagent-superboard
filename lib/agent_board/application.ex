@@ -24,6 +24,7 @@ defmodule AgentBoard.Application do
       {Task.Supervisor, name: AgentBoard.System.TaskSupervisor},
       AgentBoard.Superagents.Ticker,
       AgentBoard.ElevenLabs.SpeechCache,
+      AgentBoard.ElevenLabs.Account,
       {DNSCluster, query: Application.get_env(:agent_board, :dns_cluster_query) || :ignore},
       AgentBoard.Voice.Activity,
       # Start a worker by calling: AgentBoard.Worker.start_link(arg)

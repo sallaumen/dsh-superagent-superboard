@@ -93,6 +93,14 @@ export const VoicePlayer = {
       if (generation !== this.generation) return
       clearInterval(this.endWatch)
       this.active = false
+      // Spent credits, a refused key or a dropped connection: the reply is
+      // still heard, in the computer's voice, instead of silence.
+      if (text) {
+        voiceState("error", "A voz da ElevenLabs falhou",
+          "Usando a voz do computador. Confira os créditos e a chave da ElevenLabs.", "elevenlabs")
+        window.dispatchEvent(new CustomEvent("phx:speak", {detail: {text, listen, lang: this.el.dataset.lang}}))
+        return
+      }
       voiceState("error", "A voz não tocou",
         "Confira a chave e o limite da ElevenLabs, ou tente de novo.", "elevenlabs")
     }

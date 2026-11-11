@@ -34,8 +34,11 @@ if [[ -n "$matches" ]]; then
   done <<<"$matches"
 fi
 
+# 4. Os testes de JS (node:test). Glob sem aspas: `node --test` recusa um diretório.
+node --test test/assets/*.mjs || fail "testes de JS (test/assets) falharam"
+
 if ((errors > 0)); then
   echo "check_assets: $errors problema(s)." >&2
   exit 1
 fi
-echo "check_assets: OK (entradas, pipeline tailwind e JS sem debug)."
+echo "check_assets: OK (entradas, pipeline tailwind, JS sem debug e testes de JS)."

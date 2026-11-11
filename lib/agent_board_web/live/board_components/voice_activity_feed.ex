@@ -10,20 +10,30 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
   use Phoenix.Component
   use Gettext, backend: AgentBoardWeb.Gettext
 
-  alias AgentBoard.ElevenLabs.Usage
+  alias AgentBoard.ElevenLabs.{Account, Usage}
 
   attr :events, :list, required: true
   attr :tz_offset, :integer, default: 0
 
   def feed(assigns) do
-    assigns = assign(assigns, usage: Usage.today(), cap: Usage.cap())
+    now = DateTime.utc_now()
+
+    assigns =
+      assign(assigns,
+        usage: Usage.today(),
+        cap: Usage.cap(),
+        account: account(Account.snapshot(), now, assigns.tz_offset)
+      )
 
     ~H"""
     <details id="voice-activity" class="voice-activity" open={has_problem?(@events)}>
       <summary>
         <span class="voice-activity-title">{gettext("Voice activity")}</span>
         <span class="voice-activity-summary">
-          {summary(@events)}<span id="voice-usage-today"> · {usage(@usage, @cap)}</span>
+          {summary(@events)}<span id="voice-usage-today"> · {usage(@usage, @cap)}</span><span
+            :if={@account}
+            id="voice-account"
+          > · {@account}</span>
         </span>
       </summary>
       <p :if={@events == []} class="voice-activity-empty">
@@ -86,6 +96,57 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
     ]
     |> Enum.filter(& &1)
     |> Enum.join(" · ")
+  end
+
+  @doc """
+  The ElevenLabs plan in words, from `Account.snapshot/0`: what this period
+  used and when it renews, or that the computer voice speaks because it is
+  spent. Nil before the account was ever read.
+  """
+  @spec account(Account.t(), DateTime.t(), integer()) :: String.t() | nil
+  def account(%{subscription: %{} = sub} = state, now, offset) do
+    cond do
+      Account.plan_spent?(state, now) ->
+        gettext("plan spent until %{date}: the computer voice speaks",
+          date: day(sub.resets_at, offset)
+        )
+
+      refused?(state, now) ->
+        refused_text(state, offset)
+
+      sub.resets_at ->
+        gettext("plan: %{used} of %{limit} characters this period, renews %{date}",
+          used: number(sub.used),
+          limit: number(sub.limit),
+          date: day(sub.resets_at, offset)
+        )
+
+      true ->
+        gettext("plan: %{used} of %{limit} characters this period",
+          used: number(sub.used),
+          limit: number(sub.limit)
+        )
+    end
+  end
+
+  def account(state, now, offset), do: if(refused?(state, now), do: refused_text(state, offset))
+
+  defp refused?(%{refused_until: %DateTime{} = until}, now),
+    do: DateTime.compare(now, until) == :lt
+
+  defp refused?(_state, _now), do: false
+
+  defp refused_text(state, offset),
+    do:
+      gettext("a speech was refused for credits: the computer voice speaks until %{time}",
+        time: AgentBoardWeb.Time.local_time(state.refused_until, offset)
+      )
+
+  defp day(nil, _offset), do: "—"
+
+  defp day(at, offset) do
+    date = AgentBoardWeb.Time.local_date(at, offset)
+    "#{date.day} #{AgentBoardWeb.Time.month(date)}"
   end
 
   defp minutes(seconds),

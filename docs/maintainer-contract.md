@@ -344,7 +344,11 @@ that already worked).
   checks the latest reply and accepts only the version shown when clicked, so
   an edited reply stays unread. The header controls remain reachable while
   scrolling the board. The separate bell counts active
-  blocked, question, review and long-running tasks across projects; it is a
+  blocked, question, review and long-running tasks across projects, and
+  first the providers that cannot serve now (`Inbox.providers/1`: the
+  ElevenLabs plan spent, the board's AI budget spent, a provider whose
+  newest board call of the last day was refused for limit or balance), each
+  opening the settings section that explains it; it is a
   pending-work count, not an unread count. Both lists follow the board's PubSub broadcasts.
   Before them sits DeepSeek's rate (`BoardComponents.PeakRate`): a flame
   while `Providers.peak?/1` holds, a moon while every token costs half, the
@@ -550,6 +554,16 @@ Agora and the detail):
   routing reads `over_cap?/0`. A ledger write that fails is logged and
   skipped, never a failed speech. `GET /api/voice/status` and the
   "Bastidores da voz" (Voice backstage) summary show today's totals.
+- **The ElevenLabs plan is read, not guessed** (`AgentBoard.ElevenLabs.Account`):
+  every 15 minutes the board reads `GET /v1/user/subscription`, which spends
+  no characters, and keeps the period's used and limit characters, the tier
+  and the renewal; the voice summary prints them. A speech refused with
+  `quota_exceeded` (ElevenLabs answers it as 400 or 401) is
+  `:quota_exceeded`, never "the key was rejected", and makes the paid voice
+  spent for an hour; a plan with no characters left is spent until it
+  renews. While spent the voice routing sends every utterance to the
+  computer voice, and a paid audio that fails in the browser is spoken
+  there with the same text instead of going silent (`account_test.exs`).
 - **Voice activity** (`AgentBoard.Voice.Activity`): each stage of a turn,
   every retry and every failure (server, or browser via
   `voice_client_error`) is one event: a log line `voice stage=… status=…`,
@@ -1027,12 +1041,14 @@ that watches one GitHub repository and picks the issues whose body mentions
 
 `AgentBoard.Routing.suggest/2` is pure: rules in the plan's order
 (`docs/research/alfred.md`, 3.5), no model, a suggestion and never a
-dispatch.
+dispatch. Its signals are read per repository (`Routing.Signals.read_for/1`):
+the pause, the load and an outage are those of the agent that serves the
+repository (`Orchestrator.client_for/1`), never another project's.
 
 | Rule | Signal | Effect |
 |---|---|---|
 | hard restriction | the runner's `setup.accounts.repository` (`Orchestrator.dispatch_state/1`) | the DeepSeek runner is out in any other repository the board read; when the orchestrator does not answer the repository is unknown and the runner stays the default, as before the router (a mention waits for it to come back, and does nothing where it does not watch), with the reason said |
-| explicit choice | the owner named an executor | decides, unless the restriction rules it out; then the reason says so. A request that reaches the write door with its executor already set (the blocker task, a confirmed voice proposal) and ruled out is refused with that reason and opens nothing, never swapped for the suggestion; the composer's pick carries its own line and stays allowed and warned |
+| explicit choice | the owner named an executor | decides, unless the restriction rules it out; then the reason says so. A request that reaches the write door with its executor already set (the blocker task, a confirmed voice proposal) and ruled out is refused. The composer does not offer the runner where no agent watches the repository (`suggestion.unwatched`): the option is off, and the note opens Settings → Projects to set one up; a pause still lets it be chosen, with the warning with that reason and opens nothing, never swapped for the suggestion; the composer's pick carries its own line and stays allowed and warned |
 | availability | the runner paused | out (the owner paused it); Claude Code and Codex have no reader yet: `:unknown`, which never rules them out and never counts as available |
 | budget, kind and size, history | the usage ledger (F1.3) | the expected cost (`Usage.Report.expected_costs/0`); the other signals do not order yet |
 | order | — | the runner first (the only executor the board dispatches), then `Executors.all/0` |
