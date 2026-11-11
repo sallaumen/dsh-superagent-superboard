@@ -959,7 +959,8 @@ flowchart LR
   "Reading additional input from stdin" when its stdin was a pipe, so the
   redirect is required and `runners_script_test.exs` covers it.
 - **A missing executor binary refuses before starting** (`:runner_missing`);
-  Configurações shows the two paths and whether they exist on this Mac.
+  Settings → AI and setup says whether each one is installed and signed in
+  (`AgentBoard.Setup`), and names the path when it is missing.
 - **A runner that cannot start fails the row**, never silently: the run
   directory keeps the error and the next tick records it. A Claude Code
   `is_error`/`error_max_budget_usd` answer is kept as the execution error,
