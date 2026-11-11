@@ -636,6 +636,7 @@ body.board-panel-open .ab-toast,
 
 .ab-need__why code,
 .ab-row__note code,
+.ab-pr__cost { color: var(--ink-muted); }
 .ab-pr__meta code {
   font-family: var(--font-mono);
   font-size: 12px;

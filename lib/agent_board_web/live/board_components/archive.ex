@@ -4,6 +4,13 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
 
   import AgentBoardWeb.BoardComponents.Presentation, only: [empty_copy: 1]
 
+  alias AgentBoard.Usage.TaskCosts
+
+  @impl true
+  def update(assigns, socket) do
+    {:ok, socket |> assign(assigns) |> assign(:costs, TaskCosts.for_pulls(assigns.items))}
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -41,6 +48,7 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
           id={"pull-#{item.id}"}
           item={item}
           ci={AgentBoard.Lanes.ci(item, @local_ci)}
+          cost={@costs[item.number]}
           state={:merged}
         />
         <p :if={@items == []} class="lane-empty">{empty_copy(:merged)}</p>
