@@ -278,7 +278,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "#composer-form button.ab-btn--primary[disabled]")
 
     send(model, :answer)
-    render_async(view)
+    render_async(view, 2_000)
 
     assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
     assert has_element?(view, "#composer-form button", "Pôr 2 na fila")
@@ -680,7 +680,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     end)
 
     view = open_composer(conn)
-    render_async(view)
+    render_async(view, 2_000)
     type(view, "Refazer o placar")
 
     assert has_element?(view, "label[for=composer-executor-claude].is-on", "sugerido")
@@ -739,7 +739,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
        %{conn: conn} do
     github()
     view = open_composer(conn)
-    render_async(view)
+    render_async(view, 2_000)
     type(view, "Corrigir o contador")
 
     assert has_element?(view, "label[for=composer-executor-dsh].is-on", "sugerido")
