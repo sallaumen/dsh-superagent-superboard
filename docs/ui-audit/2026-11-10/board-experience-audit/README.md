@@ -72,7 +72,7 @@ Class: **D** confirmed defect, **F** UX friction with observable impact, **S** p
 | 16 | F | Cycle tile at 1920 cuts its values with an ellipsis ("4 h 15…"); the source line of Parallelism too | first walk, real tickets; no capture kept | fixed (#546) |
 | 17 | S | A 1280 px window (1920 at 150 %) gives `main` 976 px of content: one lane column 976 px wide. The cut is the content box, not the 1000 px of `main` | `board-1280-zoom150.png` | fixed: two lanes from a 1264 px window (#599, #600) |
 | 18 | S | A merged task's inspector still offers Perguntar, Parar and Arquivar | `after-inspector-cost-1920.png` | kept by the owner; the reply box says a message resumes the ticket (#548) |
-| 19 | S | History keeps the old look: spaced capitals in "PRS MESCLADOS", bars in the primary blue | `after-history-panel-1920.png` | fixed: no spaced capitals since P2 (#534); bars in ink, not the action blue (this PR) |
+| 19 | S | History keeps the old look: spaced capitals in "PRS MESCLADOS", bars in the primary blue | `after-history-panel-1920.png` | fixed: no spaced capitals since P2 (#534); bars in ink, not the action blue (#601) |
 | 20 | S | "Agente fora do ar" is the label and the title of the same card | `state-frozen-agent-offline-1920.png` | fixed (#598) |
 | 21 | S | Opening the inspector above 2000 px widens the rail from 224 to 240 px | `board.css` `@container board (min-width: 1880px)` | fixed (#546) |
 
