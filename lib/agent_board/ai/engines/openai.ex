@@ -120,7 +120,9 @@ defmodule AgentBoard.AI.Engines.OpenAI do
            request.provider,
            request.model,
            usage["prompt_tokens"] || 0,
-           usage["completion_tokens"] || 0
+           usage["completion_tokens"] || 0,
+           DateTime.utc_now(),
+           usage["prompt_cache_hit_tokens"] || 0
          ),
        model: body["model"] || request.model,
        engine: request.provider,

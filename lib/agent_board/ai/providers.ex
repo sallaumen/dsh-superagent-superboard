@@ -121,20 +121,41 @@ defmodule AgentBoard.AI.Providers do
 
   @doc """
   The cost of a call in microdollars, from the model's published price per
-  million tokens at the instant of the call. An unknown model or a provider
-  with no price table answers zero rather than guessing -- a wrong number in
-  the panel is worse than no number.
+  million tokens at the instant of the call. `cached_tokens` is the part of
+  the input the provider served from its cache, at the model's `:cache_read`
+  price; a model without one charges them as input. An unknown model or a
+  provider with no price table answers zero rather than guessing -- a wrong
+  number in the panel is worse than no number.
   """
-  @spec cost_micros(atom(), String.t() | nil, non_neg_integer(), non_neg_integer(), DateTime.t()) ::
+  @spec cost_micros(
+          atom(),
+          String.t() | nil,
+          non_neg_integer(),
+          non_neg_integer(),
+          DateTime.t(),
           non_neg_integer()
-  def cost_micros(provider, model, input_tokens, output_tokens, at \\ DateTime.utc_now()) do
+        ) ::
+          non_neg_integer()
+  def cost_micros(
+        provider,
+        model,
+        input_tokens,
+        output_tokens,
+        at \\ DateTime.utc_now(),
+        cached_tokens \\ 0
+      ) do
     with {:ok, %{models: models, prices: prices}} <- fetch(provider),
          {tier, ^model} <- Enum.find(models, fn {_tier, id} -> id == model end),
          %{input: input_price, output: output_price} = price <- Map.get(prices, tier) do
       peak? = peak?(at)
-      input = at_full_rate(input_tokens, if(peak?, do: input_tokens, else: 0), price)
-      output = at_full_rate(output_tokens, if(peak?, do: output_tokens, else: 0), price)
-      round(input * input_price + output * output_price)
+      full_rate = fn tokens -> at_full_rate(tokens, if(peak?, do: tokens, else: 0), price) end
+      cached = min(cached_tokens, input_tokens)
+
+      round(
+        full_rate.(input_tokens - cached) * input_price +
+          full_rate.(cached) * Map.get(price, :cache_read, input_price) +
+          full_rate.(output_tokens) * output_price
+      )
     else
       _ -> 0
     end
