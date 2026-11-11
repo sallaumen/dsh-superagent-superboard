@@ -3,7 +3,8 @@ defmodule AgentBoard.AITest do
   use AgentBoard.DataCase, async: false
 
   alias AgentBoard.AI
-  alias AgentBoard.AI.{Cache, Call, Providers, Registry}
+  alias AgentBoard.AI.{Cache, Call, Providers, Registry, Request, Schema}
+  alias AgentBoard.AI.Engines.Rehearsal
   alias AgentBoard.Repo
 
   @stub AgentBoard.AITest.Stub
@@ -156,6 +157,16 @@ defmodule AgentBoard.AITest do
     do: assert_strict_objects(child)
 
   defp assert_strict_objects(_schema), do: :ok
+
+  test "rehearsal answers every registered call with a valid shape" do
+    for name <- Registry.names() do
+      {:ok, spec} = Registry.fetch(name)
+      request = Request.build(spec, %{}, :rehearsal, "rehearsal")
+
+      assert {:ok, result} = Rehearsal.run(request), "#{name} has no fixture"
+      assert Schema.valid?(spec.json_schema, result.json), "#{name}'s fixture fails its schema"
+    end
+  end
 
   test "DeepSeek's peak hours are its published ones, in UTC, on weekdays" do
     for {at, expected} <- [
