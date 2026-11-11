@@ -478,7 +478,7 @@ defmodule AgentBoard.ActionsTest do
       assert_received {:comment, path, body}
       assert path =~ "/issues/21/comments"
       assert body =~ "<!-- agent-board:private issue-21 -->"
-      assert body =~ PrivateContext.path(repo, "issue-21")
+      assert body =~ PrivateContext.shared_path(repo, "issue-21")
       refute body =~ "@sallaumen-agent"
       assert %Decision{action: "share_private_context", outcome: "ok"} = last()
     end

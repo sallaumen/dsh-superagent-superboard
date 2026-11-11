@@ -81,7 +81,15 @@ defmodule AgentBoardWeb.BoardLive do
   @max_resume_items 1000
   # What the composer gathers for the request's private context: never sent
   # to the model, written on this machine at the send (`PrivateContext`).
-  @empty_private %{note: "", folder: "", folders: [], folder_error: nil, meta: %{}, files: []}
+  @empty_private %{
+    dir: nil,
+    note: "",
+    folder: "",
+    folders: [],
+    folder_error: nil,
+    meta: %{},
+    files: []
+  }
   @version_check_interval 5 * 60 * 1000
 
   @impl true
@@ -197,7 +205,7 @@ defmodule AgentBoardWeb.BoardLive do
         composer_receipt: nil,
         composer_answers: "",
         composer_attachments: [],
-        composer_private: @empty_private,
+        composer_private: new_private(),
         composer_routing: nil,
         composer_routing_for: nil,
         composer_executor: nil,
@@ -4183,6 +4191,9 @@ defmodule AgentBoardWeb.BoardLive do
     )
   end
 
+  # A request's own folder, kept until it is sent: a retry reuses it.
+  defp new_private, do: %{@empty_private | dir: PrivateContext.new_request_dir()}
+
   # Only what holds something: an empty context makes no folder and no line.
   defp private_payload(socket) do
     private = socket.assigns.composer_private
@@ -4191,7 +4202,7 @@ defmodule AgentBoardWeb.BoardLive do
       nil
     else
       %{
-        dir: PrivateContext.request_dir(socket.assigns.repo, socket.assigns.composer_text),
+        dir: private.dir,
         note: private.note,
         files: private.files,
         folders: Enum.map(private.folders, & &1.path)
@@ -4283,7 +4294,7 @@ defmodule AgentBoardWeb.BoardLive do
       composer_receipt: %{items: items},
       composer_retry: if(failed > 0, do: {:enqueue, requests}),
       composer_attachments: if(failed > 0, do: socket.assigns.composer_attachments, else: []),
-      composer_private: if(failed > 0, do: socket.assigns.composer_private, else: @empty_private)
+      composer_private: if(failed > 0, do: socket.assigns.composer_private, else: new_private())
     )
     |> load(socket.assigns.repo)
     |> flash_receipt(items, failed)
@@ -4410,7 +4421,7 @@ defmodule AgentBoardWeb.BoardLive do
       composer_receipt: nil,
       composer_answers: "",
       composer_attachments: [],
-      composer_private: @empty_private,
+      composer_private: new_private(),
       intake: nil,
       composer_executor_touched: false,
       composer_executor:

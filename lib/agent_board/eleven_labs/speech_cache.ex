@@ -187,10 +187,18 @@ defmodule AgentBoard.ElevenLabs.SpeechCache do
 
   defp do_await(key, deadline) do
     cond do
-      match?({:ok, _}, memory(key)) -> memory(key)
-      :ets.lookup(@table, {:inflight, key}) == [] -> :gone
-      now() >= deadline -> :timeout
-      true -> Process.sleep(@poll_ms) && do_await(key, deadline)
+      match?({:ok, _}, memory(key)) ->
+        memory(key)
+
+      :ets.lookup(@table, {:inflight, key}) == [] ->
+        :gone
+
+      now() >= deadline ->
+        :timeout
+
+      true ->
+        Process.sleep(@poll_ms)
+        do_await(key, deadline)
     end
   end
 

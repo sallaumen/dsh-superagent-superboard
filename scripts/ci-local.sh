@@ -32,12 +32,13 @@ require_mix() {
 
 run_backend() {
   CURRENT="backend"
-  echo "== backend: mix gate + sobelow =="
+  echo "== backend: mix gate + sobelow + dialyzer =="
   require_mix
   require "Postgres não responde em 127.0.0.1:5434 (user/password \"board\")" \
     pg_isready -h 127.0.0.1 -p 5434 -q
   MIX_ENV="test" mix gate
   MIX_ENV="test" mix sobelow --exit
+  MIX_ENV="test" mix dialyzer
 }
 
 run_frontend() {

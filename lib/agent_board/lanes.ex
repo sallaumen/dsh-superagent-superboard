@@ -497,7 +497,6 @@ defmodule AgentBoard.Lanes do
   defp action_label(:stalled), do: gettext("View details")
   defp action_label(:unanswered), do: gettext("View details")
   defp action_label(:slow), do: gettext("View details")
-  defp action_label(:cifail), do: gettext("View failure")
 
   # A silent run blocks the whole queue while there is one worker: it comes
   # right after a block, before the work that only waits for the owner.
