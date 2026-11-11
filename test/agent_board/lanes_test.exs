@@ -436,7 +436,12 @@ defmodule AgentBoard.LanesTest do
       assert [down, %{number: 64, kind: :review}] =
                Lanes.needs(repo, board, now: now, agent: :down)
 
-      assert %{kind: :agent_down, title: "Agente fora do ar", number: nil, waiting: 2} = down
+      assert %{
+               kind: :agent_down,
+               title: "Nenhuma tarefa nova começa até ele voltar",
+               number: nil,
+               waiting: 2
+             } = down
 
       assert down.why ==
                "**O orquestrador não responde.** 2 tarefas esperam ele voltar; as falhas de rede voltam a ser tentadas sozinhas."
@@ -462,7 +467,7 @@ defmodule AgentBoard.LanesTest do
     assert [down, %{kind: :review, actions: [%{label: "Review"}]}] =
              Lanes.needs(repo, board, now: now, agent: :down)
 
-    assert down.title == "Agent offline"
+    assert down.title == "No new task starts until it is back"
 
     assert down.why ==
              "**The orchestrator is not responding.** 1 task waits for it to come back; network failures are retried on their own."
