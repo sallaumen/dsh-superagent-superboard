@@ -138,6 +138,8 @@ defmodule AgentBoardWeb.BoardNavigation do
   # Settings → Costs: the page and the window, checked by the section itself.
   defp costs_params(params) do
     %{
+      source: params["source"],
+      project: params["project"],
       page: params["costs"],
       days:
         case Integer.parse(params["days"] || "") do

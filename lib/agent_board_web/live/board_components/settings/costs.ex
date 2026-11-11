@@ -4,9 +4,10 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   in its own currency and class (`AgentBoard.Usage.Overview`), never summed
   across currencies. A missing price is "?" or a minimum ("≥"), never zero.
 
-  The page and the window of UTC days live in the URL (`costs`, `days`), so a
-  reload or a shared link reopens the same view. Data is read when the
-  section opens and when the page or the window changes; nothing polls.
+  The page, the window of UTC days and the Agents filters live in the URL
+  (`costs`, `days`, `source`, `project`), so a reload or a shared link reopens
+  the same view. Data is read when the section opens and when the page or the
+  window changes; a filter only narrows what was read; nothing polls.
   """
   use AgentBoardWeb, :live_component
 
@@ -15,9 +16,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   alias AgentBoard.Usage.Overview
   alias AgentBoardWeb.{BoardNavigation, FailureText, Numbers, Time}
 
-  @pages ~w(summary calls)
+  @pages ~w(summary agents calls)
   @days [7, 30, 90]
+  @sources ~w(all dsh claude_code codex)
   @recent_calls 50
+  @shown_runs 100
 
   @doc "The pages this section has, in order."
   def pages, do: @pages
@@ -32,7 +35,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   attr :tz_offset, :integer, default: 0
 
   @impl true
-  def mount(socket), do: {:ok, assign(socket, overview: nil, calls: nil, loaded: nil)}
+  def mount(socket),
+    do: {:ok, assign(socket, overview: nil, executions: nil, calls: nil, loaded: nil)}
 
   @impl true
   def update(assigns, socket) do
@@ -40,11 +44,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
     params = socket.assigns.params
     page = if params[:page] in @pages, do: params[:page], else: "summary"
     days = if params[:days] in @days, do: params[:days], else: 30
-    socket = assign(socket, page: page, days: days)
+    source = if params[:source] in @sources, do: params[:source], else: "all"
+    project = if is_binary(params[:project]), do: params[:project], else: "all"
+    socket = assign(socket, page: page, days: days, source: source, project: project)
 
     # Read on opening and on a new page or window; a broadcast re-render of
-    # the open section keeps what it has.
-    key = {page, days}
+    # the open section keeps what it has. The calls page has no window.
+    key = if page == "calls", do: {page, nil}, else: {page, days}
 
     if socket.assigns.active and socket.assigns.loaded != key,
       do: {:ok, load(socket, key)},
@@ -54,6 +60,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   defp load(socket, {"summary", days} = key) do
     assign(socket,
       overview: Overview.build(days, tickets: socket.assigns.tickets),
+      loaded: key
+    )
+  end
+
+  defp load(socket, {"agents", days} = key) do
+    assign(socket,
+      executions: Overview.executions(days, tickets: socket.assigns.tickets),
       loaded: key
     )
   end
@@ -71,12 +84,37 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
         _ -> socket.assigns.days
       end
 
-    {:noreply, push_patch(socket, to: costs_path(socket.assigns.repo, page, days))}
+    filters = Map.take(socket.assigns, [:source, :project])
+    {:noreply, push_patch(socket, to: costs_path(socket.assigns.repo, page, days, filters))}
   end
 
-  @doc "The URL of a page and window of this section."
-  def costs_path(repo, page, days),
-    do: BoardNavigation.settings_path(repo, "costs", %{"costs" => page, "days" => days})
+  def handle_event("costs_filter", params, socket) do
+    filters = %{
+      source: if(params["source"] in @sources, do: params["source"], else: "all"),
+      project: if(is_binary(params["project"]), do: params["project"], else: "all")
+    }
+
+    {:noreply,
+     push_patch(socket,
+       to: costs_path(socket.assigns.repo, "agents", socket.assigns.days, filters)
+     )}
+  end
+
+  @doc "The URL of a page, its window and, on Agents, its filters."
+  def costs_path(repo, page, days, filters \\ %{}) do
+    query = %{"costs" => page, "days" => days}
+
+    query =
+      if page == "agents",
+        do:
+          filters
+          |> Enum.reject(fn {_key, value} -> value in [nil, "all"] end)
+          |> Map.new(fn {key, value} -> {Atom.to_string(key), value} end)
+          |> Map.merge(query),
+        else: query
+
+    BoardNavigation.settings_path(repo, "costs", query)
+  end
 
   @impl true
   def render(assigns) do
@@ -96,7 +134,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
           >{page_label(page)}</button>
         </div>
         <div
-          :if={@page == "summary"}
+          :if={@page != "calls"}
           class="ab-segmented ab-segmented--sm"
           role="group"
           aria-label={gettext("Window in UTC days")}
@@ -108,7 +146,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
             class="ab-segment"
             aria-pressed={to_string(@days == days)}
             phx-click="costs_view"
-            phx-value-page="summary"
+            phx-value-page={@page}
             phx-value-days={days}
             phx-target={@myself}
           >{gettext("%{count} days", count: days)}</button>
@@ -116,6 +154,14 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
       </div>
 
       <.summary :if={@page == "summary" and @overview} overview={@overview} tz_offset={@tz_offset} />
+      <.agents
+        :if={@page == "agents" and @executions}
+        executions={@executions}
+        source={@source}
+        project={@project}
+        days={@days}
+        myself={@myself}
+      />
       <.calls :if={@page == "calls" and @calls} calls={@calls} />
     </div>
     """
@@ -256,6 +302,122 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
         </p>
       </section>
     </div>
+    """
+  end
+
+  attr :executions, :list, required: true
+  attr :source, :string, required: true
+  attr :project, :string, required: true
+  attr :days, :integer, required: true
+  attr :myself, :any, required: true
+
+  defp agents(assigns) do
+    selected = Overview.select(assigns.executions, assigns.source, assigns.project)
+
+    assigns =
+      assign(assigns,
+        selected: Enum.take(selected, @shown_runs),
+        count: length(selected),
+        costs: Overview.costs_by_source(selected),
+        projects:
+          assigns.executions
+          |> Enum.map(& &1.project)
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
+          |> Enum.sort(),
+        sources: @sources
+      )
+
+    ~H"""
+    <form
+      id="costs-agents-filters"
+      class="ab-costs__filters"
+      phx-change="costs_filter"
+      phx-target={@myself}
+    >
+      <label>
+        <span>{gettext("Executor")}</span>
+        <select name="source">
+          <option :for={source <- @sources} value={source} selected={@source == source}>
+            {source_label(source)}
+          </option>
+        </select>
+      </label>
+      <label>
+        <span>{gettext("Project")}</span>
+        <select name="project">
+          <option value="all" selected={@project == "all"}>{gettext("All projects")}</option>
+          <option :for={name <- @projects} value={name} selected={@project == name}>{name}</option>
+          <option value="outside" selected={@project == "outside"}>
+            {gettext("Outside the board or without a project")}
+          </option>
+        </select>
+      </label>
+    </form>
+
+    <p id="costs-agents-total" class="ab-costs__scope">
+      {agents_total(@count, @costs, @days)}
+    </p>
+    <p :if={@count > length(@selected)} class="ab-meta">
+      {gettext("Showing the newest %{shown}.", shown: length(@selected))}
+    </p>
+    <p :if={@selected == []} class="ab-meta">{gettext("No execution matches these filters.")}</p>
+
+    <ol :if={@selected != []} id="costs-runs" class="ab-costs__runs">
+      <li :for={run <- @selected} id={"costs-run-#{run.source}-#{run.execution_id}"}>
+        <details class="ab-costs__run">
+          <summary>
+            <span class="ab-costs__run-source">{source_label(run.source)}</span>
+            <span class="ab-costs__run-where">{where(run)}</span>
+            <span class="ab-costs__run-num is-requests">{requests_text(run.requests)}</span>
+            <span class="ab-costs__run-num">{run_cost(run)}</span>
+            <time
+              :if={run.last_at}
+              class="ab-costs__run-when"
+              datetime={DateTime.to_iso8601(run.last_at)}
+              title={Calendar.strftime(run.last_at, "%Y-%m-%d %H:%M UTC")}
+            >{Time.ago(Time.age_seconds(run.last_at, DateTime.utc_now()))}</time>
+          </summary>
+          <dl class="ab-costs__facts ab-costs__run-facts">
+            <div>
+              <dt>{gettext("Input tokens")}</dt>
+              <dd>{Numbers.grouped(run.input_tokens)}</dd>
+            </div>
+            <div>
+              <dt>{gettext("Output tokens")}</dt>
+              <dd>{Numbers.grouped(run.output_tokens)}</dd>
+            </div>
+            <div>
+              <dt>{gettext("Cache read")}</dt>
+              <dd>{Numbers.grouped(run.cache_read_tokens)}</dd>
+            </div>
+            <div>
+              <dt>{gettext("Cache written")}</dt>
+              <dd>{Numbers.grouped(run.cache_write_tokens)}</dd>
+            </div>
+            <div>
+              <dt>{gettext("Models")}</dt>
+              <dd>{Enum.join(run.models, ", ") |> blank_dash()}</dd>
+            </div>
+            <div>
+              <dt>{gettext("Branch")}</dt>
+              <dd>{blank_dash(run.git_branch)}</dd>
+            </div>
+            <div>
+              <dt>{gettext("UTC days")}</dt>
+              <dd>{run.days}</dd>
+            </div>
+            <div>
+              <dt>{gettext("Execution")}</dt>
+              <dd class="ab-costs__run-id">{run.execution_id}</dd>
+            </div>
+          </dl>
+          <.link :if={run.task} patch={task_path(run.task)} class="ab-link">
+            {gettext("Open task #%{number}", number: run.task.number)}
+          </.link>
+        </details>
+      </li>
+    </ol>
     """
   end
 
@@ -551,7 +713,57 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   defp peak_text(nil), do: nil
 
   defp page_label("summary"), do: gettext("Summary")
+  defp page_label("agents"), do: gettext("Agents")
   defp page_label("calls"), do: gettext("Board AI calls")
+
+  defp source_label("all"), do: gettext("All executors")
+  defp source_label("dsh"), do: "DeepSeek"
+  defp source_label("claude_code"), do: "Claude Code"
+  defp source_label("codex"), do: "Codex"
+  defp source_label(source), do: source
+
+  defp where(%{task: %{number: number, title: title}}), do: "##{number} #{title}"
+  defp where(%{project: project}) when is_binary(project), do: project
+
+  defp where(%{outside: outside}) when is_binary(outside),
+    do: gettext("outside the board · %{name}", name: outside)
+
+  defp where(_run), do: gettext("without a project")
+
+  defp requests_text(count),
+    do: ngettext("%{n} request", "%{n} requests", count, n: Numbers.grouped(count))
+
+  # Codex has no US$: its currency is the weekly quota (see the summary).
+  defp run_cost(%{source: "codex"}), do: gettext("quota")
+
+  defp run_cost(%{source: "claude_code", cost: cost}),
+    do: cost_value(cost) <> " " <> gettext("list")
+
+  defp run_cost(%{cost: cost}), do: cost_value(cost)
+
+  defp agents_total(count, costs, days) do
+    parts =
+      [
+        ngettext(
+          "%{count} execution in %{days} days",
+          "%{count} executions in %{days} days",
+          count,
+          days: days
+        )
+      ] ++
+        for {source, cost} <- Enum.sort(costs) do
+          label = source_label(source)
+
+          if source == "claude_code",
+            do: "#{label} #{cost_value(cost)} " <> gettext("list"),
+            else: "#{label} #{cost_value(cost)}"
+        end
+
+    Enum.join(parts, " · ")
+  end
+
+  defp blank_dash(value) when value in [nil, ""], do: "—"
+  defp blank_dash(value), do: value
 
   defp task_path(task) do
     "/?" <>

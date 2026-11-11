@@ -41,7 +41,7 @@ msgstr ""
 msgid "Daily summary"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:213
+#: lib/agent_board_web/live/board_components/settings/execution.ex:212
 #, elixir-autogen, elixir-format
 msgid "Executors"
 msgstr ""
@@ -152,6 +152,7 @@ msgstr ""
 msgid "Agent conversation"
 msgstr ""
 
+#: lib/agent_board_web/live/board_components/settings/costs.ex:716
 #: lib/agent_board_web/live/board_components/settings/projects.ex:421
 #, elixir-autogen, elixir-format
 msgid "Agents"
@@ -231,7 +232,7 @@ msgstr ""
 msgid "Check"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:398
+#: lib/agent_board_web/live/board_components/settings/execution.ex:397
 #, elixir-autogen, elixir-format
 msgid "Claude Code model"
 msgstr ""
@@ -256,7 +257,7 @@ msgstr ""
 msgid "Close the panel or layer, or stop the speech or answer"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:399
+#: lib/agent_board_web/live/board_components/settings/execution.ex:398
 #, elixir-autogen, elixir-format
 msgid "Codex model"
 msgstr ""
@@ -268,7 +269,7 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:813
 #: lib/agent_board_web/live/board_components/inspector.ex:933
-#: lib/agent_board_web/live/board_components/settings/costs.ex:282
+#: lib/agent_board_web/live/board_components/settings/costs.ex:444
 #, elixir-autogen, elixir-format
 msgid "Cost"
 msgstr ""
@@ -329,6 +330,7 @@ msgid "Estimated cost"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/executor_picker.ex:31
+#: lib/agent_board_web/live/board_components/settings/costs.ex:339
 #, elixir-autogen, elixir-format
 msgid "Executor"
 msgstr ""
@@ -396,7 +398,7 @@ msgstr ""
 msgid "Issue → PR"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:280
+#: lib/agent_board_web/live/board_components/settings/costs.ex:442
 #, elixir-autogen, elixir-format
 msgid "Latency"
 msgstr ""
@@ -437,8 +439,8 @@ msgid "Missing cost appears as —; the total is a minimum."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:809
-#: lib/agent_board_web/live/board_components/settings/execution.ex:334
-#: lib/agent_board_web/live/board_components/settings/execution.ex:363
+#: lib/agent_board_web/live/board_components/settings/execution.ex:333
+#: lib/agent_board_web/live/board_components/settings/execution.ex:362
 #, elixir-autogen, elixir-format
 msgid "Model"
 msgstr ""
@@ -483,7 +485,7 @@ msgstr ""
 msgid "No AI calls recorded for this task."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:266
+#: lib/agent_board_web/live/board_components/settings/costs.ex:428
 #, elixir-autogen, elixir-format
 msgid "No AI calls recorded yet."
 msgstr ""
@@ -639,6 +641,7 @@ msgstr ""
 msgid "Press space twice, speak and stop: the agent responds in voice. It remembers the conversation, checks the board, and creates tasks after you confirm."
 msgstr ""
 
+#: lib/agent_board_web/live/board_components/settings/costs.ex:347
 #: lib/agent_board_web/live/board_components/today.ex:159
 #, elixir-autogen, elixir-format
 msgid "Project"
@@ -748,7 +751,7 @@ msgstr ""
 msgid "Running now"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:280
+#: lib/agent_board_web/live/board_components/settings/execution.ex:279
 #, elixir-autogen, elixir-format
 msgid "Save limits"
 msgstr ""
@@ -1840,8 +1843,8 @@ msgid "Quota reserve must be between 0 and 100%."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/activity.ex:161
-#: lib/agent_board_web/live/board_components/settings/costs.ex:606
-#: lib/agent_board_web/live/board_components/settings/costs.ex:611
+#: lib/agent_board_web/live/board_components/settings/costs.ex:818
+#: lib/agent_board_web/live/board_components/settings/costs.ex:823
 #, elixir-autogen, elixir-format
 msgid "Reason not recorded"
 msgstr ""
@@ -2148,7 +2151,7 @@ msgstr ""
 msgid "no signal for %{duration}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:381
+#: lib/agent_board_web/live/board_components/settings/execution.ex:380
 #, elixir-autogen, elixir-format
 msgid "not configured"
 msgstr ""
@@ -2211,8 +2214,8 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/inspector.ex:1013
 #: lib/agent_board_web/live/board_components/inspector.ex:1014
 #: lib/agent_board_web/live/board_components/inspector.ex:1040
-#: lib/agent_board_web/live/board_components/settings/costs.ex:397
-#: lib/agent_board_web/live/board_components/settings/execution.ex:383
+#: lib/agent_board_web/live/board_components/settings/costs.ex:559
+#: lib/agent_board_web/live/board_components/settings/execution.ex:382
 #: lib/agent_board_web/live/board_components/today.ex:271
 #: lib/agent_board_web/live/board_components/today.ex:292
 #: lib/agent_board_web/live/board_components/today.ex:305
@@ -3263,7 +3266,7 @@ msgstr ""
 msgid "in progress"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:378
+#: lib/agent_board_web/live/board_components/settings/costs.ex:540
 #, elixir-autogen, elixir-format
 msgid "measured"
 msgstr ""
@@ -3285,7 +3288,7 @@ msgstr ""
 msgid "no reading"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:382
+#: lib/agent_board_web/live/board_components/settings/execution.ex:381
 #, elixir-autogen, elixir-format
 msgid "rehearsal · local fixtures"
 msgstr ""
@@ -3349,7 +3352,7 @@ msgstr ""
 msgid "By project"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:274
+#: lib/agent_board_web/live/board_components/settings/execution.ex:273
 #, elixir-autogen, elixir-format
 msgid "Discard"
 msgstr ""
@@ -3369,7 +3372,7 @@ msgstr ""
 msgid "Merged PRs · 7 days"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:398
+#: lib/agent_board_web/live/board_components/settings/costs.ex:560
 #, elixir-autogen, elixir-format
 msgid "No recent quota reading. The board does not treat it as zero."
 msgstr ""
@@ -3406,12 +3409,12 @@ msgstr ""
 msgid "Reading"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:279
+#: lib/agent_board_web/live/board_components/settings/execution.ex:278
 #, elixir-autogen, elixir-format
 msgid "Saving…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:359
+#: lib/agent_board_web/live/board_components/settings/execution.ex:358
 #, elixir-autogen, elixir-format
 msgid "Time per task · min"
 msgstr ""
@@ -3602,7 +3605,7 @@ msgid "Write in the field above; the agent replies and waits for your confirmati
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:1246
-#: lib/agent_board_web/live/board_components/settings/costs.ex:352
+#: lib/agent_board_web/live/board_components/settings/costs.ex:514
 #, elixir-autogen, elixir-format
 msgid "%{count} call"
 msgid_plural "%{count} calls"
@@ -4268,6 +4271,7 @@ msgstr ""
 msgid "Each project is a repository, its DeepSeek agent and who can call it."
 msgstr ""
 
+#: lib/agent_board_web/live/board_components/settings/costs.ex:411
 #: lib/agent_board_web/live/board_components/settings_menu.ex:241
 #: lib/agent_board_web/live/board_components/settings_menu.ex:410
 #, elixir-autogen, elixir-format
@@ -4557,107 +4561,107 @@ msgstr ""
 msgid "and"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:114
+#: lib/agent_board_web/live/board_components/settings/costs.ex:152
 #, elixir-autogen, elixir-format
 msgid "%{count} days"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:389
+#: lib/agent_board_web/live/board_components/settings/execution.ex:388
 #, elixir-autogen, elixir-format
 msgid "%{count} unsaved change: %{labels}"
 msgid_plural "%{count} unsaved changes: %{labels}"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:279
+#: lib/agent_board_web/live/board_components/settings/costs.ex:441
 #, elixir-autogen, elixir-format
 msgid "Function"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:283
+#: lib/agent_board_web/live/board_components/settings/execution.ex:282
 #, elixir-autogen, elixir-format
 msgid "Limits saved."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:394
+#: lib/agent_board_web/live/board_components/settings/execution.ex:393
 #, elixir-autogen, elixir-format
 msgid "Monthly cap"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:321
+#: lib/agent_board_web/live/board_components/settings/execution.ex:320
 #, elixir-autogen, elixir-format
 msgid "Monthly cap · US$"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:341
+#: lib/agent_board_web/live/board_components/settings/execution.ex:340
 #, elixir-autogen, elixir-format
 msgid "No monthly cap: this month already adds up to %{amount} at list price. The caps use the same account."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:385
+#: lib/agent_board_web/live/board_components/settings/execution.ex:384
 #, elixir-autogen, elixir-format
 msgid "No unsaved changes"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:198
+#: lib/agent_board_web/live/board_components/settings/execution.ex:197
 #, elixir-autogen, elixir-format
 msgid "Off. When you turn it on, nothing new starts and running work finishes."
 msgstr ""
 
 #: lib/agent_board/setup.ex:207
-#: lib/agent_board_web/live/board_components/settings/execution.ex:315
+#: lib/agent_board_web/live/board_components/settings/execution.ex:314
 #, elixir-autogen, elixir-format
 msgid "Open Projects"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:194
-#: lib/agent_board_web/live/board_components/settings/execution.ex:206
+#: lib/agent_board_web/live/board_components/settings/execution.ex:193
+#: lib/agent_board_web/live/board_components/settings/execution.ex:205
 #, elixir-autogen, elixir-format
 msgid "Pause new dispatches"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:397
+#: lib/agent_board_web/live/board_components/settings/execution.ex:396
 #, elixir-autogen, elixir-format
 msgid "Quota reserve"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:355
+#: lib/agent_board_web/live/board_components/settings/execution.ex:354
 #, elixir-autogen, elixir-format
 msgid "Quota reserve · %"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:395
+#: lib/agent_board_web/live/board_components/settings/execution.ex:394
 #, elixir-autogen, elixir-format
 msgid "Task cap"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:330
+#: lib/agent_board_web/live/board_components/settings/execution.ex:329
 #, elixir-autogen, elixir-format
 msgid "Task cap · US$"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:305
+#: lib/agent_board_web/live/board_components/settings/execution.ex:304
 #, elixir-autogen, elixir-format
 msgid "The DeepSeek limits live in each project: how many agents and who may call them."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:276
-#: lib/agent_board_web/live/board_components/settings/execution.ex:241
+#: lib/agent_board_web/live/board_components/settings/costs.ex:438
+#: lib/agent_board_web/live/board_components/settings/execution.ex:240
 #, elixir-autogen, elixir-format
 msgid "The board's own AI calls"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:396
+#: lib/agent_board_web/live/board_components/settings/execution.ex:395
 #, elixir-autogen, elixir-format
 msgid "Time per task"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:281
+#: lib/agent_board_web/live/board_components/settings/costs.ex:443
 #, elixir-autogen, elixir-format
 msgid "Tokens"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:283
+#: lib/agent_board_web/live/board_components/settings/costs.ex:445
 #, elixir-autogen, elixir-format
 msgid "When"
 msgstr ""
@@ -4668,7 +4672,7 @@ msgstr ""
 msgid "and %{count} more"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:380
+#: lib/agent_board_web/live/board_components/settings/execution.ex:379
 #, elixir-autogen, elixir-format
 msgid "connection not verified"
 msgstr ""
@@ -4678,7 +4682,7 @@ msgstr ""
 msgid "monthly cap"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:325
+#: lib/agent_board_web/live/board_components/settings/execution.ex:324
 #, elixir-autogen, elixir-format
 msgid "no cap"
 msgstr ""
@@ -4693,7 +4697,7 @@ msgstr ""
 msgid "time per task"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:197
+#: lib/agent_board_web/live/board_components/settings/execution.ex:196
 #, elixir-autogen, elixir-format
 msgid "Paused. Nothing new starts and running work finishes."
 msgstr ""
@@ -6531,7 +6535,7 @@ msgid "This month's spend has reached the Claude Code ceiling"
 msgstr ""
 
 #: lib/agent_board/actions.ex:1147
-#: lib/agent_board_web/live/board_components/settings/execution.ex:348
+#: lib/agent_board_web/live/board_components/settings/execution.ex:347
 #, elixir-autogen, elixir-format
 msgid "This month's spend has a model without a price; the ceiling cannot be checked"
 msgstr ""
@@ -7745,7 +7749,7 @@ msgstr ""
 msgid "The service's credits are spent."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:462
+#: lib/agent_board_web/live/board_components/settings/costs.ex:624
 #, elixir-autogen, elixir-format
 msgid "a speech was refused for credits: the computer voice speaks until %{time}"
 msgstr ""
@@ -7755,17 +7759,17 @@ msgstr ""
 msgid "credits spent"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:435
+#: lib/agent_board_web/live/board_components/settings/costs.ex:597
 #, elixir-autogen, elixir-format
 msgid "plan spent until %{date}: the computer voice speaks"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:450
+#: lib/agent_board_web/live/board_components/settings/costs.ex:612
 #, elixir-autogen, elixir-format
 msgid "plan: %{used} of %{limit} characters this period"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:443
+#: lib/agent_board_web/live/board_components/settings/costs.ex:605
 #, elixir-autogen, elixir-format
 msgid "plan: %{used} of %{limit} characters this period, renews %{date}"
 msgstr ""
@@ -8186,27 +8190,27 @@ msgstr ""
 msgid "AI provider"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:414
+#: lib/agent_board_web/live/board_components/settings/execution.ex:413
 #, elixir-autogen, elixir-format
 msgid "No AI key: the board's own calls answer an error. Set one in .env.local; AI and setup says which."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:419
+#: lib/agent_board_web/live/board_components/settings/execution.ex:418
 #, elixir-autogen, elixir-format
 msgid "The board answers in rehearsal, from local fixtures: no key, no cost."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:425
+#: lib/agent_board_web/live/board_components/settings/execution.ex:424
 #, elixir-autogen, elixir-format
 msgid "The board uses %{provider} (%{model}) to answer, suggest unblocks and speak"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:437
+#: lib/agent_board_web/live/board_components/settings/execution.ex:436
 #, elixir-autogen, elixir-format
 msgid "%{others} if it fails"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:442
+#: lib/agent_board_web/live/board_components/settings/execution.ex:441
 #, elixir-autogen, elixir-format
 msgid "Costs are estimated by the model price."
 msgstr ""
@@ -8233,58 +8237,58 @@ msgstr ""
 msgid "Not checked"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:576
+#: lib/agent_board_web/live/board_components/settings/costs.ex:788
 #, elixir-autogen, elixir-format
 msgid "%{count} characters"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:546
+#: lib/agent_board_web/live/board_components/settings/costs.ex:708
 #, elixir-autogen, elixir-format
 msgid "%{count} execution"
 msgid_plural "%{count} executions"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:353
+#: lib/agent_board_web/live/board_components/settings/costs.ex:515
 #, elixir-autogen, elixir-format
 msgid "%{count} with an error"
 msgid_plural "%{count} with an error"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:521
+#: lib/agent_board_web/live/board_components/settings/costs.ex:683
 #, elixir-autogen, elixir-format
 msgid "%{date} UTC · agent %{agent} · board AI %{board}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:136
+#: lib/agent_board_web/live/board_components/settings/costs.ex:182
 #, elixir-autogen, elixir-format
 msgid "%{from} to %{to}, UTC days. Today is still running. Currencies are never added together."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:571
+#: lib/agent_board_web/live/board_components/settings/costs.ex:783
 #, elixir-autogen, elixir-format
 msgid "%{minutes} min"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:549
+#: lib/agent_board_web/live/board_components/settings/costs.ex:711
 #, elixir-autogen, elixir-format
 msgid "%{percent}% of it at the peak rate"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:181
-#: lib/agent_board_web/live/board_components/settings/costs.ex:329
+#: lib/agent_board_web/live/board_components/settings/costs.ex:227
+#: lib/agent_board_web/live/board_components/settings/costs.ex:491
 #, elixir-autogen, elixir-format
 msgid "Agent · DeepSeek"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:182
-#: lib/agent_board_web/live/board_components/settings/costs.ex:343
+#: lib/agent_board_web/live/board_components/settings/costs.ex:228
+#: lib/agent_board_web/live/board_components/settings/costs.ex:505
 #, elixir-autogen, elixir-format
 msgid "Board AI"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:554
+#: lib/agent_board_web/live/board_components/settings/costs.ex:717
 #, elixir-autogen, elixir-format
 msgid "Board AI calls"
 msgstr ""
@@ -8295,62 +8299,62 @@ msgstr ""
 msgid "Costs"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:86
+#: lib/agent_board_web/live/board_components/settings/costs.ex:124
 #, elixir-autogen, elixir-format
 msgid "Costs pages"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:250
+#: lib/agent_board_web/live/board_components/settings/costs.ex:296
 #, elixir-autogen, elixir-format
 msgid "Daily cap of the board"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:258
+#: lib/agent_board_web/live/board_components/settings/execution.ex:257
 #, elixir-autogen, elixir-format
 msgid "Each call, with its tokens and cost, is in Costs"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:255
+#: lib/agent_board_web/live/board_components/settings/costs.ex:301
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs sells characters, not dollars: the plan is the limit."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:211
+#: lib/agent_board_web/live/board_components/settings/costs.ex:257
 #, elixir-autogen, elixir-format
 msgid "Highest day: %{amount}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:219
+#: lib/agent_board_web/live/board_components/settings/costs.ex:265
 #, elixir-autogen, elixir-format
 msgid "No agent execution in these days is tied to a task."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:348
+#: lib/agent_board_web/live/board_components/settings/costs.ex:510
 #, elixir-autogen, elixir-format
 msgid "No call in these days."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:189
+#: lib/agent_board_web/live/board_components/settings/costs.ex:235
 #, elixir-autogen, elixir-format
 msgid "Nothing was spent in US$ in these days."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:238
+#: lib/agent_board_web/live/board_components/settings/costs.ex:284
 #, elixir-autogen, elixir-format
 msgid "Paid characters"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:242
+#: lib/agent_board_web/live/board_components/settings/costs.ex:288
 #, elixir-autogen, elixir-format
 msgid "Replies from the cache"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:553
+#: lib/agent_board_web/live/board_components/settings/costs.ex:715
 #, elixir-autogen, elixir-format
 msgid "Summary"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:217
+#: lib/agent_board_web/live/board_components/settings/costs.ex:263
 #, elixir-autogen, elixir-format
 msgid "Tasks that cost the most · DeepSeek"
 msgstr ""
@@ -8360,34 +8364,34 @@ msgstr ""
 msgid "The ElevenLabs plan and what the voice spent are in Costs"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:268
+#: lib/agent_board_web/live/board_components/settings/costs.ex:430
 #, elixir-autogen, elixir-format
 msgid "The last %{count} call of the board's own AI, newest first."
 msgid_plural "The last %{count} calls of the board's own AI, newest first."
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:422
+#: lib/agent_board_web/live/board_components/settings/costs.ex:584
 #, elixir-autogen, elixir-format
 msgid "The plan was not read yet."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:246
+#: lib/agent_board_web/live/board_components/settings/costs.ex:292
 #, elixir-autogen, elixir-format
 msgid "Transcribed audio"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:179
+#: lib/agent_board_web/live/board_components/settings/costs.ex:225
 #, elixir-autogen, elixir-format
 msgid "US$ per UTC day"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:496
+#: lib/agent_board_web/live/board_components/settings/costs.ex:658
 #, elixir-autogen, elixir-format
 msgid "US$ per UTC day in %{count} days: agent %{agent}, board AI %{board}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:235
+#: lib/agent_board_web/live/board_components/settings/costs.ex:281
 #, elixir-autogen, elixir-format
 msgid "Voice · ElevenLabs"
 msgstr ""
@@ -8397,77 +8401,77 @@ msgstr ""
 msgid "What the agent, the board's own AI and the voice spent, each in the currency it is charged in."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:221
+#: lib/agent_board_web/live/board_components/settings/execution.ex:220
 #, elixir-autogen, elixir-format
 msgid "What they spent is in Costs"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:102
+#: lib/agent_board_web/live/board_components/settings/costs.ex:140
 #, elixir-autogen, elixir-format
 msgid "Window in UTC days"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:368
+#: lib/agent_board_web/live/board_components/settings/costs.ex:530
 #, elixir-autogen, elixir-format
 msgid "You pay the Max plan, not this; its quota is not read."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:421
+#: lib/agent_board_web/live/board_components/settings/costs.ex:583
 #, elixir-autogen, elixir-format
 msgid "characters of the plan"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:543
+#: lib/agent_board_web/live/board_components/settings/costs.ex:705
 #, elixir-autogen, elixir-format
 msgid "did not run in these days"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:345
+#: lib/agent_board_web/live/board_components/settings/costs.ex:507
 #, elixir-autogen, elixir-format
 msgid "estimated at the price when it ran"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:331
+#: lib/agent_board_web/live/board_components/settings/costs.ex:493
 #, elixir-autogen, elixir-format
 msgid "estimated at the published price"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:367
+#: lib/agent_board_web/live/board_components/settings/costs.ex:529
 #, elixir-autogen, elixir-format
 msgid "list-price reference"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:409
+#: lib/agent_board_web/live/board_components/settings/costs.ex:571
 #, elixir-autogen, elixir-format
 msgid "measured · characters of the plan"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:573
+#: lib/agent_board_web/live/board_components/settings/costs.ex:785
 #, elixir-autogen, elixir-format
 msgid "none"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:386
+#: lib/agent_board_web/live/board_components/settings/costs.ex:548
 #, elixir-autogen, elixir-format
 msgid "of the ChatGPT plan's week"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:383
+#: lib/agent_board_web/live/board_components/settings/costs.ex:545
 #, elixir-autogen, elixir-format
 msgid "of the ChatGPT plan's week, renews %{date}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:147
+#: lib/agent_board_web/live/board_components/settings/costs.ex:193
 #, elixir-autogen, elixir-format
 msgid "Plans and quotas"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:146
+#: lib/agent_board_web/live/board_components/settings/costs.ex:192
 #, elixir-autogen, elixir-format
 msgid "US$ that leaves a balance"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/costs.ex:184
+#: lib/agent_board_web/live/board_components/settings/costs.ex:230
 #, elixir-autogen, elixir-format
 msgid "a price is missing: a minimum"
 msgstr ""
@@ -8476,3 +8480,103 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Claude Code and Codex run on this machine; DeepSeek runs through GitHub. Here are their caps and models."
 msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:747
+#, elixir-autogen, elixir-format
+msgid "%{count} execution in %{days} days"
+msgid_plural "%{count} executions in %{days} days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:719
+#, elixir-autogen, elixir-format
+msgid "All executors"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:349
+#, elixir-autogen, elixir-format
+msgid "All projects"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:403
+#, elixir-autogen, elixir-format
+msgid "Branch"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:391
+#, elixir-autogen, elixir-format
+msgid "Cache read"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:395
+#, elixir-autogen, elixir-format
+msgid "Cache written"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:383
+#, elixir-autogen, elixir-format
+msgid "Input tokens"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:399
+#, elixir-autogen, elixir-format
+msgid "Models"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:364
+#, elixir-autogen, elixir-format
+msgid "No execution matches these filters."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:416
+#, elixir-autogen, elixir-format
+msgid "Open task #%{number}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:387
+#, elixir-autogen, elixir-format
+msgid "Output tokens"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:352
+#, elixir-autogen, elixir-format
+msgid "Outside the board or without a project"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:362
+#, elixir-autogen, elixir-format
+msgid "Showing the newest %{shown}."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:407
+#, elixir-autogen, elixir-format
+msgid "UTC days"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:740
+#: lib/agent_board_web/live/board_components/settings/costs.ex:758
+#, elixir-autogen, elixir-format
+msgid "list"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:729
+#, elixir-autogen, elixir-format
+msgid "outside the board · %{name}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:737
+#, elixir-autogen, elixir-format
+msgid "quota"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:731
+#, elixir-autogen, elixir-format
+msgid "without a project"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/costs.ex:734
+#, elixir-autogen, elixir-format
+msgid "%{n} request"
+msgid_plural "%{n} requests"
+msgstr[0] ""
+msgstr[1] ""

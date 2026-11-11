@@ -50,6 +50,52 @@ defmodule AgentBoard.Usage.Overview do
   end
 
   @doc """
+  Every agent execution of the window, newest first, with the task it is tied
+  to (`task`: number, title, repository) and the project it belongs to
+  (`project`: the task's repository, else the session's).
+  """
+  @spec executions(pos_integer(), keyword()) :: [map()]
+  def executions(days, opts \\ []) do
+    rows = Report.executions(Report.since(days), Keyword.take(opts, [:tickets, :index]))
+    tasks = rows |> Enum.map(& &1.task_id) |> Enum.filter(&is_integer/1) |> tasks()
+
+    rows
+    |> Enum.map(fn execution ->
+      task = Map.get(tasks, execution.task_id)
+
+      # The same "owner/name" the session's repository is written in.
+      project = if task, do: "#{task.owner}/#{task.repository}", else: execution.repository
+      Map.merge(execution, %{task: task, project: project})
+    end)
+    |> Enum.sort_by(&if(&1.last_at, do: DateTime.to_unix(&1.last_at), else: 0), :desc)
+  end
+
+  @doc """
+  The executions an executor (`"all"` for any) and a project (`"all"`, a
+  repository name, or `"outside"` for sessions outside the board) select.
+  """
+  @spec select([map()], String.t(), String.t()) :: [map()]
+  def select(executions, source, project) do
+    Enum.filter(executions, fn execution ->
+      (source == "all" or execution.source == source) and
+        case project do
+          "all" -> true
+          "outside" -> is_nil(execution.project)
+          name -> execution.project == name
+        end
+    end)
+  end
+
+  @doc "The US$ of some executions, per source (each in its own class), never summed across."
+  @spec costs_by_source([map()]) :: %{optional(String.t()) => map() | nil}
+  def costs_by_source(executions) do
+    executions
+    |> Enum.filter(&(&1.source in Costs.usd_sources()))
+    |> Enum.group_by(& &1.source, & &1.cost)
+    |> Map.new(fn {source, costs} -> {source, total(costs)} end)
+  end
+
+  @doc """
   The sum of several costs: nil when none is priced, a minimum
   (`complete?: false`) when any is missing or incomplete.
   """
@@ -173,20 +219,25 @@ defmodule AgentBoard.Usage.Overview do
       |> Enum.sort_by(fn {_task_id, cost} -> cost.micros end, :desc)
       |> Enum.take(@top_tasks)
 
-    ids = Enum.map(by_task, &elem(&1, 0))
-
-    tasks =
-      Repo.all(
-        from t in Task,
-          join: r in assoc(t, :repository),
-          where: t.id in ^ids,
-          select: {t.id, %{title: t.title, number: t.number, repository: r.name, owner: r.owner}}
-      )
-      |> Map.new()
+    tasks = by_task |> Enum.map(&elem(&1, 0)) |> tasks()
 
     for {task_id, cost} <- by_task, task = tasks[task_id] do
       Map.merge(task, %{task_id: task_id, cost: cost})
     end
+  end
+
+  defp tasks([]), do: %{}
+
+  defp tasks(ids) do
+    Repo.all(
+      from t in Task,
+        join: r in assoc(t, :repository),
+        where: t.id in ^Enum.uniq(ids),
+        select:
+          {t.id,
+           %{task_id: t.id, title: t.title, number: t.number, repository: r.name, owner: r.owner}}
+    )
+    |> Map.new()
   end
 
   defp start(day), do: DateTime.new!(day, ~T[00:00:00], "Etc/UTC")
