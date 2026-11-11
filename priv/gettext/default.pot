@@ -8092,7 +8092,6 @@ msgid "model not read"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
-
 #: lib/agent_board/setup.ex:182
 #, elixir-autogen, elixir-format
 msgid "%{answered} of %{total} answer · %{model}"
@@ -8161,7 +8160,6 @@ msgid "If it fails: %{others}."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
-
 #: lib/agent_board/setup.ex:287
 #, elixir-autogen, elixir-format
 msgid "%{provider} answers (%{model})."
@@ -8178,7 +8176,6 @@ msgid "Create a key"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
-
 #: lib/agent_board/setup.ex:311
 #, elixir-autogen, elixir-format
 msgid "%{provider} did not answer."
@@ -8190,7 +8187,6 @@ msgid "ElevenLabs key set."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
-
 #: lib/agent_board/setup.ex:329
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs answers: %{used} of %{limit} characters used."
@@ -8212,7 +8208,6 @@ msgid "ElevenLabs refused the key: it expired or was revoked."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
-
 #: lib/agent_board/setup.ex:358
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs did not answer."
@@ -8381,6 +8376,4 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/settings/execution.ex
 #, elixir-autogen, elixir-format
 msgid "Costs are estimated by the model price."
-msgstr ""
-
 msgstr ""
