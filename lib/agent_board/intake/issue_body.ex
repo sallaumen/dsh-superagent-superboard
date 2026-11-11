@@ -59,6 +59,7 @@ defmodule AgentBoard.Intake.IssueBody do
   }
 
   alias AgentBoard.Board.{Attachments, PrivateContext}
+  alias AgentBoard.Executors
 
   @attachments_section ~r/^## (?:Anexos|Attachments)\n.*\n.*\n\n(?:- .*board-attachments.*\n)+\n?/m
 
@@ -104,7 +105,7 @@ defmodule AgentBoard.Intake.IssueBody do
   @spec release_comment(String.t() | nil, %{number: pos_integer(), title: String.t()}) ::
           String.t()
   def release_comment(language, %{number: number, title: title}),
-    do: "##{number} #{title}\n\n#{labels(language).release}\n\n@sallaumen-agent"
+    do: "##{number} #{title}\n\n#{labels(language).release}" <> Executors.mention_suffix()
 
   @doc "The body with its files at the top: seen on GitHub, fetchable by the agent."
   @spec with_attachments(String.t(), [map()], map(), String.t() | nil) :: String.t()

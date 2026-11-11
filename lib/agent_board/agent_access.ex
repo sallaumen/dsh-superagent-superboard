@@ -26,7 +26,7 @@ defmodule AgentBoard.AgentAccess do
   @type project :: map()
 
   @doc "The bot's GitHub account, the name a person writes to ask for work."
-  def bot_login, do: "sallaumen-agent"
+  def bot_login, do: Application.get_env(:agent_board, :agent_login, "sallaumen-agent")
 
   @doc "How many issues one confirmation may re-run."
   def rerun_limit, do: @rerun_limit

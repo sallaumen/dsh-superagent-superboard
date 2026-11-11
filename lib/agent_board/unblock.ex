@@ -8,7 +8,7 @@ defmodule AgentBoard.Unblock do
   cannot provide itself. Pure; the caller owns the write and the gate.
   """
 
-  alias AgentBoard.{Board, Workpad}
+  alias AgentBoard.{AgentAccess, Board, Workpad}
   alias AgentBoard.Board.{Repository, Task}
 
   @typedoc "The question and/or blockage the newest workpad states."
@@ -71,7 +71,7 @@ defmodule AgentBoard.Unblock do
     body = value(comment, :body)
 
     value(comment, :kind) == "user" and is_binary(body) and
-      String.contains?(body, "@sallaumen-agent")
+      String.contains?(body, "@" <> AgentAccess.bot_login())
   end
 
   defp comment_after?(%DateTime{}, _id, nil, _workpad_id), do: true

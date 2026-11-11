@@ -3906,7 +3906,7 @@ defmodule AgentBoardWeb.BoardLive do
 
       %{
         title: task.title,
-        body: IssueBody.render(task, spec) <> "\n\n@sallaumen-agent",
+        body: IssueBody.render(task, spec) <> Executors.mention_suffix(),
         key: Enum.at(keys, index),
         work_type: task.kind,
         size: task.size,
@@ -4025,7 +4025,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp single_requests(repo, text, title) do
     title = title || Titles.from_request(text)
-    body = text <> "\n\n@sallaumen-agent"
+    body = text <> Executors.mention_suffix()
 
     if title == "",
       do: [],

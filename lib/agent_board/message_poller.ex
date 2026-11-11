@@ -7,7 +7,7 @@ defmodule AgentBoard.MessagePoller do
   import Ecto.Query, warn: false
   require Logger
 
-  alias AgentBoard.{Board, GitHub, Repo}
+  alias AgentBoard.{AgentAccess, Board, GitHub, Repo}
   alias AgentBoard.Board.{Comment, Event, Repository, Task}
 
   @interval 30_000
@@ -179,7 +179,7 @@ defmodule AgentBoard.MessagePoller do
       )
       |> Map.new(fn {task_id, id, author, body} -> {{task_id, id}, {author, body}} end)
 
-    agent_login = Application.get_env(:agent_board, :agent_login, "sallaumen-agent")
+    agent_login = AgentAccess.bot_login()
 
     Enum.reduce(candidates, false, fn {task, comment}, changed? ->
       author = get_in(comment, ["user", "login"]) || "unknown"

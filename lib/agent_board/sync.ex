@@ -14,6 +14,7 @@ defmodule AgentBoard.Sync do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{
+    AgentAccess,
     AgentState,
     Attribution,
     Board,
@@ -285,7 +286,7 @@ defmodule AgentBoard.Sync do
   # -- the conversation -------------------------------------------------------
 
   defp sync_comments(repository, client) do
-    agent_login = Application.get_env(:agent_board, :agent_login, "sallaumen-agent")
+    agent_login = AgentAccess.bot_login()
 
     repository.id
     |> active_tasks()

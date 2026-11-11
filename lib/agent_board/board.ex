@@ -20,7 +20,7 @@ defmodule AgentBoard.Board do
     TaskDependency
   }
 
-  alias AgentBoard.{GitHub, Repo, Workpad}
+  alias AgentBoard.{Executors, GitHub, Repo, Workpad}
 
   @merged_page_size 50
   @task_page_size 50
@@ -586,7 +586,7 @@ defmodule AgentBoard.Board do
   def ask(task, body, client) do
     # The caller may hand us a bare task (a Repo.get); preload is idempotent.
     task = Repo.preload(task, :repository)
-    text = String.trim(body) <> "\n\n@sallaumen-agent"
+    text = String.trim(body) <> Executors.mention_suffix()
 
     placeholder =
       %Comment{}

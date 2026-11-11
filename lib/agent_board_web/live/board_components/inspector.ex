@@ -630,7 +630,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp clean_body(body) do
     body
     |> String.replace(~r/<!--.*?-->/s, "")
-    |> String.replace(~r/\s*@sallaumen-agent\s*$/i, "")
+    |> AgentBoard.Executors.strip_mention()
     |> String.trim()
   end
 
