@@ -194,7 +194,8 @@ defmodule AgentBoard.Orchestrator do
   The client of the agent that serves a repository (a struct or its id): its
   superagent's port, or the primary (`client/0`) when it has none.
   """
-  @spec client_for(integer() | %{id: integer()} | nil) :: Req.Request.t() | nil
+  @spec client_for(integer() | %{required(:id) => integer(), optional(atom()) => term()} | nil) ::
+          Req.Request.t() | nil
   def client_for(repository) do
     case {client(), Superagents.get_by_repository(repository)} do
       {%Req.Request{} = client, %{port: port}} ->

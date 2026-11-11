@@ -56,20 +56,22 @@ defmodule AgentBoard.Conversation.Agent do
           required(:board) => map(),
           optional(:sync_event) => map() | nil,
           optional(:open_task) => Task.t() | nil,
-          optional(:client) => term()
+          optional(:client) => term(),
+          optional(atom()) => term()
         }
 
   @type outcome :: %{
-          reply: String.t(),
-          action: String.t(),
-          effect:
+          optional(:proposal) => map() | nil,
+          required(:reply) => String.t(),
+          required(:action) => String.t(),
+          required(:effect) =>
             nil
             | {:open_task, Task.t()}
             | {:select_repository, Repository.t()}
             | {:changed, Repository.t()}
             | :show_commands
             | :voice_changed,
-          listen: boolean()
+          required(:listen) => boolean()
         }
 
   @doc """

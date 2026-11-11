@@ -192,8 +192,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Activity do
 
   defp other_row(event), do: %{type: :other, latest: event}
 
-  defp subject_rows([]), do: []
-
   defp subject_rows(events) do
     {errors, reads} = Enum.split_with(events, &(error_count(&1) > 0))
     error_values = Enum.map(errors, &error_count/1)

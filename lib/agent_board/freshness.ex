@@ -41,7 +41,7 @@ defmodule AgentBoard.Freshness do
   `last_attempt` is the newest sync event (success or error), `last_success`
   the newest successful one, and `agent` the result of `AgentBoard.AgentState.snapshot/0`.
   """
-  @spec snapshot(map()) :: map()
+  @spec snapshot(keyword() | map()) :: map()
   def snapshot(opts) do
     opts = Map.new(opts)
     now = Map.get(opts, :now, DateTime.utc_now())

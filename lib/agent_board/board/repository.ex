@@ -1,6 +1,8 @@
 defmodule AgentBoard.Board.Repository do
   @moduledoc "A repository the board tracks."
   use Ecto.Schema
+
+  @type t :: %__MODULE__{}
   import Ecto.Changeset
 
   @derive {Jason.Encoder, only: [:id, :owner, :name, :active]}
