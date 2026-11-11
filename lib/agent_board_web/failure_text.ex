@@ -9,7 +9,7 @@ defmodule AgentBoardWeb.FailureText do
 
   use Gettext, backend: AgentBoardWeb.Gettext
 
-  alias AgentBoard.GitHub.RateLimited
+  alias AgentBoard.GitHub.{HTTPError, RateLimited}
 
   require Logger
 
@@ -38,19 +38,13 @@ defmodule AgentBoardWeb.FailureText do
 
   def text(%Req.TransportError{}), do: gettext("The connection dropped before an answer.")
 
-  def text(%{__exception__: true} = exception) do
-    case Regex.run(~r/\AGitHub HTTP (\d+)/, Exception.message(exception)) do
-      [_match, status] when status in ["401", "403"] ->
-        gettext("GitHub refused the board's token (HTTP %{status}).", status: status)
+  def text(%HTTPError{status: status}) when status in [401, 403],
+    do: gettext("GitHub refused the board's token (HTTP %{status}).", status: status)
 
-      [_match, status] ->
-        gettext("GitHub answered with an error (HTTP %{status}).", status: status)
+  def text(%HTTPError{status: status}),
+    do: gettext("GitHub answered with an error (HTTP %{status}).", status: status)
 
-      nil ->
-        unexpected(exception)
-    end
-  end
-
+  def text(%{__exception__: true} = exception), do: unexpected(exception)
   def text(reason) when is_binary(reason), do: String.slice(reason, 0, 200)
   def text(reason), do: unexpected(reason)
 

@@ -80,6 +80,27 @@ defmodule AgentBoard.Sync do
 
   defp error_payload(exception), do: %{"reason" => Exception.message(exception)}
 
+  # A repository can have Issues disabled (404 or 410). That is not a sync
+  # failure: the pulls still matter. Any other failure read no issue state,
+  # so it is a `sync_error`, never a fresh sync.
+  defp fetch_issues(client, repository, since) do
+    GitHub.issues(client, repository.owner, repository.name, since)
+  rescue
+    exception in GitHub.HTTPError ->
+      if exception.status in [404, 410] do
+        Board.log_event(
+          repository.id,
+          "issues_unavailable",
+          "#{repository.owner}/#{repository.name}",
+          error_payload(exception)
+        )
+
+        []
+      else
+        reraise exception, __STACKTRACE__
+      end
+  end
+
   defp do_sync(client, repository) do
     # Errors from earlier runs are history, not this run's outcome. Take the
     # last event id before the first read; the summary counts only rows above
@@ -92,29 +113,7 @@ defmodule AgentBoard.Sync do
       ) || 0
 
     since = updated_since(repository)
-
-    # A repository can have Issues disabled (404 or 410). That is not a sync
-    # failure: the pulls still matter. Any other failure read no issue state,
-    # so it is a `sync_error`, never a fresh sync.
-    issues =
-      try do
-        GitHub.issues(client, repository.owner, repository.name, since)
-      rescue
-        exception in RuntimeError ->
-          if String.starts_with?(exception.message, ["GitHub HTTP 404", "GitHub HTTP 410"]) do
-            Board.log_event(
-              repository.id,
-              "issues_unavailable",
-              "#{repository.owner}/#{repository.name}",
-              %{"reason" => Exception.message(exception)}
-            )
-
-            []
-          else
-            reraise exception, __STACKTRACE__
-          end
-      end
-
+    issues = fetch_issues(client, repository, since)
     pulls = GitHub.pulls(client, repository.owner, repository.name, since)
 
     issues

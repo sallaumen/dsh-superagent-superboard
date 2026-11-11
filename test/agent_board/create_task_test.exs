@@ -30,7 +30,9 @@ defmodule AgentBoard.CreateTaskTest do
   test "a GitHub failure is an error, not a crash", %{repo: repo} do
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 500, "boom") end)
 
-    assert {:error, %RuntimeError{}} = Board.Requests.create_task(repo, "T", "body", client())
+    assert {:error, %AgentBoard.GitHub.HTTPError{status: 500}} =
+             Board.Requests.create_task(repo, "T", "body", client())
+
     assert Enum.any?(Board.events(repo), &(&1.kind == "create_error"))
   end
 end
