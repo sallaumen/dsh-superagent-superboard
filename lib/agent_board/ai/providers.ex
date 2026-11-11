@@ -184,5 +184,5 @@ defmodule AgentBoard.AI.Providers do
   def configured, do: Enum.find(@order, &configured?/1)
 
   @spec configured?(atom()) :: boolean()
-  def configured?(id), do: key(id) not in [nil, ""]
+  def configured?(id), do: key(id) != ""
 end

@@ -12,7 +12,10 @@ defmodule AgentBoard.MixProject do
       deps: deps(),
       elixir_agent_kit: [agents: [:codex, :claude, :generic], skills: :all],
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      # The PLT lives in _build so each checkout keeps its own and a CI cache
+      # can restore it; :mix and :ex_unit for the tasks and test support.
+      dialyzer: [plt_add_apps: [:mix, :ex_unit], plt_core_path: "_build/plts"]
     ]
   end
 
@@ -74,7 +77,8 @@ defmodule AgentBoard.MixProject do
       {:oban, "~> 2.19"},
       {:req, "~> 0.5"},
       {:exqlite, "~> 0.27"},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 

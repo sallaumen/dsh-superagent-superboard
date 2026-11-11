@@ -1,6 +1,8 @@
 defmodule AgentBoard.Board.Task do
   @moduledoc "An issue, a manual card, or a ticket the agent is working on."
   use Ecto.Schema
+
+  @type t :: %__MODULE__{}
   import Ecto.Changeset
 
   @derive {Jason.Encoder,

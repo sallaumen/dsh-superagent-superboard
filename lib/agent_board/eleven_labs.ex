@@ -96,13 +96,13 @@ defmodule AgentBoard.ElevenLabs do
     headers = [{"accept", "application/json"}]
 
     headers =
-      if key() in [nil, ""], do: headers, else: [{"xi-api-key", key()} | headers]
+      if key() == "", do: headers, else: [{"xi-api-key", key()} | headers]
 
     Req.new(base_url: @base_url, headers: headers, retry: false)
   end
 
   @doc "Whether a key is configured."
-  def configured?, do: key() not in [nil, ""]
+  def configured?, do: key() != ""
 
   @doc "The health of the integration."
   def status, do: if(configured?(), do: :logged_in, else: :not_configured)
