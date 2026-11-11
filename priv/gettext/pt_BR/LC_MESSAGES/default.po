@@ -37,7 +37,7 @@ msgstr "Idioma do board"
 #: lib/agent_board_web/live/board_components/daily_summary_settings.ex:39
 #, elixir-autogen, elixir-format
 msgid "Daily summary"
-msgstr "Resumo diário"
+msgstr "Resumo do dia"
 
 #: lib/agent_board_web/live/board_components/settings/execution.ex:239
 #, elixir-autogen, elixir-format
@@ -147,7 +147,7 @@ msgstr "Ajuste o teto por tarefa em Configurações antes de tentar de novo; o b
 #: lib/agent_board_web/live/board_components/inspector.ex:1004
 #: lib/agent_board_web/live/board_components/inspector.ex:1015
 #, elixir-autogen, elixir-format
-msgid "Agent Executor"
+msgid "Agent executor"
 msgstr "Executor do agente"
 
 #: lib/agent_board_web/live/board_components/voice_conversation_log.ex:28
@@ -297,11 +297,6 @@ msgstr "Criar tarefa bloqueadora"
 msgid "Create task"
 msgstr "Criar tarefa"
 
-#: lib/agent_board_web/live/board_components/daily_summary.ex:43
-#: lib/agent_board_web/live/board_live.ex:3456
-#, elixir-autogen, elixir-format
-msgid "Daily Summary"
-msgstr "Resumo do dia"
 
 #: lib/agent_board_web/live/board_components/shortcuts.ex:28
 #, elixir-autogen, elixir-format
@@ -340,7 +335,7 @@ msgstr "Erro e tentativas"
 
 #: lib/agent_board_web/live/board_components/inspector.ex:1024
 #, elixir-autogen, elixir-format
-msgid "Estimated Cost"
+msgid "Estimated cost"
 msgstr "Custo estimado"
 
 #: lib/agent_board_web/live/board_components/executor_picker.ex:30
@@ -381,7 +376,7 @@ msgstr "Histórico"
 
 #: lib/agent_board_web/live/board_components/inspector.ex:147
 #, elixir-autogen, elixir-format
-msgid "In Progress"
+msgid "In progress"
 msgstr "execução em andamento"
 
 #: lib/agent_board_web/live/board_components/inspector.ex:756
@@ -604,7 +599,7 @@ msgstr "Abrir"
 
 #: lib/agent_board_web/live/board_components/intake.ex:90
 #, elixir-autogen, elixir-format
-msgid "Open Questions"
+msgid "Open questions"
 msgstr "Perguntas em aberto"
 
 #: lib/agent_board_web/live/board_live.ex:3206
@@ -1246,7 +1241,7 @@ msgstr "Mais um agente em paralelo"
 #: lib/agent_board_web/live/board_live.ex:3351
 #: lib/agent_board_web/live/board_live.ex:3567
 #, elixir-autogen, elixir-format
-msgid "Board Actions"
+msgid "Board actions"
 msgstr "Ações do board"
 
 #: lib/agent_board_web/components/layouts.ex:62
@@ -1490,15 +1485,9 @@ msgstr "Escreva algo para ouvir o agente"
 
 #: lib/agent_board_web/live/board_components/inspector.ex:344
 #, elixir-autogen, elixir-format
-msgid "Unlock Task"
+msgid "Unlock task"
 msgstr "Desbloquear a tarefa"
 
-#: lib/agent_board_web/live/board_components/repo_rail.ex:176
-#: lib/agent_board_web/live/board_live.ex:3585
-#: lib/agent_board_web/live/board_live.ex:3808
-#, elixir-autogen, elixir-format
-msgid "Voice Conversation"
-msgstr "Conversa por voz"
 
 #: lib/agent_board_web/live/board_components/voice_conversation_log.ex:51
 #, elixir-autogen, elixir-format

@@ -87,7 +87,7 @@ defmodule AgentBoardWeb.BoardComponents.Intake do
         <p class="text-sm text-base-content">{@intake.spec["goal"]}</p>
 
         <div :if={@intake.spec["open_questions"] != []} class="mt-2 text-xs text-warning">
-          <p class="font-semibold">{gettext("Open Questions")}</p>
+          <p class="font-semibold">{gettext("Open questions")}</p>
           <p :for={q <- @intake.spec["open_questions"]}>{q}</p>
         </div>
 

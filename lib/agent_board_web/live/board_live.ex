@@ -3349,7 +3349,7 @@ defmodule AgentBoardWeb.BoardLive do
                   <.beacon freshness={@freshness} tz_offset={@tz_offset} />
                   <.version_badge version={@version} />
                   <span class="ab-top__spacer"></span>
-                  <div id="board-tools" class="ab-top__actions" aria-label={gettext("Board Actions")}>
+                  <div id="board-tools" class="ab-top__actions" aria-label={gettext("Board actions")}>
                     <button
                       id="open-intake"
                       type="button"
@@ -3454,7 +3454,7 @@ defmodule AgentBoardWeb.BoardLive do
                     phx-hook="BoardFold"
                   >
                     <summary class="ab-fold__summary">
-                      <span>{gettext("Daily Summary")}</span>
+                      <span>{gettext("Daily summary")}</span>
                       <span class="ab-meta">{gettext("from the board")}</span>
                     </summary>
                     <div class="ab-fold__body">
@@ -3565,7 +3565,7 @@ defmodule AgentBoardWeb.BoardLive do
           <div
             :if={@repo && @view != "hoje"}
             class="ab-mobile-actions"
-            aria-label={gettext("Board Actions")}
+            aria-label={gettext("Board actions")}
           >
             <button
               type="button"
@@ -3583,7 +3583,7 @@ defmodule AgentBoardWeb.BoardLive do
               class="ab-btn ab-btn--icon"
               phx-click="show_panel"
               phx-value-panel="voice"
-              aria-label={gettext("Voice Conversation")}
+              aria-label={gettext("Voice conversation")}
             >
               <.ico name="mic" />
             </button>
@@ -3806,7 +3806,7 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="voice"
-          title={gettext("Voice Conversation")}
+          title={gettext("Voice conversation")}
           active={@panel == "voice"}
           flash={@flash}
         >
