@@ -52,8 +52,8 @@ defmodule AgentBoard.Superagents.FakeManager do
     Agent.get(__MODULE__, &Map.get(&1, {:requeue_answer, id}, {:ok, true}))
   end
 
-  @doc "Make `stop` answer this value for one project instead of :ok."
-  def put_answer(id, command, answer) when command in [:stop],
+  @doc "Make `stop` or `scale` answer this value for one project instead of :ok."
+  def put_answer(id, command, answer) when command in [:stop, :scale],
     do: Agent.update(__MODULE__, &Map.put(&1, {command, id}, answer))
 
   defp answer(id, command), do: Agent.get(__MODULE__, &Map.get(&1, {command, id}, :ok))
@@ -100,10 +100,16 @@ defmodule AgentBoard.Superagents.FakeManager do
   end
 
   def scale(%{id: id}, workers) do
-    Agent.update(__MODULE__, fn current ->
-      Map.put(current, id, Map.put(current[id] || %{state: "ready"}, :max_workers, workers))
-    end)
+    case answer(id, :scale) do
+      :ok ->
+        Agent.update(__MODULE__, fn current ->
+          Map.put(current, id, Map.put(current[id] || %{state: "ready"}, :max_workers, workers))
+        end)
 
-    :ok
+        :ok
+
+      other ->
+        other
+    end
   end
 end

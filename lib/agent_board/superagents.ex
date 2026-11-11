@@ -481,6 +481,8 @@ defmodule AgentBoard.Superagents do
       {:ok, superagent}
     else
       false -> {:error, :invalid_workers}
+      # A save in between is the agent's settings moving, not the agent failing.
+      {:error, :conflict} -> {:error, :conflict}
       {:error, reason} -> failed(superagent, "scale", reason)
     end
   end

@@ -937,8 +937,10 @@ defmodule AgentBoard.ActionsTest do
          "lib/agent_board/board/split_graph.ex",
          "lib/agent_board/release.ex"
        ]},
-      # AgentControl.retry is the owner's retry, itself reachable only from here.
-      {~r/\bOrchestrator\.(retry|set_max_workers)\(/, ["lib/agent_board/agent_control.ex"]},
+      # AgentControl.retry is the owner's retry, itself reachable only from here;
+      # DshManager.scale is the adapter behind :scale_superagent.
+      {~r/\bOrchestrator\.(retry|set_max_workers)\(/,
+       ["lib/agent_board/agent_control.ex", "lib/agent_board/superagents/dsh_manager.ex"]},
       {~r/\bAgentControl\.(retry|start_agent)\(/, []},
       {~r/\bRunners\.dispatch\(/, []},
       {~r/\bSuperagents\.retry_provision\(/, []},

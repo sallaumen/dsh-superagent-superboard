@@ -170,6 +170,30 @@ defmodule AgentBoard.SuperagentsTest do
     assert {:error, :invalid_workers} = Superagents.scale(superagent, 17, FakeManager)
   end
 
+  test "a settings change in between is a conflict, not an agent error", %{repo: repo} do
+    {:ok, _pid} = FakeManager.start()
+    on_exit(&stop_fake_manager/0)
+
+    {:ok, superagent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "superagent-conflict",
+        port: 3190,
+        state_dir: "/tmp/superagent-conflict",
+        max_workers: 3
+      })
+
+    {:ok, superagent} = Superagents.observe(superagent, %{state: "ready"})
+    FakeManager.put_answer(superagent.id, :scale, {:error, :conflict})
+
+    assert {:error, :conflict} = Superagents.scale(superagent, 4, FakeManager)
+
+    assert %{observed_state: "ready", max_workers: 3, last_error: nil} =
+             Repo.get!(Superagent, superagent.id)
+
+    assert [%{action: "observe"}] = Superagents.events(superagent)
+  end
+
   test "tick records the manager observation", %{repo: repo} do
     {:ok, _pid} = FakeManager.start()
 
