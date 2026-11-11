@@ -38,7 +38,8 @@ defmodule AgentBoard.DailySummary do
   @first_window 24 * 3600
   @max_window 7 * 24 * 3600
 
-  @type outcome :: {:generated, Entry.t()} | :exists | :not_due | :disabled
+  @type outcome ::
+          {:generated, Entry.t()} | :exists | :not_due | :disabled | {:error, :invalid}
 
   def start_link(opts) do
     {name, opts} = Keyword.pop(opts, :name, __MODULE__)
@@ -134,7 +135,7 @@ defmodule AgentBoard.DailySummary do
 
       {:error, changeset} ->
         Logger.warning("daily_summary date=#{date} outcome=invalid #{inspect(changeset.errors)}")
-        :exists
+        {:error, :invalid}
     end
   end
 

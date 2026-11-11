@@ -49,7 +49,7 @@ defmodule AgentBoardWeb.BoardLoadTest do
     {:ok, view, _html} = live(conn, BoardNavigation.path(repo))
     loads()
 
-    view |> element("article[phx-click=open][phx-value-id='#{task.id}']") |> render_click()
+    view |> element("#task-#{task.id} button[data-panel-trigger]") |> render_click()
     assert_patch(view)
     assert has_element?(view, "#conversation-title", "Medir FPS")
 

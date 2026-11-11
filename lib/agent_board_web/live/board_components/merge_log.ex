@@ -6,6 +6,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1]
 
   alias AgentBoardWeb.BoardComponents.Concluded
+  alias AgentBoardWeb.Time
 
   attr :log, :map, required: true
   attr :frozen, :boolean, default: false
@@ -163,7 +164,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
         class={[
           "ab-tag",
           @pr.ci == "fail" && "ab-tag--halt",
-          @pr.ci == "pass" && @pr.ciNote == gettext("Local CI passed") && "ab-tag--agent"
+          @pr.ci == "pass" && @pr.ciLocal && "ab-tag--agent"
         ]}
         title={@pr.ciTitle}
       >
@@ -249,9 +250,12 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
 
   defp week(assigns) do
     ~H"""
-    <b class="ab-delivered">{delivered(@log.issues, count(@log.issues, @frozen))}</b>
+    <b class="ab-delivered">{delivered(@log.issues, Time.frozen_count(@log.issues, @frozen))}</b>
     · {gettext("%{prs} in 7 days",
-      prs: ngettext("%{amount} PR", "%{amount} PRs", @log.total, amount: count(@log.total, @frozen))
+      prs:
+        ngettext("%{amount} PR", "%{amount} PRs", @log.total,
+          amount: Time.frozen_count(@log.total, @frozen)
+        )
     )}
     """
   end
@@ -261,8 +265,4 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
 
   def delivered(n, shown),
     do: ngettext("%{amount} issue delivered", "%{amount} issues delivered", n, amount: shown)
-
-  defp count(0, _frozen), do: "0"
-  defp count(n, true), do: "≥#{n}"
-  defp count(n, false), do: "#{n}"
 end

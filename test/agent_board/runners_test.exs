@@ -4,6 +4,7 @@ defmodule AgentBoard.RunnersTest do
 
   alias AgentBoard.{Board, Repo, Runners, Settings}
   alias AgentBoard.Board.Task
+  alias AgentBoard.Runners.Execution
 
   setup do
     root = Path.join(System.tmp_dir!(), "runners-#{System.unique_integer([:positive])}")
@@ -96,6 +97,36 @@ defmodule AgentBoard.RunnersTest do
 
     assert {:error, :already_running} =
              Runners.dispatch(task, "claude", launcher: launcher(test_pid))
+  end
+
+  test "a runner that cannot start fails the row and blocks the task", %{task: task} do
+    assert {:error, :boom} =
+             Runners.dispatch(task, "claude", launcher: fn _run_dir -> {:error, :boom} end)
+
+    assert [%{status: "failed", error: error, finished_at: %DateTime{}}] = Repo.all(Execution)
+
+    assert error =~ ":boom"
+    assert Repo.get!(Task, task.id).state == "blocked"
+    refute Runners.active_for_task?(task.id)
+  end
+
+  test "a second active row for the task is a changeset error, not a raise", %{task: task} do
+    attrs = %{
+      task_id: task.id,
+      repository_id: task.repository_id,
+      executor: "claude",
+      run_dir: "/tmp/x"
+    }
+
+    {:ok, _first} = Repo.insert(Execution.changeset(%Execution{}, attrs))
+    assert {:error, changeset} = Repo.insert(Execution.changeset(%Execution{}, attrs))
+
+    assert {_message,
+            [constraint: :unique, constraint_name: "runner_executions_one_active_per_task"]} =
+             changeset.errors[:task_id]
+
+    assert {:error, :already_running} =
+             Runners.dispatch(task, "claude", launcher: launcher(self()))
   end
 
   test "a non-executable executor binary refuses before starting", %{task: task, root: root} do

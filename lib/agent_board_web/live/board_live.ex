@@ -361,7 +361,7 @@ defmodule AgentBoardWeb.BoardLive do
           agent: agent_up
         ),
       queue:
-        Lanes.queue(repo, board,
+        Lanes.queue(repo,
           now: now,
           last_visit: last_visit,
           filter: socket.assigns.queue_filter,
@@ -1423,7 +1423,7 @@ defmodule AgentBoardWeb.BoardLive do
          put_flash(
            socket,
            :error,
-           gettext("Could not prepare the project: %{reason}", reason: inspect(reason))
+           gettext("Could not prepare the project: %{reason}", reason: FailureText.text(reason))
          )}
     end
   end
@@ -4108,9 +4108,10 @@ defmodule AgentBoardWeb.BoardLive do
   defp for_executor(requests, _assigns), do: requests
 
   defp choose_executor(socket, executor) do
-    if Executors.valid?(executor) and executor != socket.assigns.composer_executor,
-      do: assign(socket, composer_executor: executor, composer_executor_touched: true),
-      else: socket
+    if Executors.valid?(executor) and executor != socket.assigns.composer_executor and
+         executor not in unwatched(socket.assigns.composer_routing),
+       do: assign(socket, composer_executor: executor, composer_executor_touched: true),
+       else: socket
   end
 
   # The router reads the runner once per opening of the composer in a
@@ -4162,11 +4163,16 @@ defmodule AgentBoardWeb.BoardLive do
     socket
     |> assign(composer_routing: routed.routing)
     |> then(fn socket ->
-      if socket.assigns.composer_executor_touched,
-        do: socket,
-        else: assign(socket, composer_executor: routed.executor)
+      # A choice the owner made stays, unless no agent watches it here.
+      if socket.assigns.composer_executor_touched and
+           socket.assigns.composer_executor not in unwatched(routed.routing),
+         do: socket,
+         else: assign(socket, composer_executor: routed.executor)
     end)
   end
+
+  defp unwatched(%{suggestion: %{unwatched: executors}}), do: executors
+  defp unwatched(_routing), do: []
 
   defp single_requests(repo, text, title) do
     title = title || Titles.from_request(text)

@@ -18,13 +18,15 @@ defmodule AgentBoard.Routing do
   3. **Availability**: a paused runner is out (the owner paused it). Claude
      Code and Codex have no reader yet, so their availability is unknown,
      which never rules them out and never counts as available.
-  4. **Budget, kind and size, history**: there is no usage ledger yet, so
-     none of them orders anything; the caller keeps them in the snapshot.
+  4. **Budget, kind and size, history**: the expected cost comes from the
+     usage ledger (`Usage.Report.expected_costs/0`, read by
+     `Routing.Signals.read/2`), but none of them orders anything yet; the
+     caller keeps kind, size and history in the snapshot.
   5. **Order**: the DeepSeek runner first (the only executor the board
      dispatches itself), then the fixed order of `Executors.all/0`.
 
-  The expected cost is the executor's own currency once the usage ledger
-  exists; until then it is `:unknown`, shown as "desconhecido", never zero.
+  The expected cost is in the executor's own currency; an executor the
+  ledger has not seen is `:unknown`, shown as "desconhecido", never zero.
 
   Signals are keyed by executor (`"dsh"`, `"claude"`, `"codex"`), each a map
   with `:state` (`:ready`, `:paused`, `:unknown` or `{:unavailable, why}`),
@@ -51,6 +53,7 @@ defmodule AgentBoard.Routing do
           reasons: [String.t()],
           alternatives: [%{executor: String.t(), reasons: [String.t()]}],
           ruled_out: [%{executor: String.t(), reason: String.t()}],
+          unwatched: [String.t()],
           cost: :unknown | term(),
           mode: String.t()
         }
@@ -211,6 +214,8 @@ defmodule AgentBoard.Routing do
           do: %{executor: other, reasons: note(other, signals)}
         ),
       ruled_out: ruled_out,
+      # No agent watches this repository: an issue for the runner would never move.
+      unwatched: if(unwatched?(signal(signals, "dsh"), task.repository), do: ["dsh"], else: []),
       cost: cost(executor, signals),
       mode: "suggest"
     }

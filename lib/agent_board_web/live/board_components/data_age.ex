@@ -1,6 +1,7 @@
 defmodule AgentBoardWeb.BoardComponents.DataAge do
   @moduledoc "A stored timestamp with a browser clock; it never fetches data."
   use Phoenix.Component
+  use Gettext, backend: AgentBoardWeb.Gettext
 
   attr :id, :string, required: true
   attr :at, :any, default: nil
@@ -12,7 +13,7 @@ defmodule AgentBoardWeb.BoardComponents.DataAge do
     <time
       id={@id}
       datetime={iso(@at)}
-      title={if @at, do: Calendar.strftime(@at, "%Y-%m-%d %H:%M:%S UTC"), else: "unknown"}
+      title={if @at, do: Calendar.strftime(@at, "%Y-%m-%d %H:%M:%S UTC"), else: gettext("unknown")}
       phx-hook="DataAge"
       data-at={iso(@at)}
       data-now={DateTime.to_iso8601(DateTime.utc_now())}
@@ -20,7 +21,7 @@ defmodule AgentBoardWeb.BoardComponents.DataAge do
       data-sync={to_string(@sync)}
       class="data-age text-[11px] text-base-content/75"
     >
-      {@label}: {if @at, do: Calendar.strftime(@at, "%Y-%m-%d %H:%M UTC"), else: "unknown"}
+      {@label}: {if @at, do: Calendar.strftime(@at, "%Y-%m-%d %H:%M UTC"), else: gettext("unknown")}
     </time>
     """
   end

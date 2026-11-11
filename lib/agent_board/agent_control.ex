@@ -124,11 +124,20 @@ defmodule AgentBoard.AgentControl do
         {:ok, gettext("The agent is up.")}
 
       {:ok, {output, status}} ->
-        {:error,
-         gettext("The agent did not come up (exit %{status}): %{line}",
-           status: status,
-           line: last_line(output)
-         )}
+        # The same reading DshManager makes: a health check that gave up is a
+        # slow boot, not a failed one.
+        if String.contains?(output, "Startup health check timed out") do
+          {:ok,
+           gettext(
+             "The agent was started; its health check has not answered yet. Check in a moment."
+           )}
+        else
+          {:error,
+           gettext("The agent did not come up (exit %{status}): %{line}",
+             status: status,
+             line: last_line(output)
+           )}
+        end
 
       {:exit, reason} ->
         {:error,

@@ -525,7 +525,7 @@ defmodule AgentBoard.SyncRepoTest do
       ]
     }
 
-    assert Sync.ticket_numbers_for(ticket) == [42, 43]
+    assert AgentBoard.AgentState.ticket_numbers(ticket) == [42, 43]
   end
 
   test "a repository without issues still syncs its pulls", %{repo: repo} do

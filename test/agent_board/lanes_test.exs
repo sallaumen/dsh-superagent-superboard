@@ -52,6 +52,7 @@ defmodule AgentBoard.LanesTest do
     assert need.kind == :review
     assert need.why =~ "PR #28 pronto para revisão"
     assert need.ci.note == "CI local ?"
+    assert need.ci.local == false
     assert need.ci.title =~ "GitHub Actions falhou"
     assert need.ci.title =~ "sem evidência de CI local"
     assert Enum.any?(need.actions, &(&1[:url] == pull.url and &1.label == "Abrir PR #28"))
@@ -83,6 +84,7 @@ defmodule AgentBoard.LanesTest do
       )
 
     assert need.ci.note == "CI local ok"
+    assert need.ci.local == true
     assert need.ci.title =~ "billing"
     assert need.ci.title =~ "126 tests"
   end
@@ -109,6 +111,18 @@ defmodule AgentBoard.LanesTest do
     [need] = Lanes.needs(repo, %{ready: [], blocked: [], question: [question]}, now: now)
 
     assert need.why == "**O agente perguntou:** Devo manter o boss na arena ou tirar"
+  end
+
+  test "a question quotes the agent's words, not the runner's hidden marker" do
+    {:ok, repo} = Board.add_repository("fixture", "marker-question")
+    now = ~U[2026-11-06 15:00:00Z]
+    question = task(repo, 32, "Which API", "question", DateTime.add(now, -60, :second))
+
+    comment(question, "agent", "<!-- dsh-superagent:x -->\nSim, devo usar a API v2?")
+
+    [need] = Lanes.needs(repo, %{ready: [], blocked: [], question: [question]}, now: now)
+
+    assert need.why == "**O agente perguntou:** Sim, devo usar a API v2?"
   end
 
   describe "the next moment a running task needs attention" do
@@ -574,7 +588,7 @@ defmodule AgentBoard.LanesTest do
 
     earlier = task(repo, 20, "Unrelated work", "queued", DateTime.add(now, -3600, :second))
 
-    queue = Lanes.queue(repo, %{}, now: now)
+    queue = Lanes.queue(repo, now: now)
 
     assert Enum.map(queue.items, & &1.id) == [earlier.id, later.id]
     assert Enum.at(queue.items, 1).note == "Parece repetir #24, já mesclado"
@@ -593,7 +607,7 @@ defmodule AgentBoard.LanesTest do
       |> Task.changeset(%{blocker_for_task_id: blocked.id})
       |> Repo.update!()
 
-    queue = Lanes.queue(repo, %{}, now: now)
+    queue = Lanes.queue(repo, now: now)
 
     assert Enum.map(queue.items, & &1.id) == [blocker.id, blocked.id, normal.id]
     assert hd(queue.items).sub == "desbloqueia #20"
@@ -644,7 +658,7 @@ defmodule AgentBoard.LanesTest do
       called(repo, 7, recent)
 
       queue =
-        Lanes.queue(repo, %{},
+        Lanes.queue(repo,
           now: now,
           stall_after: 900,
           tickets_by_number: %{
@@ -713,7 +727,7 @@ defmodule AgentBoard.LanesTest do
       assert [%{label: "Chamar de novo", release: _phrase}, %{label: "Ver detalhe"}] =
                need.actions
 
-      queue = Lanes.queue(repo, %{}, now: now, stall_after: 900)
+      queue = Lanes.queue(repo, now: now, stall_after: 900)
 
       # the comment may still be on its way
       assert %{190 => "a chamada ao agente não foi concluída", 191 => nil} =
@@ -741,14 +755,14 @@ defmodule AgentBoard.LanesTest do
         %{task_id: held.id, blocked_by_task_id: done.id, inserted_at: at, updated_at: at}
       ])
 
-      queue = Lanes.queue(repo, %{}, now: now, stall_after: 900)
+      queue = Lanes.queue(repo, now: now, stall_after: 900)
 
       assert %{184 => "espera #182", 182 => nil} = Map.new(queue.items, &{&1.number, &1.sub})
 
       assert %{182 => "chamado há 14 h, o agente não começou", 184 => nil} =
                Map.new(queue.items, &{&1.number, &1.stuck})
 
-      taken = Lanes.queue(repo, %{}, now: now, stall_after: 900, tickets_by_number: %{182 => %{}})
+      taken = Lanes.queue(repo, now: now, stall_after: 900, tickets_by_number: %{182 => %{}})
       assert Enum.all?(taken.items, &is_nil(&1.stuck))
     end
   end
@@ -778,11 +792,14 @@ defmodule AgentBoard.LanesTest do
     assert Enum.map(log.groups, & &1.label) == ["Hoje", "Ontem, 5 nov"]
     assert Enum.map(log.groups, & &1.date) == [~D[2026-11-06], ~D[2026-11-05]]
     assert hd(log.groups).items |> hd() |> Map.fetch!(:ci) == "pass"
+    # A remote pass is not the local gate.
+    assert hd(log.groups).items |> hd() |> Map.fetch!(:ciLocal) == false
 
     yesterday = Enum.find(log.groups, &(&1.label == "Ontem, 5 nov"))
     item = hd(yesterday.items)
     assert item.ci == "pass"
     assert item.ciNote == "CI local ok"
+    assert item.ciLocal == true
     assert item.ciTitle =~ "CI local passou"
     assert item.ciTitle =~ "billing"
   end

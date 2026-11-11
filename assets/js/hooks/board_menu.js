@@ -23,29 +23,6 @@ export const BoardMenu = {
       if (event.target.closest("[data-board-menu-link]")) this.el.open = false
     }
     this.el.addEventListener("click", this.closeOnNavigate)
-    this.bindFolds()
-    this.restoreFolds()
-  },
-  updated() {
-    // A version check re-renders the panel; keep the fold the person opened.
-    this.bindFolds()
-    this.restoreFolds()
-  },
-  bindFolds() {
-    this.el.querySelectorAll("details.settings-fold").forEach(fold => {
-      if (fold.dataset.foldBound) return
-      fold.dataset.foldBound = "1"
-      fold.addEventListener("toggle", () => {
-        sessionStorage.setItem(`ab:fold:${fold.id}`, fold.open ? "1" : "0")
-      })
-    })
-  },
-  restoreFolds() {
-    this.el.querySelectorAll("details.settings-fold").forEach(fold => {
-      const stored = sessionStorage.getItem(`ab:fold:${fold.id}`)
-      if (stored === "1" && !fold.open) fold.open = true
-      if (stored === "0" && fold.open) fold.open = false
-    })
   },
   destroyed() {
     document.removeEventListener("pointerdown", this.closeOnOutside)

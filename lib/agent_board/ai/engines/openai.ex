@@ -9,6 +9,8 @@ defmodule AgentBoard.AI.Engines.OpenAI do
 
   @behaviour AgentBoard.AI.Engine
 
+  require Logger
+
   alias AgentBoard.AI.{Providers, Request, Result, Schema}
 
   @impl true
@@ -41,25 +43,26 @@ defmodule AgentBoard.AI.Engines.OpenAI do
       {:ok, %Req.Response{status: 401}} -> {:error, :auth_expired}
       {:ok, %Req.Response{status: status}} when status in [402, 429] -> {:error, :usage_limit}
       {:ok, %Req.Response{status: status}} -> {:error, {:http, status}}
-      {:error, reason} -> {:error, reason}
+      {:error, %Req.TransportError{reason: :timeout}} -> {:error, :timeout}
+      {:error, exception} -> unreachable(provider_id, exception)
     end
+  end
+
+  # The row and the panel get a word; the operator's log keeps what the
+  # transport said (refused, no such host, dropped).
+  defp unreachable(provider_id, exception) do
+    Logger.warning("AI call to #{provider_id} got no answer: #{Exception.message(exception)}")
+    {:error, :unreachable}
   end
 
   # A structured call is a forced function tool with `strict: true`: plain
   # `json_object` only promises syntactically valid JSON, and the model will
-  # happily invent its own field names. The schema is the contract.
-  defp body(%Request{json_schema: nil} = request) do
-    %{
-      model: request.model,
-      messages: messages(request),
-      max_tokens: request.max_output_tokens,
-      response_format: %{type: "json_object"}
-    }
-  end
-
+  # happily invent its own field names. The schema is the contract, and every
+  # registered call has one.
+  #
   # DeepSeek thinking mode refuses a forced tool_choice. Gemini's compatible
   # endpoint rejects the thinking field, and OpenAI has no matching field.
-  defp body(%Request{json_schema: schema} = request) do
+  defp body(%Request{json_schema: %{} = schema} = request) do
     payload = %{
       model: request.model,
       messages: messages(request),

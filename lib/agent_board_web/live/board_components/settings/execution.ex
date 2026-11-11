@@ -14,7 +14,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
 
   alias AgentBoard.{Actions, Runners}
   alias AgentBoard.Usage.Report
-  alias AgentBoardWeb.Time
+  alias AgentBoardWeb.{FailureText, Time}
 
   @days [7, 30]
   @draft_keys ~w(monthly_usd task_usd timeout_minutes reserve_percent claude_model codex_model)
@@ -463,12 +463,17 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
             <input name="claude_model" value={@draft["claude_model"]} />
           </label>
           <p
-            :if={@snapshot.monthly_usd == 0 and is_number(@snapshot.spent_usd)}
+            :if={@snapshot.monthly_usd == 0 and match?({:ok, _}, @snapshot.spent)}
             class="ab-executor__warning"
           >
             {gettext(
               "No monthly cap: this month already adds up to %{amount} at list price. The caps use the same account.",
-              amount: money(@snapshot.spent_usd)
+              amount: money(elem(@snapshot.spent, 1))
+            )}
+          </p>
+          <p :if={@snapshot.spent == {:error, :budget_unknown}} class="ab-executor__warning">
+            {sentence(
+              gettext("This month's spend has a model without a price; the ceiling cannot be checked")
             )}
           </p>
         <% end %>
@@ -700,11 +705,24 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   defp failure_reason(reason) when is_binary(reason) do
     case String.trim(reason) do
       "" -> gettext("Reason not recorded")
-      value -> value
+      word -> FailureText.text(stored_reason(word))
     end
   end
 
   defp failure_reason(_reason), do: gettext("Reason not recorded")
+
+  # `AgentBoard.AI` stores a failure as a word; this is the word back as the
+  # reason `FailureText` has a sentence for. An unknown word is shown as is.
+  @reason_words %{
+    "not_configured" => :not_configured,
+    "auth_expired" => :auth_expired,
+    "usage_limit" => :usage_limit,
+    "timeout" => :timeout,
+    "unreachable" => :unreachable
+  }
+
+  defp stored_reason("http " <> status), do: {:http, String.to_integer(status)}
+  defp stored_reason(word), do: Map.get(@reason_words, word, word)
 
   defp latency_text(nil), do: "—"
   defp latency_text(ms) when is_integer(ms), do: AgentBoardWeb.Numbers.grouped(ms) <> " ms"
@@ -740,6 +758,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
     do: value |> :erlang.float_to_binary(decimals: 0) |> String.replace(".", ",")
 
   defp percent(value), do: to_string(value)
+
+  # The gate's reason reads after a colon; alone in a paragraph it opens a sentence.
+  defp sentence(<<first::utf8, rest::binary>>), do: String.upcase(<<first::utf8>>) <> rest
 
   defp money(value) when is_float(value), do: money_micros(round(value * 1_000_000))
 

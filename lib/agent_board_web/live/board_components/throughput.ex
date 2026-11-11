@@ -481,7 +481,6 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
   defp tile_label(%{key: "queue"}), do: gettext("Queue")
   defp tile_label(%{key: "cycle"}), do: gettext("Cycle")
   defp tile_label(%{key: "load"}), do: gettext("Parallelism")
-  defp tile_label(tile), do: tile.label
 
   defp unknown_reason(:never_synced), do: gettext("no commit reading yet")
   defp unknown_reason(:not_configured), do: gettext("orchestrator not configured")

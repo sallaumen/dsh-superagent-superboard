@@ -6,6 +6,7 @@ defmodule AgentBoard.Superagents.DshManager do
   """
   @behaviour AgentBoard.Superagents.Manager
 
+  alias AgentBoard.Orchestrator
   alias AgentBoard.Superagents.Superagent
 
   @default_script Path.expand(
@@ -41,20 +42,15 @@ defmodule AgentBoard.Superagents.DshManager do
     end
   end
 
+  # One writer of `executor.maxWorkers`: the Orchestrator's read-block,
+  # PUT-at-revision call, bound to this agent's port. A save in between is a
+  # `:conflict` here too, never an overwrite.
   @impl true
   def scale(%Superagent{} = superagent, workers) when is_integer(workers) and workers > 0 do
-    with {:ok, 200, settings} <- get(superagent, "/settings"),
-         {:ok, value, revision} <- executor_block(settings),
-         {:ok, 200, _body} <-
-           put(superagent, "/settings/executor", %{
-             "value" => Map.put(value, "maxWorkers", workers),
-             "revision" => revision
-           }) do
-      :ok
-    else
+    case Orchestrator.set_max_workers(Orchestrator.new(url(superagent)), workers) do
+      {:ok, _max} -> :ok
+      {:ok, _max, :restarting} -> :ok
       {:error, reason} -> {:error, reason}
-      {:ok, status, _body} -> {:error, {:http, status}}
-      _other -> {:error, :malformed}
     end
   end
 
@@ -148,16 +144,6 @@ defmodule AgentBoard.Superagents.DshManager do
     do: String.downcase(id) == String.downcase(login)
 
   defp same_login?(_entry, _login), do: false
-
-  defp executor_block(settings) do
-    case get_in(settings, ["blocks", "executor"]) do
-      %{"value" => value, "revision" => revision} when is_map(value) ->
-        {:ok, value, revision}
-
-      _ ->
-        {:error, :malformed}
-    end
-  end
 
   defp manager(superagent, command) do
     args = ["--profile", superagent.profile, "--url", url(superagent), command]

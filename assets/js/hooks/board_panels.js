@@ -5,7 +5,8 @@ export const BoardPanels = {
       const trigger = event.target.closest('[data-panel-trigger]')
       if (!trigger) return
       this.opener = trigger
-      this.openerId = trigger.id
+      // A card's title button has no id of its own; its card does, and carries focus for J/K.
+      this.openerId = trigger.id || trigger.closest('[data-task]')?.id
       this.openerMenuId = trigger.closest('[data-board-menu]')?.id
       this.pendingEntry = true
     }
