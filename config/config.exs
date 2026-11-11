@@ -60,6 +60,10 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# A task's private note travels in LiveView events (composer and inspector):
+# the event log masks it like a password.
+config :phoenix, :filter_parameters, ["password", "private_note", "note"]
+
 # The sync runs as a durable job: supervised, retried and observable.
 config :agent_board, Oban,
   repo: AgentBoard.Repo,

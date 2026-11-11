@@ -50,7 +50,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       {"atividade", gettext("Activity"), length(assigns.activity)},
       {"chamadas", gettext("AI calls"), max(assigns.calls_total, length(assigns.calls))},
       {"execucoes", gettext("Executions"), executions_count(assigns)},
-      {"pr", "PR", nil}
+      {"pr", "PR", nil},
+      {"privado", gettext("Private"), nil}
     ]
 
     assigns =
@@ -322,6 +323,14 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             />
           <% "pr" -> %>
             <.pr_tab pr={@pr} ci={@ci} offset={@tz_offset} />
+          <% "privado" -> %>
+            <.live_component
+              module={AgentBoardWeb.BoardComponents.PrivatePanel}
+              id="private-panel"
+              task={@task}
+              comments={@comments}
+              tz_offset={@tz_offset}
+            />
           <% _ -> %>
             <.conversation_tab
               task={@task}

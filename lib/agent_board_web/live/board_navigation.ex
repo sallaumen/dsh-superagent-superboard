@@ -133,7 +133,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   defp default_tab(%Task{state: "running"}), do: "atividade"
   defp default_tab(_task), do: "conversa"
 
-  defp tab_param(tab) when tab in ~w(conversa atividade chamadas execucoes pr), do: tab
+  defp tab_param(tab) when tab in ~w(conversa atividade chamadas execucoes pr privado), do: tab
   defp tab_param(_tab), do: nil
 
   def open_task(socket, id, tab \\ nil) do

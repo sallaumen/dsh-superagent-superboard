@@ -206,6 +206,7 @@ and is recorded as `automatic`.
 |---|---|---|---|
 | `create_tasks` | red | opens GitHub issues that mention the agent (`Board.Requests.create_request/3`, once per request key while its task has not ended) | UI: the composer shows the sentence above the send button and the send carries it; the intake panel's Create asks it in the browser (`data-confirm`). Voice: proposal and yes, or "cria direto". API: `428` then `confirm` |
 | `ask_task` | red | comments on the issue with the mention | UI: the message form names the GitHub destination; Enviar confirms the typed text in one step. Voice: proposal and yes |
+| `share_private_context` | red | comments on the issue the path of its private context, without the mention | UI: the inspector's Private tab (`AgentAction`, mode `:share_private`), the sentence names the path |
 | `stop_task` | red | closes the issue and marks the task stopped | UI: `AgentAction` "Parar". Voice: proposal and yes. API: `428` then `confirm` |
 | `undo_created_task` | red | closes the issue the voice just opened | Voice: "desfaz" within 10 minutes; a proposal when the model read an undo without the word |
 | `archive_task` | yellow | takes the task off the board (Retomar undoes it) | UI: one click. Voice: proposal (kept). API: direct |
@@ -1478,6 +1479,32 @@ records are the `ai_calls` rows (the split) and the tasks with their
   code paths and `AGENTS.md`, `CLAUDE.md` and `README.md` of the default
   branch, bounded, go to the refine and the split as data. It is help, never
   a gate: a repository the board cannot read splits on the words alone.
+- **One door, one click to split.** The board's header has only "Novo
+  pedido"; inside the composer "Dividir automaticamente" runs the whole
+  split (repository digest, refine, proposal) on the words already typed,
+  and "Dividir de novo" reruns it. "Manter como um pedido só" drops the
+  proposal and sends a single issue. The split never reads the private
+  context.
+- **The private context stays on this machine** (`AgentBoard.Board.PrivateContext`):
+  the composer's "Contexto privado" (a note, files marked "Só nesta
+  máquina", local folders) and the inspector's Privado tab write to
+  `<root>/<owner>/<repo>/<dir>/` (`notes.md`, `files/`), the root outside
+  every repository (`~/.local/share/agent-board/private`,
+  `AGENT_BOARD_PRIVATE_DIR`), folders 0700 and files 0600. The folder name is
+  the board's (`req-<hash of the words>` from the composer, so a retry
+  reuses it; `issue-<n>` from the inspector), a file name goes through
+  `Attachments.safe_name/1`, and a role prefixes it (`before--`, `after--`).
+  A local folder is copied, never linked, only from under `$HOME`, never
+  from a hidden folder, without following links and without `.git`,
+  `node_modules`, `_build` or `deps`, at most 2,000 files and 200 MB. The
+  issue gets only the path, the rule and an invisible marker
+  (`IssueBody.with_private/4`), written before the issue opens: a context
+  that cannot be written opens no issue (`:private_failed`). An issue made
+  without one learns its path only through the red `share_private_context`.
+  The content never reaches GitHub, the model, an event or a log; the page
+  shows a private image only through `/private/...`
+  (`PrivateFileController`, raster only, same-origin); the note is never
+  served.
 - **Files travel with the request** (`AgentBoard.Board.Attachments`): picked,
   dropped or pasted in the composer, stored on send in the target repository's
   `board-attachments` branch under the file's hash (a retry is the same path),

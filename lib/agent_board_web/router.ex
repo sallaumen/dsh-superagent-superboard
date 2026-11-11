@@ -45,6 +45,7 @@ defmodule AgentBoardWeb.Router do
     pipe_through [:browser, :refuse_cross_site]
 
     get "/attachments/:repo_id/:hash/:name", AttachmentController, :show
+    get "/private/:repo_id/:dir/*path", PrivateFileController, :show
   end
 
   scope "/api", AgentBoardWeb do

@@ -20,6 +20,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   import AgentBoardWeb.BoardComponents.ExecutorPicker, only: [executor_picker: 1]
 
   alias AgentBoard.{Executors, Intake, Titles}
+  alias AgentBoardWeb.BoardComponents.PrivatePanel
 
   attr :repo, :string, required: true
   attr :text, :string, default: ""
@@ -28,6 +29,10 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   attr :intake, :any, default: nil
   attr :uploads, :map, default: nil
   attr :attachments_ready, :integer, default: 0
+
+  attr :private, :map,
+    default: %{note: "", folder: "", folders: [], folder_error: nil, meta: %{}, files: []}
+
   attr :selected, :any, default: nil
   attr :job, :any, default: nil
   attr :receipt, :any, default: nil
@@ -295,6 +300,28 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             <.live_img_preview :if={image?(entry)} entry={entry} class="ab-attach__thumb" alt="" />
             <span class="ab-attach__name">{entry.client_name}</span>
             <span class="ab-meta">{entry_status(entry, @uploads)}</span>
+            <label class="ab-attach__opt">
+              <span class="ab-sr">{gettext("Role of %{name}", name: entry.client_name)}</span>
+              <select name={"attachment_meta[#{entry.ref}][role]"}>
+                <option
+                  :for={{value, label} <- roles()}
+                  value={value}
+                  selected={meta(@private, entry.ref).role == value}
+                >
+                  {label}
+                </option>
+              </select>
+            </label>
+            <label class="ab-attach__opt">
+              <input type="hidden" name={"attachment_meta[#{entry.ref}][private]"} value="false" />
+              <input
+                type="checkbox"
+                name={"attachment_meta[#{entry.ref}][private]"}
+                value="true"
+                checked={meta(@private, entry.ref).private}
+              />
+              {gettext("Only on this machine")}
+            </label>
             <button
               type="button"
               class="ab-btn ab-btn--icon ab-btn--sm ab-btn--quiet"
@@ -309,6 +336,8 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             {error}
           </p>
         </section>
+
+        <.private_context private={@private} />
 
         <p :if={@confirm && !@busy} id="composer-confirm" class="ab-compose__confirm">
           {@confirm}
@@ -349,19 +378,33 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           </span>
 
           <button
+            id="composer-split"
             type="button"
-            class="ab-toggle"
-            role="switch"
-            aria-checked={to_string(@split)}
+            class="ab-btn ab-btn--sm"
             phx-click="composer_split"
-            disabled={@ai_status == :not_configured or @busy}
+            disabled={@ai_status == :not_configured or @busy or String.trim(@text) == ""}
             title={
               if @ai_status == :not_configured,
                 do: gettext("AI is not configured"),
-                else: gettext("Split into tasks")
+                else:
+                  gettext(
+                    "The AI reads the repository, refines the request and proposes tasks for you to review"
+                  )
             }
           >
-            <span class="ab-toggle__track"></span>{gettext("Split into tasks")}
+            <.ico name="split" />{if @split and not is_nil(@intake),
+              do: gettext("Split again"),
+              else: gettext("Split automatically")}
+          </button>
+
+          <button
+            :if={@split and not @busy}
+            id="composer-unsplit"
+            type="button"
+            class="ab-btn ab-btn--sm ab-btn--quiet"
+            phx-click="composer_unsplit"
+          >
+            {gettext("Keep as one request")}
           </button>
 
           <span class="ab-top__spacer"></span>
@@ -381,6 +424,121 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
     </div>
     """
   end
+
+  attr :private, :map, required: true
+
+  # What must not reach GitHub: kept on this machine, the issue gets the path.
+  defp private_context(assigns) do
+    assigns =
+      assign(assigns,
+        held: private_count(assigns.private),
+        open: private_count(assigns.private) > 0 or assigns.private.folder_error != nil
+      )
+
+    ~H"""
+    <details
+      id="composer-private"
+      class="ab-private"
+      open={@open}
+      phx-mounted={JS.ignore_attributes(["open"])}
+    >
+      <summary>
+        <.ico name="lock" />{gettext("Private context")}
+        <span class="ab-meta">
+          {if @held > 0,
+            do:
+              ngettext("1 item, only on this machine", "%{count} items, only on this machine", @held),
+            else: gettext("stays on this machine, never on GitHub")}
+        </span>
+      </summary>
+      <p class="ab-meta">
+        {gettext(
+          "Passwords, keys, internal links, local mocks. The board writes them to a folder on this machine outside every repository; the issue only carries its path, and the AI split never reads them."
+        )}
+      </p>
+      <label for="composer-private-note" class="ab-label">{gettext("Private notes")}</label>
+      <textarea
+        id="composer-private-note"
+        name="private_note"
+        rows="4"
+        spellcheck="false"
+        autocomplete="off"
+        placeholder={gettext("e.g. staging password, API key, the account to test with")}
+      >{@private.note}</textarea>
+
+      <label for="composer-private-folder" class="ab-label">{gettext("Local folder")}</label>
+      <div class="ab-private__folder">
+        <input
+          id="composer-private-folder"
+          name="private_folder"
+          type="text"
+          value={@private.folder}
+          placeholder="~/Downloads/claude-design-export"
+          autocomplete="off"
+          spellcheck="false"
+          aria-describedby="composer-private-folder-hint"
+          data-enter-click="composer-add-folder"
+        />
+        <button
+          id="composer-add-folder"
+          type="button"
+          class="ab-btn ab-btn--sm"
+          phx-click="composer_add_folder"
+        >
+          {gettext("Add folder")}
+        </button>
+      </div>
+      <p :if={@private.folder_error} class="ab-compose__error" role="alert">
+        {folder_error(@private.folder_error)}
+      </p>
+      <p id="composer-private-folder-hint" class="ab-meta">
+        {gettext(
+          "A folder under your home (a Claude Design export, before and after captures). It is copied at the send; hidden folders, .git and node_modules are left out."
+        )}
+      </p>
+      <ul :if={@private.folders != [] or @private.files != []} class="ab-private__list">
+        <li :for={folder <- @private.folders}>
+          <span class="ab-attach__name">{folder.name}/</span>
+          <span class="ab-meta">{folder_size(folder)}</span>
+          <button
+            type="button"
+            class="ab-btn ab-btn--icon ab-btn--sm ab-btn--quiet"
+            phx-click="composer_remove_folder"
+            phx-value-path={folder.path}
+            aria-label={gettext("Remove %{name}", name: folder.name)}
+          >
+            <.ico name="close" />
+          </button>
+        </li>
+        <li :for={file <- @private.files}>
+          <span class="ab-attach__name">{file.name}</span>
+          <span class="ab-meta">{gettext("ready, only on this machine")}</span>
+        </li>
+      </ul>
+    </details>
+    """
+  end
+
+  defp private_count(private) do
+    if(String.trim(private.note) == "", do: 0, else: 1) + length(private.folders) +
+      length(private.files) + Enum.count(private.meta, fn {_ref, meta} -> meta.private end)
+  end
+
+  defp meta(private, ref), do: Map.get(private.meta, ref, %{private: false, role: "reference"})
+
+  defp roles,
+    do: [
+      {"reference", gettext("Reference")},
+      {"before", gettext("Before")},
+      {"after", gettext("After")}
+    ]
+
+  defp folder_size(%{files: files, bytes: bytes}),
+    do:
+      ngettext("1 file", "%{count} files", files) <>
+        " · " <> AgentBoardWeb.Numbers.bytes(bytes)
+
+  defp folder_error(reason), do: PrivatePanel.folder_error(reason)
 
   attr :spec, :map, required: true
 
@@ -589,6 +747,9 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
 
   @doc "The human reason for a failed creation."
   def failure_reason(:conflict), do: gettext("The issue already existed with another number")
+
+  def failure_reason(:private_failed),
+    do: gettext("The private context could not be written on this machine; try again")
 
   def failure_reason(:attachments_failed),
     do: gettext("The files could not be saved on GitHub; try again")

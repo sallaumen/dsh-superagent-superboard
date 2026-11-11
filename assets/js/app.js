@@ -166,6 +166,11 @@ if (process.env.NODE_ENV === "development") {
 
 
 // The composer's voice pill follows the actual browser media phase.
+// A path the owner copies from the board (a task's private context).
+window.addEventListener("board:copy", ({detail}) => {
+  navigator.clipboard?.writeText(detail?.text || "").catch(() => {})
+})
+
 window.addEventListener("board:voice-state", ({detail}) => {
   const pill = document.querySelector("#composer-voice")
   if (!pill) return

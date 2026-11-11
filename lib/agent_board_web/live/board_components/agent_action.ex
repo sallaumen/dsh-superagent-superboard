@@ -12,6 +12,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     * `:dispatch` - "Despachar" para o Claude Code ou o Codex (`:dispatch_task`)
     * `:stop` - "Parar" (`:stop_task`): only the confirmation lives here;
       the confirmed click is BoardLive's `act` event, carrying the sentence.
+    * `:share_private` - "Avisar o agente na issue" (`:share_private_context`)
     * `:grant_agent_access`, `:revoke_agent_access` - who may use a project's
       agent; the row leaves on success, so BoardLive says the result.
 
@@ -49,6 +50,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:superagent, fn -> nil end)
      |> assign_new(:login, fn -> nil end)
      |> assign_new(:rerun, fn -> [] end)
+     |> assign_new(:dir, fn -> nil end)
      |> then(
        &assign(
          &1,
@@ -227,6 +229,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   defp action(%{mode: :grant_agent_access}), do: :grant_agent_access
   defp action(%{mode: :revoke_agent_access}), do: :revoke_agent_access
   defp action(%{mode: :stop}), do: :stop_task
+  defp action(%{mode: :share_private}), do: :share_private_context
 
   defp params(%{mode: :retry} = assigns),
     do: %{
@@ -253,6 +256,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   end
 
   defp params(%{mode: :stop, task: task}), do: %{task: task}
+
+  defp params(%{mode: :share_private} = assigns),
+    do: %{task: assigns.task, repository: repository(assigns.task), dir: assigns.dir}
 
   defp params(%{mode: :stop_execution} = assigns),
     do: %{execution: assigns.execution, task: assigns.task}

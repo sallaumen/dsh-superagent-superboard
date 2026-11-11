@@ -59,6 +59,7 @@ defmodule AgentBoard.Actions do
     DailySummary,
     ElevenLabs,
     Executors,
+    GitHub,
     Orchestrator,
     Repo,
     Routing,
@@ -68,7 +69,7 @@ defmodule AgentBoard.Actions do
     Voice
   }
 
-  alias AgentBoard.Board.{Attachments, Repository, SplitGraph, Task}
+  alias AgentBoard.Board.{Attachments, PrivateContext, Repository, SplitGraph, Task}
   alias AgentBoard.Intake.IssueBody
   alias AgentBoard.Release
   alias AgentBoard.Sync.Worker
@@ -83,6 +84,7 @@ defmodule AgentBoard.Actions do
   @names [
     :create_tasks,
     :ask_task,
+    :share_private_context,
     :stop_task,
     :undo_created_task,
     :archive_task,
@@ -147,6 +149,10 @@ defmodule AgentBoard.Actions do
     do: %{risk: :red, does: "abre issues no GitHub que mencionam o agente", words: :direct}
 
   defp spec(:ask_task), do: %{risk: :red, does: "comenta na issue com a menção ao agente"}
+
+  defp spec(:share_private_context),
+    do: %{risk: :red, does: "comenta na issue o caminho do contexto privado, sem a menção"}
+
   defp spec(:stop_task), do: %{risk: :red, does: "fecha a issue e marca a tarefa como parada"}
 
   defp spec(:undo_created_task),
@@ -284,6 +290,16 @@ defmodule AgentBoard.Actions do
     do:
       "Perguntar ao agente na tarefa ##{task.number}: #{q(question)}#{ask_mark(question)} " <>
         "O board comenta na issue do GitHub."
+
+  def phrase(:share_private_context, %{task: task, repository: repo, dir: dir}, "en-US"),
+    do:
+      "Comment on task ##{task.number} the path of its private context, " <>
+        "#{q(PrivateContext.path(repo, dir))}? Only the path goes to GitHub, without calling the agent."
+
+  def phrase(:share_private_context, %{task: task, repository: repo, dir: dir}, _lang),
+    do:
+      "Comentar na tarefa ##{task.number} o caminho do seu contexto privado, " <>
+        "#{q(PrivateContext.path(repo, dir))}? Só o caminho vai ao GitHub, sem chamar o agente."
 
   def phrase(:stop_task, %{task: task}, "en-US"),
     do:
@@ -707,7 +723,11 @@ defmodule AgentBoard.Actions do
   defp execute(:create_tasks, %{repository: repo, requests: requests} = params) do
     client = github(params)
     requests = route_requests(repo, requests)
-    with_files = with_attachments(repo, requests, Map.get(params, :attachments, []), client)
+
+    with_files =
+      with {:ok, requests} <- with_private(repo, requests, Map.get(params, :private)) do
+        with_attachments(repo, requests, Map.get(params, :attachments, []), client)
+      end
 
     case with_files do
       {:ok, ready} -> finish_create_tasks(repo, ready, params, client)
@@ -720,6 +740,21 @@ defmodule AgentBoard.Actions do
 
   defp execute(:ask_task, %{task: task, question: question} = params),
     do: Board.ask(task, question, github(params))
+
+  defp execute(:share_private_context, %{task: task, repository: repo, dir: dir} = params) do
+    path = PrivateContext.path(repo, dir)
+    # The comment follows the confirmation's language, which the effect runs in.
+    language = if Gettext.get_locale(AgentBoardWeb.Gettext) == "en", do: "en", else: "pt"
+    body = IssueBody.private_comment(dir, path, Map.get(params, :language, language))
+    GitHub.create_comment(github(params), repo.owner, repo.name, task.number, body)
+
+    {:ok,
+     gettext(
+       "The path is on the issue. The agent sees it when it reads the issue; to call it now, write in Conversation."
+     )}
+  rescue
+    exception -> {:error, describe(exception)}
+  end
 
   defp execute(name, %{task: task} = params) when name in [:stop_task, :undo_created_task],
     do: Board.stop_task(task, github(params))
@@ -1032,6 +1067,32 @@ defmodule AgentBoard.Actions do
         })
 
         {:error, Enum.map(requests, &{&1, {:error, :attachments_failed}})}
+    end
+  end
+
+  # The private folder is written before any issue names it; what it holds
+  # never leaves this machine and never reaches an event.
+  defp with_private(_repo, requests, nil), do: {:ok, requests}
+
+  defp with_private(repo, requests, %{dir: dir} = private) do
+    case PrivateContext.store(repo, dir, private) do
+      :ok ->
+        path = PrivateContext.path(repo, dir)
+
+        {:ok,
+         Enum.map(requests, fn request ->
+           %{
+             request
+             | body: IssueBody.with_private(request.body, dir, path, Map.get(request, :language))
+           }
+         end)}
+
+      {:error, reason} ->
+        Board.log_event(repo.id, "private_context_error", repo.name, %{
+          "reason" => to_string(reason)
+        })
+
+        {:error, Enum.map(requests, &{&1, {:error, :private_failed}})}
     end
   end
 
