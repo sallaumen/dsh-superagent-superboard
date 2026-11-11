@@ -9,6 +9,8 @@ defmodule AgentBoardWeb.Time do
   defdelegate local_time(at, offset), to: BoardTime
   defdelegate local_date(at, offset), to: BoardTime
   defdelegate ago(seconds), to: BoardTime
+  defdelegate age_or_seen(seconds, frozen, at, offset), to: BoardTime
+  defdelegate frozen_count(n, frozen), to: BoardTime
   defdelegate since_label(at, offset, now), to: BoardTime
   defdelegate day_label(date, today), to: BoardTime
   defdelegate short_day_label(date, today), to: BoardTime

@@ -52,6 +52,7 @@ defmodule AgentBoard.LanesTest do
     assert need.kind == :review
     assert need.why =~ "PR #28 pronto para revisão"
     assert need.ci.note == "CI local ?"
+    assert need.ci.local == false
     assert need.ci.title =~ "GitHub Actions falhou"
     assert need.ci.title =~ "sem evidência de CI local"
     assert Enum.any?(need.actions, &(&1[:url] == pull.url and &1.label == "Abrir PR #28"))
@@ -83,6 +84,7 @@ defmodule AgentBoard.LanesTest do
       )
 
     assert need.ci.note == "CI local ok"
+    assert need.ci.local == true
     assert need.ci.title =~ "billing"
     assert need.ci.title =~ "126 tests"
   end
@@ -778,11 +780,14 @@ defmodule AgentBoard.LanesTest do
     assert Enum.map(log.groups, & &1.label) == ["Hoje", "Ontem, 5 nov"]
     assert Enum.map(log.groups, & &1.date) == [~D[2026-11-06], ~D[2026-11-05]]
     assert hd(log.groups).items |> hd() |> Map.fetch!(:ci) == "pass"
+    # A remote pass is not the local gate.
+    assert hd(log.groups).items |> hd() |> Map.fetch!(:ciLocal) == false
 
     yesterday = Enum.find(log.groups, &(&1.label == "Ontem, 5 nov"))
     item = hd(yesterday.items)
     assert item.ci == "pass"
     assert item.ciNote == "CI local ok"
+    assert item.ciLocal == true
     assert item.ciTitle =~ "CI local passou"
     assert item.ciTitle =~ "billing"
   end

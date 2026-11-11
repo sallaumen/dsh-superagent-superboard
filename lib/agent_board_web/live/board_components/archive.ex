@@ -2,8 +2,6 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
   @moduledoc "Scrollable merged pull request history using only loaded records."
   use AgentBoardWeb, :live_component
 
-  import AgentBoardWeb.BoardComponents.Presentation, only: [empty_copy: 1]
-
   alias AgentBoard.Usage.TaskCosts
 
   @impl true
@@ -51,7 +49,7 @@ defmodule AgentBoardWeb.BoardComponents.Archive do
           cost={@costs[item.number]}
           state={:merged}
         />
-        <p :if={@items == []} class="lane-empty">{empty_copy(:merged)}</p>
+        <p :if={@items == []} class="lane-empty">{gettext("No PRs merged yet.")}</p>
         <p
           :if={@has_more && @items != []}
           id={"merged-tail-#{List.last(@items).id}"}
