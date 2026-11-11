@@ -3895,12 +3895,12 @@ msgstr ""
 msgid "The connection dropped before an answer."
 msgstr ""
 
-#: lib/agent_board_web/failure_text.ex:48
+#: lib/agent_board_web/failure_text.ex:46
 #, elixir-autogen, elixir-format
 msgid "GitHub answered with an error (HTTP %{status})."
 msgstr ""
 
-#: lib/agent_board_web/failure_text.ex:60
+#: lib/agent_board_web/failure_text.ex:54
 #, elixir-autogen, elixir-format
 msgid "Something unexpected went wrong; the detail is in the log."
 msgstr ""
@@ -5424,7 +5424,7 @@ msgstr ""
 msgid "Stage: %{stage}"
 msgstr ""
 
-#: lib/agent_board_web/failure_text.ex:45
+#: lib/agent_board_web/failure_text.ex:43
 #, elixir-autogen, elixir-format
 msgid "GitHub refused the board's token (HTTP %{status})."
 msgstr ""
@@ -6265,13 +6265,13 @@ msgstr ""
 msgid "%{prefix} Local CI passed%{scope}: %{detail}"
 msgstr ""
 
-#: lib/agent_board/board.ex:952
+#: lib/agent_board/board.ex:988
 #: lib/agent_board/lanes.ex:953
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions failed"
 msgstr ""
 
-#: lib/agent_board/board.ex:959
+#: lib/agent_board/board.ex:995
 #: lib/agent_board/lanes.ex:954
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions passed"
@@ -6429,86 +6429,86 @@ msgstr ""
 msgid "Try again on %{executor}"
 msgstr ""
 
-#: lib/agent_board/board.ex:857
+#: lib/agent_board/board.ex:893
 #, elixir-autogen, elixir-format
 msgid "Entered the queue"
 msgstr ""
 
-#: lib/agent_board/board.ex:859
+#: lib/agent_board/board.ex:895
 #, elixir-autogen, elixir-format
 msgid "The agent started"
 msgstr ""
 
-#: lib/agent_board/board.ex:863
+#: lib/agent_board/board.ex:899
 #, elixir-autogen, elixir-format
 msgid "Current state: %{state}"
 msgstr ""
 
-#: lib/agent_board/board.ex:869
+#: lib/agent_board/board.ex:905
 #, elixir-autogen, elixir-format
 msgid "PR #%{number} opened"
 msgstr ""
 
-#: lib/agent_board/board.ex:876
+#: lib/agent_board/board.ex:912
 #, elixir-autogen, elixir-format
 msgid "PR #%{number} merged"
 msgstr ""
 
-#: lib/agent_board/board.ex:964
+#: lib/agent_board/board.ex:1000
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "running"
 msgstr ""
 
-#: lib/agent_board/board.ex:965
+#: lib/agent_board/board.ex:1001
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "question"
 msgstr ""
 
-#: lib/agent_board/board.ex:966
+#: lib/agent_board/board.ex:1002
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "to review"
 msgstr ""
 
-#: lib/agent_board/board.ex:967
+#: lib/agent_board/board.ex:1003
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "blocked"
 msgstr ""
 
-#: lib/agent_board/board.ex:968
+#: lib/agent_board/board.ex:1004
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "trying again"
 msgstr ""
 
-#: lib/agent_board/board.ex:969
+#: lib/agent_board/board.ex:1005
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "queued"
 msgstr ""
 
-#: lib/agent_board/board.ex:970
+#: lib/agent_board/board.ex:1006
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "merged"
 msgstr ""
 
-#: lib/agent_board/board.ex:971
+#: lib/agent_board/board.ex:1007
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "stopped"
 msgstr ""
 
-#: lib/agent_board/board.ex:972
+#: lib/agent_board/board.ex:1008
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "archived"
 msgstr ""
 
-#: lib/agent_board/board.ex:973
+#: lib/agent_board/board.ex:1009
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "unknown"
@@ -7108,52 +7108,52 @@ msgstr ""
 msgid "View image %{name}"
 msgstr ""
 
-#: lib/agent_board/board.ex:920
+#: lib/agent_board/board.ex:956
 #, elixir-autogen, elixir-format
 msgid "Automatic retry %{attempt} of %{max}"
 msgstr ""
 
-#: lib/agent_board/board.ex:924
+#: lib/agent_board/board.ex:960
 #, elixir-autogen, elixir-format
 msgid "Automatic retry %{attempt} of %{max} was not accepted"
 msgstr ""
 
-#: lib/agent_board/board.ex:916
+#: lib/agent_board/board.ex:952
 #, elixir-autogen, elixir-format
 msgid "Could not read the comments"
 msgstr ""
 
-#: lib/agent_board/board.ex:917
+#: lib/agent_board/board.ex:953
 #, elixir-autogen, elixir-format
 msgid "Could not read the issue"
 msgstr ""
 
-#: lib/agent_board/board.ex:915
+#: lib/agent_board/board.ex:951
 #, elixir-autogen, elixir-format
 msgid "Could not save the routing"
 msgstr ""
 
-#: lib/agent_board/board.ex:913
+#: lib/agent_board/board.ex:949
 #, elixir-autogen, elixir-format
 msgid "Release failed"
 msgstr ""
 
-#: lib/agent_board/board.ex:912
+#: lib/agent_board/board.ex:948
 #, elixir-autogen, elixir-format
 msgid "Released to the agent"
 msgstr ""
 
-#: lib/agent_board/board.ex:927
+#: lib/agent_board/board.ex:963
 #, elixir-autogen, elixir-format
 msgid "Retry requested by you"
 msgstr ""
 
-#: lib/agent_board/board.ex:930
+#: lib/agent_board/board.ex:966
 #, elixir-autogen, elixir-format
 msgid "Retry requested by you was not accepted"
 msgstr ""
 
-#: lib/agent_board/board.ex:914
+#: lib/agent_board/board.ex:950
 #, elixir-autogen, elixir-format
 msgid "Stop failed"
 msgstr ""
