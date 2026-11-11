@@ -269,6 +269,23 @@ defmodule AgentBoard.Usage.ReportTest do
     assert micros == 2 * 32_300_000
   end
 
+  test "a Codex UTC-day row counts in one local day, so the days add up" do
+    # 100 requests from 22:00 on Nov 9 in Brazil and one at 09:00 on Nov 10,
+    # all in the UTC day Nov 10: no per-message time, so one local day gets 101.
+    ledger("codex", "thread-1", ~D[2026-11-10], %{
+      model: "gpt-6-sol",
+      requests: 101,
+      first_at: ~U[2026-11-10 01:00:00.000000Z],
+      last_at: ~U[2026-11-10 12:00:00.000000Z]
+    })
+
+    nov9 = Report.today(180, now: ~U[2026-11-10 02:40:00Z]).by_source["codex"]
+    nov10 = Report.today(180, now: ~U[2026-11-10 15:00:00Z]).by_source["codex"]
+
+    assert {nov9.requests, nov10.requests} == {101, 0}
+    assert nov10.status == :none
+  end
+
   test "a source that never wrote a row is unknown, not zero" do
     since = DateTime.new!(~D[2026-11-06], ~T[00:00:00], "Etc/UTC")
     until = DateTime.new!(~D[2026-11-08], ~T[00:00:00], "Etc/UTC")

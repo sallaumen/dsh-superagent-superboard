@@ -1343,7 +1343,9 @@ what needs the owner in every repository, one list, repository on each item.
   day (the browser's `tz_offset`, in minutes west of UTC like
   `Time.local/2`, its two UTC instants) per source, plus the newest weekly
   Codex quota. The ledger stores UTC days; the view does not
-  show tomorrow's UTC date to an owner west of UTC. Each executor keeps its
+  show tomorrow's UTC date to an owner west of UTC. Codex keeps no time per
+  message, so a Codex row (one UTC day) counts whole in the local day of its
+  `first_at`, never in two (`spend_window/2`, the summary of the day too). Each executor keeps its
   own currency; a source with no row is "não rodou" (did not run), a missing
   reading is "desconhecido" (unknown).
 - **It is a view, not a repository**: `/?view=hoje` in the rail; clicking an
