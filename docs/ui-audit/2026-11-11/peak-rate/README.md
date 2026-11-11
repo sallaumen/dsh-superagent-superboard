@@ -17,4 +17,8 @@ Measured in WebKit on an isolated server with a copy of the data, 2026-11-11 at 
 | Peak, no-preference | 1 animation on the flame |
 | Peak, reduced motion | 0 animations |
 
-`peak-simulated-pt-light-1920.png` is the peak state made in the browser (the class and the icon the server renders in peak), since the capture ran off-peak; the server's peak rendering and the rule are covered by `peak_rate_test.exs`. Not observed: a real switch at the hour in a browser, and the owner's monitor.
+`peak-simulated-pt-light-1920.png` is the peak state made in the browser (the class and the icon the server renders in peak), since the capture ran off-peak; the rule and both renderings (flame and moon) are covered by `peak_rate_test.exs`. Not observed: a real switch at the hour in a browser, and the owner's monitor.
+
+## The window under the bar (#602 review)
+
+The first version anchored the opened window to the mark, so it opened leftward from it. Between the phone rule and a 700 px window it left the screen: its left edge was at −212 px at 481, −93 at 600 and −1 at 700. It now aligns with the bar's right edge like Messages and Attention: left edge 45 px at 481, 164 at 600, 256 at 700, inside at 375, 768, 1280 and 1920 (`open-pt-light-600.png`). Measured in WebKit on an isolated server.

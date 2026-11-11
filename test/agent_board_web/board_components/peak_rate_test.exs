@@ -2,6 +2,8 @@ defmodule AgentBoardWeb.BoardComponents.PeakRateTest do
   @moduledoc "DeepSeek's peak hours as the owner reads them: the rate now, the next change, the local day."
   use ExUnit.Case, async: true
 
+  import Phoenix.LiveViewTest
+
   alias AgentBoard.AI.Providers
   alias AgentBoardWeb.BoardComponents.PeakRate
 
@@ -35,6 +37,48 @@ defmodule AgentBoardWeb.BoardComponents.PeakRateTest do
     # Saturday: none
     assert PeakRate.info(~U[2026-11-14 15:00:00Z], @brt).windows == []
     assert PeakRate.windows_text([]) == "No peak hours today."
+  end
+
+  test "the mark draws the flame and the full price in peak, the moon and half off-peak" do
+    peak_at = ~U[2026-11-10 07:00:00Z]
+
+    peak =
+      render_component(&PeakRate.mark/1,
+        rate: PeakRate.info(peak_at, @brt),
+        now: peak_at,
+        offset: @brt
+      )
+
+    assert peak =~ ~s(class="ab-hub-menu ab-peak is-peak")
+    assert peak =~ "hero-fire"
+    assert peak =~ "Peak now"
+    assert peak =~ "Full price until 07:00."
+    assert peak =~ ~s(aria-label="DeepSeek peak hours: full price until 07:00")
+
+    calm_at = ~U[2026-11-10 15:00:00Z]
+
+    calm =
+      render_component(&PeakRate.mark/1,
+        rate: PeakRate.info(calm_at, @brt),
+        now: calm_at,
+        offset: @brt
+      )
+
+    refute calm =~ "is-peak"
+    assert calm =~ "hero-moon"
+    assert calm =~ "Half price until 22:00"
+
+    # Friday after the last window: the change is on another day, so it names it.
+    friday_at = ~U[2026-11-13 12:00:00Z]
+
+    friday =
+      render_component(&PeakRate.mark/1,
+        rate: PeakRate.info(friday_at, @brt),
+        now: friday_at,
+        offset: @brt
+      )
+
+    assert friday =~ "Half price until Sunday 22:00"
   end
 
   test "inside a window it is peak until the window ends" do
