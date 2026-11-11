@@ -728,10 +728,11 @@ Agora and the detail):
 ## Setup
 
 What the board needs to work, in dependency order, is one contract
-(`AgentBoard.Setup`), read by Settings and by nothing else that computes it on
-its own. Each row has a class (`:base` GitHub; `:work` the projects, the
-DeepSeek superagents, Claude Code and Codex; `:board_ai` the board's own calls;
-`:voice` ElevenLabs or the browser), a state and the fix for the next step.
+(`AgentBoard.Setup`), read by Settings (AI and setup, the first section) and
+by nothing else that computes it on its own. Each row has a class (`:work`
+GitHub, the projects, the DeepSeek superagents, Claude Code and Codex;
+`:board_ai` the provider of the board's own calls; `:voice` ElevenLabs or the
+browser), a state and the fix for the next step.
 
 - `checklist/1` reads configuration only and may run on a render: a key that is
   set is `:configured`, never `:ok`.

@@ -42,7 +42,7 @@ defmodule AgentBoard.SetupTest do
              :voice
            ]
 
-    assert Enum.map(rows, & &1.class) == [:base, :work, :work, :work, :work, :board_ai, :voice]
+    assert Enum.map(rows, & &1.class) == [:work, :work, :work, :work, :work, :board_ai, :voice]
     assert Enum.all?(rows, &(&1.state == :ok))
     assert Setup.next_step(rows) == nil
   end
