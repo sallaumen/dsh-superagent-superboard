@@ -16,9 +16,9 @@ defmodule AgentBoard.Setup do
       writes anything.
 
   The classes follow who the AI works for: `:work` (who does the tasks:
-  the DeepSeek superagents, Claude Code, Codex), `:board_ai` (the board's own
-  refinements, answers and voice turns) and `:voice` (speech and listening).
-  `:base` is GitHub, which everything reads.
+  GitHub where they live, the projects, the DeepSeek superagents, Claude Code,
+  Codex), `:board_ai` (the board's own refinements, answers and voice turns)
+  and `:voice` (speech and listening).
   """
 
   use Gettext, backend: AgentBoardWeb.Gettext
@@ -29,7 +29,7 @@ defmodule AgentBoard.Setup do
   @type state :: :ok | :configured | :missing | :off | :failed | :unknown
   @type row :: %{
           id: atom(),
-          class: :base | :work | :board_ai | :voice,
+          class: :work | :board_ai | :voice,
           required: boolean(),
           state: state(),
           title: String.t(),
@@ -57,6 +57,13 @@ defmodule AgentBoard.Setup do
   def next_step(rows), do: Enum.find(rows, &(&1.required and &1.state in [:missing, :failed]))
 
   defp rows(mode, opts) do
+    # `:setup_readers` stands in for the outside world in tests, per mode.
+    opts =
+      Keyword.merge(
+        Keyword.get(Application.get_env(:agent_board, :setup_readers, []), mode, []),
+        opts
+      )
+
     read = fn key -> Keyword.get_lazy(opts, key, fn -> reader(mode, key) end) end
     agents = read.(:agents).()
 
@@ -74,7 +81,7 @@ defmodule AgentBoard.Setup do
   # ---- rows ------------------------------------------------------------------
 
   defp github(mode, value) do
-    row = %{id: :github, class: :base, required: true, title: "GitHub"}
+    row = %{id: :github, class: :work, required: true, title: "GitHub"}
     fix = %{href: "https://github.com/settings/tokens", label: gettext("Create a token")}
 
     case {mode, value} do
@@ -245,7 +252,7 @@ defmodule AgentBoard.Setup do
       id: :board_ai,
       class: :board_ai,
       required: true,
-      title: gettext("The board's own AI"),
+      title: gettext("AI provider"),
       state: :missing,
       detail:
         gettext(
@@ -260,7 +267,7 @@ defmodule AgentBoard.Setup do
       id: :board_ai,
       class: :board_ai,
       required: true,
-      title: gettext("The board's own AI"),
+      title: gettext("AI provider"),
       state: :ok,
       detail: gettext("Rehearsal: answers come from local fixtures, no key is used."),
       fix: nil
@@ -269,7 +276,7 @@ defmodule AgentBoard.Setup do
 
   defp board_ai(mode, %{provider: provider, model: model} = ai, read) do
     label = provider_label(provider)
-    row = %{id: :board_ai, class: :board_ai, required: true, title: gettext("The board's own AI")}
+    row = %{id: :board_ai, class: :board_ai, required: true, title: gettext("AI provider")}
 
     fallbacks =
       case ai[:fallbacks] || [] do
@@ -316,7 +323,7 @@ defmodule AgentBoard.Setup do
   end
 
   defp voice(mode, value) do
-    row = %{id: :voice, class: :voice, required: false, title: gettext("Voice")}
+    row = %{id: :voice, class: :voice, required: false, title: "ElevenLabs"}
 
     case {mode, value} do
       {:config, true} ->
