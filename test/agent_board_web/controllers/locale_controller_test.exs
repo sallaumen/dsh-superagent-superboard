@@ -62,8 +62,8 @@ defmodule AgentBoardWeb.LocaleControllerTest do
     conn = Plug.Test.delete_req_cookie(conn, "board_locale")
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element(".ab-empty button", "Open Settings") |> render_click()
-    assert_patch(view, "/?panel=settings")
+    view |> element(".ab-empty button", "Start the setup") |> render_click()
+    assert_patch(view, "/?panel=settings&section=setup")
     assert has_element?(view, "#panel-settings #board-language-form")
 
     response =

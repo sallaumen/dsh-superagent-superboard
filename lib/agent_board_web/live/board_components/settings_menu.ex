@@ -36,19 +36,25 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :board_locale, :string, default: "en"
 
   @impl true
-  def mount(socket), do: {:ok, assign(socket, section: "projects")}
+  def mount(socket), do: {:ok, assign(socket, section: nil)}
 
   @impl true
   def update(assigns, socket) do
     previous = socket.assigns[:section]
     socket = assign(socket, Map.delete(assigns, :section))
 
-    # The URL's section wins when it names one; otherwise keep the current
-    # one. Projects is the first section whether or not a repository exists.
+    # Configuration only, read once per open panel: a required part missing
+    # opens AI and setup and marks it; otherwise Settings opens on Projects.
+    socket =
+      if Map.has_key?(socket.assigns, :setup_next),
+        do: socket,
+        else: assign(socket, setup_next: AgentBoard.Setup.next_step(AgentBoard.Setup.checklist()))
+
+    # The URL's section wins when it names one; otherwise keep the current one.
     section =
       case assigns[:section] do
         key when key in @section_keys -> key
-        _ -> previous || "projects"
+        _ -> previous || if(socket.assigns.setup_next, do: "setup", else: "projects")
       end
 
     {:ok, assign(socket, section: section)}
@@ -90,6 +96,16 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
             phx-target={@myself}
           >
             <span class="settings-nav__label">{label}</span>
+
+            <span :if={key == "setup" and @setup_next} class="settings-nav__marks">
+              <span
+                class="settings-nav__mark settings-nav__mark--halt"
+                title={gettext("Next step: %{part}", part: @setup_next.title)}
+              >
+                <.glyph kind={:blocked} />
+                <span class="ab-sr">{gettext("Next step: %{part}", part: @setup_next.title)}</span>
+              </span>
+            </span>
 
             <span :if={key == "projects"} class="settings-nav__marks">
               <span
