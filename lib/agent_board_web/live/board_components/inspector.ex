@@ -343,184 +343,229 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
       <div :if={@tab == "conversa"} class="ab-insp__foot">
         <%!-- The typed text and submit authorize the inline GitHub comment. --%>
-        <div
+        <.unblock_block
           :if={
             (@unblock || @inspector_blockers != []) &&
               !(@ask_sending && @ask_sending.task_id == @task.id)
           }
-          id="unblock-panel"
-          class="ab-unblock"
-          aria-label={gettext("Unlock task")}
-        >
-          <div class="ab-unblock__head">
-            <strong>{gettext("Unlock")}</strong>
-            <span class="ab-meta">{gettext("The agent stopped and asked for your decision.")}</span>
-          </div>
+          task={@task}
+          unblock={@unblock}
+          inspector_blockers={@inspector_blockers}
+          unblock_ai={@unblock_ai}
+          unblock_suggestions={@unblock_suggestions}
+          ai_status={@ai_status}
+          blocker_open={@blocker_open}
+          blocker_title={@blocker_title}
+          blocker_body={@blocker_body}
+          blocker_pending={@blocker_pending}
+        />
 
-          <div :if={@unblock && @unblock.question} class="ab-unblock__quote">
-            <span class="ab-meta">{gettext("Question")}</span>
-            <p>{@unblock.question}</p>
-          </div>
-
-          <div :if={@unblock && @unblock.blockage} class="ab-unblock__quote">
-            <span class="ab-meta">{gettext("Block")}</span>
-            <p>{@unblock.blockage}</p>
-          </div>
-
-          <div :if={@inspector_blockers != []} class="ab-unblock__links">
-            <span class="ab-meta">{gettext("Unblocking task")}</span>
-            <a
-              :for={blocker <- @inspector_blockers}
-              href={blocker.url || "#"}
-              target="_blank"
-              rel="noopener"
-            >
-              #{blocker.number} — {blocker.title} ({blocker.state})
-            </a>
-          </div>
-
-          <div :if={@unblock} class="ab-unblock__actions">
-            <button
-              id="suggest-unblock"
-              type="button"
-              class="ab-btn ab-btn--sm ab-btn--quiet"
-              phx-click="suggest_unblock"
-              disabled={@unblock_ai == :busy or @ai_status == :not_configured}
-            >
-              {if @unblock_ai == :busy,
-                do: gettext("Generating suggestions…"),
-                else: gettext("Suggest a response")}
-            </button>
-            <button
-              id="open-blocker"
-              type="button"
-              class="ab-btn ab-btn--sm ab-btn--quiet"
-              phx-click="open_blocker"
-            >
-              {gettext("Create blocking task")}
-            </button>
-          </div>
-
-          <p :if={@ai_status == :not_configured} class="ab-meta">
-            {gettext("AI not configured; write the response below or create the blocking task.")}
-          </p>
-
-          <p :if={@unblock_ai == :error} class="ab-unblock__error" role="status">
-            {gettext(
-              "Could not generate suggestions. Write the response or create the blocking task."
-            )}
-          </p>
-
-          <div :if={@unblock_suggestions != []} class="ab-unblock__suggestions" aria-live="polite">
-            <span class="ab-meta">{gettext("Suggestions — click to edit before sending")}</span>
-            <button
-              :for={suggestion <- @unblock_suggestions}
-              type="button"
-              class="ab-unblock__suggestion"
-              phx-click="use_unblock_suggestion"
-              phx-value-text={suggestion}
-            >
-              {suggestion}
-            </button>
-          </div>
-
-          <div :if={@blocker_open} class="ab-unblock__form">
-            <form id="blocker-form" phx-submit="blocker_prepare">
-              <label for="blocker-title">{gettext("Task title")}</label>
-              <input
-                id="blocker-title"
-                name="title"
-                type="text"
-                maxlength="255"
-                value={@blocker_title}
-                required
-              />
-              <label for="blocker-body">{gettext("What needs to be resolved")}</label>
-              <textarea id="blocker-body" name="body" rows="8" required>{@blocker_body}</textarea>
-              <div class="ab-unblock__form-actions">
-                <button type="submit" class="ab-btn ab-btn--sm ab-btn--primary">
-                  {gettext("Prepare task")}
-                </button>
-                <button
-                  type="button"
-                  class="ab-btn ab-btn--sm ab-btn--quiet"
-                  phx-click="close_blocker"
-                >
-                  {gettext("Cancel")}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <div
-            :if={@blocker_pending}
-            id="blocker-confirm"
-            class="ab-act__confirm"
-            role="group"
-            aria-labelledby="blocker-confirm-q"
-          >
-            <p id="blocker-confirm-q" class="ab-act__question">{@blocker_pending.phrase}</p>
-            <div class="ab-act__buttons">
-              <button
-                type="button"
-                class="ab-btn ab-btn--sm ab-btn--primary"
-                phx-click="blocker_confirm"
-                phx-disable-with={gettext("Creating…")}
-              >
-                {gettext("Create task")}
-              </button>
-              <button
-                type="button"
-                class="ab-btn ab-btn--sm ab-btn--quiet"
-                phx-click="blocker_cancel"
-              >
-                {gettext("Back and edit")}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <form id="ask-agent" phx-change="ask_change" phx-submit="ask">
-          <div class="ab-compose ab-compose--inline">
-            <textarea
-              id="ask-body"
-              name="body"
-              rows="2"
-              phx-debounce="300"
-              aria-label={gettext("Message to the agent")}
-              placeholder={gettext("Respond to agent...")}
-              disabled={@ask_sending && @ask_sending.task_id == @task.id}
-              required
-            >{@ask_draft}</textarea>
-            <button
-              class="ab-btn ab-btn--primary ab-btn--sm ab-compose__send"
-              disabled={@ask_sending && @ask_sending.task_id == @task.id}
-              phx-disable-with={gettext("Sending…")}
-            >
-              {if @ask_sending && @ask_sending.task_id == @task.id,
-                do: gettext("Sending…"),
-                else: gettext("Send")}
-              <.kbd :if={is_nil(@ask_sending)} key="↵" />
-            </button>
-          </div>
-          <%!-- A merged task's issue is closed, and a person's comment there
-               resumes its ticket in the runner (ADR 0003): say so before it is sent. --%>
-          <p :if={@task.state != "done"} class="ab-compose__hint">
-            {gettext(
-              "This message is posted on GitHub issue #%{number} and mentions the agent when you send it.",
-              number: @task.number
-            )}
-          </p>
-          <p :if={@task.state == "done"} id="ask-merged-hint" class="ab-compose__hint">
-            {gettext(
-              "Task #%{number} is merged. This message is posted on its closed issue and mentions the agent, which resumes the work on the same ticket.",
-              number: @task.number
-            )}
-          </p>
-          <p :if={@ask_error} class="ab-compose__error" role="alert">{@ask_error}</p>
-        </form>
+        <.ask_form
+          task={@task}
+          ask_draft={@ask_draft}
+          ask_sending={@ask_sending}
+          ask_error={@ask_error}
+        />
       </div>
     </aside>
+    """
+  end
+
+  attr :task, :any, required: true
+  attr :unblock, :any, default: nil
+  attr :inspector_blockers, :list, default: []
+  attr :unblock_ai, :atom, default: :idle
+  attr :unblock_suggestions, :list, default: []
+  attr :ai_status, :atom, required: true
+  attr :blocker_open, :boolean, default: false
+  attr :blocker_title, :string, default: ""
+  attr :blocker_body, :string, default: ""
+  attr :blocker_pending, :any, default: nil
+
+  # The agent stopped on a question or a blocker: the quote, the suggestions
+  # and the blocking-task form.
+  defp unblock_block(assigns) do
+    ~H"""
+    <div
+      id="unblock-panel"
+      class="ab-unblock"
+      aria-label={gettext("Unlock task")}
+    >
+      <div class="ab-unblock__head">
+        <strong>{gettext("Unlock")}</strong>
+        <span class="ab-meta">{gettext("The agent stopped and asked for your decision.")}</span>
+      </div>
+
+      <div :if={@unblock && @unblock.question} class="ab-unblock__quote">
+        <span class="ab-meta">{gettext("Question")}</span>
+        <p>{@unblock.question}</p>
+      </div>
+
+      <div :if={@unblock && @unblock.blockage} class="ab-unblock__quote">
+        <span class="ab-meta">{gettext("Block")}</span>
+        <p>{@unblock.blockage}</p>
+      </div>
+
+      <div :if={@inspector_blockers != []} class="ab-unblock__links">
+        <span class="ab-meta">{gettext("Unblocking task")}</span>
+        <a
+          :for={blocker <- @inspector_blockers}
+          href={blocker.url || "#"}
+          target="_blank"
+          rel="noopener"
+        >
+          #{blocker.number} — {blocker.title} ({blocker.state})
+        </a>
+      </div>
+
+      <div :if={@unblock} class="ab-unblock__actions">
+        <button
+          id="suggest-unblock"
+          type="button"
+          class="ab-btn ab-btn--sm ab-btn--quiet"
+          phx-click="suggest_unblock"
+          disabled={@unblock_ai == :busy or @ai_status == :not_configured}
+        >
+          {if @unblock_ai == :busy,
+            do: gettext("Generating suggestions…"),
+            else: gettext("Suggest a response")}
+        </button>
+        <button
+          id="open-blocker"
+          type="button"
+          class="ab-btn ab-btn--sm ab-btn--quiet"
+          phx-click="open_blocker"
+        >
+          {gettext("Create blocking task")}
+        </button>
+      </div>
+
+      <p :if={@ai_status == :not_configured} class="ab-meta">
+        {gettext("AI not configured; write the response below or create the blocking task.")}
+      </p>
+
+      <p :if={@unblock_ai == :error} class="ab-unblock__error" role="status">
+        {gettext("Could not generate suggestions. Write the response or create the blocking task.")}
+      </p>
+
+      <div :if={@unblock_suggestions != []} class="ab-unblock__suggestions" aria-live="polite">
+        <span class="ab-meta">{gettext("Suggestions — click to edit before sending")}</span>
+        <button
+          :for={suggestion <- @unblock_suggestions}
+          type="button"
+          class="ab-unblock__suggestion"
+          phx-click="use_unblock_suggestion"
+          phx-value-text={suggestion}
+        >
+          {suggestion}
+        </button>
+      </div>
+
+      <div :if={@blocker_open} class="ab-unblock__form">
+        <form id="blocker-form" phx-submit="blocker_prepare">
+          <label for="blocker-title">{gettext("Task title")}</label>
+          <input
+            id="blocker-title"
+            name="title"
+            type="text"
+            maxlength="255"
+            value={@blocker_title}
+            required
+          />
+          <label for="blocker-body">{gettext("What needs to be resolved")}</label>
+          <textarea id="blocker-body" name="body" rows="8" required>{@blocker_body}</textarea>
+          <div class="ab-unblock__form-actions">
+            <button type="submit" class="ab-btn ab-btn--sm ab-btn--primary">
+              {gettext("Prepare task")}
+            </button>
+            <button
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="close_blocker"
+            >
+              {gettext("Cancel")}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div
+        :if={@blocker_pending}
+        id="blocker-confirm"
+        class="ab-act__confirm"
+        role="group"
+        aria-labelledby="blocker-confirm-q"
+      >
+        <p id="blocker-confirm-q" class="ab-act__question">{@blocker_pending.phrase}</p>
+        <div class="ab-act__buttons">
+          <button
+            type="button"
+            class="ab-btn ab-btn--sm ab-btn--primary"
+            phx-click="blocker_confirm"
+            phx-disable-with={gettext("Creating…")}
+          >
+            {gettext("Create task")}
+          </button>
+          <button
+            type="button"
+            class="ab-btn ab-btn--sm ab-btn--quiet"
+            phx-click="blocker_cancel"
+          >
+            {gettext("Back and edit")}
+          </button>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  attr :task, :any, required: true
+  attr :ask_draft, :string, default: ""
+  attr :ask_sending, :any, default: nil
+  attr :ask_error, :any, default: nil
+
+  # The message to the agent, posted on the issue with the mention.
+  defp ask_form(assigns) do
+    ~H"""
+    <form id="ask-agent" phx-change="ask_change" phx-submit="ask">
+      <div class="ab-compose ab-compose--inline">
+        <textarea
+          id="ask-body"
+          name="body"
+          rows="2"
+          phx-debounce="300"
+          aria-label={gettext("Message to the agent")}
+          placeholder={gettext("Respond to agent...")}
+          disabled={@ask_sending && @ask_sending.task_id == @task.id}
+          required
+        >{@ask_draft}</textarea>
+        <button
+          class="ab-btn ab-btn--primary ab-btn--sm ab-compose__send"
+          disabled={@ask_sending && @ask_sending.task_id == @task.id}
+          phx-disable-with={gettext("Sending…")}
+        >
+          {if @ask_sending && @ask_sending.task_id == @task.id,
+            do: gettext("Sending…"),
+            else: gettext("Send")}
+          <.kbd :if={is_nil(@ask_sending)} key="↵" />
+        </button>
+      </div>
+      <%!-- A merged task's issue is closed, and a person's comment there
+           resumes its ticket in the runner (ADR 0003): say so before it is sent. --%>
+      <p :if={@task.state != "done"} class="ab-compose__hint">
+        {gettext(
+          "This message is posted on GitHub issue #%{number} and mentions the agent when you send it.",
+          number: @task.number
+        )}
+      </p>
+      <p :if={@task.state == "done"} id="ask-merged-hint" class="ab-compose__hint">
+        {gettext(
+          "Task #%{number} is merged. This message is posted on its closed issue and mentions the agent, which resumes the work on the same ticket.",
+          number: @task.number
+        )}
+      </p>
+      <p :if={@ask_error} class="ab-compose__error" role="alert">{@ask_error}</p>
+    </form>
     """
   end
 
