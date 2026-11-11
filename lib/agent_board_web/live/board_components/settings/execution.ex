@@ -12,7 +12,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
-  alias AgentBoard.{Actions, Runners}
+  alias AgentBoard.{Actions, AI, Runners}
+  alias AgentBoard.AI.Providers
   alias AgentBoard.Usage.Report
   alias AgentBoardWeb.{FailureText, Time}
 
@@ -285,7 +286,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
             <div>
               <h4 id="execution-ai-title">{gettext("The board's own AI calls")}</h4>
               <p class="ab-meta">
-                {ai_line(AgentBoard.AI.answering())}
+                {ai_line(AI.answering())}
               </p>
             </div>
             <span class={["ab-execution__ai-state", ai_tone(@ai_status)]}>
@@ -777,7 +778,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
     do: gettext("The board answers in rehearsal, from local fixtures: no key, no cost.")
 
   def ai_line(%{provider: provider, model: model, fallbacks: fallbacks}) do
-    {:ok, %{label: label}} = AgentBoard.AI.Providers.fetch(provider)
+    {:ok, %{label: label}} = Providers.fetch(provider)
 
     uses =
       gettext("The board uses %{provider} (%{model}) to answer, suggest unblocks and speak",
@@ -801,7 +802,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   end
 
   defp provider_label(id) do
-    case AgentBoard.AI.Providers.fetch(id) do
+    case Providers.fetch(id) do
       {:ok, %{label: label}} -> label
       :error -> to_string(id)
     end
