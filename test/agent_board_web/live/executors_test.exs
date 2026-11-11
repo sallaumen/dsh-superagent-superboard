@@ -8,8 +8,6 @@ defmodule AgentBoardWeb.ExecutorsTest do
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
 
-  @path "/?repo=fixture/executors&panel=settings&section=execution"
-
   setup do
     {:ok, repo} = Board.add_repository("fixture", "executors")
     now = DateTime.utc_now() |> DateTime.truncate(:second)
@@ -102,70 +100,68 @@ defmodule AgentBoardWeb.ExecutorsTest do
     ])
   end
 
-  test "o painel shows the three executors in their own currency and never sums them",
-       %{conn: conn} do
-    {:ok, view, _html} = live(conn, @path)
+  @costs "/?repo=fixture/executors&panel=settings&section=costs"
 
-    claude = view |> element("#executor-claude_code") |> render()
-    assert claude =~ "Claude Code"
-    assert claude =~ "estimado"
+  test "Costs shows each executor in its own currency and never sums them", %{conn: conn} do
+    {:ok, view, _html} = live(conn, @costs)
+
+    claude = view |> element("#costs-claude") |> render()
     assert claude =~ "≈ US$"
     assert claude =~ "preço de lista"
-    assert has_element?(view, "#executor-claude_code .ab-executor__bars")
 
-    codex = view |> element("#executor-codex") |> render()
-    assert codex =~ "Codex"
-    assert codex =~ "medido"
+    codex = view |> element("#costs-codex") |> render()
     assert codex =~ "90%"
-    assert has_element?(view, "#executor-codex [role=progressbar]")
-    refute codex =~ "≈ US$"
-    refute codex =~ "≥ US$"
+    assert codex =~ "medido"
+    assert has_element?(view, "#costs-codex [role=progressbar]")
+    refute codex =~ "US$"
 
-    dsh = view |> element("#executor-dsh") |> render()
-    assert dsh =~ "DeepSeek"
-    assert dsh =~ "estimado"
-    assert has_element?(view, "#executor-dsh .ab-executor__bars")
-    assert has_element?(view, "#executor-dsh .ab-executor__limits-card", "cada projeto")
+    assert has_element?(view, "#costs-agent", "DeepSeek")
+    assert has_element?(view, "#costs-agent", "1 execução")
+    refute has_element?(view, "#settings-costs", "Total geral")
 
-    refute has_element?(view, "#settings-execution", "Total geral")
+    # The agent's ticket is tied to task #7 by its PR branch.
+    assert has_element?(view, "#costs-top-tasks", "Mapa")
   end
 
   # A bar is a UTC day: at 22:00 in Brazil the newest one is already tomorrow
   # there, so it cannot be called today.
-  test "the newest bar prints its date and the chart says its days are UTC", %{conn: conn} do
-    {:ok, view, _html} = live(conn, @path)
-
+  test "the daily chart prints the newest UTC date and says its days are UTC", %{conn: conn} do
+    {:ok, view, _html} = live(conn, @costs)
     today = Date.utc_today()
-    bars = view |> element("#executor-dsh .ab-executor__bars") |> render()
 
-    assert bars =~ "por dia UTC"
-    assert bars =~ "#{Date.to_iso8601(today)} UTC"
+    assert has_element?(view, "#costs-daily li[title*='#{Date.to_iso8601(today)} UTC']")
 
     assert has_element?(
              view,
-             "#executor-dsh .ab-executor__bar-label",
+             "#costs-daily .ab-costs__day-label",
              Calendar.strftime(today, "%d/%m")
            )
 
-    refute has_element?(view, "#executor-dsh .ab-executor__bar-label", "hoje")
+    assert has_element?(view, "#costs-daily-title", "dia UTC")
+    refute has_element?(view, "#costs-daily .ab-costs__day-label", "hoje")
   end
 
-  test "the window switches between 7 and 30 days without leaving the section", %{conn: conn} do
-    {:ok, view, _html} = live(conn, @path)
+  test "the window and the page live in the URL", %{conn: conn} do
+    {:ok, view, _html} = live(conn, @costs)
+    assert has_element?(view, ~s(#costs-days-30[aria-pressed="true"]))
 
-    assert has_element?(
-             view,
-             ~s(#settings-execution .ab-segmented .ab-segment[aria-pressed="true"][phx-value-days="7"])
-           )
+    view |> element("#costs-days-7") |> render_click()
 
-    view
-    |> element(~s(#settings-execution .ab-execution__range button[phx-value-days="30"]))
-    |> render_click()
+    assert_patch(
+      view,
+      "/?costs=summary&days=7&panel=settings&repo=fixture%2Fexecutors&section=costs"
+    )
 
-    assert has_element?(
-             view,
-             ~s(#settings-execution .ab-execution__range button[aria-pressed="true"][phx-value-days="30"])
-           )
+    assert has_element?(view, ~s(#costs-days-7[aria-pressed="true"]))
+
+    view |> element("#costs-page-calls") |> render_click()
+
+    assert_patch(
+      view,
+      "/?costs=calls&days=7&panel=settings&repo=fixture%2Fexecutors&section=costs"
+    )
+
+    assert has_element?(view, "#settings-costs", "Nenhuma chamada de IA registrada ainda.")
   end
 
   test "a task's Execuções tab lists its ledger execution, attributed by the PR branch",

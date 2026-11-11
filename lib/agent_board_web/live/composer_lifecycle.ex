@@ -823,7 +823,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
   end
 
   # The same read as BoardLive's refresh_ai/1: a split wrote ai_calls rows.
-  defp refresh_ai(socket), do: assign(socket, ai_calls: AI.recent(5), ai_status: AI.status())
+  defp refresh_ai(socket), do: assign(socket, ai_status: AI.status())
 
   defp composer_job(kind, payload, total) do
     ref = System.unique_integer([:positive])

@@ -11,7 +11,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   # The rail shows these on a board with no repository: Settings is where the
   # first one is added, and the others do not depend on one.
   @panels_without_repo ~w(voice logs settings shortcuts)
-  @settings_sections ~w(setup projects execution voice system)
+  @settings_sections ~w(setup projects execution costs voice system)
 
   # Old links keep working: each key maps to the section that now holds it.
   @settings_aliases %{
@@ -53,9 +53,12 @@ defmodule AgentBoardWeb.BoardNavigation do
     "/?" <> URI.encode_query(params)
   end
 
-  @doc "The settings panel URL, keeping the section alive across a restart."
-  def settings_path(repo, section \\ nil) do
-    query = %{"panel" => "settings"}
+  @doc """
+  The settings panel URL, keeping the section alive across a restart. `extra`
+  carries a section's own state (Costs: its page and window).
+  """
+  def settings_path(repo, section \\ nil, extra \\ %{}) do
+    query = Map.merge(extra, %{"panel" => "settings"})
     query = if repo, do: Map.put(query, "repo", "#{repo.owner}/#{repo.name}"), else: query
 
     query =
@@ -125,10 +128,23 @@ defmodule AgentBoardWeb.BoardNavigation do
       comments: [],
       inspector_tab: "conversa",
       settings_section: settings_section(panel, params["section"]),
+      settings_costs: costs_params(params),
       history_list: if(params["list"] == "prs", do: "prs", else: "tasks"),
       history_query: String.slice(params["q"] || "", 0, 120),
       view: view
     )
+  end
+
+  # Settings → Costs: the page and the window, checked by the section itself.
+  defp costs_params(params) do
+    %{
+      page: params["costs"],
+      days:
+        case Integer.parse(params["days"] || "") do
+          {days, ""} -> days
+          _ -> nil
+        end
+    }
   end
 
   defp settings_section("settings", section), do: canonical_settings_section(section)

@@ -1228,6 +1228,36 @@ Claude Code charges it at twice the input price and a 5-minute write at
   currencies, the minimum and the unknown, the median, the window, the
   executor summary), and `executors_test.exs` (the panel and the tab).
 
+## Costs
+
+Configurações → Custos (Settings → Costs) is the one screen for what the
+agent, the board's own AI and the voice spent. Execution keeps the caps and
+models; Voice keeps its controls; each links here. The view is
+`AgentBoardWeb.BoardComponents.Settings.Costs`, the numbers are
+`AgentBoard.Usage.Overview.build/2`, and nothing on it is summed across
+currencies.
+
+| Number | Source | Window | Unit and class |
+|---|---|---|---|
+| Agent · DeepSeek | `usage_ledger` `dsh` rows (`Report.daily/1`) | UTC days from `Report.since/1` | US$ estimated at the published price; `≥` when a row lacks a price; `?` when none is priced; `—` when it did not run |
+| … of it at the peak rate | `usage_messages` `dsh`, summed per UTC hour and model, priced with `Costs.cost/2` | same | share of that US$ |
+| Board AI | `ai_calls.cost_micros` (price of the call's moment) | same, by `inserted_at` | US$ estimated; a call with tokens and cost 0 had no price and makes the total `≥` |
+| Claude Code | `usage_ledger` `claude_code` rows | same | US$ list-price reference, not a bill |
+| Codex | `Costs.codex_weekly/1` over `usage_limits` | the plan's week | measured %; no reading is `?` |
+| ElevenLabs | `Account.snapshot/0` (plan) and `ElevenLabs.Usage.window/1` (`eleven_labs_usage`) | plan period; UTC days | measured characters and seconds; no US$ |
+| Daily bars | agent DeepSeek + board AI per UTC day | same | US$ stacked; a day with a missing price is hatched |
+| Tasks that cost the most | `Report.executions/2` `dsh` with a task, top 5 | same | US$ estimated |
+
+- The page and the window live in the URL (`section=costs&costs=summary|calls&days=7|30|90`,
+  `BoardNavigation.settings_path/3`); the default is the summary over 30 days.
+  Data is read when the section opens or the page or window changes; a
+  broadcast re-render keeps what was read, and nothing polls.
+- Today is a partial UTC day and the scope line says so. A failed voice read
+  is `?`, not zero.
+- The tests: `overview_test.exs` (minimum, unknown, voice window, peak share),
+  `executors_test.exs` (currencies, UTC bars, URL) and the calls page in
+  `board_live_test.exs`.
+
 ## Attribution
 
 Which task an executor's session or a PR worked for
