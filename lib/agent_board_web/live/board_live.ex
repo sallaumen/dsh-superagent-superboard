@@ -36,7 +36,7 @@ defmodule AgentBoardWeb.BoardLive do
     Voice
   }
 
-  alias AgentBoard.Board.{Attachments, Task}
+  alias AgentBoard.Board.{Attachments, PrivateContext, Task}
   alias AgentBoard.Freshness
   alias AgentBoard.Intake.{IssueBody, RepoDigest}
   alias AgentBoard.Metrics.Observations
@@ -81,6 +81,9 @@ defmodule AgentBoardWeb.BoardLive do
   # The task actions a button may send, mapped explicitly (never to_atom).
   @task_actions %{"stop" => :stop_task, "archive" => :archive_task, "resume" => :resume_task}
   @max_resume_items 1000
+  # What the composer gathers for the request's private context: never sent
+  # to the model, written on this machine at the send (`PrivateContext`).
+  @empty_private %{note: "", folder: "", folders: [], folder_error: nil, meta: %{}, files: []}
   @version_check_interval 5 * 60 * 1000
 
   @impl true
@@ -197,6 +200,7 @@ defmodule AgentBoardWeb.BoardLive do
         composer_receipt: nil,
         composer_answers: "",
         composer_attachments: [],
+        composer_private: @empty_private,
         composer_routing: nil,
         composer_routing_for: nil,
         composer_executor: nil,
@@ -803,6 +807,7 @@ defmodule AgentBoardWeb.BoardLive do
             composer_receipt: nil,
             composer_answers: "",
             composer_attachments: [],
+            composer_private: @empty_private,
             composer_routing: nil,
             composer_routing_for: nil,
             composer_executor: nil,
@@ -1792,7 +1797,9 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("inspector_tab", %{"tab" => tab}, socket) do
-    tab = if tab in ~w(conversa atividade chamadas execucoes pr), do: tab, else: "conversa"
+    tab =
+      if tab in ~w(conversa atividade chamadas execucoes pr privado), do: tab, else: "conversa"
+
     socket = socket |> assign(:inspector_tab, tab) |> load_inspector()
 
     case socket.assigns.conversation do
@@ -2176,11 +2183,9 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("intake_draft_change", _params, socket), do: {:noreply, socket}
 
   @impl true
-  def handle_event("open_composer", params, socket) do
-    # "Dividir pedido" asks for the split; "Novo pedido" keeps the draft as it
-    # is, so a proposal or a receipt is not lost by reopening the panel.
-    split = params["split"] == "true" or socket.assigns.composer_split
-    socket = assign(socket, composer_split: split)
+  def handle_event("open_composer", _params, socket) do
+    # Reopening keeps the draft as it is, so a proposal or a receipt is not
+    # lost; the split is a button inside the composer.
     {:noreply, BoardNavigation.open_panel(socket, "composer")}
   end
 
@@ -2207,6 +2212,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      socket
      |> with_task_edits(params)
+     |> with_private_fields(params)
      |> assign(
        composer_text: text,
        composer_title: edited_title(params, text, socket.assigns.composer_title),
@@ -2232,31 +2238,72 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
+  def handle_event("composer_add_folder", params, socket) do
+    private = socket.assigns.composer_private
+    source = String.trim(params["private_folder"] || private.folder)
+
+    private =
+      case PrivateContext.check_folder(source) do
+        {:ok, folder} ->
+          %{
+            private
+            | folders: Enum.uniq_by(private.folders ++ [folder], & &1.path),
+              folder: "",
+              folder_error: nil
+          }
+
+        {:error, reason} ->
+          %{private | folder: source, folder_error: reason}
+      end
+
+    {:noreply, assign(socket, composer_private: private)}
+  end
+
+  @impl true
+  def handle_event("composer_remove_folder", %{"path" => path}, socket) do
+    private = socket.assigns.composer_private
+    folders = Enum.reject(private.folders, &(&1.path == path))
+    {:noreply, assign(socket, composer_private: %{private | folders: folders})}
+  end
+
+  @impl true
   def handle_event("composer_remove_attachment", %{"ref" => ref}, socket) do
     {:noreply, cancel_upload(socket, :attachments, ref)}
   end
 
   @impl true
+  # One click runs the whole split (repository digest, refine, proposal); a
+  # second click splits the current words again.
   def handle_event("composer_split", _params, socket) do
-    if socket.assigns.composer_job do
-      {:noreply, socket}
-    else
-      split = not socket.assigns.composer_split
-      text = String.trim(socket.assigns.composer_text)
+    text = String.trim(socket.assigns.composer_text)
 
-      socket =
-        assign(socket,
-          composer_split: split,
-          composer_error: nil,
-          composer_retry: nil,
-          intake: if(split, do: socket.assigns.intake, else: nil),
-          composer_selected: if(split, do: socket.assigns.composer_selected, else: MapSet.new())
-        )
+    cond do
+      socket.assigns.composer_job ->
+        {:noreply, socket}
 
-      if split and text != "" and is_nil(socket.assigns.intake),
-        do: start_split(socket, text),
-        else: {:noreply, socket}
+      text == "" ->
+        {:noreply, composer_error(socket, gettext("Write the request before splitting."))}
+
+      true ->
+        socket
+        |> assign(composer_split: true, composer_selected: MapSet.new())
+        |> start_split(text)
     end
+  end
+
+  @impl true
+  def handle_event("composer_unsplit", _params, socket) do
+    if socket.assigns.composer_job,
+      do: {:noreply, socket},
+      else:
+        {:noreply,
+         assign(socket,
+           composer_split: false,
+           composer_error: nil,
+           composer_retry: nil,
+           intake: nil,
+           composer_selected: MapSet.new()
+         )}
   end
 
   @impl true
@@ -2266,6 +2313,7 @@ defmodule AgentBoardWeb.BoardLive do
     socket =
       socket
       |> with_task_edits(params)
+      |> with_private_fields(params)
       |> choose_executor(params["executor"])
       |> ensure_composer_routing()
 
@@ -3359,23 +3407,10 @@ defmodule AgentBoardWeb.BoardLive do
                   <span class="ab-top__spacer"></span>
                   <div id="board-tools" class="ab-top__actions" aria-label={gettext("Board actions")}>
                     <button
-                      id="open-intake"
-                      type="button"
-                      class="ab-btn"
-                      phx-click="open_composer"
-                      phx-value-split="true"
-                      data-panel-trigger
-                      aria-haspopup="dialog"
-                      aria-controls="panel-composer"
-                    >
-                      <.ico name="split" />{gettext("Split request")}
-                    </button>
-                    <button
                       id="open-create"
                       type="button"
                       class="ab-btn ab-btn--primary"
                       phx-click="open_composer"
-                      phx-value-split="false"
                       data-panel-trigger
                       aria-haspopup="dialog"
                       aria-controls="panel-composer"
@@ -3492,7 +3527,6 @@ defmodule AgentBoardWeb.BoardLive do
                     type="button"
                     class="ab-btn ab-btn--primary"
                     phx-click="open_composer"
-                    phx-value-split="false"
                     data-panel-trigger
                     aria-haspopup="dialog"
                     aria-controls="panel-composer"
@@ -3579,7 +3613,6 @@ defmodule AgentBoardWeb.BoardLive do
               type="button"
               class="ab-btn ab-btn--primary"
               phx-click="open_composer"
-              phx-value-split="false"
               data-panel-trigger
               aria-haspopup="dialog"
               aria-controls="panel-composer"
@@ -3704,6 +3737,7 @@ defmodule AgentBoardWeb.BoardLive do
             intake={@intake}
             uploads={@uploads}
             attachments_ready={length(@composer_attachments)}
+            private={@composer_private}
             selected={@composer_selected}
             job={@composer_job}
             receipt={@composer_receipt}
@@ -4239,6 +4273,12 @@ defmodule AgentBoardWeb.BoardLive do
     action =
       %{repository: repo, requests: requests, client: client, attachments: attachments}
       |> then(fn action ->
+        case private_payload(socket) do
+          nil -> action
+          private -> Map.put(action, :private, private)
+        end
+      end)
+      |> then(fn action ->
         if socket.assigns.composer_split and length(requests) > 1 do
           Map.put(action, :objective, split_objective(socket, repo))
         else
@@ -4265,15 +4305,68 @@ defmodule AgentBoardWeb.BoardLive do
   # Read once, at the send, and kept until the receipt: a retry sends the same
   # files, and an unfinished one never gets this far.
   defp take_attachments(socket) do
+    private = socket.assigns.composer_private
+
     new =
       consume_uploaded_entries(socket, :attachments, fn %{path: path}, entry ->
         # `path` is the temporary file LiveView made for this upload; the
         # client's name for it only ever reaches `Attachments.safe_name/1`.
         {:ok, content} = :file.read_file(path)
-        {:ok, %{name: entry.client_name, content: content}}
+        meta = Map.get(private.meta, entry.ref, %{private: false, role: "reference"})
+        {:ok, Map.merge(meta, %{name: entry.client_name, content: content})}
       end)
 
-    assign(socket, :composer_attachments, socket.assigns.composer_attachments ++ new)
+    {kept, shared} = Enum.split_with(new, & &1.private)
+    shared = Enum.map(shared, &%{name: role_prefix(&1.role) <> &1.name, content: &1.content})
+
+    assign(socket,
+      composer_attachments: socket.assigns.composer_attachments ++ shared,
+      composer_private: %{private | files: private.files ++ kept, meta: %{}}
+    )
+  end
+
+  defp role_prefix("before"), do: "before--"
+  defp role_prefix("after"), do: "after--"
+  defp role_prefix(_reference), do: ""
+
+  # The owner's private note, the folder being typed and each file's place
+  # (this machine or GitHub) and role, as the form last had them.
+  defp with_private_fields(socket, params) do
+    private = socket.assigns.composer_private
+
+    meta =
+      for {ref, fields} <- Map.get(params, "attachment_meta", %{}), is_map(fields), into: %{} do
+        {ref,
+         %{
+           private: fields["private"] == "true",
+           role: if(fields["role"] in ~w(before after), do: fields["role"], else: "reference")
+         }}
+      end
+
+    assign(socket,
+      composer_private: %{
+        private
+        | note: Map.get(params, "private_note", private.note),
+          folder: Map.get(params, "private_folder", private.folder),
+          meta: Map.merge(private.meta, meta)
+      }
+    )
+  end
+
+  # Only what holds something: an empty context makes no folder and no line.
+  defp private_payload(socket) do
+    private = socket.assigns.composer_private
+
+    if String.trim(private.note) == "" and private.files == [] and private.folders == [] do
+      nil
+    else
+      %{
+        dir: PrivateContext.request_dir(socket.assigns.repo, socket.assigns.composer_text),
+        note: private.note,
+        files: private.files,
+        folders: Enum.map(private.folders, & &1.path)
+      }
+    end
   end
 
   defp attachments_pending?(socket),
@@ -4359,7 +4452,8 @@ defmodule AgentBoardWeb.BoardLive do
       composer_job: nil,
       composer_receipt: %{items: items},
       composer_retry: if(failed > 0, do: {:enqueue, requests}),
-      composer_attachments: if(failed > 0, do: socket.assigns.composer_attachments, else: [])
+      composer_attachments: if(failed > 0, do: socket.assigns.composer_attachments, else: []),
+      composer_private: if(failed > 0, do: socket.assigns.composer_private, else: @empty_private)
     )
     |> load(socket.assigns.repo)
     |> flash_receipt(items, failed)
@@ -4486,6 +4580,7 @@ defmodule AgentBoardWeb.BoardLive do
       composer_receipt: nil,
       composer_answers: "",
       composer_attachments: [],
+      composer_private: @empty_private,
       intake: nil,
       composer_executor_touched: false,
       composer_executor:

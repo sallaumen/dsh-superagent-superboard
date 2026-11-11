@@ -94,3 +94,8 @@ config :agent_board, version_check_on_mount: false
 # :board_updated and reads the page right after. board_load_test covers the
 # coalesced burst with its own delay.
 config :agent_board, board_reload_ms: 0
+
+# Private contexts go to a folder of the test run, never the owner's.
+config :agent_board,
+  private_root:
+    Path.join(System.tmp_dir!(), "agent-board-private-#{System.unique_integer([:positive])}")

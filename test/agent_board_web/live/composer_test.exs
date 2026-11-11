@@ -49,7 +49,7 @@ defmodule AgentBoardWeb.ComposerTest do
     assert has_element?(view, "#board-page[data-panel=composer]")
 
     view |> element("#composer-form") |> render_change(%{"text" => "Quero respostas rápidas"})
-    view |> element("#composer-form .ab-toggle") |> render_click()
+    view |> element("#composer-split") |> render_click()
     render_async(view, 2000)
 
     assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
@@ -72,6 +72,28 @@ defmodule AgentBoardWeb.ComposerTest do
     assert Repo.one(Task).title == "Medir o tempo de resposta do board"
     assert has_element?(view, "#composer-receipt", "Medir o tempo de resposta do board")
     assert has_element?(view, "#composer-receipt", "#9001")
+  end
+
+  test "the board has one door; the split is one click inside it", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/composer")
+    refute has_element?(view, "#open-intake")
+
+    view |> element("#open-create") |> render_click()
+    # Nothing to split yet.
+    assert has_element?(view, "#composer-split[disabled]")
+
+    view |> element("#composer-form") |> render_change(%{"text" => "Quero respostas rápidas"})
+    view |> element("#composer-split") |> render_click()
+    render_async(view, 2000)
+
+    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
+    assert has_element?(view, "#composer-split", "Dividir de novo")
+
+    # Back to one request: the proposal goes and the send is a single issue.
+    view |> element("#composer-unsplit") |> render_click()
+    refute has_element?(view, "#composer-form", "Vai virar 2 tarefas")
+    refute has_element?(view, "#composer-unsplit")
+    assert has_element?(view, "#composer-form button.ab-btn--primary", "Pôr na fila")
   end
 
   test "a dictated request lands in the composer for review", %{conn: conn} do
@@ -99,7 +121,7 @@ defmodule AgentBoardWeb.ComposerTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/composer")
     view |> element("#open-create") |> render_click()
     view |> element("#composer-form") |> render_change(%{"text" => "Quero respostas rápidas"})
-    view |> element("#composer-form .ab-toggle") |> render_click()
+    view |> element("#composer-split") |> render_click()
     render_async(view, 2000)
 
     assert has_element?(view, ~s(#composer-form input[type=hidden][name="tasks[]"]))

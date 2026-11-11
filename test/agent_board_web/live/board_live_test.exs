@@ -752,7 +752,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
              "#settings-current-section section[aria-labelledby=settings-execution-title][hidden]"
            )
 
-    assert has_element?(view, "#board-tools #open-intake", "Dividir pedido")
+    refute has_element?(view, "#board-tools #open-intake")
     assert has_element?(view, "#board-tools #open-create", "Novo pedido")
     refute has_element?(view, "#board-tools #open-activity")
     refute has_element?(view, "#board-settings-panel #open-ai")
