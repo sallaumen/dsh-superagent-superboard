@@ -266,6 +266,88 @@ defmodule AgentBoard.SuperagentsTest do
     assert Repo.get!(Superagent, superagent.id).observed_state == "stopped"
   end
 
+  # The decision behind "unknown": a status read the board had to kill is an
+  # observation, so a desired-running agent whose read hangs takes the
+  # auto_start branch on the next reconcile (bounded by the ten-minute wait
+  # and the manager's refusal to start a duplicate). Recording "error" would
+  # instead leave it to a person.
+  test "a status read that times out is observed as unknown and then reconciled", %{repo: repo} do
+    {:ok, _pid} = FakeManager.start()
+    on_exit(&stop_fake_manager/0)
+
+    {:ok, superagent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "superagent-slow",
+        port: 3192,
+        state_dir: "/tmp/fixture-superagent-slow"
+      })
+
+    {:ok, superagent} = Superagents.set_desired(superagent, "running")
+    {:ok, superagent} = Superagents.observe(superagent, %{state: "ready"})
+
+    FakeManager.put(superagent.id, %{state: "ready", delay_ms: 1_000})
+    Superagents.tick(FakeManager)
+
+    assert %{observed_state: "unknown", last_error: nil} = Repo.get!(Superagent, superagent.id)
+
+    assert [%{action: "observe", from_state: "ready", to_state: "unknown", detail: detail} | _] =
+             Superagents.events(superagent)
+
+    assert detail == "status read timed out"
+
+    Superagents.reconcile(FakeManager)
+    assert Repo.get!(Superagent, superagent.id).observed_state == "starting"
+
+    assert [%{action: "start", actor: "board", detail: "reconcile"}] =
+             superagent |> Superagents.events() |> Enum.filter(&(&1.action == "start"))
+  end
+
+  test "a stop the manager refuses is asked once per pause, as the board", %{repo: repo} do
+    {:ok, _pid} = FakeManager.start()
+    on_exit(&stop_fake_manager/0)
+
+    {:ok, superagent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "superagent-stuck",
+        port: 3191,
+        state_dir: "/tmp/fixture-superagent-stuck"
+      })
+
+    {:ok, superagent} = Superagents.set_desired(superagent, "stopped")
+    FakeManager.put(superagent.id, %{state: "ready"})
+    FakeManager.put_answer(superagent.id, :stop, {:error, :stuck})
+
+    Superagents.tick(FakeManager)
+    Superagents.reconcile(FakeManager)
+    assert %{observed_state: "error", last_error: ":stuck"} = Repo.get!(Superagent, superagent.id)
+
+    # The next read sees the process still up; the board waits before asking again.
+    Superagents.tick(FakeManager)
+    assert Repo.get!(Superagent, superagent.id).observed_state == "ready"
+    Superagents.reconcile(FakeManager)
+
+    assert [
+             %{actor: "board", to_state: "error", detail: ":stuck"},
+             %{actor: "board", to_state: "stopped", detail: "reconcile"}
+           ] = superagent |> Superagents.events() |> Enum.filter(&(&1.action == "stop"))
+  end
+
+  defp stop_fake_manager do
+    case Process.whereis(FakeManager) do
+      nil ->
+        :ok
+
+      pid ->
+        try do
+          Agent.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+    end
+  end
+
   test "provision reserves one row and asks the provisioner", %{repo: repo} do
     {:ok, source_repo} = Board.add_repository("fixture", "source")
 
