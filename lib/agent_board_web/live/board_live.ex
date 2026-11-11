@@ -400,6 +400,14 @@ defmodule AgentBoardWeb.BoardLive do
     }
   end
 
+  # The same span the long-run rule measures, so the clock and the heads-up agree.
+  defp elapsed(task, run) do
+    case Lanes.working_since(task) do
+      %DateTime{} = since -> Time.age_seconds(since, run.frozen_at || run.now)
+      nil -> nil
+    end
+  end
+
   defp running_card(task, run) do
     ticket = Map.get(run.tickets, task.number)
     silence = Map.get(run.silences, task.number)
@@ -411,7 +419,7 @@ defmodule AgentBoardWeb.BoardLive do
       number: task.number,
       title: task.title,
       step: worktree && worktree.step,
-      elapsed: task.started_at && Time.age_seconds(task.started_at, run.frozen_at || run.now),
+      elapsed: elapsed(task, run),
       silence: silence,
       stalled: AgentSignal.stalled?(silence, run.stall_after),
       answered_at: ticket && Tickets.answered_at(ticket),

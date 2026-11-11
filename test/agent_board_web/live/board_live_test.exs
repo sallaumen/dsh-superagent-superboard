@@ -571,6 +571,38 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#sec-needs #slow-#{slow.id} button", "Ver detalhe")
   end
 
+  test "the Now card counts the work since the task last became running", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "resumed-run")
+    Board.log_event(repo.id, "sync", "fixture/resumed-run", %{"errors" => 0})
+    now = DateTime.utc_now(:second)
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 34,
+        title: "Voltou ao trabalho",
+        state: "running",
+        size: "S",
+        started_at: DateTime.add(now, -3 * 3600),
+        state_changed_at: DateTime.add(now, -120)
+      })
+      |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/resumed-run")
+
+    tick =
+      view
+      |> element("#task-#{task.id} .ab-run__clock [data-tick]")
+      |> render()
+      |> then(&Regex.run(~r/data-tick="(\d+)"/, &1, capture: :all_but_first))
+      |> hd()
+      |> String.to_integer()
+
+    assert tick in 120..150
+  end
+
   test "the open page keeps one timer for the next long run, and shows it when due", %{
     conn: conn
   } do
