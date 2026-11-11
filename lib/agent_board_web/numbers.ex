@@ -39,6 +39,12 @@ defmodule AgentBoardWeb.Numbers do
     value |> Kernel./(1) |> :erlang.float_to_binary(decimals: places) |> String.replace(".", mark)
   end
 
+  @doc ~S(A file size: "820 KB", "12,4 MB".)
+  def bytes(bytes) when is_integer(bytes) and bytes < 1_000_000,
+    do: "#{max(div(bytes + 999, 1000), 0)} KB"
+
+  def bytes(bytes) when is_integer(bytes), do: decimal(bytes / 1_000_000, 1) <> " MB"
+
   @doc "A whole number with its thousands separated."
   def grouped(integer) when is_integer(integer), do: group(integer, elem(separators(), 0))
 

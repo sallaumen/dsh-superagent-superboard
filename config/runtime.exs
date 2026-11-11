@@ -100,6 +100,12 @@ end
 # A dev server from a worktree shares Postgres with the live board on 4099.
 # AGENT_BOARD_DATABASE points it at another database (a copy, say), so that its
 # migrations and clicks stay away from the board the owner is using.
+# A task's private context (notes, secrets, local files) lives outside every
+# repository; AGENT_BOARD_PRIVATE_DIR moves it (`AgentBoard.Board.PrivateContext`).
+if private_dir = System.get_env("AGENT_BOARD_PRIVATE_DIR") do
+  config :agent_board, private_root: Path.expand(private_dir)
+end
+
 if config_env() == :dev do
   case System.get_env("AGENT_BOARD_DATABASE") do
     database when is_binary(database) and database != "" ->

@@ -7,7 +7,7 @@ defmodule AgentBoardWeb.InspectorTest do
 
   alias AgentBoard.{AI, Board, Repo}
   alias AgentBoard.AI.Call
-  alias AgentBoard.Board.{Comment, PullRequest, Task}
+  alias AgentBoard.Board.{Comment, PrivateContext, PullRequest, Task}
   alias AgentBoard.Intake.IssueBody
   alias AgentBoardWeb.BoardComponents.Inspector
   alias AgentBoardWeb.BoardNavigation
@@ -63,6 +63,51 @@ defmodule AgentBoardWeb.InspectorTest do
 
     view |> element("#conversation button", "PR") |> render_click()
     assert has_element?(view, "#conversation", "Esta tarefa ainda não abriu PR.")
+  end
+
+  test "the Private tab edits the task's private notes live and shows its images",
+       %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-private")
+    task = task(repo, 31, "Testar o login", "running")
+
+    {:ok, view, _html} =
+      live(conn, BoardNavigation.path(repo, "conversation", task.id, "privado"))
+
+    assert has_element?(view, "#inspector-tab-privado", "Privado")
+    # Nothing on disk yet: no path, nothing to tell the agent.
+    refute has_element?(view, "#private-panel-path")
+    refute has_element?(view, "#share-private-#{task.id}")
+
+    view
+    |> element("#private-panel-note-form")
+    |> render_change(%{"note" => "conta: teste@x / senha: hunter2"})
+
+    dir = PrivateContext.issue_dir(31)
+    assert PrivateContext.read_note(repo, dir) == "conta: teste@x / senha: hunter2"
+    assert has_element?(view, "#private-panel-path", PrivateContext.path(repo, dir))
+    assert has_element?(view, "#private-panel", "Salvo às")
+    # The issue does not name the folder yet: the confirmed comment is offered.
+    assert has_element?(view, "#share-private-#{task.id}-trigger", "Avisar o agente na issue")
+
+    # A dropped file is saved the moment it arrives, under its role.
+    view |> element("#private-panel-files-form") |> render_change(%{"role" => "after"})
+
+    upload =
+      file_input(view, "#private-panel-files-form", :private_files, [
+        %{name: "tela.png", content: "PNG", type: "image/png"}
+      ])
+
+    render_upload(upload, "tela.png")
+    assert File.read!(Path.join(PrivateContext.path(repo, dir), "files/after--tela.png")) == "PNG"
+
+    assert has_element?(
+             view,
+             ~s(#private-panel-files img[src="/private/#{repo.id}/#{dir}/files/after--tela.png"])
+           )
+
+    # A reload does not take the words out of the field.
+    send(view.pid, :board_updated)
+    assert view |> element("#private-panel-note") |> render() =~ "hunter2"
   end
 
   test "the PR tab follows a GitHub URL in the newest comment", %{conn: conn} do

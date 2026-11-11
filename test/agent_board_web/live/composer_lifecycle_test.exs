@@ -11,7 +11,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
 
   alias AgentBoard.AI.Engines.Scripted
   alias AgentBoard.{Board, Repo}
-  alias AgentBoard.Board.Task
+  alias AgentBoard.Board.{PrivateContext, Task}
 
   @stub AgentBoardWeb.ComposerLifecycleTest.Stub
 
@@ -117,15 +117,21 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     counter
   end
 
-  defp open_composer(conn, split \\ false) do
+  defp open_composer(conn) do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/lifecycle")
-    view |> element(if(split, do: "#open-intake", else: "#open-create")) |> render_click()
+    view |> element("#open-create") |> render_click()
     assert has_element?(view, "#board-page[data-panel=composer]")
     view
   end
 
   defp type(view, text) do
     view |> element("#composer-form") |> render_change(%{"text" => text})
+  end
+
+  # One click runs the whole split for the words already typed.
+  defp split(view) do
+    view |> element("#composer-split") |> render_click()
+    render_async(view, 2000)
   end
 
   defp submit(view, params) do
@@ -267,10 +273,10 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
         Scripted.answer(@tasks)
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "O board está lento")
 
-    view |> element("#composer-form") |> render_submit(%{"text" => "O board está lento"})
+    view |> element("#composer-split") |> render_click()
     assert_receive {:refining, model}, 2000
 
     # The job is on screen while the model answers; the submit is disabled.
@@ -322,9 +328,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
         Scripted.answer(@tasks)
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "O board está lento")
-    submit(view, %{"text" => "O board está lento"})
+    split(view)
     submit(view, %{"text" => "O board está lento", "tasks" => ["0", "1"]})
 
     first = Repo.get_by!(Task, title: "Medir o carregamento")
@@ -363,9 +369,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
         Scripted.answer(@tasks)
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "O board está lento")
-    submit(view, %{"text" => "O board está lento"})
+    split(view)
 
     assert_received {:refine, refine}
     assert refine =~ "lib/brand_live.ex"
@@ -378,9 +384,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 500, "boom") end)
     happy_model()
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "O board está lento")
-    submit(view, %{"text" => "O board está lento"})
+    split(view)
 
     assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
   end
@@ -429,6 +435,72 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert_received {:posted, %{"body" => body}}
     assert body =~ "login_mock.png"
     assert body =~ "board-attachments"
+  end
+
+  test "the private context stays on this machine; the issue only gets its path", %{conn: conn} do
+    github_with_files()
+
+    source =
+      Path.join(Path.expand("~"), "agent-board-composer-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(Path.join(source, "screens"))
+    File.write!(Path.join([source, "screens", "home.png"]), "PNG")
+    on_exit(fn -> File.rm_rf!(source) end)
+
+    view = open_composer(conn)
+    type(view, "Refazer a tela de login")
+
+    upload =
+      file_input(view, "#composer-form", :attachments, [
+        %{name: "antes.png", content: "OLDPNG", type: "image/png"}
+      ])
+
+    render_upload(upload, "antes.png")
+    [entry] = upload.entries
+    ref = entry["ref"]
+
+    view
+    |> element("#composer-form")
+    |> render_change(%{
+      "text" => "Refazer a tela de login",
+      "private_note" => "senha do staging: hunter2",
+      "attachment_meta" => %{ref => %{"private" => "true", "role" => "before"}}
+    })
+
+    # A folder outside home is refused with words; one under home is counted.
+    view |> element("#composer-add-folder") |> render_click(%{"private_folder" => "/etc"})
+
+    assert has_element?(
+             view,
+             "#composer-private",
+             "Só dá para copiar uma pasta dentro da sua home"
+           )
+
+    view |> element("#composer-add-folder") |> render_click(%{"private_folder" => source})
+    assert has_element?(view, "#composer-private", "1 arquivo")
+
+    submit(view, %{
+      "text" => "Refazer a tela de login",
+      "private_note" => "senha do staging: hunter2"
+    })
+
+    # Nothing private went to GitHub: no file stored, no secret in the issue.
+    refute_received :file_stored
+    assert_received {:posted, %{"body" => body}}
+    refute body =~ "hunter2"
+    refute body =~ "board-attachments"
+
+    repo = Board.repository_by_slug("fixture/lifecycle")
+    dir = PrivateContext.request_dir(repo, "Refazer a tela de login")
+    path = PrivateContext.path(repo, dir)
+    assert body =~ "## Contexto privado"
+    assert body =~ path
+
+    assert PrivateContext.read_note(repo, dir) == "senha do staging: hunter2"
+    files = Enum.map(PrivateContext.list(repo, dir), & &1.path)
+    assert "files/before--antes.png" in files
+    assert "files/#{Path.basename(source)}/screens/home.png" in files
+    assert has_element?(view, "#composer-receipt", "1 pedido na fila")
   end
 
   test "a file whose send failed does not follow the owner to another repository",
@@ -521,9 +593,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
       %{name: :propose_tasks} -> Scripted.answer(%{"tasks" => tasks})
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "O board está lento")
-    submit(view, %{"text" => "O board está lento"})
+    split(view)
     submit(view, %{"text" => "O board está lento", "tasks" => ["0", "1", "2"]})
 
     assert Repo.aggregate(Task, :count) == 3
@@ -547,9 +619,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
         Scripted.answer(@tasks)
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "O board está lento")
-    submit(view, %{"text" => "O board está lento"})
+    split(view)
 
     assert has_element?(view, "#composer-open-questions", "Qual é o alvo de p95?")
     assert has_element?(view, "#composer-understood", "Usa o Postgres atual")
@@ -563,9 +635,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     github(refuse: ["Corrigir de verdade"])
     happy_model()
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "O board está lento")
-    submit(view, %{"text" => "O board está lento"})
+    split(view)
 
     edits = %{
       "0" => %{"title" => "Medir direito", "body" => "Medir o load todo.", "acceptance" => "x\ny"},
@@ -593,9 +665,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     github()
     happy_model()
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "O board está lento")
-    submit(view, %{"text" => "O board está lento"})
+    split(view)
 
     edits = %{"0" => %{"title" => " ", "body" => "b", "acceptance" => "a"}}
     params = %{"text" => "O board está lento", "tasks" => ["0"], "task_edits" => edits}
@@ -631,9 +703,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
       %{name: :propose_tasks} -> Scripted.answer(three)
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "O board está lento")
-    submit(view, %{"text" => "O board está lento"})
+    split(view)
 
     view
     |> element("#composer-form")
@@ -782,9 +854,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
         Scripted.answer(@tasks)
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "Separe em dois testes e manda ver")
-    submit(view, %{"text" => "Separe em dois testes e manda ver"})
+    split(view)
 
     assert has_element?(view, "#composer-form", "Dois testes automatizados ou duas tarefas?")
     assert has_element?(view, "#composer-answers")
@@ -807,9 +879,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     github()
     script(fn _request -> Scripted.malformed() end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "Pedido com resposta quebrada")
-    submit(view, %{"text" => "Pedido com resposta quebrada"})
+    split(view)
 
     assert has_element?(view, "#composer-error", "fora do formato esperado")
     refute view |> element("#composer-form") |> render() =~ "malformed_output"
@@ -844,9 +916,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
       Scripted.answer(@refined)
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "Pedido que demora")
-    view |> element("#composer-form") |> render_submit(%{"text" => "Pedido que demora"})
+    view |> element("#composer-split") |> render_click()
 
     assert has_element?(view, "#composer-progress", "Dividindo")
     Process.sleep(120)
@@ -868,9 +940,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
       Scripted.answer(@refined)
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "Pedido cancelado no meio")
-    view |> element("#composer-form") |> render_submit(%{"text" => "Pedido cancelado no meio"})
+    view |> element("#composer-split") |> render_click()
     assert has_element?(view, "#composer-progress button", "Cancelar")
 
     view |> element("#composer-progress button", "Cancelar") |> render_click()
@@ -884,9 +956,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
   test "a proposal survives closing and reopening the panel", %{conn: conn} do
     github()
     happy_model()
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "Pedido que fecha no meio")
-    view |> element("#composer-form") |> render_submit(%{"text" => "Pedido que fecha no meio"})
+    view |> element("#composer-split") |> render_click()
 
     render_hook(view, "close", %{})
     assert has_element?(view, "#board-page[data-panel='']")
@@ -905,9 +977,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
       %{name: :propose_tasks} -> Scripted.answer(%{"tasks" => []})
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "Pedido sem tarefas")
-    submit(view, %{"text" => "Pedido sem tarefas"})
+    split(view)
 
     assert has_element?(view, "#composer-form", "não propôs nenhuma tarefa")
 
@@ -923,9 +995,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
        %{conn: conn} do
     github(refuse: ["Corrigir o gargalo"])
     happy_model()
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "Pedido com falha parcial")
-    submit(view, %{"text" => "Pedido com falha parcial"})
+    split(view)
     submit(view, %{"text" => "Pedido com falha parcial", "tasks" => ["0", "1"]})
 
     assert has_element?(view, "#composer-receipt", "1 de 2 na fila; 1 falhou")
@@ -970,9 +1042,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
         Scripted.answer(@tasks)
     end)
 
-    view = open_composer(conn, true)
+    view = open_composer(conn)
     type(view, "Clique duplo")
-    view |> element("#composer-form") |> render_submit(%{"text" => "Clique duplo"})
+    view |> element("#composer-split") |> render_click()
     view |> element("#composer-form") |> render_submit(%{"text" => "Clique duplo"})
     render_async(view, 2000)
 
@@ -984,10 +1056,10 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
   test "without a configured model the split names the way out", %{conn: conn} do
     Application.put_env(:agent_board, :ai_api_key, "")
     github()
-    view = open_composer(conn, false)
+    view = open_composer(conn)
     type(view, "Sem IA")
 
-    assert has_element?(view, "#composer-form .ab-toggle[disabled]")
+    assert has_element?(view, "#composer-split[disabled]")
 
     # The single path still works.
     submit(view, %{"text" => "Sem IA"})

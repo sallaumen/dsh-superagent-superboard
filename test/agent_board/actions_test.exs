@@ -13,7 +13,7 @@ defmodule AgentBoard.ActionsTest do
 
   alias AgentBoard.{Actions, Board, Conversation, Orchestrator, Repo, Settings, Voice}
   alias AgentBoard.Actions.Decision
-  alias AgentBoard.Board.{Comment, Task}
+  alias AgentBoard.Board.{Comment, PrivateContext, Task}
   alias AgentBoard.Runners.Execution
   alias AgentBoard.Superagents
   alias AgentBoard.Superagents.{FakeManager, FakeProvisioner}
@@ -25,6 +25,7 @@ defmodule AgentBoard.ActionsTest do
   @tested [
     :create_tasks,
     :ask_task,
+    :share_private_context,
     :stop_task,
     :undo_created_task,
     :archive_task,
@@ -155,6 +156,9 @@ defmodule AgentBoard.ActionsTest do
       :ask_task ->
         %{task: task, question: "E aí?", client: github}
 
+      :share_private_context ->
+        %{task: task, repository: repo, dir: "issue-#{task.number}", client: github}
+
       :stop_task ->
         %{task: task, client: github}
 
@@ -268,7 +272,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 18
+      assert length(reds) == 19
 
       for name <- reds do
         params = red_params(name, context)
@@ -282,7 +286,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 18
+      assert Repo.aggregate(Task, :count, :id) == 19
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -451,6 +455,32 @@ defmodule AgentBoard.ActionsTest do
 
       assert %Comment{github_id: 77} = Repo.get_by!(Comment, task_id: task.id)
       assert %Decision{action: "ask_task", decision: "confirmed", outcome: "ok"} = last()
+    end
+
+    test "share_private_context comments the path only, without the mention", %{repo: repo} = c do
+      task = task!(repo, 21)
+      test_pid = self()
+
+      Req.Test.stub(@github, fn conn ->
+        {:ok, raw, conn} = Plug.Conn.read_body(conn)
+        send(test_pid, {:comment, conn.request_path, Jason.decode!(raw)["body"]})
+        Req.Test.json(conn, %{"id" => 78})
+      end)
+
+      params = %{task: task, repository: repo, dir: "issue-21", client: c.github}
+      phrase = Actions.phrase(:share_private_context, params)
+      assert phrase =~ "issue-21"
+
+      assert {:error, {:unconfirmed, _}} = Actions.run(:share_private_context, params, c.owner)
+      refute_received {:comment, _, _}
+
+      assert {:ok, _text} = Actions.run(:share_private_context, params, c.owner, confirm: phrase)
+      assert_received {:comment, path, body}
+      assert path =~ "/issues/21/comments"
+      assert body =~ "<!-- agent-board:private issue-21 -->"
+      assert body =~ PrivateContext.path(repo, "issue-21")
+      refute body =~ "@sallaumen-agent"
+      assert %Decision{action: "share_private_context", outcome: "ok"} = last()
     end
 
     test "stop_execution stops the active row after the confirmation", %{repo: repo} do

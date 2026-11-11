@@ -42,6 +42,9 @@ defmodule AgentBoardWeb.BoardComponents.Controls do
           <path d="M5 7h0M8 7h0M11 7h0M5.5 9.5h5" />
         <% "log" -> %>
           <path d="M3 4h10M3 8h10M3 12h6" />
+        <% "lock" -> %>
+          <rect x="3.5" y="7" width="9" height="6.5" rx="1.5" />
+          <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
         <% "cog" -> %>
           <circle cx="8" cy="8" r="2.2" />
           <path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1" />
