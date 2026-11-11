@@ -1,8 +1,18 @@
 defmodule AgentBoard.ExecutorsTest do
   @moduledoc "Who a task is for, and the issue body each executor gets."
-  use ExUnit.Case, async: true
+  # async: false — one test changes the bot's login in the application env.
+  use ExUnit.Case, async: false
 
   alias AgentBoard.Executors
+
+  test "the mention follows the configured login" do
+    Application.put_env(:agent_board, :agent_login, "other-bot")
+    on_exit(fn -> Application.delete_env(:agent_board, :agent_login) end)
+
+    assert Executors.mention_suffix() == "\n\n@other-bot"
+    assert Executors.issue_body("Add a boss\n\n@other-bot", "dsh") == "Add a boss\n\n@other-bot"
+    assert Executors.held_body("Ask @other-bot.\n\n@other-bot") == "Ask other-bot."
+  end
 
   test "the DeepSeek runner's issue ends with the bot's mention, once" do
     assert Executors.issue_body("Add a boss", "dsh") == "Add a boss\n\n@sallaumen-agent"

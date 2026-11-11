@@ -44,7 +44,7 @@ defmodule AgentBoardWeb.BoardController do
          {:repo, repo} when not is_nil(repo) <- {:repo, Board.find_repository(owner, name)},
          true <- String.trim(title) != "",
          true <- params["executor"] in [nil, "" | Executors.all()] do
-      text = String.trim(params["body"] || "") <> "\n\n@sallaumen-agent"
+      text = String.trim(params["body"] || "") <> Executors.mention_suffix()
       request = %{title: title, body: text, key: Board.request_key(repo, "api", [title, text])}
       # `executor` names who the task is for; without it the router suggests.
       # The API has no interface language: the reasons it stores stay Portuguese.

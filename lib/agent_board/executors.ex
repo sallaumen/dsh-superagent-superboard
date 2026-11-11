@@ -11,12 +11,14 @@ defmodule AgentBoard.Executors do
   Choosing Claude Code or Codex records the choice; nothing starts them
   (docs/research/alfred.md, 3.5 and 3.6).
 
-  Pure.
+  Pure, except for the bot's login, read from `AgentAccess` when asked so the
+  config knob is honoured.
   """
+
+  alias AgentBoard.AgentAccess
 
   @executors ~w(dsh claude codex)
   @names %{"dsh" => "DeepSeek", "claude" => "Claude Code", "codex" => "Codex"}
-  @mention ~r/\s*@sallaumen-agent\s*\z/i
 
   @doc "Every executor, in the board's fixed order."
   @spec all() :: [String.t()]
@@ -42,13 +44,23 @@ defmodule AgentBoard.Executors do
   @spec dispatched_by_board?(String.t()) :: boolean()
   def dispatched_by_board?(executor), do: executor == "dsh"
 
+  @doc "What the board appends to call the runner: a blank line and the bot's mention."
+  @spec mention_suffix() :: String.t()
+  def mention_suffix, do: "\n\n@" <> AgentAccess.bot_login()
+
+  @doc "The text without the mention that ends it."
+  @spec strip_mention(String.t()) :: String.t()
+  def strip_mention(text),
+    do: String.replace(text, ~r/\s*@#{Regex.escape(AgentAccess.bot_login())}\s*\z/i, "")
+
   @doc "A text that names the bot without calling it: the runner reads a mention as work."
   @spec without_mention(String.t()) :: String.t()
-  def without_mention(text), do: String.replace(text, ~r/@(sallaumen-agent)\b/i, "\\1")
+  def without_mention(text),
+    do: String.replace(text, ~r/@(#{Regex.escape(AgentAccess.bot_login())})\b/i, "\\1")
 
   @doc "The body of an issue that must not start anything yet."
   @spec held_body(String.t()) :: String.t()
-  def held_body(body), do: body |> String.replace(@mention, "") |> without_mention()
+  def held_body(body), do: body |> strip_mention() |> without_mention()
 
   @doc """
   The issue body for an executor: the request's body with the bot's mention
@@ -59,10 +71,10 @@ defmodule AgentBoard.Executors do
   """
   @spec issue_body(String.t(), String.t()) :: String.t()
   def issue_body(body, executor) when executor in @executors do
-    bare = body |> to_string() |> String.replace(@mention, "") |> String.trim_trailing()
+    bare = body |> to_string() |> strip_mention() |> String.trim_trailing()
 
     if dispatched_by_board?(executor),
-      do: bare <> "\n\n@sallaumen-agent",
+      do: bare <> mention_suffix(),
       else: without_mention(bare)
   end
 end

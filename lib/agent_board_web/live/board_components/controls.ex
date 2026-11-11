@@ -2,9 +2,11 @@ defmodule AgentBoardWeb.BoardComponents.Controls do
   @moduledoc "The board's small shared pieces: 16px action icons and keyboard hints."
   use AgentBoardWeb, :html
 
-  attr :name, :string, required: true
+  attr :name, :string,
+    required: true,
+    values: ~w(check plus split mic stop close retry grip ext send menu keys log lock cog)
 
-  @doc "A 16×16 stroke icon. The geometry is literal markup, never a runtime string."
+  @doc "A 16×16 stroke icon. The geometry is literal markup, never a runtime string; an unknown name raises."
   def ico(assigns) do
     ~H"""
     <svg class="ab-ico" viewBox="0 0 16 16" aria-hidden="true">
@@ -48,8 +50,6 @@ defmodule AgentBoardWeb.BoardComponents.Controls do
         <% "cog" -> %>
           <circle cx="8" cy="8" r="2.2" />
           <path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1" />
-        <% _ -> %>
-          <path d="" />
       <% end %>
     </svg>
     """

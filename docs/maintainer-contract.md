@@ -204,7 +204,7 @@ and is recorded as `automatic`.
 
 | Action | Risk | Effect | Confirmation |
 |---|---|---|---|
-| `create_tasks` | red | opens GitHub issues that mention the agent (`Board.Requests.create_request/3`, once per request key while its task has not ended) | UI: the composer shows the sentence above the send button and the send carries it; the intake panel's Create asks it in the browser (`data-confirm`). Voice: proposal and yes, or "cria direto". API: `428` then `confirm` |
+| `create_tasks` | red | opens GitHub issues that mention the agent (`Board.Requests.create_request/3`, once per request key while its task has not ended) | UI: the composer shows the sentence above the send button and the send carries it. Voice: proposal and yes, or "cria direto". API: `428` then `confirm` |
 | `ask_task` | red | comments on the issue with the mention | UI: the message form names the GitHub destination; Enviar confirms the typed text in one step. Voice: proposal and yes |
 | `share_private_context` | red | comments on the issue the path of its private context, without the mention | UI: the inspector's Private tab (`AgentAction`, mode `:share_private`), the sentence names the path |
 | `stop_task` | red | closes the issue and marks the task stopped | UI: `AgentAction` "Parar". Voice: proposal and yes. API: `428` then `confirm` |
@@ -1495,8 +1495,7 @@ records are the `ai_calls` rows (the split) and the tasks with their
   questions of the request, because the agent reads one issue and nothing
   else. The headings follow the request's language.
 - **In the composer's split, what the model says depends is kept**
-  (`Board.Requests.create_requests/3`; the older intake panel creates one task
-  at a time and links nothing):
+  (`Board.Requests.create_requests/3`):
   tasks open blockers first and the body starts with "Depende de #N". A blocker
   that failed holds its dependent back (`:dependency_failed`), and the retry
   opens it with the link. A blocker left out in the review is no dependency; a

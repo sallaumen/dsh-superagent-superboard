@@ -161,18 +161,23 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
   end
 
   defp spend_text(%{"status" => "measured", "micros" => micros} = line) when is_integer(micros) do
-    cond do
-      micros < 5_000 -> gettext("less than USD 0.01") <> list_mark(line)
-      line["complete"] == false -> "≥ #{dollars(micros)}" <> list_mark(line)
-      true -> "≈ #{dollars(micros)}" <> list_mark(line)
-    end
+    amount =
+      cond do
+        micros < 5_000 -> gettext("less than USD 0.01")
+        line["complete"] == false -> "≥ #{dollars(micros)}"
+        true -> "≈ #{dollars(micros)}"
+      end
+
+    list_mark(line, amount)
   end
 
   defp spend_text(%{"status" => "none"}), do: gettext("did not run")
   defp spend_text(_line), do: gettext("unknown")
 
-  defp list_mark(%{"reference" => "list"}), do: gettext(" (list price)")
-  defp list_mark(_line), do: ""
+  defp list_mark(%{"reference" => "list"}, amount),
+    do: gettext("%{amount} (list price)", amount: amount)
+
+  defp list_mark(_line, amount), do: amount
 
   defp percent(value) when is_float(value),
     do: value |> :erlang.float_to_binary(decimals: 0) |> String.replace(".", ",")

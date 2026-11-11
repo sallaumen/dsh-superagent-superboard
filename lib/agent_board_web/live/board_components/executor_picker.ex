@@ -125,7 +125,7 @@ defmodule AgentBoardWeb.BoardComponents.ExecutorPicker do
   def cost_label(:unknown), do: gettext("Unknown (no usage history)")
 
   def cost_label(%{micros: micros, reference: :list} = cost) when is_integer(micros) do
-    amount(cost) <> gettext(" at list price (reference, not a bill)")
+    gettext("%{amount} at list price (reference, not a bill)", amount: amount(cost))
   end
 
   def cost_label(%{micros: micros} = cost) when is_integer(micros), do: amount(cost)
