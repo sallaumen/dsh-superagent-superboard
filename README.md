@@ -78,9 +78,14 @@ PORT=4002 mix phx.server
 ```
 
 Open **http://127.0.0.1:4002**. `mix setup` installs dependencies, creates and
-migrates the development database, seeds it, and builds assets. AI and ElevenLabs
-keys in `.env.local` are optional; without a configured AI provider, AI requests
-report `:not_configured`. The board can start without the external agent, but
+migrates the development database, seeds it, and builds assets.
+
+Then open **Settings → AI and setup** and press **Check the setup**. It lists
+what the board needs in three groups — who does the work (GitHub, projects, the
+DeepSeek agents, Claude Code, Codex), the board's own AI, and the voice — checks
+each part with free reads, and names the next step with its fix. Only GitHub, a
+project and a key for the board's own AI are required; without an AI key, AI
+requests report `:not_configured`. The board can start without the external agent, but
 live ticket state requires it. Follow the
 [agent learning path](docs/agent/learning-path.md) to set up that separate
 process.

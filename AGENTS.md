@@ -17,7 +17,7 @@ The board for the agent's work, in Elixir. Read this before changing code.
 - Follow [PIPELINES.md](PIPELINES.md) for required checks and command effects.
   Its [CI-unavailable procedure](PIPELINES.md#if-ci-cannot-run-no-token-billing-or-runner)
   is binding when GitHub Actions cannot run.
-- Use the [local configuration instructions](README.md#local-secrets) when
+- Use the [local configuration instructions](docs/operations.md#local-secrets) when
   running the app or a worktree; never commit local secrets.
 - Interface motion follows [docs/ui-motion.md](docs/ui-motion.md) and the kit's
   `motion-design` workflow: motion explains a state change, never gates an
