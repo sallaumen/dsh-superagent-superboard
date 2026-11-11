@@ -128,6 +128,19 @@ defmodule AgentBoard.AI do
     end
   end
 
+  @doc """
+  Who answers the board's own calls: the first provider with a key (or the
+  one `AI_PROVIDER` pins), its fast model, and the rest in fallback order.
+  """
+  @spec answering() :: %{provider: atom() | nil, model: String.t() | nil, fallbacks: [atom()]}
+  def answering do
+    case providers() do
+      [:rehearsal] -> %{provider: :rehearsal, model: nil, fallbacks: []}
+      [] -> %{provider: nil, model: nil, fallbacks: []}
+      [first | rest] -> %{provider: first, model: Providers.model(first, :fast), fallbacks: rest}
+    end
+  end
+
   @doc "The last calls, newest first -- what the panel shows."
   @spec recent(pos_integer()) :: [Call.t()]
   def recent(limit \\ 20) do
