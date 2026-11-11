@@ -2,8 +2,6 @@ defmodule AgentBoardWeb.BoardLive do
   @moduledoc "The board: the columns, the repositories and the tasks, live."
   use AgentBoardWeb, :live_view
 
-  import Ecto.Query, warn: false
-
   alias AgentBoard.{
     Actions,
     AgentAccess,
@@ -1381,7 +1379,7 @@ defmodule AgentBoardWeb.BoardLive do
     owner = String.trim(owner)
     name = String.trim(name)
     path = String.trim(params["path"] || "")
-    path = if path == "", do: default_checkout_path(name), else: Path.expand(path)
+    path = if path == "", do: Path.expand("~/projects/#{name}"), else: Path.expand(path)
     workers = worker_count(params["workers"])
 
     with {:ok, _} <- Actions.run(:add_repository, %{owner: owner, name: name}, ui()),
@@ -1711,20 +1709,6 @@ defmodule AgentBoardWeb.BoardLive do
       {:noreply, assign(socket, :board, updated)}
     else
       {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_event("add", %{"owner" => owner, "name" => name}, socket) do
-    case Actions.run(:add_repository, %{owner: owner, name: name}, ui()) do
-      {:ok, _} ->
-        repos = Board.list_repositories()
-        repo = Enum.find(repos, &(&1.owner == owner and &1.name == name))
-        {:noreply, socket |> assign(:repos, repos) |> load(repo)}
-
-      {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Could not track %{repo}", repo: "#{owner}/#{name}"))}
     end
   end
 
@@ -3003,14 +2987,6 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp save_setting(setting, value),
     do: Actions.run(:change_setting, %{setting: setting, value: value}, ui())
-
-  defp default_checkout_path(name) do
-    candidate = Path.expand("~/projects/#{name}")
-
-    if File.dir?(candidate) and File.exists?(Path.join(candidate, ".git")),
-      do: candidate,
-      else: candidate
-  end
 
   defp ui, do: Actions.owner(:ui)
 
