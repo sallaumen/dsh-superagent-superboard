@@ -33,10 +33,13 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
       |> assign(:hidden, max(length(assigns.needs) - assigns.max, 0))
 
     ~H"""
-    <section id="sec-needs" aria-labelledby="sec-needs-title">
+    <section id="sec-needs" aria-labelledby="sec-needs-title" phx-hook="ValueChange">
       <div class="ab-sec__head">
         <h2 id="sec-needs-title">{gettext("Needs you")}</h2>
-        <span class="ab-sec__count">{Time.frozen_count(length(@needs), @frozen)}</span>
+        <span class="ab-sec__count" data-key="needs" data-value={length(@needs)}>{Time.frozen_count(
+          length(@needs),
+          @frozen
+        )}</span>
       </div>
 
       <div :if={@needs == []} class="ab-sec__empty">
