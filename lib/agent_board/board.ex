@@ -680,18 +680,19 @@ defmodule AgentBoard.Board do
   @spec agent_question(integer(), integer()) :: String.t() | nil
   def agent_question(repository_id, number) do
     case newest_agent_comment(repository_id, number) do
+      nil -> nil
+      body -> asked_text(body)
+    end
+  end
+
+  defp asked_text(body) do
+    case Workpad.parse(body) do
+      %{question: question} ->
+        question
+
       nil ->
-        nil
-
-      body ->
-        case Workpad.parse(body) do
-          %{question: question} ->
-            question
-
-          nil ->
-            text = body |> String.replace(@runner_marker, "") |> String.trim()
-            if Workpad.question?(text), do: text
-        end
+        text = body |> String.replace(@runner_marker, "") |> String.trim()
+        if Workpad.question?(text), do: text
     end
   end
 
@@ -1030,22 +1031,24 @@ defmodule AgentBoard.Board do
     if length(task_ids) < 2 do
       {:error, :not_a_group}
     else
-      # Both writes or neither: an objective without its tasks would be listed
-      # as an empty group.
-      result =
-        Repo.transact(fn ->
-          with {:ok, objective} <- find_or_insert_objective(repository, attrs) do
-            Repo.update_all(from(t in Task, where: t.id in ^task_ids),
-              set: [objective_id: objective.id]
-            )
-
-            {:ok, objective}
-          end
-        end)
-
+      result = insert_group(repository, attrs, task_ids)
       if match?({:ok, _}, result), do: broadcast(repository.id)
       result
     end
+  end
+
+  # Both writes or neither: an objective without its tasks would be listed
+  # as an empty group.
+  defp insert_group(repository, attrs, task_ids) do
+    Repo.transact(fn ->
+      with {:ok, objective} <- find_or_insert_objective(repository, attrs) do
+        Repo.update_all(from(t in Task, where: t.id in ^task_ids),
+          set: [objective_id: objective.id]
+        )
+
+        {:ok, objective}
+      end
+    end)
   end
 
   # A retry that completes a split finds the objective of its first attempt.
