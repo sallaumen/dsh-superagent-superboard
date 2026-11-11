@@ -737,9 +737,6 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   box-shadow: none;
 }
 /* A scrim darkens the page in both themes; --ink is light in dark. */
-:root { --scrim-ink: #1f1d1a; }
-[data-theme="dark"] { --scrim-ink: #000; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --scrim-ink: #000; } }
 .ab-composer-dialog.board-dialog::backdrop { background: color-mix(in oklab, var(--scrim-ink) 18%, transparent); }
 .ab-composer-dialog .ab-compose { width: 100%; max-height: calc(100dvh - var(--space-6)); display: flex; flex-direction: column; }
 .ab-composer-dialog .ab-compose > form, .ab-composer-dialog .ab-receipt { min-height: 0; overflow-y: auto; }
