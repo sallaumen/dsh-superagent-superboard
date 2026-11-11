@@ -3034,7 +3034,8 @@ defmodule AgentBoardWeb.BoardLive do
 
   # A question that reached GitHub is a success even when the model cannot
   # answer it: the failure is shown as an error and never overwrites the
-  # "Pergunta enviada" confirmation.
+  # "Pergunta enviada" confirmation. The event tells the page (and a test)
+  # that the unlinked Task's answer landed.
   defp answer_arrived(socket, text) when is_binary(text), do: answer_arrived(socket, {:ok, text})
 
   defp answer_arrived(socket, {:ok, text}) do
@@ -3042,12 +3043,14 @@ defmodule AgentBoardWeb.BoardLive do
     |> put_flash(:info, text)
     |> refresh_ai()
     |> speak(Announcer.speakable_answer(text))
+    |> push_event("inspector:answer", %{task_id: socket.assigns.conversation.id})
   end
 
   defp answer_arrived(socket, {:error, text}) do
     socket
     |> put_flash(:error, text)
     |> refresh_ai()
+    |> push_event("inspector:answer", %{task_id: socket.assigns.conversation.id})
   end
 
   defp answer(task, question, language) do

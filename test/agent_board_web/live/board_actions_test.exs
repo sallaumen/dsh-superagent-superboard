@@ -10,6 +10,7 @@ defmodule AgentBoardWeb.BoardActionsTest do
 
   alias AgentBoard.{Actions, Board, Repo}
   alias AgentBoard.Actions.Decision
+  alias AgentBoard.AI.Engines.Scripted
   alias AgentBoard.Board.{Comment, Task}
 
   @stub AgentBoardWeb.BoardActionsTest.Stub
@@ -96,11 +97,11 @@ defmodule AgentBoardWeb.BoardActionsTest do
       for key <- [:ai_engine, :ai_api_key, :ai_script],
           do: {key, Application.get_env(:agent_board, key)}
 
-    Application.put_env(:agent_board, :ai_engine, AgentBoard.AI.Engines.Scripted)
+    Application.put_env(:agent_board, :ai_engine, Scripted)
     Application.put_env(:agent_board, :ai_api_key, "test-key")
 
     Application.put_env(:agent_board, :ai_script, fn %{name: :answer_question} ->
-      AgentBoard.AI.Engines.Scripted.answer(%{"answer" => "O sync roda a cada minuto."})
+      Scripted.answer(%{"answer" => "O sync roda a cada minuto."})
     end)
 
     on_exit(fn ->
@@ -117,8 +118,8 @@ defmodule AgentBoardWeb.BoardActionsTest do
 
     assert %Comment{github_id: 6} = Repo.get_by!(Comment, task_id: task.id)
 
-    # the model answers on another process: let it land, then render
-    Process.sleep(150)
+    # The model answers on another process; its arrival is an event.
+    assert_push_event(view, "inspector:answer", %{task_id: _}, 2_000)
     assert render(view) =~ "O sync roda a cada minuto."
   end
 
