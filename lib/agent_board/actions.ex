@@ -129,8 +129,6 @@ defmodule AgentBoard.Actions do
     "attention" => {Voice, :put_attention}
   }
 
-  @max_retries 3
-
   # ---- the catalog ------------------------------------------------------------
 
   @doc "Every action name, in the inventory's order."
@@ -465,7 +463,7 @@ defmodule AgentBoard.Actions do
 
   def phrase(:auto_retry_ticket, %{ticket_id: id} = params, _lang),
     do:
-      "Nova tentativa automática do ticket #{id} (#{params[:attempt] || "?"} de #{@max_retries}) " <>
+      "Nova tentativa automática do ticket #{id} (#{params[:attempt] || "?"} de #{AgentBoard.AutoRetry.Plan.max_retries()}) " <>
         "depois de uma falha de rede ou do provedor."
 
   def phrase(:dispatch_task, %{task: task, executor: executor} = params, "en-US") do
@@ -1272,11 +1270,6 @@ defmodule AgentBoard.Actions do
 
   defp subject(:provision_superagent, %{repository: repo}), do: "#{repo.owner}/#{repo.name}"
 
-  defp subject(:remove_superagent, %{
-         superagent: %AgentBoard.Superagents.Superagent{profile: profile}
-       }),
-       do: profile
-
   defp subject(:create_tasks, %{repository: repo, requests: requests}),
     do: "#{repo.owner}/#{repo.name} (#{length(requests)})"
 
@@ -1294,7 +1287,6 @@ defmodule AgentBoard.Actions do
   defp repository_id(%{superagent: %AgentBoard.Superagents.Superagent{repository_id: id}}), do: id
   defp repository_id(%{repository: %Repository{id: id}}), do: id
   defp repository_id(%{task: %Task{repository_id: id}}), do: id
-  defp repository_id(%{repository: %Repository{id: id}}), do: id
   defp repository_id(%{repository_id: id}) when is_integer(id), do: id
   defp repository_id(_params), do: nil
 
