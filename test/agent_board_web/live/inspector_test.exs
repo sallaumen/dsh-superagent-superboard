@@ -412,6 +412,47 @@ defmodule AgentBoardWeb.InspectorTest do
            } = Repo.one(from d in AgentBoard.Actions.Decision, order_by: [desc: d.id], limit: 1)
   end
 
+  test "a blocker task the runner would never read is refused with the reason", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "inspector-unwatched")
+    {:ok, watched} = Board.add_repository("fixture", "inspector-watched")
+
+    {:ok, _superagent} =
+      AgentBoard.Superagents.create(%{
+        repository_id: watched.id,
+        profile: "superagent-inspector-watched",
+        port: 3412,
+        state_dir: "/tmp/superagent-inspector-watched"
+      })
+
+    task = task(repo, 1420, "Menu central", "blocked")
+
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: task.id,
+      github_id: 4,
+      author: "sallaumen-agent",
+      kind: "agent",
+      body: "## Relatório do agente\n\n### Bloqueio\nFalta o mapa."
+    })
+    |> Repo.insert!()
+
+    {:ok, view, _html} = live(conn, BoardNavigation.path(repo, "conversation", task.id))
+
+    view |> element("#open-blocker") |> render_click()
+
+    view
+    |> element("#blocker-form")
+    |> render_submit(%{"title" => "Desbloquear #1420", "body" => "Entregar o mapa."})
+
+    html = view |> element("#blocker-confirm button", "Criar tarefa") |> render_click()
+
+    assert html =~
+             "Não foi possível criar a tarefa: o DeepSeek só atende o fixture/inspector-watched."
+
+    refute html =~ "Tarefa de desbloqueio criada"
+    assert Repo.aggregate(from(t in Task, where: t.repository_id == ^repo.id), :count) == 1
+  end
+
   test "a submitted message appears while GitHub is pending without duplicating its local comment" do
     {:ok, repo} = Board.add_repository("fixture", "inspector-sending")
     task = task(repo, 1418, "Responder ao agente", "blocked")

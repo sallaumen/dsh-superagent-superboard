@@ -60,7 +60,9 @@ defmodule AgentBoard.Routing do
 
   Pure: the caller reads the signals at its door and passes them. The
   request's own executor wins (a choice made when the suggestion was
-  shown); otherwise the owner's `requested` name, unless rule 1 rules it out
+  shown), and when rule 1 rules it out the request carries `:refused` with
+  the reason, so the door opens nothing instead of replacing the choice;
+  otherwise the owner's `requested` name, unless rule 1 rules it out
   (no runner would read the issue's mention, so the suggestion goes and its
   reasons say why; a paused runner can still wait); otherwise the
   suggestion; otherwise the board's default. The line keeps the suggestion, a snapshot
@@ -106,6 +108,20 @@ defmodule AgentBoard.Routing do
       signals: snapshot(signals),
       decided_by: decided_by
     })
+    |> refuse_unread(Map.get(request, :executor), repository, signals, suggestion)
+  end
+
+  # An executor already chosen is never swapped behind the owner's back: an
+  # issue whose mention no runner reads is refused with rule 1's sentence.
+  defp refuse_unread(planned, explicit, repository, signals, suggestion) do
+    if Executors.valid?(explicit) and restricted?(explicit, repository, signals),
+      do:
+        Map.put(
+          planned,
+          :refused,
+          Enum.find_value(suggestion.ruled_out, &(&1.executor == explicit && &1.reason))
+        ),
+      else: planned
   end
 
   @doc """

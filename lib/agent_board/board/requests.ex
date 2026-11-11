@@ -134,11 +134,15 @@ defmodule AgentBoard.Board.Requests do
 
   A request for a named executor must carry `:routing` (built by
   `AgentBoard.Routing.plan/5` at the door or by `Actions`); without one it
-  answers `{:error, :not_routed}` and opens nothing. A request without an
-  executor is opened as given, with no label and no router line.
+  answers `{:error, :not_routed}` and opens nothing. A request the router
+  refused (`:refused`, a sentence) answers `{:error, sentence}` and opens
+  nothing. A request without an executor is opened as given, with no label
+  and no router line.
   """
   @spec create_request(Repository.t(), map(), term()) ::
           {:ok, Task.t(), :created | :existing} | {:error, term()}
+  def create_request(_repository, %{refused: reason}, _client), do: {:error, reason}
+
   def create_request(repository, %{executor: executor} = request, client)
       when is_binary(executor) do
     if is_map(Map.get(request, :routing)) do

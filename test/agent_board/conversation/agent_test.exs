@@ -149,6 +149,40 @@ defmodule AgentBoard.Conversation.AgentTest do
              Repo.get_by!(AgentBoard.Routing.Decision, task_id: task.id)
   end
 
+  test "a confirmed runner task the runner no longer watches is refused, not opened",
+       %{repo: repo} do
+    github_issues()
+
+    script(fn %{name: :voice_agent} ->
+      agent_answer("create_task", %{
+        "request" => "mostrar o placar",
+        "title" => "Mostrar o placar",
+        "details" => ["o placar aparece"],
+        "repository" => "arena rogue",
+        "executor" => "dsh"
+      })
+    end)
+
+    turn("Manda pro DeepSeek mostrar o placar do arena rogue", repo)
+
+    # Between the proposal and the yes, Projects gives the runner another
+    # repository: the proposal's executor is still DeepSeek.
+    {:ok, other} = Board.add_repository("sallaumen", "o_colmex")
+
+    {:ok, _superagent} =
+      AgentBoard.Superagents.create(%{
+        repository_id: other.id,
+        profile: "superagent-voice-o-colmex",
+        port: 3413,
+        state_dir: "/tmp/superagent-voice-o-colmex"
+      })
+
+    answered = turn("Sim.", repo)
+
+    assert answered.reply =~ "Não consegui criar a tarefa"
+    assert Repo.aggregate(Task, :count) == 0
+  end
+
   test "a voice task without a named executor goes where the router suggests", %{repo: repo} do
     test_pid = self()
 
