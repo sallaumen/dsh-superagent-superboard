@@ -515,10 +515,22 @@ defmodule AgentBoardWeb.BoardLiveTest do
     })
     |> Repo.insert!()
 
+    %Call{}
+    |> Call.changeset(%{
+      name: "refine_request",
+      engine: "deepseek",
+      status: "error",
+      error: "http 502"
+    })
+    |> Repo.insert!()
+
     {:ok, view, _html} =
       live(conn, ~p"/?repo=fixture/ai-failure&panel=settings&section=execution")
 
     assert has_element?(view, "#settings-execution .ab-execution__ai-error", "malformed_output")
+    # a stored word is said as a sentence, never as the term
+    assert has_element?(view, "#settings-execution .ab-execution__ai-error", "HTTP 502")
+    refute render(view) =~ "http 502"
   end
 
   test "a merged pull shows its review badge", %{conn: conn} do

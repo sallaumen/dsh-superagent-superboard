@@ -3,14 +3,78 @@ defmodule AgentBoard.Board.Inbox do
   import Ecto.Query, warn: false
   use Gettext, backend: AgentBoardWeb.Gettext
 
+  alias AgentBoard.AI.{Budget, Call, Providers}
   alias AgentBoard.{Board, Lanes, Repo, Workpad}
   alias AgentBoard.Board.{Comment, Task}
+  alias AgentBoard.ElevenLabs.Account
 
   @message_limit 30
   @alert_limit 30
 
   def snapshot do
-    %{messages: messages(), alerts: alerts()}
+    %{messages: messages(), alerts: alerts(), providers: providers()}
+  end
+
+  @doc """
+  The providers that cannot serve right now, for the Attention bell: the
+  ElevenLabs plan spent (the computer voice speaks), the board's daily AI
+  budget spent, and a provider whose newest board call in the last day was
+  refused for its limit or balance. Each item opens the settings section
+  that explains it. Derived on each read; nothing is stored.
+  """
+  @spec providers(DateTime.t()) :: [map()]
+  def providers(now \\ DateTime.utc_now()) do
+    [eleven_labs(now), ai_budget() | ai_refusals(now)] |> Enum.reject(&is_nil/1)
+  end
+
+  defp eleven_labs(now) do
+    if Account.spent?(now) do
+      %{
+        key: "elevenlabs",
+        title: gettext("ElevenLabs credits spent"),
+        detail: gettext("The computer voice speaks instead."),
+        section: "voice"
+      }
+    end
+  end
+
+  defp ai_budget do
+    if Budget.check(:fast) == {:error, :budget_exhausted} do
+      %{
+        key: "ai-budget",
+        title: gettext("The board's AI budget for today is spent"),
+        detail: gettext("Its own calls wait for 00:00 UTC."),
+        section: "execution"
+      }
+    end
+  end
+
+  defp ai_refusals(now) do
+    since = DateTime.add(now, -86_400, :second)
+
+    Repo.all(
+      from c in Call,
+        where: c.inserted_at >= ^since,
+        distinct: c.engine,
+        order_by: [asc: c.engine, desc: c.inserted_at, desc: c.id],
+        select: %{engine: c.engine, status: c.status, error: c.error}
+    )
+    |> Enum.filter(&(&1.status == "error" and &1.error == ":usage_limit"))
+    |> Enum.map(fn %{engine: engine} ->
+      %{
+        key: "ai-#{engine}",
+        title: gettext("%{provider} refused the board's calls", provider: provider_label(engine)),
+        detail:
+          gettext("Its limit or balance ran out; the board tries the next provider with a key."),
+        section: "execution"
+      }
+    end)
+  end
+
+  defp provider_label(engine) do
+    Enum.find_value(Providers.all(), engine, fn {id, %{label: label}} ->
+      if Atom.to_string(id) == engine, do: label
+    end)
   end
 
   @doc "The newest agent reply in each task, newest conversation first."

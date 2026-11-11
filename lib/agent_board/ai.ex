@@ -24,15 +24,18 @@ defmodule AgentBoard.AI do
   """
   @spec call(atom(), map(), keyword()) :: {:ok, Result.t()} | {:error, term()}
   def call(name, inputs, opts \\ []) do
-    with {:ok, spec} <- Registry.fetch(name),
-         :ok <- Budget.check(spec.tier) do
+    with {:ok, spec} <- Registry.fetch(name) do
       providers = providers()
-
-      case cached(name, spec, inputs, providers) do
-        {:ok, json} -> {:ok, %Result{json: json, engine: :cache, parse_state: :complete}}
-        :miss -> attempt(name, spec, inputs, providers, opts)
-      end
+      cached_or_call(cached(name, spec, inputs, providers), name, spec, inputs, providers, opts)
     end
+  end
+
+  # A cached answer costs nothing, so the budget only gates the network.
+  defp cached_or_call({:ok, json}, _name, _spec, _inputs, _providers, _opts),
+    do: {:ok, %Result{json: json, engine: :cache, parse_state: :complete}}
+
+  defp cached_or_call(:miss, name, spec, inputs, providers, opts) do
+    with :ok <- Budget.check(spec.tier), do: attempt(name, spec, inputs, providers, opts)
   end
 
   defp cached(_name, _spec, _inputs, []), do: :miss
@@ -93,12 +96,17 @@ defmodule AgentBoard.AI do
              %Result{},
              duration,
              :error,
-             inspect(reason),
+             reason_word(reason),
              opts
            ) do
       next_attempt(reason, name, spec, inputs, rest, opts)
     end
   end
+
+  # The stored reason is a word the panel can say (`AgentBoardWeb.FailureText`).
+  defp reason_word(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp reason_word({:http, status}), do: "http #{status}"
+  defp reason_word(%{__exception__: true} = exception), do: Exception.message(exception)
 
   defp next_attempt(reason, name, spec, inputs, rest, opts) do
     if fallback?(reason), do: attempt(name, spec, inputs, rest, opts), else: {:error, reason}
@@ -155,10 +163,6 @@ defmodule AgentBoard.AI do
       Application.get_env(:agent_board, :ai_engine, AgentBoard.AI.Engines.OpenAI)
     end
   end
-
-  @doc "The first provider this node would use, for display."
-  @spec provider() :: atom() | nil
-  def provider, do: List.first(providers())
 
   defp rehearsal?, do: Application.get_env(:agent_board, :ai_rehearsal, false) == true
 

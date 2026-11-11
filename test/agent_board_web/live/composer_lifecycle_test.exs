@@ -771,20 +771,28 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "#composer-confirm", "para o Codex")
     refute has_element?(view, "#composer-executor-warning")
 
-    # Picking the runner where it does not watch is allowed, and warned.
-    view
-    |> element("#composer-form")
-    |> render_change(%{"text" => "Refazer o placar", "executor" => "dsh"})
+    # Where no agent watches the project the runner cannot be picked: the
+    # option is off, the note says why and opens Projects to set one up.
+    assert has_element?(view, "input#composer-executor-dsh[disabled]")
 
     assert has_element?(
              view,
-             "#composer-executor-warning",
-             "O DeepSeek só atende o fixture/other. A issue abre, mas não anda."
+             "#composer-executor-blocked",
+             "Nenhum agente cuida deste projeto, então o DeepSeek fica de fora aqui."
+           )
+
+    assert has_element?(
+             view,
+             "#composer-executor-blocked button[phx-value-panel=settings][phx-value-section=projects]",
+             "Configurar um agente"
            )
 
     view
     |> element("#composer-form")
-    |> render_change(%{"text" => "Refazer o placar", "executor" => "codex"})
+    |> render_change(%{"text" => "Refazer o placar", "executor" => "dsh"})
+
+    assert has_element?(view, "label[for=composer-executor-codex].is-on")
+    refute has_element?(view, "label[for=composer-executor-dsh].is-on")
 
     submit(view, %{"text" => "Refazer o placar", "executor" => "codex"})
 

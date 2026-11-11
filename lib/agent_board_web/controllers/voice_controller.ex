@@ -399,6 +399,7 @@ defmodule AgentBoardWeb.VoiceController do
   defp status_and_message(:invalid_setting), do: {400, "a setting must be text or a number"}
   defp status_and_message(:auth_expired), do: {401, "ElevenLabs rejected the key"}
   defp status_and_message(:usage_limit), do: {429, "ElevenLabs usage limit reached"}
+  defp status_and_message(:quota_exceeded), do: {402, "ElevenLabs credits are spent"}
   defp status_and_message({:http, status}), do: {502, "ElevenLabs HTTP #{status}"}
   defp status_and_message(other), do: {502, "ElevenLabs error: #{inspect(other)}"}
 

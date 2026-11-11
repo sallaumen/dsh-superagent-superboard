@@ -365,6 +365,9 @@ defmodule AgentBoard.TicketPollerTest do
     state = AgentBoard.TicketPoller.handle_info(:poll, %{})
 
     assert {:noreply, %{}} = state
+    # The interval runs between polls: the tick is armed after the work, so it
+    # cannot be waiting already when the handler returns.
+    refute_received :poll
     assert_receive :poll, 11_000
   end
 

@@ -65,13 +65,17 @@ defmodule AgentBoard.AI.Engines.Rehearsal do
       "task_number" => 0,
       "repository" => "",
       "lookup" => "",
-      "direct" => false
+      "direct" => false,
+      "executor" => ""
     },
     voice_explain: %{
       "reply" => "Modo de ensaio: esta resposta não veio de um modelo."
     },
     summarize_conversation: %{
       "summary" => "Modo de ensaio: resumo de fixture, sem modelo."
+    },
+    summarize_board: %{
+      "summary" => "Modo de ensaio: resumo do board de fixture, sem modelo."
     }
   }
 

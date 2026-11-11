@@ -192,7 +192,7 @@ defmodule AgentBoard.Runners do
     %{
       paused: paused?(),
       monthly_usd: monthly_usd(),
-      spent_usd: elem(claude_month_usd(), 1),
+      spent: claude_month_usd(),
       task_usd: task_usd(),
       codex_timeout_minutes: codex_timeout_minutes(),
       reserve_percent: reserve_percent(),
@@ -208,11 +208,14 @@ defmodule AgentBoard.Runners do
     * `:retry` — a transient failure before spending; the same executor.
     * `:switch` — availability (quota, login, credit); the other executor.
     * `:none` — a content failure (tests, block, question): the owner decides.
+    * `nil` — nothing failed (no execution, or one running or done).
 
   The board only proposes; nothing starts without a new confirmation.
   """
   @spec fallback(Execution.t() | nil) ::
-          %{kind: :retry | :switch | :budget, executor: String.t(), reason: String.t()} | :none
+          %{kind: :retry | :switch | :budget, executor: String.t(), reason: String.t()}
+          | :none
+          | nil
   def fallback(%Execution{status: "failed"} = execution) do
     other = if execution.executor == "claude", do: "codex", else: "claude"
     text = execution.error || ""
@@ -255,8 +258,6 @@ defmodule AgentBoard.Runners do
     end
   end
 
-  # No failed execution (nil, running, done) has no proposal; `:none` is the
-  # content failure, where the owner decides.
   def fallback(_execution), do: nil
 
   defp short(text) do
@@ -338,8 +339,11 @@ defmodule AgentBoard.Runners do
 
     :ok = :filelib.ensure_dir(Path.join(run_dir, "prompt.md"))
 
+    # Two dispatches that both passed `active_for_task?` meet at the partial
+    # unique index; the loser gets the same answer as the sequential check.
     case Repo.insert(Execution.changeset(%Execution{}, attrs)) do
       {:ok, execution} -> {:ok, execution}
+      {:error, %Ecto.Changeset{errors: [task_id: _]}} -> {:error, :already_running}
       {:error, changeset} -> {:error, changeset}
     end
   rescue
@@ -638,8 +642,18 @@ defmodule AgentBoard.Runners do
     end
   end
 
-  defp fail(execution, error),
-    do: save(execution, %{status: "failed", error: error, finished_at: DateTime.utc_now()})
+  # A launch that never started is a failed execution like any other: the
+  # task goes to the owner as blocked (maintainer-contract, Dispatch).
+  defp fail(execution, error) do
+    case save(execution, %{status: "failed", error: error, finished_at: DateTime.utc_now()}) do
+      {:ok, execution} ->
+        mark_finished(execution)
+        {:ok, execution}
+
+      :error ->
+        :error
+    end
+  end
 
   defp read_micros(run_dir, file) do
     case read(run_dir, file) do

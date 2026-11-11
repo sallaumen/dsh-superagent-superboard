@@ -7,6 +7,7 @@ defmodule AgentBoard.TicketPoller do
   It applies the ticket overlay to the tasks and broadcasts to the LiveView.
   """
   use GenServer
+  require Logger
 
   alias AgentBoard.{AgentState, AgentWorktree, Board, TicketOverlay, Tickets}
   alias AgentBoard.Board.Repository
@@ -23,9 +24,11 @@ defmodule AgentBoard.TicketPoller do
   @impl true
   def handle_info(:poll, state) do
     # init/1 schedules the first tick; the handler must schedule the next one,
-    # otherwise the poller runs exactly once.
+    # otherwise the poller runs exactly once. The work comes first so the
+    # interval runs between polls: a slow poll does not queue the next tick.
+    state = poll(state)
     schedule()
-    {:noreply, poll(state)}
+    {:noreply, state}
   end
 
   # The interval is a knob: the test environment stretches it so the
@@ -38,9 +41,12 @@ defmodule AgentBoard.TicketPoller do
   def poll(state \\ %{}) do
     poll_tickets(state)
   rescue
-    # The runner's sqlite can be absent or corrupt; the poller must survive it
-    # and the GenServer must keep its schedule.
-    _exception -> state
+    # A missing or corrupt sqlite already reads as no tickets (AgentState); what
+    # lands here is a regression in the overlay path, so it is said, and the
+    # GenServer keeps its schedule.
+    exception ->
+      Logger.warning("ticket poll failed: #{Exception.message(exception)}")
+      state
   end
 
   defp poll_tickets(state) do

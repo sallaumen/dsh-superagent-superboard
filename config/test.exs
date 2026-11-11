@@ -66,6 +66,10 @@ config :agent_board, runner_tick_interval: 3_600_000
 # process outside the test).
 config :agent_board, superagent_tick_interval: :manual
 
+# A status read the ticker kills (6 s in production) is exercised with a fake
+# that answers late; the suite must not wait those seconds.
+config :agent_board, superagent_status_timeout_ms: 300
+
 # A stubbed 5xx must not cost the suite the real wait between GitHub retries.
 config :agent_board, github_retry_base_ms: 1
 
@@ -94,3 +98,5 @@ config :agent_board, version_check_on_mount: false
 # :board_updated and reads the page right after. board_load_test covers the
 # coalesced burst with its own delay.
 config :agent_board, board_reload_ms: 0
+# The ElevenLabs account is read only when a test asks for it.
+config :agent_board, elevenlabs_account_refresh: false

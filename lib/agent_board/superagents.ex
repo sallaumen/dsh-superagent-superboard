@@ -12,7 +12,7 @@ defmodule AgentBoard.Superagents do
   alias AgentBoard.Repo
   alias AgentBoard.Superagents.{Manager, Provisioner, Superagent, SuperagentEvent}
 
-  @auto_start_pause_seconds 600
+  @reconcile_pause_seconds 600
 
   @dsh_state Path.expand("~/.dsh/state")
   @dsh_profiles Path.expand("~/.dsh/profiles")
@@ -424,12 +424,12 @@ defmodule AgentBoard.Superagents do
   Start the external process and mark the desired state running. A project
   whose provisioning failed has nothing to start: it is retried instead.
   """
-  def start(superagent, manager \\ Manager.impl())
+  def start(superagent, manager \\ Manager.impl(), actor \\ "owner")
 
-  def start(%Superagent{provision_failed_at: %DateTime{}}, _manager),
+  def start(%Superagent{provision_failed_at: %DateTime{}}, _manager, _actor),
     do: {:error, :provision_failed}
 
-  def start(%Superagent{} = superagent, manager) do
+  def start(%Superagent{} = superagent, manager, actor) do
     case manager.start(superagent) do
       :ok ->
         set_desired(superagent, "running")
@@ -437,12 +437,12 @@ defmodule AgentBoard.Superagents do
         {:ok, superagent}
 
       {:error, reason} ->
-        failed(superagent, "start", reason)
+        failed(superagent, "start", reason, actor)
     end
   end
 
   @doc "Stop the external process."
-  def stop(%Superagent{} = superagent, manager \\ Manager.impl()) do
+  def stop(%Superagent{} = superagent, manager \\ Manager.impl(), actor \\ "owner") do
     case manager.stop(superagent) do
       :ok ->
         set_desired(superagent, "stopped")
@@ -450,12 +450,12 @@ defmodule AgentBoard.Superagents do
         {:ok, superagent}
 
       {:error, reason} ->
-        failed(superagent, "stop", reason)
+        failed(superagent, "stop", reason, actor)
     end
   end
 
   @doc "Pause or resume new work without killing the process."
-  def pause(%Superagent{} = superagent, paused, manager \\ Manager.impl()) do
+  def pause(%Superagent{} = superagent, paused, manager \\ Manager.impl(), actor \\ "owner") do
     case manager.pause(superagent, paused) do
       :ok ->
         set_desired(superagent, if(paused, do: "paused", else: "running"))
@@ -468,7 +468,7 @@ defmodule AgentBoard.Superagents do
         {:ok, superagent}
 
       {:error, reason} ->
-        failed(superagent, if(paused, do: "pause", else: "resume"), reason)
+        failed(superagent, if(paused, do: "pause", else: "resume"), reason, actor)
     end
   end
 
@@ -481,13 +481,15 @@ defmodule AgentBoard.Superagents do
       {:ok, superagent}
     else
       false -> {:error, :invalid_workers}
+      # A save in between is the agent's settings moving, not the agent failing.
+      {:error, :conflict} -> {:error, :conflict}
       {:error, reason} -> failed(superagent, "scale", reason)
     end
   end
 
-  defp failed(superagent, action, reason) do
+  defp failed(superagent, action, reason, actor \\ "owner") do
     detail = inspect(reason)
-    event(superagent, action, superagent.observed_state, "error", "owner", detail)
+    event(superagent, action, superagent.observed_state, "error", actor, detail)
     observe(superagent, %{state: "error", detail: detail})
     {:error, reason}
   end
@@ -497,23 +499,26 @@ defmodule AgentBoard.Superagents do
   observed state. Runs in the ticker, never in a LiveView callback.
   """
   def tick(manager \\ Manager.impl()) do
-    list()
-    |> Enum.filter(&is_nil(&1.provision_failed_at))
-    |> Task.async_stream(
-      fn superagent -> {superagent, manager.status(superagent)} end,
-      timeout: 6_000,
+    superagents = list() |> Enum.filter(&is_nil(&1.provision_failed_at))
+
+    superagents
+    |> Task.async_stream(&manager.status/1,
+      timeout: Application.get_env(:agent_board, :superagent_status_timeout_ms, 6_000),
       max_concurrency: 4,
       on_timeout: :kill_task
     )
+    |> Enum.zip(superagents)
     |> Enum.each(fn
-      {:ok, {superagent, {:ok, observation}}} ->
+      {{:ok, {:ok, observation}}, superagent} ->
         observe(superagent, observation)
 
-      {:ok, {superagent, {:error, reason}}} ->
+      {{:ok, {:error, reason}}, superagent} ->
         observe(superagent, %{state: "error", detail: inspect(reason)})
 
-      {:exit, _reason} ->
-        :ok
+      # A read the board had to kill is an observation too: the row would
+      # otherwise keep a state nobody has seen for a while.
+      {{:exit, _reason}, superagent} ->
+        observe(superagent, %{state: "unknown", detail: "status read timed out"})
     end)
   end
 
@@ -538,36 +543,45 @@ defmodule AgentBoard.Superagents do
         if unreachable?(superagent.last_error), do: auto_start(superagent, manager), else: :ok
 
       {"stopped", state} when state in ["ready", "paused", "starting"] ->
-        stop(superagent, manager)
+        board_action(superagent, "stop", "stopped", fn -> stop(superagent, manager, "board") end)
 
       {"paused", "ready"} ->
-        pause(superagent, true, manager)
+        board_action(superagent, "pause", "paused", fn ->
+          pause(superagent, true, manager, "board")
+        end)
 
       _ ->
         :ok
     end
   end
 
+  defp auto_start(superagent, manager),
+    do:
+      board_action(superagent, "start", "starting", fn -> start(superagent, manager, "board") end)
+
   # A start whose health check times out still answers :ok, so an agent that
-  # dies at boot would be started again on every tick. The board's own starts
-  # are recorded and wait @auto_start_pause_seconds between them.
-  defp auto_start(superagent, manager) do
-    since = DateTime.add(DateTime.utc_now(), -@auto_start_pause_seconds, :second)
-
-    recent? =
-      Repo.exists?(
-        from e in SuperagentEvent,
-          where:
-            e.superagent_id == ^superagent.id and e.action == "start" and e.actor == "board" and
-              e.inserted_at > ^since
-      )
-
-    if recent? do
+  # dies at boot would be started again on every tick; a stop or pause the
+  # manager refuses would be asked again every tick once the status read sees
+  # the old state. The board's own actions are recorded as `board` and wait
+  # @reconcile_pause_seconds between them.
+  defp board_action(superagent, action, to_state, run) do
+    if board_acted_recently?(superagent, action) do
       :ok
     else
-      event(superagent, "start", superagent.observed_state, "starting", "board", "reconcile")
-      start(superagent, manager)
+      event(superagent, action, superagent.observed_state, to_state, "board", "reconcile")
+      run.()
     end
+  end
+
+  defp board_acted_recently?(superagent, action) do
+    since = DateTime.add(DateTime.utc_now(), -@reconcile_pause_seconds, :second)
+
+    Repo.exists?(
+      from e in SuperagentEvent,
+        where:
+          e.superagent_id == ^superagent.id and e.action == ^action and e.actor == "board" and
+            e.inserted_at > ^since
+    )
   end
 
   @doc """

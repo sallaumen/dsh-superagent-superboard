@@ -42,7 +42,7 @@ defmodule AgentBoard.FreshnessTest do
     refute result.frozen?
     assert result.age_sec == 30
 
-    assert [%{label: "GitHub (PRs, CI)"}, %{label: "Processo do agente"}, %{label: "Fila local"}] =
+    assert [%{code: :github_current}, %{code: :agent_current}, %{code: :queue_current}] =
              result.sources
 
     assert Enum.all?(result.sources, &(&1.kind == :run))
@@ -62,7 +62,9 @@ defmodule AgentBoard.FreshnessTest do
 
     assert result.state == :offline
     assert result.frozen?
-    assert result.sources |> hd() |> Map.fetch!(:word) == "Falhou"
+
+    assert [%{code: :github_failed, kind: :blocked, attempted_at: %DateTime{}} | _] =
+             result.sources
   end
 
   test "a disconnected socket is reconnecting, not live" do
@@ -84,16 +86,14 @@ defmodule AgentBoard.FreshnessTest do
     result = snapshot(last_attempt: event("sync", 20, 2), last_success: event("sync", 20, 2))
 
     assert result.state == :delayed
-    github = hd(result.sources)
-    assert github.word == "Com erros"
-    assert github.detail =~ "2 erros"
+    assert [%{code: :github_errors, kind: :stale, error_count: 2} | _] = result.sources
   end
 
   test "an unavailable runner downgrades a fresh GitHub sync" do
     result = snapshot(agent: agent(false))
 
     assert result.state == :delayed
-    assert Enum.find(result.sources, &(&1.label == "Processo do agente")).word == "Indisponível"
+    assert [_github, %{code: :agent_unavailable, kind: :blocked}, _queue] = result.sources
   end
 
   test "a running ticket without a recent heartbeat is called out" do
@@ -107,9 +107,7 @@ defmodule AgentBoard.FreshnessTest do
     result = snapshot(agent: stale_agent)
 
     assert result.state == :delayed
-    agent = Enum.find(result.sources, &(&1.label == "Processo do agente"))
-    assert agent.kind == :stale
-    assert agent.word == "Sem sinal"
+    assert [_github, %{code: :agent_stale, kind: :stale}, _queue] = result.sources
   end
 
   test "a rate limit is a delay that lifts by itself, not a lost connection" do

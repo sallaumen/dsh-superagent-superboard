@@ -53,6 +53,7 @@ defmodule AgentBoard.Routing do
           reasons: [String.t()],
           alternatives: [%{executor: String.t(), reasons: [String.t()]}],
           ruled_out: [%{executor: String.t(), reason: String.t()}],
+          unwatched: [String.t()],
           cost: :unknown | term(),
           mode: String.t()
         }
@@ -213,6 +214,8 @@ defmodule AgentBoard.Routing do
           do: %{executor: other, reasons: note(other, signals)}
         ),
       ruled_out: ruled_out,
+      # No agent watches this repository: an issue for the runner would never move.
+      unwatched: if(unwatched?(signal(signals, "dsh"), task.repository), do: ["dsh"], else: []),
       cost: cost(executor, signals),
       mode: "suggest"
     }

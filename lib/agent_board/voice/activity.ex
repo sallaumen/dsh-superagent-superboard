@@ -85,6 +85,7 @@ defmodule AgentBoard.Voice.Activity do
   def reason(:not_configured), do: "no key configured"
   def reason(:auth_expired), do: "key refused (401)"
   def reason(:usage_limit), do: "usage limit (429)"
+  def reason(:quota_exceeded), do: "credits spent (quota_exceeded)"
   def reason(:budget_exhausted), do: "AI budget exhausted"
   def reason(:timeout), do: "timed out"
   def reason(:no_provider), do: "no AI provider answered"
