@@ -40,7 +40,9 @@ defmodule AgentBoard.Setup do
   @key_pages %{
     deepseek: "https://platform.deepseek.com/api_keys",
     gemini: "https://aistudio.google.com/apikey",
-    openai: "https://platform.openai.com/api-keys"
+    openai: "https://platform.openai.com/api-keys",
+    github: "https://github.com/settings/tokens",
+    elevenlabs: "https://elevenlabs.io/app/settings/api-keys"
   }
   @cli_timeout_ms 8_000
 
@@ -82,7 +84,7 @@ defmodule AgentBoard.Setup do
 
   defp github(mode, value) do
     row = %{id: :github, class: :work, required: true, title: "GitHub"}
-    fix = %{href: "https://github.com/settings/tokens", label: gettext("Create a token")}
+    fix = %{href: @key_pages.github, label: gettext("Create a token")}
 
     case {mode, value} do
       {:config, true} ->
@@ -247,12 +249,15 @@ defmodule AgentBoard.Setup do
     end
   end
 
-  defp board_ai(_mode, %{provider: nil}, _read) do
+  defp board_ai(mode, ai, read) do
+    Map.merge(
+      %{id: :board_ai, class: :board_ai, required: true, title: gettext("AI provider")},
+      board_ai_state(mode, ai, read)
+    )
+  end
+
+  defp board_ai_state(_mode, %{provider: nil}, _read) do
     %{
-      id: :board_ai,
-      class: :board_ai,
-      required: true,
-      title: gettext("AI provider"),
       state: :missing,
       detail:
         gettext(
@@ -262,21 +267,16 @@ defmodule AgentBoard.Setup do
     }
   end
 
-  defp board_ai(_mode, %{provider: :rehearsal}, _read) do
+  defp board_ai_state(_mode, %{provider: :rehearsal}, _read) do
     %{
-      id: :board_ai,
-      class: :board_ai,
-      required: true,
-      title: gettext("AI provider"),
       state: :ok,
       detail: gettext("Rehearsal: answers come from local fixtures, no key is used."),
       fix: nil
     }
   end
 
-  defp board_ai(mode, %{provider: provider, model: model} = ai, read) do
+  defp board_ai_state(mode, %{provider: provider, model: model} = ai, read) do
     label = provider_label(provider)
-    row = %{id: :board_ai, class: :board_ai, required: true, title: gettext("AI provider")}
 
     fallbacks =
       case ai[:fallbacks] || [] do
@@ -295,29 +295,29 @@ defmodule AgentBoard.Setup do
 
     case mode do
       :config ->
-        Map.merge(row, %{state: :configured, detail: answers, fix: nil})
+        %{state: :configured, detail: answers, fix: nil}
 
       :live ->
         case read.(:provider_check).(provider) do
           :ok ->
-            Map.merge(row, %{state: :ok, detail: answers, fix: nil})
+            %{state: :ok, detail: answers, fix: nil}
 
           {:error, {:http, status}} when status in [401, 403] ->
-            Map.merge(row, %{
+            %{
               state: :failed,
               detail:
                 gettext("%{provider} refused the key: it expired or was revoked.",
                   provider: label
                 ),
               fix: %{href: Map.get(@key_pages, provider), label: gettext("Create a key")}
-            })
+            }
 
           {:error, _reason} ->
-            Map.merge(row, %{
+            %{
               state: :unknown,
               detail: gettext("%{provider} did not answer.", provider: label),
               fix: nil
-            })
+            }
         end
     end
   end
@@ -346,7 +346,7 @@ defmodule AgentBoard.Setup do
           detail:
             gettext("No ElevenLabs key: the board speaks and listens with the browser, free."),
           fix: %{
-            href: "https://elevenlabs.io/app/settings/api-keys",
+            href: @key_pages.elevenlabs,
             label: gettext("Get an ElevenLabs key")
           }
         })
@@ -356,7 +356,7 @@ defmodule AgentBoard.Setup do
           state: :failed,
           detail: gettext("ElevenLabs refused the key: it expired or was revoked."),
           fix: %{
-            href: "https://elevenlabs.io/app/settings/api-keys",
+            href: @key_pages.elevenlabs,
             label: gettext("Create a key")
           }
         })

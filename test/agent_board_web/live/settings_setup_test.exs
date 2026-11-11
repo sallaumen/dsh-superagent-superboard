@@ -118,11 +118,17 @@ defmodule AgentBoardWeb.SettingsSetupTest do
     assert has_element?(view, "#setup-row-board_ai[data-state=ok]")
     assert has_element?(view, "#setup-row-codex[data-state=failed] code", "codex login")
 
+    # The next step lives on its own row; the top only points to it.
     assert has_element?(
              view,
-             "#setup-next a[href='https://github.com/settings/tokens']",
+             "#setup-row-github[data-next] a[href='https://github.com/settings/tokens']",
              "Criar um token"
            )
+
+    assert has_element?(view, "a.setup__jump[href='#setup-row-github']", "GitHub")
+    # One fix button for GitHub, not a second copy at the top.
+    setup = view |> element(".setup") |> render()
+    assert length(String.split(setup, "Criar um token")) == 2
   end
 
   test "with a required part missing, Settings opens on AI and setup and marks it", %{conn: conn} do
@@ -145,7 +151,8 @@ defmodule AgentBoardWeb.SettingsSetupTest do
              ".settings-nav__item[phx-value-section=setup] .settings-nav__mark--halt"
            )
 
-    assert has_element?(view, "#setup-next", "GitHub")
+    assert has_element?(view, "#setup-row-github[data-next]")
+    assert has_element?(view, "a.setup__jump[href='#setup-row-github']", "GitHub")
   end
 
   test "with everything set, Settings opens where it always did", %{conn: conn} do
