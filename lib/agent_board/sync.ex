@@ -600,11 +600,11 @@ defmodule AgentBoard.Sync do
   def apply_tickets(repository, issues) do
     by_number = Map.new(issues, &{&1["number"], &1})
 
-    normalized_tickets()
+    AgentState.tickets()
     |> Enum.filter(&AgentState.same_repository?(&1, repository))
     |> Tickets.by_number()
     |> Enum.each(fn {number, ticket} ->
-      case ticket_state(ticket,
+      case Tickets.state(ticket,
              workpad: fn -> Board.agent_workpad(repository.id, number) end,
              asked?: fn -> Board.agent_asked?(repository.id, number) end
            ) do
@@ -631,13 +631,6 @@ defmodule AgentBoard.Sync do
     do: existing.checks_changed_at
 
   defp checks_changed_at(_existing, _checks_state, now), do: now
-
-  @doc """
-  The state a ticket imposes on the task; the rule lives in
-  `AgentBoard.Tickets.state/2` and this keeps the Sync API for callers that
-  already used it.
-  """
-  def ticket_state(ticket, opts \\ []), do: Tickets.state(ticket, opts)
 
   @doc "The strongest review state."
   def review_rollup(reviews) do
@@ -673,13 +666,6 @@ defmodule AgentBoard.Sync do
     |> Enum.filter(&(&1["conclusion"] in ["failure", "timed_out", "cancelled"]))
     |> Enum.map_join(", ", &(&1["name"] || "check"))
   end
-
-  # -- the agent's tickets (sqlite, read-only) --------------------------------
-
-  @doc "The agent's tickets, normalized: the numbers, the assignment and the outcome."
-  def normalized_tickets, do: AgentState.tickets()
-
-  def ticket_numbers_for(ticket), do: AgentState.ticket_numbers(ticket)
 
   defp to_dt(nil), do: nil
 
