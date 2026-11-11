@@ -23,11 +23,12 @@ defmodule AgentBoard.Board.PrivateContextTest do
     %{root: root, source: source}
   end
 
-  test "a request's folder is the same for the same words, and its levels are 0700", %{root: root} do
-    dir = PrivateContext.request_dir(@repo, "  Refazer o login ")
-    assert dir == PrivateContext.request_dir(@repo, "Refazer o login")
+  test "each request gets its own folder, and its levels are 0700", %{root: root} do
+    dir = PrivateContext.new_request_dir()
     assert dir =~ ~r/\Areq-[0-9a-f]{16}\z/
-    refute dir == PrivateContext.request_dir(%{@repo | id: 8}, "Refazer o login")
+    assert PrivateContext.valid_dir?(dir)
+    # The same words later are another request: never an older one's secrets.
+    refute dir == PrivateContext.new_request_dir()
 
     assert :ok = PrivateContext.write_note(@repo, dir, "senha: hunter2")
     assert PrivateContext.read_note(@repo, dir) == "senha: hunter2"
@@ -122,11 +123,11 @@ defmodule AgentBoard.Board.PrivateContextTest do
   end
 
   test "a task finds its folder through the marker in its body, or the one made for its issue" do
-    dir = PrivateContext.request_dir(@repo, "pedido")
-    body = IssueBody.with_private("Corpo", dir, PrivateContext.path(@repo, dir), "pt")
+    dir = PrivateContext.new_request_dir()
+    body = IssueBody.with_private("Corpo", dir, PrivateContext.shared_path(@repo, dir), "pt")
 
     assert body =~ "## Contexto privado"
-    assert body =~ PrivateContext.path(@repo, dir)
+    assert body =~ PrivateContext.shared_path(@repo, dir)
     assert body =~ "Nunca copie esse conteúdo"
     assert PrivateContext.for_task(@repo, %{body: body, number: 9}) == dir
     # The board shows the panel instead of the section.
@@ -160,6 +161,16 @@ defmodule AgentBoard.Board.PrivateContextTest do
 
     assert {:ok, %{files: 1}} =
              PrivateContext.import_folder(@repo, PrivateContext.issue_dir(8), source)
+  end
+
+  test "the path GitHub sees starts at ~ when the root is under home" do
+    home_root = Path.join(Path.expand("~"), ".local/share/agent-board/private")
+    Application.put_env(:agent_board, :private_root, home_root)
+
+    assert PrivateContext.shared_path(@repo, "issue-3") ==
+             "~/.local/share/agent-board/private/fixture/private/issue-3"
+
+    refute PrivateContext.shared_path(@repo, "issue-3") =~ Path.expand("~")
   end
 
   test "the note keeps a ceiling" do

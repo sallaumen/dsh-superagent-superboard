@@ -243,17 +243,8 @@ defmodule AgentBoard.ElevenLabs do
              request_id: header_string(headers, "request-id")
            }}
 
-        {:ok, %Req.Response{status: status, body: body}} when status in [400, 401] ->
-          refused(status, body)
-
-        {:ok, %Req.Response{status: 429}} ->
-          {:error, :usage_limit}
-
-        {:ok, %Req.Response{status: status}} ->
-          {:error, {:http, status}}
-
-        {:error, reason} ->
-          {:error, reason}
+        other ->
+          failure(other)
       end
     else
       {:error, :not_configured}
@@ -328,6 +319,15 @@ defmodule AgentBoard.ElevenLabs do
   end
 
   defp stream_result({:error, reason}), do: {:error, reason}
+
+  # The one reason vocabulary of the contract ("The voice") for speech,
+  # transcription and the voice list.
+  defp failure({:ok, %Req.Response{status: status, body: body}}) when status in [400, 401],
+    do: refused(status, body)
+
+  defp failure({:ok, %Req.Response{status: 429}}), do: {:error, :usage_limit}
+  defp failure({:ok, %Req.Response{status: status}}), do: {:error, {:http, status}}
+  defp failure({:error, reason}), do: {:error, reason}
 
   # Spent credits answer 400 or 401 with `quota_exceeded`: the plan ran out,
   # not the key. The board switches to the computer voice for a while.
@@ -422,17 +422,8 @@ defmodule AgentBoard.ElevenLabs do
           Usage.record_stt(transcript.audio_duration_secs)
           {:ok, transcript}
 
-        {:ok, %Req.Response{status: status, body: body}} when status in [400, 401] ->
-          refused(status, body)
-
-        {:ok, %Req.Response{status: 429}} ->
-          {:error, :usage_limit}
-
-        {:ok, %Req.Response{status: status}} ->
-          {:error, {:http, status}}
-
-        {:error, reason} ->
-          {:error, reason}
+        other ->
+          failure(other)
       end
     else
       {:error, :not_configured}
@@ -498,17 +489,8 @@ defmodule AgentBoard.ElevenLabs do
       {:ok, %Req.Response{status: 200, body: %{"voices" => list}}} ->
         {:ok, Enum.map(list, &%{id: &1["voice_id"], name: &1["name"]})}
 
-      {:ok, %Req.Response{status: status, body: body}} when status in [400, 401] ->
-        refused(status, body)
-
-      {:ok, %Req.Response{status: 429}} ->
-        {:error, :usage_limit}
-
-      {:ok, %Req.Response{status: status}} ->
-        {:error, {:http, status}}
-
-      {:error, reason} ->
-        {:error, reason}
+      other ->
+        failure(other)
     end
   end
 

@@ -369,7 +369,7 @@ defmodule AgentBoard.DailySummaryTest do
     end
   end
 
-  defp pull(repo, number, title, merged_at, closes \\ []) do
+  defp pull(repo, number, title, merged_at, closes) do
     Repo.insert!(%PullRequest{
       repository_id: repo.id,
       number: number,
