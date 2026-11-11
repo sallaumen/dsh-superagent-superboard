@@ -8096,7 +8096,6 @@ msgid "model not read"
 msgstr "modelo não lido"
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
-
 #: lib/agent_board/setup.ex:182
 #, elixir-autogen, elixir-format
 msgid "%{answered} of %{total} answer · %{model}"
@@ -8165,7 +8164,6 @@ msgid "If it fails: %{others}."
 msgstr "Se falhar: %{others}."
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
-
 #: lib/agent_board/setup.ex:287
 #, elixir-autogen, elixir-format
 msgid "%{provider} answers (%{model})."
@@ -8182,7 +8180,6 @@ msgid "Create a key"
 msgstr "Criar uma chave"
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
-
 #: lib/agent_board/setup.ex:311
 #, elixir-autogen, elixir-format
 msgid "%{provider} did not answer."
@@ -8194,7 +8191,6 @@ msgid "ElevenLabs key set."
 msgstr "Chave da ElevenLabs definida."
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
-
 #: lib/agent_board/setup.ex:329
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs answers: %{used} of %{limit} characters used."
@@ -8216,7 +8212,6 @@ msgid "ElevenLabs refused the key: it expired or was revoked."
 msgstr "A ElevenLabs recusou a chave: ela expirou ou foi revogada."
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
-
 #: lib/agent_board/setup.ex:358
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs did not answer."
