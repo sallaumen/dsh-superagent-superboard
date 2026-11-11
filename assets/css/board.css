@@ -216,6 +216,8 @@ body { margin: 0; background: var(--paper); }
 .ab-run__step { grid-column: 2; display: flex; gap: 10px; align-items: baseline; color: var(--ink); min-width: 0; }
 .ab-run__step code { font-family: var(--font-mono); font-size: 12.5px; color: var(--agent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ab-run__step .ab-meta { flex: none; }
+/* A commit subject (up to 80 characters) gives way to the card: cut, whole in its title. */
+.ab-run__step .ab-run__note { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ab-run__clock { font-family: var(--font-mono); font-size: 12.5px; color: var(--agent); font-variant-numeric: tabular-nums; text-align: right; }
 .ab-run__clock small { font-family: var(--font-sans); color: var(--ink-muted); font-size: 12px; margin-left: 8px; }
 .ab-phases { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }

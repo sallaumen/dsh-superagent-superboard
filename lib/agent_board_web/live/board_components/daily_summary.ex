@@ -40,7 +40,7 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
     >
       <header class="ab-daily__head">
         <h2 id="daily-summary-title">
-          {gettext("Daily Summary")}
+          {gettext("Daily summary")}
           <small class="ab-daily__scope">{gettext("from the board")}</small>
         </h2>
         <span class="ab-daily__since">

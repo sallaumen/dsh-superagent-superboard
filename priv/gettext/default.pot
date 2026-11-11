@@ -147,7 +147,7 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/inspector.ex:1004
 #: lib/agent_board_web/live/board_components/inspector.ex:1015
 #, elixir-autogen, elixir-format
-msgid "Agent Executor"
+msgid "Agent executor"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/voice_conversation_log.ex:28
@@ -297,11 +297,6 @@ msgstr ""
 msgid "Create task"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/daily_summary.ex:43
-#: lib/agent_board_web/live/board_live.ex:3456
-#, elixir-autogen, elixir-format
-msgid "Daily Summary"
-msgstr ""
 
 #: lib/agent_board_web/live/board_components/shortcuts.ex:28
 #, elixir-autogen, elixir-format
@@ -340,7 +335,7 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:1024
 #, elixir-autogen, elixir-format
-msgid "Estimated Cost"
+msgid "Estimated cost"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/executor_picker.ex:30
@@ -381,7 +376,7 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:147
 #, elixir-autogen, elixir-format
-msgid "In Progress"
+msgid "In progress"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:756
@@ -604,7 +599,7 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/intake.ex:90
 #, elixir-autogen, elixir-format
-msgid "Open Questions"
+msgid "Open questions"
 msgstr ""
 
 #: lib/agent_board_web/live/board_live.ex:3206
@@ -1246,7 +1241,7 @@ msgstr ""
 #: lib/agent_board_web/live/board_live.ex:3351
 #: lib/agent_board_web/live/board_live.ex:3567
 #, elixir-autogen, elixir-format
-msgid "Board Actions"
+msgid "Board actions"
 msgstr ""
 
 #: lib/agent_board_web/components/layouts.ex:62
@@ -1490,15 +1485,9 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:344
 #, elixir-autogen, elixir-format
-msgid "Unlock Task"
+msgid "Unlock task"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/repo_rail.ex:176
-#: lib/agent_board_web/live/board_live.ex:3585
-#: lib/agent_board_web/live/board_live.ex:3808
-#, elixir-autogen, elixir-format
-msgid "Voice Conversation"
-msgstr ""
 
 #: lib/agent_board_web/live/board_components/voice_conversation_log.ex:51
 #, elixir-autogen, elixir-format
