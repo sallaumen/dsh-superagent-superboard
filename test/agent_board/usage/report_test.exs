@@ -160,7 +160,9 @@ defmodule AgentBoard.Usage.ReportTest do
         plan_type: "chatgpt",
         primary_used_percent: 90.0,
         primary_window_minutes: 10_080,
-        primary_resets_at: DateTime.new!(~D[2026-11-11], ~T[13:46:01], "Etc/UTC"),
+        # A quota whose reset has passed is not shown: the reset stays ahead of the clock.
+        primary_resets_at:
+          DateTime.add(DateTime.utc_now(), 3, :day) |> DateTime.truncate(:second),
         observed_at: at,
         inserted_at: at,
         updated_at: at
