@@ -19,7 +19,7 @@ defmodule AgentBoardWeb.VoiceSpeech do
   everything goes to the browser voice.
   """
 
-  alias AgentBoard.ElevenLabs.Usage
+  alias AgentBoard.ElevenLabs.{Account, Usage}
   alias AgentBoard.Voice.Speakable
 
   @doc "`/api/voice/stream?text=...&voice=...`"
@@ -66,7 +66,7 @@ defmodule AgentBoardWeb.VoiceSpeech do
       end
 
     # The cap is a database read: only asked when the paid voice is wanted.
-    wanted and Map.get(voice, :configured, false) and not over_cap?()
+    wanted and Map.get(voice, :configured, false) and not over_cap?() and not Account.spent?()
   end
 
   @doc "The part of a reply that is spoken: the first sentence of a short reply."
@@ -82,6 +82,7 @@ defmodule AgentBoardWeb.VoiceSpeech do
   end
 
   # Past the day's character cap (`ELEVENLABS_DAILY_CHAR_CAP`, the ledger
-  # in `AgentBoard.ElevenLabs.Usage`) everything goes to the free voice.
+  # in `AgentBoard.ElevenLabs.Usage`) or with the plan's credits spent
+  # (`AgentBoard.ElevenLabs.Account`) everything goes to the free voice.
   defp over_cap?, do: Usage.over_cap?()
 end

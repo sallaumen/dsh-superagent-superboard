@@ -51,6 +51,8 @@ const english = {
   "Esperando o áudio da ElevenLabs.": "Waiting for ElevenLabs audio.",
   "O agente terminou de falar": "The agent finished speaking",
   "A voz não tocou": "Voice did not play",
+  "A voz da ElevenLabs falhou": "The ElevenLabs voice failed",
+  "Usando a voz do computador. Confira os créditos e a chave da ElevenLabs.": "Using the computer voice. Check the ElevenLabs credits and key.",
   "O áudio não tocou": "Audio did not play",
   "Confira a chave e o limite da ElevenLabs, ou tente de novo.": "Check the ElevenLabs key and limit, or try again.",
   "Confira o som do navegador e tente de novo.": "Check the browser sound and try again.",

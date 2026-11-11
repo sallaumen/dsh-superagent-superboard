@@ -60,7 +60,7 @@ defmodule AgentBoardWeb.BoardController do
       # The API has no interface language: the reasons it stores stay Portuguese.
       request =
         Gettext.with_locale(AgentBoardWeb.Gettext, "pt_BR", fn ->
-          Routing.plan(repo, request, params["executor"], "api", Routing.Signals.read())
+          Routing.plan(repo, request, params["executor"], "api", Routing.Signals.read_for(repo))
         end)
 
       action = %{repository: repo, requests: [request], client: client()}

@@ -94,3 +94,5 @@ config :agent_board, version_check_on_mount: false
 # :board_updated and reads the page right after. board_load_test covers the
 # coalesced burst with its own delay.
 config :agent_board, board_reload_ms: 0
+# The ElevenLabs account is read only when a test asks for it.
+config :agent_board, elevenlabs_account_refresh: false
