@@ -164,10 +164,6 @@ defmodule AgentBoard.AI do
     end
   end
 
-  @doc "The first provider this node would use, for display."
-  @spec provider() :: atom() | nil
-  def provider, do: List.first(providers())
-
   defp rehearsal?, do: Application.get_env(:agent_board, :ai_rehearsal, false) == true
 
   defp record(context, request, inputs, result, elapsed, status, error, opts) do

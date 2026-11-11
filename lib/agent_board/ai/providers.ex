@@ -44,9 +44,6 @@ defmodule AgentBoard.AI.Providers do
   @spec ids() :: [id()]
   def ids, do: @order
 
-  @spec all() :: [{id(), map()}]
-  def all, do: Enum.map(@order, &{&1, Map.fetch!(@providers, &1)})
-
   @spec fetch(atom()) :: {:ok, map()} | :error
   def fetch(id), do: Map.fetch(@providers, id)
 

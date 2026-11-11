@@ -57,19 +57,12 @@ defmodule AgentBoard.AI.Engines.OpenAI do
 
   # A structured call is a forced function tool with `strict: true`: plain
   # `json_object` only promises syntactically valid JSON, and the model will
-  # happily invent its own field names. The schema is the contract.
-  defp body(%Request{json_schema: nil} = request) do
-    %{
-      model: request.model,
-      messages: messages(request),
-      max_tokens: request.max_output_tokens,
-      response_format: %{type: "json_object"}
-    }
-  end
-
+  # happily invent its own field names. The schema is the contract, and every
+  # registered call has one.
+  #
   # DeepSeek thinking mode refuses a forced tool_choice. Gemini's compatible
   # endpoint rejects the thinking field, and OpenAI has no matching field.
-  defp body(%Request{json_schema: schema} = request) do
+  defp body(%Request{json_schema: %{} = schema} = request) do
     payload = %{
       model: request.model,
       messages: messages(request),
