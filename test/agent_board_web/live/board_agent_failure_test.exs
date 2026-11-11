@@ -336,7 +336,8 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/failures")
 
-    assert has_element?(view, "#need-agent-down", "Agente fora do ar")
+    assert has_element?(view, "#need-agent-down .ab-need__kind", "Agente fora do ar")
+    assert has_element?(view, "#need-agent-down", "Nenhuma tarefa nova começa até ele voltar")
     assert has_element?(view, "#need-agent-down", "2 tarefas esperam ele voltar")
     refute has_element?(view, "#sec-needs #task-#{blocked.id}")
 

@@ -93,7 +93,7 @@ defmodule AgentBoard.Lanes do
       id: nil,
       number: nil,
       kind: :agent_down,
-      title: pgettext("status", "Agent offline"),
+      title: gettext("No new task starts until it is back"),
       why: gettext("**The orchestrator is not responding.**") <> " " <> tail,
       ci: nil,
       age_seconds: nil,
