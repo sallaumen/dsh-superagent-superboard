@@ -111,7 +111,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
           date: day(sub.resets_at, offset)
         )
 
-      refused?(state, now) ->
+      Account.refused?(state, now) ->
         refused_text(state, offset)
 
       sub.resets_at ->
@@ -129,12 +129,8 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
     end
   end
 
-  def account(state, now, offset), do: if(refused?(state, now), do: refused_text(state, offset))
-
-  defp refused?(%{refused_until: %DateTime{} = until}, now),
-    do: DateTime.compare(now, until) == :lt
-
-  defp refused?(_state, _now), do: false
+  def account(state, now, offset),
+    do: if(Account.refused?(state, now), do: refused_text(state, offset))
 
   defp refused_text(state, offset),
     do:

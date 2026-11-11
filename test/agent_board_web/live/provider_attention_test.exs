@@ -33,4 +33,17 @@ defmodule AgentBoardWeb.ProviderAttentionTest do
     assert_patch(view)
     assert has_element?(view, "#settings-voice-title")
   end
+
+  test "the plan line follows the account while the page stays open", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "provider-plan")
+    Board.log_event(repo.id, "sync", "fixture/provider-plan", %{"errors" => 0})
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/provider-plan")
+    refute has_element?(view, "#voice-plan")
+
+    :ok = Account.mark_spent()
+    send(view.pid, :board_updated)
+    render_click(view, "show_panel", %{"panel" => "settings", "section" => "voice"})
+
+    assert has_element?(view, "#voice-plan", "ElevenLabs")
+  end
 end
