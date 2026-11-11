@@ -9,6 +9,8 @@ defmodule AgentBoard.AI.Engines.OpenAI do
 
   @behaviour AgentBoard.AI.Engine
 
+  require Logger
+
   alias AgentBoard.AI.{Providers, Request, Result, Schema}
 
   @impl true
@@ -41,8 +43,16 @@ defmodule AgentBoard.AI.Engines.OpenAI do
       {:ok, %Req.Response{status: 401}} -> {:error, :auth_expired}
       {:ok, %Req.Response{status: status}} when status in [402, 429] -> {:error, :usage_limit}
       {:ok, %Req.Response{status: status}} -> {:error, {:http, status}}
-      {:error, reason} -> {:error, reason}
+      {:error, %Req.TransportError{reason: :timeout}} -> {:error, :timeout}
+      {:error, exception} -> unreachable(provider_id, exception)
     end
+  end
+
+  # The row and the panel get a word; the operator's log keeps what the
+  # transport said (refused, no such host, dropped).
+  defp unreachable(provider_id, exception) do
+    Logger.warning("AI call to #{provider_id} got no answer: #{Exception.message(exception)}")
+    {:error, :unreachable}
   end
 
   # A structured call is a forced function tool with `strict: true`: plain

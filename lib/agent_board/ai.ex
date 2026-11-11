@@ -93,12 +93,17 @@ defmodule AgentBoard.AI do
              %Result{},
              duration,
              :error,
-             inspect(reason),
+             reason_word(reason),
              opts
            ) do
       next_attempt(reason, name, spec, inputs, rest, opts)
     end
   end
+
+  # The stored reason is a word the panel can say (`AgentBoardWeb.FailureText`).
+  defp reason_word(reason) when is_atom(reason), do: Atom.to_string(reason)
+  defp reason_word({:http, status}), do: "http #{status}"
+  defp reason_word(%{__exception__: true} = exception), do: Exception.message(exception)
 
   defp next_attempt(reason, name, spec, inputs, rest, opts) do
     if fallback?(reason), do: attempt(name, spec, inputs, rest, opts), else: {:error, reason}

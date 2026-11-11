@@ -346,6 +346,22 @@ defmodule AgentBoard.AITest do
     assert call.error =~ "500"
   end
 
+  test "a dropped connection is one attempt, one row and a word, never a retry" do
+    {:ok, agent} = Agent.start_link(fn -> 0 end)
+
+    Req.Test.stub(@stub, fn conn ->
+      Agent.update(agent, &(&1 + 1))
+      Req.Test.transport_error(conn, :timeout)
+    end)
+
+    assert {:error, :timeout} = AI.call(:refine_request, %{text: "x"})
+    assert Agent.get(agent, & &1) == 1
+
+    call = Repo.one(Call)
+    assert call.status == "error"
+    assert call.error == "timeout"
+  end
+
   test "the unblock suggestion is registered and returns sendable options" do
     Application.put_env(:agent_board, :ai_rehearsal, true)
     on_exit(fn -> Application.delete_env(:agent_board, :ai_rehearsal) end)
