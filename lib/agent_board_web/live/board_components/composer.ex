@@ -79,9 +79,9 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       <h2 id="composer-title" class="ab-sr">{gettext("New request")}</h2>
 
       <div class="ab-compose__head">
-        <span class="ab-label">{if @split, do: gettext("Split request"), else: gettext("New request")} {gettext(
-          "in"
-        )}</span>
+        <span class="ab-label">{if @split,
+          do: gettext("Split request in"),
+          else: gettext("New request in")}</span>
         <span class="ab-chip">{@repo}</span>
         <span class="ab-top__spacer"></span>
         <ol class="ab-steps" aria-label={gettext("Request stages")}>
@@ -739,7 +739,9 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
 
   defp outcome_label(:created), do: gettext("queued")
   defp outcome_label(:existing), do: gettext("Already in the queue")
-  defp outcome_label({:error, reason}), do: gettext("failed: ") <> failure_reason(reason)
+
+  defp outcome_label({:error, reason}),
+    do: gettext("failed: %{reason}", reason: failure_reason(reason))
 
   defp outcome_class(:created), do: "ab-tag--agent"
   defp outcome_class(:existing), do: nil

@@ -1014,10 +1014,10 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   def execution_cost(%{cost: nil}), do: gettext("unknown")
 
   def execution_cost(%{source: "claude_code", cost: %{micros: micros, complete?: true}}),
-    do: "≈ #{cost(micros)} " <> gettext("list price")
+    do: gettext("≈ %{cost} list price", cost: cost(micros))
 
   def execution_cost(%{source: "claude_code", cost: %{micros: micros}}),
-    do: "≥ #{cost(micros)} " <> gettext("list price")
+    do: gettext("≥ %{cost} list price", cost: cost(micros))
 
   def execution_cost(%{cost: %{micros: micros, complete?: true}}), do: "≈ #{cost(micros)}"
   def execution_cost(%{cost: %{micros: micros}}), do: "≥ #{cost(micros)}"
