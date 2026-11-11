@@ -9,6 +9,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
   attr :seen, :map, default: %{}
   attr :filter, :string, default: "all"
   attr :notice, :string, default: nil
+  slot :inner_block, doc: "a mark that sits first in the row, such as the peak hours"
 
   def hub(assigns) do
     unread_messages = Enum.filter(assigns.messages, &unread?(&1, assigns.seen))
@@ -23,6 +24,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
 
     ~H"""
     <div class="ab-message-hub" aria-label={gettext("Messages and notifications")}>
+      {render_slot(@inner_block)}
       <details id="message-inbox" class="ab-hub-menu" data-board-menu phx-hook="BoardMenu">
         <summary aria-label={message_label(@unread)} title={gettext("Messages from Yasme")}>
           <.icon name="hero-chat-bubble-left-right" class="size-5" />

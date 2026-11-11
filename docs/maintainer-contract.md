@@ -345,6 +345,12 @@ that already worked).
   scrolling the board. The separate bell counts active
   blocked, question, review and long-running tasks across projects; it is a
   pending-work count, not an unread count. Both lists follow the board's PubSub broadcasts.
+  Before them sits DeepSeek's rate (`BoardComponents.PeakRate`): a flame
+  while `Providers.peak?/1` holds, a moon while every token costs half, the
+  sentence on hover and, opened, the owner's day in local time with its peak
+  windows and the next change (`Providers.next_rate_change/1`). The rate
+  hour broadcasts nothing, so the page's one timer also covers it; the
+  browser polls nothing (`peak_rate_test.exs`, `board_live_test.exs`).
 - Never poll the database from the browser; push.
 - The board is read once per render of the page (in `handle_params/3`, never
   also in `mount/3`), again on every task action and once per burst of
