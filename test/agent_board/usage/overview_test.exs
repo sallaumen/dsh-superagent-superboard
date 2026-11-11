@@ -91,6 +91,38 @@ defmodule AgentBoard.Usage.OverviewTest do
     assert Overview.select(runs, "codex", "arena-rogue") == []
   end
 
+  test "calls/2 narrows by engine, function and status and totals each function" do
+    call(%{
+      name: "refine_request",
+      engine: "deepseek",
+      status: "ok",
+      input_tokens: 5,
+      output_tokens: 5,
+      cost_micros: 100
+    })
+
+    call(%{
+      name: "refine_request",
+      engine: "deepseek",
+      status: "ok",
+      input_tokens: 5,
+      output_tokens: 5,
+      cost_micros: 0
+    })
+
+    call(%{name: "answer_question", engine: "openai", status: "error", error: "timeout"})
+
+    all = Overview.calls(7, %{engine: "all", name: "all", status: "all"})
+    assert all.count == 3
+    assert all.engines == ["deepseek", "openai"]
+
+    refine = Enum.find(all.functions, &(&1.name == "refine_request"))
+    assert %{calls: 2, errors: 0, tokens: 20, cost: %{micros: 100, complete?: false}} = refine
+
+    assert Overview.calls(7, %{engine: "openai", name: "all", status: "all"}).count == 1
+    assert Overview.calls(7, %{engine: "all", name: "refine_request", status: "error"}).count == 0
+  end
+
   defp call(attrs) do
     %Call{}
     |> Call.changeset(Map.merge(%{name: "refine_request", engine: "deepseek"}, attrs))

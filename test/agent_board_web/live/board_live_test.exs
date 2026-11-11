@@ -793,6 +793,45 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#board-page[data-panel='']")
   end
 
+  test "Costs → calls filters by status in the URL and totals each function", %{conn: conn} do
+    {:ok, _} = Board.add_repository("fixture", "ai-filters")
+
+    for {name, status, micros} <- [
+          {"refine_request", "ok", 2_000},
+          {"refine_request", "error", 0},
+          {"answer_question", "ok", 500}
+        ] do
+      %Call{}
+      |> Call.changeset(%{
+        name: name,
+        engine: "deepseek",
+        status: status,
+        input_tokens: 10,
+        output_tokens: 10,
+        cost_micros: micros
+      })
+      |> Repo.insert!()
+    end
+
+    {:ok, view, _html} =
+      live(conn, ~p"/?repo=fixture/ai-filters&panel=settings&section=costs&costs=calls")
+
+    assert has_element?(view, "#costs-calls-total", "3 chamadas em 30 dias")
+    assert has_element?(view, "#costs-functions tr", "refine_request")
+
+    view
+    |> element("#costs-calls-filters")
+    |> render_change(%{"engine" => "all", "name" => "all", "status" => "error"})
+
+    assert_patch(
+      view,
+      "/?costs=calls&days=30&panel=settings&repo=fixture%2Fai-filters&section=costs&status=error"
+    )
+
+    assert has_element?(view, "#costs-calls-total", "1 chamada em 30 dias")
+    refute has_element?(view, "#costs-calls", "answer_question")
+  end
+
   test "Costs → calls shows the last calls", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 

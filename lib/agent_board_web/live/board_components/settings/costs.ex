@@ -4,14 +4,14 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   in its own currency and class (`AgentBoard.Usage.Overview`), never summed
   across currencies. A missing price is "?" or a minimum ("≥"), never zero.
 
-  The page, the window of UTC days and the Agents filters live in the URL
-  (`costs`, `days`, `source`, `project`), so a reload or a shared link reopens
-  the same view. Data is read when the section opens and when the page or the
-  window changes; a filter only narrows what was read; nothing polls.
+  The page, the window of UTC days and each page's filters live in the URL
+  (`costs`, `days`; Agents: `source`, `project`; calls: `engine`, `name`,
+  `status`), so a reload or a shared link reopens the same view. Data is read
+  when the section opens and when the page, the window or a calls filter
+  changes; an Agents filter only narrows what was read; nothing polls.
   """
   use AgentBoardWeb, :live_component
 
-  alias AgentBoard.AI
   alias AgentBoard.ElevenLabs.{Account, Usage}
   alias AgentBoard.Usage.Overview
   alias AgentBoardWeb.{BoardNavigation, FailureText, Numbers, Time}
@@ -19,8 +19,10 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   @pages ~w(summary agents calls)
   @days [7, 30, 90]
   @sources ~w(all dsh claude_code codex)
-  @recent_calls 50
   @shown_runs 100
+  @statuses ~w(all ok error)
+  # The filters each page keeps in the URL.
+  @filters %{"agents" => [:source, :project], "calls" => [:engine, :name, :status]}
 
   @doc "The pages this section has, in order."
   def pages, do: @pages
@@ -45,12 +47,24 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
     page = if params[:page] in @pages, do: params[:page], else: "summary"
     days = if params[:days] in @days, do: params[:days], else: 30
     source = if params[:source] in @sources, do: params[:source], else: "all"
-    project = if is_binary(params[:project]), do: params[:project], else: "all"
-    socket = assign(socket, page: page, days: days, source: source, project: project)
 
-    # Read on opening and on a new page or window; a broadcast re-render of
-    # the open section keeps what it has. The calls page has no window.
-    key = if page == "calls", do: {page, nil}, else: {page, days}
+    socket =
+      assign(socket,
+        page: page,
+        days: days,
+        source: source,
+        project: text_filter(params[:project]),
+        engine: text_filter(params[:engine]),
+        name: text_filter(params[:name]),
+        status: if(params[:status] in @statuses, do: params[:status], else: "all")
+      )
+
+    # Read on opening and on a new page, window or calls filter; a broadcast
+    # re-render of the open section keeps what it has.
+    key =
+      if page == "calls",
+        do: {page, days, Map.take(socket.assigns, @filters["calls"])},
+        else: {page, days}
 
     if socket.assigns.active and socket.assigns.loaded != key,
       do: {:ok, load(socket, key)},
@@ -71,8 +85,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
     )
   end
 
-  defp load(socket, {"calls", _days} = key),
-    do: assign(socket, calls: AI.recent(@recent_calls), loaded: key)
+  defp load(socket, {"calls", days, filters} = key),
+    do: assign(socket, calls: Overview.calls(days, filters), loaded: key)
+
+  defp text_filter(value) when is_binary(value) and value != "", do: value
+  defp text_filter(_value), do: "all"
 
   @impl true
   def handle_event("costs_view", params, socket) do
@@ -84,34 +101,32 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
         _ -> socket.assigns.days
       end
 
-    filters = Map.take(socket.assigns, [:source, :project])
+    filters = Map.take(socket.assigns, Map.get(@filters, page, []))
     {:noreply, push_patch(socket, to: costs_path(socket.assigns.repo, page, days, filters))}
   end
 
   def handle_event("costs_filter", params, socket) do
-    filters = %{
-      source: if(params["source"] in @sources, do: params["source"], else: "all"),
-      project: if(is_binary(params["project"]), do: params["project"], else: "all")
-    }
+    page = socket.assigns.page
+
+    filters =
+      Map.new(Map.get(@filters, page, []), fn key ->
+        {key, text_filter(params[Atom.to_string(key)])}
+      end)
 
     {:noreply,
-     push_patch(socket,
-       to: costs_path(socket.assigns.repo, "agents", socket.assigns.days, filters)
-     )}
+     push_patch(socket, to: costs_path(socket.assigns.repo, page, socket.assigns.days, filters))}
   end
 
-  @doc "The URL of a page, its window and, on Agents, its filters."
+  @doc "The URL of a page, its window and its filters."
   def costs_path(repo, page, days, filters \\ %{}) do
     query = %{"costs" => page, "days" => days}
 
     query =
-      if page == "agents",
-        do:
-          filters
-          |> Enum.reject(fn {_key, value} -> value in [nil, "all"] end)
-          |> Map.new(fn {key, value} -> {Atom.to_string(key), value} end)
-          |> Map.merge(query),
-        else: query
+      filters
+      |> Map.take(Map.get(@filters, page, []))
+      |> Enum.reject(fn {_key, value} -> value in [nil, "all"] end)
+      |> Map.new(fn {key, value} -> {Atom.to_string(key), value} end)
+      |> Map.merge(query)
 
     BoardNavigation.settings_path(repo, "costs", query)
   end
@@ -134,7 +149,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
           >{page_label(page)}</button>
         </div>
         <div
-          :if={@page != "calls"}
           class="ab-segmented ab-segmented--sm"
           role="group"
           aria-label={gettext("Window in UTC days")}
@@ -162,7 +176,15 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
         days={@days}
         myself={@myself}
       />
-      <.calls :if={@page == "calls" and @calls} calls={@calls} />
+      <.calls
+        :if={@page == "calls" and @calls}
+        calls={@calls}
+        engine={@engine}
+        name={@name}
+        status={@status}
+        days={@days}
+        myself={@myself}
+      />
     </div>
     """
   end
@@ -421,19 +443,104 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
     """
   end
 
-  attr :calls, :list, required: true
+  attr :calls, :map, required: true
+  attr :engine, :string, required: true
+  attr :name, :string, required: true
+  attr :status, :string, required: true
+  attr :days, :integer, required: true
+  attr :myself, :any, required: true
 
   defp calls(assigns) do
+    assigns =
+      assign(assigns,
+        rows: assigns.calls.rows,
+        total: Overview.total(Enum.map(assigns.calls.functions, & &1.cost)),
+        statuses: @statuses
+      )
+
     ~H"""
-    <p :if={@calls == []} class="ab-meta">{gettext("No AI calls recorded yet.")}</p>
-    <p :if={@calls != []} class="ab-costs__scope">
+    <form
+      id="costs-calls-filters"
+      class="ab-costs__filters"
+      phx-change="costs_filter"
+      phx-target={@myself}
+    >
+      <label>
+        <span>{gettext("Provider")}</span>
+        <select name="engine">
+          <option value="all" selected={@engine == "all"}>{gettext("All providers")}</option>
+          <option :for={engine <- @calls.engines} value={engine} selected={@engine == engine}>
+            {engine}
+          </option>
+        </select>
+      </label>
+      <label>
+        <span>{gettext("Function")}</span>
+        <select name="name">
+          <option value="all" selected={@name == "all"}>{gettext("All functions")}</option>
+          <option :for={name <- @calls.names} value={name} selected={@name == name}>{name}</option>
+        </select>
+      </label>
+      <label>
+        <span>{gettext("Status")}</span>
+        <select name="status">
+          <option :for={status <- @statuses} value={status} selected={@status == status}>
+            {status_label(status)}
+          </option>
+        </select>
+      </label>
+    </form>
+
+    <p id="costs-calls-total" class="ab-costs__scope">
       {ngettext(
-        "The last %{count} call of the board's own AI, newest first.",
-        "The last %{count} calls of the board's own AI, newest first.",
-        length(@calls)
+        "%{n} call in %{days} days · %{cost}",
+        "%{n} calls in %{days} days · %{cost}",
+        @calls.count,
+        n: Numbers.grouped(@calls.count),
+        days: @days,
+        cost: if(@calls.count == 0, do: "—", else: cost_value(@total))
       )}
     </p>
-    <div :if={@calls != []} class="ab-costs__table-wrap">
+
+    <section
+      :if={@calls.functions != []}
+      class="ab-costs__section"
+      aria-labelledby="costs-functions-title"
+    >
+      <h4 id="costs-functions-title">{gettext("By function")}</h4>
+      <div class="ab-costs__table-wrap">
+        <table id="costs-functions" class="ab-execution__ai-table">
+          <thead>
+            <tr>
+              <th scope="col">{gettext("Function")}</th>
+              <th scope="col">{gettext("Calls")}</th>
+              <th scope="col">{gettext("Errors")}</th>
+              <th scope="col">{gettext("Tokens")}</th>
+              <th scope="col">{gettext("Average latency")}</th>
+              <th scope="col">{gettext("Cost")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={function <- @calls.functions}>
+              <td><code>{function.name || "—"}</code></td>
+              <td class="ab-data-sm">{Numbers.grouped(function.calls)}</td>
+              <td class="ab-data-sm">{Numbers.grouped(function.errors)}</td>
+              <td class="ab-data-sm">{Numbers.grouped(function.tokens)}</td>
+              <td class="ab-data-sm">
+                {latency_text(function.latency_ms && round(function.latency_ms))}
+              </td>
+              <td class="ab-data-sm">{cost_value(function.cost)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <p :if={@rows == []} class="ab-meta">{gettext("No call matches these filters.")}</p>
+    <p :if={@calls.count > length(@rows)} class="ab-meta">
+      {gettext("Showing the newest %{shown}.", shown: length(@rows))}
+    </p>
+    <div :if={@rows != []} class="ab-costs__table-wrap">
       <table id="costs-calls" class="ab-execution__ai-table">
         <caption class="ab-sr">{gettext("The board's own AI calls")}</caption>
         <thead>
@@ -446,7 +553,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
           </tr>
         </thead>
         <tbody>
-          <tr :for={call <- @calls}>
+          <tr :for={call <- @rows}>
             <td>
               <code title={"#{call.engine} · #{call.model}"}>{call.name || "—"}</code>
               <span :if={call.status == "error"} class="ab-execution__ai-error">
@@ -694,6 +801,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   @doc "A cost as the board writes it: ≈ when complete, ≥ when a minimum, ? when unknown."
   @spec cost_value(map() | nil) :: String.t()
   def cost_value(nil), do: "?"
+  # Under a cent the mark adds nothing: it is less than the smallest coin.
+  def cost_value(%{micros: micros}) when micros > 0 and micros < 5_000, do: money(micros)
   def cost_value(%{micros: micros, complete?: true}), do: "≈ " <> money(micros)
   def cost_value(%{micros: micros}), do: "≥ " <> money(micros)
 
@@ -715,6 +824,10 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   defp page_label("summary"), do: gettext("Summary")
   defp page_label("agents"), do: gettext("Agents")
   defp page_label("calls"), do: gettext("Board AI calls")
+
+  defp status_label("all"), do: gettext("Any status")
+  defp status_label("ok"), do: gettext("Answered")
+  defp status_label("error"), do: gettext("Failed")
 
   defp source_label("all"), do: gettext("All executors")
   defp source_label("dsh"), do: "DeepSeek"

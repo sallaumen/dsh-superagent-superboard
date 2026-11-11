@@ -96,6 +96,59 @@ defmodule AgentBoard.Usage.Overview do
   end
 
   @doc """
+  The board's own AI calls of the window that `filters` select (`engine`,
+  `name`, `status`, each `"all"` for any): the newest 100, how many there
+  are, the totals per function, and the engines and functions to filter by.
+  """
+  @spec calls(pos_integer(), map()) :: map()
+  def calls(days, filters) do
+    window = from c in Call, where: c.inserted_at >= ^start(Report.since(days))
+
+    selected =
+      window
+      |> narrow(:engine, filters[:engine])
+      |> narrow(:name, filters[:name])
+      |> narrow(:status, filters[:status])
+
+    %{
+      rows: Repo.all(from c in selected, order_by: [desc: c.inserted_at, desc: c.id], limit: 100),
+      count: Repo.aggregate(selected, :count),
+      functions: functions(selected),
+      engines: Repo.all(from c in window, distinct: true, select: c.engine, order_by: c.engine),
+      names: Repo.all(from c in window, distinct: true, select: c.name, order_by: c.name)
+    }
+  end
+
+  defp narrow(query, _field, value) when value in [nil, "all"], do: query
+  defp narrow(query, field, value), do: where(query, [c], field(c, ^field) == ^value)
+
+  defp functions(selected) do
+    Repo.all(
+      from c in selected,
+        group_by: c.name,
+        select: %{
+          name: c.name,
+          calls: count(c.id),
+          errors: filter(count(c.id), c.status == "error"),
+          tokens:
+            type(coalesce(sum(c.input_tokens), 0) + coalesce(sum(c.output_tokens), 0), :integer),
+          micros: type(coalesce(sum(c.cost_micros), 0), :integer),
+          unpriced:
+            filter(
+              count(c.id),
+              c.status == "ok" and coalesce(c.input_tokens, 0) + coalesce(c.output_tokens, 0) > 0 and
+                coalesce(c.cost_micros, 0) == 0
+            ),
+          latency_ms: type(avg(c.duration_ms), :float)
+        }
+    )
+    |> Enum.map(fn row ->
+      Map.put(row, :cost, %{micros: row.micros, complete?: row.unpriced == 0})
+    end)
+    |> Enum.sort_by(&{-&1.micros, -&1.calls})
+  end
+
+  @doc """
   The sum of several costs: nil when none is priced, a minimum
   (`complete?: false`) when any is missing or incomplete.
   """

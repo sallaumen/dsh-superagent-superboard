@@ -13,5 +13,5 @@ server has no runner tickets to tie DeepSeek tickets to tasks.
 | `summary-90d-pt-dark-1440.png` | 90-day window, dark theme |
 | `summary-plans-pt-light-390.png`, `summary-chart-pt-light-390.png` | phone: tiles stack, the newest date stays inside the chart |
 | `agents-pt-light-1440.png`, `agents-deepseek-pt-light-1440.png`, `agents-pt-light-390.png` | Agents: each execution, one row open, the executor filter |
-| `calls-pt-light-1440.png` | the board's own AI calls, moved from Execution |
+| `calls-pt-light-1440.png`, `calls-errors-pt-light-1440.png` | the board's own AI calls: filters, totals per function, only the failed ones |
 | `execution-after-pt-light-1440.png` | Execution with only its caps, models and links to Costs |
