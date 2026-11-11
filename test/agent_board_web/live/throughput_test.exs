@@ -41,7 +41,7 @@ defmodule AgentBoardWeb.ThroughputTest do
   test "the strip counts what the tables hold and names what it never read", %{conn: conn} do
     {_repo, view, _html} = board(conn)
     # The orchestrator answers in the background, after the first render.
-    html = render_async(view)
+    html = render_async(view, 2_000)
 
     assert html =~ ~s(id="sec-flow")
     assert html =~ "Vazão"

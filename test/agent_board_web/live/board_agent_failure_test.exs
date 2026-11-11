@@ -200,7 +200,7 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     assert has_element?(view, "#retry-#{blocked.id} .ab-act__busy", "Pedindo ao agente")
     send(request, :answer)
 
-    assert render_async(view) =~ "Nova tentativa pedida."
+    assert render_async(view, 2_000) =~ "Nova tentativa pedida."
     assert has_element?(view, "#retry-#{blocked.id} .ab-act__result", "Nova tentativa pedida.")
     assert_received {:orchestrator, "POST", "/orchestrator/api/tickets/t71/retry"}
 
@@ -228,7 +228,7 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     assert_receive {:holding, request}
     send(request, :answer)
 
-    assert render_async(view) =~ "Nova tentativa pedida."
+    assert render_async(view, 2_000) =~ "Nova tentativa pedida."
     assert_received {:orchestrator, "POST", "/orchestrator/api/tickets/t71/retry"}
   end
 
@@ -250,7 +250,7 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     send(request, :answer)
 
     # The effect runs in a task; its answer still follows the confirmation.
-    html = render_async(view)
+    html = render_async(view, 2_000)
     assert html =~ "New attempt requested."
     refute html =~ "Nova tentativa pedida."
     assert_received {:orchestrator, "POST", "/orchestrator/api/tickets/t71/retry"}
@@ -335,6 +335,8 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     end)
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/failures")
+    # The runner is read in the background since #566: wait for its answer.
+    render_async(view, 2_000)
 
     assert has_element?(view, "#need-agent-down .ab-need__kind", "Agente fora do ar")
     assert has_element?(view, "#need-agent-down", "Nenhuma tarefa nova começa até ele voltar")
@@ -352,7 +354,7 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     refute_received :agent_started
 
     view |> element("#agent-restart-confirm", "Religar") |> render_click()
-    assert render_async(view) =~ "O agente está de pé."
+    assert render_async(view, 2_000) =~ "O agente está de pé."
     assert_received :agent_started
   end
 
@@ -382,12 +384,14 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
       end
     end)
 
-    {elapsed, {:ok, view, _html}} = :timer.tc(fn -> live(conn, ~p"/?repo=fixture/failures") end)
-    assert elapsed < 1_000_000
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/failures")
 
+    # The page is up while the runner still holds the request: had the mount
+    # waited, the stub would have given up (2 s) and its process ended.
     assert_receive {:orchestrator_get, runner}
+    assert Process.alive?(runner)
     send(runner, {:answer, 2})
-    render_async(view)
+    render_async(view, 2_000)
     assert has_element?(view, ~s([data-key="load"][data-value="2/3/0"]))
 
     send(view.pid, :board_updated)

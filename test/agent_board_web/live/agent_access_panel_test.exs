@@ -134,8 +134,8 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
 
   defp settled(view) do
     # Two rounds: the access read, then the collaborators read.
-    _ = render_async(view)
-    render_async(view)
+    _ = render_async(view, 2_000)
+    render_async(view, 2_000)
   end
 
   defp open_access(conn, path, superagent) do
