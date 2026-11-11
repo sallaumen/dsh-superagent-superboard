@@ -1231,6 +1231,10 @@ flowchart TB
   first run, a row shows "—" and its tooltip says why, never a zero. No
   attributed execution in the window is "—" too. The board's own calls stay
   in the task's inspector (`ended_cost_test.exs`, `task_costs_test.exs`).
+  A merged PR's rows, in Merged and in History, show the same value for the
+  task the row opens (`TaskCosts.for_pulls/1`), and print nothing when none
+  is attributed; a task delivered by several PRs shows its whole cost on
+  each (`pr_row_cost_test.exs`).
 - **Delivered issues lead the count.** An issue is delivered when a merged
   PR closes it (`Closes #n`), counted once however many PRs closed it; a PR
   that closes nothing delivers none (`Lanes.delivered/1`). Merged's header

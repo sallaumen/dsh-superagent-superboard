@@ -5,6 +5,8 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1]
 
+  alias AgentBoardWeb.BoardComponents.Concluded
+
   attr :log, :map, required: true
   attr :frozen, :boolean, default: false
   attr :has_history, :boolean, default: false
@@ -170,6 +172,29 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
       </span>
       <span class="ab-meta">{@pr.review}</span>
       <span class="ab-data-sm ab-faint">{@pr.at}</span>
+      <.task_cost entries={@pr.cost} />
+    </span>
+    """
+  end
+
+  @doc """
+  What the PR's task cost, in each executor's unit. Nothing at all when no
+  cost is attributed: absent, never a zero.
+  """
+  attr :entries, :list, default: nil
+
+  def task_cost(assigns) do
+    ~H"""
+    <span
+      :if={@entries}
+      class="ab-pr__cost ab-data-sm"
+      title={
+        gettext(
+          "What the executor spent on this PR's task in the last 90 days. A task delivered by several PRs shows its whole cost on each."
+        )
+      }
+    >
+      {Concluded.cost_text(@entries)}
     </span>
     """
   end

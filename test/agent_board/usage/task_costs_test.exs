@@ -64,6 +64,21 @@ defmodule AgentBoard.Usage.TaskCostsTest do
     assert TaskCosts.for_tasks([task.id]) == %{}
   end
 
+  test "a pull shows its task's cost; one with no task or no cost has none", %{task: task} do
+    ledger("claude_code", "session-1", "claude-opus-5-5")
+    :ok = TaskCosts.refresh(tickets: [])
+
+    pull = %{repository_id: task.repository_id, number: 3, closes_issues: [99, 12]}
+    no_task = %{repository_id: task.repository_id, number: 4, closes_issues: [99]}
+    closes_nothing = %{repository_id: task.repository_id, number: 5, closes_issues: []}
+
+    assert %{3 => [%{source: "claude_code"}]} =
+             costs = TaskCosts.for_pulls([pull, no_task, closes_nothing])
+
+    assert map_size(costs) == 1
+    assert TaskCosts.for_pulls([]) == %{}
+  end
+
   test "each executor of a task is summed apart, and an unpriced one is unknown", %{task: task} do
     ledger("claude_code", "session-1", "claude-opus-5-5")
     ledger("claude_code", "session-2", "claude-opus-5-5")

@@ -13,6 +13,7 @@ defmodule AgentBoard.Lanes do
 
   alias AgentBoard.{Actions, AgentBlock, AgentSignal, Board, Release, Repo, Titles, Workpad}
   alias AgentBoard.Board.{Comment, PullRequest, Task, TaskDependency}
+  alias AgentBoard.Usage.TaskCosts
   # The locale-aware times: these sentences are read on the screen.
   alias AgentBoardWeb.{Locale, Time}
 
@@ -798,6 +799,8 @@ defmodule AgentBoard.Lanes do
           order_by: [desc: p.merged_at, desc: p.id]
       )
 
+    costs = TaskCosts.for_pulls(pulls)
+
     days =
       Enum.map(0..(@log_days - 1), fn index ->
         date = Date.add(start, index)
@@ -832,11 +835,11 @@ defmodule AgentBoard.Lanes do
           n: length(day_pulls),
           more: max(length(day_pulls) - @day_limit, 0),
           more_wide: max(length(day_pulls) - @day_reach, 0),
-          items: Enum.map(shown, &merged_pr(&1, offset, local_ci)),
+          items: Enum.map(shown, &merged_pr(&1, offset, local_ci, costs)),
           extra:
             day_pulls
             |> Enum.slice(@day_limit, @day_reach - @day_limit)
-            |> Enum.map(&merged_pr(&1, offset, local_ci))
+            |> Enum.map(&merged_pr(&1, offset, local_ci, costs))
         }
       end)
 
@@ -861,7 +864,7 @@ defmodule AgentBoard.Lanes do
   """
   def ci(pull, local_ci), do: ci_status(pull, Map.get(local_ci, pull.number))
 
-  defp merged_pr(pull, offset, local_ci) do
+  defp merged_pr(pull, offset, local_ci, costs) do
     {ci, ci_note, ci_title} = ci_status(pull, Map.get(local_ci, pull.number))
 
     %{
@@ -874,7 +877,8 @@ defmodule AgentBoard.Lanes do
       ciNote: ci_note,
       ciTitle: ci_title,
       review: review_label(pull.review_state),
-      at: Time.local_time(pull.merged_at, offset)
+      at: Time.local_time(pull.merged_at, offset),
+      cost: Map.get(costs, pull.number)
     }
   end
 

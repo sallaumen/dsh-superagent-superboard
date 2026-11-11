@@ -42,6 +42,7 @@ defmodule AgentBoardWeb.BoardComponents.Card do
       <div class="item-signals">
         <span :if={review_badge(@item)} class={review_badge_class(@item)}>{review_badge(@item)}</span>
         <span class={ci_class(@ci)} title={elem(@ci, 2)}>{elem(@ci, 1)}</span>
+        <MergeLog.task_cost :if={@state == :merged} entries={assigns[:cost]} />
       </div>
       <DataAge.stamp
         id={"#{@id}-age"}

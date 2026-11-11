@@ -11,7 +11,10 @@ defmodule AgentBoard.Usage.TaskCosts do
   boot a task has no value: absent, never zero.
   """
 
-  alias AgentBoard.AgentState
+  import Ecto.Query, only: [from: 2]
+
+  alias AgentBoard.{AgentState, Repo}
+  alias AgentBoard.Board.Task
   alias AgentBoard.Usage.Report
 
   @key {__MODULE__, :costs}
@@ -53,6 +56,36 @@ defmodule AgentBoard.Usage.TaskCosts do
   @doc "The entries of each task that has any, by task id."
   @spec for_tasks([integer()]) :: %{integer() => [entry()]}
   def for_tasks(task_ids), do: Map.take(stored().by_task, task_ids)
+
+  @doc """
+  The entries of each pull's task, by pull number: the first issue it closes
+  that the board tracks, the task its row opens. Pulls of one repository; a
+  pull with no such task or no cost is absent.
+  """
+  @spec for_pulls([map()]) :: %{integer() => [entry()]}
+  def for_pulls([]), do: %{}
+
+  def for_pulls([%{repository_id: repository_id} | _] = pulls) do
+    numbers = Enum.flat_map(pulls, &(&1.closes_issues || []))
+
+    task_ids =
+      Map.new(
+        Repo.all(
+          from t in Task,
+            where:
+              t.repository_id == ^repository_id and t.kind == "issue" and t.number in ^numbers,
+            select: {t.number, t.id}
+        )
+      )
+
+    costs = stored().by_task
+
+    for pull <- pulls,
+        task_id = Enum.find_value(pull.closes_issues || [], &task_ids[&1]),
+        entries = costs[task_id],
+        into: %{},
+        do: {pull.number, entries}
+  end
 
   @doc "When the values were computed, or nil before the first run."
   @spec computed_at() :: DateTime.t() | nil

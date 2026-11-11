@@ -149,9 +149,9 @@ defmodule AgentBoardWeb.BoardComponents.Concluded do
   # What the task's executors cost, each in its own unit and never summed
   # across them (`TaskCosts`). No entry is "—": nothing attributed in the
   # window, or not computed yet; it is never a zero.
-  defp cost_text(nil), do: "—"
+  def cost_text(nil), do: "—"
 
-  defp cost_text(entries) do
+  def cost_text(entries) do
     case Enum.filter(entries, & &1.cost) do
       [] ->
         gettext("cost unknown")
