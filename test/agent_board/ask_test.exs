@@ -84,7 +84,9 @@ defmodule AgentBoard.AskTest do
       Plug.Conn.send_resp(conn, 500, "boom")
     end)
 
-    assert {:error, %RuntimeError{}} = Board.ask(task, "hello", client())
+    assert {:error, %AgentBoard.GitHub.HTTPError{status: 500}} =
+             Board.ask(task, "hello", client())
+
     assert [%{id: id}] = Board.comments(task)
     assert id == synced.id
   end
