@@ -1,6 +1,8 @@
 defmodule AgentBoard.Superagents.Superagent do
   @moduledoc "One GitHub repository served by an external dsh-superagent."
   use Ecto.Schema
+
+  @type t :: %__MODULE__{}
   import Ecto.Changeset
 
   @desired ~w(running paused stopped)

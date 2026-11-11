@@ -1,6 +1,8 @@
 defmodule AgentBoard.Board.PullRequest do
   @moduledoc "A pull request, with the review and CI rollups the board shows."
   use Ecto.Schema
+
+  @type t :: %__MODULE__{}
   import Ecto.Changeset
 
   @derive {Jason.Encoder,

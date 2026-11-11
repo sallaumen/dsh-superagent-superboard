@@ -293,12 +293,12 @@ defmodule AgentBoard.Actions do
   def phrase(:share_private_context, %{task: task, repository: repo, dir: dir}, "en-US"),
     do:
       "Comment on task ##{task.number} the path of its private context, " <>
-        "#{q(PrivateContext.path(repo, dir))}? Only the path goes to GitHub, without calling the agent."
+        "#{q(PrivateContext.shared_path(repo, dir))}? Only the path goes to GitHub, without calling the agent."
 
   def phrase(:share_private_context, %{task: task, repository: repo, dir: dir}, _lang),
     do:
       "Comentar na tarefa ##{task.number} o caminho do seu contexto privado, " <>
-        "#{q(PrivateContext.path(repo, dir))}? Só o caminho vai ao GitHub, sem chamar o agente."
+        "#{q(PrivateContext.shared_path(repo, dir))}? Só o caminho vai ao GitHub, sem chamar o agente."
 
   def phrase(:stop_task, %{task: task}, "en-US"),
     do:
@@ -741,7 +741,7 @@ defmodule AgentBoard.Actions do
     do: Board.ask(task, question, github(params))
 
   defp execute(:share_private_context, %{task: task, repository: repo, dir: dir} = params) do
-    path = PrivateContext.path(repo, dir)
+    path = PrivateContext.shared_path(repo, dir)
     # The comment follows the confirmation's language, which the effect runs in.
     language = if Gettext.get_locale(AgentBoardWeb.Gettext) == "en", do: "en", else: "pt"
     body = IssueBody.private_comment(dir, path, Map.get(params, :language, language))
@@ -1078,7 +1078,7 @@ defmodule AgentBoard.Actions do
   defp with_private(repo, requests, %{dir: dir} = private) do
     case PrivateContext.store(repo, dir, private) do
       :ok ->
-        path = PrivateContext.path(repo, dir)
+        path = PrivateContext.shared_path(repo, dir)
 
         {:ok,
          Enum.map(requests, fn request ->
