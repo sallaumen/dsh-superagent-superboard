@@ -8377,3 +8377,4 @@ msgstr "%{others} se falhar"
 #, elixir-autogen, elixir-format
 msgid "Costs are estimated by the model price."
 msgstr "Os custos são estimados pelo preço do modelo."
+

@@ -8377,3 +8377,4 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Costs are estimated by the model price."
 msgstr ""
+
