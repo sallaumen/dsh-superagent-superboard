@@ -2,7 +2,8 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   @moduledoc """
   The request layer: write or dictate, split with review, then enqueue.
 
-  The panel is a view of one explicit lifecycle owned by `BoardLive`: a
+  The panel is a view of one explicit lifecycle on `BoardLive`'s socket,
+  `AgentBoardWeb.ComposerLifecycle`: a
   draft, a job in flight (`splitting` or `enqueuing`), a proposal to review
   (`ready`, `needs_clarification`, `no_tasks`), a failure with a retry, and
   a receipt that names what was created. The receipt is read from the tasks

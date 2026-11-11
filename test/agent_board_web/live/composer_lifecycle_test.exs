@@ -437,6 +437,46 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert body =~ "board-attachments"
   end
 
+  test "removing a file or a folder, sending as one request and starting over", %{conn: conn} do
+    github()
+
+    source =
+      Path.join(Path.expand("~"), "agent-board-remove-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(source)
+    File.write!(Path.join(source, "a.png"), "PNG")
+    on_exit(fn -> File.rm_rf!(source) end)
+
+    view = open_composer(conn)
+    type(view, "Trocar o logo")
+
+    # A picked file goes away from the list.
+    upload =
+      file_input(view, "#composer-form", :attachments, [
+        %{name: "logo.png", content: "PNG", type: "image/png"}
+      ])
+
+    render_upload(upload, "logo.png")
+    [entry] = upload.entries
+    view |> element(~s(button[phx-value-ref="#{entry["ref"]}"])) |> render_click()
+    refute has_element?(view, "#composer-attachments", "logo.png")
+
+    # A named folder goes away too.
+    view |> element("#composer-add-folder") |> render_click(%{"private_folder" => source})
+    assert has_element?(view, "#composer-private", Path.basename(source))
+    view |> element(~s(button[phx-value-path="#{source}"])) |> render_click()
+    refute has_element?(view, "#composer-private", Path.basename(source) <> "/")
+
+    # Sent as one request, then a new one starts empty.
+    render_click(view, "composer_single", %{})
+    render_async(view, 2000)
+    assert has_element?(view, "#composer-receipt", "1 pedido na fila")
+
+    view |> element("#composer-receipt button", "Novo pedido") |> render_click()
+    refute has_element?(view, "#composer-receipt")
+    refute view |> element("#composer-text") |> render() =~ "Trocar o logo"
+  end
+
   test "the private context stays on this machine; the issue only gets its path", %{conn: conn} do
     github_with_files()
 

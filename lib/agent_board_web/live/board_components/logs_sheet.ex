@@ -5,7 +5,7 @@ defmodule AgentBoardWeb.BoardComponents.LogsSheet do
   The dialog is always mounted so `BoardPanels` can open and close it, but
   the LiveView starts reading and scheduling only while `panel=logs` is open.
   Presentation lives here; the reading, the offset state and the cap live in
-  `AgentBoard.Logs` and `BoardLive`.
+  `AgentBoard.Logs` and `AgentBoardWeb.LogsSheet`.
   """
   use AgentBoardWeb, :html
 
