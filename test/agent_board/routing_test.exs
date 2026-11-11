@@ -163,6 +163,23 @@ defmodule AgentBoard.RoutingTest do
                "Você pediu o DeepSeek, mas o DeepSeek só atende o sallaumen/arena-rogue."
     end
 
+    test "an explicit runner that does not watch the repository is refused, not replaced" do
+      planned =
+        Routing.plan(%{owner: "x", name: "watched"}, %{executor: "dsh"}, "dsh", "voice", @ready)
+
+      assert planned.executor == "dsh"
+      assert planned.refused == "o DeepSeek só atende o sallaumen/arena-rogue."
+    end
+
+    test "an explicit runner that is only paused is not refused" do
+      signals = put_in(@ready, ["dsh", :state], :paused)
+
+      refute Map.has_key?(
+               Routing.plan(@repo, %{executor: "dsh"}, "dsh", "voice", signals),
+               :refused
+             )
+    end
+
     test "a requested runner that is only paused still gets the task" do
       signals = put_in(@ready, ["dsh", :state], :paused)
 

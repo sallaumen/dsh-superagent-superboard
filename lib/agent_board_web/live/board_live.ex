@@ -2055,6 +2055,14 @@ defmodule AgentBoardWeb.BoardLive do
              )
              |> load_inspector()}
 
+          {:ok, [{_request, {:error, reason}}]} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               gettext("Could not create task: %{reason}", reason: FailureText.text(reason))
+             )}
+
           {:ok, _other} ->
             {:noreply,
              socket

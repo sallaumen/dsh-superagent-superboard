@@ -462,6 +462,37 @@ defmodule AgentBoard.CreateRequestTest do
              Repo.get_by(Decision, task_id: task.id)
   end
 
+  test "the write door refuses a runner request for a repository the runner does not watch",
+       %{repo: repo} do
+    Req.Test.stub(@stub, fn _conn -> flunk("GitHub must not be called") end)
+    {:ok, watched} = Board.add_repository("sallaumen", "o_colmex")
+
+    {:ok, _superagent} =
+      AgentBoard.Superagents.create(%{
+        repository_id: watched.id,
+        profile: "superagent-o-colmex",
+        port: 3411,
+        state_dir: "/tmp/superagent-o-colmex"
+      })
+
+    # The blocker task (`Unblock.request/4`) and a confirmed voice proposal
+    # reach the door like this: an executor already named, no router line.
+    request = %{
+      title: "Add a boss",
+      body: "Add a boss",
+      key: Board.request_key(repo, "unblock", ["Add a boss"]),
+      executor: "dsh"
+    }
+
+    params = %{repository: repo, requests: [request], client: client()}
+    phrase = Actions.phrase(:create_tasks, params)
+
+    assert {:ok, [{_request, {:error, "o DeepSeek só atende o sallaumen/o_colmex."}}]} =
+             Actions.run(:create_tasks, params, Actions.owner(:ui), confirm: phrase)
+
+    assert Repo.aggregate(Task, :count) == 0
+  end
+
   test "the board refuses an executor request without a router line", %{repo: repo} do
     Req.Test.stub(@stub, fn _conn -> flunk("GitHub must not be called") end)
 
