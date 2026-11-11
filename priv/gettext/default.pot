@@ -8028,3 +8028,327 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "≥ %{cost} list price"
 msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Create a token"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "A token is set."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Signed in as @%{login}."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "No token: set GITHUB_TOKEN in .env.local and restart the board."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "GitHub refused the token: it expired or was revoked."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "GitHub did not answer."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "No repository is tracked yet."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Add a project"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} repository tracked."
+msgid_plural "%{count} repositories tracked."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "DeepSeek agents"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "No project has its own agent: issues for DeepSeek would not move."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Create an agent"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "model not read"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} agent · %{model}"
+msgid_plural "%{count} agents · %{model}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{answered} of %{total} answer · %{model}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{answered} of %{total} answer; no answer from %{silent}."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Installed on this Mac."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Installed and signed in."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Not found at %{path}. Install it, or point %{env} in .env.local to it."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Installed, but not signed in."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Its login could not be read."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "The board's own AI"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "No key: set DEEPSEEK_API_KEY (or GEMINI_API_KEY, OPENAI_API_KEY) in .env.local and restart the board."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Get a DeepSeek key"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Rehearsal: answers come from local fixtures, no key is used."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "If it fails: %{others}."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{provider} answers (%{model})."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{provider} refused the key: it expired or was revoked."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Create a key"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{provider} did not answer."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "ElevenLabs key set."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "ElevenLabs answers: %{used} of %{limit} characters used."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "No ElevenLabs key: the board speaks and listens with the browser, free."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Get an ElevenLabs key"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "ElevenLabs refused the key: it expired or was revoked."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "ElevenLabs did not answer."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Checking..."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Check the setup"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Asking GitHub, the AI provider, each agent and the CLIs. Nothing is spent."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Checked at %{time}: %{summary}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Not checked yet: a key that is set may still be refused. The check reads, it never spends."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Next step:"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "In the Terminal:"
+msgstr ""
+
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Who does the work"
+msgstr ""
+
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Execution and ceilings"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Refines and splits your requests, answers questions, suggests unblocks and talks by voice. It pays per use with the API key, and stops at the daily ceiling of %{tokens} tokens."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Its calls and costs"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Speaking and listening. ElevenLabs sounds better and spends the plan's credits; without it the browser speaks and listens for free."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "For everyday tasks: one agent per project, all day, paid by the DeepSeek account in the agent's profile."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "For large or delicate tasks. It runs on the Max subscription: no charge per task, but usage has a limit."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "When Claude Code is near its limit, or for a second opinion. It spends the ChatGPT plan's weekly quota."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Ready"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Set, not checked"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Missing"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} ready"
+msgid_plural "%{count} ready"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} to fix"
+msgid_plural "%{count} to fix"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} off"
+msgid_plural "%{count} off"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} without an answer"
+msgid_plural "%{count} without an answer"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "AI and setup"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "The board uses AI in three roles. Here you see which one does what, what it costs, and whether each part is ready."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "The agents that write the code of each task, on GitHub. DeepSeek takes the issues by itself; Claude Code and Codex run on this Mac when you dispatch a task."
+msgstr ""
+
+#: lib/agent_board/setup.ex
+#, elixir-autogen, elixir-format
+msgid "AI provider"
+msgstr ""

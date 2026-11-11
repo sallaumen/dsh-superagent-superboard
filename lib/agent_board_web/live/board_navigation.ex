@@ -11,7 +11,7 @@ defmodule AgentBoardWeb.BoardNavigation do
   # The rail shows these on a board with no repository: Settings is where the
   # first one is added, and the others do not depend on one.
   @panels_without_repo ~w(voice logs settings shortcuts)
-  @settings_sections ~w(projects execution voice system)
+  @settings_sections ~w(setup projects execution voice system)
 
   # Old links keep working: each key maps to the section that now holds it.
   @settings_aliases %{
