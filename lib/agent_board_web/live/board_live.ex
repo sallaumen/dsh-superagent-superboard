@@ -2647,8 +2647,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("voice_announce", %{"speak_events" => value}, socket) do
     :ok = save_setting("narrate", value == "true")
 
-    {:noreply,
-     assign(socket, voice: %{socket.assigns.voice | speak_events: Voice.narrate?()})}
+    {:noreply, assign(socket, voice: %{socket.assigns.voice | speak_events: Voice.narrate?()})}
   end
 
   @impl true
