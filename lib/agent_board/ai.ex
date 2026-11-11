@@ -24,13 +24,16 @@ defmodule AgentBoard.AI do
   """
   @spec call(atom(), map(), keyword()) :: {:ok, Result.t()} | {:error, term()}
   def call(name, inputs, opts \\ []) do
-    with {:ok, spec} <- Registry.fetch(name),
-         :ok <- Budget.check(spec.tier) do
+    with {:ok, spec} <- Registry.fetch(name) do
       providers = providers()
 
+      # A cached answer costs nothing, so the budget only gates the network.
       case cached(name, spec, inputs, providers) do
-        {:ok, json} -> {:ok, %Result{json: json, engine: :cache, parse_state: :complete}}
-        :miss -> attempt(name, spec, inputs, providers, opts)
+        {:ok, json} ->
+          {:ok, %Result{json: json, engine: :cache, parse_state: :complete}}
+
+        :miss ->
+          with :ok <- Budget.check(spec.tier), do: attempt(name, spec, inputs, providers, opts)
       end
     end
   end
