@@ -236,7 +236,7 @@ msgstr ""
 msgid "Check"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:728
+#: lib/agent_board_web/live/board_components/settings/execution.ex:741
 #, elixir-autogen, elixir-format
 msgid "Claude Code model"
 msgstr ""
@@ -261,7 +261,7 @@ msgstr ""
 msgid "Close the panel or layer, or stop the speech or answer"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:729
+#: lib/agent_board_web/live/board_components/settings/execution.ex:742
 #, elixir-autogen, elixir-format
 msgid "Codex model"
 msgstr ""
@@ -4710,7 +4710,7 @@ msgid_plural "%{count} executions from the board"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:719
+#: lib/agent_board_web/live/board_components/settings/execution.ex:732
 #, elixir-autogen, elixir-format
 msgid "%{count} unsaved change: %{labels}"
 msgid_plural "%{count} unsaved changes: %{labels}"
@@ -4767,7 +4767,7 @@ msgstr ""
 msgid "Mon"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:724
+#: lib/agent_board_web/live/board_components/settings/execution.ex:737
 #, elixir-autogen, elixir-format
 msgid "Monthly cap"
 msgstr ""
@@ -4782,7 +4782,7 @@ msgstr ""
 msgid "No monthly cap: this month already adds up to %{amount} at list price. The caps use the same account."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:715
+#: lib/agent_board_web/live/board_components/settings/execution.ex:728
 #, elixir-autogen, elixir-format
 msgid "No unsaved changes"
 msgstr ""
@@ -4803,7 +4803,7 @@ msgstr ""
 msgid "Pause new dispatches"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:727
+#: lib/agent_board_web/live/board_components/settings/execution.ex:740
 #, elixir-autogen, elixir-format
 msgid "Quota reserve"
 msgstr ""
@@ -4823,7 +4823,7 @@ msgstr ""
 msgid "Sun"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:725
+#: lib/agent_board_web/live/board_components/settings/execution.ex:738
 #, elixir-autogen, elixir-format
 msgid "Task cap"
 msgstr ""
@@ -4854,7 +4854,7 @@ msgstr ""
 msgid "Thu"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:726
+#: lib/agent_board_web/live/board_components/settings/execution.ex:739
 #, elixir-autogen, elixir-format
 msgid "Time per task"
 msgstr ""

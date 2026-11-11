@@ -236,7 +236,7 @@ msgstr "Conversar com o agente: fale e pare, ele envia sozinho. Diga \"ajuda\" p
 msgid "Check"
 msgstr "Verificar"
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:728
+#: lib/agent_board_web/live/board_components/settings/execution.ex:741
 #, elixir-autogen, elixir-format
 msgid "Claude Code model"
 msgstr "Modelo do Claude Code"
@@ -261,7 +261,7 @@ msgstr "Fechar"
 msgid "Close the panel or layer, or stop the speech or answer"
 msgstr "Fecha o painel ou a camada, ou para a fala ou a resposta"
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:729
+#: lib/agent_board_web/live/board_components/settings/execution.ex:742
 #, elixir-autogen, elixir-format
 msgid "Codex model"
 msgstr "Modelo do Codex"
@@ -4710,7 +4710,7 @@ msgid_plural "%{count} executions from the board"
 msgstr[0] "%{count} execução pelo board"
 msgstr[1] "%{count} execuções pelo board"
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:719
+#: lib/agent_board_web/live/board_components/settings/execution.ex:732
 #, elixir-autogen, elixir-format
 msgid "%{count} unsaved change: %{labels}"
 msgid_plural "%{count} unsaved changes: %{labels}"
@@ -4767,7 +4767,7 @@ msgstr "Medido na janela semanal do plano ChatGPT."
 msgid "Mon"
 msgstr "seg"
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:724
+#: lib/agent_board_web/live/board_components/settings/execution.ex:737
 #, elixir-autogen, elixir-format
 msgid "Monthly cap"
 msgstr "Teto do mês"
@@ -4782,7 +4782,7 @@ msgstr "Teto do mês · US$"
 msgid "No monthly cap: this month already adds up to %{amount} at list price. The caps use the same account."
 msgstr "Sem teto no mês: este mês já soma %{amount} a preço de lista. Os tetos usam a mesma conta."
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:715
+#: lib/agent_board_web/live/board_components/settings/execution.ex:728
 #, elixir-autogen, elixir-format
 msgid "No unsaved changes"
 msgstr "Nenhuma mudança não salva"
@@ -4803,7 +4803,7 @@ msgstr "Abrir Projetos"
 msgid "Pause new dispatches"
 msgstr "Pausar despachos novos"
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:727
+#: lib/agent_board_web/live/board_components/settings/execution.ex:740
 #, elixir-autogen, elixir-format
 msgid "Quota reserve"
 msgstr "Reserva da cota"
@@ -4823,7 +4823,7 @@ msgstr "sáb"
 msgid "Sun"
 msgstr "dom"
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:725
+#: lib/agent_board_web/live/board_components/settings/execution.ex:738
 #, elixir-autogen, elixir-format
 msgid "Task cap"
 msgstr "Teto por tarefa"
@@ -4854,7 +4854,7 @@ msgstr "Chamadas de IA do próprio board"
 msgid "Thu"
 msgstr "qui"
 
-#: lib/agent_board_web/live/board_components/settings/execution.ex:726
+#: lib/agent_board_web/live/board_components/settings/execution.ex:739
 #, elixir-autogen, elixir-format
 msgid "Time per task"
 msgstr "Tempo por tarefa"
