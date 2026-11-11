@@ -1459,9 +1459,10 @@ computed from the tasks, never a second project manager.
 
 ## The request (composer)
 
-The composer is a view of one lifecycle that `BoardLive` owns; the durable
-records are the `ai_calls` rows (the split) and the tasks with their
-`request_key` (the enqueue).
+The composer is a view of one lifecycle on `BoardLive`'s socket, written in
+`AgentBoardWeb.ComposerLifecycle` (socket in, socket out; `BoardLive` keeps
+the `handle_*` clauses and delegates); the durable records are the `ai_calls`
+rows (the split) and the tasks with their `request_key` (the enqueue).
 
 | Transition | Owner | Durable record |
 |---|---|---|
