@@ -6,9 +6,9 @@ This document answers "which script do I run now?". It defines the repository's 
 
 | Pipeline | What it validates | Canonical script | `make` target | CI job |
 |---|---|---|---|---|
-| Backend | Orphan dependencies, agent practices, warnings, formatting, credo, tests, Sobelow, and Dialyzer | `mix gate` + `mix sobelow --exit` + `mix dialyzer` | `make backend` | `gates` + `backend` |
+| Backend | Orphan dependencies, agent practices, warnings, formatting, credo, tests, Sobelow, and Dialyzer | `mix gate` + `mix sobelow --exit` + `mix dialyzer` | `make backend` | `gates` + `backend` (Dialyzer local only for now) |
 | Frontend | Asset sources, setup, build, and deploy | `scripts/check_assets.sh` + asset tasks | `make frontend` | `frontend · assets` |
-| Library | References to the versioned kit | `mix dialyzer` | Type check; part of `make backend`, the pre-flight and the gates job | `MIX_ENV=test` | builds the PLT in `_build/plts` the first time (minutes), then checks in seconds; does not change sources | `Total errors: 0`; a schema referenced as `t()` defines `@type t` |
+| Library | References to the versioned kit | `mix dialyzer` | Type check; part of `make backend` and the pre-flight (the `gates` job runs it once the workflow change lands: it needs a token with the `workflow` scope) | `MIX_ENV=test` | builds the PLT in `_build/plts` the first time (minutes), then checks in seconds; does not change sources | `Total errors: 0`; a schema referenced as `t()` defines `@type t` |
 | `mix agent_kit.check` | `make library` | `biblioteca de capacidades` (capability library) |
 | Mixed (release) | The combined path of a deploy | release sequence (below) | `make release` | `release · caminho misto` (mixed path) |
 | All | Backend, frontend, and library, before delivering | `scripts/ci-local.sh all` | `make check` | `gates`, `backend`, `frontend`, `library` |

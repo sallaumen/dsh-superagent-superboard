@@ -46,16 +46,6 @@ jobs:
       - name: Security scan
         run: mix sobelow --exit
 
-      # A PLT é cara de montar (minutos) e só muda com o lockfile.
-      - name: Cache da PLT do Dialyzer
-        uses: actions/cache@v4
-        with:
-          path: _build/plts
-          key: ${{ runner.os }}-plt-${{ hashFiles('mix.lock') }}
-
-      - name: Dialyzer
-        run: mix dialyzer --format github
-
   backend:
     name: "backend · partição ${{ matrix.partition }}"
     runs-on: ubuntu-latest
