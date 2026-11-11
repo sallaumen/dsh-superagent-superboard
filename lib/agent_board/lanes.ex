@@ -164,7 +164,9 @@ defmodule AgentBoard.Lanes do
 
   # The work counts from when the task last became `running`: a retry or the
   # owner's answer starts it again, and the time it waited is not work.
-  defp working_since(task), do: task.state_changed_at || task.started_at
+  @doc "Since when a running task works: time spent waiting is not work."
+  @spec working_since(map()) :: DateTime.t() | nil
+  def working_since(task), do: task.state_changed_at || task.started_at
 
   @doc "The moment a running task passes the time its size allows, or nil."
   @spec slow_at(map()) :: DateTime.t() | nil

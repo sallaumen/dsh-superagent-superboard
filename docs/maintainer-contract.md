@@ -403,7 +403,7 @@ that already worked).
   works, the limit that made it an item and the last signal when there is
   one. The work counts from `state_changed_at`, the moment the task last
   became `running`: a retry or the owner's answer starts it again, and time
-  spent waiting is not work. It never says the agent is stuck, and a task
+  spent waiting is not work; the Now card's clock counts the same span. It never says the agent is stuck, and a task
   that is also silent shows only the silence. Derived on each read and
   written nowhere: it leaves when the task leaves `running`. The voice says
   it once, like the silence. Its DOM id is `slow-<id>`. The bell lists it
