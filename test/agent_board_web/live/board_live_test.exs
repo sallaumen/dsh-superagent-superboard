@@ -242,6 +242,37 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#merged-column-history button[phx-click=act]")
   end
 
+  # BoardMotion keys a card by its `task-<id>` across lanes and cuts when
+  # the scope (the repository) changes: both are what the hook reads.
+  test "the stage carries the motion scope and a queued card keeps its task id", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "motion")
+    {:ok, other} = Board.add_repository("fixture", "motion-other")
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/motion")
+
+    task =
+      %Task{}
+      |> Task.changeset(%{
+        repository_id: repo.id,
+        kind: "issue",
+        number: 8,
+        title: "Queued work",
+        state: "queued"
+      })
+      |> Repo.insert!()
+
+    send(view.pid, :board_updated)
+
+    assert has_element?(
+             view,
+             ~s(#board-stage[phx-hook="BoardMotion"][data-motion-scope="#{repo.id}"])
+           )
+
+    assert has_element?(view, "#sec-queue #task-#{task.id}")
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/motion-other")
+    assert has_element?(view, ~s(#board-stage[data-motion-scope="#{other.id}"]))
+  end
+
   # ValueChange tints a count only when its data-value differs from the last
   # render: the values must follow the data, and the hook must be on the lanes
   # and on the two inbox badges.

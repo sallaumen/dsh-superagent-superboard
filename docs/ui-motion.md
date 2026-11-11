@@ -53,10 +53,34 @@ exists, not before.
 | Lane count that changed (Agora, Precisa de você, Fila) | the same 600 ms tint as throughput, from `--agent` back to the count's own ink: the number says it changed without moving | `.ab-sec__count.is-changed` |
 | Messages or Attention badge that rose | one 200 ms bump to scale 1.2 at 35 %, `--ease-standard`; only a rise (`is-up`) bumps, a count the owner brought down by reading is a cut, and a badge that appears from 0 bumps because the summary, not the badge, carries the value | `.ab-hub-menu summary.is-up .ab-hub-menu__count` |
 
+### Cards that change place (`BoardMotion`)
+
+The `BoardMotion` hook on `#board-stage` measures the cards before and after
+LiveView's patch (FLIP) and animates only what the patch changed: a card is
+keyed by its `task-<id>` in Agora, Precisa de você and Fila, and a day of
+Merged by its dot count. A patch that moved no card (an unchanged broadcast,
+the inspector opening, a clock) animates nothing. A new `data-motion-scope`
+(another repository), the first render and a reconnect are cuts, and so is a
+patch with more than 12 arrivals and departures: that is a new board, not a
+change. Durations follow `clamp(70, (70 + 10·√px)·weight, 520)` from the kit.
+
+| Change | Treatment | Why |
+|---|---|---|
+| A card changes lane (Fila → Agora, Agora → Precisa de você) | travels from where it was: x on `kit.land` (0.1, 0.75, 0.15, 1), y on `m3.emphasizedDecelerate`, weight 1.3, so the path bends | without it the card teleports and the owner hunts for it |
+| The cards around it | slide to their new slot, same curves, weight 1, at once | the gap closes instead of jumping |
+| A card arrives (a new request, a new need) | opacity over 140 ms (`carbon.productive.entrance`) and 6 px rise, 40 ms after the room is made; several arrivals react at 40, 80, 130, 190 ms | says "this is new" once, on the new card only |
+| A card leaves the board (merged, closed) | its old node, inert and without id, fades and shrinks to 0.98 in 130 ms on `kit.leave` where it stood | it went away rather than vanished |
+| A new merge in Merged | the new dot scales in over 280 ms on outBack (transform only), 90 ms after the card left | the screen's one expressive moment: work landed |
+
+A patch that arrives mid-move cancels the running animations and starts from
+where the card was seen, so moves never queue. Under reduced motion the hook
+does nothing: every change is a cut.
+
 ## What does not move
 
-- Cards and rows that arrive from sync, stream or poll: the new node appears,
-  without replaying an entry. The entry belongs to the surface, not to the data.
+- Cards and rows on the first render, a reconnect or a repository switch: the
+  node appears, without replaying an entry. The entry belongs to the surface,
+  not to the data; only a card the patch moved, added or removed animates.
 - Reconnection, periodic refresh and repository switch. A counter that changed
   tints in place (above); it never counts up or slides.
 - Content text: it appears; it does not slide, blur or type (except when the
@@ -67,7 +91,9 @@ exists, not before.
 ## Reduced motion
 
 Under `prefers-reduced-motion: reduce`, animations and transitions are turned off
-in the global block. The state remains readable: the panel opens at once, the
+in the global block, and `BoardMotion` and the spark bar of `ValueChange` (Web
+Animations, which the CSS block does not reach) check the media query themselves
+and cut. The state remains readable: the panel opens at once, the
 notice appears, and the loading feedback stays textual and visual. Remove the
 motion, never the feedback.
 
