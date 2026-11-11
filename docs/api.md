@@ -72,7 +72,8 @@ Illustrative body: `{"repo": "example/project", "title": "Corrigir link da docum
 - `201` — object with `id` (local integer), `number` (issue integer), `url` (string) and `outcome: "created"`. The issue mentions the agent automatically.
 - `200` — the same object with `outcome: "existing"` when the same title and body had already come in (the request key, `Board.request_key/3`): no new issue.
 - `428` — without `confirm`, or with the sentence for other values (above).
-- `400` — `{"error": "a repository and a title are required"}` when the repository is not tracked, the slug is invalid or the title is empty; with the reason when GitHub refuses.
+- `404` — `{"error": "repository not tracked"}` when the repository is not tracked, as `GET /api/board`.
+- `400` — `{"error": "a repository and a title are required"}` when the slug is invalid or the title is empty; with the reason when GitHub refuses.
 - Real effect: opens an issue in the GitHub repository that is tracked.
 
 ## PATCH /api/tasks/:id
