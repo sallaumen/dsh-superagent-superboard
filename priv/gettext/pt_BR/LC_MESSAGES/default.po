@@ -8067,3 +8067,13 @@ msgstr "plano: %{used} de %{limit} caracteres neste período, renova %{date}"
 msgctxt "attention kind"
 msgid "Provider"
 msgstr "Provedor"
+
+#: lib/agent_board_web/live/board_components/executor_picker.ex
+#, elixir-autogen, elixir-format
+msgid "No agent watches this project, so DeepSeek is off here."
+msgstr "Nenhum agente cuida deste projeto, então o DeepSeek fica de fora aqui."
+
+#: lib/agent_board_web/live/board_components/executor_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Set up an agent"
+msgstr "Configurar um agente"
