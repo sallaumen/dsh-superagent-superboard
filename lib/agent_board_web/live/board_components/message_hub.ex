@@ -32,7 +32,14 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
     <div class="ab-message-hub" aria-label={gettext("Messages and notifications")}>
       {render_slot(@inner_block)}
       <details id="message-inbox" class="ab-hub-menu" data-board-menu phx-hook="BoardMenu">
-        <summary aria-label={message_label(@unread)} title={gettext("Messages from Yasme")}>
+        <summary
+          id="message-inbox-summary"
+          aria-label={message_label(@unread)}
+          title={gettext("Messages from Yasme")}
+          phx-hook="ValueChange"
+          data-key="unread"
+          data-value={@unread}
+        >
           <.icon name="hero-chat-bubble-left-right" class="size-5" />
           <span class="ab-hub-menu__name">{gettext("Messages")}</span>
           <span :if={@unread > 0} class="ab-hub-menu__count" aria-hidden="true">{count(@unread)}</span>
@@ -139,7 +146,14 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
       </details>
 
       <details id="attention-inbox" class="ab-hub-menu" data-board-menu phx-hook="BoardMenu">
-        <summary aria-label={alert_label(@open_count)} title={gettext("General notifications")}>
+        <summary
+          id="attention-inbox-summary"
+          aria-label={alert_label(@open_count)}
+          title={gettext("General notifications")}
+          phx-hook="ValueChange"
+          data-key="attention"
+          data-value={@open_count}
+        >
           <.icon name="hero-bell" class="size-5" />
           <span class="ab-hub-menu__name">{gettext("Attention")}</span>
           <span

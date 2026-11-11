@@ -27,10 +27,14 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
 
   def now_lane(assigns) do
     ~H"""
-    <section id="sec-now" aria-labelledby="sec-now-title">
+    <section id="sec-now" aria-labelledby="sec-now-title" phx-hook="ValueChange">
       <div class="ab-sec__head">
         <h2 id="sec-now-title">{gettext("Now")}</h2>
-        <span class="ab-sec__count">
+        <span
+          class="ab-sec__count"
+          data-key="now"
+          data-value={"#{length(@running)}+#{length(@retrying)}"}
+        >
           {count(@running, @frozen, @sync_at, @tz_offset)}{retry_count(@retrying)}
         </span>
       </div>

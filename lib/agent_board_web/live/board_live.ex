@@ -2790,7 +2790,14 @@ defmodule AgentBoardWeb.BoardLive do
               tz_offset={@tz_offset}
             />
 
-            <div :if={@repo && @view != "hoje"} class="ab-stage">
+            <%!-- BoardMotion: a card that changes lane travels; another repository is a cut. --%>
+            <div
+              :if={@repo && @view != "hoje"}
+              id="board-stage"
+              class="ab-stage"
+              phx-hook="BoardMotion"
+              data-motion-scope={@repo.id}
+            >
               <div class="ab-pane ab-pane--work">
                 <header class="ab-top">
                   <details :if={@repo} id="mobile-nav" data-board-menu class="ab-mobilebar">

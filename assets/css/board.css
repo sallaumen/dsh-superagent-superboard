@@ -575,6 +575,9 @@ body.board-panel-open .ab-toast,
   .ab-sync-pop, .ab-toast { animation: none; }
 }
 
+/* BoardMotion: a card changing lane is lifted above the cards making room. */
+.is-traveling { position: relative; z-index: 2; box-shadow: 0 6px 18px -10px rgb(0 0 0 / .35); }
+
 /* ---------- the reading lanes: links, reasons and record rows ---------- */
 
 .ab-digest__link {
@@ -901,7 +904,15 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 @media (prefers-reduced-motion: no-preference) {
   .ab-flow__value.is-changed { animation: ab-flow-change var(--motion-notice) var(--ease-standard) both; }
   @keyframes ab-flow-change { from { color: var(--agent); } to { color: var(--ink); } }
+  /* ValueChange: a lane count that changed tints back to its own ink; a badge
+     that rose (a new message, a new notice) gives one bump; a lower count is a cut. */
+  .ab-sec__count.is-changed { animation: ab-value-change var(--motion-notice) var(--ease-standard) both; }
+  @keyframes ab-value-change { from { color: var(--agent); } }
+  .ab-hub-menu summary.is-up .ab-hub-menu__count { animation: ab-count-bump var(--motion-enter) var(--ease-standard); }
+  @keyframes ab-count-bump { 35% { transform: scale(1.2); } }
 }
+/* The current hour's bar grows from its base (ValueChange, Web Animations). */
+.ab-flow__spark rect { transform-box: fill-box; transform-origin: 50% 100%; }
 
 /* ---------- agent failures: retry rows, the failure block, confirmed actions ---------- */
 /* A retry the board makes by itself sits in Agora, quieter than a run: no

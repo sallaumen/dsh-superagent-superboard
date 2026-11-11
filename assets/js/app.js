@@ -35,7 +35,8 @@ import {LogsSheet} from "./hooks/logs_sheet"
 import {DataAge} from "./hooks/data_age"
 import {ThemeToggle} from "./hooks/theme_toggle"
 import {DailySummaryVoice} from "./hooks/daily_summary_voice"
-import {Throughput} from "./hooks/throughput"
+import {ValueChange} from "./hooks/value_change"
+import {BoardMotion} from "./hooks/board_motion"
 import {VoiceCommand} from "./hooks/voice_command"
 import {VoicePlayer} from "./hooks/voice_player"
 import {VoicePresence} from "./hooks/voice_presence"
@@ -70,7 +71,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     board_message_seen: localStorage.getItem("ab:message-seen"),
     board_tz_offset: new Date().getTimezoneOffset(),
   }),
-  hooks: {...colocatedHooks, DataAge, ThemeToggle, DailySummaryVoice, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, BoardFold, Composer, Throughput, LogsSheet, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr, TaskConversation, ImageViewer},
+  hooks: {...colocatedHooks, DataAge, ThemeToggle, DailySummaryVoice, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, BoardFold, Composer, ValueChange, BoardMotion, LogsSheet, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr, TaskConversation, ImageViewer},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
