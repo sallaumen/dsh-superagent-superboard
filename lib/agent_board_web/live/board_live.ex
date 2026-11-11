@@ -20,7 +20,6 @@ defmodule AgentBoardWeb.BoardLive do
     Intake,
     Lanes,
     LocalCI,
-    Logs,
     Metrics,
     Orchestrator,
     Overview,
@@ -69,6 +68,7 @@ defmodule AgentBoardWeb.BoardLive do
     BoardComponents,
     BoardNavigation,
     Locale,
+    LogsSheet,
     VoiceConversation,
     VoiceSpeech
   }
@@ -155,12 +155,6 @@ defmodule AgentBoardWeb.BoardLive do
         highlight_changes: false,
         panel: nil,
         settings_section: nil,
-        logs_sources: [],
-        logs_entries: [],
-        logs_state: Logs.empty_state(),
-        logs_status: %{},
-        logs_timer: nil,
-        logs_paused: false,
         reload_pending: false,
         attention_timer: nil,
         peak_rate: nil,
@@ -225,6 +219,7 @@ defmodule AgentBoardWeb.BoardLive do
         # always opening with the same sentence.
         voice_turn: :rand.uniform(1_000)
       )
+      |> LogsSheet.mount()
       |> allow_upload(:attachments,
         accept: Attachments.accepted(),
         max_entries: Attachments.max_files(),
@@ -1103,17 +1098,7 @@ defmodule AgentBoardWeb.BoardLive do
       socket
       |> assign(:superagents, Superagents.list())
 
-    # A new profile becomes a new source while the sheet is open; the old
-    # entries stay in the buffer and the new file is read from its tail.
-    socket =
-      if socket.assigns.panel == "logs" do
-        socket = assign(socket, :logs_sources, Logs.sources(socket.assigns.superagents))
-        if socket.assigns.logs_paused, do: socket, else: read_logs_once(socket)
-      else
-        socket
-      end
-
-    {:noreply, refresh_agent_access(socket)}
+    {:noreply, socket |> LogsSheet.sources_changed() |> refresh_agent_access()}
   end
 
   def handle_info(:agent_access_changed, socket),
@@ -1124,16 +1109,8 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_info({:agent_access_done, text}, socket),
     do: {:noreply, put_flash(socket, :info, text)}
 
-  def handle_info({:logs_tick, token}, socket) do
-    current = socket.assigns.logs_timer
-
-    if socket.assigns.panel == "logs" and not socket.assigns.logs_paused and
-         match?(%{token: ^token}, current) do
-      {:noreply, socket |> read_logs_once() |> schedule_logs_tick()}
-    else
-      {:noreply, socket}
-    end
-  end
+  def handle_info({:logs_tick, token}, socket),
+    do: {:noreply, LogsSheet.tick(socket, token)}
 
   # Broadcasts come in bursts (poller, sync, actions) and a reload costs dozens
   # of queries, the runner's files and the orchestrator: one reload per burst.
@@ -1219,7 +1196,7 @@ defmodule AgentBoardWeb.BoardLive do
       socket
       |> BoardNavigation.apply_params(params)
       |> refresh_settings_quota(previous_panel)
-      |> sync_logs_panel(previous_panel)
+      |> LogsSheet.sync(previous_panel)
       |> load_inspector()
       |> load_panel()
       |> load_composer_routing()
@@ -1295,79 +1272,6 @@ defmodule AgentBoardWeb.BoardLive do
       do: dictated,
       else: String.trim_trailing(draft) <> "\n" <> dictated
   end
-
-  # -- the logs sheet ---------------------------------------------------------
-  #
-  # The sheet owns a timer only while its panel is the routed one. Opening
-  # reads once from the tail of each source; every tick reads at most 64 KiB
-  # per source and schedules the next tick only after the read returns, so a
-  # slow file never queues work. Closing cancels the timer; a tick that arrives
-  # after the panel changed is ignored by its token.
-
-  defp sync_logs_panel(%{assigns: %{panel: "logs"}} = socket, "logs"), do: socket
-
-  defp sync_logs_panel(%{assigns: %{panel: "logs"}} = socket, _previous),
-    do: open_logs_panel(socket)
-
-  defp sync_logs_panel(socket, "logs"), do: close_logs_panel(socket)
-  defp sync_logs_panel(socket, _previous), do: socket
-
-  defp open_logs_panel(socket) do
-    sources = Logs.sources(socket.assigns.superagents)
-
-    socket =
-      assign(socket,
-        logs_sources: sources,
-        logs_entries: [],
-        logs_state: Logs.empty_state(),
-        logs_status: %{},
-        logs_paused: false
-      )
-
-    if connected?(socket) do
-      socket
-      |> read_logs_once()
-      |> schedule_logs_tick()
-    else
-      socket
-    end
-  end
-
-  defp close_logs_panel(socket) do
-    cancel_logs_timer(socket)
-    assign(socket, logs_timer: nil, logs_paused: false)
-  end
-
-  defp read_logs_once(socket) do
-    %{entries: entries, state: state, statuses: statuses} =
-      Logs.read(socket.assigns.logs_sources, socket.assigns.logs_state)
-
-    assign(socket,
-      logs_entries: Logs.append(socket.assigns.logs_entries, entries),
-      logs_state: state,
-      logs_status: statuses
-    )
-  rescue
-    # The observer never takes the board down and never logs into the file it
-    # is reading: the unreadable state is the whole failure surface.
-    _exception ->
-      assign(socket, logs_status: Map.new(socket.assigns.logs_sources, &{&1.id, :unreadable}))
-  end
-
-  defp schedule_logs_tick(%{assigns: %{logs_paused: true}} = socket), do: socket
-
-  defp schedule_logs_tick(socket) do
-    token = make_ref()
-    ref = Process.send_after(self(), {:logs_tick, token}, logs_tick_interval())
-    assign(socket, :logs_timer, %{ref: ref, token: token})
-  end
-
-  defp cancel_logs_timer(%{assigns: %{logs_timer: %{ref: ref}}}) when is_reference(ref),
-    do: Process.cancel_timer(ref)
-
-  defp cancel_logs_timer(_socket), do: :ok
-
-  defp logs_tick_interval, do: Application.get_env(:agent_board, :logs_tick_interval, 2_000)
 
   defp showing?(%{assigns: %{repo: %{id: id}}}, %{id: id}), do: true
   defp showing?(_socket, _repo), do: false
@@ -2352,7 +2256,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      socket
      |> settle_composer()
-     |> close_logs_panel()
+     |> LogsSheet.close()
      |> assign(
        panel: nil,
        conversation: nil,
@@ -2591,30 +2495,10 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("voice_replies", %{"replies" => value}, socket),
     do: {:noreply, save_voice_pref(socket, save_setting("replies", value))}
 
-  # The logs sheet: clear the visible buffer without moving the read offset,
-  # and pause/resume the timer. A closed sheet ignores both.
   @impl true
-  def handle_event("logs_clear", _params, %{assigns: %{panel: "logs"}} = socket),
-    do: {:noreply, assign(socket, :logs_entries, [])}
-
-  def handle_event("logs_pause", _params, %{assigns: %{panel: "logs"}} = socket) do
-    cancel_logs_timer(socket)
-    {:noreply, assign(socket, logs_timer: nil, logs_paused: true)}
-  end
-
-  def handle_event("logs_resume", _params, %{assigns: %{panel: "logs"}} = socket) do
-    socket = assign(socket, :logs_paused, false)
-
-    if socket.assigns.logs_timer do
-      {:noreply, socket}
-    else
-      {:noreply, socket |> read_logs_once() |> schedule_logs_tick()}
-    end
-  end
-
-  def handle_event("logs_clear", _params, socket), do: {:noreply, socket}
-  def handle_event("logs_pause", _params, socket), do: {:noreply, socket}
-  def handle_event("logs_resume", _params, socket), do: {:noreply, socket}
+  def handle_event("logs_clear", _params, socket), do: {:noreply, LogsSheet.clear(socket)}
+  def handle_event("logs_pause", _params, socket), do: {:noreply, LogsSheet.pause(socket)}
+  def handle_event("logs_resume", _params, socket), do: {:noreply, LogsSheet.resume(socket)}
 
   # A browser error the owner saw (microphone, playback, transcription):
   # it reaches the log and the live feed instead of staying in one tab.
