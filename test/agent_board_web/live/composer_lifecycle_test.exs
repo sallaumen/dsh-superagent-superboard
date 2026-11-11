@@ -503,6 +503,25 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "#composer-receipt", "1 pedido na fila")
   end
 
+  test "switching repository forgets the files picked under the old one", %{conn: conn} do
+    {:ok, _other} = Board.add_repository("fixture", "other")
+    view = open_composer(conn)
+    type(view, "Pedido do primeiro")
+
+    upload =
+      file_input(view, "#composer-form", :attachments, [
+        %{name: "segredo.png", content: "PNGDATA", type: "image/png"}
+      ])
+
+    render_upload(upload, "segredo.png")
+    assert has_element?(view, "#composer-attachments", "segredo.png")
+
+    render_patch(view, ~p"/?repo=fixture/other&panel=composer")
+
+    refute has_element?(view, "#composer-attachments", "segredo.png")
+    refute has_element?(view, "#composer-form textarea[name=text]", "Pedido do primeiro")
+  end
+
   test "a file whose send failed does not follow the owner to another repository",
        %{conn: conn} do
     test_pid = self()

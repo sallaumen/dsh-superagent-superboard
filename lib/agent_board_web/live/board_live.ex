@@ -787,29 +787,20 @@ defmodule AgentBoardWeb.BoardLive do
       Board.subscribe(repo.id)
     end
 
+    # The composer belongs to the repository: a split in flight and the files
+    # picked under the old one would land in the new one's first issue.
     socket =
       if socket.assigns.repo != repo,
         do:
-          assign(socket,
+          socket
+          |> reset_composer()
+          |> assign(
             orchestrator: {:error, :unknown},
             conversation: nil,
             comments: [],
-            intake: nil,
-            composer_text: "",
-            composer_title: nil,
-            composer_split: false,
-            composer_selected: MapSet.new(),
-            composer_error: nil,
-            composer_retry: nil,
-            composer_job: nil,
-            composer_receipt: nil,
-            composer_answers: "",
-            composer_attachments: [],
-            composer_private: @empty_private,
             composer_routing: nil,
             composer_routing_for: nil,
             composer_executor: nil,
-            composer_executor_touched: false,
             inspector_tab: "conversa",
             inspector_activity: [],
             inspector_calls: [],
