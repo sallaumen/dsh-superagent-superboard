@@ -78,6 +78,11 @@ defmodule AgentBoardWeb.BoardUrlParamsTest do
 
       assert_patch(view, "/?panel=shortcuts")
       assert has_element?(view, "#board-page[data-panel=shortcuts]")
+
+      # One key, one row: Esc closes what is open and stops the voice.
+      keys = view |> element(".panel-shortcuts") |> render()
+      assert length(Regex.scan(~r/<kbd[^>]*>\s*Esc\s*<\/kbd>/, keys)) == 1
+      assert keys =~ "Fecha o painel ou a camada, ou para a fala ou a resposta"
     end
 
     test "superagents opens Settings at its section, because management lives there", %{
