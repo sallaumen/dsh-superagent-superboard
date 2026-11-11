@@ -96,6 +96,41 @@ defmodule AgentBoard.Usage.Overview do
   end
 
   @doc """
+  The voice page: the plan as last read, the window's totals, its paid
+  characters per UTC day (`0` on a day with nothing recorded, the list nil
+  when the read failed), the requests `filters` select (`kind`, `outcome`)
+  and how many were refused.
+  """
+  @spec voice(pos_integer(), map()) :: map()
+  def voice(days, filters) do
+    since = Report.since(days)
+    daily = Usage.daily(since)
+
+    %{
+      days: days,
+      since: since,
+      account: Account.snapshot(),
+      totals: Usage.window(since),
+      series:
+        if daily do
+          by_day = Map.new(daily, &{&1.day, &1})
+
+          for day <- Date.range(since, Date.utc_today()) do
+            row = by_day[day]
+
+            %{
+              day: day,
+              characters: (row && row.tts_characters) || 0,
+              cache_hits: (row && row.cache_hits) || 0
+            }
+          end
+        end,
+      requests: Usage.requests(since, filters),
+      refused: Usage.requests(since, %{outcome: "refused"})
+    }
+  end
+
+  @doc """
   The board's own AI calls of the window that `filters` select (`engine`,
   `name`, `status`, each `"all"` for any): the newest 100, how many there
   are, the totals per function, and the engines and functions to filter by.

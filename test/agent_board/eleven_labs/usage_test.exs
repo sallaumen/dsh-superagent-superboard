@@ -46,6 +46,31 @@ defmodule AgentBoard.ElevenLabs.UsageTest do
     assert Repo.aggregate("eleven_labs_usage", :count) == 1
   end
 
+  test "each request is one row, counts only; refusals keep their reason" do
+    Usage.record_tts(120, :paid)
+    Usage.record_tts(0, :cache)
+    Usage.record_stt(4.5)
+    assert {:error, :quota_exceeded} = Usage.record_refusal(:tts, {:error, :quota_exceeded})
+    assert {:ok, :anything} = Usage.record_refusal(:tts, {:ok, :anything})
+    Usage.record_refusal(:stt, {:error, {:http, 502}})
+
+    today = Date.utc_today()
+    all = Usage.requests(today, %{kind: "all", outcome: "all"})
+    assert all.count == 5
+    assert %DateTime{} = all.first_at
+
+    assert [%{characters: 120, outcome: "paid"}] =
+             Usage.requests(today, %{kind: "tts", outcome: "paid"}).rows
+
+    assert ["http 502", "quota_exceeded"] =
+             Usage.requests(today, %{kind: "all", outcome: "refused"}).rows
+             |> Enum.map(& &1.reason)
+             |> Enum.sort()
+
+    assert [%{seconds: 4.5}] = Usage.requests(today, %{kind: "stt", outcome: "paid"}).rows
+    assert Usage.requests(Date.add(today, 1), %{kind: "all", outcome: "all"}).count == 0
+  end
+
   test "concurrent records do not lose a write" do
     1..20
     |> Enum.map(fn _ -> Task.async(fn -> Usage.record_tts(10, :paid) end) end)

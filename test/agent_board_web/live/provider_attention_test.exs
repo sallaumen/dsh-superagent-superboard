@@ -8,7 +8,7 @@ defmodule AgentBoardWeb.ProviderAttentionTest do
   import Phoenix.LiveViewTest
 
   alias AgentBoard.Board
-  alias AgentBoard.ElevenLabs.Account
+  alias AgentBoard.ElevenLabs.{Account, Usage}
 
   setup do
     Account.clear()
@@ -33,5 +33,31 @@ defmodule AgentBoardWeb.ProviderAttentionTest do
     assert_patch(view)
     assert has_element?(view, "#settings-costs-title")
     assert has_element?(view, "#costs-voice", "a voz do computador fala")
+  end
+
+  test "Costs → Voz lists each request and filters by outcome in the URL", %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "voice-requests")
+    Board.log_event(repo.id, "sync", "fixture/voice-requests", %{"errors" => 0})
+    Usage.record_tts(321, :paid)
+    Usage.record_refusal(:tts, {:error, :quota_exceeded})
+
+    {:ok, view, _html} =
+      live(conn, ~p"/?repo=fixture/voice-requests&panel=settings&section=costs&costs=voice")
+
+    assert has_element?(view, "#costs-voice-paid", "321")
+    assert has_element?(view, "#costs-voice-refused", "1")
+    assert has_element?(view, "#costs-voice-requests", "321")
+    assert has_element?(view, "#costs-voice-requests", "Os créditos do serviço acabaram.")
+
+    view
+    |> element("#costs-voice-filters")
+    |> render_change(%{"kind" => "all", "outcome" => "refused"})
+
+    assert_patch(
+      view,
+      "/?costs=voice&days=30&outcome=refused&panel=settings&repo=fixture%2Fvoice-requests&section=costs"
+    )
+
+    refute has_element?(view, "#costs-voice-requests", "321")
   end
 end
