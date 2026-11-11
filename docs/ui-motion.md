@@ -49,6 +49,7 @@ exists, not before.
 | Hover, focus and button/link state | 110 ms of background and border, `--ease-standard` | `button, a` |
 | Settings and section chevron | 160 ms of rotation; the state remains readable without motion | `.settings-chevron`, `.settings-fold-chevron` |
 | Attention dot and voice bars | slow loop only under `no-preference`; it communicates real state, not decoration | keyframes `attention-breathe` and `voice-flow` |
+| DeepSeek peak flame | 2.6 s flicker of the flame's scale from its base, `--ease-standard`, only under `no-preference` and only while `Providers.peak?/1` is true; off-peak the moon is still. The switch itself is a cut: the icon changes at the hour | `.ab-peak.is-peak .hero-fire` |
 | Throughput value that changed | 600 ms of color, `--agent` → `--ink`, `--ease-standard`; the `Throughput` hook compares the previous value and only then applies `.is-changed`, so a broadcast with no change moves nothing, and nor does the runner's first answer after `?`; the new sparkline bar just appears | `.ab-flow__value.is-changed` |
 
 ## What does not move

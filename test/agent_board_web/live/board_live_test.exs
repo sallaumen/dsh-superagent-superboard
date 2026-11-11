@@ -16,6 +16,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   alias AgentBoard.AI.Call
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
+  alias AgentBoardWeb.BoardComponents.PeakRate
 
   test "the page CSP lets the voice play blob media", %{conn: conn} do
     conn = get(conn, ~p"/")
@@ -626,7 +627,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
     refute has_element?(view, "#slow-#{task.id}")
 
     first = :sys.get_state(view.pid).socket.assigns.attention_timer
-    assert Process.read_timer(first) in (9 * 60 * 1000)..(10 * 60 * 1000)
+    # the nearer of the long run and DeepSeek's next rate change
+    now = DateTime.utc_now()
+    rate_change = PeakRate.ms_until_change(PeakRate.info(now, 0), now)
+    expected = min(10 * 60 * 1000, rate_change)
+    assert_in_delta Process.read_timer(first), expected, 60 * 1000
 
     # What the timer delivers, once the limit has passed.
     task
@@ -637,9 +642,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#sec-needs #slow-#{task.id}")
     assert has_element?(view, ".ab-hub-item__meta", "Demorando")
 
-    # Replaced, not stacked; a passed limit arms nothing.
+    # Replaced, not stacked; a passed limit leaves only the rate change.
     assert Process.read_timer(first) == false
-    assert :sys.get_state(view.pid).socket.assigns.attention_timer == nil
+    next = :sys.get_state(view.pid).socket.assigns.attention_timer
+    assert_in_delta Process.read_timer(next), rate_change, 60 * 1000
+    assert has_element?(view, "#peak-rate summary[aria-label*='DeepSeek']")
   end
 
   test "History words a pull's CI as the merge log does: a red remote check alone is unknown", %{

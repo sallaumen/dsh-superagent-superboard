@@ -109,6 +109,22 @@ defmodule AgentBoard.AI.Providers do
     do: Date.day_of_week(at) <= 5 and (hour in 1..3 or hour in 6..9)
 
   @doc """
+  The next instant the rate changes: the first whole UTC hour after `at`
+  that is on the other side of `peak?/1`. The peak hours start and end on
+  whole hours, so there is no change in between.
+  """
+  @spec next_rate_change(DateTime.t()) :: DateTime.t()
+  def next_rate_change(%DateTime{} = at) do
+    now? = peak?(at)
+    hour = %{DateTime.truncate(at, :second) | minute: 0, second: 0}
+
+    1
+    |> Stream.iterate(&(&1 + 1))
+    |> Stream.map(&DateTime.add(hour, &1 * 3600, :second))
+    |> Enum.find(&(peak?(&1) != now?))
+  end
+
+  @doc """
   How many tokens at the published price these are worth: those of the peak
   hours count whole, the others by the model's `:off_peak` share. A price
   table without one has a single rate.

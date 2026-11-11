@@ -75,6 +75,7 @@ defmodule AgentBoardWeb.BoardLive do
     VoiceSpeech
   }
 
+  alias AgentBoardWeb.BoardComponents.PeakRate
   alias AgentBoardWeb.BoardComponents.VoicePresence
 
   # The task actions a button may send, mapped explicitly (never to_atom).
@@ -153,6 +154,8 @@ defmodule AgentBoardWeb.BoardLive do
         logs_paused: false,
         reload_pending: false,
         attention_timer: nil,
+        peak_rate: nil,
+        peak_now: nil,
         conversation: nil,
         comments: [],
         ask_sending: %{},
@@ -739,28 +742,34 @@ defmodule AgentBoardWeb.BoardLive do
       ai_calls: [],
       ai_status: AI.status()
     )
+    |> watch_next_change()
   end
 
   # The span is the board's load budget on the dashboard
   # (`agent_board.board.load`): every reload goes through here.
   defp load(socket, repo) do
     :telemetry.span([:agent_board, :board, :load], %{repository: repo_slug(repo)}, fn ->
-      {socket |> read_board(repo) |> watch_next_attention(), %{repository: repo_slug(repo)}}
+      {socket |> read_board(repo) |> watch_next_change(), %{repository: repo_slug(repo)}}
     end)
   end
 
-  # A task that goes quiet broadcasts nothing, so without this its item would
-  # wait for the next sync. One timer per page, replaced on every read.
-  defp watch_next_attention(socket) do
+  # Nothing broadcasts a task that goes quiet or the hour DeepSeek's rate
+  # changes, so without this the page would wait for the next sync. One
+  # timer per page, for the nearer of the two, replaced on every read.
+  defp watch_next_change(socket) do
     if timer = socket.assigns.attention_timer, do: Process.cancel_timer(timer)
 
-    timer =
-      case connected?(socket) && Map.get(socket.assigns.work, :next_attention_ms) do
-        ms when is_integer(ms) -> Process.send_after(self(), :board_updated, ms)
-        _none -> nil
-      end
+    now = DateTime.utc_now()
+    rate = PeakRate.info(now, socket.assigns.tz_offset)
 
-    assign(socket, :attention_timer, timer)
+    due =
+      [Map.get(socket.assigns.work, :next_attention_ms), PeakRate.ms_until_change(rate, now)]
+      |> Enum.filter(&is_integer/1)
+      |> Enum.min()
+
+    timer = if connected?(socket), do: Process.send_after(self(), :board_updated, due)
+
+    assign(socket, attention_timer: timer, peak_rate: rate, peak_now: now)
   end
 
   defp read_board(socket, repo) do
@@ -3183,7 +3192,14 @@ defmodule AgentBoardWeb.BoardLive do
                 seen={@message_seen}
                 filter={@inbox_filter}
                 notice={@inbox_notice}
-              />
+              >
+                <BoardComponents.PeakRate.mark
+                  :if={@peak_rate}
+                  rate={@peak_rate}
+                  now={@peak_now}
+                  offset={@tz_offset}
+                />
+              </BoardComponents.MessageHub.hub>
             </div>
             <div :if={@repo == nil} class="ab-empty">
               <h2>{gettext("No repositories being tracked.")}</h2>
