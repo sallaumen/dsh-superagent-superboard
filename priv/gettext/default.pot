@@ -8067,3 +8067,13 @@ msgstr ""
 msgctxt "attention kind"
 msgid "Provider"
 msgstr ""
+
+#: lib/agent_board_web/live/board_components/executor_picker.ex
+#, elixir-autogen, elixir-format
+msgid "No agent watches this project, so DeepSeek is off here."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/executor_picker.ex
+#, elixir-autogen, elixir-format
+msgid "Set up an agent"
+msgstr ""
