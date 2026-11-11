@@ -731,10 +731,11 @@ Agora and the detail):
 ## Setup
 
 What the board needs to work, in dependency order, is one contract
-(`AgentBoard.Setup`), read by Settings and by nothing else that computes it on
-its own. Each row has a class (`:base` GitHub; `:work` the projects, the
-DeepSeek superagents, Claude Code and Codex; `:board_ai` the board's own calls;
-`:voice` ElevenLabs or the browser), a state and the fix for the next step.
+(`AgentBoard.Setup`), read by Settings (AI and setup, the first section) and
+by nothing else that computes it on its own. Each row has a class (`:work`
+GitHub, the projects, the DeepSeek superagents, Claude Code and Codex;
+`:board_ai` the provider of the board's own calls; `:voice` ElevenLabs or the
+browser), a state and the fix for the next step.
 
 - `checklist/1` reads configuration only and may run on a render: a key that is
   set is `:configured`, never `:ok`.
@@ -961,7 +962,8 @@ flowchart LR
   "Reading additional input from stdin" when its stdin was a pipe, so the
   redirect is required and `runners_script_test.exs` covers it.
 - **A missing executor binary refuses before starting** (`:runner_missing`);
-  Configurações shows the two paths and whether they exist on this Mac.
+  Settings → AI and setup says whether each one is installed and signed in
+  (`AgentBoard.Setup`), and names the path when it is missing.
 - **A runner that cannot start fails the row**, never silently: the run
   directory keeps the error and the next tick records it. A Claude Code
   `is_error`/`error_max_budget_usd` answer is kept as the execution error,
@@ -1460,9 +1462,10 @@ computed from the tasks, never a second project manager.
 
 ## The request (composer)
 
-The composer is a view of one lifecycle that `BoardLive` owns; the durable
-records are the `ai_calls` rows (the split) and the tasks with their
-`request_key` (the enqueue).
+The composer is a view of one lifecycle on `BoardLive`'s socket, written in
+`AgentBoardWeb.ComposerLifecycle` (socket in, socket out; `BoardLive` keeps
+the `handle_*` clauses and delegates); the durable records are the `ai_calls`
+rows (the split) and the tasks with their `request_key` (the enqueue).
 
 | Transition | Owner | Durable record |
 |---|---|---|

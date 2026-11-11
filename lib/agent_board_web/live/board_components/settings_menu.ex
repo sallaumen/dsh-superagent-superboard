@@ -1,17 +1,17 @@
 defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
-  @moduledoc "The board-wide settings panel, with one of four sections visible at a time."
+  @moduledoc "The board-wide settings panel, with one of five sections visible at a time."
   use AgentBoardWeb, :live_component
 
   import Phoenix.LiveView, only: [push_patch: 2]
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
-  alias AgentBoardWeb.BoardComponents.Settings.{Activity, Execution, Projects}
+  alias AgentBoardWeb.BoardComponents.Settings.{Activity, Execution, Projects, Setup}
   alias AgentBoardWeb.BoardComponents.VoiceActivityFeed
   alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
-  @section_keys ~w(projects execution voice system)
+  @section_keys ~w(setup projects execution voice system)
 
   attr :active, :boolean, default: false
   attr :repo, :map, default: nil
@@ -177,6 +177,26 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
       </nav>
 
       <div id="settings-current-section" class="settings-content">
+        <section
+          hidden={@section != "setup"}
+          class="settings-pane settings-pane--setup"
+          aria-labelledby="settings-setup-title"
+        >
+          <h3 id="settings-setup-title">{gettext("AI and setup")}</h3>
+          <p class="settings-pane__intro">
+            {gettext(
+              "The board uses AI in three roles. Here you see which one does what, what it costs, and whether each part is ready."
+            )}
+          </p>
+          <.live_component
+            module={Setup}
+            id="settings-setup"
+            active={@active == true and @section == "setup"}
+            parent={@myself}
+            tz_offset={@tz_offset}
+          />
+        </section>
+
         <section
           hidden={@section != "projects"}
           class="settings-pane settings-pane--projects"
@@ -354,6 +374,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   defp sections do
     [
+      {"setup", gettext("AI and setup")},
       {"projects", gettext("Projects")},
       {"execution", gettext("Execution")},
       {"voice", gettext("Voice and summary")},

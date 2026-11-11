@@ -12,7 +12,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
-  alias AgentBoard.{Actions, Runners}
+  alias AgentBoard.{Actions, AI, Runners}
+  alias AgentBoard.AI.Providers
   alias AgentBoard.Usage.Report
   alias AgentBoardWeb.{FailureText, Time}
 
@@ -285,9 +286,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
             <div>
               <h4 id="execution-ai-title">{gettext("The board's own AI calls")}</h4>
               <p class="ab-meta">
-                {gettext(
-                  "The board uses deepseek-flash to answer, suggest unblocks and speak. Costs are estimated by the model price."
-                )}
+                {ai_line(AI.answering())}
               </p>
             </div>
             <span class={["ab-execution__ai-state", ai_tone(@ai_status)]}>
@@ -767,4 +766,45 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   # From a thousand dollars up the cents are noise.
   defp money_micros(micros),
     do: AgentBoardWeb.Numbers.usd(micros, cents: micros < 1_000_000_000)
+
+  @doc "Who answers the board's own calls, as the Execution intro says it (`AI.answering/0`)."
+  def ai_line(%{provider: nil}),
+    do:
+      gettext(
+        "No AI key: the board's own calls answer an error. Set one in .env.local; AI and setup says which."
+      )
+
+  def ai_line(%{provider: :rehearsal}),
+    do: gettext("The board answers in rehearsal, from local fixtures: no key, no cost.")
+
+  def ai_line(%{provider: provider, model: model, fallbacks: fallbacks}) do
+    {:ok, %{label: label}} = Providers.fetch(provider)
+
+    uses =
+      gettext("The board uses %{provider} (%{model}) to answer, suggest unblocks and speak",
+        provider: label,
+        model: model
+      )
+
+    others =
+      case fallbacks do
+        [] ->
+          ""
+
+        _ ->
+          "; " <>
+            gettext("%{others} if it fails",
+              others: Enum.map_join(fallbacks, ", ", &provider_label/1)
+            )
+      end
+
+    uses <> others <> ". " <> gettext("Costs are estimated by the model price.")
+  end
+
+  defp provider_label(id) do
+    case Providers.fetch(id) do
+      {:ok, %{label: label}} -> label
+      :error -> to_string(id)
+    end
+  end
 end
