@@ -1730,12 +1730,9 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("act", %{"id" => id, "action" => action} = params, socket) do
-    {task_id, _} = Integer.parse(id)
+    task_id = Board.parse_id(id)
     repo = socket.assigns.repo
-
-    task =
-      repo &&
-        Board.task_of(repo, task_id)
+    task = if repo && is_integer(task_id), do: Board.task_of(repo, task_id)
 
     # Stop is red: it runs only with the sentence its confirmation showed.
     result =
