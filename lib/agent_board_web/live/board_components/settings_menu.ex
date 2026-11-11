@@ -45,20 +45,22 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   @impl true
   def update(assigns, socket) do
     previous = socket.assigns[:section]
+    opening = assigns[:active] == true and socket.assigns[:active] != true
     socket = assign(socket, Map.delete(assigns, :section))
 
-    # Configuration only, read once per open panel: a required part missing
-    # opens AI and setup and marks it; otherwise Settings opens on Projects.
+    # The panel stays mounted while closed: configuration is read on each
+    # opening only. A required part missing opens AI and setup and marks it.
     socket =
-      if Map.has_key?(socket.assigns, :setup_next),
-        do: socket,
-        else: assign(socket, setup_next: AgentBoard.Setup.next_step(AgentBoard.Setup.checklist()))
+      if opening,
+        do: assign(socket, setup_next: AgentBoard.Setup.next_step(AgentBoard.Setup.checklist())),
+        else: assign_new(socket, :setup_next, fn -> nil end)
 
     # The URL's section wins when it names one; otherwise keep the current one.
     section =
       case assigns[:section] do
         key when key in @section_keys -> key
-        _ -> previous || if(socket.assigns.setup_next, do: "setup", else: "projects")
+        _ when opening -> previous || if(socket.assigns.setup_next, do: "setup", else: "projects")
+        _ -> previous
       end
 
     {:ok, assign(socket, section: section)}
