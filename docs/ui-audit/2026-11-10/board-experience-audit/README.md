@@ -55,26 +55,26 @@ Class: **D** confirmed defect, **F** UX friction with observable impact, **S** p
 | # | Class | Finding | Evidence | Status |
 |---|---|---|---|---|
 | 1 | F | A merged PR never leads to its task. `pull_requests.closes_issues` already says which task it closes (87 of 97 in arena-rogue, 9 of 478 in o_colmex) | `a.ab-pr[target=_blank]`, `.archive-row a` | fixed in the second delivery (P1) |
-| 2 | F | A concluded task is in no list. History is PRs only: 15 done tasks have no closing PR and appear nowhere; a stopped task and an issue closed without a merge cannot be told apart from a merge | `Board.@task_states`, `Archive` | proposal P2 |
-| 3 | F | Cost of a task takes: knowing the task URL, the "Chamadas de IA" tab, and the "Executor do agente" block under the board's own calls. No PR and no list row shows any cost | `inspector.ex` | header line in the second delivery (P3a); rows wait for P3b |
+| 2 | F | A concluded task is in no list. History is PRs only: 15 done tasks have no closing PR and appear nowhere; a stopped task and an issue closed without a merge cannot be told apart from a merge | `Board.@task_states`, `Archive` | fixed: History lists ended tasks (#534) |
+| 3 | F | Cost of a task takes: knowing the task URL, the "Chamadas de IA" tab, and the "Executor do agente" block under the board's own calls. No PR and no list row shows any cost | `inspector.ex` | fixed: inspector header (#520), ended rows (#549), merged PR rows (#595) |
 | 4 | D | A board call under one cent read **$0.00**, in the row and in the total | `before-inspector-cost-1920.png` | fixed: `< $0.01` |
 | 5 | D | The "Execuções" tab said **0** until it was opened, then 2: the ledger is read only on that tab | same task, tabs `conversa` → `execucoes` | fixed: no number until read |
 | 6 | D | History trend counted only the loaded page and showed **0** for days with merges (4–7 Nov: 0, 0, 0, 0; the board beside it: 8, 3, 8, 14) | `before-history-panel-1920.png` | fixed: `?` for unread days, `≥` for the partial one |
 | 7 | D | History rows in pt-BR said "NO REVIEW", "CI FAILED: GATES", "Merged:"; "carregados" and an `aria-label` were hard-coded in one language each | same capture | fixed: gettext, both languages |
 | 8 | D | Inspector header: "atualizado há há 7 min" | `aside.ab-insp .ab-insp__facts` | fixed |
 | 9 | D | Throughput tile "concluído" beside "Issues abertas", "PRs mesclados" (the contract names it "Concluídas") | `#fold-flow` | fixed |
-| 10 | D | English is not complete: with the default locale the board mixes "Needs you" with "Desde hoje às 10:13 nada mudou", "Ontem, 9 nov", "sem revisão", "CI local ?", "desde yesterday at 08:00", "US$ 5,10". pt-BR is coherent. The strings live in `Lanes`, `Board` and `Time`, not in gettext | English walk at 1920 | proposal P5 |
+| 10 | D | English is not complete: with the default locale the board mixes "Needs you" with "Desde hoje às 10:13 nada mudou", "Ontem, 9 nov", "sem revisão", "CI local ?", "desde yesterday at 08:00", "US$ 5,10". pt-BR is coherent. The strings live in `Lanes`, `Board` and `Time`, not in gettext | English walk at 1920 | fixed by the language front (#530 to #533, #540, #541, #544) |
 | 11 | F | Ultrawide: above a 2204 px window the extra width is margin only. The rail stays at x = 0 and the inspector at the right edge: at 5120 the content is 1458 px from the rail and 1190 px from the inspector, and it shifts 252 px when the inspector opens | `board-working-5120x1440.png`, `inspector-open-5120x1440.png` | fixed in the third delivery (two panes) |
-| 12 | F | The same PR reads "CI FALHOU: GATES" in red in History (GitHub Actions, blocked by billing) and "CI local ok" in the merge log (#195) | both captures | proposal P6 |
-| 13 | F | Activity shows the raw kind `task_released`, and reads only the repository's last 50 events: an older task loses its own | `Board.task_repo_events/2` | proposal P6 |
-| 14 | F | DeepSeek cost is always `≥`: cache reads have no price, and on the sampled task they were 48.4 M tokens against 316 k of input. The minimum can be far from the cost | `before-inspector-cost-1920.png` | proposal P3c |
-| 15 | F | A task with more than 20 board calls totals only the newest 20, unsaid; executions older than 90 days leave the tab; executor usage needs the runner's ticket and its transcripts still on disk | `AI.recent_for_task/2`, `Report.by_task/2` | proposal P3 |
-| 16 | F | Cycle tile at 1920 cuts its values with an ellipsis ("4 h 15…"); the source line of Parallelism too | first walk, real tickets; no capture kept | not fixed |
-| 17 | S | A 1280 px window (1920 at 150 %) gives `main` 976 px of content: one lane column 976 px wide. The cut is the content box, not the 1000 px of `main` | `board-1280-zoom150.png` | owner's call |
-| 18 | S | A merged task's inspector still offers Perguntar, Parar and Arquivar | `after-inspector-cost-1920.png` | owner's call |
-| 19 | S | History keeps the old look: spaced capitals in "PRS MESCLADOS", bars in the primary blue | `after-history-panel-1920.png` | with P2 |
-| 20 | S | "Agente fora do ar" is the label and the title of the same card | `state-frozen-agent-offline-1920.png` | taste |
-| 21 | S | Opening the inspector above 2000 px widens the rail from 224 to 240 px | `board.css` `@container board (min-width: 1880px)` | still there |
+| 12 | F | The same PR reads "CI FALHOU: GATES" in red in History (GitHub Actions, blocked by billing) and "CI local ok" in the merge log (#195) | both captures | fixed: one CI wording for both lists (#537) |
+| 13 | F | Activity shows the raw kind `task_released`, and reads only the repository's last 50 events: an older task loses its own | `Board.task_repo_events/2` | fixed: event words and the task's own events (#537) |
+| 14 | F | DeepSeek cost is always `≥`: cache reads have no price, and on the sampled task they were 48.4 M tokens against 316 k of input. The minimum can be far from the cost | `before-inspector-cost-1920.png` | fixed: cache reads priced (#573, #597) |
+| 15 | F | A task with more than 20 board calls totals only the newest 20, unsaid; executions older than 90 days leave the tab; executor usage needs the runner's ticket and its transcripts still on disk | `AI.recent_for_task/2`, `Report.by_task/2` | calls total says "newest N of M" (#537); the 90-day window stays and the cost tooltip says it (#549) |
+| 16 | F | Cycle tile at 1920 cuts its values with an ellipsis ("4 h 15…"); the source line of Parallelism too | first walk, real tickets; no capture kept | fixed (#546) |
+| 17 | S | A 1280 px window (1920 at 150 %) gives `main` 976 px of content: one lane column 976 px wide. The cut is the content box, not the 1000 px of `main` | `board-1280-zoom150.png` | fixed: two lanes from a 1264 px window (#599, #600) |
+| 18 | S | A merged task's inspector still offers Perguntar, Parar and Arquivar | `after-inspector-cost-1920.png` | kept by the owner; the reply box says a message resumes the ticket (#548) |
+| 19 | S | History keeps the old look: spaced capitals in "PRS MESCLADOS", bars in the primary blue | `after-history-panel-1920.png` | fixed: no spaced capitals since P2 (#534); bars in ink, not the action blue (this PR) |
+| 20 | S | "Agente fora do ar" is the label and the title of the same card | `state-frozen-agent-offline-1920.png` | fixed (#598) |
+| 21 | S | Opening the inspector above 2000 px widens the rail from 224 to 240 px | `board.css` `@container board (min-width: 1880px)` | fixed (#546) |
 
 No finding blocks the main task on the current lanes: nothing overflows, is cut or is out of reach at any
 width tested, and no control lost its focus ring.
