@@ -16,7 +16,7 @@ defmodule AgentBoardWeb.ProviderAttentionTest do
     :ok
   end
 
-  test "spent ElevenLabs credits count in the bell and the item opens the voice settings", %{
+  test "spent ElevenLabs credits count in the bell and the item opens Costs", %{
     conn: conn
   } do
     {:ok, repo} = Board.add_repository("fixture", "provider-bell")
@@ -31,19 +31,7 @@ defmodule AgentBoardWeb.ProviderAttentionTest do
 
     view |> element("#attention-elevenlabs button") |> render_click()
     assert_patch(view)
-    assert has_element?(view, "#settings-voice-title")
-  end
-
-  test "the plan line follows the account while the page stays open", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("fixture", "provider-plan")
-    Board.log_event(repo.id, "sync", "fixture/provider-plan", %{"errors" => 0})
-    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/provider-plan")
-    refute has_element?(view, "#voice-plan")
-
-    :ok = Account.mark_spent()
-    send(view.pid, :board_updated)
-    render_click(view, "show_panel", %{"panel" => "settings", "section" => "voice"})
-
-    assert has_element?(view, "#voice-plan", "ElevenLabs")
+    assert has_element?(view, "#settings-costs-title")
+    assert has_element?(view, "#costs-voice", "a voz do computador fala")
   end
 end

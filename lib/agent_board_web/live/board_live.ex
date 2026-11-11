@@ -92,7 +92,7 @@ defmodule AgentBoardWeb.BoardLive do
         message_seen: message_seen,
         inbox_filter: "all",
         inbox_notice: nil,
-        inbox: %{messages: [], alerts: [], providers: [], account: nil},
+        inbox: %{messages: [], alerts: [], providers: []},
         tz_offset: tz_offset,
         work: empty_work(),
         flow: nil,
@@ -139,6 +139,7 @@ defmodule AgentBoardWeb.BoardLive do
         highlight_changes: false,
         panel: nil,
         settings_section: nil,
+        settings_costs: %{page: nil, days: nil},
         reload_pending: false,
         attention_timer: nil,
         peak_rate: nil,
@@ -172,7 +173,6 @@ defmodule AgentBoardWeb.BoardLive do
         blocker_title: "",
         blocker_body: "",
         blocker_pending: nil,
-        ai_calls: [],
         ai_status: AI.status(),
         version: Version.status(),
         codex_quota: Costs.codex_weekly(Ledger.limits()),
@@ -706,7 +706,6 @@ defmodule AgentBoardWeb.BoardLive do
       work: empty_work(),
       digest: nil,
       live: connected?(socket),
-      ai_calls: [],
       ai_status: AI.status()
     )
     |> watch_next_change()
@@ -824,7 +823,6 @@ defmodule AgentBoardWeb.BoardLive do
           agent_snapshot: agent,
           work: work,
           digest: work.digest,
-          ai_calls: AI.recent(5),
           ai_status: AI.status(),
           live: connected?(socket)
         )
@@ -850,7 +848,6 @@ defmodule AgentBoardWeb.BoardLive do
           flow: nil,
           digest: nil,
           live: connected?(socket),
-          ai_calls: [],
           ai_status: AI.status()
         )
     end
@@ -1105,7 +1102,7 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
-  defp refresh_ai(socket), do: assign(socket, ai_calls: AI.recent(5), ai_status: AI.status())
+  defp refresh_ai(socket), do: assign(socket, ai_status: AI.status())
 
   # The header badge should know about a moved main on a fresh page, not
   # only after someone opens Settings. This is a fetch, never an update;
@@ -3307,7 +3304,6 @@ defmodule AgentBoardWeb.BoardLive do
           <.live_component
             module={BoardComponents.SettingsMenu}
             id="board-settings-panel"
-            voice_account={@inbox.account}
             repo={@repo}
             repos={@repos}
             version={@version}
@@ -3318,11 +3314,11 @@ defmodule AgentBoardWeb.BoardLive do
             dispatch_paused={@dispatch_paused}
             active={@panel == "settings"}
             section={@settings_section}
+            costs={@settings_costs}
             superagents={@superagents}
             access_waiting={@agent_access.count}
             access_projects={@agent_access_projects}
             tickets={@agent_snapshot.tickets}
-            ai_calls={@ai_calls}
             ai_status={@ai_status}
             events={@events}
             provisioning={@provisioning}

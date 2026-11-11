@@ -12,7 +12,7 @@ defmodule AgentBoard.Board.Inbox do
   @alert_limit 30
 
   def snapshot do
-    %{messages: messages(), alerts: alerts(), providers: providers(), account: Account.snapshot()}
+    %{messages: messages(), alerts: alerts(), providers: providers()}
   end
 
   @doc """
@@ -33,7 +33,7 @@ defmodule AgentBoard.Board.Inbox do
         key: "elevenlabs",
         title: gettext("ElevenLabs credits spent"),
         detail: gettext("The computer voice speaks instead."),
-        section: "voice"
+        section: "costs"
       }
     end
   end

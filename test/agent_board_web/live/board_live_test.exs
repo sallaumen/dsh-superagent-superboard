@@ -467,43 +467,43 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     {:ok, view, _html} =
-      live(conn, ~p"/?repo=fixture/measurements&panel=settings&section=execution")
+      live(conn, ~p"/?repo=fixture/measurements&panel=settings&section=costs&costs=calls")
 
     assert has_element?(
              view,
-             "#execution-settings-form .ab-execution__ai-table",
+             "#costs-calls",
              "refine_request"
            )
 
     assert has_element?(
              view,
-             "#execution-settings-form .ab-execution__ai-table td:nth-child(2)",
+             "#costs-calls td:nth-child(2)",
              "—"
            )
 
     assert has_element?(
              view,
-             "#execution-settings-form .ab-execution__ai-table td:nth-child(3)",
+             "#costs-calls td:nth-child(3)",
              "—"
            )
 
     assert has_element?(
              view,
-             "#execution-settings-form .ab-execution__ai-table td:nth-child(4)",
+             "#costs-calls td:nth-child(4)",
              "—"
            )
 
     assert has_element?(
              view,
-             "#execution-settings-form .ab-execution__ai-error",
+             "#costs-calls .ab-execution__ai-error",
              "Motivo não registrado"
            )
 
-    refute has_element?(view, "#execution-settings-form .ab-execution__ai-table", "0ms")
-    refute has_element?(view, "#execution-settings-form .ab-execution__ai-table", "0 tokens")
+    refute has_element?(view, "#costs-calls", "0ms")
+    refute has_element?(view, "#costs-calls", "0 tokens")
   end
 
-  test "the AI panel shows a recorded failure reason", %{conn: conn} do
+  test "Costs → calls shows a recorded failure reason", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "ai-failure")
 
     %Call{}
@@ -525,11 +525,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     {:ok, view, _html} =
-      live(conn, ~p"/?repo=fixture/ai-failure&panel=settings&section=execution")
+      live(conn, ~p"/?repo=fixture/ai-failure&panel=settings&section=costs&costs=calls")
 
-    assert has_element?(view, "#settings-execution .ab-execution__ai-error", "malformed_output")
+    assert has_element?(view, "#costs-calls .ab-execution__ai-error", "malformed_output")
     # a stored word is said as a sentence, never as the term
-    assert has_element?(view, "#settings-execution .ab-execution__ai-error", "HTTP 502")
+    assert has_element?(view, "#costs-calls .ab-execution__ai-error", "HTTP 502")
     refute render(view) =~ "http 502"
   end
 
@@ -793,7 +793,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert has_element?(view, "#board-page[data-panel='']")
   end
 
-  test "the AI panel shows the last calls", %{conn: conn} do
+  test "Costs → calls shows the last calls", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
     %Call{}
@@ -811,34 +811,34 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     {:ok, view, _html} =
-      live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings&section=execution")
+      live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings&section=costs&costs=calls")
 
     assert has_element?(
              view,
-             "#execution-settings-form .ab-execution__ai-table",
+             "#costs-calls",
              "refine_request"
            )
 
     assert has_element?(
              view,
-             "#execution-settings-form .ab-execution__ai-table code[title*='deepseek']"
+             "#costs-calls code[title*='deepseek']"
            )
 
     assert has_element?(
              view,
-             "#execution-settings-form .ab-execution__ai-table td:nth-child(2)",
+             "#costs-calls td:nth-child(2)",
              "123 ms"
            )
 
     assert has_element?(
              view,
-             "#execution-settings-form .ab-execution__ai-table td:nth-child(3)",
+             "#costs-calls td:nth-child(3)",
              "30"
            )
 
     assert has_element?(
              view,
-             "#execution-settings-form .ab-execution__ai-table td:nth-child(4)",
+             "#costs-calls td:nth-child(4)",
              "US$ 0,00112"
            )
   end

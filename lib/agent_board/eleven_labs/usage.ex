@@ -59,6 +59,28 @@ defmodule AgentBoard.ElevenLabs.Usage do
   end
 
   @doc """
+  The totals of the UTC days from `since` through today, and how many of them
+  recorded anything. A failed read is nil: unknown, not zero.
+  """
+  @spec window(Date.t()) :: map() | nil
+  def window(%Date{} = since) do
+    Repo.one(
+      from u in @table,
+        where: u.day >= ^since,
+        select: %{
+          tts_characters: type(coalesce(sum(u.tts_characters), 0), :integer),
+          tts_requests: type(coalesce(sum(u.tts_requests), 0), :integer),
+          cache_hits: type(coalesce(sum(u.cache_hits), 0), :integer),
+          stt_seconds: type(coalesce(sum(u.stt_seconds), 0.0), :float),
+          stt_requests: type(coalesce(sum(u.stt_requests), 0), :integer),
+          days: count(u.day)
+        }
+    )
+  rescue
+    e in [DBConnection.ConnectionError, Postgrex.Error] -> failed(:read, e, nil)
+  end
+
+  @doc """
   Records one speech: `:paid` adds the characters ElevenLabs charged and a
   request; `:cache` is a hit served from `SpeechCache` and costs nothing.
   """

@@ -1,17 +1,16 @@
 defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
-  @moduledoc "The board-wide settings panel, with one of five sections visible at a time."
+  @moduledoc "The board-wide settings panel, with one of its sections visible at a time."
   use AgentBoardWeb, :live_component
 
   import Phoenix.LiveView, only: [push_patch: 2]
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
-  alias AgentBoardWeb.BoardComponents.Settings.{Activity, Execution, Projects, Setup}
-  alias AgentBoardWeb.BoardComponents.VoiceActivityFeed
+  alias AgentBoardWeb.BoardComponents.Settings.{Activity, Costs, Execution, Projects, Setup}
   alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
-  @section_keys ~w(setup projects execution voice system)
+  @section_keys ~w(setup projects execution costs voice system)
 
   attr :active, :boolean, default: false
   attr :repo, :map, default: nil
@@ -24,13 +23,10 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :repos, :list, default: []
   attr :access_waiting, :integer, default: 0
 
-  attr :voice_account, :map,
-    default: nil,
-    doc: "`ElevenLabs.Account.snapshot/0`, read with the inbox"
+  attr :costs, :map, default: %{}, doc: "Settings → Costs page and window from the URL"
 
   attr :access_projects, :list, default: []
   attr :tickets, :list, default: []
-  attr :ai_calls, :list, default: []
   attr :ai_status, :any, default: :unknown
   attr :events, :list, default: []
   attr :codex_quota, :map, default: nil
@@ -245,7 +241,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           <h3 id="settings-execution-title">{gettext("Execution")}</h3>
           <p class="settings-pane__intro">
             {gettext(
-              "Claude Code and Codex run on this machine; DeepSeek runs through GitHub. Each one is measured in its own currency."
+              "Claude Code and Codex run on this machine; DeepSeek runs through GitHub. Here are their caps and models."
             )}
           </p>
           <.live_component
@@ -254,9 +250,30 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
             active={@active == true and @section == "execution"}
             dispatch_paused={@dispatch_paused}
             tickets={@tickets}
-            ai_calls={@ai_calls}
             ai_status={@ai_status}
             parent={@myself}
+            tz_offset={@tz_offset}
+          />
+        </section>
+
+        <section
+          hidden={@section != "costs"}
+          class="settings-pane settings-pane--costs"
+          aria-labelledby="settings-costs-title"
+        >
+          <h3 id="settings-costs-title">{gettext("Costs")}</h3>
+          <p class="settings-pane__intro">
+            {gettext(
+              "What the agent, the board's own AI and the voice spent, each in the currency it is charged in."
+            )}
+          </p>
+          <.live_component
+            module={Costs}
+            id="settings-costs"
+            active={@active == true and @section == "costs"}
+            repo={@repo}
+            params={@costs}
+            tickets={@tickets}
             tz_offset={@tz_offset}
           />
         </section>
@@ -274,13 +291,14 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                   "How you talk to the board, when it answers aloud and the summary of the day."
                 )}
               </p>
-              <p
-                :if={plan = plan_line(@voice_account, @tz_offset)}
-                id="voice-plan"
-                class="settings-pane__intro"
-              >
-                ElevenLabs · {plan}
-              </p>
+              <button
+                id="voice-costs-link"
+                type="button"
+                class="ab-link"
+                phx-click="select_section"
+                phx-value-section="costs"
+                phx-target={@myself}
+              >{gettext("The ElevenLabs plan and what the voice spent are in Costs")}</button>
             </div>
             <button
               id="speak-status"
@@ -385,16 +403,12 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
     """
   end
 
-  # The ElevenLabs plan as the last board reload read it (`Inbox.snapshot/0`):
-  # what this period used, when it renews, or that the computer voice speaks.
-  defp plan_line(account, offset),
-    do: VoiceActivityFeed.account(account, DateTime.utc_now(), offset)
-
   defp sections do
     [
       {"setup", gettext("AI and setup")},
       {"projects", gettext("Projects")},
       {"execution", gettext("Execution")},
+      {"costs", gettext("Costs")},
       {"voice", gettext("Voice and summary")},
       {"system", gettext("System")}
     ]

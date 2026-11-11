@@ -9,7 +9,7 @@ defmodule AgentBoard.ElevenLabs.AccountTest do
   alias AgentBoard.Board.Inbox
   alias AgentBoard.ElevenLabs
   alias AgentBoard.ElevenLabs.Account
-  alias AgentBoardWeb.BoardComponents.VoiceActivityFeed
+  alias AgentBoardWeb.BoardComponents.Settings.Costs
   alias AgentBoardWeb.VoiceSpeech
 
   @stub AgentBoard.ElevenLabs.AccountTest.Stub
@@ -57,7 +57,7 @@ defmodule AgentBoard.ElevenLabs.AccountTest do
     end)
   end
 
-  test "the plan is read with its use, limit and renewal, and shown in the voice summary" do
+  test "the plan is read with its use, limit and renewal, and written for Costs" do
     subscription(4_177, 10_000)
     :ok = Account.refresh(~U[2026-11-11 12:00:00Z])
 
@@ -67,7 +67,7 @@ defmodule AgentBoard.ElevenLabs.AccountTest do
     assert resets_at == ~U[2026-12-06 01:42:53Z]
     refute Account.spent?(~U[2026-11-11 12:00:00Z])
 
-    assert VoiceActivityFeed.account(Account.snapshot(), ~U[2026-11-11 12:00:00Z], 180) ==
+    assert Costs.account(Account.snapshot(), ~U[2026-11-11 12:00:00Z], 180) ==
              "plan: 4,177 of 10,000 characters this period, renews 5 Dec"
   end
 
@@ -80,10 +80,10 @@ defmodule AgentBoard.ElevenLabs.AccountTest do
     refute Account.spent?(~U[2026-12-06 02:00:00Z])
     refute VoiceSpeech.elevenlabs?(voice, :call)
 
-    assert VoiceActivityFeed.account(Account.snapshot(), ~U[2026-11-11 12:00:00Z], 180) ==
+    assert Costs.account(Account.snapshot(), ~U[2026-11-11 12:00:00Z], 180) ==
              "plan spent until 5 Dec: the computer voice speaks"
 
-    assert [%{key: "elevenlabs", section: "voice"}] = Inbox.providers()
+    assert [%{key: "elevenlabs", section: "costs"}] = Inbox.providers()
   end
 
   test "quota_exceeded is spent credits, not a refused key, and holds for an hour" do
