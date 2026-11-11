@@ -96,6 +96,57 @@ defmodule AgentBoardWeb.ComposerTest do
     assert has_element?(view, "#composer-form button.ab-btn--primary", "Pôr na fila")
   end
 
+  test "the old Split link opens the composer", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/composer&panel=intake")
+    assert has_element?(view, "#board-page[data-panel=composer]")
+  end
+
+  test "failed creation reports one error and never a success", %{conn: conn} do
+    Req.Test.stub(
+      @stub,
+      &Req.Test.json(Plug.Conn.put_status(&1, 422), %{"message" => "rejected"})
+    )
+
+    {:ok, view, _} = live(conn, ~p"/?repo=fixture/composer")
+    view |> element("#open-create") |> render_click()
+
+    # The browser sends the words before the submit; the sentence that
+    # confirms the creation is on screen when the person presses send.
+    view |> element("#composer-form") |> render_change(%{"text" => "Fixture"})
+    assert has_element?(view, "#composer-confirm", "Criar no composer a tarefa “Fixture”?")
+
+    view |> element("#composer-form") |> render_submit(%{"text" => "Fixture"})
+    render_async(view, 2000)
+
+    assert has_element?(view, "#composer-receipt", "Nada entrou na fila: 1 falhou")
+
+    assert has_element?(
+             view,
+             "#composer-receipt",
+             "falhou: O GitHub respondeu com erro (HTTP 422)"
+           )
+
+    assert has_element?(view, "#composer-receipt button", "Tentar as 1 que falharam")
+    refute has_element?(view, "#flash-info")
+  end
+
+  test "successful creation reports success", %{conn: conn} do
+    Req.Test.stub(
+      @stub,
+      &Req.Test.json(&1, %{"number" => 123, "html_url" => "https://example.test/issues/123"})
+    )
+
+    {:ok, view, _} = live(conn, ~p"/?repo=fixture/composer")
+    view |> element("#open-create") |> render_click()
+    view |> element("#composer-form") |> render_change(%{"text" => "Fixture"})
+    view |> element("#composer-form") |> render_submit(%{"text" => "Fixture"})
+    render_async(view, 2000)
+
+    assert has_element?(view, "#flash-info", "Pedido #123 na fila")
+    assert has_element?(view, "#composer-receipt", "#123")
+    refute has_element?(view, "#panel-composer .ab-compose__error")
+  end
+
   test "a dictated request lands in the composer for review", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/composer")
     view |> element("#open-create") |> render_click()

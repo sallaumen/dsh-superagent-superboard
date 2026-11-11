@@ -1483,10 +1483,10 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
   test "repository form recovery does not close the current panel", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "recovery")
-    {:ok, view, _html} = live(conn, "/?repo=fixture/recovery&panel=intake")
+    {:ok, view, _html} = live(conn, "/?repo=fixture/recovery&panel=history")
     view |> element("#repo-select") |> render_change(%{"repo" => "fixture/recovery"})
     refute_patched(view)
-    assert has_element?(view, "#board-page[data-panel=intake]")
+    assert has_element?(view, "#board-page[data-panel=history]")
   end
 
   test "panels are URL state and malformed conversation links cannot open another repo's task", %{

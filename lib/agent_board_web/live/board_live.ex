@@ -189,7 +189,6 @@ defmodule AgentBoardWeb.BoardLive do
         blocker_body: "",
         blocker_pending: nil,
         intake: nil,
-        intake_draft: nil,
         composer_text: "",
         composer_title: nil,
         composer_split: false,
@@ -796,7 +795,6 @@ defmodule AgentBoardWeb.BoardLive do
             conversation: nil,
             comments: [],
             intake: nil,
-            intake_draft: nil,
             composer_text: "",
             composer_title: nil,
             composer_split: false,
@@ -2166,23 +2164,6 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("intake_draft_change", %{"text" => text} = params, socket)
-      when is_binary(text) do
-    socket = invalidate_intake_if_changed(socket, text)
-    repo = socket.assigns.repo
-    source_repo = params["source_repo"]
-
-    if repo && (is_nil(source_repo) || source_repo == to_string(repo.id)) do
-      source = if source_repo, do: :voice, else: :typed
-      {:noreply, assign(socket, :intake_draft, %{text: text, repo_id: repo.id, source: source})}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  def handle_event("intake_draft_change", _params, socket), do: {:noreply, socket}
-
-  @impl true
   def handle_event("open_composer", _params, socket) do
     # Reopening keeps the draft as it is, so a proposal or a receipt is not
     # lost; the split is a button inside the composer.
@@ -2384,70 +2365,6 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("composer_reset", _params, socket) do
     {:noreply, reset_composer(socket)}
-  end
-
-  @impl true
-  def handle_event("intake", %{"text" => text} = params, socket) when is_binary(text) do
-    socket = assign(socket, :intake, nil)
-    repo = socket.assigns.repo
-
-    cond do
-      is_nil(repo) ->
-        {:noreply, put_flash(socket, :error, gettext("Select a repository before splitting."))}
-
-      params["source_repo"] && params["source_repo"] != to_string(repo.id) ->
-        {:noreply,
-         put_flash(socket, :error, gettext("The repository changed. Review the request again."))}
-
-      socket.assigns.ai_status == :not_configured ->
-        {:noreply, put_flash(socket, :error, gettext("AI not configured. Split is unavailable."))}
-
-      String.trim(text) == "" ->
-        {:noreply, put_flash(socket, :error, gettext("Add a request before splitting."))}
-
-      true ->
-        case Intake.run(text) do
-          {:ok, result} ->
-            {:noreply, show_intake_result(socket, repo, text, params, result)}
-
-          {:error, reason} ->
-            {:noreply,
-             socket
-             |> put_flash(
-               :error,
-               gettext("The AI did not answer: %{reason}", reason: FailureText.text(reason))
-             )
-             |> refresh_ai()}
-        end
-    end
-  end
-
-  def handle_event("intake", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:intake, nil)
-     |> put_flash(:error, gettext("Add a request before splitting."))}
-  end
-
-  @impl true
-  def handle_event("create_from_intake", %{"index" => index} = params, socket) do
-    with {:ok, position} <- intake_index(index),
-         %{repo: repo} when not is_nil(repo) <- socket.assigns,
-         %{repo_id: repo_id, status: :ready} = intake <- socket.assigns.intake,
-         true <- repo_id == repo.id,
-         %{text: request_text, repo_id: ^repo_id} <- socket.assigns.intake_draft,
-         true <- request_text == intake.text,
-         task when not is_nil(task) <- Enum.at(intake.tasks, position),
-         action = %{
-           repository: repo,
-           requests: [intake_request(repo, request_text, task, intake.spec)]
-         },
-         {:ok, [{_request, {:ok, _task, _outcome}}]} <-
-           Actions.run(:create_tasks, action, ui(), confirm: params["confirm"]) do
-      {:noreply, put_flash(socket, :info, gettext("Task created: %{title}", title: task.title))}
-    else
-      _ -> {:noreply, put_flash(socket, :error, gettext("Unable to create the task"))}
-    end
   end
 
   @impl true
@@ -2908,25 +2825,11 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
-  defp show_intake_result(socket, repo, text, params, %{spec: spec, tasks: tasks, status: status}) do
-    source = if params["source_repo"], do: :voice, else: :typed
-
+  defp show_intake_result(socket, repo, text, %{spec: spec, tasks: tasks, status: status}) do
     socket
-    |> assign(
-      intake: %{spec: spec, tasks: tasks, status: status, text: text, repo_id: repo.id},
-      intake_draft: %{text: text, repo_id: repo.id, source: source}
-    )
+    |> assign(intake: %{spec: spec, tasks: tasks, status: status, text: text, repo_id: repo.id})
     |> refresh_ai()
   end
-
-  defp intake_index(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {position, ""} when position >= 0 -> {:ok, position}
-      _ -> :error
-    end
-  end
-
-  defp intake_index(_value), do: :error
 
   # The model answers on another process: the question is already on GitHub,
   # and blocking the LiveView for it freezes the whole board.
@@ -3181,31 +3084,6 @@ defmodule AgentBoardWeb.BoardLive do
         {:error, gettext("The AI did not answer: %{reason}", reason: FailureText.text(reason))}
     end
   end
-
-  # The sentence on each Create button of the intake panel (data-confirm).
-  defp intake_phrases(%{} = repo, %{status: :ready, text: text, tasks: tasks, spec: spec}),
-    do:
-      Enum.map(tasks, fn task ->
-        Actions.phrase(
-          :create_tasks,
-          %{
-            repository: repo,
-            requests: [intake_request(repo, text, task, spec)]
-          },
-          Locale.language()
-        )
-      end)
-
-  defp intake_phrases(_repo, _intake), do: []
-
-  defp intake_request(repo, text, task, spec),
-    do: %{
-      title: task.title,
-      body: IssueBody.render(task, spec),
-      key: Board.request_key(repo, "intake", [text, task.title]),
-      work_type: task.kind,
-      size: task.size
-    }
 
   @impl true
   def render(assigns) do
@@ -3795,24 +3673,6 @@ defmodule AgentBoardWeb.BoardLive do
               local_ci={@local_ci}
             />
           </BoardComponents.Concluded.history>
-        </BoardComponents.Panel.shell>
-
-        <BoardComponents.Panel.shell
-          name="intake"
-          title={gettext("Split request")}
-          active={@panel == "intake"}
-          flash={@flash}
-        >
-          <.live_component
-            :if={@repo}
-            module={BoardComponents.Intake}
-            id="intake"
-            intake={@intake}
-            draft={@intake_draft}
-            phrases={intake_phrases(@repo, @intake)}
-            repo={@repo}
-            ai_status={@ai_status}
-          />
         </BoardComponents.Panel.shell>
 
         <BoardComponents.Panel.shell
@@ -4422,7 +4282,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp finish_composer_job(socket, _job, {:ok, {:split, text, {:ok, result}}}) do
     socket
     |> assign(composer_job: nil)
-    |> show_intake_result(socket.assigns.repo, text, %{}, result)
+    |> show_intake_result(socket.assigns.repo, text, result)
     |> assign(composer_selected: all_indices(result.tasks))
   end
 

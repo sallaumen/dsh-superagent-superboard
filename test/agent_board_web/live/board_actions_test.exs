@@ -89,6 +89,39 @@ defmodule AgentBoardWeb.BoardActionsTest do
     assert %Decision{action: "ask_task", decision: "confirmed", evidence: "phrase"} = last()
   end
 
+  test "the ask shows the model's answer", %{conn: conn} = c do
+    Req.Test.stub(@stub, &Req.Test.json(&1, %{"id" => 6, "user" => %{"login" => "me"}}))
+
+    previous =
+      for key <- [:ai_engine, :ai_api_key, :ai_script],
+          do: {key, Application.get_env(:agent_board, key)}
+
+    Application.put_env(:agent_board, :ai_engine, AgentBoard.AI.Engines.Scripted)
+    Application.put_env(:agent_board, :ai_api_key, "test-key")
+
+    Application.put_env(:agent_board, :ai_script, fn %{name: :answer_question} ->
+      AgentBoard.AI.Engines.Scripted.answer(%{"answer" => "O sync roda a cada minuto."})
+    end)
+
+    on_exit(fn ->
+      for {key, value} <- previous do
+        if is_nil(value),
+          do: Application.delete_env(:agent_board, key),
+          else: Application.put_env(:agent_board, key, value)
+      end
+    end)
+
+    {view, task} = open(conn, c.task)
+    view |> element("#ask-agent") |> render_submit(%{"body" => "por que demora?"})
+    render_async(view, 2_000)
+
+    assert %Comment{github_id: 6} = Repo.get_by!(Comment, task_id: task.id)
+
+    # the model answers on another process: let it land, then render
+    Process.sleep(150)
+    assert render(view) =~ "O sync roda a cada minuto."
+  end
+
   test "answering an unblock request closes it immediately and after reload", %{conn: conn} = c do
     task = blocked_workpad(c.task)
     Req.Test.stub(@stub, &Req.Test.json(&1, %{"id" => 6, "user" => %{"login" => "me"}}))
