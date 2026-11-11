@@ -103,7 +103,11 @@ defmodule AgentBoard.Intake.IssueBody do
   task: the runner weighs the calls that arrive together as one batch, and
   three with the same text were once routed to each other's tickets.
   """
-  @spec release_comment(String.t() | nil, %{number: pos_integer(), title: String.t()}) ::
+  @spec release_comment(String.t() | nil, %{
+          required(:number) => pos_integer(),
+          required(:title) => String.t(),
+          optional(atom()) => term()
+        }) ::
           String.t()
   def release_comment(language, %{number: number, title: title}),
     do: "##{number} #{title}\n\n#{labels(language).release}" <> Executors.mention_suffix()

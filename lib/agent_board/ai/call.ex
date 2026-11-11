@@ -2,6 +2,8 @@ defmodule AgentBoard.AI.Call do
   @moduledoc "One row per model call: what was asked, what it cost, how long, and whether it parsed."
 
   use Ecto.Schema
+
+  @type t :: %__MODULE__{}
   import Ecto.Changeset
 
   @derive {Jason.Encoder,

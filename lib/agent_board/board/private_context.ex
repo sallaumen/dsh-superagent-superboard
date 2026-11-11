@@ -204,7 +204,6 @@ defmodule AgentBoard.Board.PrivateContext do
   defp each(items, fun),
     do: Enum.reduce_while(items, :ok, fn item, :ok -> fun.(item) |> continue() end)
 
-  defp continue(:ok), do: {:cont, :ok}
   defp continue({:ok, _stored}), do: {:cont, :ok}
   defp continue(error), do: {:halt, error}
 

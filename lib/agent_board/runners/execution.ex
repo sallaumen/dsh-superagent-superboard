@@ -4,6 +4,8 @@ defmodule AgentBoard.Runners.Execution do
   the worktree and the run directory whose status file the board observes.
   """
   use Ecto.Schema
+
+  @type t :: %__MODULE__{}
   import Ecto.Changeset
 
   @statuses ~w(starting running done failed stopped)

@@ -11,6 +11,8 @@ defmodule AgentBoard.Conversation.Turn do
   A summary turn compresses every turn up to `summary_through_id`.
   """
   use Ecto.Schema
+
+  @type t :: %__MODULE__{}
   import Ecto.Changeset
 
   @roles ~w(owner agent summary)

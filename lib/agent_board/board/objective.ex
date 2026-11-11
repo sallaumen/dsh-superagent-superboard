@@ -1,6 +1,8 @@
 defmodule AgentBoard.Board.Objective do
   @moduledoc "A group of tasks with one done criterion."
   use Ecto.Schema
+
+  @type t :: %__MODULE__{}
   import Ecto.Changeset
 
   schema "objectives" do
