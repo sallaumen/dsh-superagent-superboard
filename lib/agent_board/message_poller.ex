@@ -25,8 +25,11 @@ defmodule AgentBoard.MessagePoller do
 
   @impl true
   def handle_info(:poll, state) do
+    # The work comes first so the interval runs between polls: a slow GitHub
+    # hour does not queue the next tick behind this one.
+    state = if GitHub.configured?(), do: poll(state), else: state
     schedule()
-    {:noreply, if(token_available?(), do: poll(state), else: state)}
+    {:noreply, state}
   end
 
   defp schedule do
@@ -35,11 +38,6 @@ defmodule AgentBoard.MessagePoller do
       :poll,
       Application.get_env(:agent_board, :message_poll_interval, @interval)
     )
-  end
-
-  defp token_available? do
-    token = Application.get_env(:agent_board, :github_token, System.get_env("GITHUB_TOKEN", ""))
-    is_binary(token) and token != ""
   end
 
   @doc "One bounded read per active repository; errors keep the last good cursor."
