@@ -3034,15 +3034,11 @@ defmodule AgentBoardWeb.BoardLive do
         # voice in the mixed engine); otherwise it is narration.
         attention? =
           voice.attention and
-            Announcer.board_changes(
+            Announcer.attention?(
               old_board,
               socket.assigns.board,
-              old_sync,
-              socket.assigns.sync_event,
-              language: voice.language,
-              events: false,
-              needs: {old_needs, socket.assigns.work.needs}
-            ) != []
+              {old_needs, socket.assigns.work.needs}
+            )
 
         socket
         |> assign(voice_turn: socket.assigns.voice_turn + length(texts))
