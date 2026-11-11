@@ -463,12 +463,17 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
             <input name="claude_model" value={@draft["claude_model"]} />
           </label>
           <p
-            :if={@snapshot.monthly_usd == 0 and is_number(@snapshot.spent_usd)}
+            :if={@snapshot.monthly_usd == 0 and match?({:ok, _}, @snapshot.spent)}
             class="ab-executor__warning"
           >
             {gettext(
               "No monthly cap: this month already adds up to %{amount} at list price. The caps use the same account.",
-              amount: money(@snapshot.spent_usd)
+              amount: money(elem(@snapshot.spent, 1))
+            )}
+          </p>
+          <p :if={@snapshot.spent == {:error, :budget_unknown}} class="ab-executor__warning">
+            {sentence(
+              gettext("This month's spend has a model without a price; the ceiling cannot be checked")
             )}
           </p>
         <% end %>
@@ -740,6 +745,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
     do: value |> :erlang.float_to_binary(decimals: 0) |> String.replace(".", ",")
 
   defp percent(value), do: to_string(value)
+
+  # The gate's reason reads after a colon; alone in a paragraph it opens a sentence.
+  defp sentence(<<first::utf8, rest::binary>>), do: String.upcase(<<first::utf8>>) <> rest
 
   defp money(value) when is_float(value), do: money_micros(round(value * 1_000_000))
 
