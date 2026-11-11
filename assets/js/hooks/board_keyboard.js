@@ -1,5 +1,24 @@
 // The board's one keyboard map. It never steals keys while a field or a
 // dialog owns them; Escape belongs to the layer, not here.
+
+// The composer arrives through a LiveView round trip, and BoardPanels
+// announces every panel update with board:voice-context. Start the voice on
+// the update that shows the composer open; after the deadline give up
+// quietly rather than start against whatever is on screen.
+export const startVoiceWhenComposerOpens = (win = window, doc = document, deadline = 2000) => {
+  const stop = () => {
+    clearTimeout(timer)
+    win.removeEventListener("board:voice-context", onContext)
+  }
+  const onContext = () => {
+    if (!doc.querySelector("#panel-composer[open]")) return
+    stop()
+    win.dispatchEvent(new Event("board:voice-start"))
+  }
+  const timer = setTimeout(stop, deadline)
+  win.addEventListener("board:voice-context", onContext)
+}
+
 export const BoardKeyboard = {
   mounted() {
     this.onKey = event => this.handle(event)
@@ -57,7 +76,7 @@ export const BoardKeyboard = {
         window.dispatchEvent(new Event("board:voice-start"))
       } else {
         document.querySelector("#open-create")?.click()
-        setTimeout(() => window.dispatchEvent(new Event("board:voice-start")), 350)
+        startVoiceWhenComposerOpens()
       }
       return
     }
