@@ -87,7 +87,7 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
           <div :if={task.step} class="ab-run__step">
             <span class="ab-meta">{if @frozen, do: gettext("last step seen"), else: gettext("now")}</span>
             <code>{task.step.code}</code>
-            <span :if={task.step.note} class="ab-meta">{task.step.note}</span>
+            <span :if={task.step.note} class="ab-meta ab-run__note" title={task.step.note}>{task.step.note}</span>
           </div>
 
           <div :if={task.phases != []} class="ab-phases" aria-label={gettext("Stages")}>
