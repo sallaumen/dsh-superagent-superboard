@@ -39,8 +39,7 @@ defmodule AgentBoard.Announcer do
   def board_changes(old_board, new_board, old_sync, new_sync, opts \\ []) do
     lang = Keyword.get(opts, :language, Phrases.default_language())
     turn = Keyword.get(opts, :turn, 0)
-    {attention, moves} = state_changes(old_board, new_board)
-    attention = attention ++ silence_changes(Keyword.get(opts, :needs))
+    {attention, moves} = changes(old_board, new_board, Keyword.get(opts, :needs))
 
     attention = if Keyword.get(opts, :attention, true), do: attention, else: []
 
@@ -53,6 +52,16 @@ defmodule AgentBoard.Announcer do
     |> Enum.take(@max_per_update)
     |> Enum.with_index(turn)
     |> Enum.map(fn {item, i} -> text(item, lang, i) end)
+  end
+
+  @doc """
+  Whether a board change calls for the owner: a task entered a lane that
+  needs them, or a silence appeared in `needs` (`{old, new}`, as in
+  `board_changes/5`). The sync outcomes are never a call.
+  """
+  def attention?(old_board, new_board, needs \\ nil) do
+    {attention, _moves} = changes(old_board, new_board, needs)
+    attention != []
   end
 
   @doc "The texts of one update as a single utterance."
@@ -75,6 +84,12 @@ defmodule AgentBoard.Announcer do
   defp text({:moved, state, title}, lang, turn), do: Phrases.moved(lang, state, title, turn)
   defp text(:sync_failed, lang, _turn), do: Phrases.sync_failed(lang)
   defp text({:sync_errors, n}, lang, _turn), do: Phrases.sync_errors(lang, n)
+
+  # The calls for attention (lanes, then silences) and the plain moves.
+  defp changes(old_board, new_board, needs) do
+    {attention, moves} = state_changes(old_board, new_board)
+    {attention ++ silence_changes(needs), moves}
+  end
 
   # A move between two live lanes is news; appearing, vanishing or moving
   # into the merged history is not (the acting user already heard that).

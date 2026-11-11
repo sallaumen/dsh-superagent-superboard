@@ -128,6 +128,12 @@ defmodule AgentBoardWeb.BoardControllerTest do
     assert error =~ "executor"
   end
 
+  test "POST /api/tasks is 404 for an untracked repository", %{conn: conn} do
+    conn = post(conn, "/api/tasks", %{repo: "nobody/nothing", title: "A task"})
+
+    assert %{"error" => "repository not tracked"} = json_response(conn, 404)
+  end
+
   test "POST /api/tasks with a sentence for other values is refused", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
 

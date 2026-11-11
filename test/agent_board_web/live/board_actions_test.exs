@@ -59,6 +59,15 @@ defmodule AgentBoardWeb.BoardActionsTest do
     assert %Decision{action: "stop_task", decision: "refused", detail: "unconfirmed"} = last()
   end
 
+  test "an id that is not a number is refused, and the view stays up", %{conn: conn} = c do
+    {view, _task} = open(conn, c.task)
+
+    render_hook(view, "act", %{"id" => "abc", "action" => "archive"})
+
+    assert has_element?(view, "#flash-error", "Não foi possível atualizar a tarefa")
+    assert has_element?(view, "#conversation")
+  end
+
   test "Parar shows the registry's sentence, the one the voice says", %{conn: conn} = c do
     {view, task} = open(conn, c.task)
 

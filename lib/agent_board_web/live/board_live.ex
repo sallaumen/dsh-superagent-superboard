@@ -2,8 +2,6 @@ defmodule AgentBoardWeb.BoardLive do
   @moduledoc "The board: the columns, the repositories and the tasks, live."
   use AgentBoardWeb, :live_view
 
-  import Ecto.Query, warn: false
-
   alias AgentBoard.{
     Actions,
     AgentAccess,
@@ -1370,7 +1368,7 @@ defmodule AgentBoardWeb.BoardLive do
     owner = String.trim(owner)
     name = String.trim(name)
     path = String.trim(params["path"] || "")
-    path = if path == "", do: default_checkout_path(name), else: Path.expand(path)
+    path = if path == "", do: Path.expand("~/projects/#{name}"), else: Path.expand(path)
     workers = worker_count(params["workers"])
 
     with {:ok, _} <- Actions.run(:add_repository, %{owner: owner, name: name}, ui()),
@@ -1704,27 +1702,10 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("add", %{"owner" => owner, "name" => name}, socket) do
-    case Actions.run(:add_repository, %{owner: owner, name: name}, ui()) do
-      {:ok, _} ->
-        repos = Board.list_repositories()
-        repo = Enum.find(repos, &(&1.owner == owner and &1.name == name))
-        {:noreply, socket |> assign(:repos, repos) |> load(repo)}
-
-      {:error, _} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Could not track %{repo}", repo: "#{owner}/#{name}"))}
-    end
-  end
-
-  @impl true
   def handle_event("act", %{"id" => id, "action" => action} = params, socket) do
-    {task_id, _} = Integer.parse(id)
+    task_id = Board.parse_id(id)
     repo = socket.assigns.repo
-
-    task =
-      repo &&
-        Board.task_of(repo, task_id)
+    task = if repo && is_integer(task_id), do: Board.task_of(repo, task_id)
 
     # Stop is red: it runs only with the sentence its confirmation showed.
     result =
@@ -2900,14 +2881,6 @@ defmodule AgentBoardWeb.BoardLive do
   defp save_setting(setting, value),
     do: Actions.run(:change_setting, %{setting: setting, value: value}, ui())
 
-  defp default_checkout_path(name) do
-    candidate = Path.expand("~/projects/#{name}")
-
-    if File.dir?(candidate) and File.exists?(Path.join(candidate, ".git")),
-      do: candidate,
-      else: candidate
-  end
-
   defp ui, do: Actions.owner(:ui)
 
   defp save_voice_pref(socket, :ok) do
@@ -2954,15 +2927,11 @@ defmodule AgentBoardWeb.BoardLive do
         # voice in the mixed engine); otherwise it is narration.
         attention? =
           voice.attention and
-            Announcer.board_changes(
+            Announcer.attention?(
               old_board,
               socket.assigns.board,
-              old_sync,
-              socket.assigns.sync_event,
-              language: voice.language,
-              events: false,
-              needs: {old_needs, socket.assigns.work.needs}
-            ) != []
+              {old_needs, socket.assigns.work.needs}
+            )
 
         socket
         |> assign(voice_turn: socket.assigns.voice_turn + length(texts))
