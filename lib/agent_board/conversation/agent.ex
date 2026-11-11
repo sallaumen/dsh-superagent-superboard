@@ -538,7 +538,7 @@ defmodule AgentBoard.Conversation.Agent do
   # the owner named it, for the router's line.
   defp new_task(json, request, repo, lang) do
     requested = if Executors.valid?(json["executor"]), do: json["executor"]
-    routed = Routing.plan(repo, %{}, requested, "voice", Routing.Signals.read())
+    routed = Routing.plan(repo, %{}, requested, "voice", Routing.Signals.read_for(repo))
 
     %{
       "kind" => "create_task",
