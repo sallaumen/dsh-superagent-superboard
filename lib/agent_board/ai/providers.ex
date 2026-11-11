@@ -148,18 +148,20 @@ defmodule AgentBoard.AI.Providers do
          {tier, ^model} <- Enum.find(models, fn {_tier, id} -> id == model end),
          %{input: input_price, output: output_price} = price <- Map.get(prices, tier) do
       peak? = peak?(at)
-      full_rate = fn tokens -> at_full_rate(tokens, if(peak?, do: tokens, else: 0), price) end
       cached = min(cached_tokens, input_tokens)
 
       round(
-        full_rate.(input_tokens - cached) * input_price +
-          full_rate.(cached) * Map.get(price, :cache_read, input_price) +
-          full_rate.(output_tokens) * output_price
+        call_tokens(input_tokens - cached, peak?, price) * input_price +
+          call_tokens(cached, peak?, price) * Map.get(price, :cache_read, input_price) +
+          call_tokens(output_tokens, peak?, price) * output_price
       )
     else
       _ -> 0
     end
   end
+
+  defp call_tokens(tokens, true, price), do: at_full_rate(tokens, tokens, price)
+  defp call_tokens(tokens, false, price), do: at_full_rate(tokens, 0, price)
 
   @doc "The first provider with a key, in order -- nil when none has one."
   @spec configured() :: id() | nil
