@@ -1041,7 +1041,9 @@ that watches one GitHub repository and picks the issues whose body mentions
 
 `AgentBoard.Routing.suggest/2` is pure: rules in the plan's order
 (`docs/research/alfred.md`, 3.5), no model, a suggestion and never a
-dispatch.
+dispatch. Its signals are read per repository (`Routing.Signals.read_for/1`):
+the pause, the load and an outage are those of the agent that serves the
+repository (`Orchestrator.client_for/1`), never another project's.
 
 | Rule | Signal | Effect |
 |---|---|---|
