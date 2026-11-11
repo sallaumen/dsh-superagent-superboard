@@ -926,49 +926,47 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
   end
 
-  test "a model that never answers times out, and its late answer is dropped", %{conn: conn} do
+  test "a model that never answers times out", %{conn: conn} do
     github()
-    Application.put_env(:agent_board, :composer_timeout_ms, 60)
+    Application.put_env(:agent_board, :composer_timeout_ms, 200)
 
-    script(fn _request ->
-      Process.sleep(400)
-      Scripted.answer(@refined)
-    end)
+    # The timeout cancels the job, which kills the model's task: there is no
+    # late answer to drop, and render_async returns once the task is gone.
+    script(fn _request -> Process.sleep(:infinity) end)
 
     view = open_composer(conn)
     type(view, "Pedido que demora")
     view |> element("#composer-split") |> render_click()
 
     assert has_element?(view, "#composer-progress", "Dividindo")
-    Process.sleep(120)
+    render_async(view, 1_000)
 
     assert has_element?(view, "#composer-error", "não terminou em 0 s")
     assert has_element?(view, "#composer-error button", "Tentar de novo")
     refute has_element?(view, "#composer-progress")
-
-    Process.sleep(400)
     refute has_element?(view, "#composer-form", "Vai virar")
-    assert has_element?(view, "#composer-error")
   end
 
   test "cancelling a split drops its result and frees the form", %{conn: conn} do
     github()
+    test_pid = self()
 
     script(fn _request ->
-      Process.sleep(300)
-      Scripted.answer(@refined)
+      send(test_pid, :splitting)
+      Process.sleep(:infinity)
     end)
 
     view = open_composer(conn)
     type(view, "Pedido cancelado no meio")
     view |> element("#composer-split") |> render_click()
+    assert_receive :splitting, 2_000
     assert has_element?(view, "#composer-progress button", "Cancelar")
 
     view |> element("#composer-progress button", "Cancelar") |> render_click()
 
     refute has_element?(view, "#composer-progress")
     refute has_element?(view, "#composer-form button.ab-btn--primary[disabled]")
-    Process.sleep(350)
+    render_async(view, 1_000)
     refute has_element?(view, "#composer-form", "Vai virar")
   end
 
@@ -1051,11 +1049,15 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
 
   test "a second submit while the first is in flight does nothing", %{conn: conn} do
     counter = github()
+    test_pid = self()
 
     script(fn
       %{name: :refine_request} ->
-        Process.sleep(150)
-        Scripted.answer(@refined)
+        send(test_pid, {:refining, self()})
+
+        receive do
+          :answer -> Scripted.answer(@refined)
+        end
 
       %{name: :propose_tasks} ->
         Scripted.answer(@tasks)
@@ -1064,7 +1066,12 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     view = open_composer(conn)
     type(view, "Clique duplo")
     view |> element("#composer-split") |> render_click()
+    assert_receive {:refining, model}, 2_000
+
     view |> element("#composer-form") |> render_submit(%{"text" => "Clique duplo"})
+    assert has_element?(view, "#composer-progress", "Dividindo")
+
+    send(model, :answer)
     render_async(view, 2000)
 
     assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")

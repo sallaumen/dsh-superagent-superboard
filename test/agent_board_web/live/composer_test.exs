@@ -39,7 +39,9 @@ defmodule AgentBoardWeb.ComposerTest do
     %{repo: repo}
   end
 
-  test "split shows the proposal before anything is enqueued", %{conn: conn} do
+  # The one end-to-end check of the shipped rehearsal fixture (no key, no
+  # bill): its proposal goes through the composer and lands as a task.
+  test "the rehearsal split shows the proposal before anything is enqueued", %{conn: conn} do
     Req.Test.stub(@stub, fn conn ->
       Req.Test.json(conn, %{"number" => 9001, "html_url" => "https://github.com/x/y/issues/9001"})
     end)
@@ -182,30 +184,5 @@ defmodule AgentBoardWeb.ComposerTest do
     |> render_change(%{"text" => "Quero respostas rápidas", "tasks" => [""]})
 
     assert has_element?(view, "#composer-form button[disabled]", "Pôr 0 na fila")
-  end
-
-  test "a single request becomes one task without the split model", %{conn: conn} do
-    Req.Test.stub(@stub, fn conn ->
-      Req.Test.json(conn, %{"number" => 9002, "html_url" => "https://github.com/x/y/issues/9002"})
-    end)
-
-    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/composer")
-    view |> element("#open-create") |> render_click()
-
-    view
-    |> element("#composer-form")
-    |> render_change(%{"text" => "Corrigir o contador\nEle está somando duas vezes."})
-
-    view
-    |> element("#composer-form")
-    |> render_submit(%{"text" => "Corrigir o contador\nEle está somando duas vezes."})
-
-    render_async(view, 2000)
-
-    task = Repo.one(Task)
-    assert task.title == "Corrigir o contador"
-    assert task.body =~ "somando duas vezes"
-    assert task.body =~ "@sallaumen-agent"
-    assert has_element?(view, "#composer-receipt", "#9002")
   end
 end

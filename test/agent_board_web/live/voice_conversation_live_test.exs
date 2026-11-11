@@ -154,9 +154,11 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     script(fn %{name: :voice_agent, prompt: prompt} ->
       # The memory carries the first utterance too: match the utterance field.
       if prompt =~ ~r/"utterance":\s*"primeira pergunta"/ do
-        send(test_pid, :first_started)
-        Process.sleep(300)
-        reply("Resposta velha.")
+        send(test_pid, {:first_started, self()})
+
+        receive do
+          :answer -> reply("Resposta velha.")
+        end
       else
         reply("Resposta nova.")
       end
@@ -164,10 +166,13 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
     view = board(conn)
     render_hook(view, "voice_turn", %{"text" => "primeira pergunta"})
-    assert_receive :first_started, 1_000
+    assert_receive {:first_started, first}, 1_000
     render_hook(view, "voice_turn", %{"text" => "segunda pergunta"})
     render_async(view, 1_000)
-    Process.sleep(400)
+
+    # The superseded turn's answer, if its task is still alive, is dropped.
+    send(first, :answer)
+    render_async(view, 1_000)
 
     assert_push_event(view, "voice_play", %{url: url}, 1_000)
     assert spoken(url) == "Resposta nova."
@@ -177,17 +182,15 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
   test "a turn that takes too long is dropped and said so", %{conn: conn} do
     Application.put_env(:agent_board, :voice_turn_timeout_ms, 50)
 
-    script(fn %{name: :voice_agent} ->
-      Process.sleep(400)
-      reply("Tarde demais.")
-    end)
+    # The timeout cancels the turn, which kills the model's task.
+    script(fn %{name: :voice_agent} -> Process.sleep(:infinity) end)
 
     view = board(conn)
     render_hook(view, "voice_turn", %{"text" => "oi"})
 
     assert_push_event(view, "voice_play", %{url: url}, 1_000)
     assert spoken(url) == "Demorei demais e parei. Pode me pedir de novo."
-    Process.sleep(450)
+    render_async(view, 1_000)
     refute_push_event(view, "voice_play", %{url: _}, 100)
   end
 
@@ -262,17 +265,17 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
   test "Escape while the agent thinks drops the turn without a reply", %{conn: conn} do
     test_pid = self()
 
+    # Esc cancels the turn, which kills the model's task.
     script(fn %{name: :voice_agent} ->
       send(test_pid, :thinking)
-      Process.sleep(300)
-      reply("Tarde demais.")
+      Process.sleep(:infinity)
     end)
 
     view = board(conn)
     render_hook(view, "voice_turn", %{"text" => "oi"})
     assert_receive :thinking, 1_000
     render_hook(view, "voice_cancel_turn", %{})
-    Process.sleep(400)
+    render_async(view, 1_000)
 
     refute_push_event(view, "voice_play", %{url: _}, 100)
   end
