@@ -1,6 +1,8 @@
 defmodule AgentBoard.Board.Comment do
   @moduledoc "A message in the conversation: a GitHub comment on the task's issue."
   use Ecto.Schema
+
+  @type t :: %__MODULE__{}
   import Ecto.Changeset
 
   schema "comments" do

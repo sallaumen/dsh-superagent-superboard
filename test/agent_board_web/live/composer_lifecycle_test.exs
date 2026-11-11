@@ -491,8 +491,8 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     refute body =~ "board-attachments"
 
     repo = Board.repository_by_slug("fixture/lifecycle")
-    dir = PrivateContext.request_dir(repo, "Refazer a tela de login")
-    path = PrivateContext.path(repo, dir)
+    [dir] = File.ls!(Path.join([PrivateContext.root(), "fixture", "lifecycle"]))
+    path = PrivateContext.shared_path(repo, dir)
     assert body =~ "## Contexto privado"
     assert body =~ path
 

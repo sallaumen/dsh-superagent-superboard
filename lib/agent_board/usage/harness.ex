@@ -47,7 +47,14 @@ defmodule AgentBoard.Usage.Harness do
           cache_read: non_neg_integer(),
           cache_write: non_neg_integer(),
           model: String.t() | nil,
-          subagent?: boolean()
+          subagent?: boolean(),
+          peak: %{
+            input: non_neg_integer(),
+            output: non_neg_integer(),
+            cache_read: non_neg_integer()
+          },
+          timed?: boolean(),
+          parts: [map()] | nil
         }
   @type t :: %{
           status: :measured | :none | :unavailable,

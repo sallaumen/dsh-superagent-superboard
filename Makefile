@@ -8,9 +8,10 @@ help: ## Lista os alvos; contratos em PIPELINES.md
 	@echo "Alvos: backend frontend library release coverage check"
 	@echo "Quando usar, pré-requisitos e efeitos: PIPELINES.md"
 
-backend: ## Gates do backend e scan de segurança
+backend: ## Gates do backend, scan de segurança e Dialyzer
 	MIX_ENV=test mix gate
 	MIX_ENV=test mix sobelow --exit
+	MIX_ENV=test mix dialyzer
 
 frontend: ## Pipeline de assets: checks, instala ferramentas, compila e digere
 	bash scripts/check_assets.sh

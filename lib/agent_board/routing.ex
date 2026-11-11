@@ -72,7 +72,11 @@ defmodule AgentBoard.Routing do
   of the signals and the door that decided (`composer`, `voice`, `api`).
   """
   @spec plan(
-          %{required(:owner) => String.t(), required(:name) => String.t()},
+          %{
+            required(:owner) => String.t(),
+            required(:name) => String.t(),
+            optional(atom()) => term()
+          },
           map(),
           String.t() | nil,
           String.t(),
