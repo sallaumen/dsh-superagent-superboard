@@ -8298,6 +8298,12 @@ msgid "Ready"
 msgstr "Pronto"
 
 
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Set, not checked"
+msgstr "Definido, não verificado"
+
 #: lib/agent_board_web/live/board_components/settings/setup.ex
 #, elixir-autogen, elixir-format
 msgid "Missing"

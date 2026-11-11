@@ -8305,6 +8305,11 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/setup.ex
 #, elixir-autogen, elixir-format
+msgid "Set, not checked"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
 msgid "%{count} ready"
 msgid_plural "%{count} ready"
 msgstr[0] ""
