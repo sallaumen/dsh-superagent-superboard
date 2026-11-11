@@ -802,6 +802,17 @@ defmodule AgentBoard.ActionsTest do
                )
     end
 
+    test "a health check that gives up is a slow boot, not a failed one", %{owner: owner} do
+      params = %{opts: [starter: fn -> {"Startup health check timed out after 60s", 1} end]}
+
+      assert {:ok, text} =
+               Actions.run(:start_agent, params, owner,
+                 confirm: Actions.phrase(:start_agent, %{})
+               )
+
+      assert text =~ "ainda não respondeu"
+    end
+
     test "start_agent runs the manager after the confirmation", %{owner: owner} do
       test_pid = self()
       params = %{opts: [starter: fn -> send(test_pid, :started) && {"ok", 0} end]}
