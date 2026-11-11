@@ -759,7 +759,7 @@ msgstr ""
 msgid "Resume"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:526
+#: lib/agent_board/lanes.ex:491
 #: lib/agent_board_web/live/board_components/composer.ex:89
 #: lib/agent_board_web/live/board_components/needs_you.ex:167
 #: lib/agent_board_web/live/board_components/today.ex:366
@@ -1587,7 +1587,7 @@ msgid_plural "%{count} tasks queued"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board/lanes.ex:1032
+#: lib/agent_board/lanes.ex:997
 #: lib/agent_board_web/live/board_components/daily_summary.ex:119
 #: lib/agent_board_web/live/board_components/repo_rail.ex:76
 #, elixir-autogen, elixir-format
@@ -1778,7 +1778,7 @@ msgstr ""
 msgid "GitHub (PRs, CI)"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:970
+#: lib/agent_board/lanes.ex:935
 #: lib/agent_board_web/live/board_components/inspector.ex:1173
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions failed (billing/no credit); no evidence of local CI."
@@ -2158,7 +2158,7 @@ msgstr ""
 msgid "age unknown"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:981
+#: lib/agent_board/lanes.ex:946
 #: lib/agent_board_web/live/board_components/inspector.ex:1191
 #: lib/agent_board_web/live/board_components/presentation.ex:15
 #, elixir-autogen, elixir-format
@@ -2239,7 +2239,7 @@ msgstr ""
 msgid "main advanced: 1 commit"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:983
+#: lib/agent_board/lanes.ex:948
 #: lib/agent_board_web/live/board_components/inspector.ex:1193
 #: lib/agent_board_web/live/board_components/presentation.ex:22
 #, elixir-autogen, elixir-format
@@ -2591,7 +2591,7 @@ msgstr ""
 msgid "Parallelism"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:527
+#: lib/agent_board/lanes.ex:492
 #: lib/agent_board_web/live/board_components/today.ex:365
 #, elixir-autogen, elixir-format
 msgid "Respond"
@@ -2970,7 +2970,7 @@ msgstr ""
 msgid "GitHub Actions did not run (billing/no credit). "
 msgstr ""
 
-#: lib/agent_board/lanes.ex:923
+#: lib/agent_board/lanes.ex:888
 #: lib/agent_board_web/live/board_components/inspector.ex:1175
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions passed."
@@ -3315,7 +3315,7 @@ msgstr ""
 msgid "API key missing"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:923
+#: lib/agent_board/lanes.ex:888
 #: lib/agent_board_web/live/board_components/inspector.ex:1156
 #, elixir-autogen, elixir-format
 msgid "CI passed"
@@ -3331,14 +3331,14 @@ msgstr ""
 msgid "Dispatch to %{executor}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:910
+#: lib/agent_board/lanes.ex:875
 #: lib/agent_board_web/live/board_components/inspector.ex:1148
 #: lib/agent_board_web/live/board_components/inspector.ex:1153
 #, elixir-autogen, elixir-format
 msgid "Local CI failed"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:906
+#: lib/agent_board/lanes.ex:871
 #: lib/agent_board_web/live/board_components/inspector.ex:1152
 #: lib/agent_board_web/live/board_components/merge_log.ex:166
 #: lib/agent_board_web/live/board_components/needs_you.ex:84
@@ -3346,8 +3346,8 @@ msgstr ""
 msgid "Local CI passed"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:916
-#: lib/agent_board/lanes.ex:919
+#: lib/agent_board/lanes.ex:881
+#: lib/agent_board/lanes.ex:884
 #: lib/agent_board_web/live/board_components/inspector.ex:1154
 #: lib/agent_board_web/live/board_components/inspector.ex:1155
 #, elixir-autogen, elixir-format
@@ -3408,7 +3408,7 @@ msgstr ""
 msgid "merged"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:929
+#: lib/agent_board/lanes.ex:894
 #: lib/agent_board_web/live/board_components/inspector.ex:1157
 #, elixir-autogen, elixir-format
 msgid "no CI"
@@ -3431,7 +3431,7 @@ msgstr ""
 msgid "retrying"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:980
+#: lib/agent_board/lanes.ex:945
 #: lib/agent_board_web/live/board_components/inspector.ex:1190
 #, elixir-autogen, elixir-format
 msgid "reviewed"
@@ -4691,8 +4691,8 @@ msgstr ""
 msgid "No one with access"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:495
-#: lib/agent_board/lanes.ex:1240
+#: lib/agent_board/lanes.ex:485
+#: lib/agent_board/lanes.ex:1205
 #: lib/agent_board_web/live/board_components/settings/project_access.ex:268
 #, elixir-autogen, elixir-format
 msgid "and"
@@ -5474,12 +5474,12 @@ msgstr ""
 msgid "approved"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:926
+#: lib/agent_board/lanes.ex:891
 #, elixir-autogen, elixir-format
 msgid "CI running"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:982
+#: lib/agent_board/lanes.ex:947
 #: lib/agent_board_web/live/board_components/presentation.ex:16
 #, elixir-autogen, elixir-format
 msgid "review pending"
@@ -5549,7 +5549,7 @@ msgstr ""
 msgid "Filter messages"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:792
+#: lib/agent_board/lanes.ex:757
 #: lib/agent_board_web/live/board_components/message_hub.ex:66
 #, elixir-autogen, elixir-format
 msgid "All"
@@ -6113,207 +6113,207 @@ msgstr ""
 msgid "**Ready for review**, PR not identified by the board. Open the conversation."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:354
-#: lib/agent_board/lanes.ex:357
+#: lib/agent_board/lanes.ex:349
+#: lib/agent_board/lanes.ex:352
 #, elixir-autogen, elixir-format
 msgid "**The agent asked:** %{question}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:360
+#: lib/agent_board/lanes.ex:355
 #, elixir-autogen, elixir-format
 msgid "**The agent is waiting for your answer.** Open the conversation and reply."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:377
+#: lib/agent_board/lanes.ex:372
 #, elixir-autogen, elixir-format
 msgid "**Last signal %{ago}.**"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:415
-#: lib/agent_board/lanes.ex:418
+#: lib/agent_board/lanes.ex:405
+#: lib/agent_board/lanes.ex:408
 #, elixir-autogen, elixir-format
 msgid "**Blocked:** %{reason}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:421
+#: lib/agent_board/lanes.ex:411
 #, elixir-autogen, elixir-format
 msgid "**Blocked**, with no reason in the agent's report. Open the details."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:427
+#: lib/agent_board/lanes.ex:417
 #, elixir-autogen, elixir-format
 msgid "The agent's last report was at %{time}; no signal in the worktree since then."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:436
+#: lib/agent_board/lanes.ex:426
 #, elixir-autogen, elixir-format
 msgid "The last change in the worktree was at %{time}; no report after it."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:440
+#: lib/agent_board/lanes.ex:430
 #, elixir-autogen, elixir-format
 msgid "It started at %{time} and has given no signal since: no report and no change in the worktree."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:449
+#: lib/agent_board/lanes.ex:439
 #, elixir-autogen, elixir-format
 msgid "Open PR #%{number}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:459
+#: lib/agent_board/lanes.ex:449
 #, elixir-autogen, elixir-format
 msgid "Call again"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:528
-#: lib/agent_board/lanes.ex:529
-#: lib/agent_board/lanes.ex:530
-#: lib/agent_board/lanes.ex:531
+#: lib/agent_board/lanes.ex:493
+#: lib/agent_board/lanes.ex:494
+#: lib/agent_board/lanes.ex:495
+#: lib/agent_board/lanes.ex:496
 #, elixir-autogen, elixir-format
 msgid "View details"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:532
+#: lib/agent_board/lanes.ex:497
 #, elixir-autogen, elixir-format
 msgid "View failure"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:642
+#: lib/agent_board/lanes.ex:607
 #, elixir-autogen, elixir-format
 msgid "unblocks #%{number}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:645
+#: lib/agent_board/lanes.ex:610
 #, elixir-autogen, elixir-format
 msgid "split from #%{number}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:662
+#: lib/agent_board/lanes.ex:627
 #, elixir-autogen, elixir-format
 msgid "Looks like a repeat of #%{number}, already merged"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:679
+#: lib/agent_board/lanes.ex:644
 #, elixir-autogen, elixir-format
 msgid "waiting for its dependencies"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:680
+#: lib/agent_board/lanes.ex:645
 #, elixir-autogen, elixir-format
 msgid "waiting for %{tasks}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:714
+#: lib/agent_board/lanes.ex:679
 #, elixir-autogen, elixir-format
 msgid "called %{ago}, waiting for the agent"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:733
+#: lib/agent_board/lanes.ex:698
 #, elixir-autogen, elixir-format
 msgid "entered the agent's queue %{ago}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:736
+#: lib/agent_board/lanes.ex:701
 #, elixir-autogen, elixir-format
 msgid "in the agent's queue"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:744
+#: lib/agent_board/lanes.ex:709
 #, elixir-autogen, elixir-format
 msgid "the call to the agent did not complete"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:748
+#: lib/agent_board/lanes.ex:713
 #, elixir-autogen, elixir-format
 msgid "called %{ago}, the agent did not start"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:793
+#: lib/agent_board/lanes.ex:758
 #, elixir-autogen, elixir-format
 msgctxt "queue filter"
 msgid "New"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:794
+#: lib/agent_board/lanes.ex:759
 #, elixir-autogen, elixir-format
 msgctxt "queue filter"
 msgid "Split"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:795
+#: lib/agent_board/lanes.ex:760
 #, elixir-autogen, elixir-format
 msgid "Possible repeats"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:926
+#: lib/agent_board/lanes.ex:891
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions is still running."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:929
+#: lib/agent_board/lanes.ex:894
 #, elixir-autogen, elixir-format
 msgid "No remote check configured."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:941
+#: lib/agent_board/lanes.ex:906
 #, elixir-autogen, elixir-format
 msgid "%{remote} (billing/no credit on GitHub)."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:946
+#: lib/agent_board/lanes.ex:911
 #, elixir-autogen, elixir-format
 msgid "%{prefix} Local CI passed%{scope}: %{detail}"
 msgstr ""
 
-#: lib/agent_board/board.ex:988
-#: lib/agent_board/lanes.ex:953
+#: lib/agent_board/board.ex:1027
+#: lib/agent_board/lanes.ex:918
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions failed"
 msgstr ""
 
-#: lib/agent_board/board.ex:995
-#: lib/agent_board/lanes.ex:954
+#: lib/agent_board/board.ex:1034
+#: lib/agent_board/lanes.ex:919
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions passed"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:955
+#: lib/agent_board/lanes.ex:920
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions is still running"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:956
+#: lib/agent_board/lanes.ex:921
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions has no checks"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:961
+#: lib/agent_board/lanes.ex:926
 #, elixir-autogen, elixir-format
 msgid "on the ticket (report cites #%{number}; this PR is from the same work)"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:973
+#: lib/agent_board/lanes.ex:938
 #, elixir-autogen, elixir-format
 msgid "GitHub Actions failed on %{checks} (billing/no credit); no evidence of local CI."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1012
-#: lib/agent_board/lanes.ex:1175
+#: lib/agent_board/lanes.ex:977
+#: lib/agent_board/lanes.ex:1140
 #, elixir-autogen, elixir-format
 msgid "After that, we do not know."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1026
+#: lib/agent_board/lanes.ex:991
 #, elixir-autogen, elixir-format
 msgid "%{count} running"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1028
+#: lib/agent_board/lanes.ex:993
 #, elixir-autogen, elixir-format
 msgid "%{count} in automatic retry"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1039
+#: lib/agent_board/lanes.ex:1004
 #, elixir-autogen, elixir-format
 msgctxt "digest"
 msgid "%{count} blocked"
@@ -6321,95 +6321,95 @@ msgid_plural "%{count} blocked"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board/lanes.ex:1043
+#: lib/agent_board/lanes.ex:1008
 #, elixir-autogen, elixir-format
 msgid "%{count} in the queue"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1058
+#: lib/agent_board/lanes.ex:1023
 #, elixir-autogen, elixir-format
 msgid "we do not know what changed"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1059
+#: lib/agent_board/lanes.ex:1024
 #, elixir-autogen, elixir-format
 msgid "nothing changed"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1144
+#: lib/agent_board/lanes.ex:1109
 #, elixir-autogen, elixir-format
 msgid "it asked %{count} question"
 msgid_plural "it asked %{count} questions"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board/lanes.ex:1161
+#: lib/agent_board/lanes.ex:1126
 #, elixir-autogen, elixir-format
 msgid "Until %{time}:"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1163
+#: lib/agent_board/lanes.ex:1128
 #, elixir-autogen, elixir-format
 msgid "Without a completed sync:"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1164
+#: lib/agent_board/lanes.ex:1129
 #, elixir-autogen, elixir-format
 msgid "First visit:"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1167
+#: lib/agent_board/lanes.ex:1132
 #, elixir-autogen, elixir-format
 msgid "Until %{time},"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1170
+#: lib/agent_board/lanes.ex:1135
 #, elixir-autogen, elixir-format
 msgid "Without a completed sync,"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1173
+#: lib/agent_board/lanes.ex:1138
 #, elixir-autogen, elixir-format
 msgid "Since %{since}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1179
+#: lib/agent_board/lanes.ex:1144
 #, elixir-autogen, elixir-format
 msgid "%{count} new in the queue"
 msgid_plural "%{count} new in the queue"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board/lanes.ex:1183
+#: lib/agent_board/lanes.ex:1148
 #, elixir-autogen, elixir-format
 msgid "the agent merged %{count} PR"
 msgid_plural "the agent merged %{count} PRs"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board/lanes.ex:1189
+#: lib/agent_board/lanes.ex:1154
 #, elixir-autogen, elixir-format
 msgid "it opened %{count} PR for review"
 msgid_plural "it opened %{count} PRs for review"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board/lanes.ex:1197
+#: lib/agent_board/lanes.ex:1162
 #, elixir-autogen, elixir-format
 msgid "it is working on #%{number}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1204
+#: lib/agent_board/lanes.ex:1169
 #, elixir-autogen, elixir-format
 msgid "it is working on %{count} tasks"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1209
+#: lib/agent_board/lanes.ex:1174
 #, elixir-autogen, elixir-format
 msgid "#%{number} is still blocked"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:1216
+#: lib/agent_board/lanes.ex:1181
 #, elixir-autogen, elixir-format
 msgid "%{count} are still blocked"
 msgstr ""
@@ -6429,86 +6429,86 @@ msgstr ""
 msgid "Try again on %{executor}"
 msgstr ""
 
-#: lib/agent_board/board.ex:893
+#: lib/agent_board/board.ex:932
 #, elixir-autogen, elixir-format
 msgid "Entered the queue"
 msgstr ""
 
-#: lib/agent_board/board.ex:895
+#: lib/agent_board/board.ex:934
 #, elixir-autogen, elixir-format
 msgid "The agent started"
 msgstr ""
 
-#: lib/agent_board/board.ex:899
+#: lib/agent_board/board.ex:938
 #, elixir-autogen, elixir-format
 msgid "Current state: %{state}"
 msgstr ""
 
-#: lib/agent_board/board.ex:905
+#: lib/agent_board/board.ex:944
 #, elixir-autogen, elixir-format
 msgid "PR #%{number} opened"
 msgstr ""
 
-#: lib/agent_board/board.ex:912
+#: lib/agent_board/board.ex:951
 #, elixir-autogen, elixir-format
 msgid "PR #%{number} merged"
 msgstr ""
 
-#: lib/agent_board/board.ex:1000
+#: lib/agent_board/board.ex:1039
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "running"
 msgstr ""
 
-#: lib/agent_board/board.ex:1001
+#: lib/agent_board/board.ex:1040
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "question"
 msgstr ""
 
-#: lib/agent_board/board.ex:1002
+#: lib/agent_board/board.ex:1041
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "to review"
 msgstr ""
 
-#: lib/agent_board/board.ex:1003
+#: lib/agent_board/board.ex:1042
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "blocked"
 msgstr ""
 
-#: lib/agent_board/board.ex:1004
+#: lib/agent_board/board.ex:1043
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "trying again"
 msgstr ""
 
-#: lib/agent_board/board.ex:1005
+#: lib/agent_board/board.ex:1044
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "queued"
 msgstr ""
 
-#: lib/agent_board/board.ex:1006
+#: lib/agent_board/board.ex:1045
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "merged"
 msgstr ""
 
-#: lib/agent_board/board.ex:1007
+#: lib/agent_board/board.ex:1046
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "stopped"
 msgstr ""
 
-#: lib/agent_board/board.ex:1008
+#: lib/agent_board/board.ex:1047
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "archived"
 msgstr ""
 
-#: lib/agent_board/board.ex:1009
+#: lib/agent_board/board.ex:1048
 #, elixir-autogen, elixir-format
 msgctxt "activity state"
 msgid "unknown"
@@ -7109,52 +7109,52 @@ msgstr ""
 msgid "View image %{name}"
 msgstr ""
 
-#: lib/agent_board/board.ex:956
+#: lib/agent_board/board.ex:995
 #, elixir-autogen, elixir-format
 msgid "Automatic retry %{attempt} of %{max}"
 msgstr ""
 
-#: lib/agent_board/board.ex:960
+#: lib/agent_board/board.ex:999
 #, elixir-autogen, elixir-format
 msgid "Automatic retry %{attempt} of %{max} was not accepted"
 msgstr ""
 
-#: lib/agent_board/board.ex:952
+#: lib/agent_board/board.ex:991
 #, elixir-autogen, elixir-format
 msgid "Could not read the comments"
 msgstr ""
 
-#: lib/agent_board/board.ex:953
+#: lib/agent_board/board.ex:992
 #, elixir-autogen, elixir-format
 msgid "Could not read the issue"
 msgstr ""
 
-#: lib/agent_board/board.ex:951
+#: lib/agent_board/board.ex:990
 #, elixir-autogen, elixir-format
 msgid "Could not save the routing"
 msgstr ""
 
-#: lib/agent_board/board.ex:949
+#: lib/agent_board/board.ex:988
 #, elixir-autogen, elixir-format
 msgid "Release failed"
 msgstr ""
 
-#: lib/agent_board/board.ex:948
+#: lib/agent_board/board.ex:987
 #, elixir-autogen, elixir-format
 msgid "Released to the agent"
 msgstr ""
 
-#: lib/agent_board/board.ex:963
+#: lib/agent_board/board.ex:1002
 #, elixir-autogen, elixir-format
 msgid "Retry requested by you"
 msgstr ""
 
-#: lib/agent_board/board.ex:966
+#: lib/agent_board/board.ex:1005
 #, elixir-autogen, elixir-format
 msgid "Retry requested by you was not accepted"
 msgstr ""
 
-#: lib/agent_board/board.ex:950
+#: lib/agent_board/board.ex:989
 #, elixir-autogen, elixir-format
 msgid "Stop failed"
 msgstr ""
@@ -7174,37 +7174,37 @@ msgstr ""
 msgid "Back to work: read your answer at %{time}"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:388
+#: lib/agent_board/lanes.ex:383
 #, elixir-autogen, elixir-format
 msgid "**Working since %{time} (%{ago}).**"
 msgstr ""
 
-#: lib/agent_board/lanes.ex:554
+#: lib/agent_board/lanes.ex:519
 #, elixir-autogen, elixir-format
 msgid "A large task is flagged after %{count} min."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:551
+#: lib/agent_board/lanes.ex:516
 #, elixir-autogen, elixir-format
 msgid "A medium task is flagged after %{count} min."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:548
+#: lib/agent_board/lanes.ex:513
 #, elixir-autogen, elixir-format
 msgid "A small task is flagged after %{count} min."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:557
+#: lib/agent_board/lanes.ex:522
 #, elixir-autogen, elixir-format
 msgid "A task without a size is flagged after %{count} min."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:394
+#: lib/agent_board/lanes.ex:389
 #, elixir-autogen, elixir-format
 msgid "Last signal %{ago}."
 msgstr ""
 
-#: lib/agent_board/lanes.ex:432
+#: lib/agent_board/lanes.ex:422
 #, elixir-autogen, elixir-format
 msgid "The agent read your answer at %{time}; no signal since then."
 msgstr ""

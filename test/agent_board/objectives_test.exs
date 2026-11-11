@@ -41,6 +41,20 @@ defmodule AgentBoard.ObjectivesTest do
     assert [%{merged: 1, total: 2, done?: false}] = Board.objectives(repo)
   end
 
+  test "a second split with the same request key reuses the objective", %{repo: repo} do
+    one = task!(repo, 1)
+    two = task!(repo, 2)
+    three = task!(repo, 3)
+    attrs = %{title: "Placar", done_criterion: "Pronto.", request_key: "split-1"}
+
+    assert {:ok, first} = Board.create_objective(repo, attrs, [one.id, two.id])
+    assert {:ok, again} = Board.create_objective(repo, attrs, [two.id, three.id])
+
+    assert again.id == first.id
+    assert [%{id: id, total: 3}] = Board.objectives(repo)
+    assert id == first.id
+  end
+
   test "one task is not a group", %{repo: repo} do
     one = task!(repo, 1)
 

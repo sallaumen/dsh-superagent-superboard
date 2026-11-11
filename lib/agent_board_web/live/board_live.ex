@@ -361,7 +361,7 @@ defmodule AgentBoardWeb.BoardLive do
           agent: agent_up
         ),
       queue:
-        Lanes.queue(repo, board,
+        Lanes.queue(repo,
           now: now,
           last_visit: last_visit,
           filter: socket.assigns.queue_filter,

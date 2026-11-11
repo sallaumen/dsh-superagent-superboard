@@ -23,7 +23,7 @@ defmodule AgentBoard.Lanes do
     Workpad
   }
 
-  alias AgentBoard.Board.{Comment, PullRequest, Task, TaskDependency}
+  alias AgentBoard.Board.{PullRequest, Task, TaskDependency}
   alias AgentBoard.Usage.TaskCosts
   # The locale-aware times: these sentences are read on the screen.
   alias AgentBoardWeb.{Locale, Time}
@@ -341,12 +341,7 @@ defmodule AgentBoard.Lanes do
   end
 
   defp task_why(task, :question, ticket, _pull, _context) do
-    question =
-      case last_agent_comment(task) do
-        %Comment{body: body} -> comment_question(body)
-        nil -> nil
-      end
-
+    question = Board.agent_question(task.repository_id, task.number)
     summary = ticket && ticket["report_summary"]
 
     cond do
@@ -402,12 +397,7 @@ defmodule AgentBoard.Lanes do
   # A block the agent reported itself (a workpad Bloqueio, a `blocked`
   # report): its own words.
   defp blockage_why(task, ticket, _pull, _context) do
-    blockage =
-      case last_agent_comment(task) do
-        %Comment{body: body} -> comment_blockage(body)
-        nil -> nil
-      end
-
+    blockage = Board.agent_blockage(task.repository_id, task.number)
     summary = ticket && ticket["report_summary"]
 
     cond do
@@ -498,31 +488,6 @@ defmodule AgentBoard.Lanes do
 
   defp checks_label(_pull), do: ""
 
-  defp last_agent_comment(task) do
-    Repo.one(
-      from c in Comment,
-        where: c.task_id == ^task.id and c.kind == "agent",
-        order_by: [desc: c.inserted_at, desc: c.id],
-        limit: 1
-    )
-  end
-
-  # A workpad is quoted by its section; any other comment by its text, and
-  # only when it asks.
-  defp comment_question(body) do
-    case Workpad.parse(body) do
-      %{question: question} -> question
-      nil -> if Workpad.question?(body), do: body
-    end
-  end
-
-  defp comment_blockage(body) do
-    case Workpad.parse(body) do
-      %{blockage: blockage} -> blockage
-      nil -> nil
-    end
-  end
-
   defp action_label(:review), do: gettext("Review")
   defp action_label(:question), do: gettext("Respond")
   defp action_label(:blocked), do: gettext("View details")
@@ -560,7 +525,7 @@ defmodule AgentBoard.Lanes do
   The queue, numbered in arrival order. A title that repeats a merged PR gets
   the warning; an unknown origin is omitted instead of invented.
   """
-  def queue(repository, _board, opts \\ []) do
+  def queue(repository, opts \\ []) do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     last_visit = Keyword.get(opts, :last_visit)
     filter = Keyword.get(opts, :filter, :all)

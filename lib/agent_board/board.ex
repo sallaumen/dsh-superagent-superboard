@@ -26,6 +26,8 @@ defmodule AgentBoard.Board do
   @task_page_size 50
   @task_states [:running, :retrying, :question, :ready, :blocked, :queued]
   @today_topic "board_today"
+  # The runner's hidden `<!-- dsh-superagent:... -->` line is not part of the message.
+  @runner_marker ~r/<!--.*?-->/s
 
   def merged_page_size, do: @merged_page_size
   def task_page_size, do: @task_page_size
@@ -81,13 +83,6 @@ defmodule AgentBoard.Board do
     result
   end
 
-  @doc "Delete a repository and everything scoped to it."
-  def delete_repository(id) do
-    result = Repo.delete_all(from r in Repository, where: r.id == ^id)
-    broadcast_repos()
-    result
-  end
-
   @doc "Tells every open board that the repository list changed."
   def broadcast_repos do
     Phoenix.PubSub.broadcast(AgentBoard.PubSub, @today_topic, :repos_changed)
@@ -118,20 +113,7 @@ defmodule AgentBoard.Board do
   def resolved_task_ids([]), do: MapSet.new()
 
   def resolved_task_ids(tasks) do
-    ids = Enum.map(tasks, & &1.id)
-
-    # Oldest first, so the last comment with a link is the newest one.
-    comments_by_task =
-      Repo.all(
-        from c in Comment, where: c.task_id in ^ids, order_by: [asc: c.inserted_at, asc: c.id]
-      )
-      |> Enum.group_by(& &1.task_id)
-
-    repositories =
-      Repo.all(
-        from r in Repository, where: r.id in ^Enum.uniq(Enum.map(tasks, & &1.repository_id))
-      )
-      |> Map.new(&{&1.id, &1})
+    {comments_by_task, repositories} = link_sources(tasks)
 
     # One read for every linked PR, not one per task: the overview filters
     # all ready tasks at once and the query count stays bounded.
@@ -147,6 +129,27 @@ defmodule AgentBoard.Board do
       end
     end)
     |> MapSet.new(& &1.id)
+  end
+
+  # What a task's PR link is read from, in two reads for the whole list:
+  # its comments (oldest first, so the last one with a link is the newest)
+  # and its repository.
+  defp link_sources(tasks) do
+    ids = Enum.map(tasks, & &1.id)
+
+    comments_by_task =
+      Repo.all(
+        from c in Comment, where: c.task_id in ^ids, order_by: [asc: c.inserted_at, asc: c.id]
+      )
+      |> Enum.group_by(& &1.task_id)
+
+    repositories =
+      Repo.all(
+        from r in Repository, where: r.id in ^Enum.uniq(Enum.map(tasks, & &1.repository_id))
+      )
+      |> Map.new(&{&1.id, &1})
+
+    {comments_by_task, repositories}
   end
 
   defp linked_pulls(tasks, comments_by_task, repositories) do
@@ -600,6 +603,10 @@ defmodule AgentBoard.Board do
       |> Repo.insert!()
       |> tap(fn _ -> broadcast(task.repository_id) end)
 
+    post_mention(task, placeholder, text, client)
+  end
+
+  defp post_mention(task, placeholder, text, client) do
     case AgentBoard.GitHub.create_comment(
            client,
            task.repository.owner,
@@ -623,8 +630,9 @@ defmodule AgentBoard.Board do
     end
   rescue
     exception ->
-      # The placeholder must never outlive a failed request.
-      Repo.delete_all(from c in Comment, where: c.task_id == ^task.id and c.github_id < 0)
+      # The placeholder must never outlive a failed request; synced comments
+      # also carry negative ids, so only this row goes.
+      Repo.delete(placeholder)
       broadcast(task.repository_id)
       {:error, exception}
   end
@@ -697,16 +705,39 @@ defmodule AgentBoard.Board do
   the message. No comment, or a comment that only reports, is `false`.
   """
   @spec agent_asked?(integer(), integer()) :: boolean()
-  def agent_asked?(repository_id, number) do
-    case newest_agent_comment(repository_id, number) do
-      nil ->
-        false
+  def agent_asked?(repository_id, number),
+    do: is_binary(agent_question(repository_id, number))
 
-      body ->
-        case Workpad.parse(body) do
-          %{question: question} -> is_binary(question)
-          nil -> comment_asks?(body)
-        end
+  @doc """
+  What the newest agent comment on a task asks: the workpad's Pergunta, or
+  the whole message (without the runner marker) when it is not a workpad and
+  asks; nil otherwise. The rule `agent_asked?/2` states lives here.
+  """
+  @spec agent_question(integer(), integer()) :: String.t() | nil
+  def agent_question(repository_id, number) do
+    case newest_agent_comment(repository_id, number) do
+      nil -> nil
+      body -> asked_text(body)
+    end
+  end
+
+  defp asked_text(body) do
+    case Workpad.parse(body) do
+      %{question: question} ->
+        question
+
+      nil ->
+        text = body |> String.replace(@runner_marker, "") |> String.trim()
+        if Workpad.question?(text), do: text
+    end
+  end
+
+  @doc "The Bloqueio of the newest agent comment's workpad, or nil."
+  @spec agent_blockage(integer(), integer()) :: String.t() | nil
+  def agent_blockage(repository_id, number) do
+    case agent_workpad(repository_id, number) do
+      %{blockage: blockage} -> blockage
+      nil -> nil
     end
   end
 
@@ -730,10 +761,10 @@ defmodule AgentBoard.Board do
         join: t in Task,
         on: t.id == c.task_id,
         where: t.repository_id == ^repository_id and c.kind == "agent",
+        distinct: t.number,
         order_by: [asc: t.number, desc: c.inserted_at, desc: c.id],
         select: {t.number, c.body}
     )
-    |> Enum.uniq_by(fn {number, _body} -> number end)
     |> Enum.flat_map(fn {number, body} ->
       case Workpad.parse(body) do
         nil -> []
@@ -779,6 +810,9 @@ defmodule AgentBoard.Board do
     |> Map.new()
   end
 
+  # A task without an issue number has no agent comments to read.
+  defp newest_agent_comment(_repository_id, nil), do: nil
+
   defp newest_agent_comment(repository_id, number) do
     Repo.one(
       from c in Comment,
@@ -789,12 +823,6 @@ defmodule AgentBoard.Board do
         limit: 1,
         select: c.body
     )
-  end
-
-  defp comment_asks?(body) do
-    body
-    |> String.replace(~r/<!--.*?-->/s, "")
-    |> Workpad.question?()
   end
 
   @doc """
@@ -811,39 +839,52 @@ defmodule AgentBoard.Board do
   def linked_pull_requests([], _tickets), do: %{}
 
   def linked_pull_requests(tasks, tickets) do
-    ids = Enum.map(tasks, & &1.id)
+    {comments_by_task, repositories} = link_sources(tasks)
+    pulls = linked_pulls(tasks, comments_by_task, repositories)
 
-    comments_by_task =
-      Repo.all(
-        from c in Comment,
-          where: c.task_id in ^ids,
-          order_by: [asc: c.inserted_at, asc: c.id]
-      )
-      |> Enum.group_by(& &1.task_id)
+    named =
+      Enum.reduce(tasks, %{}, fn task, acc ->
+        number = linked_number(task, Map.get(comments_by_task, task.id, []), repositories)
 
-    Enum.reduce(tasks, %{}, fn task, acc ->
+        case Map.get(pulls, {task.repository_id, number}) do
+          nil -> acc
+          pull -> Map.put(acc, task.id, pull)
+        end
+      end)
+
+    # The rest fall back to the PR thread their ticket opened, read once for
+    # all of them; the highest thread number wins, as before.
+    unnamed = Enum.reject(tasks, &Map.has_key?(named, &1.id))
+    threads = Map.new(unnamed, &{&1.id, own_threads(Map.get(tickets, &1.number))})
+    thread_pulls = ticket_pulls(unnamed, threads)
+
+    Enum.reduce(unnamed, named, fn task, acc ->
       pull =
-        task_pull_request(task, Map.get(comments_by_task, task.id, [])) ||
-          ticket_pull_request(task, Map.get(tickets, task.number))
+        threads
+        |> Map.fetch!(task.id)
+        |> Enum.sort(:desc)
+        |> Enum.find_value(&Map.get(thread_pulls, {task.repository_id, &1}))
 
       if pull, do: Map.put(acc, task.id, pull), else: acc
     end)
   end
 
-  defp ticket_pull_request(_task, nil), do: nil
+  defp own_threads(nil), do: []
+  defp own_threads(ticket), do: ticket["own_threads"] || []
 
-  defp ticket_pull_request(task, ticket) do
-    case ticket["own_threads"] || [] do
-      [] ->
-        nil
+  defp ticket_pulls(tasks, threads) do
+    numbers = threads |> Map.values() |> List.flatten() |> Enum.uniq()
 
-      numbers ->
-        Repo.one(
-          from p in PullRequest,
-            where: p.repository_id == ^task.repository_id and p.number in ^numbers,
-            order_by: [desc: p.number],
-            limit: 1
-        )
+    if numbers == [] do
+      %{}
+    else
+      repository_ids = Enum.uniq(Enum.map(tasks, & &1.repository_id))
+
+      Repo.all(
+        from p in PullRequest,
+          where: p.repository_id in ^repository_ids and p.number in ^numbers
+      )
+      |> Map.new(&{{&1.repository_id, &1.number}, &1})
     end
   end
 
@@ -858,9 +899,7 @@ defmodule AgentBoard.Board do
         _ -> Repo.get(Repository, task.repository_id)
       end
 
-    number =
-      Enum.find_value(Enum.reverse(comments), &pull_number(&1.body, repository)) ||
-        pull_number(task.body, repository)
+    number = linked_number(task, comments, %{task.repository_id => repository})
 
     if repository && number, do: find_pull_request(repository, number)
   end
@@ -1028,28 +1067,40 @@ defmodule AgentBoard.Board do
     if length(task_ids) < 2 do
       {:error, :not_a_group}
     else
+      result = insert_group(repository, attrs, task_ids)
+      if match?({:ok, _}, result), do: broadcast(repository.id)
+      result
+    end
+  end
+
+  # Both writes or neither: an objective without its tasks would be listed
+  # as an empty group.
+  defp insert_group(repository, attrs, task_ids) do
+    Repo.transact(fn ->
       with {:ok, objective} <- find_or_insert_objective(repository, attrs) do
         Repo.update_all(from(t in Task, where: t.id in ^task_ids),
           set: [objective_id: objective.id]
         )
 
-        broadcast(repository.id)
         {:ok, objective}
       end
-    end
+    end)
   end
 
   # A retry that completes a split finds the objective of its first attempt.
+  # The unique index on (repository_id, request_key) decides, so two attempts
+  # at once cannot both insert; a nil key never conflicts.
   defp find_or_insert_objective(repository, attrs) do
-    case attrs[:request_key] &&
-           Repo.get_by(Objective, repository_id: repository.id, request_key: attrs.request_key) do
-      %Objective{} = objective ->
-        {:ok, objective}
+    %Objective{}
+    |> Objective.changeset(Map.put(attrs, :repository_id, repository.id))
+    |> Repo.insert(on_conflict: :nothing, conflict_target: [:repository_id, :request_key])
+    |> case do
+      {:ok, %Objective{id: nil}} ->
+        {:ok,
+         Repo.get_by!(Objective, repository_id: repository.id, request_key: attrs.request_key)}
 
-      nil ->
-        %Objective{}
-        |> Objective.changeset(Map.put(attrs, :repository_id, repository.id))
-        |> Repo.insert()
+      other ->
+        other
     end
   end
 
@@ -1160,7 +1211,4 @@ defmodule AgentBoard.Board do
         into: %{},
         do: {task.id, Atom.to_string(state)}
   end
-
-  # The schemas are exposed so the sync and the tests can build changesets.
-  def pull_request_changeset(pr, attrs), do: PullRequest.changeset(pr, attrs)
 end
