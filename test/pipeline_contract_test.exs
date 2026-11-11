@@ -16,6 +16,7 @@ defmodule AgentBoard.PipelineContractTest do
              "compile --warnings-as-errors",
              "format --check-formatted",
              "credo --strict",
+             "dialyzer",
              "test"
            ]
   end
@@ -24,6 +25,8 @@ defmodule AgentBoard.PipelineContractTest do
     precommit = aliases()[:precommit]
     assert "format" in precommit
     assert "credo --strict" in precommit
+    # the type check runs here so no agent hands over a red Dialyzer
+    assert "dialyzer" in precommit
     assert "test" in precommit
     refute "format --check-formatted" in precommit
   end
