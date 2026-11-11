@@ -1439,10 +1439,16 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert html =~ "sallaumen/arena-rogue"
   end
 
-  test "the board renders without a repository", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/")
+  test "the board renders without a repository and starts the setup", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/")
 
     assert html =~ "Nenhum repositório acompanhado."
+
+    assert has_element?(
+             view,
+             ".ab-empty button[phx-value-panel=settings][phx-value-section=setup]",
+             "Começar o setup"
+           )
   end
 
   test "a broadcast reaches the board subscribers", %{conn: conn} do

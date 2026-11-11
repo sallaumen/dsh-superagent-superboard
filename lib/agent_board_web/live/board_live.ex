@@ -2763,7 +2763,7 @@ defmodule AgentBoardWeb.BoardLive do
               <h2>{gettext("No repositories being tracked.")}</h2>
               <p>
                 {gettext(
-                  "Open Settings → Repositories to track a repository. The board shows the agent's work, what awaits you, and what changed."
+                  "Start with Settings → AI and setup: it says which AI does what, checks what is configured and points to the next step, from the GitHub token to the first project."
                 )}
               </p>
               <button
@@ -2771,10 +2771,11 @@ defmodule AgentBoardWeb.BoardLive do
                 class="ab-btn ab-btn--primary"
                 phx-click="show_panel"
                 phx-value-panel="settings"
+                phx-value-section="setup"
                 data-panel-trigger
                 aria-haspopup="dialog"
                 aria-controls="panel-settings"
-              >{gettext("Open Settings")}</button>
+              >{gettext("Start the setup")}</button>
             </div>
 
             <.today_view

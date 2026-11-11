@@ -226,7 +226,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
   defp mark(_state), do: :unknown
 
   defp state_word(:ok), do: gettext("Ready")
-  defp state_word(:configured), do: gettext("Set, not checked")
+  defp state_word(:configured), do: gettext("Not checked")
   defp state_word(:missing), do: gettext("Missing")
   defp state_word(:off), do: gettext("Off")
   defp state_word(:failed), do: gettext("Failed")

@@ -580,6 +580,9 @@ msgstr "Uma fonte não pôde ser lida; o motivo está na lista de fontes acima."
 msgid "Open"
 msgstr "Abrir"
 
+
+
+#: lib/agent_board_web/live/board_live.ex:3113
 #: lib/agent_board_web/live/board_live.ex:2765
 #, elixir-autogen, elixir-format
 msgid "Open Settings → Repositories to track a repository. The board shows the agent's work, what awaits you, and what changed."
@@ -8295,6 +8298,9 @@ msgstr "Quando o Claude Code estiver perto do limite, ou para uma segunda opini�
 msgid "Ready"
 msgstr "Pronto"
 
+
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
 #: lib/agent_board_web/live/board_components/settings/setup.ex:229
 #, elixir-autogen, elixir-format
 msgid "Set, not checked"
@@ -8380,4 +8386,24 @@ msgstr "%{others} se falhar"
 #, elixir-autogen, elixir-format
 msgid "Costs are estimated by the model price."
 msgstr "Os custos são estimados pelo preço do modelo."
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex
+#, elixir-autogen, elixir-format
+msgid "Start with Settings → AI and setup: it says which AI does what, checks what is configured and points to the next step, from the GitHub token to the first project."
+msgstr "Comece por Configurações → IAs e setup: ela diz qual IA faz o quê, verifica o que está configurado e aponta o próximo passo, do token do GitHub ao primeiro projeto."
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex
+#, elixir-autogen, elixir-format
+msgid "Start the setup"
+msgstr "Começar o setup"
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex
+#, elixir-autogen, elixir-format
+msgid "Next step: %{part}"
+msgstr "Próximo passo: %{part}"
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Not checked"
+msgstr "Não verificado"
 

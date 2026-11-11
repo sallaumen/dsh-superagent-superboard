@@ -26,6 +26,6 @@ how to set up Claude Code or Codex.
 | The board's own AI | the provider that answers, its model and the fallbacks | refines and splits requests, answers, unblocks, voice turns; pays per use with the API key, daily token ceiling |
 | Voice | ElevenLabs or the browser | ElevenLabs sounds better and spends the plan's credits; the browser is free |
 
-- Without a click, rows read configuration only: a key that is set is "Set, not checked" (`pt-1440-unchecked.jpg`).
+- Without a click, rows read configuration only: a key that is set is "Not checked" (`pt-1440-unchecked.jpg`).
 - "Check the setup" proves each part with free reads (GitHub `/user`, the provider's `/models`, each agent's `/state`, `claude auth status`, `codex login status`, ElevenLabs' subscription), then shows a summary and the next step with its fix: a link to the provider's key page, a section of Settings, or the Terminal command (`pt-1440-checked.jpg`, `pt-1440-bottom.jpg`, `en-1440-bottom.jpg`, `pt-390-checked.jpg`). In this preview GitHub has no token, so it is the next step.
 - No element runs past the pane and no horizontal scroll at 390, 1440 and 2560, in both languages.

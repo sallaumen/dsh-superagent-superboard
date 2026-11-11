@@ -83,4 +83,38 @@ defmodule AgentBoardWeb.SettingsSetupTest do
              "Criar um token"
            )
   end
+
+  test "with a required part missing, Settings opens on AI and setup and marks it", %{conn: conn} do
+    Application.put_env(:agent_board, :setup_readers,
+      config: [
+        github: fn -> false end,
+        agents: fn -> [] end,
+        cli: fn _executor -> false end,
+        board_ai: fn -> %{provider: :deepseek, model: "deepseek-flash", fallbacks: []} end,
+        voice: fn -> false end
+      ]
+    )
+
+    {:ok, view, _html} = live(conn, "/?repo=sallaumen/arena-rogue&panel=settings")
+
+    assert has_element?(view, ".settings-nav__item.is-current[phx-value-section=setup]")
+
+    assert has_element?(
+             view,
+             ".settings-nav__item[phx-value-section=setup] .settings-nav__mark--halt"
+           )
+
+    assert has_element?(view, "#setup-next", "GitHub")
+  end
+
+  test "with everything set, Settings opens where it always did", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/?repo=sallaumen/arena-rogue&panel=settings")
+
+    assert has_element?(view, ".settings-nav__item.is-current[phx-value-section=projects]")
+
+    refute has_element?(
+             view,
+             ".settings-nav__item[phx-value-section=setup] .settings-nav__mark--halt"
+           )
+  end
 end

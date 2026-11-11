@@ -580,6 +580,9 @@ msgstr ""
 msgid "Open"
 msgstr ""
 
+
+
+#: lib/agent_board_web/live/board_live.ex:3113
 #: lib/agent_board_web/live/board_live.ex:2765
 #, elixir-autogen, elixir-format
 msgid "Open Settings → Repositories to track a repository. The board shows the agent's work, what awaits you, and what changed."
@@ -8295,6 +8298,8 @@ msgstr ""
 msgid "Ready"
 msgstr ""
 
+
+
 #: lib/agent_board_web/live/board_components/settings/setup.ex:229
 #, elixir-autogen, elixir-format
 msgid "Set, not checked"
@@ -8305,7 +8310,7 @@ msgstr ""
 msgid "Missing"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/setup.ex:239
+#: lib/agent_board_web/live/board_components/settings/setup.ex
 #, elixir-autogen, elixir-format
 msgid "%{count} ready"
 msgid_plural "%{count} ready"
@@ -8379,5 +8384,25 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/settings/execution.ex
 #, elixir-autogen, elixir-format
 msgid "Costs are estimated by the model price."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex
+#, elixir-autogen, elixir-format
+msgid "Start with Settings → AI and setup: it says which AI does what, checks what is configured and points to the next step, from the GitHub token to the first project."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex
+#, elixir-autogen, elixir-format
+msgid "Start the setup"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex
+#, elixir-autogen, elixir-format
+msgid "Next step: %{part}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex
+#, elixir-autogen, elixir-format
+msgid "Not checked"
 msgstr ""
 
