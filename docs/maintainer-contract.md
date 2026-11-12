@@ -194,7 +194,9 @@ flowchart LR
 ```
 
 The single exception is the standing authorization written in this contract
-(the automatic retry of a transient failure, actor `auto_retry`): it waives
+(the automatic retry of a transient failure, actor `auto_retry`; the release
+in order, actor `release`; the daily folder retention, actor
+`folder_retention`): it waives
 the question, but still records the decision as `automatic` with the evidence
 `standing`.
 
@@ -224,6 +226,9 @@ and is recorded as `automatic`.
 | `remove_superagent` | red | stops the agent, archives profile/state and removes the project from the board | UI: `AgentAction` "Remover", two steps |
 | `scale_superagent` | yellow | changes `maxWorkers` through the DSH settings API | UI: −/+ on the project card |
 | `apply_agent_policy` | yellow | replaces the agent's three prompt sections with the board's policy plus the project's kept rules, at the revision just read (`Superagents.Policy.apply/4`) | UI: "Aplicar a política a este agente" in the project's controls, after the list of what changes; one click |
+| `set_agent_folder_days` | yellow | changes how many days the project keeps the folders of ended tickets: 7, 14, 30, 60 or never (`Superagents.Leftovers.put_days/2`) | UI: "Guardar por" in the project's controls; one choice |
+| `sweep_agent_folders` | red | removes the folders of tickets that ended more days ago than the project keeps them; folders only, never a pull request (`Leftovers.clean/2`) | System: the standing authorization ("Ended tickets' folders"), `folder_retention` only |
+| `clean_agent_leftovers` | red | removes every ended ticket's folder now and closes the pull requests its agent left without a merge (`Leftovers.clean/2`) | UI: "Remover tudo agora…" in the project's controls, with the sentence |
 | `grant_agent_access` | red | puts a person on one project's `allowed` list through the DSH settings API and, when the sentence names issues, requeues their refused mentions | UI: `AgentAction` "Liberar" / "Liberar e rodar" on the project in Configurações → Projetos |
 | `revoke_agent_access` | red | takes a person off that list and sets their old mentions aside; mentions on issues without a ticket are ignored, those on issues with a ticket may still be weighed as a follow-up, and their open tickets may be refused (the repository owner cannot be removed) | UI: `AgentAction` "Revogar" |
 | `dismiss_access_request` | yellow | sets a request aside until the person mentions the bot again (`agent_access_dismissals`) | UI: one click on "Dispensar" |
@@ -454,7 +459,8 @@ other), authorized by the owner on
 (ADR-0003, "Retentativa automática"). `AgentBoard.AutoRetry` asks
 `POST tickets/<id>/retry` (`Orchestrator.retry/2`) and nothing else; the
 board still never writes the runner's sqlite. The request is the registry's
-red action `auto_retry_ticket`, and this and `release_task` (ADR 0005) are the only standing
+red action `auto_retry_ticket`; this, `release_task` (ADR 0005) and
+`sweep_agent_folders` ("Ended tickets' folders") are the only standing
 authorizations the gate knows ("Board actions" above): it covers the actor
 `auto_retry`, each request is an `automatic` decision with the evidence
 `standing`, and nothing else may ask for a retry without a person.
@@ -1159,6 +1165,60 @@ that (`AgentBoard.Superagents.Policy`).
   rules, conflict, unknown) and `superagents_panel_test.exs` (the bell item,
   the panel, one click, a silent agent). The provisioning change has no test
   of its own: the provisioner's test stops before the prompts.
+
+## Ended tickets' folders
+
+A `dsh-superagent` deletes nothing: every ticket keeps its folder (a git
+worktree with its build) under `<state>/work/`, and a ticket that ended
+without a merge can keep its pull request open. On 2026-11-12 the two agents
+of this machine held 24.6 GB in 111 folders, all created in eight days. The
+history is not in the folders: the ticket in the agent's database, its issue,
+its pull request and its branch stay whatever happens here
+(`AgentBoard.Superagents.Leftovers`).
+
+- **The rules of what may go are `scripts/agent/cleanup.sh`**, which the board
+  runs per agent (`SUPERAGENT_STATE_DIR`, `SUPERAGENT_WORK_DIR`) and reads line
+  by line: never the folder of an open ticket, never a folder with
+  uncommitted changes (the board never passes `--force`), never a folder no
+  ticket names, never a pull request someone else opened. A board that does
+  not have the script or the state folder answers `:unavailable` and removes
+  nothing.
+- **Reading** (`Leftovers.survey/1`) is the script's dry run plus `du`: how
+  many folders could go, their weight, how many stay and why, how many orphan
+  pull requests. It runs when a project's controls open and after a removal,
+  in a task; it reads the repository's open pull requests as the agent only
+  when a ticket ended `closed`, `dropped` or `stopped`.
+- **Retention.** Each project keeps its ended folders for a number of days:
+  30 by default, 7, 14, 30, 60 or never (`settings`,
+  `agent_folder_days:<profile>`; no row is the default). The choice is the
+  yellow action `set_agent_folder_days`.
+- **The daily pass is the third standing authorization**, given by the owner
+  on 2026-11-12 for the actor `folder_retention`: `Leftovers.sweep/0` dry-runs
+  each project with `--older-than <days> --no-prs` and, only when a folder is
+  past its days, runs the red action `sweep_agent_folders`, so a decision row
+  is always a removal. It removes folders and nothing else: a pull request is
+  never closed without a person.
+- **The process** is `Superagents.Ticker`, which starts the pass in a task on
+  the first tick after a boot and on the first tick of each UTC day, never two
+  at once. The day is held only in that process: a restart passes again, and
+  a second pass finds nothing past its days. A pass that fails is logged and
+  tried again the next day or boot.
+- **Switch:** `AGENT_BOARD_FOLDER_SWEEP=0` (`config :agent_board,
+  agent_folder_sweep: false`, the test environment's value) keeps a second
+  board, which shares the agents' state folders, from removing anything by
+  itself. Its red button still works: do not press it there.
+- **The red button** (`clean_agent_leftovers`) removes every ended folder
+  whatever its age and closes the orphan pull requests, after the sentence.
+- **What a removal costs the board:** a ticket whose folder is gone shows no
+  step read from the worktree (`AgentWorktree.observe/1` answers nil for a
+  missing folder); its report, issue and pull request are untouched.
+- The tests run the real script on a temporary disk
+  (`test/support/leftovers_fixture.ex`: a git checkout, worktrees, the agent's
+  sqlite): `superagents/leftovers_test.exs` (survey, days, the pass and its
+  decision, a project that keeps everything, the red button's gate, the
+  ticker's once a day) and `superagents_panel_test.exs` (the panel, the
+  choice, the red button). Closing a real orphan pull request is not tested:
+  every ticket of the fixture was merged.
 
 ## Routing (mode "suggest")
 

@@ -74,7 +74,7 @@ defmodule AgentBoard.Actions do
   alias AgentBoard.Board.{Attachments, PrivateContext, Repository, SplitGraph, Task}
   alias AgentBoard.Intake.IssueBody
   alias AgentBoard.Release
-  alias AgentBoard.Superagents.Policy
+  alias AgentBoard.Superagents.{Leftovers, Policy}
   alias AgentBoard.Sync.Worker
   alias AgentBoard.Voice.Phrases
 
@@ -106,6 +106,9 @@ defmodule AgentBoard.Actions do
     :resume_superagent,
     :scale_superagent,
     :apply_agent_policy,
+    :set_agent_folder_days,
+    :sweep_agent_folders,
+    :clean_agent_leftovers,
     :grant_agent_access,
     :revoke_agent_access,
     :dismiss_access_request,
@@ -221,6 +224,29 @@ defmodule AgentBoard.Actions do
 
   defp spec(:scale_superagent),
     do: %{risk: :yellow, does: "muda o limite de sessões simultâneas do superagent"}
+
+  defp spec(:set_agent_folder_days),
+    do: %{
+      risk: :yellow,
+      does: "muda por quantos dias o projeto guarda as pastas de tickets encerrados"
+    }
+
+  defp spec(:sweep_agent_folders),
+    do: %{
+      risk: :red,
+      does: "remove as pastas de tickets encerrados há mais dias que a retenção do projeto",
+      standing: %{
+        by: "folder_retention",
+        granted: "2026-11-12",
+        where: "docs/maintainer-contract.md, Ended tickets' folders"
+      }
+    }
+
+  defp spec(:clean_agent_leftovers),
+    do: %{
+      risk: :red,
+      does: "remove todas as pastas de tickets encerrados e fecha os PRs órfãos do agente"
+    }
 
   defp spec(:apply_agent_policy),
     do: %{
@@ -377,6 +403,40 @@ defmodule AgentBoard.Actions do
 
   def phrase(:apply_agent_policy, %{superagent: superagent}, _lang),
     do: "Aplicar a política do board ao agente de #{project(superagent)}?"
+
+  def phrase(:set_agent_folder_days, %{superagent: superagent, days: :never}, "en-US"),
+    do: "Keep the folders of ended tickets of #{project(superagent)} until you remove them?"
+
+  def phrase(:set_agent_folder_days, %{superagent: superagent, days: :never}, _lang),
+    do: "Guardar as pastas de tickets encerrados de #{project(superagent)} até você remover?"
+
+  def phrase(:set_agent_folder_days, %{superagent: superagent, days: days}, "en-US"),
+    do: "Keep the folders of ended tickets of #{project(superagent)} for #{days} days?"
+
+  def phrase(:set_agent_folder_days, %{superagent: superagent, days: days}, _lang),
+    do: "Guardar as pastas de tickets encerrados de #{project(superagent)} por #{days} dias?"
+
+  def phrase(:sweep_agent_folders, %{superagent: superagent, days: days}, "en-US"),
+    do:
+      "Daily retention on #{project(superagent)}: remove the folders of tickets that ended " <>
+        "more than #{days} days ago."
+
+  def phrase(:sweep_agent_folders, %{superagent: superagent, days: days}, _lang),
+    do:
+      "Retenção diária em #{project(superagent)}: remover as pastas de tickets encerrados " <>
+        "há mais de #{days} dias."
+
+  def phrase(:clean_agent_leftovers, %{superagent: superagent}, "en-US"),
+    do:
+      "Remove now every folder of an ended ticket of #{project(superagent)} and close the pull " <>
+        "requests its agent left without a merge? Tickets, issues and branches stay; a folder " <>
+        "with uncommitted changes stays too. The folders do not come back."
+
+  def phrase(:clean_agent_leftovers, %{superagent: superagent}, _lang),
+    do:
+      "Remover agora todas as pastas de tickets encerrados de #{project(superagent)} e fechar " <>
+        "os pull requests que o agente deixou sem merge? Tickets, issues e branches ficam; " <>
+        "pasta com mudança não commitada também fica. As pastas não voltam."
 
   def phrase(:scale_superagent, %{superagent: superagent, workers: workers}, "en-US"),
     do: "Change #{project(superagent)} from #{superagent.max_workers} to #{workers} workers?"
@@ -934,6 +994,30 @@ defmodule AgentBoard.Actions do
     end
   end
 
+  defp execute(:set_agent_folder_days, %{superagent: superagent, days: days}) do
+    case Leftovers.put_days(superagent, days) do
+      :ok when days == :never ->
+        {:ok, gettext("Saved. The board no longer removes this project's folders by itself.")}
+
+      :ok ->
+        {:ok,
+         ngettext(
+           "Saved. Folders of tickets that ended more than %{count} day ago go on the next daily pass.",
+           "Saved. Folders of tickets that ended more than %{count} days ago go on the next daily pass.",
+           days
+         )}
+
+      {:error, reason} ->
+        {:error, gettext("Not saved: %{reason}", reason: describe(reason))}
+    end
+  end
+
+  defp execute(:sweep_agent_folders, %{superagent: superagent, days: days}),
+    do: cleaned(Leftovers.clean(superagent, {:older_than, days}))
+
+  defp execute(:clean_agent_leftovers, %{superagent: superagent}),
+    do: cleaned(Leftovers.clean(superagent, :all))
+
   defp execute(:grant_agent_access, %{superagent: superagent, login: login} = params) do
     case AgentAccess.grant(superagent, login, Map.get(params, :rerun, [])) do
       {:ok, result} ->
@@ -1218,6 +1302,39 @@ defmodule AgentBoard.Actions do
   defp dispatch_error(reason), do: describe(reason)
 
   defp executor_name(executor), do: Executors.name(executor)
+
+  defp cleaned({:ok, result}), do: {:ok, cleaned_text(result)}
+
+  defp cleaned({:error, {:partial, result, detail}}),
+    do:
+      {:error,
+       gettext("It stopped halfway. %{done} %{detail}",
+         done: cleaned_text(result),
+         detail: detail || ""
+       )}
+
+  defp cleaned({:error, :unavailable}),
+    do: {:error, gettext("This board has no access to the agent's folders.")}
+
+  defp cleaned({:error, reason}),
+    do: {:error, gettext("Nothing was removed: %{reason}", reason: describe(reason))}
+
+  defp cleaned_text(%{folders: folders, prs: prs, kept: kept, failed: failed}) do
+    [
+      ngettext("%{count} folder removed", "%{count} folders removed", folders),
+      prs > 0 && ngettext("%{count} pull request closed", "%{count} pull requests closed", prs),
+      kept > 0 &&
+        ngettext(
+          "%{count} kept (open ticket or uncommitted changes)",
+          "%{count} kept (open ticket or uncommitted changes)",
+          kept
+        ),
+      failed > 0 && ngettext("%{count} failed", "%{count} failed", failed)
+    ]
+    |> Enum.filter(& &1)
+    |> Enum.join(", ")
+    |> Kernel.<>(".")
+  end
 
   defp project(%AgentBoard.Superagents.Superagent{repository: %Repository{} = repo}),
     do: "#{repo.owner}/#{repo.name}"

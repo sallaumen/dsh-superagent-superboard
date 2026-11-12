@@ -51,7 +51,7 @@ msgstr ""
 msgid "Local dispatch"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:387
+#: lib/agent_board_web/live/board_components/settings/projects.ex:394
 #, elixir-autogen, elixir-format
 msgid "Owner"
 msgstr ""
@@ -130,8 +130,8 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:378
-#: lib/agent_board_web/live/board_components/settings/projects.ex:466
+#: lib/agent_board_web/live/board_components/settings/projects.ex:385
+#: lib/agent_board_web/live/board_components/settings/projects.ex:473
 #, elixir-autogen, elixir-format
 msgid "Add project"
 msgstr ""
@@ -149,7 +149,7 @@ msgid "Agent executor"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/costs.ex:1051
-#: lib/agent_board_web/live/board_components/settings/projects.ex:428
+#: lib/agent_board_web/live/board_components/settings/projects.ex:435
 #, elixir-autogen, elixir-format
 msgid "Agents"
 msgstr ""
@@ -210,7 +210,7 @@ msgstr ""
 msgid "Calls made by the board."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/agent_action.ex:47
+#: lib/agent_board_web/live/board_components/agent_action.ex:54
 #: lib/agent_board_web/live/board_components/composer.ex:172
 #: lib/agent_board_web/live/board_components/inspector.ex:486
 #: lib/agent_board_web/live/board_components/settings/project_access.ex:485
@@ -660,7 +660,7 @@ msgid "Reconnecting."
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/repo_rail.ex:99
-#: lib/agent_board_web/live/board_components/settings/projects.ex:391
+#: lib/agent_board_web/live/board_components/settings/projects.ex:398
 #, elixir-autogen, elixir-format
 msgid "Repository"
 msgstr ""
@@ -792,7 +792,7 @@ msgstr ""
 msgid "Split request"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:292
+#: lib/agent_board_web/live/board_components/settings/projects.ex:299
 #, elixir-autogen, elixir-format
 msgid "State folder"
 msgstr ""
@@ -834,7 +834,7 @@ msgid "Task title"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/projects.ex:243
-#: lib/agent_board_web/live/board_components/settings/projects.ex:305
+#: lib/agent_board_web/live/board_components/settings/projects.ex:312
 #, elixir-autogen, elixir-format
 msgid "Technical details"
 msgstr ""
@@ -929,7 +929,7 @@ msgstr ""
 #: lib/agent_board/agent_block.ex:126
 #: lib/agent_board/agent_block.ex:135
 #: lib/agent_board_web/live/board_components/composer.ex:123
-#: lib/agent_board_web/live/board_components/settings/projects.ex:652
+#: lib/agent_board_web/live/board_components/settings/projects.ex:659
 #, elixir-autogen, elixir-format
 msgid "Try again"
 msgstr ""
@@ -1128,7 +1128,7 @@ msgid "Close panel (Esc)"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:505
-#: lib/agent_board_web/live/board_components/settings/projects.ex:490
+#: lib/agent_board_web/live/board_components/settings/projects.ex:497
 #, elixir-autogen, elixir-format
 msgid "Creating…"
 msgstr ""
@@ -1328,7 +1328,7 @@ msgstr ""
 msgid "Your answers are added to the request before the AI splits it again."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:405
+#: lib/agent_board_web/live/board_components/settings/projects.ex:412
 #, elixir-autogen, elixir-format
 msgid "~/projects/project-name"
 msgstr ""
@@ -2821,7 +2821,7 @@ msgstr ""
 msgid "Normal · 1.2 s"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/agent_action.ex:199
+#: lib/agent_board_web/live/board_components/agent_action.ex:213
 #: lib/agent_board_web/live/board_live.ex:3429
 #, elixir-autogen, elixir-format
 msgid "Nothing happened: the action changed after confirmation. Check and confirm again."
@@ -2906,7 +2906,7 @@ msgstr ""
 msgid "The AI key expired or was rejected."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/agent_action.ex:209
+#: lib/agent_board_web/live/board_components/agent_action.ex:223
 #, elixir-autogen, elixir-format
 msgid "The action did not finish: %{reason}"
 msgstr ""
@@ -2985,7 +2985,7 @@ msgstr ""
 msgid "queued"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:528
+#: lib/agent_board_web/live/board_components/settings/projects.ex:535
 #, elixir-autogen, elixir-format
 msgid "repository removed"
 msgstr ""
@@ -3170,7 +3170,7 @@ msgstr ""
 msgid "no CI"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:555
+#: lib/agent_board_web/live/board_components/settings/projects.ex:562
 #, elixir-autogen, elixir-format
 msgid "no reading"
 msgstr ""
@@ -3341,7 +3341,7 @@ msgstr ""
 msgid "not read"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:394
+#: lib/agent_board_web/live/board_components/settings/projects.ex:401
 #, elixir-autogen, elixir-format
 msgid "project-name"
 msgstr ""
@@ -3547,7 +3547,7 @@ msgid "Starting runner…"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:267
-#: lib/agent_board_web/live/board_components/settings/projects.ex:654
+#: lib/agent_board_web/live/board_components/settings/projects.ex:661
 #, elixir-autogen, elixir-format
 msgid "Stop"
 msgstr ""
@@ -3558,7 +3558,7 @@ msgid "Stop task"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:1185
-#: lib/agent_board_web/live/board_components/settings/projects.ex:572
+#: lib/agent_board_web/live/board_components/settings/projects.ex:579
 #, elixir-autogen, elixir-format
 msgid "Stopped"
 msgstr ""
@@ -3661,7 +3661,7 @@ msgstr ""
 msgid "limiting calls; the board tries again by itself"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:463
+#: lib/agent_board_web/live/board_components/settings/projects.ex:470
 #, elixir-autogen, elixir-format
 msgid "Adding…"
 msgstr ""
@@ -3671,7 +3671,7 @@ msgstr ""
 msgid "Could not prepare the project: %{reason}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:493
+#: lib/agent_board_web/live/board_components/settings/projects.ex:500
 #, elixir-autogen, elixir-format
 msgid "Create superagent"
 msgstr ""
@@ -3681,7 +3681,7 @@ msgstr ""
 msgid "No DSH working profile on this machine. Run dsh once to create the superagent profile."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:501
+#: lib/agent_board_web/live/board_components/settings/projects.ex:508
 #, elixir-autogen, elixir-format
 msgid "Not now"
 msgstr ""
@@ -3753,7 +3753,7 @@ msgid "No access to the repository: add them on GitHub first"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/project_access.ex:189
-#: lib/agent_board_web/live/board_components/settings/projects.ex:540
+#: lib/agent_board_web/live/board_components/settings/projects.ex:547
 #, elixir-autogen, elixir-format
 msgid "Reading access…"
 msgstr ""
@@ -4205,7 +4205,7 @@ msgstr ""
 msgid "Voice and summary"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:549
+#: lib/agent_board_web/live/board_components/settings/projects.ex:556
 #, elixir-autogen, elixir-format
 msgid "%{count} person with access"
 msgid_plural "%{count} people with access"
@@ -4217,7 +4217,7 @@ msgstr[1] ""
 msgid "%{ready} of %{total} on"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:543
+#: lib/agent_board_web/live/board_components/settings/projects.ex:550
 #, elixir-autogen, elixir-format
 msgid "Access unavailable"
 msgstr ""
@@ -4230,22 +4230,22 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/settings/project_policy.ex:136
 #: lib/agent_board_web/live/board_components/settings/project_policy.ex:150
 #: lib/agent_board_web/live/board_components/settings/projects.ex:255
-#: lib/agent_board_web/live/board_components/settings/projects.ex:318
+#: lib/agent_board_web/live/board_components/settings/projects.ex:325
 #, elixir-autogen, elixir-format
 msgid "Applying…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:327
+#: lib/agent_board_web/live/board_components/settings/projects.ex:334
 #, elixir-autogen, elixir-format
 msgid "Archive project"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:326
+#: lib/agent_board_web/live/board_components/settings/projects.ex:333
 #, elixir-autogen, elixir-format
 msgid "Archive project…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:329
+#: lib/agent_board_web/live/board_components/settings/projects.ex:336
 #, elixir-autogen, elixir-format
 msgid "Archiving…"
 msgstr ""
@@ -4255,40 +4255,41 @@ msgstr ""
 msgid "Close %{project}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:424
+#: lib/agent_board_web/live/board_components/settings/projects.ex:431
 #, elixir-autogen, elixir-format
 msgid "Create a DeepSeek agent for it"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:410
+#: lib/agent_board_web/live/board_components/settings/projects.ex:417
 #, elixir-autogen, elixir-format
 msgid "Empty uses ~/projects/project-name."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:612
+#: lib/agent_board_web/live/board_components/settings/projects.ex:619
 #, elixir-autogen, elixir-format
 msgid "GitHub reached its reading limit. Wait for the quota to renew and check again."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:427
-#: lib/agent_board_web/live/board_components/settings/projects.ex:446
+#: lib/agent_board_web/live/board_components/settings/projects.ex:434
+#: lib/agent_board_web/live/board_components/settings/projects.ex:453
 #, elixir-autogen, elixir-format
 msgid "Initial agents"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:479
+#: lib/agent_board_web/live/board_components/settings/projects.ex:486
 #, elixir-autogen, elixir-format
 msgid "Initial agents: %{count}"
 msgid_plural "Initial agents: %{count}"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:328
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:163
+#: lib/agent_board_web/live/board_components/settings/projects.ex:335
 #, elixir-autogen, elixir-format
 msgid "Keep"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:401
+#: lib/agent_board_web/live/board_components/settings/projects.ex:408
 #, elixir-autogen, elixir-format
 msgid "Local folder, with .git"
 msgstr ""
@@ -4303,17 +4304,17 @@ msgstr ""
 msgid "No project yet. Add a repository below to get started."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:573
+#: lib/agent_board_web/live/board_components/settings/projects.ex:580
 #, elixir-autogen, elixir-format
 msgid "No reading"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:570
+#: lib/agent_board_web/live/board_components/settings/projects.ex:577
 #, elixir-autogen, elixir-format
 msgid "Not starting"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:568
+#: lib/agent_board_web/live/board_components/settings/projects.ex:575
 #, elixir-autogen, elixir-format
 msgid "On"
 msgstr ""
@@ -4323,7 +4324,7 @@ msgstr ""
 msgid "One fewer agent in %{project}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:432
+#: lib/agent_board_web/live/board_components/settings/projects.ex:439
 #, elixir-autogen, elixir-format
 msgid "One fewer initial agent"
 msgstr ""
@@ -4333,7 +4334,7 @@ msgstr ""
 msgid "One more agent in %{project}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:452
+#: lib/agent_board_web/live/board_components/settings/projects.ex:459
 #, elixir-autogen, elixir-format
 msgid "One more initial agent"
 msgstr ""
@@ -4348,37 +4349,37 @@ msgstr ""
 msgid "Open controls"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:569
+#: lib/agent_board_web/live/board_components/settings/projects.ex:576
 #, elixir-autogen, elixir-format
 msgid "Paused"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:653
+#: lib/agent_board_web/live/board_components/settings/projects.ex:660
 #, elixir-autogen, elixir-format
 msgid "Start"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:571
+#: lib/agent_board_web/live/board_components/settings/projects.ex:578
 #, elixir-autogen, elixir-format
 msgid "Starting"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:617
+#: lib/agent_board_web/live/board_components/settings/projects.ex:624
 #, elixir-autogen, elixir-format
 msgid "The GitHub source does not point to any repository, so the agent does not start. Its %{count} agents stay stopped until this is fixed."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:600
+#: lib/agent_board_web/live/board_components/settings/projects.ex:607
 #, elixir-autogen, elixir-format
 msgid "The agent is in an error state. Open the controls to try again."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:623
+#: lib/agent_board_web/live/board_components/settings/projects.ex:630
 #, elixir-autogen, elixir-format
 msgid "The agent reported an error. Open the technical details to see the cause."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:380
+#: lib/agent_board_web/live/board_components/settings/projects.ex:387
 #, elixir-autogen, elixir-format
 msgid "Track a repository and, if you want, create its own DeepSeek agent. Nothing starts without your confirmation."
 msgstr ""
@@ -4398,27 +4399,27 @@ msgstr ""
 msgid "called the agent in"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:558
+#: lib/agent_board_web/live/board_components/settings/projects.ex:565
 #, elixir-autogen, elixir-format
 msgid "read at %{time}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:594
+#: lib/agent_board_web/live/board_components/settings/projects.ex:601
 #, elixir-autogen, elixir-format
 msgid "should be on"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:595
+#: lib/agent_board_web/live/board_components/settings/projects.ex:602
 #, elixir-autogen, elixir-format
 msgid "should be paused"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:596
+#: lib/agent_board_web/live/board_components/settings/projects.ex:603
 #, elixir-autogen, elixir-format
 msgid "should be stopped"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:525
+#: lib/agent_board_web/live/board_components/settings/projects.ex:532
 #, elixir-autogen, elixir-format
 msgid "this project"
 msgstr ""
@@ -4428,7 +4429,7 @@ msgstr ""
 msgid "without access."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:548
+#: lib/agent_board_web/live/board_components/settings/projects.ex:555
 #, elixir-autogen, elixir-format
 msgid "No one with access"
 msgstr ""
@@ -4971,27 +4972,27 @@ msgstr ""
 msgid "No merges."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:582
+#: lib/agent_board_web/live/board_components/settings/projects.ex:589
 #, elixir-autogen, elixir-format
 msgid "setup did not finish"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:350
+#: lib/agent_board_web/live/board_components/settings/projects.ex:357
 #, elixir-autogen
 msgid "No agent"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:370
+#: lib/agent_board_web/live/board_components/settings/projects.ex:377
 #, elixir-autogen
 msgid "Create agent…"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:359
+#: lib/agent_board_web/live/board_components/settings/projects.ex:366
 #, elixir-autogen
 msgid "Create agent for %{project}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:343
+#: lib/agent_board_web/live/board_components/settings/projects.ex:350
 #, elixir-autogen
 msgid "The board follows it; no agent works on it."
 msgstr ""
@@ -5043,12 +5044,12 @@ msgstr ""
 msgid "Open the dsh panel of %{project} in a new tab"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:298
+#: lib/agent_board_web/live/board_components/settings/projects.ex:305
 #, elixir-autogen, elixir-format
 msgid "The first time in each browser the panel asks for dsh's launch key. Run this command in a terminal on this machine, in the board's folder: it opens the panel signed in, and after that the link in the row opens it directly."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/settings/projects.ex:296
+#: lib/agent_board_web/live/board_components/settings/projects.ex:303
 #, elixir-autogen, elixir-format
 msgid "dsh panel"
 msgstr ""
@@ -6272,254 +6273,254 @@ msgstr ""
 msgid "The agent did not answer in %{seconds} s. It may still be coming up; check in a moment."
 msgstr ""
 
-#: lib/agent_board/actions.ex:805
+#: lib/agent_board/actions.ex:865
 #, elixir-autogen, elixir-format
 msgid "Dispatch started on %{executor} (session %{session}). Progress appears under Executions."
 msgstr ""
 
-#: lib/agent_board/actions.ex:819
+#: lib/agent_board/actions.ex:879
 #, elixir-autogen, elixir-format
 msgid "Execution stopped. The task is blocked for you to decide."
 msgstr ""
 
-#: lib/agent_board/actions.ex:822
+#: lib/agent_board/actions.ex:882
 #, elixir-autogen, elixir-format
 msgid "The execution has already ended; see the result under Executions."
 msgstr ""
 
-#: lib/agent_board/actions.ex:825
+#: lib/agent_board/actions.ex:885
 #, elixir-autogen, elixir-format
 msgid "That execution is no longer active."
 msgstr ""
 
-#: lib/agent_board/actions.ex:828
+#: lib/agent_board/actions.ex:888
 #, elixir-autogen, elixir-format
 msgid "Could not stop the execution: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:842
+#: lib/agent_board/actions.ex:902
 #, elixir-autogen, elixir-format
 msgid "Superagent %{profile} reserved on port %{port}; the status updates on the ticker."
 msgstr ""
 
-#: lib/agent_board/actions.ex:849
-#: lib/agent_board/actions.ex:859
+#: lib/agent_board/actions.ex:909
+#: lib/agent_board/actions.ex:919
 #, elixir-autogen, elixir-format
 msgid "Could not provision: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:856
+#: lib/agent_board/actions.ex:916
 #, elixir-autogen, elixir-format
 msgid "Provisioned again; the status updates on the ticker."
 msgstr ""
 
-#: lib/agent_board/actions.ex:867
+#: lib/agent_board/actions.ex:927
 #, elixir-autogen, elixir-format
 msgid "Superagent removed; profile/state archived in %{archive}."
 msgstr ""
 
-#: lib/agent_board/actions.ex:870
+#: lib/agent_board/actions.ex:930
 #, elixir-autogen, elixir-format
 msgid "Could not remove: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:877
+#: lib/agent_board/actions.ex:937
 #, elixir-autogen, elixir-format
 msgid "Superagent started. The status updates on the next read."
 msgstr ""
 
-#: lib/agent_board/actions.ex:880
+#: lib/agent_board/actions.ex:940
 #, elixir-autogen, elixir-format
 msgid "Could not start: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:886
+#: lib/agent_board/actions.ex:946
 #, elixir-autogen, elixir-format
 msgid "Superagent stopped."
 msgstr ""
 
-#: lib/agent_board/actions.ex:887
+#: lib/agent_board/actions.ex:947
 #, elixir-autogen, elixir-format
 msgid "Could not stop: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:894
+#: lib/agent_board/actions.ex:954
 #, elixir-autogen, elixir-format
 msgid "Superagent paused."
 msgstr ""
 
-#: lib/agent_board/actions.ex:897
+#: lib/agent_board/actions.ex:957
 #, elixir-autogen, elixir-format
 msgid "Could not pause: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:904
+#: lib/agent_board/actions.ex:964
 #, elixir-autogen, elixir-format
 msgid "Superagent resumed."
 msgstr ""
 
-#: lib/agent_board/actions.ex:907
+#: lib/agent_board/actions.ex:967
 #, elixir-autogen, elixir-format
 msgid "Could not resume: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:914
+#: lib/agent_board/actions.ex:974
 #, elixir-autogen, elixir-format
 msgid "Session limit updated."
 msgstr ""
 
-#: lib/agent_board/actions.ex:917
+#: lib/agent_board/actions.ex:977
 #, elixir-autogen, elixir-format
 msgid "Could not change the limit: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:944
+#: lib/agent_board/actions.ex:1028
 #, elixir-autogen, elixir-format
 msgid "Could not allow @%{login}: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:955
+#: lib/agent_board/actions.ex:1039
 #, elixir-autogen, elixir-format
 msgid "@%{login} was removed from the list of %{project}."
 msgstr ""
 
-#: lib/agent_board/actions.ex:962
+#: lib/agent_board/actions.ex:1046
 #, elixir-autogen, elixir-format
 msgid "Could not revoke @%{login}: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:972
+#: lib/agent_board/actions.ex:1056
 #, elixir-autogen, elixir-format
 msgid "Request from @%{login} set aside."
 msgstr ""
 
-#: lib/agent_board/actions.ex:975
+#: lib/agent_board/actions.ex:1059
 #, elixir-autogen, elixir-format
 msgid "Could not set aside: %{reason}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1186
+#: lib/agent_board/actions.ex:1270
 #, elixir-autogen, elixir-format
 msgid "Dispatch is paused"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1189
+#: lib/agent_board/actions.ex:1273
 #, elixir-autogen, elixir-format
 msgid "This task already has an execution in progress"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1192
+#: lib/agent_board/actions.ex:1276
 #, elixir-autogen, elixir-format
 msgid "This month's spend has reached the Claude Code ceiling"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1195
+#: lib/agent_board/actions.ex:1279
 #: lib/agent_board_web/live/board_components/settings/execution.ex:347
 #, elixir-autogen, elixir-format
 msgid "This month's spend has a model without a price; the ceiling cannot be checked"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1198
+#: lib/agent_board/actions.ex:1282
 #, elixir-autogen, elixir-format
 msgid "The weekly Codex quota is within the owner's reserve"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1200
+#: lib/agent_board/actions.ex:1284
 #, elixir-autogen, elixir-format
 msgid "The task has already ended or is stopped"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1204
+#: lib/agent_board/actions.ex:1288
 #, elixir-autogen, elixir-format
 msgid "The task belongs to another executor; choose the executor on the task before dispatching"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1210
+#: lib/agent_board/actions.ex:1294
 #, elixir-autogen, elixir-format
 msgid "The executor binary does not exist or is not executable on this Mac; check the path in Settings"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1215
+#: lib/agent_board/actions.ex:1299
 #, elixir-autogen, elixir-format
 msgid "The local checkout of the repository does not exist"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1217
+#: lib/agent_board/actions.ex:1301
 #, elixir-autogen, elixir-format
 msgid "The task has no repository"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1234
+#: lib/agent_board/actions.ex:1351
 #, elixir-autogen, elixir-format
 msgid "project %{id}"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1247
+#: lib/agent_board/actions.ex:1364
 #, elixir-autogen, elixir-format
 msgid "@%{login} allowed on %{project}."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1253
+#: lib/agent_board/actions.ex:1370
 #, elixir-autogen, elixir-format
 msgid "Running again: %{numbers}."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1259
+#: lib/agent_board/actions.ex:1376
 #, elixir-autogen, elixir-format
 msgid "Could not reprocess %{numbers}: ask for a new mention."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1269
+#: lib/agent_board/actions.ex:1386
 #, elixir-autogen, elixir-format
 msgid "the list changed in the agent's panel; check and try again."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1271
+#: lib/agent_board/actions.ex:1388
 #, elixir-autogen, elixir-format
 msgid "that GitHub login is not valid."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1274
+#: lib/agent_board/actions.ex:1391
 #, elixir-autogen, elixir-format
 msgid "the repository owner cannot be revoked."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1277
+#: lib/agent_board/actions.ex:1394
 #, elixir-autogen, elixir-format
 msgid "this project's agent does not have GitHub configured."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1280
+#: lib/agent_board/actions.ex:1397
 #, elixir-autogen, elixir-format
 msgid "the agent did not answer; is it running?"
 msgstr ""
 
-#: lib/agent_board/actions.ex:1282
+#: lib/agent_board/actions.ex:1399
 #, elixir-autogen, elixir-format
 msgid "the agent took too long to answer."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1285
+#: lib/agent_board/actions.ex:1402
 #, elixir-autogen, elixir-format
 msgid "the agent answered with an error (HTTP %{status})."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1288
+#: lib/agent_board/actions.ex:1405
 #, elixir-autogen, elixir-format
 msgid "the agent gave an answer the board does not understand."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1292
+#: lib/agent_board/actions.ex:1409
 #, elixir-autogen, elixir-format
 msgid "the agent refused the request."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1298
+#: lib/agent_board/actions.ex:1415
 #, elixir-autogen, elixir-format
 msgid "this project's setup did not finish; use Try again."
 msgstr ""
 
-#: lib/agent_board/actions.ex:1300
+#: lib/agent_board/actions.ex:1417
 #, elixir-autogen, elixir-format
 msgid "this project has no provisioning to redo."
 msgstr ""
@@ -7528,7 +7529,7 @@ msgstr ""
 msgid "The issue names this folder. The agent lists it when it works; new files count."
 msgstr ""
 
-#: lib/agent_board/actions.ex:773
+#: lib/agent_board/actions.ex:833
 #, elixir-autogen, elixir-format
 msgid "The path is on the issue. The agent sees it when it reads the issue; to call it now, write in Conversation."
 msgstr ""
@@ -8857,7 +8858,7 @@ msgstr[1] ""
 msgid "Agent's instructions"
 msgstr ""
 
-#: lib/agent_board/actions.ex:924
+#: lib/agent_board/actions.ex:984
 #, elixir-autogen, elixir-format
 msgid "Applied. The agent's next task already follows it."
 msgstr ""
@@ -8892,7 +8893,7 @@ msgstr ""
 msgid "Keep as a rule of this project"
 msgstr ""
 
-#: lib/agent_board/actions.ex:933
+#: lib/agent_board/actions.ex:993
 #, elixir-autogen, elixir-format
 msgid "Not applied: %{reason}"
 msgstr ""
@@ -8922,7 +8923,7 @@ msgstr ""
 msgid "The agent did not answer, so the board cannot say whether its instructions are the policy."
 msgstr ""
 
-#: lib/agent_board/actions.ex:928
+#: lib/agent_board/actions.ex:988
 #, elixir-autogen, elixir-format
 msgid "The agent's instructions changed while you were looking. Nothing was applied: check again below."
 msgstr ""
@@ -8940,4 +8941,183 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/settings/project_policy.ex:210
 #, elixir-autogen, elixir-format
 msgid "the text differs only in spacing"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:135
+#, elixir-autogen, elixir-format
+msgid "%{count} day"
+msgid_plural "%{count} days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/actions.ex:1332
+#, elixir-autogen, elixir-format
+msgid "%{count} failed"
+msgid_plural "%{count} failed"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:174
+#, elixir-autogen, elixir-format
+msgid "%{count} folder"
+msgid_plural "%{count} folders"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:114
+#, elixir-autogen, elixir-format
+msgid "%{count} folder belongs to no ticket the agent knows; the board never touches it."
+msgid_plural "%{count} folders belong to no ticket the agent knows; the board never touches them."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/actions.ex:1324
+#, elixir-autogen, elixir-format
+msgid "%{count} folder removed"
+msgid_plural "%{count} folders removed"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:195
+#, elixir-autogen, elixir-format
+msgid "%{count} is that old today."
+msgid_plural "%{count} are that old today."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/actions.ex:1327
+#, elixir-autogen, elixir-format
+msgid "%{count} kept (open ticket or uncommitted changes)"
+msgid_plural "%{count} kept (open ticket or uncommitted changes)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:107
+#, elixir-autogen, elixir-format
+msgid "%{count} more stays whatever you choose: an open ticket uses it, or it has uncommitted changes."
+msgid_plural "%{count} more stay whatever you choose: an open ticket uses them, or they have uncommitted changes."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/actions.ex:1325
+#, elixir-autogen, elixir-format
+msgid "%{count} pull request closed"
+msgid_plural "%{count} pull requests closed"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:100
+#, elixir-autogen, elixir-format
+msgid "%{count} pull request its agent opened is still open on a ticket that ended without a merge."
+msgid_plural "%{count} pull requests its agent opened are still open on tickets that ended without a merge."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:86
+#, elixir-autogen, elixir-format
+msgid "Folders of ended tickets"
+msgstr ""
+
+#: lib/agent_board/actions.ex:1311
+#, elixir-autogen, elixir-format
+msgid "It stopped halfway. %{done} %{detail}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:132
+#, elixir-autogen, elixir-format
+msgid "Keep them for"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:93
+#, elixir-autogen, elixir-format
+msgid "Measuring the folders…"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:171
+#, elixir-autogen, elixir-format
+msgid "No folder of an ended ticket on the disk."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:194
+#, elixir-autogen, elixir-format
+msgid "None is that old today."
+msgstr ""
+
+#: lib/agent_board/actions.ex:1011
+#, elixir-autogen, elixir-format
+msgid "Not saved: %{reason}"
+msgstr ""
+
+#: lib/agent_board/actions.ex:1320
+#, elixir-autogen, elixir-format
+msgid "Nothing was removed: %{reason}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:183
+#, elixir-autogen, elixir-format
+msgid "Once a day the board removes the folders of tickets that ended more than %{count} day ago."
+msgid_plural "Once a day the board removes the folders of tickets that ended more than %{count} days ago."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:151
+#, elixir-autogen, elixir-format
+msgid "Only the folders go. Each ticket, its issue, its pull request and its branch stay."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:162
+#, elixir-autogen, elixir-format
+msgid "Remove everything"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:161
+#, elixir-autogen, elixir-format
+msgid "Remove everything now…"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:164
+#, elixir-autogen, elixir-format
+msgid "Removing…"
+msgstr ""
+
+#: lib/agent_board/actions.ex:1004
+#, elixir-autogen, elixir-format
+msgid "Saved. Folders of tickets that ended more than %{count} day ago go on the next daily pass."
+msgid_plural "Saved. Folders of tickets that ended more than %{count} days ago go on the next daily pass."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/actions.ex:1000
+#, elixir-autogen, elixir-format
+msgid "Saved. The board no longer removes this project's folders by itself."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:179
+#, elixir-autogen, elixir-format
+msgid "The board removes nothing by itself: the folders stay until you remove them."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:203
+#, elixir-autogen, elixir-format
+msgid "The folders could not be measured: %{reason}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:121
+#, elixir-autogen, elixir-format
+msgid "The reading stopped before the end: %{reason}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:200
+#, elixir-autogen, elixir-format
+msgid "This board has no access to the agent's folders, so it cannot measure them."
+msgstr ""
+
+#: lib/agent_board/actions.ex:1317
+#, elixir-autogen, elixir-format
+msgid "This board has no access to the agent's folders."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:138
+#, elixir-autogen, elixir-format
+msgid "until I remove them"
 msgstr ""

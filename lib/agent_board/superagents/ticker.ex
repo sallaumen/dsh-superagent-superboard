@@ -3,11 +3,17 @@ defmodule AgentBoard.Superagents.Ticker do
   Polls the registered superagents through the manager on a schedule. The
   GenServer only launches the work; the HTTP reads run in tasks so a slow
   panel never blocks the board.
+
+  Once per calendar day, and on the first tick after a boot, it also starts
+  the folder retention (`Superagents.Leftovers.sweep/0`). The day lives only
+  in this process: a restart sweeps again, and a second sweep finds nothing
+  older than the limit.
   """
   use GenServer
   require Logger
 
   alias AgentBoard.{AgentAccess, Superagents}
+  alias AgentBoard.Superagents.Leftovers
 
   def start_link(opts \\ []) do
     {name, opts} = Keyword.pop(opts, :name, __MODULE__)
@@ -35,7 +41,30 @@ defmodule AgentBoard.Superagents.Ticker do
           state
       end
 
-    {:noreply, reconcile(state)}
+    {:noreply, state |> reconcile() |> sweep(Date.utc_today())}
+  end
+
+  # Removing folders runs git in each one: a task, and never two at once.
+  defp sweep(%{swept_on: today} = state, today), do: state
+
+  defp sweep(state, today) do
+    cond do
+      not Application.get_env(:agent_board, :agent_folder_sweep, true) ->
+        state
+
+      is_pid(state[:sweep]) and Process.alive?(state.sweep) ->
+        state
+
+      true ->
+        {:ok, pid} =
+          Task.Supervisor.start_child(AgentBoard.Superagents.TaskSupervisor, &Leftovers.sweep/0)
+
+        Map.merge(state, %{sweep: pid, swept_on: today})
+    end
+  rescue
+    exception ->
+      Logger.warning("folder retention failed to start: #{Exception.message(exception)}")
+      state
   end
 
   # Starting/stopping an agent can wait on the external manager for up to a

@@ -35,6 +35,10 @@ defmodule AgentBoard.Superagents.TickerTest do
     def disallow(_superagent, _login), do: :ok
     @impl true
     def requeue(_superagent, _issue), do: {:ok, false}
+    @impl true
+    def prompts(_superagent), do: {:error, :unreachable}
+    @impl true
+    def save_prompts(_superagent, _config, _revision), do: {:error, :unreachable}
   end
 
   setup do

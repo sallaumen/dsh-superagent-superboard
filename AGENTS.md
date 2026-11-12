@@ -53,7 +53,7 @@ watches GitHub; this board only mirrors it. It is documented in
 | `logs.sh` | what is it printing right now? |
 | `panel.sh [profile]` | open its dsh panel signed in (the plain address answers "authentication required" to a new browser) |
 | `prompts.sh get\|diff\|put` | what do its three prompt sections say, and does git hold the active revision? (maintainer's tool: applying the policy to an agent is a button in Configurações → Projetos) |
-| `cleanup.sh [--apply]` | what did ended tickets leave behind (worktrees, orphan PRs), and remove it? |
+| `cleanup.sh [--apply]` | what did ended tickets leave behind (worktrees, orphan PRs), and remove it? (maintainer's tool: the board keeps each project's folders for a number of days and has the button in Configurações → Projetos) |
 | `keepalive.sh` | is it down without a stop on purpose? start it (launchd runs this, `ops/com.dsh.superagent.plist`) |
 
 ## Shared practices
