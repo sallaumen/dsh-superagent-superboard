@@ -1159,6 +1159,38 @@ that (`AgentBoard.Superagents.Policy`).
   the panel, one click, a silent agent). The provisioning change has no test
   of its own: the provisioner's test stops before the prompts.
 
+## The dsh panel, signed in
+
+dsh answers "authentication required" to a browser that never opened the
+address it printed at start. That address carries the process's launch token;
+the manager writes it in the agent's log as `dsh web: <address>`
+(`<DSH_SUPERAGENT_HOME>/.artifacts/dsh-superagent-<profile>-<stamp>.log`).
+The board opens it for the owner so nobody needs `scripts/agent/panel.sh`
+(`AgentBoard.Superagents.PanelLink`, `SuperagentPanelController`).
+
+- **The address is a credential.** It is never rendered in a page, logged or
+  stored: `POST /superagents/:id/panel` reads the last `dsh web:` line of the
+  profile's newest log and answers `303` to it. The button is a plain form
+  in the project's controls, with the session's CSRF token and a new tab.
+- **Only this machine's browser.** The redirect is given when the request
+  comes from a loopback address **and** the board was opened by a local name
+  (`localhost`, `127.0.0.1`, `[::1]`, `*.localhost`). The endpoint also serves
+  its configured public host, and behind a proxy every request looks local:
+  the name is what tells them apart. Anyone else gets a sentence in Projects.
+- **Only this agent's own panel.** An address that is not
+  `http://127.0.0.1:<the agent's port>/…` is refused: a log is outside data,
+  and the board sends a browser nowhere else.
+- **It is a read, not an action of the registry:** nothing of the board or of
+  the agent changes; the browser gets the cookie the script would give it.
+- **A board that may not read the log** (a LaunchAgent has no access to
+  `~/Documents`, where the prototype lives by default) says so and points at
+  the script, which stays in the controls as the fallback.
+- The tests (`superagent_panel_controller_test.exs`): the last address of the
+  newest log of the right profile; a foreign address; a remote browser; a
+  missing log or line; and `superagents_panel_test.exs` (the form, with no
+  address in the page). The folder is `:dsh_superagent_home` in the test
+  environment, so no test reads a real token.
+
 ## Ended tickets' folders
 
 A `dsh-superagent` deletes nothing: every ticket keeps its folder (a git

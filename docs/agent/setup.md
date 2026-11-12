@@ -126,6 +126,11 @@ the URL dsh printed when it started. That URL carries the process's launch
 token and is in the manager's log; opening it once leaves a cookie in that
 browser, and the plain address works from then on.
 
+In the board, each project's controls (Configurações → Projetos, "Painel
+dsh") have the button "Abrir o painel já autenticado": it opens the panel
+signed in, in a new tab of the browser you are using. It works for a browser
+on the machine where the agent runs. From a terminal, the same:
+
 ```sh
 scripts/agent/panel.sh                     # the primary agent
 scripts/agent/panel.sh superagent-colmex   # a second one, by profile
