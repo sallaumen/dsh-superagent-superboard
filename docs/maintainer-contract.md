@@ -295,6 +295,21 @@ that already worked).
   (`pull_requests.head_sha`, written by the sync): a gate on another commit
   is `:stale`, shown as `CI local ?` with both shas in the tooltip, never as
   a pass. A head the sync has not written yet cannot contradict the gate.
+- **Retomada** (resume) is an optional fifth section, written only when the
+  agent stops without finishing: what is done, what is left, which files to
+  read first and what can be skipped. `parse/1` returns it as `resume` (also
+  `### Resume`, `### Handoff`); it decides no state. The board hands it on:
+  a local dispatch (`Runners`, below) adds "De onde continuar" to the prompt,
+  with the Retomada, Plano, Pergunta, Bloqueio and the PRs of
+  `Board.last_workpad/2`, the newest workpad the agent left even when it
+  commented again after it (`agent_workpad/2` stays the current state: the
+  newest agent comment or nothing). Each section is cut at 1,500 characters
+  and the prompt calls it a report to check against the repository, not an
+  order. A task with no workpad is dispatched from its request alone, as
+  before. The DeepSeek runner is not dispatched by the board: it resumes
+  from Retomada because the Communication prompt tells it to read the
+  section first, once the owner saves that prompt (`scripts/agent/prompts.sh
+  put`); until then only local dispatches resume (`runners_test.exs`).
 - Without a workpad, or with the section empty, the text heuristics stay
   exactly as before: a "?" in the summary or in the newest comment, "PR" with
   "review" in the report, `mix precommit` sentences in the reports.

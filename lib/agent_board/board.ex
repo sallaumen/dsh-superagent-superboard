@@ -751,6 +751,26 @@ defmodule AgentBoard.Board do
   end
 
   @doc """
+  The newest workpad the agent left on a task, even when it commented again
+  after it: what a new attempt resumes from. `agent_workpad/2` is the current
+  state (the newest agent comment or nothing); this is the last report.
+  """
+  @spec last_workpad(integer(), integer() | nil) :: Workpad.t() | nil
+  def last_workpad(_repository_id, nil), do: nil
+
+  def last_workpad(repository_id, number) do
+    Repo.all(
+      from c in Comment,
+        join: t in Task,
+        on: t.id == c.task_id,
+        where: t.repository_id == ^repository_id and t.number == ^number and c.kind == "agent",
+        order_by: [desc: c.inserted_at, desc: c.id],
+        select: c.body
+    )
+    |> Enum.find_value(&Workpad.parse/1)
+  end
+
+  @doc """
   The workpad per task number, for every task of a repository whose newest
   agent comment is one. The local CI reads Validação from it.
   """

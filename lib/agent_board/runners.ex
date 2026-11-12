@@ -391,7 +391,7 @@ defmodule AgentBoard.Runners do
     ## Pedido
 
     #{task.body || task.title}
-
+    #{previous_attempt(repository, task)}
     ## Como entregar
 
     - Leia o AGENTS.md do repositório e siga os contratos dele.
@@ -403,8 +403,51 @@ defmodule AgentBoard.Runners do
       número do PR e o resultado.
     - No GitHub, comece cada comentário com "This is by an automated agent,
       not a human." e mantenha um workpad com `## Relatório do agente`,
-      `### Plano`, `### Validação`, `### Pergunta` e `### Bloqueio`.
+      `### Plano`, `### Validação`, `### Pergunta` e `### Bloqueio`. Se parar
+      sem terminar, acrescente `### Retomada`: o que está feito, o que falta,
+      o que ler primeiro e o que pode ser pulado.
     """
+  end
+
+  @previous_limit 1_500
+
+  # What the last attempt on this task reported (any executor), so this one
+  # resumes instead of starting from the issue. It is a report, not an order:
+  # the prompt says to check it against the repository.
+  defp previous_attempt(repository, task) do
+    with %{} = workpad <- Board.last_workpad(repository.id, task.number),
+         [_ | _] = parts <- previous_parts(workpad) do
+      """
+
+      ## De onde continuar
+
+      Esta tarefa já teve uma tentativa. O relatório dela está abaixo: use-o
+      para não refazer o que já foi feito, e confira no repositório antes de
+      confiar.
+
+      #{Enum.join(parts, "\n\n")}
+      """
+    else
+      _ -> ""
+    end
+  end
+
+  defp previous_parts(workpad) do
+    pulls =
+      case workpad.pull_requests do
+        [] -> nil
+        numbers -> Enum.map_join(numbers, ", ", &"##{&1}")
+      end
+
+    for {title, text} <- [
+          {"Retomada", workpad.resume},
+          {"Plano", workpad.plan},
+          {"Pergunta", workpad.question},
+          {"Bloqueio", workpad.blockage},
+          {"PRs citados", pulls}
+        ],
+        is_binary(text),
+        do: "### #{title}\n\n#{String.slice(text, 0, @previous_limit)}"
   end
 
   defp launch_script(execution, task, repository, plan, script) do

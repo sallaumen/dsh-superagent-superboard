@@ -42,6 +42,24 @@ defmodule AgentBoard.WorkpadTest do
            }
   end
 
+  test "Retomada is the optional fifth section; a workpad without it resumes from nothing" do
+    assert Workpad.parse(@full).resume == nil
+
+    with_resume =
+      @full <>
+        """
+
+        ### Retomada
+        Feito: a migração e o teste dela.
+        Falta: a tela.
+        Ler: lib/arena/boss.ex
+        """
+
+    assert %{resume: resume, blockage: nil} = Workpad.parse(with_resume)
+    assert resume =~ "Falta: a tela."
+    assert resume =~ "lib/arena/boss.ex"
+  end
+
   test "a comment without the heading is not a workpad" do
     assert Workpad.parse("On it: changing the button label.") == nil
     assert Workpad.parse("### Pergunta\nIs this a question?") == nil
@@ -74,6 +92,7 @@ defmodule AgentBoard.WorkpadTest do
              validation: nil,
              question: nil,
              blockage: nil,
+             resume: nil,
              pull_requests: []
            }
   end

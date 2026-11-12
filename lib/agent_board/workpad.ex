@@ -31,12 +31,17 @@ defmodule AgentBoard.Workpad do
           detail: String.t()
         }
 
-  @typedoc "The four sections, nil when empty, plus the PR numbers the comment names anywhere."
+  @typedoc """
+  The sections, nil when empty, plus the PR numbers the comment names
+  anywhere. `resume` is the optional Retomada: where the agent stopped, for
+  whoever picks the ticket up next.
+  """
   @type t :: %{
           plan: String.t() | nil,
           validation: validation() | nil,
           question: String.t() | nil,
           blockage: String.t() | nil,
+          resume: String.t() | nil,
           pull_requests: [integer()]
         }
 
@@ -61,6 +66,7 @@ defmodule AgentBoard.Workpad do
           validation: sections |> section(~w(validação validacao validation)) |> validation(),
           question: section(sections, ~w(pergunta question)),
           blockage: section(sections, ~w(bloqueio blockage blocker block)),
+          resume: section(sections, ~w(retomada resume handoff)),
           pull_requests: pull_requests(text)
         }
 
