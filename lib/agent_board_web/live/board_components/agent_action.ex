@@ -17,6 +17,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
       agent; the row leaves on success, so BoardLive says the result.
     * `:clean_agent_leftovers` - "Remover tudo agora": the folders and orphan
       pull requests of a project's ended tickets.
+    * `:adopt_superagent` - "Adicionar ao board": an agent installed on this
+      machine outside the board; its row leaves on success, so BoardLive says
+      the result.
 
   `notify={{module, id}}` hands the result to a live component
   (`send_update(module, id: id, done: mode, text: text)`), for a caller whose
@@ -59,6 +62,8 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:rerun, fn -> [] end)
      |> assign_new(:dir, fn -> nil end)
      |> assign_new(:notify, fn -> nil end)
+     |> assign_new(:profile, fn -> nil end)
+     |> assign_new(:port, fn -> nil end)
      |> then(
        &assign(
          &1,
@@ -192,7 +197,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   end
 
   def handle_async(:run, {:ok, {:ok, text}}, %{assigns: %{mode: mode}} = socket)
-      when mode in [:grant_agent_access, :revoke_agent_access] do
+      when mode in [:grant_agent_access, :revoke_agent_access, :adopt_superagent] do
     send(self(), {:agent_access_done, text})
     {:noreply, assign(socket, step: :done, result: %{tone: :ok, text: text})}
   end
@@ -241,6 +246,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   defp action(%{mode: :stop_superagent}), do: :stop_superagent
   defp action(%{mode: :remove_superagent}), do: :remove_superagent
   defp action(%{mode: :clean_agent_leftovers}), do: :clean_agent_leftovers
+  defp action(%{mode: :adopt_superagent}), do: :adopt_superagent
   defp action(%{mode: :grant_agent_access}), do: :grant_agent_access
   defp action(%{mode: :revoke_agent_access}), do: :revoke_agent_access
   defp action(%{mode: :stop}), do: :stop_task
@@ -280,6 +286,9 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
 
   defp params(%{mode: :grant_agent_access} = assigns),
     do: %{superagent: assigns.superagent, login: assigns.login, rerun: assigns.rerun}
+
+  defp params(%{mode: :adopt_superagent} = assigns),
+    do: %{profile: assigns.profile, port: assigns.port}
 
   defp params(%{mode: :revoke_agent_access} = assigns),
     do: %{superagent: assigns.superagent, login: assigns.login}

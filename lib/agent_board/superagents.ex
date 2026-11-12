@@ -104,7 +104,113 @@ defmodule AgentBoard.Superagents do
 
   defp profile_entry(root, name) do
     dir = Path.join(root, name)
-    if File.dir?(dir), do: %{name: name, dir: dir, port: patch_port(dir)}
+    if File.dir?(dir), do: Map.merge(%{name: name, dir: dir}, patch(dir))
+  end
+
+  @doc """
+  The agents installed on this machine that the board does not follow: a
+  profile whose patch loads `dsh-superagent` with a port and a state folder,
+  and whose name and port are in no row. An agent set up by hand (the
+  prototype's `SETUP.md`) is one of these until the owner adopts it.
+  """
+  def unregistered do
+    rows = Repo.all(from s in Superagent, select: {s.profile, s.port})
+    profiles = Enum.map(rows, &elem(&1, 0))
+    ports = Enum.map(rows, &elem(&1, 1))
+
+    for %{agent?: true, name: name, port: port, state_dir: dir} = entry <- profiles_on_disk(),
+        is_integer(port) and is_binary(dir),
+        name not in profiles and port not in ports,
+        do: entry
+  end
+
+  @doc """
+  Asks an installed agent who it is, before the board follows it: the agent
+  itself says which repository it serves (`Manager.identity/1`), so nothing
+  is typed. An agent that does not answer is started through the manager
+  first. Answers the profile's values and the repository's owner and name;
+  `adopt/2` registers them once that repository is tracked. An effect (it
+  may start the agent): called only by `AgentBoard.Actions`.
+  """
+  def adoptable(profile, manager \\ Manager.impl()) when is_binary(profile) do
+    with %{} = entry <- Enum.find(unregistered(), &(&1.name == profile)) || {:error, :not_found},
+         found = %Superagent{profile: entry.name, port: entry.port, state_dir: entry.state_dir},
+         {:ok, identity} <- answering(found, manager),
+         {:ok, {owner, name}} <- named_repository(identity) do
+      {:ok, %{found: found, owner: owner, name: name, max_workers: identity[:max_workers]}}
+    end
+  end
+
+  @doc """
+  Registers an agent `adoptable/2` answered for, on its tracked repository,
+  wanted running. Nothing of the agent's configuration is changed.
+  """
+  def adopt(%{found: %Superagent{} = found} = candidate, %{id: repository_id}) do
+    with nil <- get_by_repository(repository_id),
+         {:ok, superagent} <-
+           create(%{
+             repository_id: repository_id,
+             profile: found.profile,
+             port: found.port,
+             state_dir: found.state_dir,
+             desired_state: "running",
+             observed_state: "unknown",
+             max_workers: candidate[:max_workers] || 3,
+             created_by: "owner"
+           }) do
+      event(superagent, "adopt", nil, "unknown", "owner", found.profile)
+      {:ok, Repo.preload(superagent, :repository)}
+    else
+      %Superagent{} -> {:error, :already_registered}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # An installed agent that is stopped is started the way the board starts
+  # any agent, then asked again for as long as a start takes.
+  defp answering(found, manager) do
+    with {:error, _silent} <- manager.identity(found),
+         :ok <- manager.start(found) do
+      wait_identity(found, manager, Application.get_env(:agent_board, :superagent_adopt_wait, 60))
+    end
+  end
+
+  defp wait_identity(found, manager, attempts) do
+    case manager.identity(found) do
+      {:ok, identity} ->
+        {:ok, identity}
+
+      {:error, reason} when attempts <= 0 ->
+        {:error, reason}
+
+      {:error, _reason} ->
+        Process.sleep(1_000)
+        wait_identity(found, manager, attempts - 1)
+    end
+  end
+
+  defp named_repository(%{repository: slug}) when is_binary(slug) do
+    case String.split(slug, "/", parts: 2) do
+      [owner, name] when owner != "" and name != "" -> {:ok, {owner, name}}
+      _other -> {:error, :no_repository}
+    end
+  end
+
+  defp named_repository(_identity), do: {:error, :no_repository}
+
+  # An agent installed by hand for this repository would be copied into a
+  # second one answering the same mentions.
+  defp installed_for(repository, manager) do
+    slug = "#{repository.owner}/#{repository.name}"
+
+    Enum.find_value(unregistered(), :ok, fn entry ->
+      found = %Superagent{profile: entry.name, port: entry.port, state_dir: entry.state_dir}
+
+      case manager.identity(found) do
+        {:ok, %{repository: ^slug}} -> {:error, {:already_installed, entry.name}}
+        _other -> nil
+      end
+    end)
   end
 
   @doc """
@@ -162,16 +268,26 @@ defmodule AgentBoard.Superagents do
     end
   end
 
-  defp patch_port(dir) do
+  # What a profile's patch says: the panel's port, and whether it loads
+  # dsh-superagent and where that keeps its state.
+  defp patch(dir) do
     case :file.read_file(Path.join(dir, "cordis.patch.yml")) do
       {:ok, text} ->
-        case Regex.run(~r/^\s*port:\s*(\d+)/m, text, capture: :all_but_first) do
-          [port] -> String.to_integer(port)
-          _ -> nil
-        end
+        %{
+          port: patch_value(text, ~r/^\s*port:\s*(\d+)/m, &String.to_integer/1),
+          agent?: Regex.match?(~r/^- id: dsh-superagent\s*$/m, text),
+          state_dir: patch_value(text, ~r/^\s*stateDir:\s*(\S.*?)\s*$/m, &Path.expand/1)
+        }
 
       {:error, _} ->
-        nil
+        %{port: nil, agent?: false, state_dir: nil}
+    end
+  end
+
+  defp patch_value(text, pattern, cast) do
+    case Regex.run(pattern, text, capture: :all_but_first) do
+      [value] -> cast.(value)
+      _ -> nil
     end
   end
 
@@ -184,6 +300,7 @@ defmodule AgentBoard.Superagents do
   """
   def provision(repository, source, attrs, provisioner \\ Provisioner.impl()) do
     with nil <- get_by_repository(repository),
+         :ok <- installed_for(repository, Manager.impl()),
          {:ok, source} <- normalize_source(source),
          {:ok, profile} <- next_profile(repository),
          {:ok, port} <- port_for(attrs),

@@ -19,6 +19,20 @@ defmodule AgentBoard.Superagents.Manager do
   @callback disallow(Superagent.t(), String.t()) :: :ok | {:error, term()}
   @callback requeue(Superagent.t(), String.t()) :: {:ok, boolean()} | {:error, term()}
 
+  @doc """
+  Who the agent says it is: the repository it serves (`owner/name`), the
+  GitHub login it acts as and its session limit. Asked of an agent the board
+  does not follow yet (`Superagents.adopt/2`); a field it does not state is nil.
+  """
+  @callback identity(Superagent.t()) ::
+              {:ok,
+               %{
+                 repository: String.t() | nil,
+                 bot: String.t() | nil,
+                 max_workers: pos_integer() | nil
+               }}
+              | {:error, term()}
+
   @doc "The agent's active prompt config and its revision (`Superagents.Policy`)."
   @callback prompts(Superagent.t()) ::
               {:ok, %{revision: integer(), config: map()}} | {:error, term()}
