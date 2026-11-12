@@ -232,7 +232,7 @@ defmodule AgentBoard.SyncTest do
 
   defp workpad(fields) do
     Map.merge(
-      %{plan: nil, validation: nil, question: nil, blockage: nil, pull_requests: []},
+      %{plan: nil, validation: nil, question: nil, blockage: nil, resume: nil, pull_requests: []},
       Map.new(fields)
     )
   end

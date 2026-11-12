@@ -3,7 +3,7 @@ defmodule AgentBoard.RunnersTest do
   use AgentBoard.DataCase, async: false
 
   alias AgentBoard.{Board, Repo, Runners, Settings}
-  alias AgentBoard.Board.Task
+  alias AgentBoard.Board.{Comment, Task}
   alias AgentBoard.Runners.Execution
 
   setup do
@@ -77,6 +77,65 @@ defmodule AgentBoard.RunnersTest do
       File.write!(Path.join(run_dir, "status"), "running")
       :ok
     end
+  end
+
+  defp agent_comment(task, github_id, body) do
+    %Comment{}
+    |> Comment.changeset(%{
+      task_id: task.id,
+      github_id: github_id,
+      author: "sallaumen-agent",
+      kind: "agent",
+      body: body
+    })
+    |> Repo.insert!()
+  end
+
+  test "a task never attempted is dispatched from its request alone", %{task: task} do
+    assert {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher(self()))
+
+    prompt = File.read!(Path.join(execution.run_dir, "prompt.md"))
+    assert prompt =~ "O volume do ataque está baixo."
+    refute prompt =~ "De onde continuar"
+  end
+
+  test "a new attempt resumes from the last report, even after a later agent comment",
+       %{task: task} do
+    agent_comment(task, 11, """
+    This is by an automated agent, not a human.
+
+    ## Relatório do agente
+
+    ### Plano
+    1. Medir o volume no mixer.
+
+    ### Bloqueio
+    Sem acesso ao arquivo de áudio.
+
+    ### Retomada
+    Feito: a medição. Falta: aplicar o ganho. Ler: lib/arena/mixer.ex
+    [PR #77](https://github.com/fixture/arena/pull/77)
+    """)
+
+    agent_comment(task, 12, "Parei aqui: preciso do arquivo.")
+
+    assert Board.agent_workpad(task.repository_id, task.number) == nil
+    assert %{resume: "Feito:" <> _} = Board.last_workpad(task.repository_id, task.number)
+
+    assert {:ok, execution} = Runners.dispatch(task, "claude", launcher: launcher(self()))
+    prompt = File.read!(Path.join(execution.run_dir, "prompt.md"))
+
+    assert prompt =~ "## De onde continuar"
+    assert prompt =~ "Falta: aplicar o ganho."
+    assert prompt =~ "1. Medir o volume no mixer."
+    assert prompt =~ "Sem acesso ao arquivo de áudio."
+    assert prompt =~ "### PRs citados\n\n#77"
+    assert prompt =~ "confira no repositório antes de"
+
+    # The request still comes first, the delivery rules last.
+    [before_resume, after_resume] = String.split(prompt, "## De onde continuar")
+    assert before_resume =~ "## Pedido"
+    assert after_resume =~ "## Como entregar"
   end
 
   test "dispatch writes the run and claims one execution per task", %{task: task} do
