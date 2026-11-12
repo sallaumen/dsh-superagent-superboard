@@ -12,7 +12,6 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
   attr :repo, :any, default: nil
   attr :overview, :map, default: %{}
   attr :live, :boolean, default: false
-  attr :superagents, :list, default: []
   attr :access_waiting, :integer, default: 0
   attr :version, :map, default: nil
 
@@ -24,13 +23,21 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
       assigns
       |> assign(:owner, owner)
       |> assign(:overview, assigns.overview || %{})
-      |> assign(:agent_total, Enum.sum(Enum.map(assigns.superagents, & &1.max_workers)))
 
     ~H"""
     <nav class="ab-rail" aria-label={gettext("Repositories")}>
-      <div class="ab-brand">
-        <span class="ab-brand__mark" aria-hidden="true"></span>
-        <span>Agent Board</span>
+      <div class="ab-brand" role="img" aria-label="Super Agent Super Board">
+        <img
+          class="ab-brand__mark"
+          src={~p"/images/superboard-mark.svg"}
+          width="40"
+          height="40"
+          alt=""
+        />
+        <span class="ab-brand__name" aria-hidden="true">
+          <span>Super</span><span>Agent</span>
+          <span>Super</span><span>Board</span>
+        </span>
       </div>
 
       <p class="ab-label">{@owner}</p>
@@ -120,29 +127,6 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           )}</span>
         </button>
         <button
-          id="open-superagents"
-          type="button"
-          class="ab-btn ab-btn--quiet ab-btn--sm"
-          phx-click="show_panel"
-          phx-value-panel="settings"
-          phx-value-section="projects"
-          aria-label={
-            gettext("Superagents: %{agents} · projects: %{projects}",
-              agents: @agent_total,
-              projects: length(@superagents)
-            )
-          }
-          title={
-            gettext("Superagents: %{agents} · projects: %{projects}",
-              agents: @agent_total,
-              projects: length(@superagents)
-            )
-          }
-        >
-          <.ico name="grip" /><span>{gettext("Superagents")}</span>
-          <span class="ab-rail__badge" aria-hidden="true">{@agent_total}</span>
-        </button>
-        <button
           id="open-shortcuts"
           type="button"
           class="ab-btn ab-btn--quiet ab-btn--sm"
@@ -156,26 +140,16 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           <.ico name="keys" /><span>{gettext("Shortcuts")}</span><.kbd key="?" />
         </button>
         <button
-          id="open-logs"
-          type="button"
-          class="ab-btn ab-btn--quiet ab-btn--sm"
-          phx-click="show_panel"
-          phx-value-panel="logs"
-          data-panel-trigger
-          aria-haspopup="dialog"
-          aria-controls="panel-logs"
-          aria-label={gettext("Warning and Error Logs")}
-        >
-          <.ico name="log" /><span>{gettext("Logs")}</span>
-        </button>
-        <button
           type="button"
           class="ab-btn ab-btn--quiet ab-btn--sm"
           phx-click="show_panel"
           phx-value-panel="voice"
-          aria-label={gettext("Voice conversation")}
+          data-panel-trigger
+          aria-haspopup="dialog"
+          aria-controls="panel-voice"
+          aria-label={gettext("Chat")}
         >
-          <.ico name="mic" /><span>{gettext("Voice conversation")}</span>
+          <.ico name="robot" /><span>{gettext("Chat")}</span>
         </button>
         <button
           id="board-settings"

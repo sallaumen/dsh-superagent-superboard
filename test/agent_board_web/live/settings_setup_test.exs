@@ -131,6 +131,61 @@ defmodule AgentBoardWeb.SettingsSetupTest do
     assert length(String.split(setup, "Criar um token")) == 2
   end
 
+  test "a fresh tab restores the last successful check and a later failure keeps its date", %{
+    conn: conn
+  } do
+    url = "/?repo=sallaumen/arena-rogue&panel=settings&section=setup"
+    readers = Application.fetch_env!(:agent_board, :setup_readers)
+
+    passing =
+      Keyword.update!(readers, :live, fn live ->
+        Keyword.merge(live, github: fn -> {:ok, "octo"} end, cli: fn _ -> :ok end)
+      end)
+
+    Application.put_env(:agent_board, :setup_readers, passing)
+    {:ok, first, _} = live(conn, url)
+    first |> element("#setup-check") |> render_click()
+    render_async(first, 2_000)
+    assert_received :checked
+    assert has_element?(first, "#setup-last-check", "OK")
+    [passed_at] = first |> element("#setup-last-check time") |> render() |> datetime_values()
+
+    # The current GitHub token is gone. A fresh tab must show that and the
+    # previous success, without contacting a single provider on open.
+    Application.put_env(
+      :agent_board,
+      :setup_readers,
+      Keyword.update!(readers, :config, &Keyword.put(&1, :github, fn -> false end))
+    )
+
+    {:ok, reopened, _} = live(conn, url)
+    assert has_element?(reopened, "#setup-row-github[data-state=missing]")
+    assert has_element?(reopened, "#setup-last-check time[datetime='#{passed_at}']")
+    assert has_element?(reopened, "#setup-last-check", "OK")
+    refute_received :checked
+
+    reopened |> element("#setup-check") |> render_click()
+    render_async(reopened, 2_000)
+    assert_received :checked
+    assert has_element?(reopened, "#setup-row-github[data-state=failed]")
+
+    render_patch(reopened, "/?repo=sallaumen/arena-rogue")
+    render_patch(reopened, url)
+
+    [failed_at, ^passed_at] =
+      reopened |> element("#setup-last-check") |> render() |> datetime_values()
+
+    refute failed_at == passed_at
+    refute_received :checked
+  end
+
+  defp datetime_values(html) do
+    html
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query("time")
+    |> LazyHTML.attribute("datetime")
+  end
+
   test "with a required part missing, Settings opens on AI and setup and marks it", %{conn: conn} do
     Application.put_env(:agent_board, :setup_readers,
       config: [

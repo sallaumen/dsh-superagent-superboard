@@ -45,7 +45,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
           </label>
         </fieldset>
         <p class="voice-note">
-          {gettext("Press Space twice to use the selected method.")}
+          {gettext("Press Space twice to open Chat.")}
         </p>
       </form>
 

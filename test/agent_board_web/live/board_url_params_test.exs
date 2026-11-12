@@ -85,17 +85,20 @@ defmodule AgentBoardWeb.BoardUrlParamsTest do
       assert keys =~ "Fecha o painel ou a camada, ou para a fala ou a resposta"
     end
 
-    test "superagents opens Settings at its section, because management lives there", %{
+    test "Projects is reached through Settings and the old superagents address opens it", %{
       conn: conn
     } do
       {:ok, view, _html} = live(conn, "/")
 
-      view
-      |> element(~s(.ab-rail [phx-click=show_panel][phx-value-section=projects]))
-      |> render_click()
-
+      refute has_element?(view, "#open-superagents")
+      view |> element("#board-settings") |> render_click()
+      view |> element(".settings-nav__item[phx-value-section=projects]") |> render_click()
       assert_patch(view, "/?panel=settings&section=projects")
-      assert has_element?(view, "#board-page[data-panel=settings]")
+      assert has_element?(view, ".settings-nav__item[aria-current=page]", "Projetos")
+
+      {:ok, legacy, _html} = live(conn, "/?panel=superagents")
+      assert has_element?(legacy, "#board-page[data-panel=settings]")
+      assert has_element?(legacy, ".settings-nav__item[aria-current=page]", "Projetos")
     end
 
     test "Settings opens, because that is where the first repository is added", %{conn: conn} do

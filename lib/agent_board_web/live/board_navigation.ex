@@ -6,12 +6,12 @@ defmodule AgentBoardWeb.BoardNavigation do
   alias AgentBoard.Board
   alias AgentBoard.Board.Task
 
-  @panels ~w(conversation voice history composer shortcuts settings logs)
+  @panels ~w(conversation voice history composer shortcuts settings)
 
   # The rail shows these on a board with no repository: Settings is where the
   # first one is added, and the others do not depend on one.
-  @panels_without_repo ~w(voice logs settings shortcuts)
-  @settings_sections ~w(setup projects execution costs voice system)
+  @panels_without_repo ~w(voice settings shortcuts)
+  @settings_sections ~w(setup projects execution costs voice system logs)
 
   # Old links keep working: each key maps to the section that now holds it.
   @settings_aliases %{
@@ -32,6 +32,8 @@ defmodule AgentBoardWeb.BoardNavigation do
   def today_path, do: "/?view=hoje"
 
   def path(repo, panel, task_id \\ nil, tab \\ nil)
+
+  def path(repo, "logs", _, _), do: settings_path(repo, "logs")
 
   def path(nil, panel, _task_id, _tab) when panel in @panels_without_repo, do: "/?panel=#{panel}"
 
@@ -77,6 +79,9 @@ defmodule AgentBoardWeb.BoardNavigation do
   # The standalone Superagents panel (until #454) is Settings → Projects now.
   def apply_params(socket, %{"panel" => "superagents"} = params),
     do: apply_params(socket, Map.merge(params, %{"panel" => "settings", "section" => "projects"}))
+
+  def apply_params(socket, %{"panel" => "logs"} = params),
+    do: apply_params(socket, Map.merge(params, %{"panel" => "settings", "section" => "logs"}))
 
   # The standalone Split panel is the composer's split button now.
   def apply_params(socket, %{"panel" => "intake"} = params),
@@ -185,7 +190,7 @@ defmodule AgentBoardWeb.BoardNavigation do
 
   def open_panel(socket, "voice"), do: push_patch(socket, to: path(socket.assigns.repo, "voice"))
 
-  def open_panel(socket, "logs"), do: push_patch(socket, to: path(socket.assigns.repo, "logs"))
+  def open_panel(socket, "logs"), do: open_panel(socket, "settings", "logs")
 
   def open_panel(socket, _panel), do: socket
 

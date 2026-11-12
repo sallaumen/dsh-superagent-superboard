@@ -10,7 +10,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
-  @section_keys ~w(setup projects execution costs voice system)
+  @section_keys ~w(setup projects execution costs voice system logs)
 
   attr :active, :boolean, default: false
   attr :repo, :map, default: nil
@@ -22,6 +22,8 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   attr :superagents, :list, default: []
   attr :repos, :list, default: []
   attr :access_waiting, :integer, default: 0
+
+  attr :log_view, :map, required: true
 
   attr :costs, :map, default: %{}, doc: "Settings → Costs page and window from the URL"
 
@@ -52,15 +54,17 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
         else: assign_new(socket, :setup_next, fn -> nil end)
 
     # The URL's section wins when it names one; otherwise keep the current one.
-    section =
-      case assigns[:section] do
-        key when key in @section_keys -> key
-        _ when opening -> previous || if(socket.assigns.setup_next, do: "setup", else: "projects")
-        _ -> previous
-      end
-
+    section = select_section(assigns[:section], previous, opening, socket.assigns.setup_next)
     {:ok, assign(socket, section: section)}
   end
+
+  defp select_section(key, _previous, _opening, _next) when key in @section_keys, do: key
+
+  defp select_section(_key, previous, opening, next)
+       when previous == "logs" or (opening and is_nil(previous)),
+       do: if(next, do: "setup", else: "projects")
+
+  defp select_section(_key, previous, _opening, _next), do: previous
 
   @impl true
   def handle_event("select_section", %{"section" => section}, socket) do
@@ -332,6 +336,10 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           </div>
         </section>
 
+        <AgentBoardWeb.BoardComponents.Settings.Logs.section
+          :if={@active and @section == "logs"}
+          {@log_view}
+        />
         <section
           hidden={@section != "system"}
           class="settings-pane settings-pane--system"
@@ -410,7 +418,8 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
       {"execution", gettext("Execution")},
       {"costs", gettext("Costs")},
       {"voice", gettext("Voice and summary")},
-      {"system", gettext("System")}
+      {"system", gettext("System")},
+      {"logs", gettext("Logs")}
     ]
   end
 

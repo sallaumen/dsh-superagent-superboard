@@ -17,11 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.Shortcuts do
         <dt><.kbd key="N" /></dt>
         <dd>{gettext("New request")}</dd>
         <dt><.kbd key={gettext("Space")} /><.kbd key={gettext("Space")} /></dt>
-        <dd>
-          {gettext(
-            "Chat with the agent: speak and pause; it sends automatically. Say \"help\" for the request list."
-          )}
-        </dd>
+        <dd>{gettext("Open Chat")}</dd>
         <dt><.kbd key="V" /></dt>
         <dd>{gettext("Dictate a request in the composer")}</dd>
         <dt><.kbd key="1" />–<.kbd key="5" /></dt>

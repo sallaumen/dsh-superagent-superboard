@@ -1,20 +1,22 @@
 defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
-  @moduledoc """
-  The conversation with the agent, for when the owner wants to read it: the
-  recent turns, a line to type instead of speaking, and a way to forget.
-
-  Talking needs none of this (double Space, speak, stop); the log is the
-  record, not a step.
-  """
+  @moduledoc "The board's Chat: its persistent turns, skills and message composer."
   use Phoenix.Component
   use Gettext, backend: AgentBoardWeb.Gettext
 
+  import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1]
+  import AgentBoardWeb.BoardComponents.Markup, only: [markup: 1]
+
+  alias AgentBoardWeb.BoardComponents.VoiceCommandList
+  alias AgentBoardWeb.Time
+
   attr :turns, :list, required: true
   attr :thinking, :boolean, default: false
+  attr :input, :string, required: true
+  attr :language, :string, required: true
+  attr :commands_open, :boolean, default: false
+  attr :tz_offset, :integer, default: 0
 
   def log(assigns) do
-    # Forgetting is red (no way back): the browser asks the registry's
-    # sentence and the click carries it to the gate.
     assigns =
       assign(
         assigns,
@@ -23,40 +25,28 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
       )
 
     ~H"""
-    <section class="voice-chat" aria-labelledby="voice-chat-heading">
-      <div class="voice-chat-head">
-        <h3 id="voice-chat-heading">{gettext("Agent conversation")}</h3>
-        <button
-          :if={@turns != []}
-          id="voice-forget"
-          type="button"
-          phx-click="voice_forget"
-          phx-value-confirm={@forget_phrase}
-          data-confirm={@forget_phrase}
-          class="voice-chat-forget"
-        >
-          {gettext("Forget conversation")}
-        </button>
-      </div>
-      <p :if={@turns == []} class="voice-chat-empty">
-        {gettext(
-          "Press space twice, speak and stop: the agent responds in voice. It remembers the conversation, checks the board, and creates tasks after you confirm."
-        )}
-      </p>
+    <div class="sb-chat">
       <ol
         :if={@turns != []}
         id="voice-chat-turns"
-        class="voice-chat-turns"
+        class="sb-chat__history"
+        phx-hook="ChatHistory"
         tabindex="0"
-        aria-label={gettext("Voice conversation history")}
+        aria-label={gettext("Chat history")}
       >
-        <%!-- Rendered newest first in a column-reverse list: the scroll stays
-             anchored on the latest turn while reading top to bottom. --%>
-        <li :for={turn <- Enum.reverse(@turns)} class="voice-chat-turn" data-role={turn.role}>
-          <span class="voice-chat-who">{if turn.role == "owner",
-            do: gettext("You"),
-            else: gettext("Agent")}</span>
-          <p>{turn.text}</p>
+        <li
+          :for={turn <- @turns}
+          id={"chat-turn-#{turn.id}"}
+          data-role={turn.role}
+          class={["ab-msg", if(turn.role == "owner", do: "ab-msg--you", else: "ab-msg--agent")]}
+        >
+          <div class="ab-msg__who">
+            {if turn.role == "owner", do: gettext("You"), else: gettext("Agent")}
+            <time class="ab-data-sm" datetime={DateTime.to_iso8601(turn.inserted_at)}>
+              {Time.local_time(turn.inserted_at, @tz_offset)}
+            </time>
+          </div>
+          <p><.markup text={turn.text} links /></p>
           <span :if={turn.role == "agent" && turn.duration_ms} class="voice-chat-time">
             {gettext("thought for %{time}", time: seconds(turn.duration_ms))}
           </span>
@@ -65,18 +55,45 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
       <p :if={@thinking} class="voice-chat-thinking" role="status">
         {gettext("The agent is thinking...")}
       </p>
-      <form id="voice-chat-form" phx-submit="voice_turn" class="voice-chat-form">
+      <VoiceCommandList.list open={@commands_open} language={@language} featured={@turns == []} />
+      <form id="voice-chat-form" phx-submit="voice_chat_send" class="sb-chat__form">
         <label for="voice-chat-text" class="sr-only">{gettext("Write to agent")}</label>
+        <%!-- The draft belongs to this tab, even when a skill takes focus during a reply. --%>
         <input
           id="voice-chat-text"
+          phx-update="ignore"
           name="text"
           maxlength="2000"
           autocomplete="off"
-          placeholder={gettext("Or type for the agent...")}
+          required
+          placeholder={gettext("Ask about your board…")}
         />
-        <button type="submit">{gettext("Send")}</button>
+        <button
+          :if={@input != "text"}
+          type="button"
+          class="ab-btn ab-btn--icon"
+          phx-click={Phoenix.LiveView.JS.dispatch("board:voice-start")}
+          title={gettext("Dictate by voice")}
+          aria-label={gettext("Dictate by voice")}
+        >
+          <.ico name="mic" />
+        </button>
+        <button type="submit" class="ab-btn ab-btn--primary" aria-label={gettext("Send")}>
+          <.ico name="send" />
+        </button>
       </form>
-    </section>
+      <button
+        :if={@turns != []}
+        id="voice-forget"
+        type="button"
+        phx-click="voice_forget"
+        phx-value-confirm={@forget_phrase}
+        data-confirm={@forget_phrase}
+        class="sb-chat__forget"
+      >
+        {gettext("Forget conversation")}
+      </button>
+    </div>
     """
   end
 

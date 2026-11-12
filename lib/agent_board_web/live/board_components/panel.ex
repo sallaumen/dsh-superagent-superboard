@@ -4,6 +4,9 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
 
   alias AgentBoardWeb.BoardComponents.VoicePresence
 
+  alias AgentBoardWeb.BoardComponents.Controls
+
+  attr :icon, :string, default: nil
   attr :name, :string, required: true
   attr :title, :string, required: true
   attr :active, :boolean, required: true
@@ -14,7 +17,9 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
     ~H"""
     <dialog id={"panel-#{@name}"} aria-labelledby={"panel-title-#{@name}"} class="board-dialog">
       <header class="panel-heading">
-        <h2 id={"panel-title-#{@name}"} tabindex="-1">{@title}</h2>
+        <h2 id={"panel-title-#{@name}"} tabindex="-1">
+          <Controls.ico :if={@icon} name={@icon} />{@title}
+        </h2>
         <button
           type="button"
           phx-click="close"

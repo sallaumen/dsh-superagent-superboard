@@ -66,6 +66,7 @@ defmodule AgentBoard.Actions do
     Routing,
     Runners,
     Settings,
+    Setup,
     Superagents,
     Voice
   }
@@ -112,6 +113,7 @@ defmodule AgentBoard.Actions do
     :change_setting,
     :dismiss_summary,
     :forget_conversation,
+    :check_setup,
     :sync_now,
     :update_board,
     :restart_board
@@ -248,6 +250,9 @@ defmodule AgentBoard.Actions do
 
   defp spec(:forget_conversation),
     do: %{risk: :red, does: "apaga a memória da conversa por voz, sem volta"}
+
+  defp spec(:check_setup),
+    do: %{risk: :green, does: "verifica o setup com leituras gratuitas e guarda o resultado"}
 
   defp spec(:sync_now), do: %{risk: :green, does: "pede uma sincronização (lê o GitHub)"}
 
@@ -557,6 +562,9 @@ defmodule AgentBoard.Actions do
 
   def phrase(:forget_conversation, _params, _lang),
     do: "Esquecer toda a conversa por voz? O agente perde o contexto, e não há como desfazer."
+
+  def phrase(:check_setup, _params, "en-US"), do: "Check the board setup?"
+  def phrase(:check_setup, _params, _lang), do: "Verificar o setup do board?"
 
   def phrase(:sync_now, _params, _lang), do: "Sincronizar agora com o GitHub?"
 
@@ -975,6 +983,16 @@ defmodule AgentBoard.Actions do
 
   defp execute(:dismiss_summary, %{id: id}), do: DailySummary.dismiss(id)
   defp execute(:forget_conversation, _params), do: Conversation.clear()
+
+  defp execute(:check_setup, _params) do
+    rows = Setup.verify()
+    {key, receipt} = Setup.Validation.receipt(rows)
+
+    with :ok <- Settings.put(key, receipt) do
+      {:ok, {rows, Setup.Validation.history()}}
+    end
+  end
+
   defp execute(:sync_now, _params), do: Oban.insert(Worker.new(%{}))
   defp execute(:update_board, _params), do: updater().pull()
 

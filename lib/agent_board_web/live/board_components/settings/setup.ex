@@ -14,9 +14,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
+  alias AgentBoard.Actions
   alias AgentBoard.AgentTools
   alias AgentBoard.AI.Budget
   alias AgentBoard.Setup
+  alias AgentBoard.Setup.Validation
   alias AgentBoardWeb.Time
 
   attr :active, :boolean, default: false
@@ -25,45 +27,73 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
 
   @impl true
   def mount(socket),
-    do: {:ok, assign(socket, rows: nil, tools: [], checking: false, checked_at: nil)}
+    do:
+      {:ok,
+       assign(socket,
+         rows: nil,
+         tools: [],
+         checking: false,
+         check_error: false,
+         history: %{latest: nil, passed: nil}
+       )}
 
   @impl true
+  def update(%{validation_changed: true}, socket) do
+    if socket.assigns[:active] do
+      history = Validation.history()
+
+      if history == socket.assigns.history,
+        do: {:ok, socket},
+        else: {:ok, assign(socket, history: history, rows: Setup.checklist())}
+    else
+      {:ok, socket}
+    end
+  end
+
   def update(assigns, socket) do
     showing = assigns[:active] == true and socket.assigns[:active] != true
     socket = assign(socket, assigns)
 
-    # Configuration only, read each time the section comes into view (not on
-    # every board render); a check's result stays.
+    # Current configuration and dated evidence are different readings. A token
+    # removed since yesterday must show as missing even if yesterday's check passed.
     socket =
-      if showing and is_nil(socket.assigns.checked_at),
-        do: assign(socket, rows: Setup.checklist()),
-        else: socket
-
-    socket = if showing, do: assign(socket, tools: AgentTools.inventory()), else: socket
+      if showing do
+        assign(socket,
+          rows: Setup.checklist(),
+          history: Validation.history(),
+          tools: AgentTools.inventory(),
+          check_error: false
+        )
+      else
+        socket
+      end
 
     {:ok, socket}
   end
 
   @impl true
+  def handle_event("check", _params, %{assigns: %{checking: true}} = socket),
+    do: {:noreply, socket}
+
   def handle_event("check", _params, socket) do
     locale = Gettext.get_locale(AgentBoardWeb.Gettext)
 
     {:noreply,
      socket
-     |> assign(checking: true)
+     |> assign(checking: true, check_error: false)
      |> start_async(:check, fn ->
        # The rows carry sentences: the task has no locale of its own.
        Gettext.put_locale(AgentBoardWeb.Gettext, locale)
-       Setup.verify()
+       Actions.run(:check_setup, %{}, Actions.owner(:ui))
      end)}
   end
 
   @impl true
-  def handle_async(:check, {:ok, rows}, socket),
-    do: {:noreply, assign(socket, rows: rows, checking: false, checked_at: DateTime.utc_now())}
+  def handle_async(:check, {:ok, {:ok, {rows, history}}}, socket),
+    do: {:noreply, assign(socket, rows: rows, checking: false, history: history)}
 
-  def handle_async(:check, {:exit, _reason}, socket),
-    do: {:noreply, assign(socket, checking: false)}
+  def handle_async(:check, _unsuccessful, socket),
+    do: {:noreply, assign(socket, checking: false, check_error: true)}
 
   @impl true
   def render(assigns) do
@@ -80,27 +110,35 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
         <button
           id="setup-check"
           type="button"
-          class="ab-btn ab-btn--primary"
+          class={["ab-btn", if(@history.latest, do: "ab-btn--sm", else: "ab-btn--primary")]}
           phx-click="check"
           phx-target={@myself}
           disabled={@checking}
         >
-          {if @checking, do: gettext("Checking..."), else: gettext("Check the setup")}
+          {cond do
+            @checking -> gettext("Checking...")
+            @history.latest -> gettext("Check again")
+            true -> gettext("Check the setup")
+          end}
         </button>
-        <p class="ab-meta" aria-live="polite">
-          <%= cond do %>
-            <% @checking -> %>
-              {gettext("Asking GitHub, the AI provider, each agent and the CLIs. Nothing is spent.")}
-            <% @checked_at -> %>
-              {gettext("Checked at %{time}: %{summary}",
-                time: Time.local_time(@checked_at, @tz_offset),
-                summary: summary(@rows)
+        <p :if={last = @history.latest} id="setup-last-check" class="ab-meta" role="status">
+          {gettext("Last validation:")}
+          <time datetime={DateTime.to_iso8601(last.at)}>
+            {Time.local_date(last.at, @tz_offset)} {Time.local_time(last.at, @tz_offset)}
+          </time>
+          · {if last.passed?, do: gettext("OK"), else: summary(last.counts)}
+          <span :if={!last.passed? && @history.passed}>
+            · {gettext("Last successful check:")}
+            <time datetime={DateTime.to_iso8601(@history.passed.at)}>
+              {Time.local_date(@history.passed.at, @tz_offset)} {Time.local_time(
+                @history.passed.at,
+                @tz_offset
               )}
-            <% true -> %>
-              {gettext(
-                "Not checked yet: a key that is set may still be refused. The check reads, it never spends."
-              )}
-          <% end %>
+            </time>
+          </span>
+        </p>
+        <p :if={@check_error} class="ab-meta" role="alert">
+          {gettext("Could not complete the check. Try again.")}
         </p>
         <a :if={@next} class="setup__jump" href={"#setup-row-#{@next.id}"}>
           {gettext("Next step: %{part}", part: @next.title)}
@@ -330,21 +368,19 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
   defp mark(_state), do: :unknown
 
   defp state_word(:ok), do: gettext("Ready")
-  defp state_word(:configured), do: gettext("Not checked")
+  defp state_word(:configured), do: gettext("Configured")
   defp state_word(:missing), do: gettext("Missing")
   defp state_word(:off), do: gettext("Off")
   defp state_word(:failed), do: gettext("Failed")
   defp state_word(_state), do: pgettext("status", "No answer")
 
-  defp summary(rows) do
-    counts = Enum.frequencies_by(rows, & &1.state)
-
+  defp summary(counts) do
     [
-      {counts[:ok], &ngettext("%{count} ready", "%{count} ready", &1)},
-      {(counts[:failed] || 0) + (counts[:missing] || 0),
+      {counts["ok"], &ngettext("%{count} ready", "%{count} ready", &1)},
+      {(counts["failed"] || 0) + (counts["missing"] || 0),
        &ngettext("%{count} to fix", "%{count} to fix", &1)},
-      {counts[:off], &ngettext("%{count} off", "%{count} off", &1)},
-      {counts[:unknown],
+      {counts["off"], &ngettext("%{count} off", "%{count} off", &1)},
+      {counts["unknown"],
        &ngettext("%{count} without an answer", "%{count} without an answer", &1)}
     ]
     |> Enum.filter(fn {count, _word} -> is_integer(count) and count > 0 end)

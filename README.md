@@ -1,14 +1,14 @@
-# DSH Super Agent Board
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="priv/static/favicon.svg">
+  <img src="priv/static/images/superboard-mark.svg" width="80" height="80" alt="">
+</picture>
+
+# Super Agent Super Board
 
 A live operations desk for work that starts on GitHub. The external **DeepSeek
 Super Agent** executes tickets; this Elixir board makes the work visible, keeps
 the human in control of consequential actions, and connects GitHub, local
 executors, voice, and usage in one place.
-
-![System illustration: GitHub work flows through a separate agent and into the board, with a confirmation gate for local actions](docs/assets/architecture-hero.png)
-
-*Architectural illustration. The screen is a stylized preview of the board;
-[real interface captures](docs/ui-audit/README.md) are kept with the UI audits.*
 
 [![CI](https://github.com/sallaumen/dsh-superagent-superboard/actions/workflows/ci.yml/badge.svg)](https://github.com/sallaumen/dsh-superagent-superboard/actions/workflows/ci.yml)
 [![Elixir 1.19](https://img.shields.io/badge/Elixir-1.19-6e4a7e?style=flat-square)](.github/workflows/ci.yml)
@@ -33,6 +33,11 @@ The board starts in English. **Settings → System → Board language** switches
 Brazilian Portuguese; spoken language is a separate preference.
 
 ## How the pieces fit
+
+![System illustration: GitHub work flows through a separate agent and into the board, with a confirmation gate for local actions](docs/assets/architecture-hero.png)
+
+*Architectural illustration. The screen is a stylized preview of the board;
+[real interface captures](docs/ui-audit/README.md) are kept with the UI audits.*
 
 ```mermaid
 flowchart LR
@@ -83,7 +88,9 @@ migrates the development database, seeds it, and builds assets.
 Then open **Settings → AI and setup** and press **Check the setup**. It lists
 what the board needs in three groups — who does the work (GitHub, projects, the
 DeepSeek agents, Claude Code, Codex), the board's own AI, and the voice — checks
-each part with free reads, and names the next step with its fix. Only GitHub, a
+each part with free reads, and names the next step with its fix. Reopening the
+section shows the date and outcome of your last check. Choose **Check again**
+when you want a fresh result. Only GitHub, a
 project and a key for the board's own AI are required; without an AI key, AI
 requests report `:not_configured`. The board can start without the external agent, but
 live ticket state requires it. Follow the
@@ -100,7 +107,7 @@ troubleshooting, use the [operations guide](docs/operations.md). Never commit
 |---|---|
 | Understand the agent and its setup | [How the agent works](docs/agent/how-it-works.md) · [Setup](docs/agent/setup.md) |
 | Integrate with the board | [JSON API](docs/api.md) · [Architecture](docs/architecture/README.md) |
-| Use voice and understand its costs | [Voice conversation](docs/voice-conversation.md) |
+| Use Chat, SuperBoard Skills and voice | [Chat and voice](docs/voice-conversation.md) |
 | Find implementation rules and design decisions | [Maintainer contract](docs/maintainer-contract.md) · [Documentation index](docs/README.md) |
 | Contribute and validate | [Contributing](CONTRIBUTING.md) · [Pipeline matrix](PIPELINES.md) |
 

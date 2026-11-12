@@ -16,8 +16,7 @@ const maxThreshold = 0.04
 
 const stopTracks = stream => stream?.getTracks().forEach(track => track.stop())
 
-// Capture belongs to the board, never to a task form. The only start path is
-// the second trusted Space keypress while the board has neutral focus.
+// Double Space on the board opens Chat. Voice capture has a separate explicit control.
 export const VoiceCommand = {
   mounted() {
     this.phase = "idle"
@@ -150,7 +149,12 @@ export const VoiceCommand = {
     const now = performance.now()
     if (this.firstSpaceAt && now - this.firstSpaceAt <= doubleSpaceMs) {
       this.clearFirstSpace()
-      if (this.phase === "idle") this.start()
+      if (this.phase === "idle" && !dialog) {
+        window.dispatchEvent(new Event("board:panel-intent"))
+        this.pushEvent("show_panel", {panel: "voice"})
+      } else if (this.phase === "idle" && dialog.id === "panel-voice") {
+        dialog.querySelector("#voice-chat-text")?.focus()
+      } else if (this.phase === "idle") this.start()
       else if (this.phase === "listening") this.stop()
       else this.cancel()
       return
