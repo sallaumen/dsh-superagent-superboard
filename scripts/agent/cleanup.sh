@@ -4,16 +4,21 @@
 # worktree under <state>/work/ and, when it ended without a merge, its PR.
 #
 #   cleanup.sh [--dry-run] [--apply] [--force] [--repo DIR]
+#              [--older-than DAYS] [--no-prs]
 #
 # --dry-run  (default) print one line per action and change nothing
 # --apply    do it: git worktree remove + prune, gh pr close as the agent
 # --force    also remove worktrees that still hold uncommitted changes
 # --repo DIR the main checkout the prepare command adds worktrees from; by
 #            default read from each worktree's own .git file
+# --older-than DAYS  only tickets that ended at least DAYS days ago
+# --no-prs   worktrees only: PRs are not read and gh is not needed
 #
 # Never touches an open ticket, a PR someone else opened, a merged PR, or a
 # PR of a ticket that ended completed/merged. Exit 0 when nothing was left to
 # do or everything was done, 1 on a failed action or a bad invocation.
+# The board runs this script and reads its lines (AgentBoard.Superagents.Leftovers):
+# a "remove" line is: remove, name, outcome, day it ended, directory.
 set -eu
 # shellcheck disable=SC1091  # three variables and one function, shared by every script here
 . "$(dirname "$0")/_common.sh"
@@ -23,8 +28,10 @@ GH_AGENT_CONFIG="${SUPERAGENT_GH_CONFIG_DIR:-$HOME/.config/gh-agent}"
 MODE=dry-run
 FORCE=0
 REPO=""
+OLDER=""
+PRS_TOO=1
 
-usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -36,6 +43,15 @@ while [ $# -gt 0 ]; do
       REPO="$2"
       shift
       ;;
+    --older-than)
+      [ $# -ge 2 ] || { echo "--older-than needs a number of days" >&2; exit 1; }
+      case "$2" in
+        ''|*[!0-9]*) echo "--older-than needs a number of days, got: $2" >&2; exit 1 ;;
+      esac
+      OLDER="$2"
+      shift
+      ;;
+    --no-prs) PRS_TOO=0 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown option: $1" >&2; usage >&2; exit 1 ;;
   esac
@@ -43,6 +59,7 @@ while [ $# -gt 0 ]; do
 done
 
 for tool in sqlite3 git gh; do
+  [ "$tool" = gh ] && [ "$PRS_TOO" -eq 0 ] && continue
   command -v "$tool" >/dev/null 2>&1 || { echo "$tool not in PATH" >&2; exit 1; }
 done
 [ -f "$DB" ] || { echo "no database at $DB" >&2; exit 1; }
@@ -60,7 +77,12 @@ trap 'rm -rf "$TMP"' EXIT
 SEP=$(printf '\037')
 TAB=$(printf '\t')
 
-# One row per ended ticket: name, directory, outcome, issue url, id, last report.
+# A ticket with no end time is never old enough: the comparison is NULL.
+AGE=""
+[ -z "$OLDER" ] || AGE="AND julianday('now') - julianday(json_extract(value,'\$.ended.at')) >= $OLDER"
+
+# One row per ended ticket: name, directory, outcome, issue url, id, last
+# report, day it ended.
 # The last Assignment is the one that counts; [0] is the first run only.
 sqlite3 -list -separator "$SEP" "$DB" "
 SELECT coalesce(json_extract(value,'\$.execution.name'),''),
@@ -68,8 +90,9 @@ SELECT coalesce(json_extract(value,'\$.execution.name'),''),
        json_extract(value,'\$.ended.outcome'),
        coalesce(json_extract(value,'\$.channels[0].address.url'),''),
        id,
-       coalesce(json_extract(value,'\$.assignments[#-1].report.state'),'-')
-FROM ticket WHERE json_extract(value,'\$.ended') IS NOT NULL ORDER BY rowid;" > "$TMP/ended"
+       coalesce(json_extract(value,'\$.assignments[#-1].report.state'),'-'),
+       coalesce(substr(json_extract(value,'\$.ended.at'),1,10),'-')
+FROM ticket WHERE json_extract(value,'\$.ended') IS NOT NULL $AGE ORDER BY rowid;" > "$TMP/ended"
 
 # Directories of open tickets: never removed, whatever else says so.
 sqlite3 "$DB" "SELECT json_extract(value,'\$.execution.directory') FROM ticket
@@ -100,7 +123,7 @@ say() { printf '%s\n' "$*"; }
 
 # --- worktrees -------------------------------------------------------------
 
-while IFS="$SEP" read -r name dir outcome _url _id _state; do
+while IFS="$SEP" read -r name dir outcome _url _id _state day; do
   [ -n "$dir" ] || continue
   [ -d "$dir" ] || continue
   if is_open_dir "$dir"; then
@@ -147,10 +170,10 @@ while IFS="$SEP" read -r name dir outcome _url _id _state; do
 
   grep -qxF -- "$main" "$TMP/mains" || say "$main" >> "$TMP/mains"
   if [ "$MODE" = dry-run ]; then
-    say "remove    $name  $outcome  $dir${force:+  ($force)}"
+    say "remove    $name  $outcome  $day  $dir${force:+  ($force)}"
     WORKTREES=$((WORKTREES + 1))
   elif git -C "$main" worktree remove ${force:+"$force"} "$dir" 2> "$TMP/err"; then
-    say "removed   $name  $outcome  $dir"
+    say "removed   $name  $outcome  $day  $dir"
     WORKTREES=$((WORKTREES + 1))
   else
     say "FAILED    $name  $outcome  $dir: $(tr '\n' ' ' < "$TMP/err")"
@@ -175,7 +198,11 @@ done < "$TMP/mains"
 # --- pull requests ---------------------------------------------------------
 
 # Tickets that ended without a merge; only their PRs are orphans.
-awk -F "$SEP" '$3 == "closed" || $3 == "dropped" || $3 == "stopped"' "$TMP/ended" > "$TMP/terminal"
+if [ "$PRS_TOO" -eq 1 ]; then
+  awk -F "$SEP" '$3 == "closed" || $3 == "dropped" || $3 == "stopped"' "$TMP/ended" > "$TMP/terminal"
+else
+  : > "$TMP/terminal"
+fi
 
 if [ -s "$TMP/terminal" ]; then
   if ! AGENT=$(agent_gh api user --jq .login 2> "$TMP/err") || [ -z "$AGENT" ]; then
@@ -197,7 +224,7 @@ prs_file() {
   printf '%s\n' "$cache"
 }
 
-while IFS="$SEP" read -r name _dir outcome url id _state; do
+while IFS="$SEP" read -r name _dir outcome url id _state _day; do
   repo=$(printf '%s' "$url" | sed -n 's#^https://github.com/\([^/]*/[^/]*\)/.*#\1#p')
   if [ -z "$repo" ]; then
     say "skip      $name  $outcome  no GitHub issue on the ticket, PRs not checked"
@@ -235,9 +262,11 @@ done < "$TMP/terminal"
 
 # --- summary ---------------------------------------------------------------
 
+NOTE=""
+[ "$PRS_TOO" -eq 1 ] || NOTE=" PRs were not checked (--no-prs)."
 if [ "$MODE" = dry-run ]; then
-  say "dry-run: $ENDED ended tickets, $OPEN open (untouched); $WORKTREES worktrees to remove, $PRS PRs to close, $SKIPPED skipped. Rerun with --apply."
+  say "dry-run: $ENDED ended tickets, $OPEN open (untouched); $WORKTREES worktrees to remove, $PRS PRs to close, $SKIPPED skipped. Rerun with --apply.$NOTE"
 else
-  say "done: $ENDED ended tickets, $OPEN open (untouched); $WORKTREES worktrees removed, $PRS PRs closed, $SKIPPED skipped, $FAILED failed."
+  say "done: $ENDED ended tickets, $OPEN open (untouched); $WORKTREES worktrees removed, $PRS PRs closed, $SKIPPED skipped, $FAILED failed.$NOTE"
 fi
 [ "$FAILED" -eq 0 ]

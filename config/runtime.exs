@@ -91,6 +91,13 @@ if System.get_env("AGENT_BOARD_AUTO_RETRY") in ~w(0 false) do
   config :agent_board, auto_retry: false
 end
 
+# The daily folder retention (AgentBoard.Superagents.Leftovers) removes the
+# folders of tickets that ended long ago. AGENT_BOARD_FOLDER_SWEEP=0 keeps a
+# second board, which shares the agents' state folders, from it.
+if System.get_env("AGENT_BOARD_FOLDER_SWEEP") in ~w(0 false) do
+  config :agent_board, agent_folder_sweep: false
+end
+
 # Calling the agent on a task whose dependencies finished (AgentBoard.Release)
 # comments on GitHub. AGENT_BOARD_AUTO_RELEASE=0 keeps a second board from it.
 if System.get_env("AGENT_BOARD_AUTO_RELEASE") in ~w(0 false) do

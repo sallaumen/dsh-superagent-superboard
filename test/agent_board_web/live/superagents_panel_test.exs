@@ -5,7 +5,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
   import Phoenix.LiveViewTest
 
   alias AgentBoard.{Board, Repo, Superagents}
-  alias AgentBoard.Superagents.{FakeManager, FakeProvisioner, Policy, Superagent}
+  alias AgentBoard.Superagents.{FakeManager, FakeProvisioner, Leftovers, Policy, Superagent}
 
   defp superagent!(repo, attrs) do
     {:ok, superagent} =
@@ -161,6 +161,65 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     assert has_element?(view, "#project-#{superagent.id}-policy", "O agente não respondeu")
     refute has_element?(view, "#project-#{superagent.id}-policy-form")
+  end
+
+  test "a project's ended folders are measured, kept for the chosen days and removed by the red button",
+       %{conn: conn} do
+    fake_manager()
+    root = Path.join(System.tmp_dir!(), "leftovers-panel-#{System.unique_integer([:positive])}")
+    on_exit(fn -> File.rm_rf!(root) end)
+    fixture = AgentBoard.LeftoversFixture.build!(root)
+
+    {:ok, repo} = Board.add_repository("fixture", "leftovers-panel")
+    Board.log_event(repo.id, "sync", "fixture/leftovers-panel", %{"errors" => 0})
+    superagent = superagent!(repo, %{state_dir: fixture.state})
+
+    {:ok, view, _html} =
+      live(conn, "/?repo=fixture/leftovers-panel&panel=settings&section=projects")
+
+    view
+    |> element("#project-#{superagent.id} button[phx-click=toggle_project]")
+    |> render_click()
+
+    render_async(view, 10_000)
+    panel = "#project-#{superagent.id}-leftovers"
+
+    assert has_element?(view, panel, "2 pastas")
+    assert has_element?(view, panel, "Mais 1 fica")
+    assert has_element?(view, panel, "há mais de 30 dias")
+    assert has_element?(view, panel, "Hoje 1 passa desse prazo.")
+    assert has_element?(view, panel <> " option[value='30'][selected]")
+
+    view
+    |> element("#project-#{superagent.id}-leftovers-form")
+    |> render_change(%{"days" => "never"})
+
+    assert Leftovers.days(superagent) == :never
+    assert has_element?(view, panel, "O board não remove nada sozinho")
+
+    # Looking and choosing removed nothing.
+    assert Enum.all?(Map.values(fixture.dirs), &File.dir?/1)
+
+    button = "#project-clean-leftovers-#{superagent.id}"
+    view |> element(button <> "-trigger") |> render_click()
+    assert has_element?(view, button, "As pastas não voltam.")
+    view |> element(button <> "-confirm") |> render_click()
+    # The removal, then the panel measuring again.
+    render_async(view, 10_000)
+    render_async(view, 10_000)
+
+    # The button leaves with the last folder; the panel says what happened.
+    assert has_element?(view, panel, "2 pastas removidas")
+    refute has_element?(view, button)
+    refute File.dir?(fixture.dirs["old"])
+    refute File.dir?(fixture.dirs["recent"])
+    assert File.dir?(fixture.dirs["dirty"])
+    assert File.dir?(fixture.dirs["open"])
+
+    assert has_element?(view, panel, "Nenhuma pasta de ticket encerrado no disco.")
+
+    assert %{outcome: "ok", via: "ui", decision: "confirmed"} =
+             Repo.get_by!(AgentBoard.Actions.Decision, action: "clean_agent_leftovers")
   end
 
   test "summarizes a long GitHub limit error and keeps its diagnostic", %{conn: conn} do

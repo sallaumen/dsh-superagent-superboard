@@ -2376,6 +2376,10 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-policy__lines details { color: var(--ink-muted); font-size: 12.5px; line-height: 18px; overflow-wrap: anywhere; }
 .ab-policy__lines summary { cursor: pointer; }
 .ab-policy__lines details p { max-width: 80ch; margin: 6px 0 0; }
+.ab-leftovers .ab-meta { max-width: 80ch; margin: 0; }
+.ab-leftovers__facts { display: grid; gap: 4px; }
+.settings-pane .ab-leftovers__keep .voice-select { width: auto; min-width: 12rem; }
+.ab-leftovers .ab-leftovers__keep { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--ink); font-size: 13px; line-height: 20px; }
 .ab-project__foot { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .ab-project__fold { min-width: 0; max-width: 100%; }
 .ab-project__fold summary { width: max-content; cursor: pointer; color: var(--ink-muted); font-size: 12px; line-height: 18px; }

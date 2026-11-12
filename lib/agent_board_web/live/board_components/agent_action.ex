@@ -15,6 +15,13 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     * `:share_private` - "Avisar o agente na issue" (`:share_private_context`)
     * `:grant_agent_access`, `:revoke_agent_access` - who may use a project's
       agent; the row leaves on success, so BoardLive says the result.
+    * `:clean_agent_leftovers` - "Remover tudo agora": the folders and orphan
+      pull requests of a project's ended tickets.
+
+  `notify={{module, id}}` hands the result to a live component
+  (`send_update(module, id: id, done: mode, text: text)`), for a caller whose
+  own numbers the action just changed: it may stop rendering this button, so
+  it is the one that shows the text.
 
   The result stays until the next action, so a board reload (every poll)
   does not erase it.
@@ -51,6 +58,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
      |> assign_new(:login, fn -> nil end)
      |> assign_new(:rerun, fn -> [] end)
      |> assign_new(:dir, fn -> nil end)
+     |> assign_new(:notify, fn -> nil end)
      |> then(
        &assign(
          &1,
@@ -189,8 +197,14 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
     {:noreply, assign(socket, step: :done, result: %{tone: :ok, text: text})}
   end
 
-  def handle_async(:run, {:ok, {:ok, text}}, socket),
-    do: {:noreply, assign(socket, step: :done, result: %{tone: :ok, text: text})}
+  def handle_async(:run, {:ok, {:ok, text}}, socket) do
+    case socket.assigns.notify do
+      {module, id} -> send_update(module, id: id, done: socket.assigns.mode, text: text)
+      nil -> :ok
+    end
+
+    {:noreply, assign(socket, step: :done, result: %{tone: :ok, text: text})}
+  end
 
   # The gate refused: what the person confirmed is no longer what would run.
   def handle_async(:run, {:ok, {:error, {refusal, _phrase}}}, socket)
@@ -226,6 +240,7 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
   defp action(%{mode: :retry_provision_superagent}), do: :retry_provision_superagent
   defp action(%{mode: :stop_superagent}), do: :stop_superagent
   defp action(%{mode: :remove_superagent}), do: :remove_superagent
+  defp action(%{mode: :clean_agent_leftovers}), do: :clean_agent_leftovers
   defp action(%{mode: :grant_agent_access}), do: :grant_agent_access
   defp action(%{mode: :revoke_agent_access}), do: :revoke_agent_access
   defp action(%{mode: :stop}), do: :stop_task
@@ -274,7 +289,8 @@ defmodule AgentBoardWeb.BoardComponents.AgentAction do
               :start_superagent,
               :stop_superagent,
               :remove_superagent,
-              :retry_provision_superagent
+              :retry_provision_superagent,
+              :clean_agent_leftovers
             ],
        do: %{superagent: assigns.superagent}
 

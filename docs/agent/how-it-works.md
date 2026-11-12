@@ -77,7 +77,15 @@ branch) of a ticket that ended without a merge, with a comment saying so. It
 never touches an open ticket, a PR someone else opened, a merged PR, or the PR
 of a ticket that ended `completed` or `merged`. By default it is a dry run that
 prints one line per action; `--apply` executes, `--force` also removes a
-worktree that still holds uncommitted changes.
+worktree that still holds uncommitted changes, `--older-than DAYS` takes only
+tickets that ended at least that long ago and `--no-prs` leaves the pull
+requests alone (and needs no `gh`).
+
+The board runs this script for each project: it keeps the ended folders for a
+number of days (30 unless the owner chooses otherwise) and removes the older
+ones once a day, folders only; "Remover tudo agora" in Configurações →
+Projetos is the script's `--apply`. The contract's section "Ended tickets'
+folders" has the rules.
 
 The main checkout is written nowhere in this repository: the prepare command
 lives in the orchestrator's Execution settings (the panel), today

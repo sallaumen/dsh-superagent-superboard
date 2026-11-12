@@ -44,6 +44,9 @@ defmodule AgentBoard.ActionsTest do
     :resume_superagent,
     :scale_superagent,
     :apply_agent_policy,
+    :set_agent_folder_days,
+    :sweep_agent_folders,
+    :clean_agent_leftovers,
     :grant_agent_access,
     :revoke_agent_access,
     :dismiss_access_request,
@@ -215,9 +218,13 @@ defmodule AgentBoard.ActionsTest do
              :start_superagent,
              :stop_superagent,
              :remove_superagent,
-             :retry_provision_superagent
+             :retry_provision_superagent,
+             :clean_agent_leftovers
            ] ->
         %{superagent: superagent!(repo, name)}
+
+      :sweep_agent_folders ->
+        %{superagent: superagent!(repo, name), days: 30}
 
       :start_agent ->
         %{opts: [starter: fn -> flunk("the agent must not start") end]}
@@ -237,10 +244,11 @@ defmodule AgentBoard.ActionsTest do
       end
     end
 
-    test "only the automatic retry and the release hold a standing authorization, both red" do
+    test "only the automatic retry, the release and the folder retention hold a standing authorization, all red" do
       assert [
                %{name: :auto_retry_ticket, risk: :red, standing: %{by: "auto_retry"}},
-               %{name: :release_task, risk: :red, standing: %{by: "release"}}
+               %{name: :release_task, risk: :red, standing: %{by: "release"}},
+               %{name: :sweep_agent_folders, risk: :red, standing: %{by: "folder_retention"}}
              ] = Enum.filter(Actions.catalog(), &Map.has_key?(&1, :standing))
     end
 
@@ -274,7 +282,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 19
+      assert length(reds) == 21
 
       for name <- reds do
         params = red_params(name, context)
@@ -288,7 +296,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 19
+      assert Repo.aggregate(Task, :count, :id) == 21
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -977,9 +985,12 @@ defmodule AgentBoard.ActionsTest do
       # Policy.apply is the effect behind :apply_agent_policy; it stores the
       # project's own rules.
       {~r/\bPolicy\.apply\(/, []},
+      # Removing ended tickets' folders and changing how long they stay.
+      {~r/\bLeftovers\.(clean|put_days)\(/, []},
       {~r/\bSettings\.put\(/,
        [
          "lib/agent_board/superagents/policy.ex",
+         "lib/agent_board/superagents/leftovers.ex",
          "lib/agent_board/voice.ex",
          "lib/agent_board/eleven_labs.ex",
          "lib/agent_board/daily_summary.ex"
