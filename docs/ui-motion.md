@@ -50,8 +50,15 @@ exists, not before.
 | DeepSeek peak flame | 2.6 s flicker of the flame's scale from its base, `--ease-standard`, only under `no-preference` and only while `Providers.peak?/1` is true; off-peak the moon is still. The switch itself is a cut: the icon changes at the hour | `.ab-peak.is-peak .hero-fire` |
 | Throughput value that changed | 600 ms of color, `--agent` → `--ink`, `--ease-standard`; the `ValueChange` hook compares the previous value and only then applies `.is-changed`, so a broadcast with no change moves nothing, and nor does the runner's first answer after `?` | `.ab-flow__value.is-changed` |
 | Current hour's sparkline bar that rose | grows from its old height (`scaleY`, origin at the base) in 180 ms on `m3.standard` (0.2, 0, 0, 1), Web Animations, only when the bar's hour is the same as before; a new hour, a bar that fell and the first bar of an hour (it had no rect) are cuts | `.ab-flow__spark rect.is-now` |
+| A running card's stage that advanced (Análise → Código → PR) | the line into the new current stage draws from the left in 200 ms on `m3.emphasizedDecelerate`, in `--agent` settling to its rule colour, and the stage's glyph lands 90 ms after (200 ms, outBack, transform only); `ValueChange` marks it from the count of done stages (`data-key="phases-<id>"`), so only a rise draws | `.ab-phases.is-up .ab-phase.is-now` |
+| Opening the inspector (a task's conversation) | 200 ms, 24 px from the right, opaque, `m3.standardDecelerate` (0, 0, 0, 1); no fade, because as an overlay a translucent panel shows the board's text through it; switching tasks keeps the node and does not replay; closing is a cut | `.ab-insp` |
 | Lane count that changed (Agora, Precisa de você, Fila) | the same 600 ms tint as throughput, from `--agent` back to the count's own ink: the number says it changed without moving | `.ab-sec__count.is-changed` |
 | Messages or Attention badge that rose | one 200 ms bump to scale 1.2 at 35 %, `--ease-standard`; only a rise (`is-up`) bumps, a count the owner brought down by reading is a cut, and a badge that appears from 0 bumps because the summary, not the badge, carries the value | `.ab-hub-menu summary.is-up .ab-hub-menu__count` |
+
+`ValueChange`'s marks (`is-changed`, `is-up`) belong to the client: the page's
+`onBeforeElUpdated` keeps them on a `[data-key]` element, so a second patch
+right after a change does not cut the tint, the bump or the drawn line. The
+next real change removes and re-adds them, which is what restarts a pulse.
 
 ### Settings → Costs (`CostsMotion`)
 

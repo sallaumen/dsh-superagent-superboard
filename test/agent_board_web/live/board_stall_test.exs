@@ -102,6 +102,11 @@ defmodule AgentBoardWeb.BoardStallTest do
     assert has_element?(view, "#sec-now #task-#{task.id} .ab-phase.is-now", "Análise")
     assert has_element?(view, ~s(#task-#{task.id} [aria-label$="Etapa: Análise"]))
     assert has_element?(view, "#sec-now #task-#{task.id} .ab-phase:not(.is-now)", "PR")
+    # ValueChange draws the line into a new stage when this count rises
+    assert has_element?(
+             view,
+             ~s(#sec-now #task-#{task.id} .ab-phases[data-key="phases-#{task.id}"][data-value="0"])
+           )
 
     refute has_element?(view, "#sec-now #task-#{task.id} .ab-g.is-live")
     assert has_element?(view, "#sec-needs #silence-#{task.id}", "Sem sinal há")
