@@ -6,7 +6,7 @@ This document answers "which script do I run now?". It defines the repository's 
 
 | Pipeline | What it validates | Canonical script | `make` target | CI job |
 |---|---|---|---|---|
-| Backend | Orphan dependencies, agent practices, warnings, formatting, credo, Dialyzer, tests, and Sobelow | `mix gate` + `mix sobelow --exit` | `make backend` | `gates` + `backend` (Dialyzer local only for now) |
+| Backend | Orphan dependencies, agent practices, warnings, formatting, credo, Dialyzer, tests (the secret scan among them), and Sobelow | `mix gate` + `mix sobelow --exit` | `make backend` | `gates` + `backend` (Dialyzer local only for now) |
 | Frontend | Asset sources, setup, build, and deploy | `scripts/check_assets.sh` + asset tasks | `make frontend` | `frontend · assets` |
 | Library | References to the versioned kit | `mix agent_kit.check` | `make library` | `biblioteca de capacidades` (capability library) |
 | Mixed (release) | The combined path of a deploy | release sequence (below) | `make release` | `release · caminho misto` (mixed path) |
@@ -32,6 +32,7 @@ body: changes to those contracts require checking the consumers.
 | `mix ecto.setup` | Create/migrate and seed the development database | `MIX_ENV=dev` | writes to the database; runs `priv/repo/seeds.exs` | database and seeds ready; not a gate |
 | `mix ecto.reset` | Deliberately recreate the disposable local database | `MIX_ENV=dev` | **deletes the database** and runs `ecto.setup` | database recreated; outside CI and the pre-flight |
 | `mix test` | Test behaviors; accepts a file and filters | `:test` automatically | creates/migrates the test database before the suite | tests green; CI uses partitions |
+| `mix test test/secret_scan_test.exs` | Before committing anything that touched configuration, fixtures or docs with examples; it also runs inside every `mix test`, so `mix precommit`, `mix gate` and the CI's `backend` job all carry it | `:test` automatically | read-only over the files git tracks or would add (ignored files such as `.env.local` are left alone) | no finding; a finding names file, line and kind of key, never the value |
 | `mix lint` | Fast iteration, no database | any | none (read-only) | format and credo green |
 | `mix precommit` | Before committing; applies fixes | `:test` automatically | removes orphan dependencies from the lockfile, formats, type-checks, and runs tests | formatting applied + gates green |
 | `mix gate` | Backend checks; CI splits its steps across jobs | run with `MIX_ENV=test` | compiles and creates/migrates the test database; does not change sources | dependencies, agent references, warnings, format, credo, Dialyzer, and tests green |
@@ -106,7 +107,7 @@ CI's goal is still to verify in a clean environment; the rule only avoids blocki
 
 ## History
 
-- Single job (`gates`) replaced by separate pipelines (PR #13); release smoke added (PR #14); `make` as the single entry point per pipeline (PR #15); this matrix created afterwards. Guideline "CI unavailable → local pipeline is the gate" added after the account's billing block.
+- Single job (`gates`) replaced by separate pipelines (PR #13); release smoke added (PR #14); `make` as the single entry point per pipeline (PR #15); this matrix created afterwards. Guideline "CI unavailable → local pipeline is the gate" added after the account's billing block. Secret scan added as a test of the suite on 2026-11-12, so that it needs no pipeline of its own; the git history up to that day had no match for its patterns.
 
 ## The agent and the AI layer
 
