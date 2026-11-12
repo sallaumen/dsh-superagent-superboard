@@ -96,7 +96,14 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
             <span :if={task.step.note} class="ab-meta ab-run__note" title={task.step.note}>{task.step.note}</span>
           </div>
 
-          <div :if={task.phases != []} class="ab-phases" aria-label={gettext("Stages")}>
+          <%!-- ValueChange (on #sec-now): the count of done stages rising draws the line into the new one. --%>
+          <div
+            :if={task.phases != []}
+            class="ab-phases"
+            aria-label={gettext("Stages")}
+            data-key={"phases-#{task.id}"}
+            data-value={Enum.count(task.phases, fn {_name, state} -> state == "done" end)}
+          >
             <span
               :for={{name, state} <- task.phases}
               class={["ab-phase", state == "done" && "is-done", state == "now" && "is-now"]}
