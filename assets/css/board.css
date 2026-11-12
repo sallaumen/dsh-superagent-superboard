@@ -1635,8 +1635,9 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .setup__what .ab-meta { overflow-wrap: anywhere; }
 .setup__use { color: var(--ink-muted); font-size: 12.5px; line-height: 18px; }
 .setup__fix { justify-self: end; white-space: nowrap; }
-.setup__fix--command { font-size: 12.5px; color: var(--ink-muted); }
-.setup__fix--command code { font-family: var(--font-mono); color: var(--ink); background: var(--paper-sunk); padding: 1px 6px; border-radius: 4px; }
+/* A command can be long: it takes its own line under the text and wraps, so it never widens the rows. */
+.setup__fix--command { grid-column: 2 / -1; justify-self: start; white-space: normal; font-size: 12.5px; color: var(--ink-muted); }
+.setup__fix--command code { font-family: var(--font-mono); color: var(--ink); background: var(--paper-sunk); padding: 1px 6px; border-radius: 4px; overflow-wrap: anywhere; }
 .setup__more { display: flex; flex-wrap: wrap; gap: var(--space-4); margin: 0; }
 .setup__tools { border-top: 1px solid var(--line); }
 .setup__tools:last-child { border-bottom: 1px solid var(--line); }
@@ -1652,6 +1653,7 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 @container board (max-width: 640px) {
   .setup__row { grid-template-columns: minmax(0, 1fr); }
   .setup__fix { justify-self: start; }
+  .setup__fix--command { grid-column: 1; }
 }
 .settings-subpane { display: grid; gap: 10px; padding-top: 22px; margin-top: 22px; border-top: 1px solid var(--line); }
 .settings-subpane:first-of-type { padding-top: 0; margin-top: 0; border-top: 0; }

@@ -4146,8 +4146,8 @@ msgstr ""
 msgid "How you talk to the board, when it answers aloud and the summary of the day."
 msgstr ""
 
-#: lib/agent_board/setup.ex:124
-#: lib/agent_board/setup.ex:136
+#: lib/agent_board/setup.ex:144
+#: lib/agent_board/setup.ex:156
 #: lib/agent_board_web/live/board_components/settings/projects.ex:109
 #: lib/agent_board_web/live/board_components/settings/setup.ex:330
 #: lib/agent_board_web/live/board_components/settings_menu.ex:223
@@ -4476,7 +4476,7 @@ msgstr ""
 msgid "Off. When you turn it on, nothing new starts and running work finishes."
 msgstr ""
 
-#: lib/agent_board/setup.ex:207
+#: lib/agent_board/setup.ex:360
 #: lib/agent_board_web/live/board_components/settings/execution.ex:314
 #, elixir-autogen, elixir-format
 msgid "Open Projects"
@@ -7671,95 +7671,95 @@ msgstr ""
 msgid "≥ %{cost} list price"
 msgstr ""
 
-#: lib/agent_board/setup.ex:87
+#: lib/agent_board/setup.ex:107
 #, elixir-autogen, elixir-format
 msgid "Create a token"
 msgstr ""
 
-#: lib/agent_board/setup.ex:91
+#: lib/agent_board/setup.ex:111
 #, elixir-autogen, elixir-format
 msgid "A token is set."
 msgstr ""
 
-#: lib/agent_board/setup.ex:96
+#: lib/agent_board/setup.ex:116
 #, elixir-autogen, elixir-format
 msgid "Signed in as @%{login}."
 msgstr ""
 
-#: lib/agent_board/setup.ex:103
+#: lib/agent_board/setup.ex:123
 #, elixir-autogen, elixir-format
 msgid "No token: set GITHUB_TOKEN in .env.local and restart the board."
 msgstr ""
 
-#: lib/agent_board/setup.ex:110
+#: lib/agent_board/setup.ex:130
 #, elixir-autogen, elixir-format
 msgid "GitHub refused the token: it expired or was revoked."
 msgstr ""
 
-#: lib/agent_board/setup.ex:115
+#: lib/agent_board/setup.ex:135
 #, elixir-autogen, elixir-format
 msgid "GitHub did not answer."
 msgstr ""
 
-#: lib/agent_board/setup.ex:126
+#: lib/agent_board/setup.ex:146
 #, elixir-autogen, elixir-format
 msgid "No repository is tracked yet."
 msgstr ""
 
-#: lib/agent_board/setup.ex:127
+#: lib/agent_board/setup.ex:147
 #, elixir-autogen, elixir-format
 msgid "Add a project"
 msgstr ""
 
-#: lib/agent_board/setup.ex:139
+#: lib/agent_board/setup.ex:159
 #, elixir-autogen, elixir-format
 msgid "%{count} repository tracked."
 msgid_plural "%{count} repositories tracked."
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board/setup.ex:153
-#: lib/agent_board/setup.ex:165
+#: lib/agent_board/setup.ex:173
+#: lib/agent_board/setup.ex:318
 #, elixir-autogen, elixir-format
 msgid "DeepSeek agents"
 msgstr ""
 
-#: lib/agent_board/setup.ex:155
+#: lib/agent_board/setup.ex:180
 #, elixir-autogen, elixir-format
 msgid "No project has its own agent: issues for DeepSeek would not move."
 msgstr ""
 
-#: lib/agent_board/setup.ex:156
+#: lib/agent_board/setup.ex:181
 #, elixir-autogen, elixir-format
 msgid "Create an agent"
 msgstr ""
 
-#: lib/agent_board/setup.ex:169
+#: lib/agent_board/setup.ex:322
 #, elixir-autogen, elixir-format
 msgid "model not read"
 msgstr ""
 
-#: lib/agent_board/setup.ex:220
+#: lib/agent_board/setup.ex:373
 #, elixir-autogen, elixir-format
 msgid "Installed on this Mac."
 msgstr ""
 
-#: lib/agent_board/setup.ex:223
+#: lib/agent_board/setup.ex:376
 #, elixir-autogen, elixir-format
 msgid "Installed and signed in."
 msgstr ""
 
-#: lib/agent_board/setup.ex:229
+#: lib/agent_board/setup.ex:382
 #, elixir-autogen, elixir-format
 msgid "Not found at %{path}. Install it, or point %{env} in .env.local to it."
 msgstr ""
 
-#: lib/agent_board/setup.ex:239
+#: lib/agent_board/setup.ex:392
 #, elixir-autogen, elixir-format
 msgid "Installed, but not signed in."
 msgstr ""
 
-#: lib/agent_board/setup.ex:246
+#: lib/agent_board/setup.ex:399
 #, elixir-autogen, elixir-format
 msgid "Its login could not be read."
 msgstr ""
@@ -7769,73 +7769,73 @@ msgstr ""
 msgid "The board's own AI"
 msgstr ""
 
-#: lib/agent_board/setup.ex:263
+#: lib/agent_board/setup.ex:416
 #, elixir-autogen, elixir-format
 msgid "No key: set DEEPSEEK_API_KEY (or GEMINI_API_KEY, OPENAI_API_KEY) in .env.local and restart the board."
 msgstr ""
 
-#: lib/agent_board/setup.ex:266
+#: lib/agent_board/setup.ex:419
 #, elixir-autogen, elixir-format
 msgid "Get a DeepSeek key"
 msgstr ""
 
-#: lib/agent_board/setup.ex:273
+#: lib/agent_board/setup.ex:426
 #, elixir-autogen, elixir-format
 msgid "Rehearsal: answers come from local fixtures, no key is used."
 msgstr ""
 
-#: lib/agent_board/setup.ex:288
+#: lib/agent_board/setup.ex:441
 #, elixir-autogen, elixir-format
 msgid "If it fails: %{others}."
 msgstr ""
 
-#: lib/agent_board/setup.ex:294
+#: lib/agent_board/setup.ex:447
 #, elixir-autogen, elixir-format
 msgid "%{provider} answers (%{model})."
 msgstr ""
 
-#: lib/agent_board/setup.ex:309
+#: lib/agent_board/setup.ex:462
 #, elixir-autogen, elixir-format
 msgid "%{provider} refused the key: it expired or was revoked."
 msgstr ""
 
-#: lib/agent_board/setup.ex:312
-#: lib/agent_board/setup.ex:360
+#: lib/agent_board/setup.ex:465
+#: lib/agent_board/setup.ex:513
 #, elixir-autogen, elixir-format
 msgid "Create a key"
 msgstr ""
 
-#: lib/agent_board/setup.ex:318
+#: lib/agent_board/setup.ex:471
 #, elixir-autogen, elixir-format
 msgid "%{provider} did not answer."
 msgstr ""
 
-#: lib/agent_board/setup.ex:330
+#: lib/agent_board/setup.ex:483
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs key set."
 msgstr ""
 
-#: lib/agent_board/setup.ex:336
+#: lib/agent_board/setup.ex:489
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs answers: %{used} of %{limit} characters used."
 msgstr ""
 
-#: lib/agent_board/setup.ex:347
+#: lib/agent_board/setup.ex:500
 #, elixir-autogen, elixir-format
 msgid "No ElevenLabs key: the board speaks and listens with the browser, free."
 msgstr ""
 
-#: lib/agent_board/setup.ex:350
+#: lib/agent_board/setup.ex:503
 #, elixir-autogen, elixir-format
 msgid "Get an ElevenLabs key"
 msgstr ""
 
-#: lib/agent_board/setup.ex:357
+#: lib/agent_board/setup.ex:510
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs refused the key: it expired or was revoked."
 msgstr ""
 
-#: lib/agent_board/setup.ex:365
+#: lib/agent_board/setup.ex:518
 #, elixir-autogen, elixir-format
 msgid "ElevenLabs did not answer."
 msgstr ""
@@ -7900,17 +7900,17 @@ msgstr ""
 msgid "Ready"
 msgstr ""
 
-#: lib/agent_board/setup.ex:191
+#: lib/agent_board/setup.ex:344
 #, elixir-autogen, elixir-format
 msgid "%{answered} of %{total} answer · %{model}"
 msgstr ""
 
-#: lib/agent_board/setup.ex:202
+#: lib/agent_board/setup.ex:355
 #, elixir-autogen, elixir-format
 msgid "%{answered} of %{total} answer; no answer from %{silent}."
 msgstr ""
 
-#: lib/agent_board/setup.ex:177
+#: lib/agent_board/setup.ex:330
 #, elixir-autogen, elixir-format
 msgid "%{count} agent · %{model}"
 msgid_plural "%{count} agents · %{model}"
@@ -7966,7 +7966,7 @@ msgstr ""
 msgid "The agents that write the code of each task, on GitHub. DeepSeek takes the issues by itself; Claude Code and Codex run on this Mac when you dispatch a task."
 msgstr ""
 
-#: lib/agent_board/setup.ex:254
+#: lib/agent_board/setup.ex:407
 #, elixir-autogen, elixir-format
 msgid "AI provider"
 msgstr ""
@@ -9206,4 +9206,71 @@ msgstr ""
 #: lib/agent_board/actions.ex:1466
 #, elixir-autogen, elixir-format
 msgid "this machine already has an agent installed for this repository (%{profile}); add it to the board in Projects instead."
+msgstr ""
+
+#: lib/agent_board/setup.ex:188
+#, elixir-autogen, elixir-format
+msgid "%{count} agent is installed on this machine, and the board does not follow it yet."
+msgid_plural "%{count} agents are installed on this machine, and the board does not follow them yet."
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board/setup.ex:222
+#, elixir-autogen, elixir-format
+msgid "%{tools} are on this machine."
+msgstr ""
+
+#: lib/agent_board/setup.ex:245
+#, elixir-autogen, elixir-format
+msgid "%{tool} %{found} is older than the %{wanted} the agent needs."
+msgstr ""
+
+#: lib/agent_board/setup.ex:265
+#, elixir-autogen, elixir-format
+msgid "A GitHub sign-in apart from yours is set up for the agent."
+msgstr ""
+
+#: lib/agent_board/setup.ex:193
+#, elixir-autogen, elixir-format
+msgid "Add it in Projects"
+msgstr ""
+
+#: lib/agent_board/setup.ex:273
+#, elixir-autogen, elixir-format
+msgid "It is signed in as %{login}, your own account. The agent must act as an account of its own: everything it writes appears under that name."
+msgstr ""
+
+#: lib/agent_board/setup.ex:241
+#, elixir-autogen, elixir-format
+msgid "Not on this machine: %{tools}."
+msgstr ""
+
+#: lib/agent_board/setup.ex:283
+#, elixir-autogen, elixir-format
+msgid "Signed in as %{login}."
+msgstr ""
+
+#: lib/agent_board/setup.ex:298
+#, elixir-autogen, elixir-format
+msgid "The agent needs a GitHub account of its own, signed in apart from yours. Create the account on GitHub, then sign in as it."
+msgstr ""
+
+#: lib/agent_board/setup.ex:258
+#, elixir-autogen, elixir-format
+msgid "The agent's GitHub account"
+msgstr ""
+
+#: lib/agent_board/setup.ex:307
+#, elixir-autogen, elixir-format
+msgid "The agent's GitHub sign-in could not be read."
+msgstr ""
+
+#: lib/agent_board/setup.ex:290
+#, elixir-autogen, elixir-format
+msgid "The agent's GitHub sign-in is there, but GitHub refuses it."
+msgstr ""
+
+#: lib/agent_board/setup.ex:212
+#, elixir-autogen, elixir-format
+msgid "Tools a DeepSeek agent needs"
 msgstr ""

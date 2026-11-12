@@ -776,6 +776,23 @@ browser), a state and the fix for the next step.
   `next_step/1` is the first required row that is missing or failing.
 - The superagent's model is read from its profile (`agent-default-model` in
   `cordis.patch.yml`, `Superagents.profile_model/2`); the board never writes it.
+- **A board with no agent yet** also says what a first DeepSeek agent needs
+  on this machine, in two optional rows that leave once a project has an
+  agent. `:agent_tools`: `node`, `pnpm`, `git`, `tmux`, `python3` and `gh` in
+  the board's own `PATH` (the one its commands will run with); the check also
+  runs `node --version` and `gh --version` against the floors the prototype
+  states (22.19 and 2.48). A missing or old one names itself and the
+  `brew install` that brings it, as `:off`: these rows are optional, and
+  what is not there yet never fails a check (a board may run on Claude Code
+  or Codex alone). `:agent_bot`: the agent's own GitHub sign-in
+  (`~/.config/gh-agent/hosts.yml`); the check asks GitHub who that sign-in is
+  (`gh api user`, with `GH_CONFIG_DIR`) and fails when it is the owner's own
+  login, because the agent must act as an account of its own, or when GitHub
+  refuses it; no sign-in at all is `:off`. Only the login,
+  a public name, is shown. Signing in stays the person's step: the row gives
+  the command and the board never sees a password or a token.
+- The agents row of such a board counts the agents installed outside it
+  (`Superagents.unregistered/0`) and sends the owner to Projects to add them.
 
 ## What each agent has installed
 

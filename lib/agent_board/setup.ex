@@ -15,6 +15,13 @@ defmodule AgentBoard.Setup do
       `codex login status`, ElevenLabs' subscription. None spends money or
       writes anything.
 
+  A board with no agent yet also says what a first DeepSeek agent needs on
+  this machine: the tools its install runs (`:agent_tools`) and a GitHub
+  sign-in of its own (`:agent_bot`). Both are optional, so what is not there
+  yet is `:off` and never fails a check (a board may run on Claude Code or
+  Codex alone); only a sign-in that is wrong fails. Both leave once a project
+  has an agent.
+
   The classes follow who the AI works for: `:work` (who does the tasks:
   GitHub where they live, the projects, the DeepSeek superagents, Claude Code,
   Codex), `:board_ai` (the board's own refinements, answers and voice turns)
@@ -46,6 +53,19 @@ defmodule AgentBoard.Setup do
   }
   @cli_timeout_ms 8_000
 
+  # What the prototype's install and the agent itself run (its
+  # docs/006-deployment.md, Prerequisites), with Homebrew's name for each.
+  @agent_tools [
+    {"node", "node"},
+    {"pnpm", "pnpm"},
+    {"git", "git"},
+    {"tmux", "tmux"},
+    {"python3", "python"},
+    {"gh", "gh"}
+  ]
+  @agent_minimum %{"node" => "22.19.0", "gh" => "2.48.0"}
+  @bot_login "mkdir -p ~/.config/gh-agent && GH_CONFIG_DIR=~/.config/gh-agent gh auth login"
+
   @doc "The rows from configuration only, with no network."
   @spec checklist(keyword()) :: [row()]
   def checklist(opts \\ []), do: rows(:config, opts)
@@ -68,16 +88,19 @@ defmodule AgentBoard.Setup do
 
     read = fn key -> Keyword.get_lazy(opts, key, fn -> reader(mode, key) end) end
     agents = read.(:agents).()
+    github = read.(:github).()
 
     [
-      github(mode, read.(:github).()),
+      github(mode, github),
       projects(read.(:repositories).()),
-      agents(mode, agents),
+      agents(mode, agents, read),
+      first_agent(mode, agents, github, read),
       cli(mode, "claude", read.(:cli)),
       cli(mode, "codex", read.(:cli)),
       board_ai(mode, read.(:board_ai).(), read),
       voice(mode, read.(:voice).())
     ]
+    |> List.flatten()
   end
 
   # ---- rows ------------------------------------------------------------------
@@ -145,16 +168,149 @@ defmodule AgentBoard.Setup do
     }
   end
 
-  defp agents(_mode, []) do
-    %{
+  defp agents(_mode, [], read) do
+    row = %{
       id: :deepseek_agents,
       class: :work,
       required: false,
-      title: gettext("DeepSeek agents"),
-      state: :off,
-      detail: gettext("No project has its own agent: issues for DeepSeek would not move."),
-      fix: %{section: "projects", label: gettext("Create an agent")}
+      title: gettext("DeepSeek agents")
     }
+
+    case read.(:waiting).() do
+      0 ->
+        Map.merge(row, %{
+          state: :off,
+          detail: gettext("No project has its own agent: issues for DeepSeek would not move."),
+          fix: %{section: "projects", label: gettext("Create an agent")}
+        })
+
+      waiting ->
+        Map.merge(row, %{
+          state: :off,
+          detail:
+            ngettext(
+              "%{count} agent is installed on this machine, and the board does not follow it yet.",
+              "%{count} agents are installed on this machine, and the board does not follow them yet.",
+              waiting
+            ),
+          fix: %{section: "projects", label: gettext("Add it in Projects")}
+        })
+    end
+  end
+
+  defp agents(mode, agents, _read), do: agents(mode, agents)
+
+  # ---- a first agent ---------------------------------------------------------
+
+  defp first_agent(_mode, [_agent | _rest], _github, _read), do: []
+
+  defp first_agent(mode, [], github, read),
+    do: [agent_tools(mode, read.(:agent_tools).()), agent_bot(mode, read.(:agent_bot).(), github)]
+
+  defp agent_tools(mode, facts) do
+    row = %{
+      id: :agent_tools,
+      class: :work,
+      required: false,
+      title: gettext("Tools a DeepSeek agent needs")
+    }
+
+    missing = for {tool, :missing} <- facts, do: tool
+    old = for {tool, {:old, found, wanted}} <- facts, do: {tool, found, wanted}
+
+    if missing == [] and old == [] do
+      Map.merge(row, %{
+        state: if(mode == :live, do: :ok, else: :configured),
+        detail:
+          gettext("%{tools} are on this machine.",
+            tools: Enum.map_join(facts, ", ", &elem(&1, 0))
+          ),
+        fix: nil
+      })
+    else
+      wanted = missing ++ Enum.map(old, &elem(&1, 0))
+
+      Map.merge(row, %{
+        state: :off,
+        detail: Enum.join(missing_text(missing) ++ Enum.map(old, &old_text/1), " "),
+        fix: %{command: "brew install " <> Enum.map_join(wanted, " ", &formula/1)}
+      })
+    end
+  end
+
+  defp missing_text([]), do: []
+
+  defp missing_text(missing),
+    do: [gettext("Not on this machine: %{tools}.", tools: Enum.join(missing, ", "))]
+
+  defp old_text({tool, found, wanted}),
+    do:
+      gettext("%{tool} %{found} is older than the %{wanted} the agent needs.",
+        tool: tool,
+        found: found,
+        wanted: wanted
+      )
+
+  defp formula(tool), do: Enum.find_value(@agent_tools, tool, fn {t, f} -> t == tool && f end)
+
+  defp agent_bot(mode, fact, github) do
+    row = %{
+      id: :agent_bot,
+      class: :work,
+      required: false,
+      title: gettext("The agent's GitHub account")
+    }
+
+    case {mode, fact, github} do
+      {:config, true, _github} ->
+        Map.merge(row, %{
+          state: :configured,
+          detail: gettext("A GitHub sign-in apart from yours is set up for the agent."),
+          fix: nil
+        })
+
+      {:live, {:ok, login}, {:ok, login}} ->
+        Map.merge(row, %{
+          state: :failed,
+          detail:
+            gettext(
+              "It is signed in as %{login}, your own account. The agent must act as an account of its own: everything it writes appears under that name.",
+              login: login
+            ),
+          fix: %{command: @bot_login}
+        })
+
+      {:live, {:ok, login}, _github} ->
+        Map.merge(row, %{
+          state: :ok,
+          detail: gettext("Signed in as %{login}.", login: login),
+          fix: nil
+        })
+
+      {:live, {:error, :logged_out}, _github} ->
+        Map.merge(row, %{
+          state: :failed,
+          detail: gettext("The agent's GitHub sign-in is there, but GitHub refuses it."),
+          fix: %{command: @bot_login}
+        })
+
+      {_mode, missing, _github} when missing in [false, {:error, :missing}] ->
+        Map.merge(row, %{
+          state: :off,
+          detail:
+            gettext(
+              "The agent needs a GitHub account of its own, signed in apart from yours. Create the account on GitHub, then sign in as it."
+            ),
+          fix: %{command: @bot_login}
+        })
+
+      {:live, _error, _github} ->
+        Map.merge(row, %{
+          state: :unknown,
+          detail: gettext("The agent's GitHub sign-in could not be read."),
+          fix: %{command: @bot_login}
+        })
+    end
   end
 
   defp agents(mode, agents) do
@@ -395,6 +551,19 @@ defmodule AgentBoard.Setup do
     end
   end
 
+  defp reader(_mode, :waiting), do: fn -> length(Superagents.unregistered()) end
+
+  defp reader(:config, :agent_tools),
+    do: fn -> for({tool, _formula} <- @agent_tools, do: {tool, found(tool)}) end
+
+  defp reader(:live, :agent_tools),
+    do: fn -> for({tool, _formula} <- @agent_tools, do: {tool, recent(tool)}) end
+
+  defp reader(:config, :agent_bot),
+    do: fn -> File.regular?(Path.join(bot_config(), "hosts.yml")) end
+
+  defp reader(:live, :agent_bot), do: &bot_login/0
+
   defp reader(:live, :cli), do: &cli_login/1
   defp reader(:live, :voice), do: &ElevenLabs.subscription/0
 
@@ -470,6 +639,55 @@ defmodule AgentBoard.Setup do
     end
   rescue
     exception -> {:error, exception}
+  end
+
+  # ---- a first agent's readers -----------------------------------------------
+
+  defp found(tool), do: if(System.find_executable(tool), do: :ok, else: :missing)
+
+  # Only the tools with a floor are run; a version that cannot be read is not
+  # a reason to stop the owner.
+  defp recent(tool) do
+    with path when is_binary(path) <- System.find_executable(tool) || :missing,
+         wanted when is_binary(wanted) <- Map.get(@agent_minimum, tool, :ok),
+         {:ok, {output, 0}} <- timed(path, ["--version"], []),
+         [found] <- Regex.run(~r/\d+\.\d+\.\d+/, output),
+         :lt <- Version.compare(found, wanted) do
+      {:old, found, wanted}
+    else
+      :missing -> :missing
+      _fine_or_unread -> :ok
+    end
+  end
+
+  defp bot_config,
+    do: Application.get_env(:agent_board, :agent_gh_config, Path.expand("~/.config/gh-agent"))
+
+  # The agent's own sign-in, asked the way dsh-superagent asks: its login is
+  # a public name, and nothing else of the answer is kept.
+  defp bot_login do
+    with true <- File.regular?(Path.join(bot_config(), "hosts.yml")) || {:error, :missing},
+         gh when is_binary(gh) <- System.find_executable("gh") || {:error, :missing} do
+      case timed(gh, ["api", "user", "--jq", ".login"], [{"GH_CONFIG_DIR", bot_config()}]) do
+        {:ok, {output, 0}} -> bot_named(String.trim(output))
+        {:ok, {_output, _status}} -> {:error, :logged_out}
+        nil -> {:error, :timeout}
+      end
+    end
+  end
+
+  defp bot_named(""), do: {:error, :logged_out}
+  defp bot_named(login), do: {:ok, login}
+
+  # `command` is a path `System.find_executable/1` answered for a tool this
+  # module names; no request reaches it. Run through env, as the CLIs above.
+  defp timed(command, args, env) do
+    task =
+      Task.async(fn ->
+        System.cmd("/usr/bin/env", [command | args], env: env, stderr_to_stdout: true)
+      end)
+
+    Task.yield(task, @cli_timeout_ms) || Task.shutdown(task)
   end
 
   defp logged_in?("claude", output) do

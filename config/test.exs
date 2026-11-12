@@ -103,11 +103,25 @@ config :agent_board, elevenlabs_account_refresh: false
 
 # Settings opens on AI and setup when a required part is missing; the suite
 # has no GitHub token nor AI key (CI), so the configuration reading counts them as set.
+# What a first agent needs is read from this machine (its PATH, the bot's
+# sign-in): the suite counts it as there, and a test says otherwise.
 config :agent_board, :setup_readers,
   config: [
     github: fn -> true end,
-    board_ai: fn -> %{provider: :deepseek, model: "deepseek-flash", fallbacks: []} end
+    board_ai: fn -> %{provider: :deepseek, model: "deepseek-flash", fallbacks: []} end,
+    waiting: fn -> 0 end,
+    agent_tools: fn -> [{"node", :ok}, {"gh", :ok}] end,
+    agent_bot: fn -> true end
+  ],
+  # The check would ask GitHub who the developer's own bot is.
+  live: [
+    waiting: fn -> 0 end,
+    agent_tools: fn -> [{"node", :ok}, {"gh", :ok}] end,
+    agent_bot: fn -> {:ok, "fixture-bot"} end
   ]
+
+# A test that replaces those readers still finds no sign-in to ask with.
+config :agent_board, agent_gh_config: "/nonexistent-gh-agent"
 
 # The agents' installed tools are read from a home a test builds, never the
 # developer's own.
