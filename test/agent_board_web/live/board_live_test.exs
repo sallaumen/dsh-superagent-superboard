@@ -170,7 +170,10 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> element("#ask-agent")
     |> render_submit(%{"body" => "hi"})
 
-    render_async(view, 2_000)
+    # shortcut: with no stub this is a real, unauthenticated request to GitHub
+    # that must be refused (about 1.4 s alone); the wait ends when it answers.
+    # Give it a stubbed client when the client can be set per test process.
+    render_async(view, 15_000)
 
     assert render(view) =~ "não chegou ao GitHub"
     # The text comes back to the box, so nothing typed is lost.
