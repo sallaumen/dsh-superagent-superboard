@@ -164,6 +164,20 @@ defmodule AgentBoardWeb.ExecutorsTest do
     assert has_element?(view, "#settings-costs", "Nenhuma chamada bate com estes filtros.")
   end
 
+  # CostsMotion plays only when data-motion-view (the reading's key) changes:
+  # a new window changes it, a broadcast re-render keeps it.
+  test "the motion key follows the reading, not a broadcast", %{conn: conn} do
+    {:ok, view, _html} = live(conn, @costs)
+    assert has_element?(view, ~s(#settings-costs[phx-hook="CostsMotion"][data-motion-view*="30"]))
+
+    send(view.pid, :board_updated)
+    assert has_element?(view, ~s(#settings-costs[data-motion-view*="30"]))
+
+    view |> element("#costs-days-7") |> render_click()
+    assert has_element?(view, ~s(#settings-costs[data-motion-view*="7"]))
+    refute has_element?(view, ~s(#settings-costs[data-motion-view*="30"]))
+  end
+
   test "Agents lists each execution with its task, and the executor filter lives in the URL",
        %{conn: conn} do
     {:ok, view, _html} = live(conn, @costs <> "&costs=agents")

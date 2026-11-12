@@ -53,6 +53,20 @@ exists, not before.
 | Lane count that changed (Agora, Precisa de você, Fila) | the same 600 ms tint as throughput, from `--agent` back to the count's own ink: the number says it changed without moving | `.ab-sec__count.is-changed` |
 | Messages or Attention badge that rose | one 200 ms bump to scale 1.2 at 35 %, `--ease-standard`; only a rise (`is-up`) bumps, a count the owner brought down by reading is a cut, and a badge that appears from 0 bumps because the summary, not the badge, carries the value | `.ab-hub-menu summary.is-up .ab-hub-menu__count` |
 
+### Settings → Costs (`CostsMotion`)
+
+Costs reads its data when the section opens and when the page, the window or a
+filter that reloads changes; a broadcast re-renders the same reading. The
+component exposes that reading's key as `data-motion-view` on `#settings-costs`,
+and the hook moves only when the key changes. An Agents filter only narrows
+what was read, so its rows cut.
+
+| Change | Treatment | Why |
+|---|---|---|
+| A new reading (open, window 7/30/90, page, reloading filter) | the daily bars (`#costs-daily`, `#costs-voice-daily`) rise from the baseline: each segment scales from the stack's bottom so a stacked bar grows as one, duration from its height (≈ 190 ms for a full bar), `kit.reveal` (0.22, 1, 0.36, 1); the bars that have spend start in one left-to-right sweep spread over 240 ms whatever the window, so 7 and 90 bars take the same time and empty days do not delay the spent ones | the chart is the new context: it says "this is a different window" instead of swapping silently |
+| Its meters | go from their old width to the new one (`scaleX`, origin left), 200 ms, `m3.standard`; a new meter starts from nothing | the share moved, in place |
+| A tile value that changed | the 600 ms tint from `--agent` back to its ink | a number changed, without moving |
+
 ### Cards that change place (`BoardMotion`)
 
 The `BoardMotion` hook on `#board-stage` measures the cards before and after
@@ -91,7 +105,7 @@ does nothing: every change is a cut.
 ## Reduced motion
 
 Under `prefers-reduced-motion: reduce`, animations and transitions are turned off
-in the global block, and `BoardMotion` and the spark bar of `ValueChange` (Web
+in the global block, and `BoardMotion`, `CostsMotion` and the spark bar of `ValueChange` (Web
 Animations, which the CSS block does not reach) check the media query themselves
 and cut. The state remains readable: the panel opens at once, the
 notice appears, and the loading feedback stays textual and visual. Remove the

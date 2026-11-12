@@ -147,7 +147,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id={@id} class="ab-costs">
+    <%!-- CostsMotion: bars rise and meters move only when `loaded` changes (a new reading), never on a broadcast. --%>
+    <div
+      id={@id}
+      class="ab-costs"
+      phx-hook="CostsMotion"
+      data-motion-view={@loaded && inspect(@loaded)}
+    >
       <div class="ab-costs__bar">
         <div class="ab-segmented ab-segmented--sm" role="group" aria-label={gettext("Costs pages")}>
           <button
