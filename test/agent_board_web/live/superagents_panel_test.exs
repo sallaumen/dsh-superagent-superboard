@@ -5,7 +5,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
   import Phoenix.LiveViewTest
 
   alias AgentBoard.{Board, Repo, Superagents}
-  alias AgentBoard.Superagents.{FakeManager, FakeProvisioner, Superagent}
+  alias AgentBoard.Superagents.{FakeManager, FakeProvisioner, Policy, Superagent}
 
   defp superagent!(repo, attrs) do
     {:ok, superagent} =
@@ -65,6 +65,102 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
              "#project-#{superagent.id}-details .ab-project__fold",
              "Pasta de estado"
            )
+  end
+
+  # The policy panel reads the agent through the configured manager.
+  defp fake_manager do
+    {:ok, _pid} = FakeManager.start()
+    previous = Application.get_env(:agent_board, :superagent_manager)
+    Application.put_env(:agent_board, :superagent_manager, FakeManager)
+    Policy.forget()
+
+    on_exit(fn ->
+      Policy.forget()
+
+      if previous,
+        do: Application.put_env(:agent_board, :superagent_manager, previous),
+        else: Application.delete_env(:agent_board, :superagent_manager)
+    end)
+  end
+
+  test "an agent with other instructions is in the bell, and one click applies the policy",
+       %{conn: conn} do
+    fake_manager()
+
+    {:ok, repo} = Board.add_repository("fixture", "policy-panel")
+    Board.log_event(repo.id, "sync", "fixture/policy-panel", %{"errors" => 0})
+    superagent = superagent!(repo, %{})
+
+    own = "Every UI change shows a before and an after."
+    stale = "An older wording of a rule."
+
+    FakeManager.put_prompts(superagent.id, %{
+      revision: 7,
+      config: Map.put(Policy.base(), "delivery", stale <> "\n" <> own)
+    })
+
+    :ok = Policy.refresh_all(FakeManager)
+
+    {:ok, view, _html} = live(conn, "/?repo=fixture/policy-panel&panel=settings&section=projects")
+
+    assert has_element?(
+             view,
+             "#attention-agent-policy",
+             "As instruções de 1 agente diferem da política do board"
+           )
+
+    view
+    |> element("#project-#{superagent.id} button[phx-click=toggle_project]")
+    |> render_click()
+
+    render_async(view, 5_000)
+    panel = "#project-#{superagent.id}-policy"
+
+    assert has_element?(view, panel, "Diferentes da política do board.")
+    assert has_element?(view, panel, "Requisitos de entrega")
+    assert has_element?(view, panel <> " input[name='keep[]']")
+    assert has_element?(view, panel, own)
+    # Nothing was written by looking.
+    assert {:ok, %{revision: 7}} = FakeManager.prompts(superagent)
+
+    {:ok, comparison} = Policy.compare(superagent, FakeManager)
+    delivery = Enum.find(comparison.sections, &(&1.name == "delivery"))
+    keep = for line <- delivery.own, line.text == own, do: line.id
+
+    view
+    |> element("#project-#{superagent.id}-policy-form")
+    |> render_submit(%{"keep" => keep})
+
+    render_async(view, 5_000)
+
+    assert {:ok, %{revision: 8, config: config}} = FakeManager.prompts(superagent)
+    assert config["delivery"] == Policy.base()["delivery"] <> "\n" <> own
+    assert has_element?(view, panel, "Em dia com a política do board.")
+    assert has_element?(view, panel, "Regras deste projeto")
+    assert Policy.differing() == []
+
+    # The click is a recorded action of the registry, like every other write.
+    assert %{outcome: "ok", via: "ui"} =
+             Repo.get_by!(AgentBoard.Actions.Decision, action: "apply_agent_policy")
+  end
+
+  test "an agent that does not answer says so, with no button to apply", %{conn: conn} do
+    fake_manager()
+    {:ok, repo} = Board.add_repository("fixture", "policy-silent")
+    superagent = superagent!(repo, %{})
+    FakeManager.put_prompts(superagent.id, {:error, :econnrefused})
+
+    {:ok, view, _html} =
+      live(conn, "/?repo=fixture/policy-silent&panel=settings&section=projects")
+
+    view
+    |> element("#project-#{superagent.id} button[phx-click=toggle_project]")
+    |> render_click()
+
+    render_async(view, 5_000)
+
+    assert has_element?(view, "#project-#{superagent.id}-policy", "O agente não respondeu")
+    refute has_element?(view, "#project-#{superagent.id}-policy-form")
   end
 
   test "summarizes a long GitHub limit error and keeps its diagnostic", %{conn: conn} do

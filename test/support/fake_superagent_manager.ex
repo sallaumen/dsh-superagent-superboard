@@ -13,6 +13,32 @@ defmodule AgentBoard.Superagents.FakeManager do
     Agent.update(__MODULE__, &Map.put(&1, id, state))
   end
 
+  @doc "The prompt config one project holds: `%{revision: n, config: map}`, or `{:error, reason}`."
+  def put_prompts(id, prompts),
+    do: Agent.update(__MODULE__, &Map.put(&1, {:prompts, id}, prompts))
+
+  def prompts(%{id: id}) do
+    case Agent.get(__MODULE__, &Map.get(&1, {:prompts, id})) do
+      nil -> {:error, :not_configured}
+      {:error, reason} -> {:error, reason}
+      %{revision: _revision, config: _config} = prompts -> {:ok, prompts}
+    end
+  end
+
+  def save_prompts(%{id: id}, config, base_revision) do
+    case Agent.get(__MODULE__, &Map.get(&1, {:prompts, id})) do
+      %{revision: ^base_revision} ->
+        put_prompts(id, %{revision: base_revision + 1, config: config})
+        {:ok, base_revision + 1}
+
+      %{revision: _newer} ->
+        {:error, :conflict}
+
+      _ ->
+        {:error, :not_configured}
+    end
+  end
+
   @doc "Who is cleared on one project; `{:error, reason}` makes the read fail."
   def put_access(id, access), do: Agent.update(__MODULE__, &Map.put(&1, {:access, id}, access))
 

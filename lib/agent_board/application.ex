@@ -5,6 +5,8 @@ defmodule AgentBoard.Application do
 
   use Application
 
+  alias AgentBoard.Superagents.Policy
+
   @impl true
   def start(_type, _args) do
     children = [
@@ -25,6 +27,7 @@ defmodule AgentBoard.Application do
       AgentBoard.Superagents.Ticker,
       AgentBoard.ElevenLabs.SpeechCache,
       AgentBoard.ElevenLabs.Account,
+      policy_check(),
       {DNSCluster, query: Application.get_env(:agent_board, :dns_cluster_query) || :ignore},
       AgentBoard.Voice.Activity,
       # Start a worker by calling: AgentBoard.Worker.start_link(arg)
@@ -39,6 +42,18 @@ defmodule AgentBoard.Application do
     result = Supervisor.start_link(children, opts)
     AgentBoard.ObanRescue.rescue_orphans()
     result
+  end
+
+  # A board update is when the agents' policy can have changed: each agent is
+  # compared once at boot, for the Attention bell. It only reads, and an agent
+  # that does not answer is left unknown (`Superagents.Policy`).
+  defp policy_check do
+    run =
+      if Application.get_env(:agent_board, :agent_policy_check_on_boot, true),
+        do: &Policy.refresh_all/0,
+        else: fn -> :ok end
+
+    Supervisor.child_spec({Task, run}, id: :agent_policy_check, restart: :temporary)
   end
 
   # Tell Phoenix to update the endpoint configuration

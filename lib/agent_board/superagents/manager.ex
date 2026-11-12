@@ -19,6 +19,17 @@ defmodule AgentBoard.Superagents.Manager do
   @callback disallow(Superagent.t(), String.t()) :: :ok | {:error, term()}
   @callback requeue(Superagent.t(), String.t()) :: {:ok, boolean()} | {:error, term()}
 
+  @doc "The agent's active prompt config and its revision (`Superagents.Policy`)."
+  @callback prompts(Superagent.t()) ::
+              {:ok, %{revision: integer(), config: map()}} | {:error, term()}
+
+  @doc """
+  Saves a prompt config on top of `base_revision`; `{:error, :conflict}` when
+  the agent holds a newer one.
+  """
+  @callback save_prompts(Superagent.t(), map(), integer()) ::
+              {:ok, integer()} | {:error, term()}
+
   @doc "The configured adapter."
   def impl,
     do: Application.get_env(:agent_board, :superagent_manager, AgentBoard.Superagents.DshManager)
