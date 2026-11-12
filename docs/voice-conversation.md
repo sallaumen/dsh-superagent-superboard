@@ -14,11 +14,12 @@ ticket, never enters the worktree and never writes to the agent's sqlite.
 
 ## How to use it
 
-Default since 2026-11-09: **text for your input, the browser voice for the
-agent**. Press Space twice on the board to open Chat and focus the message
-field. Buttons, menus and text fields keep their own keys. The SuperBoard
-Skills cards send the displayed question into the same conversation. The
-catalog groups other commands by purpose and identifies writes and confirmations.
+Default: **text for your input, ElevenLabs for spoken replies when available**.
+Without a key or available credits, replies stay written and no audio plays.
+Press Space twice on the board to open Chat and focus the message field.
+Buttons, menus and text fields keep their own keys. The SuperBoard Skills
+cards send the displayed question into the same conversation. The catalog
+groups other commands by purpose and identifies writes and confirmations.
 
 **External dictation** (optional): in Configurações → Voz e resumo → "Como
 você envia", choose "Ditado externo · Wispr Flow". In Chat, choose the dictation button to use its
@@ -38,32 +39,31 @@ ElevenLabs' (Scribe).
 A question sent through the conversation waits for the answer for up to a day.
 The answer is the agent's first new comment on that task that is not the workpad
 (the agent edits the workpad in place and answers a direct question with a new
-comment). The board speaks a summary of a few sentences once, even with several
-tabs open, and the answer joins the conversation memory. The sync brings comments
-every 5 minutes, so the answer may be spoken a few minutes after it appears on
-GitHub. The "Chamar quando uma tarefa precisar de mim" toggle also silences that
-notice.
+comment). The answer joins the conversation memory. A short spoken notice can
+be enabled under **Avisos automáticos → Yasme respondeu a uma pergunta na tarefa**;
+it is off by default. The sync brings comments every 5 minutes, so the answer
+may appear a few minutes after it reaches GitHub. The inbox stays the primary
+way to notice replies.
 
 ## Settings (Configurações → Voz e resumo)
 
 - **Como você envia**: Texto (default, existing field),
   Ditado externo (Wispr Flow, opt-in) or Microfone do board (ElevenLabs Scribe,
   opt-in and paid). A previously saved Wispr Flow choice is preserved.
-- **Motor da voz** (voice engine): Navegador em tudo (browser everywhere; default,
-  free), Misto (mixed: ElevenLabs only for attention calls and the coding agent's
-  answers, the rest in the browser) or ElevenLabs em tudo (ElevenLabs everywhere).
-  Without a key, always the browser.
+- **Avisos automáticos**: off by default. Enable only the task transitions
+  you want to hear: a question, a block, a review or a Yasme answer.
+  Progress, queue movement, sync status, slow/stalled timers and the daily
+  summary are visual only, with no speech option.
 - **Voz da ElevenLabs**: picking from the list already saves it (there is no
   "Salvar" (Save) button) and it plays "Voz escolhida." (voice chosen) in the new
   voice. After a reload, the field shows the saved voice name; the note below says
-  what it speaks in the chosen engine (in Navegador it is not used). A switch made
+  what it speaks. A switch made
   in another tab appears in all of them at once.
 - **Respostas faladas** (spoken answers): short (default: the first sentence
   spoken, the rest written) or full. Proposals, questions back and confirmations
   are always spoken in full.
 - Language, volume, speed (0.8–1.2×), intonation (steady, natural, expressive),
-  the pause to send, the attention calls, the narration of the rest of the board
-  (off by default: it costs voice) and the sound when the microphone opens and
+  the pause to send, the optional alerts and the sound when the microphone opens and
   closes.
 
 For the board microphone there is no draft to review and no Enter. The
@@ -196,8 +196,8 @@ player considers the turn finished when it stops advancing for 1 s.
 
 - What the agent speaks goes through `AgentBoard.Voice.Speakable`: no markdown,
   `#42` becomes "42", `dono/repo-nome` becomes "repo nome", links are removed.
-- Without an ElevenLabs key, the browser uses the best voice it has in the
-  language (exact, then "enhanced/premium/natural"), with the chosen speed.
+- Without an ElevenLabs key or available credits, spoken replies stay written
+  in the conversation. Browser speech synthesis is never used.
 
 ## Diagnosis: logs and backstage
 
@@ -243,7 +243,7 @@ player considers the turn finished when it stops advancing for 1 s.
   `0` switches it off). The call that crosses the ceiling records an event
   "teto diário atingido…" (daily ceiling reached…) once a day. The ceiling does
   not refuse anything by itself: `Usage.over_cap?/0` is the signal for speech to
-  fall back to the free browser voice.
+  stay silent while the written reply remains available.
 - **Paying once**: the short-turn cache (up to 300 characters) has the memory
   (ETS, 150 entries, one week) in front of the `voice_speech_cache` table (1000
   rows, 30 days since the last use). The fixed sentences (calls, confirmations,

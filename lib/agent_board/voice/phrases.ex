@@ -83,30 +83,6 @@ defmodule AgentBoard.Voice.Phrases do
         "Entreguei %{t}. Falta só a sua revisão.",
         "%{t} chegou na revisão. Quando quiser, é sua vez.",
         "Pronto, %{t} está pronta para revisar."
-      ],
-      stalled: [
-        "Fiquei em silêncio em %{t} faz um tempo. Dá uma olhada?",
-        "Não dou sinal em %{t} há um bom tempo. Pode conferir se travei?",
-        "Parece que empaquei em %{t}: nenhum relatório nem mudança no código.",
-        "Silêncio demais em %{t}. Vale checar o que está acontecendo.",
-        "Ei, %{t} ficou sem sinal meu. Melhor você olhar.",
-        "Faz tempo que não mexo em %{t}. Pode ver se ainda estou indo?",
-        "Nada novo meu em %{t} há um bom tempo. Confere para mim?",
-        "Em %{t} eu sumi: nem relatório, nem commit. Dá uma espiada.",
-        "Acho que travei em %{t}. Se puder, veja o que falta.",
-        "%{t} está sem sinal meu há mais tempo que o normal. Quer olhar?"
-      ],
-      slow: [
-        "Estou em %{t} há mais tempo que o combinado. Vale acompanhar.",
-        "%{t} está demorando mais que o previsto para o tamanho dela.",
-        "Ainda estou em %{t}, e já passei do tempo esperado.",
-        "Aviso: %{t} passou do limite de tempo. Continuo trabalhando.",
-        "%{t} está levando mais tempo do que deveria. Quer dar uma olhada?",
-        "Passei do tempo em %{t}. Sigo nela, mas vale conferir.",
-        "Só para avisar: %{t} já estourou o tempo previsto.",
-        "Continuo em %{t}, mais demorada do que o tamanho indicava.",
-        "%{t} ainda não saiu, e o tempo dela já passou.",
-        "Estou demorando em %{t}. Se quiser acompanhar, é uma boa hora."
       ]
     },
     "en-US" => %{
@@ -145,39 +121,14 @@ defmodule AgentBoard.Voice.Phrases do
         "I delivered %{t}. It only needs your review.",
         "%{t} reached review. Whenever you like, it's yours.",
         "All set, %{t} is ready to review."
-      ],
-      stalled: [
-        "I've gone quiet on %{t} for a while. Can you take a look?",
-        "No sign from me on %{t} in a good while. Could you check whether I'm stuck?",
-        "Looks like I stalled on %{t}: no report and no code change.",
-        "Too much silence on %{t}. Worth checking what's going on.",
-        "Hey, %{t} has had no signal from me. Better have a look.",
-        "I haven't touched %{t} in a while. Can you see whether I'm still moving?",
-        "Nothing new from me on %{t} in a good while. Would you check?",
-        "On %{t} I went dark: no report, no commit. Have a peek.",
-        "I think I'm stuck on %{t}. If you can, see what's missing.",
-        "%{t} has had no signal from me for longer than usual. Want to look?"
-      ],
-      slow: [
-        "I've been on %{t} longer than agreed. Worth keeping an eye on.",
-        "%{t} is taking longer than its size suggested.",
-        "Still on %{t}, and already past the expected time.",
-        "Heads-up: %{t} went past its time limit. I'm still working.",
-        "%{t} is taking more time than it should. Want to take a look?",
-        "I'm over time on %{t}. Still at it, but worth a check.",
-        "Just so you know: %{t} has gone over its expected time.",
-        "Still working on %{t}, slower than its size indicated.",
-        "%{t} isn't out yet, and its time is already up.",
-        "I'm running long on %{t}. A good moment to follow along if you like."
       ]
     }
   }
 
   @doc """
-  The attention kinds: the states where the agent needs the owner, the
-  silence, and the run that passed the time its size allows.
+  The task states with optional spoken alerts.
   """
-  def attention_kinds, do: [:question, :blocked, :ready, :stalled, :slow]
+  def attention_kinds, do: [:question, :blocked, :ready]
 
   @doc "The pool of attention phrases for a language and kind."
   def attention_pool(lang, kind), do: @attention |> lang_map(lang) |> Map.fetch!(kind)
@@ -185,59 +136,6 @@ defmodule AgentBoard.Voice.Phrases do
   @doc "A call for the owner's attention; `turn` rotates through the pool."
   def attention(lang, kind, title, turn) do
     lang |> attention_pool(kind) |> pick(turn) |> fill(title)
-  end
-
-  # ---- the other board news -----------------------------------------------
-
-  @moved %{
-    "pt-BR" => %{
-      running: ["Comecei %{t}.", "Agora estou em %{t}.", "Mãos à obra em %{t}."],
-      queued: ["%{t} voltou para a fila.", "Deixei %{t} na fila por enquanto."]
-    },
-    "en-US" => %{
-      running: ["I started %{t}.", "Now working on %{t}.", "Getting to work on %{t}."],
-      queued: ["%{t} went back to the queue.", "I left %{t} in the queue for now."]
-    }
-  }
-
-  @doc "A task moved into a lane that does not need the owner."
-  def moved(lang, state, title, turn) do
-    @moved |> lang_map(lang) |> Map.fetch!(state) |> pick(turn) |> fill(title)
-  end
-
-  @doc "The sync failed; the board shows its saved data."
-  def sync_failed("en-US"), do: "The sync failed. I'm showing the saved data."
-  def sync_failed(_lang), do: "A sincronização falhou. Estou mostrando os dados salvos."
-
-  @doc "The sync finished with more errors than the last one."
-  def sync_errors("en-US", 1), do: "The sync finished with 1 error."
-  def sync_errors("en-US", n), do: "The sync finished with #{n} errors."
-  def sync_errors(_lang, 1), do: "A sincronização terminou com 1 erro."
-  def sync_errors(_lang, n), do: "A sincronização terminou com #{n} erros."
-
-  @doc "The confirmation for an action the owner took on a task."
-  def task_action("en-US", title, action) do
-    t = short_title(title)
-
-    case action do
-      "stop" -> "Stopped #{t}."
-      "archive" -> "Archived #{t}."
-      "resume" -> "Resumed #{t}."
-      "created" -> "Created #{t}."
-      other -> "#{t}: #{other}."
-    end
-  end
-
-  def task_action(_lang, title, action) do
-    t = short_title(title)
-
-    case action do
-      "stop" -> "Parei #{t}."
-      "archive" -> "Arquivei #{t}."
-      "resume" -> "Retomei #{t}."
-      "created" -> "Criei #{t}."
-      other -> "#{t}: #{other}."
-    end
   end
 
   @doc "The phrase the voice preview speaks."
@@ -456,12 +354,6 @@ defmodule AgentBoard.Voice.Phrases do
       :queued -> "#{n} na fila"
     end
   end
-
-  @doc """
-  The summary of the day, from the facts stored in its row, by template (no
-  model). The sentences live in `AgentBoard.Voice.Phrases.DailySummary`.
-  """
-  defdelegate daily_summary(lang, content), to: AgentBoard.Voice.Phrases.DailySummary, as: :say
 
   @doc "The summary sentence for the counts (already spoken with `count/3`)."
   def summary(lang, greeting, []), do: "#{greeting}. #{calm(lang)}"

@@ -131,10 +131,7 @@ defmodule AgentBoard.Actions do
     "pause" => {Voice, :put_pause},
     "earcons" => {Voice, :put_earcons},
     "input" => {Voice, :put_input},
-    "engine" => {Voice, :put_engine},
-    "replies" => {Voice, :put_replies},
-    "narrate" => {Voice, :put_narrate},
-    "attention" => {Voice, :put_attention}
+    "replies" => {Voice, :put_replies}
   }
 
   # ---- the catalog ------------------------------------------------------------
@@ -1079,6 +1076,9 @@ defmodule AgentBoard.Actions do
 
   defp execute(:change_setting, %{setting: "daily_summary", value: form}),
     do: DailySummary.put_settings(form)
+
+  defp execute(:change_setting, %{setting: "alert_" <> kind, value: on?}),
+    do: Voice.put_alert_kind(kind, on?)
 
   # The dispatch switches and limits are board-wide settings, written through
   # the same action as the voice ones.

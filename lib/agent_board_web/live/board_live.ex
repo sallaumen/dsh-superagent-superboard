@@ -1345,14 +1345,6 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("dismiss_toast", _params, socket), do: {:noreply, assign(socket, :toast, nil)}
 
-  @impl true
-  def handle_event("daily_summary_claim", %{"id" => id}, socket) do
-    case Integer.parse(to_string(id)) do
-      {id, ""} -> {:noreply, claim_daily_summary(socket, id)}
-      _other -> {:noreply, socket}
-    end
-  end
-
   def handle_event("dismiss_daily_summary", %{"id" => id}, socket) do
     with {id, ""} <- Integer.parse(to_string(id)),
          do: Actions.run(:dismiss_summary, %{id: id}, ui())
@@ -1579,8 +1571,7 @@ defmodule AgentBoardWeb.BoardLive do
         {:noreply,
          socket
          |> refresh_inspector_after_act(task_id)
-         |> put_flash(:info, gettext("Task updated"))
-         |> speak(Voice.task_summary(task.title, action, socket.assigns.voice.language))}
+         |> put_flash(:info, gettext("Task updated"))}
 
       _ ->
         {:noreply, put_flash(socket, :error, gettext("Unable to update the task"))}
@@ -2073,14 +2064,25 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("speak", _params, socket) do
-    text =
-      Voice.spoken(socket.assigns.board,
-        language: socket.assigns.voice.language,
-        tz_offset: socket.assigns.tz_offset
-      )
+    if VoiceSpeech.elevenlabs?(socket.assigns.voice, :confirm) do
+      text =
+        Voice.spoken(socket.assigns.board,
+          language: socket.assigns.voice.language,
+          tz_offset: socket.assigns.tz_offset
+        )
 
-    {event, payload} = VoiceSpeech.push(socket.assigns.voice, text, kind: :confirm)
-    {:noreply, push_event(socket, event, payload)}
+      case VoiceSpeech.push(socket.assigns.voice, text, kind: :confirm) do
+        {event, payload} -> {:noreply, push_event(socket, event, payload)}
+        nil -> {:noreply, socket}
+      end
+    else
+      {:noreply,
+       put_flash(
+         socket,
+         :error,
+         gettext("ElevenLabs audio is unavailable. The status is visible on the board.")
+       )}
+    end
   end
 
   # Only submitting the typed field acknowledges its draft. A skill or a
@@ -2249,16 +2251,15 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("voice_announce", %{"speak_events" => value}, socket) do
-    :ok = save_setting("narrate", value == "true")
+  def handle_event("voice_alert_kind", %{"kind" => kind, "enabled" => value}, socket) do
+    case save_setting("alert_" <> kind, value == "true") do
+      :ok ->
+        {:noreply,
+         assign(socket, voice: %{socket.assigns.voice | alert_kinds: Voice.alert_kinds()})}
 
-    {:noreply, assign(socket, voice: %{socket.assigns.voice | speak_events: Voice.narrate?()})}
-  end
-
-  @impl true
-  def handle_event("voice_attention", %{"attention" => value}, socket) do
-    :ok = save_setting("attention", value == "true")
-    {:noreply, assign(socket, voice: %{socket.assigns.voice | attention: Voice.attention?()})}
+      {:error, _} ->
+        {:noreply, socket}
+    end
   end
 
   @impl true
@@ -2290,10 +2291,6 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def handle_event("voice_input", %{"input" => value}, socket),
     do: {:noreply, save_voice_pref(socket, save_setting("input", value))}
-
-  @impl true
-  def handle_event("voice_engine", %{"engine" => value}, socket),
-    do: {:noreply, save_voice_pref(socket, save_setting("engine", value))}
 
   @impl true
   def handle_event("voice_replies", %{"replies" => value}, socket),
@@ -2533,8 +2530,7 @@ defmodule AgentBoardWeb.BoardLive do
       model: ElevenLabs.tts_model(),
       model_source: ElevenLabs.tts_source(),
       models: ElevenLabs.tts_models(),
-      speak_events: Voice.narrate?(),
-      attention: Voice.attention?(),
+      alert_kinds: Voice.alert_kinds(),
       # the voice speaks the interface language of this tab
       language: Locale.language(),
       volume: Voice.volume(),
@@ -2544,7 +2540,6 @@ defmodule AgentBoardWeb.BoardLive do
       pause_ms: Voice.pause_ms(),
       earcons: Voice.earcons?(),
       input: Voice.input(),
-      engine: Voice.engine(),
       replies: Voice.replies()
     }
   end
@@ -2565,7 +2560,7 @@ defmodule AgentBoardWeb.BoardLive do
       voice:
         Map.merge(
           socket.assigns.voice,
-          Map.take(fresh, [:speed, :style, :pause, :pause_ms, :earcons, :input, :engine, :replies])
+          Map.take(fresh, [:speed, :style, :pause, :pause_ms, :earcons, :input, :replies])
         )
     )
   end
@@ -2579,7 +2574,7 @@ defmodule AgentBoardWeb.BoardLive do
   # broadcasts only on new hashes, and the same utterance is not repeated
   # within a short window. One update is one utterance: a second push would
   # cut the first one off mid-sentence.
-  defp announce(%{assigns: %{voice: voice}} = socket, old_board, old_sync, old_needs) do
+  defp announce(%{assigns: %{voice: voice}} = socket, old_board, old_sync, _old_needs) do
     texts =
       Announcer.board_changes(
         old_board,
@@ -2588,9 +2583,7 @@ defmodule AgentBoardWeb.BoardLive do
         socket.assigns.sync_event,
         language: voice.language,
         turn: socket.assigns.voice_turn,
-        attention: voice.attention,
-        events: voice.speak_events,
-        needs: {old_needs, socket.assigns.work.needs}
+        enabled: voice.alert_kinds
       )
 
     case Announcer.utterance(texts) do
@@ -2598,19 +2591,9 @@ defmodule AgentBoardWeb.BoardLive do
         socket
 
       text ->
-        # A call for attention in the utterance makes it a call (the paid
-        # voice in the mixed engine); otherwise it is narration.
-        attention? =
-          voice.attention and
-            Announcer.attention?(
-              old_board,
-              socket.assigns.board,
-              {old_needs, socket.assigns.work.needs}
-            )
-
         socket
         |> assign(voice_turn: socket.assigns.voice_turn + length(texts))
-        |> say(text, kind: if(attention?, do: :call, else: :narration))
+        |> say(text, kind: :call)
     end
   end
 
@@ -2620,34 +2603,7 @@ defmodule AgentBoardWeb.BoardLive do
     assign(socket, :daily_summary, if(connected?(socket), do: DailySummary.visible()))
   end
 
-  # The browser asks to speak it only from a tab the owner interacted with
-  # (the DailySummaryVoice hook), so a preview never spends it; the first
-  # ask wins the conditional claim and the other tabs stay quiet. Its own
-  # switch governs the voice, not the narration toggle; for the engine
-  # choice it is narration.
-  defp claim_daily_summary(%{assigns: %{daily_summary: %{id: id} = entry}} = socket, id) do
-    if DailySummary.claim_spoken(id) do
-      text = Phrases.daily_summary(socket.assigns.voice.language, entry.content)
-      spoken_at = DateTime.utc_now() |> DateTime.truncate(:second)
-
-      socket
-      |> assign(:daily_summary, %{entry | spoken_at: spoken_at})
-      |> say(text, kind: :narration)
-    else
-      show_daily_summary(socket)
-    end
-  end
-
-  defp claim_daily_summary(socket, _id), do: socket
-
-  # A confirmation or an answer: spoken only while the narration is on.
-  defp speak(%{assigns: %{voice: %{speak_events: true}}} = socket, text),
-    do: say(socket, text, kind: :narration)
-
-  defp speak(socket, _text), do: socket
-
-  # Speaks with the owner's engine (VoiceSpeech decides ElevenLabs or the
-  # free browser voice), deduped for a short window so a burst never doubles.
+  # A burst of the same call is deduped for a short window.
   defp say(socket, text, opts)
 
   defp say(socket, text, opts) when is_binary(text) and text != "" do
@@ -2656,11 +2612,15 @@ defmodule AgentBoardWeb.BoardLive do
     if socket.assigns.spoken_text == text and now - socket.assigns.spoken_at < 30_000 do
       socket
     else
-      {event, payload} = VoiceSpeech.push(socket.assigns.voice, text, opts)
+      case VoiceSpeech.push(socket.assigns.voice, text, opts) do
+        {event, payload} ->
+          socket
+          |> assign(spoken_text: text, spoken_at: now)
+          |> push_event(event, payload)
 
-      socket
-      |> assign(spoken_text: text, spoken_at: now)
-      |> push_event(event, payload)
+        nil ->
+          socket
+      end
     end
   end
 
@@ -2685,7 +2645,6 @@ defmodule AgentBoardWeb.BoardLive do
     socket
     |> put_flash(:info, text)
     |> refresh_ai()
-    |> speak(Announcer.speakable_answer(text))
     |> push_event("inspector:answer", %{task_id: socket.assigns.conversation.id})
   end
 

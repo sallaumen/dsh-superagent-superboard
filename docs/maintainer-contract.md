@@ -235,7 +235,7 @@ and is recorded as `automatic`.
 | `start_agent` | red | runs `dsh-superagent start` on this machine (the primary agent); clears a stop made on purpose | UI: `AgentAction` "Religar o agente" on a board whose repository has no superagent row; on one that has a row the same button runs `start_superagent` for that superagent, and its confirmation names it |
 | `set_max_workers` | yellow | `PUT settings/executor` with the new ceiling (− and + undo it) | UI: one click on the Paralelismo tile |
 | `add_repository` | yellow | tracks a repository | UI: settings menu. API: direct |
-| `change_setting` | yellow | one board preference: the voice (language, volume, speed, engine, voice, model…; a paid engine stays under its daily cap) or the daily summary (on/off, the hour) | UI: voice menu and daily summary settings. Voice: "mais devagar/alto" (slower/louder). API: `PUT /api/voice/settings` |
+| `change_setting` | yellow | one board preference: the ElevenLabs voice (volume, speed, alert scenarios, voice, model…) or the daily summary (on/off, the hour) | UI: voice menu and daily summary settings. Voice: "mais devagar/alto" (slower/louder). API: `PUT /api/voice/settings` |
 | `dismiss_summary` | yellow | takes the day's summary off the screen (the row stays) | UI: one click on the summary card |
 | `forget_conversation` | red | deletes the voice conversation's memory | UI: "Esquecer conversa" asks the sentence in the browser. Voice: proposal and yes |
 | `check_setup` | green | runs free setup reads and records only the validation timestamp and outcome counts | UI: one click in AI and setup |
@@ -548,10 +548,9 @@ Agora and the detail):
 
 ## The voice
 
-- The server builds the summary (`AgentBoard.Voice` — the model writes it
-  when it can, the template is the fallback) and pushes it with
-  `push_event/3`; the browser speaks it with the Web Speech API. That path
-  runs no TTS engine on the server.
+- The server builds an owner-requested status (`AgentBoard.Voice` — the model
+  writes it when it can, the template is the fallback) and sends it to
+  ElevenLabs. It never uses browser speech synthesis.
 - `AgentBoard.ElevenLabs` is the server-side voice (TTS, STT and voices),
   exposed by `AgentBoardWeb.VoiceController` at `/api/voice/...`. It reads
   `ELEVENLABS_API_KEY` from the environment, never from code, and returns
@@ -586,11 +585,9 @@ Agora and the detail):
   `quota_exceeded` (ElevenLabs answers it as 400 or 401) is
   `:quota_exceeded`, never "the key was rejected", and makes the paid voice
   spent for an hour; a plan with no characters left is spent until it
-  renews. While spent the voice routing sends every utterance to the
-  computer voice, and a paid audio that fails before any of it played is
-  spoken there with the payload the browser voice would have had (`fallback`
-  in `voice_play`: the same cleaned, shortened text and the owner's speed)
-  instead of going silent (`account_test.exs`, `voice_speech_test.exs`).
+  renews. While spent, speech stays silent and the written answer remains in
+  the voice panel. A failed paid audio reports an error; no browser TTS
+  fallback is attempted.
 - **Voice activity** (`AgentBoard.Voice.Activity`): each stage of a turn,
   every retry and every failure (server, or browser via
   `voice_client_error`) is one event: a log line `voice stage=… status=…`,
@@ -640,24 +637,19 @@ Agora and the detail):
   `language_code` only to Flash v2.5 (another model answers 400); without
   one it sends no hint and the model reads the language from the text. The greeting uses the
   browser's clock (`tz_offset`), never the UTC hour.
-- **Automatic speech** is `AgentBoard.Announcer`: a pure diff between the
-  previous and the current board, spoken as **one utterance per update**
-  (a second `voice_play` cuts the first off), capped at two sentences and
-  deduped for a short window. Two kinds:
-  - **attention**: a task entering `question`, `blocked` or `ready`. It
-    comes first, rotates through ten phrases per kind (`voice_turn`, a
-    random start per socket) and has its own toggle (`voice_attention`,
-    `"0"` disables). Without an ElevenLabs key it falls back to the
-    browser's voice, in the tab's language.
-  - **events**: a task starting or going back to the queue and sync
-    outcomes getting worse, plus the confirmations of user actions and the
-    spoken answers; toggled by `voice_narrate` (`"1"` narrates, absent is
-    off; `speak_events` in the API maps to it). User actions speak their own
-    confirmations, so they are not announced twice.
+- **Automatic speech** is off by default. Every scenario must be enabled separately.
+  `AgentBoard.Announcer` can call for a task entering `question`, `blocked`
+  or `ready`; each kind has its own switch (`voice_alert_question`,
+  `voice_alert_blocked`, `voice_alert_ready`). A newly answered task question
+  has `voice_alert_answer`. Enabled calls are capped at two sentences per
+  board update, combined into one utterance and deduped briefly. Progress,
+  queue movement, sync outcomes, slow/stalled timers, action confirmations,
+  inspector answers and the daily summary never speak automatically. They
+  remain visible on the board.
   The volume (`voice_volume`, 0..100) rides on `#voice-panel[data-volume]`;
-  the `VoicePlayer` hook and the browser fallback read it, so a change
+  the `VoicePlayer` hook reads it, so a change
   applies to the audio already playing. `PUT /api/voice/settings` accepts
-  `voice_id`, `tts_model`, `speak_events`, `attention`, `volume`, `speed`,
+  `voice_id`, `tts_model`, `alerts`, `volume`, `speed`,
   `style` and `pause`; the language is not a setting, the voice follows the
   tab's interface language.
 - **The spoken conversation** (`docs/voice-conversation.md`) opens as Chat
@@ -717,19 +709,20 @@ Agora and the detail):
   dictated text once it settles) and the board's recorder with ElevenLabs
   Scribe (`microphone`) remain explicit settings; saved `wispr` preferences
   remain valid. Every
-  utterance is routed by `AgentBoardWeb.VoiceSpeech.push/3`: the free browser
-  voice by default (`voice_engine` = `browser`), ElevenLabs only for calls in
-  `mixed` or for everything in `elevenlabs`, and never without a key or past
-  the day's cap. Free replies speak their first sentence (`voice_replies` =
-  `short`); narration (`voice_narrate`) is off by default.
+  utterance is routed by `AgentBoardWeb.VoiceSpeech.push/3` to ElevenLabs.
+  Without a key, past the day's cap or with spent plan credits, the answer
+  remains written and no audio event is emitted. A short reply speaks its
+  first sentence (`voice_replies` = `short`). Older `voice_engine` and
+  `voice_narrate` settings are ignored and cannot restore browser TTS or
+  automatic narration.
 - **Voice asks** are a write and always confirmed: the conversation's
   `ask_task` action becomes a proposal naming the task and the question,
   and only the spoken yes posts it (`Board.ask/3`, a comment with
   `@sallaumen-agent`). Its reply — the first new agent comment on the task
-  after the confirmation that is not the workpad, within a day — is spoken
+  after the confirmation that is not the workpad, within a day — is recorded
   once on a board update (`Conversation.arrived_answers/1`, claimed by the
   conditional `mark_answered/1` so a second tab stays quiet), joins the
-  memory and is silenced by `voice_attention`. "Repete" (repeat) and "mais
+  memory and is spoken only when `voice_alert_answer` is enabled. "Repete" (repeat) and "mais
   devagar/rápido/alto/baixo" (slower/faster/louder/quieter) are local commands
   of the conversation, no model. The old draft panel
   (`VoiceCommand.draft`, `VoiceMutations`, `VoiceActionConfirmation`) was
@@ -777,7 +770,7 @@ browser), a state and the fix for the next step.
   current configuration locally and never treats yesterday's result as proof
   that today's credentials still work. No account, key or CLI output is stored.
 - Claude Code, Codex, the superagents and ElevenLabs are optional (`:off` when
-  absent: the board routes elsewhere or uses the browser voice); GitHub, a
+  absent: the board routes elsewhere or keeps voice replies written); GitHub, a
   tracked project and a key for the board's own AI are required.
   `next_step/1` is the first required row that is missing or failing.
 - The superagent's model is read from its profile (`agent-default-model` in
@@ -1541,19 +1534,9 @@ slept is never recovered; this routine asks a question instead.
   that arrives with `{:daily_summary, :generated, id}` on the
   `"daily_summary"` topic and leaves on every board when one dismisses it
   (`dismissed_at`). No motion: data that arrives is not animated.
-- **In the voice** it is said once, by template, from the stored facts
-  (`Voice.Phrases.daily_summary/2`, sentences in
-  `Voice.Phrases.DailySummary`): no model, no cost beyond the voice engine.
-  Showing it spends nothing: the browser asks (`daily_summary_claim`, the
-  `DailySummaryVoice` hook) only from a tab the owner has clicked or typed
-  in, at once or on the first interaction, and never on the click that
-  dismisses it. The server claims `spoken_at` with a conditional update;
-  the first ask speaks, every other tab, reconnect or later visit stays
-  quiet. This is why the claim is not made on mount:
-  `com.localwebmonitorex` takes WebKit previews of every dev server on
-  4000-4500, the live board included, and would spend it. Its own switch
-  governs the voice, not the narration toggle; for the engine choice it is
-  narration (the free browser voice unless the engine is `elevenlabs`).
+- **Voice**: the summary is visual only. Generating or opening it never
+  creates audio or a provider request. Historical `spoken_at` values remain
+  in stored rows, but no new row is claimed for speech.
 - **Settings** live in Configurações → Voz e resumo (Settings → Voice
   and summary): `daily_summary_enabled`
   (`"false"` switches it off) and `daily_summary_at` (`HH:MM`, default
@@ -1561,11 +1544,9 @@ slept is never recovered; this routine asks a question instead.
 - The tests: `daily_summary_test.exs` (the wall clock with a controlled
   clock: asleep at 08:00, two ticks, a real restart of the ticker,
   concurrent ticks, the next day, the window, the zone, the settings, the
-  content), `daily_summary_phrases_test.exs` (every sentence, both
-  languages), `executor_usage_test.exs` (the window) and
-  `daily_summary_live_test.exs` (two boards, silent until a tab asks,
-  spoken once, dismissed everywhere, the stored facts, the settings fold)
-  and `test/assets/daily_summary_voice_test.mjs` (who may ask).
+  content), `executor_usage_test.exs` (the window) and
+  `daily_summary_live_test.exs` (two boards, no speech hook, dismissed
+  everywhere, stored facts, settings fold).
 
 ## Today
 

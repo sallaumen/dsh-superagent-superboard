@@ -31,7 +31,6 @@ defmodule AgentBoardWeb.VoiceController do
         tts_model: ElevenLabs.tts_model(),
         tts_source: ElevenLabs.tts_source(),
         stt_model: ElevenLabs.stt_model(),
-        speak_events: Voice.narrate?(),
         usage: Usage.today(),
         daily_char_cap: Usage.cap()
       }
@@ -50,21 +49,21 @@ defmodule AgentBoardWeb.VoiceController do
   @doc """
   PUT /api/voice/settings -- stores the voice settings.
 
-  Accepts any combination of `voice_id`, `tts_model`, `speak_events`,
-  `volume`, `speed`, `style`, `pause` and `attention`; the language is not a
+  Accepts any combination of `voice_id`, `tts_model`, `volume`, `speed`,
+  `style`, `pause` and `alerts`; the language is not a
   setting (the voice follows the interface language of the tab). A blank
   `voice_id` clears the pick (back to the default); `tts_model`, when present,
-  must be one of the offered models; `speak_events` saves `voice_narrate`.
+  must be one of the offered models. `alerts` has the optional boolean keys
+  `question`, `blocked`, `ready` and `answer`.
   """
   def update(conn, params) do
     with :ok <- put_voice(params),
          :ok <- put_model(params),
-         :ok <- put_speak_events(params),
+         :ok <- put_alerts(params),
          :ok <- put_pref(params, "volume", & &1),
          :ok <- put_pref(params, "speed", & &1),
          :ok <- put_pref(params, "style", & &1),
-         :ok <- put_pref(params, "pause", & &1),
-         :ok <- put_pref(params, "attention", &(&1 in [true, "true", "1"])) do
+         :ok <- put_pref(params, "pause", & &1) do
       json(
         conn,
         Map.merge(
@@ -72,8 +71,7 @@ defmodule AgentBoardWeb.VoiceController do
             voice_id: ElevenLabs.voice_id(),
             voice_source: ElevenLabs.voice_source(),
             tts_model: ElevenLabs.tts_model(),
-            tts_source: ElevenLabs.tts_source(),
-            speak_events: Voice.narrate?()
+            tts_source: ElevenLabs.tts_source()
           },
           voice_prefs()
         )
@@ -86,7 +84,10 @@ defmodule AgentBoardWeb.VoiceController do
   defp voice_prefs do
     %{
       volume: Voice.volume(),
-      attention: Voice.attention?(),
+      alerts:
+        Map.new([:question, :blocked, :ready, :answer], fn kind ->
+          {Atom.to_string(kind), Voice.alert_enabled?(kind)}
+        end),
       speed: Voice.speed(),
       style: Voice.style(),
       pause: Voice.pause()
@@ -128,11 +129,28 @@ defmodule AgentBoardWeb.VoiceController do
 
   defp put_model(_params), do: :ok
 
-  # The narration of the rest of the board; off unless asked (it costs voice).
-  defp put_speak_events(%{"speak_events" => value}),
-    do: save("narrate", value in [true, "true", "1"])
+  defp put_alerts(%{"attention" => _}), do: {:error, :invalid_setting}
+  defp put_alerts(%{"speak_events" => _}), do: {:error, :invalid_setting}
 
-  defp put_speak_events(_params), do: :ok
+  defp put_alerts(%{"alerts" => alerts}) when is_map(alerts) do
+    if Enum.all?(alerts, fn {kind, enabled} ->
+         kind in ~w(question blocked ready answer) and is_boolean(enabled)
+       end) do
+      Enum.reduce_while(alerts, :ok, &save_alert/2)
+    else
+      {:error, :invalid_setting}
+    end
+  end
+
+  defp put_alerts(%{"alerts" => _}), do: {:error, :invalid_setting}
+  defp put_alerts(_params), do: :ok
+
+  defp save_alert({kind, enabled}, _acc) do
+    case save("alert_" <> kind, enabled) do
+      :ok -> {:cont, :ok}
+      error -> {:halt, error}
+    end
+  end
 
   @doc "GET /api/voice/speech?text=... -- the spoken audio (mp3)."
   def speech(conn, params), do: speak(conn, params)

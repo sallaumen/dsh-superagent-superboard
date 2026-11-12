@@ -137,17 +137,13 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert AgentBoard.Repo.aggregate(Task, :count) == 0
   end
 
-  test "Speak status pushes the board summary", %{conn: conn} do
+  test "Speak status is disabled without ElevenLabs", %{conn: conn} do
     {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings")
     view |> element(".settings-nav__item[phx-value-section=voice]") |> render_click()
 
-    view |> element("#speak-status") |> render_click()
-
-    assert_push_event(view, "speak", %{text: text})
-    assert is_binary(text)
-    assert text != ""
+    assert has_element?(view, "#speak-status[disabled]")
   end
 
   test "a failed ask shows an error, not Question sent", %{conn: conn} do
@@ -1703,15 +1699,13 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert render(second) =~ "Both clients see this"
   end
 
-  test "the speak event pushes the summary", %{conn: conn} do
+  test "an old speak event does not start audio without ElevenLabs", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
     {:ok, view, _html} = live(conn, ~p"/?panel=settings")
     view |> element(".settings-nav__item[phx-value-section=voice]") |> render_click()
 
-    view |> element("#speak-status") |> render_click()
-
-    assert_push_event(view, "speak", %{text: text, lang: "pt-BR"})
-    assert String.length(text) > 10
+    render_hook(view, "speak", %{})
+    assert render(view) =~ "O áudio da ElevenLabs está indisponível"
   end
 
   test "switching repositories closes the previous conversation", %{conn: conn} do

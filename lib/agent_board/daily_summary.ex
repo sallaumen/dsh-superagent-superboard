@@ -17,8 +17,7 @@ defmodule AgentBoard.DailySummary do
   Configurações.
 
   The content is collected once by `AgentBoard.DailySummary.Facts` and
-  stored in the row; the board renders that record, and the voice speaks it
-  through `AgentBoard.Voice.Phrases` by template, once (`claim_spoken/1`).
+  stored in the row; the board renders that record without automatic audio.
   Every change is `{:daily_summary, :generated | :dismissed, id}` on
   `topic/0`.
   """
@@ -251,17 +250,6 @@ defmodule AgentBoard.DailySummary do
       {1, _} -> broadcast(:dismissed, id)
       _none -> :ok
     end
-  end
-
-  @doc """
-  Claims the right to speak a summary: true for the first caller only, so
-  two open boards (or a reconnect) never say it twice.
-  """
-  @spec claim_spoken(integer()) :: boolean()
-  def claim_spoken(id) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
-    query = from e in Entry, where: e.id == ^id and is_nil(e.spoken_at)
-    match?({1, _}, Repo.update_all(query, set: [spoken_at: now]))
   end
 
   defp broadcast(event, id) do

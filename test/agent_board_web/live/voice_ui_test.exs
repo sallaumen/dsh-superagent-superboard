@@ -30,8 +30,6 @@ defmodule AgentBoardWeb.VoiceUITest do
     previous = Application.get_env(:agent_board, :elevenlabs_api_key)
     Application.put_env(:agent_board, :elevenlabs_api_key, "test-key")
     on_exit(fn -> Application.put_env(:agent_board, :elevenlabs_api_key, previous) end)
-    # These tests cover the paid voice; the default engine is the browser's.
-    :ok = Settings.put("voice_engine", "elevenlabs")
   end
 
   defp spoken(url),
@@ -52,7 +50,7 @@ defmodule AgentBoardWeb.VoiceUITest do
   test "without a key the section says so and hides the picker", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "Sem chave"
+    assert html =~ "Sem uma chave da ElevenLabs"
     assert html =~ "ELEVENLABS_API_KEY"
     refute html =~ "Listar vozes"
   end
@@ -145,15 +143,11 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert url =~ "voice=abc"
   end
 
-  test "the note says what the saved voice speaks under the engine", %{conn: conn} do
+  test "the note says what the saved voice speaks", %{conn: conn} do
     with_key()
-    :ok = Settings.put("voice_engine", "mixed")
 
     {:ok, view, _html} = live(conn, ~p"/")
-    assert has_element?(view, "#voice-picker-note", "a conversa usa a voz do navegador")
-
-    :ok = Settings.put("voice_engine", "browser")
-    assert has_element?(view, "#voice-picker-note", "não usa esta voz")
+    assert has_element?(view, "#voice-picker-note", "Esta voz responde às suas conversas")
   end
 
   test "reset puts the default voice back", %{conn: conn} do
@@ -291,9 +285,8 @@ defmodule AgentBoardWeb.VoiceUITest do
     refute html =~ "Listar vozes"
   end
 
-  test "an agent state change is spoken", %{conn: conn} do
+  test "task progress stays silent even with a saved legacy narration setting", %{conn: conn} do
     with_key()
-    # Narration (task moves, answers) is off by default; this test turns it on.
     :ok = Settings.put("voice_narrate", "1")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
@@ -305,12 +298,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     send(view.pid, :board_updated)
 
-    assert_push_event(view, "voice_play", %{url: url}, 1_000)
-
-    assert spoken(url) in Enum.map(
-             0..2,
-             &Phrases.moved("pt-BR", :running, "Live task", &1)
-           )
+    refute_receive {_, _, "voice_play", _}, 100
   end
 
   test "no announcement when the toggle is off", %{conn: conn} do
@@ -328,21 +316,16 @@ defmodule AgentBoardWeb.VoiceUITest do
     refute_receive {_, _, "voice_play", _}, 100
   end
 
-  test "the automatic feedback toggle persists", %{conn: conn} do
+  test "the removed narration option is not offered", %{conn: conn} do
     with_key()
 
     {:ok, view, _html} = live(conn, ~p"/")
-
-    view |> element("#voice-announce-form") |> render_change(%{"speak_events" => "true"})
-    assert Settings.get("voice_narrate") == "1"
-
-    view |> element("#voice-announce-form") |> render_change(%{"speak_events" => "false"})
-    assert Settings.get("voice_narrate") == nil
+    refute has_element?(view, "#voice-announce-form")
+    refute has_element?(view, "#voice-engine-title")
   end
 
-  test "the agent's answer is spoken back", %{conn: conn} do
+  test "an answer received in the inspector remains written and silent", %{conn: conn} do
     with_key()
-    # Narration (task moves, answers) is off by default; this test turns it on.
     :ok = Settings.put("voice_narrate", "1")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
@@ -354,19 +337,12 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     send(view.pid, {:answer, task.id, "All good. The sync is clean and nothing is blocked."})
 
-    assert_push_event(
-      view,
-      "voice_play",
-      %{
-        url:
-          "/api/voice/stream?text=All+good.+The+sync+is+clean+and+nothing+is+blocked.&voice=JBFqnCBsd6RMkjVDRZzb&language=pt-BR"
-      },
-      1_000
-    )
+    refute_receive {_, _, "voice_play", _}, 100
   end
 
   test "a task that needs the owner is a call for attention", %{conn: conn} do
     with_key()
+    :ok = Settings.put("voice_alert_blocked", "1")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "running")
@@ -385,9 +361,10 @@ defmodule AgentBoardWeb.VoiceUITest do
            )
   end
 
-  test "the attention call still speaks when narration is off", %{conn: conn} do
+  test "question alerts can speak without narration", %{conn: conn} do
     with_key()
     :ok = Settings.put("voice_narrate", "")
+    :ok = Settings.put("voice_alert_question", "1")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "running")
@@ -400,9 +377,9 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert_push_event(view, "voice_play", %{url: "/api/voice/stream?text=" <> _}, 1_000)
   end
 
-  test "without a key the attention call uses the browser voice in the tab's language" do
-    # a browser with no language cookie: the English interface, so an English voice
+  test "without a key the attention call stays silent" do
     conn = Phoenix.ConnTest.build_conn()
+    :ok = Settings.put("voice_alert_ready", "1")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "running")
@@ -412,14 +389,13 @@ defmodule AgentBoardWeb.VoiceUITest do
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "ready"}))
     send(view.pid, :board_updated)
 
-    assert_push_event(view, "speak", %{text: text, lang: "en-US"}, 1_000)
-    assert text =~ "Live task"
+    refute_receive {_, _, "speak", _}, 100
+    refute_receive {_, _, "voice_play", _}, 100
   end
 
-  test "attention off keeps the owner's calls silent", %{conn: conn} do
+  test "a disabled scenario stays silent even when another scenario is on", %{conn: conn} do
     with_key()
-    :ok = Settings.put("voice_attention", "0")
-    :ok = Settings.put("voice_narrate", "")
+    :ok = Settings.put("voice_alert_question", "1")
 
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "running")
@@ -464,14 +440,42 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert Settings.get("voice_volume") == "40"
   end
 
-  test "the attention toggle persists", %{conn: conn} do
+  test "an alert scenario toggle persists", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/")
 
-    view |> element("#voice-attention-form") |> render_change(%{"attention" => "false"})
-    assert Settings.get("voice_attention") == "0"
+    view
+    |> element("#voice-alert-question")
+    |> render_change(%{"kind" => "question", "enabled" => "true"})
 
-    view |> element("#voice-attention-form") |> render_change(%{"attention" => "true"})
-    assert Settings.get("voice_attention") == nil
+    assert Settings.get("voice_alert_question") == "1"
+
+    view
+    |> element("#voice-alert-question")
+    |> render_change(%{"kind" => "question", "enabled" => "false"})
+
+    assert Settings.get("voice_alert_question") == "0"
+  end
+
+  test "each alert scenario saves independently and reaches another open tab", %{conn: conn} do
+    with_key()
+    {:ok, first, _html} = live(conn, ~p"/?settings=voice")
+    {:ok, second, _html} = live(conn, ~p"/?settings=voice")
+
+    first
+    |> element("#voice-alert-blocked")
+    |> render_change(%{"kind" => "blocked", "enabled" => "true"})
+
+    first
+    |> element("#voice-alert-ready")
+    |> render_change(%{"kind" => "ready", "enabled" => "true"})
+
+    first
+    |> element("#voice-alert-ready")
+    |> render_change(%{"kind" => "ready", "enabled" => "false"})
+
+    assert Settings.get("voice_alert_ready") == "0"
+    assert has_element?(second, "#voice-alert-ready input[type=checkbox]:not([checked])")
+    assert has_element?(second, "#voice-alert-blocked input[type=checkbox][checked]")
   end
 
   test "every voice control changes through a form", %{conn: conn} do
@@ -507,8 +511,10 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert render(view) =~ ~s(data-earcons="false")
   end
 
-  test "the browser voice gets readable text and the saved speed", %{conn: conn} do
-    :ok = Settings.put("voice_speed", "0.9")
+  test "a legacy browser engine setting cannot restore browser speech", %{conn: conn} do
+    with_key()
+    :ok = Settings.put("voice_engine", "browser")
+    :ok = Settings.put("voice_alert_blocked", "1")
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Ver **sallaumen/arena-rogue** #7", "running")
 
@@ -516,9 +522,9 @@ defmodule AgentBoardWeb.VoiceUITest do
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
     send(view.pid, :board_updated)
 
-    assert_push_event(view, "speak", %{text: text, rate: 0.9}, 1_000)
-    assert text =~ "Ver arena rogue 7"
-    refute text =~ "**"
+    assert_push_event(view, "voice_play", %{url: url}, 1_000)
+    assert spoken(url) =~ "Ver arena rogue 7"
+    refute_receive {_, _, "speak", _}, 100
   end
 
   test "the settings forms opt out of form recovery, which crashed the board on reconnect",
@@ -573,7 +579,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert render(view) =~ "1 re-tentativa"
   end
 
-  test "the input, engine and replies controls save and reach the browser", %{conn: conn} do
+  test "the input and replies controls save and reach the browser", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/")
     assert html =~ ~s(data-input="text")
     assert has_element?(view, "#voice-wispr[phx-hook=VoiceWispr] #voice-wispr-text")
@@ -583,9 +589,6 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     view |> element("#voice-input-form") |> render_change(%{"input" => "microphone"})
     assert render(view) =~ ~s(data-input="microphone")
-
-    view |> element(~s(button[phx-value-engine="mixed"])) |> render_click()
-    assert Settings.get("voice_engine") == "mixed"
 
     view |> element(~s(button[phx-value-replies="full"])) |> render_click()
     assert Settings.get("voice_replies") == "full"
@@ -602,9 +605,8 @@ defmodule AgentBoardWeb.VoiceUITest do
     assert has_element?(view, "#voice-chat-form button[type=button][aria-label]")
   end
 
-  test "with the default engine the board speaks with the free browser voice", %{conn: conn} do
+  test "automatic alerts are off by default", %{conn: conn} do
     with_key()
-    :ok = Settings.put("voice_engine", "browser")
     {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
     task = voice_task(repo, "Live task", "running")
 
@@ -612,7 +614,7 @@ defmodule AgentBoardWeb.VoiceUITest do
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
     send(view.pid, :board_updated)
 
-    assert_push_event(view, "speak", %{text: text}, 1_000)
-    assert text =~ "Live task"
+    refute_receive {_, _, "speak", _}, 100
+    refute_receive {_, _, "voice_play", _}, 100
   end
 end

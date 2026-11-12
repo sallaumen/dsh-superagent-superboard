@@ -44,7 +44,12 @@ defmodule AgentBoardWeb.VoiceControllerTest do
              "tts_model" => "eleven_flash_v2_5",
              "tts_source" => "default",
              "stt_model" => "scribe_v2",
-             "speak_events" => false,
+             "alerts" => %{
+               "question" => false,
+               "blocked" => false,
+               "ready" => false,
+               "answer" => false
+             },
              "daily_char_cap" => 20_000,
              "usage" => %{"tts_characters" => 0, "cache_hits" => 0, "stt_seconds" => +0.0}
            } = json_response(get(conn, "/api/voice/status"), 200)
@@ -126,16 +131,43 @@ defmodule AgentBoardWeb.VoiceControllerTest do
     assert AgentBoard.Settings.get("elevenlabs_voice_id") == nil
   end
 
-  test "PUT /api/voice/settings toggles the automatic speech", %{conn: conn} do
-    assert %{"speak_events" => false} =
-             json_response(put(conn, "/api/voice/settings", %{"speak_events" => false}), 200)
+  test "PUT /api/voice/settings stores alert scenarios and rejects removed narration", %{
+    conn: conn
+  } do
+    assert %{"alerts" => %{"ready" => true, "blocked" => false}} =
+             json_response(
+               put(conn, "/api/voice/settings", %{"alerts" => %{"ready" => true}}),
+               200
+             )
 
-    assert AgentBoard.Settings.get("voice_narrate") == nil
+    assert AgentBoard.Settings.get("voice_alert_ready") == "1"
 
-    assert %{"speak_events" => true} =
-             json_response(put(conn, "/api/voice/settings", %{"speak_events" => true}), 200)
+    assert %{"error" => _} =
+             json_response(put(conn, "/api/voice/settings", %{"speak_events" => true}), 400)
 
-    assert AgentBoard.Settings.get("voice_narrate") == "1"
+    assert %{"error" => _} =
+             json_response(put(conn, "/api/voice/settings", %{"attention" => true}), 400)
+
+    assert %{"error" => _} =
+             json_response(
+               put(conn, "/api/voice/settings", %{
+                 "attention" => true,
+                 "alerts" => %{"question" => true}
+               }),
+               400
+             )
+
+    assert AgentBoard.Settings.get("voice_alert_question") == nil
+
+    assert %{"error" => _} =
+             json_response(
+               put(conn, "/api/voice/settings", %{
+                 "alerts" => %{"question" => false, "sync" => true}
+               }),
+               400
+             )
+
+    assert AgentBoard.Settings.get("voice_alert_question") == nil
   end
 
   test "PUT /api/voice/settings rejects a huge or unknown value", %{conn: conn} do
@@ -149,10 +181,11 @@ defmodule AgentBoardWeb.VoiceControllerTest do
              json_response(put(conn, "/api/voice/settings", %{"tts_model" => "not-a-model"}), 400)
   end
 
-  test "PUT /api/voice/settings stores the volume and attention; the language is not a setting",
+  test "PUT /api/voice/settings stores volume; language is not a board setting",
        %{conn: conn} do
     status = json_response(get(conn, "/api/voice/status"), 200)
-    assert %{"volume" => 100, "attention" => true} = status
+    assert %{"volume" => 100} = status
+    refute Map.has_key?(status, "attention")
     refute Map.has_key?(status, "language")
 
     # a `language` an older client still sends is ignored, whatever it says
@@ -160,13 +193,12 @@ defmodule AgentBoardWeb.VoiceControllerTest do
       json_response(
         put(conn, "/api/voice/settings", %{
           "language" => "xx",
-          "volume" => 30,
-          "attention" => false
+          "volume" => 30
         }),
         200
       )
 
-    assert %{"volume" => 30, "attention" => false} = saved
+    assert %{"volume" => 30} = saved
     refute Map.has_key?(saved, "language")
     assert AgentBoard.Settings.get("voice_language") == nil
 

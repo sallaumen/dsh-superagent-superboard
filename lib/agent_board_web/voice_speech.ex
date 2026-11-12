@@ -2,21 +2,16 @@ defmodule AgentBoardWeb.VoiceSpeech do
   @moduledoc """
   Where the agent's voice comes from, decided in one place.
 
-  `push/3` answers the LiveView event and payload for a text: the agent's
-  ElevenLabs voice (`voice_play`, a stream URL, paid per character) or the
-  browser's own voice (`speak`, free). The owner's engine setting decides,
-  with the kind of utterance:
+  `push/3` answers the LiveView event and payload for a text through ElevenLabs,
+  or returns `nil` when paid speech is unavailable. The kind decides length:
 
-    * `:call` - a call for attention or the coding agent's reply; ElevenLabs
-      in the `mixed` and `elevenlabs` engines.
+    * `:call` - a call for attention or the coding agent's reply.
     * `:reply` - the conversation's free answer; with `short` replies only
       its first sentence is spoken (the whole text is written).
-    * `:confirm` - a proposal, a confirmation, a status the owner asked for:
-      always spoken whole, ElevenLabs only in the `elevenlabs` engine.
-    * `:narration` - the rest of the board, ElevenLabs only in `elevenlabs`.
+    * `:confirm` - a proposal, confirmation or requested status, spoken whole.
 
-  Without an ElevenLabs key, or once the day's character cap is reached,
-  everything goes to the browser voice.
+  Without an ElevenLabs key or available credits, the written response remains
+  visible and nothing speaks.
   """
 
   alias AgentBoard.ElevenLabs.{Account, Usage}
@@ -36,41 +31,22 @@ defmodule AgentBoardWeb.VoiceSpeech do
   (`voice` is the LiveView's voice assign). Options: `:kind` (default
   `:confirm`) and `:listen` (reopen the input after the reply).
   """
-  @spec push(map(), String.t(), keyword()) :: {String.t(), map()}
+  @spec push(map(), String.t(), keyword()) :: {String.t(), map()} | nil
   def push(voice, text, opts \\ []) do
     kind = Keyword.get(opts, :kind, :confirm)
     listen = Keyword.get(opts, :listen, false)
     spoken = spoken(text, kind, Map.get(voice, :replies, "short"))
 
-    speak = %{
-      text: text(spoken),
-      display: text,
-      lang: voice.language,
-      rate: Map.get(voice, :speed, 1.0),
-      listen: listen
-    }
-
-    # `fallback` is what the browser voice says if the paid audio fails.
     if elevenlabs?(voice, kind) do
-      {"voice_play",
-       %{url: url(spoken, voice.id, voice.language), listen: listen, text: text, fallback: speak}}
+      {"voice_play", %{url: url(spoken, voice.id, voice.language), listen: listen, text: text}}
     else
-      {"speak", speak}
+      nil
     end
   end
 
-  @doc "Whether this kind of utterance uses the paid ElevenLabs voice right now."
-  def elevenlabs?(voice, kind) do
-    wanted =
-      case Map.get(voice, :engine, "browser") do
-        "elevenlabs" -> true
-        "mixed" -> kind == :call
-        _ -> false
-      end
-
-    # The cap is a database read: only asked when the paid voice is wanted.
-    wanted and Map.get(voice, :configured, false) and not over_cap?() and not Account.spent?()
-  end
+  @doc "Whether ElevenLabs can speak right now."
+  def elevenlabs?(voice, _kind),
+    do: Map.get(voice, :configured, false) and not over_cap?() and not Account.spent?()
 
   @doc "The part of a reply that is spoken: the first sentence of a short reply."
   def spoken(text, :reply, "short"), do: first_sentences(text)
@@ -84,8 +60,6 @@ defmodule AgentBoardWeb.VoiceSpeech do
     end
   end
 
-  # Past the day's character cap (`ELEVENLABS_DAILY_CHAR_CAP`, the ledger
-  # in `AgentBoard.ElevenLabs.Usage`) or with the plan's credits spent
-  # (`AgentBoard.ElevenLabs.Account`) everything goes to the free voice.
+  # Past the daily cap or when plan credits are spent, stay silent.
   defp over_cap?, do: Usage.over_cap?()
 end

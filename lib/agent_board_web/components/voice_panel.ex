@@ -1,12 +1,12 @@
 defmodule AgentBoardWeb.Components.VoicePanel do
   @moduledoc """
   The voice controls of Settings → Voice and summary, split into two columns:
-  how the owner talks to the board, and how the board talks back.
+  how the owner talks to the board, and when ElevenLabs talks back.
 
   Presentation lives here; the events stay the ones `BoardLive` already
-  handles (`voice_input`, `voice_engine`, `voice_replies`,
+  handles (`voice_input`, `voice_replies`,
   `voice_volume`, `voice_speed`, `voice_style`, `voice_pause`,
-  `voice_earcons`, `voice_attention`, `voice_announce`, `voice_browse`,
+  `voice_earcons`, `voice_alert_kind`, `voice_browse`,
   `voice_pick`, `voice_preview`, `voice_reset`, `voice_model` and
   `voice_try`). The root with the `VoicePlayer` hook and the `data-volume` /
   `data-lang` attributes lives in the settings pane.
@@ -25,7 +25,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
     <section class="voice-column" aria-labelledby="voice-you-title">
       <h4 id="voice-you-title">{gettext("You speaking")}</h4>
       <p class="voice-column__intro">
-        {gettext("How you send messages to the board and when it speaks.")}
+        {gettext("How you send messages to the board.")}
       </p>
 
       <form
@@ -77,34 +77,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
       </div>
 
       <fieldset class="voice-field voice-speak">
-        <legend class="voice-field-label">{gettext("When the board speaks")}</legend>
-
-        <form id="voice-attention-form" phx-change="voice_attention" phx-auto-recover="ignore">
-          <input type="hidden" name="attention" value="false" />
-          <label class="voice-toggle">
-            <input
-              id="voice-attention"
-              type="checkbox"
-              name="attention"
-              value="true"
-              checked={@voice.attention}
-            /> {gettext("When a task needs me")}
-          </label>
-        </form>
-
-        <form id="voice-announce-form" phx-change="voice_announce" phx-auto-recover="ignore">
-          <input type="hidden" name="speak_events" value="false" />
-          <label class="voice-toggle">
-            <input
-              id="voice-announce"
-              type="checkbox"
-              name="speak_events"
-              value="true"
-              checked={@voice.speak_events}
-            /> {gettext("The rest too: task start, queue, sync and confirmations")}
-          </label>
-        </form>
-
+        <legend class="voice-field-label">{gettext("Microphone feedback")}</legend>
         <form id="voice-earcons-form" phx-change="voice_earcons" phx-auto-recover="ignore">
           <input type="hidden" name="earcons" value="false" />
           <label class="voice-toggle">
@@ -131,25 +104,40 @@ defmodule AgentBoardWeb.Components.VoicePanel do
     <section class="voice-column" aria-labelledby="voice-board-title">
       <h4 id="voice-board-title">{gettext("The board speaking")}</h4>
       <p class="voice-column__intro">
-        {gettext("The engine, the voice and how the board sounds.")}
+        {gettext("ElevenLabs speaks only when you ask, unless you enable specific alerts below.")}
       </p>
 
-      <div class="voice-field">
-        <span class="voice-field-label" id="voice-engine-title">{gettext("Voice engine")}</span>
-        <div class="ab-segmented" role="group" aria-labelledby="voice-engine-title">
-          <button
-            :for={{id, label} <- engines()}
-            type="button"
-            class={["ab-segment", @voice.engine == id && "is-selected"]}
-            aria-pressed={to_string(@voice.engine == id)}
-            phx-click="voice_engine"
-            phx-value-engine={id}
-          >{label}</button>
+      <fieldset class="voice-field voice-scenarios" aria-describedby="voice-scenarios-note">
+        <legend class="voice-field-label">{gettext("Automatic alerts")}</legend>
+        <p id="voice-scenarios-note" class="voice-note">
+          {gettext(
+            "Off by default. Progress, queue, sync and daily summaries stay on screen and never speak."
+          )}
+        </p>
+        <div class="voice-scenarios__list">
+          <form
+            :for={{kind, label} <- alert_kinds()}
+            id={"voice-alert-#{kind}"}
+            phx-change="voice_alert_kind"
+            phx-auto-recover="ignore"
+          >
+            <input type="hidden" name="kind" value={kind} />
+            <input type="hidden" name="enabled" value="false" />
+            <label class="voice-toggle">
+              <input
+                type="checkbox"
+                name="enabled"
+                value="true"
+                checked={String.to_atom(kind) in @voice.alert_kinds}
+              />
+              <span>{label}</span>
+            </label>
+          </form>
         </div>
         <p :if={!@voice.configured} class="voice-note">
-          {gettext("Without an ElevenLabs key, the board always uses the browser voice.")}
+          {gettext("Add an ElevenLabs key to hear alerts. The board stays silent without it.")}
         </p>
-      </div>
+      </fieldset>
 
       <div :if={@voice.configured} class="voice-field">
         <label for="voice-picker" class="voice-field-label">
@@ -218,7 +206,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
             {gettext("Reset to default")}
           </button>
         </div>
-        <p id="voice-picker-note" class="voice-note">{picker_note(@voice.engine, @voice.source)}</p>
+        <p id="voice-picker-note" class="voice-note">{picker_note(@voice.source)}</p>
       </div>
 
       <div class="voice-field">
@@ -325,7 +313,7 @@ defmodule AgentBoardWeb.Components.VoicePanel do
         </form>
       </div>
 
-      <form id="voice-try" phx-submit="voice_try" class="voice-field">
+      <form :if={@voice.configured} id="voice-try" phx-submit="voice_try" class="voice-field">
         <label for="voice-phrase" class="voice-field-label">{gettext("Test a phrase")}</label>
         <div class="voice-inline-form">
           <input
@@ -345,11 +333,11 @@ defmodule AgentBoardWeb.Components.VoicePanel do
         {if @voice.configured,
           do:
             gettext(
-              "The speech model and the key come from .env.local. Change them there and restart the board."
+              "The ElevenLabs key comes from .env.local. Choose the voice and model here; changes save immediately."
             ),
           else:
             gettext(
-              "Without a key, the agent speaks with the browser's voice (free). For ElevenLabs' voice, set ELEVENLABS_API_KEY in .env.local and restart the board."
+              "Without an ElevenLabs key, replies stay written and the board does not speak. Set ELEVENLABS_API_KEY in .env.local and restart the board to enable audio."
             )}
       </p>
     </section>
@@ -364,11 +352,12 @@ defmodule AgentBoardWeb.Components.VoicePanel do
     ]
   end
 
-  defp engines do
+  defp alert_kinds do
     [
-      {"browser", gettext("Browser for everything · free")},
-      {"mixed", gettext("ElevenLabs for alerts, browser for the rest")},
-      {"elevenlabs", gettext("ElevenLabs for everything · paid")}
+      {"question", gettext("A task asks for your answer")},
+      {"blocked", gettext("A task is blocked")},
+      {"ready", gettext("A task is ready for review")},
+      {"answer", gettext("Yasme answered a task question")}
     ]
   end
 
@@ -394,23 +383,11 @@ defmodule AgentBoardWeb.Components.VoicePanel do
 
   defp speed_label(speed), do: AgentBoardWeb.Numbers.decimal(speed, 2) <> "×"
 
-  defp picker_note(_engine, :environment),
+  defp picker_note(:environment),
     do: gettext("Set in .env.local (ELEVENLABS_VOICE_ID); to change here, remove the variable.")
 
-  defp picker_note("elevenlabs", _source),
-    do: gettext("Choose from the saved list. This voice speaks everything.")
-
-  defp picker_note("mixed", _source),
-    do:
-      gettext(
-        "Choose from the saved list. With Mixed mode, this voice speaks alerts and code-agent replies; conversation uses the browser voice."
-      )
-
-  defp picker_note(_engine, _source),
-    do:
-      gettext(
-        "Choose from the saved list. Browser mode does not use this voice; choose Mixed or ElevenLabs for everything."
-      )
+  defp picker_note(_source),
+    do: gettext("This voice speaks your conversations and any alerts you enable.")
 
   defp source_label(:environment), do: gettext("set in .env.local")
   defp source_label(:saved), do: gettext("chosen here")

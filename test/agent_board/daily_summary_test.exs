@@ -360,13 +360,6 @@ defmodule AgentBoard.DailySummaryTest do
       assert_receive {:daily_summary, :dismissed, _id}
       assert DailySummary.visible(now: now, utc_offset: @offset) == nil
     end
-
-    test "is spoken once: only the first claim wins" do
-      {:generated, entry} = tick("2026-11-07T11:00:00Z")
-
-      assert DailySummary.claim_spoken(entry.id) == true
-      assert DailySummary.claim_spoken(entry.id) == false
-    end
   end
 
   defp pull(repo, number, title, merged_at, closes) do
