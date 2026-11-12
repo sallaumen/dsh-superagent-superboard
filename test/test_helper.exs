@@ -1,3 +1,14 @@
+# Every temporary path a test makes comes from System.tmp_dir!/0, and most of
+# them are named with System.unique_integer/1, which repeats between two runs
+# of the suite (two worktrees, two agents at once): one run would share or
+# delete the other's files. This run gets its own TMPDIR, named by the OS
+# process, so every such path is its own.
+run_tmp = Path.join(System.tmp_dir!(), "agent-board-test-run-#{System.pid()}")
+File.rm_rf!(run_tmp)
+File.mkdir_p!(run_tmp)
+System.put_env("TMPDIR", run_tmp)
+System.at_exit(fn _status -> File.rm_rf(run_tmp) end)
+
 # The board reads the runner's sqlite on mount. Tests get an empty ticket
 # table so the agent source answers deterministically and no developer's real
 # runner state leaks into a test.
