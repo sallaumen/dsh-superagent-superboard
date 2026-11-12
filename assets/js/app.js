@@ -80,6 +80,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
       // Header disclosures remain open while a broadcast refreshes the board.
       if (from.matches("[data-board-menu]")) to.toggleAttribute("open", from.open)
       if (from.matches("[data-mobile-fold]")) to.toggleAttribute("open", from.open)
+      // ValueChange's pulse belongs to the client: a patch right after it must not cut it.
+      if (from.dataset?.key) for (const mark of ["is-changed", "is-up"]) if (from.classList.contains(mark)) to.classList.add(mark)
     },
   },
 })

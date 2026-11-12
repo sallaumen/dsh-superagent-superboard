@@ -223,6 +223,15 @@ body { margin: 0; background: var(--paper); }
 .ab-phase.is-done { color: var(--ink); }
 .ab-phase.is-now { color: var(--agent); font-weight: 600; }
 .ab-phase + .ab-phase::before { content: ""; width: 14px; height: 1px; background: var(--line-strong); margin-right: 2px; }
+/* A stage that advanced (ValueChange marks .ab-phases is-up): the line into the
+   new current stage draws in --agent and settles to its rule colour, and the
+   stage's glyph lands 90 ms after. A broadcast with the same stage moves nothing. */
+@media (prefers-reduced-motion: no-preference) {
+  .ab-phases.is-up .ab-phase.is-now::before { transform-origin: 0 50%; animation: ab-phase-draw var(--motion-enter) cubic-bezier(0.05, 0.7, 0.1, 1) both; }
+  .ab-phases.is-up .ab-phase.is-now > .ab-g { animation: ab-phase-arrive var(--motion-enter) cubic-bezier(0.34, 1.56, 0.64, 1) 90ms both; }
+  @keyframes ab-phase-draw { from { transform: scaleX(0); background: var(--agent); } 70% { background: var(--agent); } }
+  @keyframes ab-phase-arrive { from { transform: scale(0.4); } }
+}
 .ab-run.is-stalled { border-color: var(--halt); }
 .ab-run__silence { grid-column: 2; display: flex; gap: 8px; align-items: center; color: var(--halt); font-size: 12.5px; font-weight: 600; }
 .ab-run__silence .ab-g { margin-top: 0; }
@@ -285,6 +294,14 @@ body { margin: 0; background: var(--paper); }
 .ab-insp {
   background: var(--surface); border-left: 1px solid var(--line);
   display: flex; flex-direction: column; min-height: 0; max-height: 100%; position: sticky; top: 0;
+}
+/* The inspector is the new context a click on a card opens: it slides in,
+   opaque, from the side it lives on. No fade: as an overlay a translucent
+   panel shows the board's text through it. Switching tasks keeps the node, so
+   it does not replay; closing is a cut. */
+@media (prefers-reduced-motion: no-preference) {
+  .ab-insp { animation: insp-enter var(--motion-enter) cubic-bezier(0, 0, 0, 1) both; }
+  @keyframes insp-enter { from { transform: translateX(24px); } }
 }
 .ab-insp__head { padding: 16px 16px 0; display: grid; gap: 6px; }
 .ab-insp__bar { display: flex; align-items: center; gap: 8px; }
