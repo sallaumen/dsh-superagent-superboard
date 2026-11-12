@@ -18,9 +18,14 @@ System.at_exit(fn _status ->
 end)
 
 # Private contexts (`AgentBoard.Board.PrivateContext`) go to a folder of this
-# run, emptied first: never the owner's, never the last run's files.
+# run, emptied first: never the owner's, never the last run's files. The OS
+# process id keeps two suites running at once (two worktrees, two agents) from
+# emptying each other's folder mid-test.
 private_root =
-  Path.join(System.tmp_dir!(), "agent-board-private-test#{System.get_env("MIX_TEST_PARTITION")}")
+  Path.join(
+    System.tmp_dir!(),
+    "agent-board-private-test#{System.get_env("MIX_TEST_PARTITION")}-#{System.pid()}"
+  )
 
 File.rm_rf!(private_root)
 Application.put_env(:agent_board, :private_root, private_root)

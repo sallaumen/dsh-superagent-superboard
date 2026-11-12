@@ -752,6 +752,32 @@ browser), a state and the fix for the next step.
 - The superagent's model is read from its profile (`agent-default-model` in
   `cordis.patch.yml`, `Superagents.profile_model/2`); the board never writes it.
 
+## What each agent has installed
+
+Configurações → IAs e setup ends with the skills, plugins and MCP servers of
+each executor on this machine (`AgentBoard.AgentTools.inventory/1`, shown by
+`Settings.Setup`), read when the section comes into view and never stored.
+
+| Executor | Skills | Plugins | MCP servers |
+|---|---|---|---|
+| Claude Code | `~/.claude/skills` | `~/.claude/plugins/installed_plugins.json`, enabled per `~/.claude/settings.json` | `mcpServers` of `~/.claude.json` |
+| Codex | `~/.codex/skills` | `[plugins.*]` of `~/.codex/config.toml` | `[mcp_servers.*]` of the same file |
+| DeepSeek agent | `~/.dsh/skills` | not read (`?`) | not read (`?`) |
+
+- **Names only.** A server's `args`, `env` and `headers` can hold keys and
+  never enter the result; a command is its file name, a URL its host
+  (`agent_tools_test.exs` plants keys in all four and finds none).
+- A folder with a `SKILL.md` is a skill; one without is a container and is
+  looked into two levels down (Claude Code's `synced` folder); a link that
+  points nowhere is a skill "com defeito". An absent file is "none installed";
+  a file that cannot be read or parsed, and a list the board has no reader
+  for, is `?`, never zero.
+- These paths were observed on the owner's machine on 2026-11-12, not taken
+  from a documented contract: an upgrade of an executor can move them.
+  Project-level skills and servers (`.claude/skills`, `.mcp.json` of each
+  repository) are not listed.
+- Tests read a home they build (`:agent_tools_home`), never the developer's.
+
 ## Release in order
 
 `AgentBoard.Release` (ADR 0005). The agent has no queue and a mention starts it

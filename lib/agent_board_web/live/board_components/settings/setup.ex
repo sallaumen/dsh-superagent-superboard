@@ -5,11 +5,16 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
 
   Without a click the rows come from configuration only; "Check the setup"
   proves them with free reads, in the background, and only then.
+
+  Below them, what each agent has installed on this machine: skills, plugins
+  and MCP servers (`AgentBoard.AgentTools`), names only, read when the section
+  comes into view.
   """
   use AgentBoardWeb, :live_component
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
+  alias AgentBoard.AgentTools
   alias AgentBoard.AI.Budget
   alias AgentBoard.Setup
   alias AgentBoardWeb.Time
@@ -19,7 +24,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
   attr :tz_offset, :integer, default: 0
 
   @impl true
-  def mount(socket), do: {:ok, assign(socket, rows: nil, checking: false, checked_at: nil)}
+  def mount(socket),
+    do: {:ok, assign(socket, rows: nil, tools: [], checking: false, checked_at: nil)}
 
   @impl true
   def update(assigns, socket) do
@@ -32,6 +38,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
       if showing and is_nil(socket.assigns.checked_at),
         do: assign(socket, rows: Setup.checklist()),
         else: socket
+
+    socket = if showing, do: assign(socket, tools: AgentTools.inventory()), else: socket
 
     {:ok, socket}
   end
@@ -140,9 +148,105 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
           </button>
         </p>
       </section>
+
+      <section
+        :if={@tools != []}
+        id="setup-tools"
+        class="settings-subpane setup__class"
+        aria-labelledby="setup-tools-title"
+      >
+        <h4 id="setup-tools-title">{gettext("What each agent has installed")}</h4>
+        <p class="settings-pane__intro">
+          {gettext(
+            "Skills, plugins and MCP servers found on this machine, by name. Keys and arguments are never read."
+          )}
+        </p>
+        <details :for={agent <- @tools} id={"setup-tools-#{agent.id}"} class="setup__tools">
+          <summary>
+            <b>{agent.name}</b>
+            <span class="ab-meta">{tools_summary(agent)}</span>
+          </summary>
+          <div class="setup__tool-lists">
+            <.tool_list title={gettext("Skills")} items={agent.skills}>
+              <:item :let={skill}>
+                <span class="setup__tool-name">{skill.name}</span>
+                <span :if={skill.ok?} class="ab-meta">{skill.description}</span>
+                <span :if={not skill.ok?} class="setup__tool-broken">
+                  <.glyph kind={:blocked} />{gettext(
+                    "Broken: its link points to a folder that is gone."
+                  )}
+                </span>
+              </:item>
+            </.tool_list>
+            <.tool_list title={gettext("MCP servers")} items={agent.mcp}>
+              <:item :let={server}>
+                <span class="setup__tool-name">{server.name}</span>
+                <span class="ab-meta">
+                  {Enum.join(Enum.reject([server.transport, server.target], &is_nil/1), " · ")}
+                </span>
+              </:item>
+            </.tool_list>
+            <.tool_list title={gettext("Plugins")} items={agent.plugins}>
+              <:item :let={plugin}>
+                <span class="setup__tool-name">{plugin.name}</span>
+                <span :if={not plugin.enabled?} class="ab-meta">{gettext("turned off")}</span>
+              </:item>
+            </.tool_list>
+          </div>
+        </details>
+      </section>
     </div>
     """
   end
+
+  attr :title, :string, required: true
+  attr :items, :any, required: true
+  slot :item, required: true
+
+  defp tool_list(assigns) do
+    ~H"""
+    <div class="setup__tool-list">
+      <h5>{@title}</h5>
+      <p :if={@items == :unread} class="ab-meta">{gettext("The board does not read this here.")}</p>
+      <p :if={@items == []} class="ab-meta">{gettext("None installed.")}</p>
+      <ul :if={is_list(@items) and @items != []}>
+        <li :for={item <- @items}>{render_slot(@item, item)}</li>
+      </ul>
+    </div>
+    """
+  end
+
+  # "37 skills · 1 broken · 4 MCP servers · 3 plugins"; a list the board does
+  # not read is a question mark, never a zero.
+  defp tools_summary(agent) do
+    broken = if is_list(agent.skills), do: Enum.count(agent.skills, &(not &1.ok?)), else: 0
+
+    [
+      counted(
+        agent.skills,
+        &ngettext("%{count} skill", "%{count} skills", &1),
+        gettext("? skills")
+      ),
+      broken > 0 && gettext("%{count} broken", count: broken),
+      counted(
+        agent.mcp,
+        &ngettext("%{count} MCP server", "%{count} MCP servers", &1),
+        gettext("? MCP servers")
+      ),
+      counted(
+        agent.plugins,
+        &ngettext("%{count} plugin", "%{count} plugins", &1),
+        gettext("? plugins")
+      )
+    ]
+    |> Enum.filter(& &1)
+    |> Enum.join(" · ")
+  end
+
+  # Zero is said with the plural, as people write it ("0 plugins").
+  defp counted([], text, _unread), do: String.replace(text.(2), "2", "0", global: false)
+  defp counted(items, text, _unread) when is_list(items), do: text.(length(items))
+  defp counted(_items, _text, unread), do: unread
 
   attr :fix, :map, default: nil
   attr :parent, :any, required: true
