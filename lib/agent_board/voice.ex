@@ -7,7 +7,9 @@ defmodule AgentBoard.Voice do
   this module reads the owner's voice settings (`AgentBoard.Settings`):
 
     * `voice_volume` - 0..100 (default 100)
-    * `voice_attention` - `"0"` silences the calls for attention
+    * `voice_alert_question`, `voice_alert_blocked`, `voice_alert_ready`,
+      `voice_alert_answer` -
+      which task transitions may speak once the calls are enabled
     * `voice_speed` - the speaking rate, 0.8..1.2 (default 1.0)
     * `voice_style` - the intonation: `steady`, `natural` (default) or
       `expressive`, an ElevenLabs stability of 0.7, 0.5 or 0.3
@@ -18,20 +20,14 @@ defmodule AgentBoard.Voice do
     * `voice_input` - how the owner enters a voice turn: `text` (default,
       focuses an existing field), `wispr` (an external dictation app types into
       the board) or `microphone` (ElevenLabs Scribe transcribes a recording)
-    * `voice_engine` - who speaks: `browser` (default, free), `mixed`
-      (ElevenLabs for the calls for attention and the coding agent's
-      replies, the browser for the rest) or `elevenlabs` (everything)
     * `voice_replies` - `short` (default: the first sentence of a reply is
       spoken, the whole reply is written) or `full`
-    * `voice_narrate` - `"1"` narrates the rest of the board (a task
-      starting, the queue, the sync, confirmations); off by default
   """
 
   alias AgentBoard.Settings
   alias AgentBoard.Voice.Phrases
 
   @volume_key "voice_volume"
-  @attention_key "voice_attention"
   @default_volume 100
   @speed_key "voice_speed"
   @style_key "voice_style"
@@ -141,8 +137,9 @@ defmodule AgentBoard.Voice do
     do: Settings.put("voice_earcons", if(on?, do: "", else: "0"))
 
   @inputs ~w(text wispr microphone)
-  @engines ~w(browser mixed elevenlabs)
   @replies ~w(short full)
+  @alert_kinds [:question, :blocked, :ready, :answer]
+  @alert_keys ~w(question blocked ready answer)
 
   @doc "How the owner enters a turn: text by default, external dictation or the board microphone."
   def input, do: choice("voice_input", @inputs, "text")
@@ -150,24 +147,11 @@ defmodule AgentBoard.Voice do
   @doc "Saves the input method."
   def put_input(value), do: put_choice("voice_input", @inputs, value, :invalid_input)
 
-  @doc "Who speaks: `browser` (default), `mixed` or `elevenlabs`."
-  def engine, do: choice("voice_engine", @engines, "browser")
-
-  @doc "Saves the voice engine."
-  def put_engine(value), do: put_choice("voice_engine", @engines, value, :invalid_engine)
-
   @doc "How much of a reply is spoken: `short` (default) or `full`."
   def replies, do: choice("voice_replies", @replies, "short")
 
   @doc "Saves the spoken reply length."
   def put_replies(value), do: put_choice("voice_replies", @replies, value, :invalid_replies)
-
-  @doc "Whether the rest of the board is narrated (default off: it costs voice)."
-  def narrate?, do: Settings.get("voice_narrate") == "1"
-
-  @doc "Turns the narration on or off."
-  def put_narrate(on?) when is_boolean(on?),
-    do: Settings.put("voice_narrate", if(on?, do: "1", else: ""))
 
   defp choice(key, allowed, default) do
     value = Settings.get(key)
@@ -178,12 +162,20 @@ defmodule AgentBoard.Voice do
     if value in allowed, do: Settings.put(key, value), else: {:error, error}
   end
 
-  @doc "Whether the agent calls the owner when a task needs them (default on)."
-  def attention?, do: Settings.get(@attention_key) != "0"
+  @doc "The task transitions enabled for automatic speech."
+  def alert_kinds do
+    for kind <- @alert_kinds,
+        Settings.get("voice_alert_" <> Atom.to_string(kind)) == "1",
+        do: kind
+  end
 
-  @doc "Turns the calls for attention on or off."
-  def put_attention(on?) when is_boolean(on?),
-    do: Settings.put(@attention_key, if(on?, do: "", else: "0"))
+  def alert_enabled?(kind), do: kind in alert_kinds()
+
+  @doc "Enables or disables one automatic call type."
+  def put_alert_kind(kind, on?) when kind in @alert_keys and is_boolean(on?),
+    do: Settings.put("voice_alert_" <> kind, if(on?, do: "1", else: "0"))
+
+  def put_alert_kind(_kind, _on?), do: {:error, :invalid_alert_kind}
 
   @doc """
   A spoken status: what needs the owner, what is running and what merged.
@@ -216,10 +208,6 @@ defmodule AgentBoard.Voice do
 
     Phrases.summary(lang, Phrases.greeting(lang, hour), parts)
   end
-
-  @doc "The one-line confirmation spoken when a task is acted on."
-  def task_summary(title, action, lang \\ nil),
-    do: Phrases.task_action(lang || Phrases.default_language(), title, action)
 
   @doc "The hour on the owner's clock (`tz_offset` is minutes west of UTC)."
   def local_hour(%DateTime{} = now, tz_offset) when is_integer(tz_offset),

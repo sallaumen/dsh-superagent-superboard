@@ -34,19 +34,18 @@ import {BoardRestart} from "./hooks/board_restart"
 import {LogFeed} from "./hooks/log_feed"
 import {DataAge} from "./hooks/data_age"
 import {ThemeToggle} from "./hooks/theme_toggle"
-import {DailySummaryVoice} from "./hooks/daily_summary_voice"
 import {ValueChange} from "./hooks/value_change"
 import {BoardMotion} from "./hooks/board_motion"
 import {CostsMotion} from "./hooks/costs_motion"
 import {mountBoardHover} from "./board_hover"
 import {VoiceCommand} from "./hooks/voice_command"
 import {VoicePlayer} from "./hooks/voice_player"
+import {voiceState} from "./voice_state"
 import {VoicePresence} from "./hooks/voice_presence"
 import {ChatHistory} from "./hooks/chat_history"
 import {VoiceWispr} from "./hooks/voice_wispr"
 import {TaskConversation} from "./hooks/task_conversation"
 import {ImageViewer} from "./hooks/image_viewer"
-import {voiceInputActive, voiceState} from "./voice_state"
 import {localize} from "./i18n"
 import topbar from "../vendor/topbar"
 
@@ -74,7 +73,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     board_message_seen: localStorage.getItem("ab:message-seen"),
     board_tz_offset: new Date().getTimezoneOffset(),
   }),
-  hooks: {...colocatedHooks, DataAge, ThemeToggle, DailySummaryVoice, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, BoardFold, Composer, ValueChange, BoardMotion, CostsMotion, LogFeed, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr, ChatHistory, TaskConversation, ImageViewer},
+  hooks: {...colocatedHooks, DataAge, ThemeToggle, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, BoardFold, Composer, ValueChange, BoardMotion, CostsMotion, LogFeed, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr, ChatHistory, TaskConversation, ImageViewer},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
@@ -199,68 +198,6 @@ window.addEventListener("phx:voice_chat_clear", ({detail}) => {
   if (input && input.value === detail.text) input.value = ""
 })
 
-// The browser's own voices vary a lot: prefer one in the exact language,
-// then an enhanced or neural one, then any voice of the language family.
-const bestBrowserVoice = (lang) => {
-  const voices = window.speechSynthesis?.getVoices?.() || []
-  if (!voices.length) return null
-  const family = lang.slice(0, 2).toLowerCase()
-  const quality = v => /premium|enhanced|natural|neural|google/i.test(v.name) ? 2 : (v.localService ? 1 : 0)
-  const score = v => (v.lang.toLowerCase() === lang.toLowerCase() ? 10 : v.lang.toLowerCase().startsWith(family) ? 5 : 0) + quality(v)
-  const best = voices.reduce((a, b) => (score(b) > score(a) ? b : a), voices[0])
-  return score(best) >= 5 ? best : null
-}
-// Voices load asynchronously in some browsers; asking once warms the list.
-window.speechSynthesis?.getVoices?.()
-
-// Voice out: the server pushes the summary, the browser speaks it.
-let browserSpeech = null
-window.addEventListener("phx:speak", (event) => {
-  const text = event.detail.text
-  if (!text || voiceInputActive()) return
-  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
-    voiceState("error", "Fala indisponível", "Este navegador não consegue falar.", "browser-speech")
-    return
-  }
-  browserSpeech = null
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(text)
-  browserSpeech = utterance
-  // The language and volume are the owner's voice settings, not the
-  // browser's locale: a Portuguese board is read in Portuguese.
-  const panel = document.querySelector("#voice-panel")
-  const volume = Number(panel?.dataset.volume)
-  utterance.lang = event.detail.lang || panel?.dataset.lang || navigator.language || "pt-BR"
-  const rate = Number(event.detail.rate)
-  if (Number.isFinite(rate)) utterance.rate = rate
-  const voice = bestBrowserVoice(utterance.lang)
-  if (voice) utterance.voice = voice
-  utterance.volume = Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 100) / 100 : 1
-  utterance.onstart = () => voiceState("speaking", "O agente está falando", event.detail.display || "Usando a voz do navegador.", "browser-speech")
-  utterance.onend = () => {
-    if (browserSpeech !== utterance) return
-    browserSpeech = null
-    voiceState("complete", "Terminei de falar", "Reprodução concluída.", "browser-speech")
-    if (event.detail.listen) window.dispatchEvent(new CustomEvent("board:voice-start", {detail: {followup: true}}))
-  }
-  utterance.onerror = () => {
-    if (browserSpeech !== utterance) return
-    browserSpeech = null
-    voiceState("error", "A fala não tocou", "Tente de novo ou confira o som do navegador.", "browser-speech")
-  }
-  voiceState("generating", "Preparando a fala", "Usando a voz do navegador.", "browser-speech")
-  try {
-    window.speechSynthesis.speak(utterance)
-  } catch (_) {
-    browserSpeech = null
-    voiceState("error", "A fala não começou", "Tente de novo depois de interagir com a página.", "browser-speech")
-  }
-})
-
-window.addEventListener("board:voice-control", ({detail}) => {
-  if (browserSpeech && detail.source === "browser-speech") {
-    browserSpeech = null
-    window.speechSynthesis.cancel()
-    voiceState("complete", "Fala interrompida", "A reprodução parou.", "browser-speech")
-  }
+window.addEventListener("phx:voice_unavailable", () => {
+  voiceState("complete", "Resposta no painel", "A ElevenLabs está indisponível. A resposta ficou escrita no painel de voz.", "elevenlabs")
 })

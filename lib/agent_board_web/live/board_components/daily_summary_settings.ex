@@ -58,7 +58,7 @@ defmodule AgentBoardWeb.BoardComponents.DailySummarySettings do
           /> {gettext("Prepare a summary every day")}
         </label>
         <p class="voice-note">
-          {gettext("It appears on the board and is read aloud.")}
+          {gettext("It appears on the board without audio.")}
         </p>
 
         <label class="daily-summary-at" for="daily-summary-at">

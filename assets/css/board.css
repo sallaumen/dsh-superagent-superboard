@@ -2639,6 +2639,11 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .voice-toggle input { margin-top: 2px; accent-color: var(--you); }
 .voice-speak { gap: 8px; }
 .voice-speak form { margin: 0; }
+.voice-scenarios { gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+.voice-scenarios__list { display: grid; gap: 10px; }
+.voice-scenarios__list form { margin: 0; }
+.voice-scenarios__list .voice-toggle { min-height: 44px; align-items: center; }
+.voice-scenarios__list .voice-toggle input { margin-top: 0; }
 .daily-summary { display: grid; gap: 6px; padding-top: 18px; border-top: 1px solid var(--line); }
 .daily-summary h4 { margin: 0; color: var(--ink); font-size: 14px; line-height: 20px; font-weight: 600; }
 .daily-summary__state { margin: 0; color: var(--ink-muted); font-size: 12px; line-height: 18px; }

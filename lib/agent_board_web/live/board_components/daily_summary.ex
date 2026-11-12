@@ -5,8 +5,7 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
   executor spent. It renders the facts stored in the row
   (`AgentBoard.DailySummary.Entry`), never a recomputation; it arrives with
   a broadcast and leaves when dismissed, without motion (`docs/ui-motion.md`:
-  data that arrives is not animated). The `DailySummaryVoice` hook asks to
-  speak it from a tab the owner has interacted with.
+  data that arrives is not animated). The daily facts are visual only.
   """
   use AgentBoardWeb, :html
 
@@ -34,9 +33,6 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
       id="daily-summary"
       class="ab-daily"
       aria-labelledby="daily-summary-title"
-      phx-hook="DailySummaryVoice"
-      data-id={@entry.id}
-      data-spoken={to_string(not is_nil(@entry.spoken_at))}
     >
       <header class="ab-daily__head">
         <h2 id="daily-summary-title">

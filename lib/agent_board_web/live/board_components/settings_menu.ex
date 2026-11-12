@@ -309,6 +309,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               type="button"
               class="ab-btn ab-btn--sm"
               phx-click="speak"
+              disabled={!@voice.configured}
             ><.icon
               name="hero-speaker-wave"
               class="size-4"
@@ -323,15 +324,15 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
             data-lang={@voice.language}
           >
             <div class="voice-layout__column">
+              <VoicePanel.output_controls voice={@voice} repo={@repo != nil} />
+            </div>
+            <div class="voice-layout__column">
               <VoicePanel.input_controls voice={@voice} repo={@repo != nil} />
               <.live_component
                 module={AgentBoardWeb.BoardComponents.DailySummarySettings}
                 id="settings-daily-summary-section"
                 expanded={true}
               />
-            </div>
-            <div class="voice-layout__column">
-              <VoicePanel.output_controls voice={@voice} repo={@repo != nil} />
             </div>
           </div>
         </section>

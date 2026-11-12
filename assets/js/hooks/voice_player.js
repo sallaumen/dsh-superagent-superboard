@@ -47,12 +47,12 @@ export const VoicePlayer = {
       }
     }
     window.addEventListener("board:voice-control", this.onControl)
-    this.handleEvent("voice_play", ({url, listen, text, fallback}) => this.play(url, {listen: Boolean(listen), text, fallback}))
+    this.handleEvent("voice_play", ({url, listen, text}) => this.play(url, {listen: Boolean(listen), text}))
   },
   // The audio element plays the stream as it arrives: the first words are
   // heard about half a second after the request, instead of after the whole
   // file was downloaded.
-  play(url, {listen = false, text = "", fallback = null} = {}) {
+  play(url, {listen = false, text = ""} = {}) {
     if (voiceInputActive()) return
     this.cancel()
     const generation = ++this.generation
@@ -93,14 +93,6 @@ export const VoicePlayer = {
       if (generation !== this.generation) return
       clearInterval(this.endWatch)
       this.active = false
-      // Spent credits or a refused key: the reply is still heard, in the
-      // computer's voice, instead of silence. Not after part of it played.
-      if (fallback && this.audio.currentTime === 0) {
-        voiceState("error", "A voz da ElevenLabs falhou",
-          "Usando a voz do computador. Confira os créditos e a chave da ElevenLabs.", "elevenlabs")
-        window.dispatchEvent(new CustomEvent("phx:speak", {detail: fallback}))
-        return
-      }
       voiceState("error", "A voz não tocou",
         "Confira a chave e o limite da ElevenLabs, ou tente de novo.", "elevenlabs")
     }

@@ -54,23 +54,14 @@ defmodule AgentBoard.VoiceTest do
     assert Voice.summary(board(), now: at(18), tz_offset: 180) =~ "Boa tarde"
   end
 
-  test "the task confirmation is one line in the voice language" do
-    assert Voice.task_summary("Add a boss", "stop", "pt-BR") == "Parei Add a boss."
-    assert Voice.task_summary("Add a boss", "archive", "en-US") == "Archived Add a boss."
-  end
-
-  test "volume and attention persist and refuse bad values" do
+  test "volume persists and refuses bad values" do
     assert Voice.volume() == 100
-    assert Voice.attention?()
 
     assert :ok = Voice.put_volume("35")
     assert Voice.volume() == 35
     assert {:error, :invalid_volume} = Voice.put_volume("120")
     assert {:error, :invalid_volume} = Voice.put_volume("loud")
     assert Voice.volume() == 35
-
-    assert :ok = Voice.put_attention(false)
-    refute Voice.attention?()
   end
 
   test "a stored value outside the offer falls back to the default" do
@@ -120,25 +111,29 @@ defmodule AgentBoard.VoiceTest do
     refute Voice.earcons?()
   end
 
-  test "input, engine, replies and narration default to the cheap choices" do
+  test "input and reply length default to restrained choices" do
     assert Voice.input() == "text"
-    assert Voice.engine() == "browser"
     assert Voice.replies() == "short"
-    refute Voice.narrate?()
 
     assert :ok = Voice.put_input("microphone")
-    assert :ok = Voice.put_engine("mixed")
     assert :ok = Voice.put_replies("full")
-    assert :ok = Voice.put_narrate(true)
 
-    assert {Voice.input(), Voice.engine(), Voice.replies(), Voice.narrate?()} ==
-             {"microphone", "mixed", "full", true}
+    assert {Voice.input(), Voice.replies()} == {"microphone", "full"}
 
     assert {:error, :invalid_input} = Voice.put_input("telepatia")
 
     assert :ok = Voice.put_input("wispr")
     assert Voice.input() == "wispr"
-    assert {:error, :invalid_engine} = Voice.put_engine("robô")
     assert {:error, :invalid_replies} = Voice.put_replies("longas")
+  end
+
+  test "each automatic alert kind persists independently" do
+    assert Voice.alert_kinds() == []
+    assert :ok = Voice.put_alert_kind("question", true)
+    assert Voice.alert_kinds() == [:question]
+    assert :ok = Voice.put_alert_kind("ready", false)
+    refute Voice.alert_enabled?(:ready)
+    assert Voice.alert_enabled?(:question)
+    assert {:error, :invalid_alert_kind} = Voice.put_alert_kind("sync", true)
   end
 end

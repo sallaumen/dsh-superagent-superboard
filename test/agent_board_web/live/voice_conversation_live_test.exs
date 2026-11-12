@@ -132,7 +132,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
                "um passo que o agente já começou termina antes."
   end
 
-  test "without an ElevenLabs key the browser speaks in the voice language", %{conn: conn} do
+  test "without an ElevenLabs key the reply stays written and silent", %{conn: conn} do
     Application.put_env(:agent_board, :elevenlabs_api_key, "")
     script(fn %{name: :voice_agent} -> reply("Oi! Tudo certo.") end)
     view = board(conn)
@@ -140,12 +140,9 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     render_hook(view, "voice_turn", %{"text" => "oi"})
     render_async(view, 1_000)
 
-    assert_push_event(
-      view,
-      "speak",
-      %{text: "Oi! Tudo certo.", lang: "pt-BR", listen: false},
-      1_000
-    )
+    assert_push_event(view, "voice_unavailable", %{}, 1_000)
+    refute_receive {_, _, "speak", _}, 100
+    assert render(view) =~ "Oi! Tudo certo."
   end
 
   test "a newer utterance supersedes a slower one", %{conn: conn} do
@@ -344,6 +341,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
   end
 
   test "the coding agent's reply to a spoken question is said once", %{conn: conn} do
+    :ok = AgentBoard.Settings.put("voice_alert_answer", "1")
     view = board(conn)
     asked_task()
 
@@ -358,14 +356,28 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     assert [%{action: "agent_answered"} | _] = Enum.reverse(Conversation.recent())
   end
 
-  test "with the calls for attention off, the reply waits silently", %{conn: conn} do
-    :ok = AgentBoard.Settings.put("voice_attention", "0")
+  test "with automatic alerts off, the answer is recorded silently", %{conn: conn} do
     view = board(conn)
     asked_task()
 
     send(view.pid, :board_updated)
     refute_push_event(view, "voice_play", %{url: _}, 100)
-    assert [_reply] = Conversation.arrived_answers()
+    assert [%{action: "agent_answered"} | _] = Enum.reverse(Conversation.recent())
+
+    :ok = AgentBoard.Settings.put("voice_alert_answer", "1")
+    send(view.pid, :board_updated)
+    refute_push_event(view, "voice_play", %{url: _}, 100)
+  end
+
+  test "Yasme's task reply stays silent when only that alert is disabled", %{conn: conn} do
+    :ok = AgentBoard.Settings.put("voice_alert_question", "1")
+    :ok = AgentBoard.Settings.put("voice_alert_answer", "0")
+    view = board(conn)
+    asked_task()
+
+    send(view.pid, :board_updated)
+    refute_push_event(view, "voice_play", %{url: _}, 100)
+    assert [%{action: "agent_answered"} | _] = Enum.reverse(Conversation.recent())
   end
 
   test "the spoken summary drops markers and keeps a few sentences" do

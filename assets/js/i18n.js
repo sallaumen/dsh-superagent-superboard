@@ -4,7 +4,6 @@ const english = {
   "Fala indisponível": "Speech unavailable",
   "Este navegador não consegue falar.": "This browser cannot speak.",
   "O agente está falando": "The agent is speaking",
-  "Usando a voz do navegador.": "Using the browser voice.",
   "Terminei de falar": "Finished speaking",
   "Reprodução concluída.": "Playback complete.",
   "A fala não tocou": "Speech did not play",

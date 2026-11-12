@@ -13,8 +13,7 @@ defmodule AgentBoardWeb.VoiceConversation do
   | thinking → timed out | `{:voice_turn_timeout, ref}` after `:voice_turn_timeout_ms` | — |
   | proposed → confirmed/cancelled | `AgentBoard.Conversation.settle/2`, conditional, once | `voice_turns.proposal_status` |
 
-  The reply is spoken in the agent's voice (or the browser's, without an
-  ElevenLabs key); `listen: true` asks the browser to open the microphone
+  The reply is spoken through ElevenLabs when available; `listen: true` asks the browser to open the microphone
   once more after the reply ends, so a question gets its answer without a
   key press. The coding agent never sees this conversation.
   """
@@ -26,7 +25,7 @@ defmodule AgentBoardWeb.VoiceConversation do
   import Phoenix.LiveView,
     only: [start_async: 3, cancel_async: 2, push_event: 3, push_patch: 2, put_flash: 3]
 
-  alias AgentBoard.{Actions, AI, Conversation}
+  alias AgentBoard.{Actions, AI, Conversation, Voice}
   alias AgentBoard.Conversation.Agent
   alias AgentBoard.Voice.{Activity, Phrases}
   alias AgentBoardWeb.{BoardNavigation, Locale, VoiceCommands, VoiceSpeech}
@@ -117,13 +116,11 @@ defmodule AgentBoardWeb.VoiceConversation do
   end
 
   @doc """
-  Speaks the coding agent's reply to a question the owner sent from the
-  conversation, once: the first board to claim it (`mark_answered/1`)
-  speaks, another tab stays quiet. The reply joins the conversation memory.
-  Silenced, like the other calls, by "Chamar quando uma tarefa precisar de
-  mim".
+  Adds the coding agent's reply to the conversation once: the first board to
+  claim it (`mark_answered/1`) records it, another tab stays quiet. Speech is
+  optional; a disabled alert must not leave a backlog to announce later.
   """
-  def check_answers(%{assigns: %{voice: %{attention: true}}} = socket) do
+  def check_answers(socket) do
     Enum.reduce(Conversation.arrived_answers(), socket, fn {ask, comment}, socket ->
       case Conversation.mark_answered(ask) do
         :ok -> announce_answer(socket, ask, comment)
@@ -131,8 +128,6 @@ defmodule AgentBoardWeb.VoiceConversation do
       end
     end)
   end
-
-  def check_answers(socket), do: socket
 
   defp announce_answer(socket, ask, comment) do
     number = ask.proposal["number"]
@@ -146,9 +141,11 @@ defmodule AgentBoardWeb.VoiceConversation do
 
     Activity.record(:action, :ok, "the agent answered on task ##{number}")
 
-    socket
-    |> assign(:voice_turns, Conversation.recent())
-    |> speak(text, false, :call)
+    socket = assign(socket, :voice_turns, Conversation.recent())
+
+    if Voice.alert_enabled?(:answer),
+      do: speak(socket, text, false, :call),
+      else: socket
   end
 
   # What is worth hearing of the reply: no hidden markers, no automated-agent
@@ -259,11 +256,12 @@ defmodule AgentBoardWeb.VoiceConversation do
     }
   end
 
-  # The engine (ElevenLabs or the free browser voice) and how much is
-  # spoken are VoiceSpeech's decision; this only names the kind.
+  # Only ElevenLabs speaks; written replies remain visible when unavailable.
   defp speak(socket, text, listen, kind) do
-    {event, payload} = VoiceSpeech.push(socket.assigns.voice, text, kind: kind, listen: listen)
-    push_event(socket, event, payload)
+    case VoiceSpeech.push(socket.assigns.voice, text, kind: kind, listen: listen) do
+      {event, payload} -> push_event(socket, event, payload)
+      nil -> push_event(socket, "voice_unavailable", %{})
+    end
   end
 
   # A free answer can be cut to its first sentence; a proposal, a question

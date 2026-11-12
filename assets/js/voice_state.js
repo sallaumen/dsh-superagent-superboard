@@ -10,9 +10,7 @@ export const voiceInputActive = () =>
   ["permission", "listening", "transcribing"].includes(current.phase)
 
 export const interruptVoiceOutput = () => {
-  for (const source of ["elevenlabs", "browser-speech"]) {
-    window.dispatchEvent(new CustomEvent("board:voice-control", {detail: {source}}))
-  }
+  window.dispatchEvent(new CustomEvent("board:voice-control", {detail: {source: "elevenlabs"}}))
 }
 
 export const voiceState = (phase, title, detail = "", source = "") => {

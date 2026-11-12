@@ -436,9 +436,6 @@ defmodule AgentBoard.ElevenLabs do
     if configured?(), do: voice_list(), else: {:error, :not_configured}
   end
 
-  @doc "Whether board events are spoken automatically (the settings default is on)."
-  def speak_events?, do: AgentBoard.Voice.narrate?()
-
   defp voice_list do
     case cached_voices() do
       {:ok, voices} -> {:ok, voices}

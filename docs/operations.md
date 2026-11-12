@@ -153,9 +153,9 @@ pipeline contract.
 - **Stop** is the board flag plus closing the issue. A worker already running
   finishes the current ticket: the Super-Agent API has no cancellation.
 - The board **reads** the agent's state; it never writes to it.
-- The spoken summary uses the browser's Web Speech API; server TTS and STT
-  (ElevenLabs) live behind `/api/voice` and answer with a reason on failure,
-  never with an exception.
+- Spoken replies and owner-requested status use ElevenLabs through `/api/voice`.
+  Without a configured, available voice, replies remain written and the board
+  stays silent; API failures return a reason rather than an exception.
 
 ## Shared practices
 

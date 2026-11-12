@@ -12,7 +12,7 @@ defmodule AgentBoard.ElevenLabs.Usage do
 
   The daily cap (`ELEVENLABS_DAILY_CHAR_CAP`, default 20000 characters, 0
   for none) does not stop anything here: `over_cap?/0` tells the voice to
-  switch to the free browser voice, and the call that crosses it records one
+  keep written replies silent, and the call that crosses it records one
   voice activity event a day. A ledger failure is logged and skipped; it
   never fails the speech it was counting.
 

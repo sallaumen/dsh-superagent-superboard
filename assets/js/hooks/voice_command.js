@@ -68,10 +68,10 @@ export const VoiceCommand = {
       this.thinking = true
       if (this.phase === "idle") voiceState("thinking", "Pensando…", "O agente está preparando a resposta. Esc cancela.", source)
     })
-    // The reply arrived (agent voice or browser voice): nothing to cancel.
+    // The reply arrived: nothing to cancel.
     this.onReply = () => { this.thinking = false }
     window.addEventListener("phx:voice_play", this.onReply)
-    window.addEventListener("phx:speak", this.onReply)
+    window.addEventListener("phx:voice_unavailable", this.onReply)
     // A voice error the owner sees in this tab also reaches the server log
     // and the live feed; at most one report every two seconds.
     this.lastErrorReport = 0
@@ -441,7 +441,7 @@ export const VoiceCommand = {
     window.removeEventListener("board:voice-start", this.onStartRequest)
     window.removeEventListener("board:voice-stop", this.onStopRequest)
     window.removeEventListener("phx:voice_play", this.onReply)
+    window.removeEventListener("phx:voice_unavailable", this.onReply)
     window.removeEventListener("board:voice-state", this.onVoiceState)
-    window.removeEventListener("phx:speak", this.onReply)
   },
 }

@@ -1,7 +1,7 @@
 defmodule AgentBoardWeb.DailySummaryLiveTest do
   @moduledoc """
   The summary of the day on the board: it arrives with a broadcast, is
-  spoken once across open boards, is dismissed everywhere, and its switch
+  never spoken, is dismissed everywhere, and its switch
   and hour live in Configurações.
   """
   use AgentBoardWeb.ConnCase, async: false
@@ -29,16 +29,7 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
 
   defp today, do: DateTime.utc_now() |> DailySummary.local_now() |> NaiveDateTime.to_date()
 
-  defp spoke?(view) do
-    assert_push_event(view, "speak", %{text: "Resumo do dia" <> _}, 200)
-    true
-  rescue
-    ExUnit.AssertionError -> false
-  end
-
-  defp ask(view, entry), do: render_hook(view, "daily_summary_claim", %{"id" => entry.id})
-
-  test "a summary that goes out while two boards are open shows on both, silent until asked",
+  test "a summary that goes out while two boards are open shows silently on both",
        %{conn: conn} do
     {:ok, one, _html} = live(conn, @path)
     {:ok, two, _html} = live(conn, @path)
@@ -46,41 +37,17 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
 
     entry = generate()
 
-    assert has_element?(one, ~s(#daily-summary[data-spoken="false"]), "Resumo do dia")
+    assert has_element?(one, "#daily-summary", "Resumo do dia")
     assert has_element?(two, "#daily-summary", "Resumo do dia")
-    # Showing it spends nothing: a preview or a tab nobody touched never asks.
-    refute spoke?(one)
-    refute spoke?(two)
-
-    ask(one, entry)
-    ask(two, entry)
-
-    assert spoke?(one)
-    refute spoke?(two)
-    assert has_element?(one, ~s(#daily-summary[data-spoken="true"]))
-    assert has_element?(two, ~s(#daily-summary[data-spoken="true"]))
+    refute render(one) =~ "DailySummaryVoice"
+    assert Repo.get!(Entry, entry.id).spoken_at == nil
   end
 
-  test "a board that connects later is told it was spoken and stays quiet", %{conn: conn} do
+  test "a board that connects later sees a summary without a speech hook", %{conn: conn} do
     entry = generate()
-    {:ok, first, _html} = live(conn, @path)
-    ask(first, entry)
-    assert spoke?(first)
-
     {:ok, later, _html} = live(conn, @path)
-    assert has_element?(later, ~s(#daily-summary[data-spoken="true"]))
-    ask(later, entry)
-    refute spoke?(later)
-  end
-
-  test "an ask for another summary than the one shown does nothing", %{conn: conn} do
-    entry = generate()
-    {:ok, view, _html} = live(conn, @path)
-
-    render_hook(view, "daily_summary_claim", %{"id" => entry.id + 1})
-    render_hook(view, "daily_summary_claim", %{"id" => "x"})
-
-    refute spoke?(view)
+    assert has_element?(later, "#daily-summary", "Resumo do dia")
+    refute render(later) =~ "DailySummaryVoice"
     assert Repo.get!(Entry, entry.id).spoken_at == nil
   end
 
