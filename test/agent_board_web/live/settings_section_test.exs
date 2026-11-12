@@ -146,4 +146,36 @@ defmodule AgentBoardWeb.SettingsSectionTest do
     assert_patch(view, "/?panel=settings&repo=fixture%2Ffooter&section=system")
     assert has_element?(view, ".settings-nav__item.is-current", "Sistema")
   end
+
+  test "AI and setup lists what each agent has installed, and unread is not zero", %{conn: conn} do
+    home = Path.join(System.tmp_dir!(), "setup-tools-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(Path.join(home, ".claude/skills/review"))
+
+    File.write!(
+      Path.join(home, ".claude/skills/review/SKILL.md"),
+      "---\ndescription: Reviews.\n---\n"
+    )
+
+    File.ln_s!(Path.join(home, "gone"), Path.join(home, ".claude/skills/broken"))
+    Application.put_env(:agent_board, :agent_tools_home, home)
+
+    on_exit(fn ->
+      Application.put_env(:agent_board, :agent_tools_home, "/nonexistent-agent-tools-home")
+      File.rm_rf!(home)
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/?panel=settings&section=setup")
+
+    assert has_element?(view, "#setup-tools-claude_code summary", "2 skills · 1 com defeito")
+    assert has_element?(view, "#setup-tools-claude_code", "Reviews.")
+    assert has_element?(view, "#setup-tools-claude_code .setup__tool-broken")
+
+    assert has_element?(
+             view,
+             "#setup-tools-dsh summary",
+             "0 skills · ? servidores MCP · ? plugins"
+           )
+
+    assert has_element?(view, "#setup-tools-codex", "Nenhum instalado.")
+  end
 end
