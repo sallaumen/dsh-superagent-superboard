@@ -207,9 +207,10 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
   test "the voice panel shows the conversation, takes typed words and forgets", %{conn: conn} do
     script(fn %{name: :voice_agent} -> reply("Pode deixar.") end)
     {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=voice")
-    assert html =~ "Aperte espaço duas vezes"
+    assert html =~ "SuperBoard Skills"
 
     view |> element("#voice-chat-form") |> render_submit(%{"text" => "lembra do placar"})
+    assert_push_event(view, "voice_chat_clear", %{text: "lembra do placar"})
     render_async(view, 1_000)
 
     assert has_element?(view, "#voice-chat-turns [data-role=owner]", "lembra do placar")
@@ -226,13 +227,14 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
     assert has_element?(view, "#voice-commands:not([open])")
     assert has_element?(view, "#voice-commands h4", "Execuções do agente")
-    assert has_element?(view, "#voice-commands .voice-command[data-mode=direct]", "desfaz")
+    assert has_element?(view, "#voice-commands .sb-skills__item[data-mode=direct]", "desfaz")
 
     view
-    |> element(~s(#voice-commands button[phx-value-text="O que está falhando?"]))
+    |> element(~s(.sb-skills__card[phx-value-text="O que está falhando?"]))
     |> render_click()
 
     render_async(view, 1_000)
+    refute_push_event(view, "voice_chat_clear", %{}, 50)
     assert_push_event(view, "voice_play", %{url: url}, 1_000)
     assert spoken(url) == "Nada falhando agora."
     assert [%{role: "owner", text: "O que está falhando?"}, _] = Conversation.recent()

@@ -272,7 +272,8 @@ defmodule AgentBoardWeb.VoiceUITest do
 
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "Espaço duas vezes"
+    assert html =~ ~s(id="voice-chat-text")
+    assert html =~ ~s(data-input="text")
     refute html =~ "Dictate task"
     refute html =~ "voice-dictate"
   end
@@ -594,11 +595,11 @@ defmodule AgentBoardWeb.VoiceUITest do
     :ok = Settings.put("voice_input", "text")
     {:ok, view, _html} = live(conn, ~p"/?panel=voice")
 
-    assert has_element?(view, "#panel-voice .ab-voice-talk button", "Escrever")
-    assert has_element?(view, "#panel-voice .ab-voice-talk .ab-meta", "Escreva no campo acima")
+    assert has_element?(view, "#voice-chat-text")
+    refute has_element?(view, "#voice-chat-form button[type=button]")
 
     view |> element("#voice-input-form") |> render_change(%{"input" => "microphone"})
-    assert has_element?(view, "#panel-voice .ab-voice-talk button", "Falar")
+    assert has_element?(view, "#voice-chat-form button[type=button][aria-label]")
   end
 
   test "with the default engine the board speaks with the free browser voice", %{conn: conn} do

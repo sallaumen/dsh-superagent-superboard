@@ -31,7 +31,7 @@ import {BoardFold} from "./hooks/board_fold"
 import {Composer} from "./hooks/composer"
 import {BoardConnection} from "./hooks/board_connection"
 import {BoardRestart} from "./hooks/board_restart"
-import {LogsSheet} from "./hooks/logs_sheet"
+import {LogFeed} from "./hooks/log_feed"
 import {DataAge} from "./hooks/data_age"
 import {ThemeToggle} from "./hooks/theme_toggle"
 import {DailySummaryVoice} from "./hooks/daily_summary_voice"
@@ -42,6 +42,7 @@ import {mountBoardHover} from "./board_hover"
 import {VoiceCommand} from "./hooks/voice_command"
 import {VoicePlayer} from "./hooks/voice_player"
 import {VoicePresence} from "./hooks/voice_presence"
+import {ChatHistory} from "./hooks/chat_history"
 import {VoiceWispr} from "./hooks/voice_wispr"
 import {TaskConversation} from "./hooks/task_conversation"
 import {ImageViewer} from "./hooks/image_viewer"
@@ -73,7 +74,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     board_message_seen: localStorage.getItem("ab:message-seen"),
     board_tz_offset: new Date().getTimezoneOffset(),
   }),
-  hooks: {...colocatedHooks, DataAge, ThemeToggle, DailySummaryVoice, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, BoardFold, Composer, ValueChange, BoardMotion, CostsMotion, LogsSheet, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr, TaskConversation, ImageViewer},
+  hooks: {...colocatedHooks, DataAge, ThemeToggle, DailySummaryVoice, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, BoardFold, Composer, ValueChange, BoardMotion, CostsMotion, LogFeed, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr, ChatHistory, TaskConversation, ImageViewer},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.
@@ -193,9 +194,9 @@ window.addEventListener("board:voice-state", ({detail}) => {
 })
 
 // The typed chat line empties once the board took the words.
-window.addEventListener("phx:voice_chat_clear", () => {
+window.addEventListener("phx:voice_chat_clear", ({detail}) => {
   const input = document.querySelector("#voice-chat-text")
-  if (input) input.value = ""
+  if (input && input.value === detail.text) input.value = ""
 })
 
 // The browser's own voices vary a lot: prefer one in the exact language,

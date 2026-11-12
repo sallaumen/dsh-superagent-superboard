@@ -1253,7 +1253,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert has_element?(view, ".ab-rail .ab-brand", "Agent Board")
+    assert has_element?(view, ".ab-rail .ab-brand[aria-label='Super Agent Super Board'] img")
     assert has_element?(view, ".ab-top__repo h1", "arena-rogue")
     # The page's first heading is its h1; the rail's owner is a label.
     assert has_element?(view, ".ab-rail p.ab-label", "sallaumen")
@@ -1265,11 +1265,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
 
-    assert page_title(view) == "arena-rogue · Agent Board"
+    assert page_title(view) == "arena-rogue · Super Agent Super Board"
     refute html =~ "Phoenix Framework"
 
     view |> element(".ab-repo--today") |> render_click()
-    assert page_title(view) == "Hoje · Agent Board"
+    assert page_title(view) == "Hoje · Super Agent Super Board"
   end
 
   test "the board renders the work sections", %{conn: conn} do

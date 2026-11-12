@@ -2,7 +2,7 @@ defmodule AgentBoard.Voice.Commands do
   @moduledoc """
   What the owner can ask the voice agent, as one list.
 
-  The list is the single source for the "O que posso pedir" panel and the
+  The list is the single source for the SuperBoard Skills catalog and the
   spoken help. The model prompt (`:voice_agent` in `AgentBoard.AI.Registry`)
   describes the same actions; `lookups/0` here is checked against its schema
   by a test, so a new read cannot exist in one place only.
@@ -23,7 +23,13 @@ defmodule AgentBoard.Voice.Commands do
   use Gettext, backend: AgentBoardWeb.Gettext
 
   @type mode :: :local | :read | :confirm | :direct
-  @type item :: %{say: String.t(), does: String.t(), mode: mode(), try: boolean()}
+  @type item :: %{
+          optional(:featured) => :overview | :changes | :running | :failures,
+          say: String.t(),
+          does: String.t(),
+          mode: mode(),
+          try: boolean()
+        }
   @type group :: %{id: atom(), title: String.t(), items: [item()]}
 
   # The kinds of read `look` can ask for; the `lookup` enum of the schema.
@@ -35,6 +41,7 @@ defmodule AgentBoard.Voice.Commands do
       title: gettext_noop("Status and summary"),
       items: [
         %{
+          featured: :overview,
           say: %{"pt-BR" => "Status", "en-US" => "Status"},
           does: gettext_noop("the board in one sentence, right away"),
           mode: :local,
@@ -47,6 +54,7 @@ defmodule AgentBoard.Voice.Commands do
           try: true
         },
         %{
+          featured: :changes,
           say: %{"pt-BR" => "O que mudou hoje?", "en-US" => "What changed today?"},
           does: gettext_noop("merges, new tasks and runs that ended today"),
           mode: :read,
@@ -65,6 +73,7 @@ defmodule AgentBoard.Voice.Commands do
       title: gettext_noop("The agent's runs"),
       items: [
         %{
+          featured: :running,
           say: %{"pt-BR" => "O que está rodando agora?", "en-US" => "What is running now?"},
           does: gettext_noop("each run, for how long and its last report"),
           mode: :read,
@@ -113,6 +122,7 @@ defmodule AgentBoard.Voice.Commands do
       title: gettext_noop("Bugs and failures"),
       items: [
         %{
+          featured: :failures,
           say: %{"pt-BR" => "O que está falhando?", "en-US" => "What is failing?"},
           does: gettext_noop("red CI, blocked tasks, runs that stopped and sync errors"),
           mode: :read,

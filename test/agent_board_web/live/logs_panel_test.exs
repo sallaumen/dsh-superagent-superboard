@@ -1,6 +1,6 @@
 defmodule AgentBoardWeb.LogsPanelTest do
   @moduledoc """
-  The logs sheet: only warnings/errors, read only while open, pause/resume,
+  Settings → Logs: only warnings/errors, read only while open, pause/resume,
   clear, and honest missing/unreadable states.
   """
   use AgentBoardWeb.ConnCase, async: false
@@ -83,10 +83,11 @@ defmodule AgentBoardWeb.LogsPanelTest do
     end
   end
 
-  test "the sheet shows warning and error lines, including the stack trace", %{
-    conn: conn,
-    board_log: board_log
-  } do
+  test "the legacy link opens Settings → Logs with warning and error lines, including the stack trace",
+       %{
+         conn: conn,
+         board_log: board_log
+       } do
     repo!()
     write_log(board_log, [board_line("info", "info silenciosa")])
     write_log(board_log, [board_line("warning", "aviso no painel"), "detalhe do aviso"])
@@ -94,7 +95,7 @@ defmodule AgentBoardWeb.LogsPanelTest do
 
     {:ok, view, html} = live(conn, ~p"/?repo=fixture/logs&panel=logs")
 
-    assert html =~ "panel-logs"
+    assert has_element?(view, "#panel-settings .settings-nav__item.is-current", "Logs")
     assert html =~ "aviso no painel"
     assert html =~ "detalhe do aviso"
     assert html =~ "erro no painel"
@@ -102,8 +103,7 @@ defmodule AgentBoardWeb.LogsPanelTest do
     refute html =~ "info silenciosa"
     assert html =~ "1 aviso"
     assert html =~ "1 erro"
-    assert has_element?(view, "#panel-logs[data-logs-timer=on]")
-    assert has_element?(view, "#panel-logs [data-log-drag]")
+    assert has_element?(view, "#settings-logs[data-logs-timer=on]")
     assert has_element?(view, "#logs-list .ab-logs__entry[data-level=warning]")
   end
 
@@ -118,15 +118,16 @@ defmodule AgentBoardWeb.LogsPanelTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/logs")
 
     refute_receive :logs_read, 60
-    assert has_element?(view, "#panel-logs[data-logs-timer=off]")
+    refute has_element?(view, "#settings-logs")
 
-    view |> element("#open-logs") |> render_click()
+    view |> element("#board-settings") |> render_click()
+    view |> element(".settings-nav [phx-value-section=logs]") |> render_click()
     assert_receive :logs_read, 200
     assert render(view) =~ "antes de abrir"
-    assert has_element?(view, "#panel-logs[data-logs-timer=on]")
+    assert has_element?(view, "#settings-logs[data-logs-timer=on]")
 
-    view |> element("#panel-logs .panel-close") |> render_click()
-    assert has_element?(view, "#panel-logs[data-logs-timer=off]")
+    view |> element("#panel-settings .panel-close") |> render_click()
+    refute has_element?(view, "#settings-logs")
     flush_logs_read()
 
     write_log(board_log, [board_line("error", "depois de fechar")])
@@ -135,10 +136,11 @@ defmodule AgentBoardWeb.LogsPanelTest do
     refute_received :logs_read
     refute render(view) =~ "depois de fechar"
 
-    view |> element("#open-logs") |> render_click()
+    view |> element("#board-settings") |> render_click()
+    view |> element(".settings-nav [phx-value-section=logs]") |> render_click()
     assert_receive :logs_read, 200
     assert render(view) =~ "depois de fechar"
-    view |> element("#panel-logs .panel-close") |> render_click()
+    view |> element("#panel-settings .panel-close") |> render_click()
   end
 
   test "pause stops the timer and resume reads again", %{conn: conn, board_log: board_log} do
@@ -148,16 +150,16 @@ defmodule AgentBoardWeb.LogsPanelTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/logs&panel=logs")
     assert render(view) =~ "visível"
 
-    view |> element("#panel-logs button[phx-click='logs_pause']") |> render_click()
-    assert has_element?(view, "#panel-logs[data-logs-paused=true][data-logs-timer=off]")
+    view |> element("#settings-logs button[phx-click='logs_pause']") |> render_click()
+    assert has_element?(view, "#settings-logs[data-logs-paused=true][data-logs-timer=off]")
     assert render(view) =~ "Retomar"
 
     write_log(board_log, [board_line("error", "enquanto pausado")])
     Process.sleep(100)
     refute render(view) =~ "enquanto pausado"
 
-    view |> element("#panel-logs button[phx-click='logs_resume']") |> render_click()
-    assert has_element?(view, "#panel-logs[data-logs-paused=false][data-logs-timer=on]")
+    view |> element("#settings-logs button[phx-click='logs_resume']") |> render_click()
+    assert has_element?(view, "#settings-logs[data-logs-paused=false][data-logs-timer=on]")
     assert render(view) =~ "enquanto pausado"
   end
 
@@ -171,7 +173,7 @@ defmodule AgentBoardWeb.LogsPanelTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/logs&panel=logs")
     assert render(view) =~ "antigo"
 
-    view |> element("#panel-logs button[phx-click='logs_clear']") |> render_click()
+    view |> element("#settings-logs button[phx-click='logs_clear']") |> render_click()
     refute render(view) =~ "antigo"
     assert render(view) =~ "Nenhum aviso ou erro no trecho recente."
 
@@ -237,17 +239,46 @@ defmodule AgentBoardWeb.LogsPanelTest do
     refute html =~ "/etc/passwd"
   end
 
-  test "the panel is a bottom sheet with resize affordances", %{conn: conn} do
+  test "filters survive a reload and manual refresh leaves paused reading paused", %{
+    conn: conn,
+    board_log: board_log
+  } do
     repo!()
+    write_log(board_log, [board_line("warning", "a warning"), board_line("error", "an error")])
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/logs&panel=settings&section=logs")
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=fixture/logs&panel=logs")
+    refute has_element?(
+             view,
+             "#open-logs, #open-superagents, #mobile-panel-superagents, #mobile-panel-logs"
+           )
 
-    assert html =~ "board-sheet"
-    assert html =~ "Redimensionar o painel de logs"
-    assert html =~ "Recolher"
-    assert html =~ "Expandir"
-    assert html =~ "Só avisos e erros"
-    assert html =~ "até #{Logs.cap()} registros"
+    assert has_element?(view, "#settings-logs", "até #{Logs.cap()} registros")
+    view |> element("#logs-filters") |> render_change(%{"source" => "board", "level" => "error"})
+    path = "/?level=error&panel=settings&repo=fixture%2Flogs&section=logs&source=board"
+    assert_patch(view, path)
+    {:ok, reloaded, _} = live(conn, path)
+    assert has_element?(reloaded, "#logs-list", "an error")
+    refute has_element?(reloaded, "#logs-list", "a warning")
+    view |> element("#settings-logs [phx-click=logs_pause]") |> render_click()
+    write_log(board_log, [board_line("error", "manual read")])
+    view |> element("#settings-logs [phx-click=logs_refresh]") |> render_click()
+
+    assert has_element?(
+             view,
+             "#settings-logs[data-logs-paused=true][data-logs-timer=off]",
+             "manual read"
+           )
+  end
+
+  test "leaving Logs for another settings section stops every read", %{conn: conn} do
+    attach_logs_telemetry()
+    {:ok, view, _} = live(conn, ~p"/?panel=logs")
+    assert_receive :logs_read
+    view |> element(".settings-nav__item[phx-value-section=system]") |> render_click()
+    assert_patch(view, "/?panel=settings&section=system")
+    refute has_element?(view, "#settings-logs")
+    flush_logs_read()
+    refute_receive :logs_read, 100
   end
 
   test "a log written in Latin-1 opens the sheet instead of crashing the socket", %{

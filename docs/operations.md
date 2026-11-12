@@ -63,6 +63,12 @@ reloaded; it keeps the text and gets the new assets on its next load.
 
 ## Logs
 
+Open **Settings → Logs** to read recent warnings and errors from the board
+and each registered superagent's keepalive file. The source and severity
+filters are part of the URL. Pause stops automatic reading; Refresh reads
+one batch, even while paused. Leaving the section stops polling. Existing
+links with `panel=logs` still open this section.
+
 The board logs a timestamp on every line. `LOG_LEVEL=debug|info|warning|error`
 chooses the level (the 4099 service runs at `info`; dev uses `debug`, which logs
 every SQL query). Voice pipeline lines start with `voice stage=`; the same

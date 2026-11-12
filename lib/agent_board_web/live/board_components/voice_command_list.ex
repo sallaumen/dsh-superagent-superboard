@@ -1,56 +1,72 @@
 defmodule AgentBoardWeb.BoardComponents.VoiceCommandList do
   @moduledoc """
-  "O que posso pedir": every voice command, grouped, from
-  `AgentBoard.Voice.Commands` (the same list the spoken help points at).
-
-  An example that needs nothing filled in is a button: it sends the phrase
-  as a typed turn (`voice_turn`), so the owner can try a read without
-  speaking. Each item says whether it only reads, asks for a yes or acts at
-  once. Saying "ajuda" opens this list.
+  SuperBoard Skills. Featured reads send a real conversation turn. The
+  expandable catalog keeps task-specific examples and their effects explicit.
   """
   use Phoenix.Component
   use Gettext, backend: AgentBoardWeb.Gettext
+
+  import AgentBoardWeb.CoreComponents, only: [icon: 1]
 
   alias AgentBoard.Voice.Commands
 
   attr :open, :boolean, default: false
   attr :language, :string, default: "pt-BR"
+  attr :featured, :boolean, default: true
 
   def list(assigns) do
-    assigns = assign(assigns, :groups, Commands.groups(assigns.language))
+    groups = Commands.groups(assigns.language)
+
+    assigns =
+      assign(assigns,
+        groups: groups,
+        starters: for(group <- groups, item <- group.items, item[:featured], do: item)
+      )
 
     ~H"""
-    <details id="voice-commands" class="voice-commands" open={@open}>
-      <summary class="voice-commands-summary">
-        {gettext("What can I ask?")}
-        <span class="voice-commands-hint">{gettext("· or say \"help\"")}</span>
-      </summary>
-      <div :for={group <- @groups} class="voice-commands-group">
-        <h4 id={"voice-commands-#{group.id}"}>{translated(group.title)}</h4>
-        <ul aria-labelledby={"voice-commands-#{group.id}"}>
-          <li :for={item <- group.items} class="voice-command" data-mode={item.mode}>
-            <button
-              :if={item.try}
-              type="button"
-              class="voice-command-say"
-              phx-click="voice_turn"
-              phx-value-text={item.say}
-              title={gettext("Send this phrase now")}
-            >
-              “{item.say}”
-            </button>
-            <span :if={!item.try} class="voice-command-say">“{item.say}”</span>
-            <span class="voice-command-does">{translated(item.does)}</span>
-            <span class="voice-command-mode">{Commands.mode_label(item.mode)}</span>
-          </li>
-        </ul>
+    <section class="sb-skills" aria-label="SuperBoard Skills">
+      <h3 :if={@featured}>SuperBoard Skills</h3>
+      <div :if={@featured} class="sb-skills__grid">
+        <button
+          :for={item <- @starters}
+          class="sb-skills__card"
+          type="button"
+          phx-click="voice_turn"
+          phx-value-text={item.say}
+        >
+          <.icon name={skill_icon(item.featured)} class="sb-skills__icon size-5" />
+          <span>{item.say}</span>
+        </button>
       </div>
-    </details>
+      <details id="voice-commands" class="sb-skills__catalog" open={@open}>
+        <summary>{if @featured, do: gettext("All skills"), else: "SuperBoard Skills"}</summary>
+        <details :for={group <- @groups} class="sb-skills__group">
+          <summary>
+            <h4>{translated(group.title)}</h4>
+          </summary>
+          <ul>
+            <li :for={item <- group.items} class="sb-skills__item" data-mode={item.mode}>
+              <button
+                :if={item.try}
+                type="button"
+                phx-click="voice_turn"
+                phx-value-text={item.say}
+                title={gettext("Send this phrase now")}
+              >{item.say}<.icon name="hero-arrow-up-right" class="size-3" /></button>
+              <strong :if={!item.try}>{item.say}</strong>
+              <small>{translated(item.does)} · {Commands.mode_label(item.mode)}</small>
+            </li>
+          </ul>
+        </details>
+      </details>
+    </section>
     """
   end
 
-  # The list is data (`Commands.groups/1`, English msgids marked for the
-  # catalog). The voice speaks the interface language of the tab, so what to
-  # say comes in that language too.
+  defp skill_icon(:overview), do: "hero-squares-2x2"
+  defp skill_icon(:changes), do: "hero-calendar-days"
+  defp skill_icon(:running), do: "hero-play"
+  defp skill_icon(:failures), do: "hero-exclamation-triangle"
+
   defp translated(msgid), do: Gettext.gettext(AgentBoardWeb.Gettext, msgid)
 end

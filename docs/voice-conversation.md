@@ -15,20 +15,21 @@ ticket, never enters the worktree and never writes to the agent's sqlite.
 ## How to use it
 
 Default since 2026-11-09: **text for your input, the browser voice for the
-agent**. Double Space focuses a conversation field that is already visible;
-when no field is visible it does not open another window. The voice panel and
-task conversation also accept text directly.
+agent**. Press Space twice on the board to open Chat and focus the message
+field. Buttons, menus and text fields keep their own keys. The SuperBoard
+Skills cards send the displayed question into the same conversation. The
+catalog groups other commands by purpose and identifies writes and confirmations.
 
 **External dictation** (optional): in Configurações → Voz e resumo → "Como
-você envia", choose "Ditado externo · Wispr Flow". Double Space
-then opens its focused field. Wispr Flow types as a keyboard: after the dictated
+você envia", choose "Ditado externo · Wispr Flow". In Chat, choose the dictation button to use its
+focused message field. Wispr Flow types as a keyboard: after the dictated
 text settles for 0.7 s, the board sends it. Typing manually sends on Enter, and
-Esc closes. With the composer open, Double Space focuses its request field.
+Esc stops dictation.
 The board does not invoke the Wispr app or its shortcut.
 
 **Board microphone** (optional, paid): in Configurações → Voz e resumo → "Como
 você envia", choose "Microfone do board · ElevenLabs, pago" (board
-microphone). Then double Space records, silence ends the turn (0.8 / 1.2 / 1.8 s),
+microphone). In Chat, choose the microphone to record, silence ends the turn (0.8 / 1.2 / 1.8 s),
 a sound marks opening and closing, the bars show the level and the transcript is
 ElevenLabs' (Scribe).
 
@@ -66,7 +67,7 @@ notice.
   closes.
 
 For the board microphone there is no draft to review and no Enter. The
-"Conversa por voz" (voice conversation) panel shows the conversation for
+Chat panel shows the conversation for
 whoever wants to read it, accepts typed text and has "Esquecer conversa"
 (forget conversation). The old command box
 (an English draft with "Check command") was removed on 2026-11-07: everything it
@@ -74,8 +75,7 @@ did now goes through the conversation.
 
 ## What it can do
 
-The complete list is in the "Conversa por voz" panel, under **O que posso pedir**
-(what I can ask for) — say "ajuda" (help) and it opens. It comes from
+The complete list is in **Chat → SuperBoard Skills**. Say "ajuda" (help) to open it. It comes from
 `AgentBoard.Voice.Commands`, the same source as the spoken help; the examples that
 do not need a number are buttons that send the sentence at once. Each item says
 how it runs:
@@ -201,7 +201,7 @@ player considers the turn finished when it stops advancing for 1 s.
 
 ## Diagnosis: logs and backstage
 
-- **On screen**: the "Conversa por voz" panel has "Bastidores da voz" (voice
+- **On screen**: the Chat panel has "Bastidores da voz" (voice
   backstage), live over PubSub: each stage of a turn with its time (turn,
   transcription, model, action, voice), every retry and every error, including
   browser ones (microphone, playback). It opens by itself when there is a recent
@@ -219,9 +219,7 @@ player considers the turn finished when it stops advancing for 1 s.
 
 ## Possible next steps
 
-- Interrupt the agent's speech by talking over it (barge-in), without double
-  Space. Today double Space during the turn already interrupts and opens the
-  microphone.
+- Interrupt the agent's speech by talking over it (barge-in).
 - Decide whether the `answer_board_question` evaluation
   (`scripts/eval-board-ai.exs`) starts evaluating `voice_agent`, which is what the
   voice uses now.

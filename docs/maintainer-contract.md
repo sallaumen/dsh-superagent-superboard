@@ -65,7 +65,7 @@ differ. Change a general rule upstream, not here.
   `pt-BR` or `en-US`) into `@voice.language`, and every stage takes it from
   there: the phrases and the Announcer, the `language` given to the voice
   agent and to the inspector's answer, the transcription hint, the browser
-  voice and the `language` of the speech URL, and what "What can I ask?"
+  voice and the `language` of the speech URL, and what "SuperBoard Skills"
   tells the owner to say. Code that runs outside the LiveView process (an
   async turn, a Task) carries the language in and sets its own locale. A
   saved `voice_language` row from an older version is ignored, never
@@ -233,6 +233,7 @@ and is recorded as `automatic`.
 | `change_setting` | yellow | one board preference: the voice (language, volume, speed, engine, voice, model…; a paid engine stays under its daily cap) or the daily summary (on/off, the hour) | UI: voice menu and daily summary settings. Voice: "mais devagar/alto" (slower/louder). API: `PUT /api/voice/settings` |
 | `dismiss_summary` | yellow | takes the day's summary off the screen (the row stays) | UI: one click on the summary card |
 | `forget_conversation` | red | deletes the voice conversation's memory | UI: "Esquecer conversa" asks the sentence in the browser. Voice: proposal and yes |
+| `check_setup` | green | runs free setup reads and records only the validation timestamp and outcome counts | UI: one click in AI and setup |
 | `sync_now` | green | queues a sync (a read of GitHub) | UI: one click |
 | `update_board` | yellow | fast-forwards this checkout to `origin/main` | UI: "Atualizar", shown only when behind |
 | `restart_board` | yellow | restarts the board's server | UI: "Reiniciar", and after an update |
@@ -653,8 +654,8 @@ Agora and the detail):
   `voice_id`, `tts_model`, `speak_events`, `attention`, `volume`, `speed`,
   `style` and `pause`; the language is not a setting, the voice follows the
   tab's interface language.
-- **The spoken conversation** (`docs/voice-conversation.md`) is the default
-  for a double Space outside the composer: the `VoiceCommand` hook ends the
+- **The spoken conversation** (`docs/voice-conversation.md`) opens as Chat
+  on double Space from the board, placing focus in its text field. Its dictation button uses the selected voice input; the `VoiceCommand` hook ends the
   turn on silence and pushes `voice_turn`; `AgentBoardWeb.VoiceConversation`
   records it, runs `AgentBoard.Conversation.Agent` keyed by a `ref` (a newer
   turn cancels an older one, `:voice_turn_timeout_ms` drops a slow one) and
@@ -690,7 +691,7 @@ Agora and the detail):
   activity ring) and the registered `:voice_explain` call answers only from
   those facts, with ages precomputed in minutes. A missing task, an empty
   search or no project is said without a model call. The catalog the owner
-  sees ("O que posso pedir" ("What can I ask"), the spoken "ajuda" (help)) is
+  sees ("SuperBoard Skills", the spoken "ajuda" (help)) is
   `AgentBoard.Voice.Commands`; a new lookup kind is added there and to the
   `:voice_agent` schema together (a test compares them). "Status",
   "ajuda", "desfaz", "repete" and the voice adjustments are local: no
@@ -762,6 +763,13 @@ browser), a state and the fix for the next step.
   the owner's click, never on mount or when a section opens, and it is not an
   AI call (no `ai_calls` row, no budget). The CLI output names the account:
   only the verdict is kept.
+- Each completed manual check leaves a board-wide receipt in Settings:
+  `setup_check_passed` or `setup_check_issues`, UTC date and counts only.
+  Optional parts that are off do not prevent a pass. The newest receipt is
+  shown in the reader's local date and time; a later unsuccessful check
+  retains the previous success date. Opening the section rereads the
+  current configuration locally and never treats yesterday's result as proof
+  that today's credentials still work. No account, key or CLI output is stored.
 - Claude Code, Codex, the superagents and ElevenLabs are optional (`:off` when
   absent: the board routes elsewhere or uses the browser voice); GitHub, a
   tracked project and a key for the board's own AI are required.

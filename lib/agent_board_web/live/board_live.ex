@@ -44,7 +44,6 @@ defmodule AgentBoardWeb.BoardLive do
   import AgentBoardWeb.BoardComponents.FreshnessBeacon, only: [beacon: 1]
   import AgentBoardWeb.BoardComponents.FrozenBanner, only: [frozen_banner: 1]
   import AgentBoardWeb.BoardComponents.Inspector, only: [inspector: 1]
-  import AgentBoardWeb.BoardComponents.LogsSheet, only: [logs_sheet: 1]
   import AgentBoardWeb.BoardComponents.MergeLog, only: [merge_log: 1]
   import AgentBoardWeb.BoardComponents.NeedsYou, only: [needs_you: 1]
   import AgentBoardWeb.BoardComponents.ObjectiveTree, only: [objective_tree: 1]
@@ -63,7 +62,7 @@ defmodule AgentBoardWeb.BoardLive do
     BoardNavigation,
     ComposerLifecycle,
     Locale,
-    LogsSheet,
+    LogMonitor,
     VoiceConversation,
     VoiceSpeech
   }
@@ -187,7 +186,7 @@ defmodule AgentBoardWeb.BoardLive do
         # always opening with the same sentence.
         voice_turn: :rand.uniform(1_000)
       )
-      |> LogsSheet.mount()
+      |> LogMonitor.mount()
       |> ComposerLifecycle.mount()
 
     repo =
@@ -1003,6 +1002,14 @@ defmodule AgentBoardWeb.BoardLive do
      |> load_inspector()}
   end
 
+  def handle_info({:setting_changed, "setup_check_" <> _outcome}, socket) do
+    if socket.assigns.panel == "settings" do
+      send_update(BoardComponents.Settings.Setup, id: "settings-setup", validation_changed: true)
+    end
+
+    {:noreply, socket}
+  end
+
   # A setting changed somewhere (another tab, the API, a spoken command):
   # this board's voice follows at once, keeping the list it already loaded.
   def handle_info({:setting_changed, _key}, socket),
@@ -1040,7 +1047,7 @@ defmodule AgentBoardWeb.BoardLive do
       socket
       |> assign(:superagents, Superagents.list())
 
-    {:noreply, socket |> LogsSheet.sources_changed() |> refresh_agent_access()}
+    {:noreply, socket |> LogMonitor.sources_changed() |> refresh_agent_access()}
   end
 
   def handle_info(:agent_access_changed, socket),
@@ -1052,7 +1059,7 @@ defmodule AgentBoardWeb.BoardLive do
     do: {:noreply, put_flash(socket, :info, text)}
 
   def handle_info({:logs_tick, token}, socket),
-    do: {:noreply, LogsSheet.tick(socket, token)}
+    do: {:noreply, LogMonitor.tick(socket, token)}
 
   # Broadcasts come in bursts (poller, sync, actions) and a reload costs dozens
   # of queries, the runner's files and the orchestrator: one reload per burst.
@@ -1138,7 +1145,7 @@ defmodule AgentBoardWeb.BoardLive do
       socket
       |> BoardNavigation.apply_params(params)
       |> refresh_settings_quota(previous_panel)
-      |> LogsSheet.sync(previous_panel)
+      |> LogMonitor.sync(params)
       |> load_inspector()
       |> load_panel()
       |> ComposerLifecycle.load_routing()
@@ -1155,10 +1162,10 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The browser tab says what this tab shows, so several open boards differ.
   defp assign_page_title(%{assigns: %{view: "hoje"}} = socket),
-    do: assign(socket, :page_title, gettext("Today") <> " · Agent Board")
+    do: assign(socket, :page_title, gettext("Today") <> " · Super Agent Super Board")
 
   defp assign_page_title(%{assigns: %{repo: %{name: name}}} = socket),
-    do: assign(socket, :page_title, name <> " · Agent Board")
+    do: assign(socket, :page_title, name <> " · Super Agent Super Board")
 
   defp assign_page_title(socket), do: assign(socket, :page_title, nil)
 
@@ -2051,7 +2058,7 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply,
      socket
      |> ComposerLifecycle.settle()
-     |> LogsSheet.close()
+     |> LogMonitor.close()
      |> assign(
        panel: nil,
        conversation: nil,
@@ -2076,9 +2083,15 @@ defmodule AgentBoardWeb.BoardLive do
     {:noreply, push_event(socket, event, payload)}
   end
 
-  # A finished utterance from the hands-free microphone (or the typed chat
-  # line): the conversation answers it. In the composer, dictation still
-  # fills the request instead.
+  # Only submitting the typed field acknowledges its draft. A skill or a
+  # spoken question can start a turn without discarding unsent typed text.
+  @impl true
+  def handle_event("voice_chat_send", %{"text" => text}, socket) when is_binary(text) do
+    {:noreply,
+     socket |> VoiceConversation.start(text) |> push_event("voice_chat_clear", %{text: text})}
+  end
+
+  # In the request composer, dictation fills the request instead.
   @impl true
   def handle_event("voice_turn", %{"text" => text}, socket) when is_binary(text) do
     if socket.assigns.panel == "composer",
@@ -2287,9 +2300,14 @@ defmodule AgentBoardWeb.BoardLive do
     do: {:noreply, save_voice_pref(socket, save_setting("replies", value))}
 
   @impl true
-  def handle_event("logs_clear", _params, socket), do: {:noreply, LogsSheet.clear(socket)}
-  def handle_event("logs_pause", _params, socket), do: {:noreply, LogsSheet.pause(socket)}
-  def handle_event("logs_resume", _params, socket), do: {:noreply, LogsSheet.resume(socket)}
+  def handle_event("logs_filter", params, socket),
+    do: {:noreply, LogMonitor.filter(socket, params)}
+
+  def handle_event("logs_refresh", _params, socket), do: {:noreply, LogMonitor.refresh(socket)}
+
+  def handle_event("logs_clear", _params, socket), do: {:noreply, LogMonitor.clear(socket)}
+  def handle_event("logs_pause", _params, socket), do: {:noreply, LogMonitor.pause(socket)}
+  def handle_event("logs_resume", _params, socket), do: {:noreply, LogMonitor.resume(socket)}
 
   # A browser error the owner saw (microphone, playback, transcription):
   # it reaches the log and the live feed instead of staying in one tab.
@@ -2734,7 +2752,6 @@ defmodule AgentBoardWeb.BoardLive do
             overview={@repo_overview}
             live={@freshness.live?}
             version={@version}
-            superagents={@superagents}
             access_waiting={@agent_access.count}
           />
 
@@ -2802,6 +2819,13 @@ defmodule AgentBoardWeb.BoardLive do
                 <header class="ab-top">
                   <details :if={@repo} id="mobile-nav" data-board-menu class="ab-mobilebar">
                     <summary>
+                      <img
+                        class="ab-brand__mark"
+                        src={~p"/images/superboard-mark.svg"}
+                        alt=""
+                        width="26"
+                        height="26"
+                      />
                       <span class="ab-mobilebar__repo">{@repo.name}</span>
                       <.ico name="menu" />
                       <span class="ab-sr">{gettext("Repositories")}</span>
@@ -2846,19 +2870,6 @@ defmodule AgentBoardWeb.BoardLive do
                         )}
                       </button>
                       <button
-                        id="mobile-panel-superagents"
-                        type="button"
-                        class="ab-btn ab-btn--quiet ab-btn--sm"
-                        phx-click="show_panel"
-                        phx-value-panel="settings"
-                        phx-value-section="projects"
-                        data-panel-trigger
-                        aria-haspopup="dialog"
-                        aria-controls="panel-settings"
-                      >
-                        <.ico name="grip" />{gettext("Superagents")}
-                      </button>
-                      <button
                         id="mobile-panel-shortcuts"
                         type="button"
                         class="ab-btn ab-btn--quiet ab-btn--sm"
@@ -2871,25 +2882,16 @@ defmodule AgentBoardWeb.BoardLive do
                         <.ico name="keys" />{gettext("Shortcuts")}
                       </button>
                       <button
-                        id="mobile-panel-logs"
-                        type="button"
-                        class="ab-btn ab-btn--quiet ab-btn--sm"
-                        phx-click="show_panel"
-                        phx-value-panel="logs"
-                        data-panel-trigger
-                        aria-haspopup="dialog"
-                        aria-controls="panel-logs"
-                      >
-                        <.ico name="log" />{gettext("Logs")}
-                      </button>
-                      <button
                         id="mobile-panel-voice"
                         type="button"
                         class="ab-btn ab-btn--quiet ab-btn--sm"
                         phx-click="show_panel"
                         phx-value-panel="voice"
+                        data-panel-trigger
+                        aria-haspopup="dialog"
+                        aria-controls="panel-voice"
                       >
-                        <.ico name="mic" />{gettext("Voice conversation")}
+                        <.ico name="robot" />{gettext("Chat")}
                       </button>
                       <button
                         id="mobile-panel-settings"
@@ -3131,9 +3133,12 @@ defmodule AgentBoardWeb.BoardLive do
               class="ab-btn ab-btn--icon"
               phx-click="show_panel"
               phx-value-panel="voice"
-              aria-label={gettext("Voice conversation")}
+              aria-label={gettext("Chat")}
+              data-panel-trigger
+              aria-haspopup="dialog"
+              aria-controls="panel-voice"
             >
-              <.ico name="mic" />
+              <.ico name="robot" />
             </button>
           </div>
 
@@ -3322,6 +3327,16 @@ defmodule AgentBoardWeb.BoardLive do
             active={@panel == "settings"}
             section={@settings_section}
             costs={@settings_costs}
+            log_view={
+              %{
+                sources: @logs_sources,
+                entries: @logs_entries,
+                status: @logs_status,
+                paused: @logs_paused,
+                timer: @logs_timer != nil,
+                filters: @logs_filters
+              }
+            }
             superagents={@superagents}
             access_waiting={@agent_access.count}
             access_projects={@agent_access_projects}
@@ -3337,52 +3352,21 @@ defmodule AgentBoardWeb.BoardLive do
 
         <BoardComponents.Panel.shell
           name="voice"
-          title={gettext("Voice conversation")}
+          title={gettext("Chat")}
+          icon="robot"
           active={@panel == "voice"}
           flash={@flash}
         >
           <BoardComponents.VoiceConversationLog.log
             turns={@voice_turns}
             thinking={@chat_turn != nil}
-          />
-          <div class="ab-voice-talk">
-            <button
-              type="button"
-              class="ab-btn ab-btn--primary"
-              phx-click={Phoenix.LiveView.JS.dispatch("board:voice-start")}
-            >
-              <%= if @voice.input == "text" do %>
-                <.ico name="keys" />{gettext("Write")}<.kbd key={gettext("Space ×2")} />
-              <% else %>
-                <.ico name="mic" />{gettext("Speak")}<.kbd key={gettext("Space ×2")} />
-              <% end %>
-            </button>
-            <span class="ab-meta">
-              {if @voice.input == "text",
-                do:
-                  gettext(
-                    "Write in the field above; the agent replies and waits for your confirmation before acting."
-                  ),
-                else:
-                  gettext(
-                    "Speak and stop: the agent replies and waits for your confirmation before acting."
-                  )}
-            </span>
-          </div>
-          <BoardComponents.VoiceCommandList.list
-            open={@voice_commands_open}
             language={@voice.language}
+            input={@voice.input}
+            commands_open={@voice_commands_open}
+            tz_offset={@tz_offset}
           />
           <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} tz_offset={@tz_offset} />
         </BoardComponents.Panel.shell>
-
-        <.logs_sheet
-          sources={@logs_sources}
-          entries={@logs_entries}
-          status={@logs_status}
-          paused={@logs_paused}
-          timer={@logs_timer != nil}
-        />
       </div>
     </Layouts.app>
     """

@@ -4,7 +4,7 @@ defmodule AgentBoardWeb.BoardComponents.Controls do
 
   attr :name, :string,
     required: true,
-    values: ~w(check plus split mic stop close retry grip ext send menu keys log lock cog)
+    values: ~w(check plus split robot mic stop close retry grip ext send menu keys log lock cog)
 
   @doc "A 16×16 stroke icon. The geometry is literal markup, never a runtime string; an unknown name raises."
   def ico(assigns) do
@@ -17,6 +17,9 @@ defmodule AgentBoardWeb.BoardComponents.Controls do
           <path d="M8 3v10M3 8h10" />
         <% "split" -> %>
           <path d="M3 3v3a3 3 0 0 0 3 3h0M13 13v-3a3 3 0 0 0-3-3H8M8 4v4M3 13l5-5" />
+        <% "robot" -> %>
+          <rect x="2.5" y="5" width="11" height="8.5" rx="2.4" />
+          <path d="M8 2v3M5.5 8.5v1m5-1v1M6.5 11.5h3" />
         <% "mic" -> %>
           <rect x="5.5" y="2" width="5" height="8" rx="2.5" />
           <path d="M3 8a5 5 0 0 0 10 0M8 13v1.5" />

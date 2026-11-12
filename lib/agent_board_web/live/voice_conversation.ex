@@ -78,7 +78,6 @@ defmodule AgentBoardWeb.VoiceConversation do
         voice_turns: Conversation.recent()
       )
       |> push_event("voice_thinking", %{})
-      |> push_event("voice_chat_clear", %{})
       |> start_async({:voice_turn, ref}, fn -> respond(text, ctx) end)
     end
   end

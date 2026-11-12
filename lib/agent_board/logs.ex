@@ -80,7 +80,7 @@ defmodule AgentBoard.Logs do
   @doc "The board's own log source."
   @spec board_source() :: source()
   def board_source do
-    %{id: "board", kind: :board, label: "Agent Board", path: board_path()}
+    %{id: "board", kind: :board, label: "Super Agent Super Board", path: board_path()}
   end
 
   @doc "The board log path: config, then `AGENT_BOARD_LOG`, then the safe default."

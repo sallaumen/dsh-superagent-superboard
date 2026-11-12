@@ -53,6 +53,7 @@ defmodule AgentBoard.ActionsTest do
     :change_setting,
     :dismiss_summary,
     :forget_conversation,
+    :check_setup,
     :sync_now,
     :update_board,
     :restart_board
@@ -66,7 +67,7 @@ defmodule AgentBoard.ActionsTest do
   end
 
   setup do
-    keys = [:orchestrator_api, :updater, :board_stopper, :actions_test_pid]
+    keys = [:orchestrator_api, :updater, :board_stopper, :actions_test_pid, :setup_readers]
     previous = Map.new(keys, &{&1, Application.get_env(:agent_board, &1)})
     Application.put_env(:agent_board, :orchestrator_api, "http://127.0.0.1:1/orchestrator/api")
 
@@ -895,6 +896,28 @@ defmodule AgentBoard.ActionsTest do
       assert :ok = Actions.run(:forget_conversation, %{}, owner, confirm: phrase)
       assert Conversation.recent() == []
       assert %Decision{action: "forget_conversation", decision: "confirmed"} = last()
+    end
+
+    test "check_setup records the owner's free check and stores only counts and time", %{
+      owner: owner
+    } do
+      Application.put_env(:agent_board, :setup_readers,
+        live: [
+          github: fn -> {:ok, "private-account"} end,
+          agents: fn -> [] end,
+          cli: fn _ -> {:error, :missing} end,
+          board_ai: fn -> %{provider: :rehearsal} end,
+          voice: fn -> {:error, :not_configured} end
+        ]
+      )
+
+      assert {:ok, {_rows, %{latest: %{passed?: true}}}} = Actions.run(:check_setup, %{}, owner)
+      saved = Settings.get("setup_check_passed") |> Jason.decode!()
+      assert Map.keys(saved) |> Enum.sort() == ["at", "counts"]
+      assert saved["counts"] == %{"ok" => 3, "off" => 4}
+
+      assert %Decision{action: "check_setup", risk: "green", decision: "automatic", outcome: "ok"} =
+               last()
     end
 
     test "sync_now is green and queues a sync", %{owner: owner} do

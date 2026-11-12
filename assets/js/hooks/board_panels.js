@@ -51,7 +51,8 @@ export const BoardPanels = {
       const wanted = dialog.id === `panel-${selected}`
       if (wanted && !dialog.open) {
         dialog.showModal()
-        const initial = dialog.id === "panel-composer" ? dialog.querySelector("textarea") : dialog.querySelector("h2")
+        const selector = {"panel-composer": "textarea", "panel-voice": "#voice-chat-text"}[dialog.id] || "h2"
+        const initial = dialog.querySelector(selector)
         initial?.focus({preventScroll: true})
       } else if (!wanted && dialog.open) {
         dialog.close()
