@@ -1,5 +1,12 @@
 [
   # private_context.ex is the boundary for the private folders: every path it
   # touches is built from names it chose and checked (private_context_test).
-  ignore_files: ["lib/agent_board/system/updater.ex", "lib/agent_board/board/private_context.ex"]
+  # agent_tools.ex reads the executors' own files under the home directory:
+  # every path is the home plus a fixed name, or a name File.ls just returned;
+  # no request reaches it (agent_tools_test).
+  ignore_files: [
+    "lib/agent_board/system/updater.ex",
+    "lib/agent_board/board/private_context.ex",
+    "lib/agent_board/agent_tools.ex"
+  ]
 ]

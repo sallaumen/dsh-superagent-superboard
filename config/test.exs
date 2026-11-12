@@ -108,3 +108,7 @@ config :agent_board, :setup_readers,
     github: fn -> true end,
     board_ai: fn -> %{provider: :deepseek, model: "deepseek-flash", fallbacks: []} end
   ]
+
+# The agents' installed tools are read from a home a test builds, never the
+# developer's own.
+config :agent_board, agent_tools_home: "/nonexistent-agent-tools-home"
