@@ -38,6 +38,7 @@ import {DailySummaryVoice} from "./hooks/daily_summary_voice"
 import {ValueChange} from "./hooks/value_change"
 import {BoardMotion} from "./hooks/board_motion"
 import {CostsMotion} from "./hooks/costs_motion"
+import {mountBoardHover} from "./board_hover"
 import {VoiceCommand} from "./hooks/voice_command"
 import {VoicePlayer} from "./hooks/voice_player"
 import {VoicePresence} from "./hooks/voice_presence"
@@ -85,6 +86,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
     },
   },
 })
+
+mountBoardHover()
 
 // Show progress bar on live navigation and form submits
 window.addEventListener("phx:page-loading-start", _info => {

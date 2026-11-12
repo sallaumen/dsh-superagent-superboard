@@ -595,6 +595,42 @@ body.board-panel-open .ab-toast,
 /* BoardMotion: a card changing lane is lifted above the cards making room. */
 .is-traveling { position: relative; z-index: 2; box-shadow: 0 6px 18px -10px rgb(0 0 0 / .35); }
 
+/* ---------- hover: what is under the pointer, and where else it is ----------
+   Two colours, by who acts next: --agent (green) for work in the agent's
+   hands (Agora, Fila, merged PRs, the objective tree), --you (blue) for what
+   waits for the owner (Precisa de você). The edge takes the colour, a soft
+   light follows the mouse inside the card (board_hover.js sets --mx/--my),
+   and the same task elsewhere on the page gets its edge (`is-related`).
+   In 120 ms, out in 80 ms; reduced motion: the global block cuts the
+   transitions and the light stays centred. */
+.ab-run, .ab-row, .ab-pr, .ab-tree__node { --role: var(--agent); }
+.ab-need { --role: var(--you); }
+.ab-run, .ab-need, .ab-pr { position: relative; }
+/* The light sits under the text (z-index -1 inside the card's own stacking context). */
+.ab-run, .ab-need, .ab-row, .ab-pr, .ab-tree__node { isolation: isolate; }
+:is(.ab-run, .ab-need, .ab-row, .ab-pr, .ab-tree__node)::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--role) 11%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity 80ms cubic-bezier(0.3, 0, 1, 1);
+}
+:is(.ab-run, .ab-need, .ab-row, .ab-pr, .ab-tree__node):is(:hover, :focus-visible)::after {
+  opacity: 1; transition-duration: 120ms; transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+:is(.ab-run, .ab-need, .ab-tree__node):hover { border-color: color-mix(in srgb, var(--role) 70%, var(--line)); }
+/* The same task elsewhere: its edge, and a faint, still light. */
+:is(.ab-run, .ab-need, .ab-row, .ab-pr, .ab-tree__node).is-related {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--role) 55%, transparent);
+}
+:is(.ab-run, .ab-need, .ab-row, .ab-pr, .ab-tree__node).is-related::after { opacity: .55; transition-duration: 120ms; }
+/* The global reduced-motion block does not reach pseudo-elements: the light is a cut here. */
+@media (prefers-reduced-motion: reduce) {
+  :is(.ab-run, .ab-need, .ab-row, .ab-pr, .ab-tree__node)::after,
+  :is(.ab-run, .ab-need, .ab-row, .ab-pr, .ab-tree__node):is(:hover, :focus-visible)::after,
+  :is(.ab-run, .ab-need, .ab-row, .ab-pr, .ab-tree__node).is-related::after { transition: none; }
+}
+
 /* ---------- the reading lanes: links, reasons and record rows ---------- */
 
 .ab-digest__link {

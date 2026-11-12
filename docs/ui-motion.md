@@ -97,6 +97,26 @@ A patch that arrives mid-move cancels the running animations and starts from
 where the card was seen, so moves never queue. Under reduced motion the hook
 does nothing: every change is a cut.
 
+### Hover: what is under the pointer, and where else it is (`board_hover.js`)
+
+Hover is feedback for a pointer, not decoration, and it uses the two colours the
+board already speaks: `--agent` (green) for work in the agent's hands (Agora,
+Fila, merged PRs, the objective tree) and `--you` (blue) for what waits for the
+owner (Precisa de você). Each card sets `--role`; nothing else picks a colour.
+
+| Change | Treatment | Why |
+|---|---|---|
+| The mouse enters a card | the edge takes `--role` (70 % over the rule); a soft light, 11 % of `--role` in a 220 px circle, fades in under the text in 120 ms (`m3.standard`) and follows the pointer (one style write per animation frame, mouse only) | says which card a click opens, in the colour of who acts on it |
+| The mouse leaves | the light fades out in 80 ms, accelerating (0.3, 0, 1, 1) | exits are quicker than entrances |
+| The same task elsewhere on the page | its other cards (the "taking long" notice of a running card, its node in the objective tree) get a 1 px inset edge in `--role` and a still light at 55 % | the eye finds the other places the task shows without searching |
+| Keyboard focus on a card | the same light, centred | focus is as legible as hover |
+
+Touch and pen get no light and no related marks (`pointerType` is not mouse).
+Under reduced motion the light's fade is cut by its own rule (the global block does not reach `::after`) and the light
+stays centred instead of following. The light is a `::after` at `z-index: -1`
+inside the card's own stacking context (`isolation: isolate`), so it never sits
+over the text.
+
 ## What does not move
 
 - Cards and rows on the first render, a reconnect or a repository switch: the
