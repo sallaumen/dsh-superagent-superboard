@@ -6,10 +6,9 @@ This document answers "which script do I run now?". It defines the repository's 
 
 | Pipeline | What it validates | Canonical script | `make` target | CI job |
 |---|---|---|---|---|
-| Backend | Orphan dependencies, agent practices, warnings, formatting, credo, tests, Sobelow, and Dialyzer | `mix gate` + `mix sobelow --exit` + `mix dialyzer` | `make backend` | `gates` + `backend` (Dialyzer local only for now) |
+| Backend | Orphan dependencies, agent practices, warnings, formatting, credo, Dialyzer, tests, and Sobelow | `mix gate` + `mix sobelow --exit` | `make backend` | `gates` + `backend` (Dialyzer local only for now) |
 | Frontend | Asset sources, setup, build, and deploy | `scripts/check_assets.sh` + asset tasks | `make frontend` | `frontend · assets` |
-| Library | References to the versioned kit | `mix dialyzer` | Type check; part of `make backend` and the pre-flight (the `gates` job runs it once the workflow change lands: it needs a token with the `workflow` scope) | `MIX_ENV=test` | builds the PLT in `_build/plts` the first time (minutes), then checks in seconds; does not change sources | `Total errors: 0`; a schema referenced as `t()` defines `@type t` |
-| `mix agent_kit.check` | `make library` | `biblioteca de capacidades` (capability library) |
+| Library | References to the versioned kit | `mix agent_kit.check` | `make library` | `biblioteca de capacidades` (capability library) |
 | Mixed (release) | The combined path of a deploy | release sequence (below) | `make release` | `release · caminho misto` (mixed path) |
 | All | Backend, frontend, and library, before delivering | `scripts/ci-local.sh all` | `make check` | `gates`, `backend`, `frontend`, `library` |
 
@@ -34,8 +33,9 @@ body: changes to those contracts require checking the consumers.
 | `mix ecto.reset` | Deliberately recreate the disposable local database | `MIX_ENV=dev` | **deletes the database** and runs `ecto.setup` | database recreated; outside CI and the pre-flight |
 | `mix test` | Test behaviors; accepts a file and filters | `:test` automatically | creates/migrates the test database before the suite | tests green; CI uses partitions |
 | `mix lint` | Fast iteration, no database | any | none (read-only) | format and credo green |
-| `mix precommit` | Before committing; applies fixes | `:test` automatically | removes orphan dependencies from the lockfile, formats, and runs tests | formatting applied + gates green |
-| `mix gate` | Backend checks; CI splits its steps across jobs | run with `MIX_ENV=test` | compiles and creates/migrates the test database; does not change sources | dependencies, agent references, warnings, format, credo, and tests green |
+| `mix precommit` | Before committing; applies fixes | `:test` automatically | removes orphan dependencies from the lockfile, formats, type-checks, and runs tests | formatting applied + gates green |
+| `mix gate` | Backend checks; CI splits its steps across jobs | run with `MIX_ENV=test` | compiles and creates/migrates the test database; does not change sources | dependencies, agent references, warnings, format, credo, Dialyzer, and tests green |
+| `mix dialyzer` | Type check; part of `mix gate` and `mix precommit` (the `gates` job runs it once the workflow change lands: it needs a token with the `workflow` scope) | `MIX_ENV=test` | builds the PLT in `_build/plts` the first time (minutes), then checks in seconds; does not change sources | `Total errors: 0`; a schema referenced as `t()` defines `@type t` |
 | `mix sobelow --exit` | Security scan; part of `make backend` and the pre-flight | `MIX_ENV=test` | static analysis, without fixing sources | scan completes with no findings that fail the command |
 | `mix agent_kit.check` | Checks the versioned installation of the agent practices (part of `mix gate` and the gates job) | dev or test | read-only; does not start the application or call models | index and entry points consistent with the dependency and configuration |
 | `mix deps.unlock --check-unused` | Review the lockfile (part of `mix gate` and the CI gates job) | `:test` | none | no orphan dependencies |
@@ -44,7 +44,7 @@ body: changes to those contracts require checking the consumers.
 | `mix assets.deploy` | Validate the production asset path | `MIX_ENV=dev` | minifies + `phx.digest` | digest manifest generated |
 | [scripts/check_assets.sh](scripts/check_assets.sh) | When changing CSS/JS (first step of the frontend pipeline) | local machine with `node` on the PATH | none (read-only) | entries present, tailwind pipeline configured, authored JS without debug, JS tests (`node --test test/assets/*.mjs`) green |
 | `make help` | Discover the available targets | `make` | none | target names and a reference to this matrix |
-| `make backend` | Full backend checks, including Sobelow | pins `MIX_ENV=test` | those of `mix gate` and Sobelow | equivalent to the checks of the `gates` + `backend` jobs |
+| `make backend` | Full backend checks, including Sobelow | pins `MIX_ENV=test` | those of `mix gate` (Dialyzer included) and Sobelow | equivalent to the checks of the `gates` + `backend` jobs |
 | `make frontend` | Validate sources and production assets | pins `MIX_ENV=dev` | asset checks, setup, build, and deploy | equivalent to the `frontend` job |
 | `make library` | Validate references to the pinned dependency | dev | read-only | equivalent to the `library` job |
 | `make release` | Exercise production packaging | assets in dev; application in prod | builds the release and overwrites the previous artifact | equivalent to the `release` job; local opt-in |

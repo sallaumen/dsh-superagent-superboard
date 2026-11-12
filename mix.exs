@@ -106,6 +106,7 @@ defmodule AgentBoard.MixProject do
         "deps.unlock --unused",
         "format",
         "credo --strict",
+        "dialyzer",
         "test"
       ],
       gate: [
@@ -114,6 +115,7 @@ defmodule AgentBoard.MixProject do
         "compile --warnings-as-errors",
         "format --check-formatted",
         "credo --strict",
+        "dialyzer",
         "test"
       ],
       lint: ["format --check-formatted", "credo --strict"]
