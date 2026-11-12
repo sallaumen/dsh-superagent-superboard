@@ -33,6 +33,7 @@ defmodule AgentBoardWeb.Router do
     pipe_through :browser
 
     post "/language", LocaleController, :update
+    post "/superagents/:id/panel", SuperagentPanelController, :open
 
     live_session :board, on_mount: {AgentBoardWeb.Locale, :default} do
       live "/", BoardLive

@@ -50,6 +50,17 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
              "scripts/agent/panel.sh superagent-panel"
            )
 
+    # The button posts to the board, with the session's token; no address is in the page.
+    form = "#project-#{superagent.id}-panel-form"
+
+    assert has_element?(
+             view,
+             form <> "[method=post][action='/superagents/#{superagent.id}/panel']"
+           )
+
+    assert has_element?(view, form <> " input[name=_csrf_token]")
+    refute render(view) =~ "token="
+
     assert has_element?(
              view,
              "#project-#{superagent.id} .ab-project__error",

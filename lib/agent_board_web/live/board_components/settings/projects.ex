@@ -303,7 +303,24 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                 <summary>{gettext("dsh panel")}</summary>
                 <p>
                   {gettext(
-                    "The first time in each browser the panel asks for dsh's launch key. Run this command in a terminal on this machine, in the board's folder: it opens the panel signed in, and after that the link in the row opens it directly."
+                    "The first time in each browser the panel asks for dsh's launch key. This button opens it signed in, in a new tab of this browser; after that the link in the row opens it directly. It works on the machine where the agent runs."
+                  )}
+                </p>
+                <.form
+                  for={%{}}
+                  action={~p"/superagents/#{superagent.id}/panel"}
+                  method="post"
+                  target="_blank"
+                  rel="noopener"
+                  id={"project-#{superagent.id}-panel-form"}
+                >
+                  <button type="submit" class="ab-btn ab-btn--sm">
+                    {gettext("Open the panel signed in")}
+                  </button>
+                </.form>
+                <p>
+                  {gettext(
+                    "If the board cannot read the key, this command in a terminal does the same:"
                   )}
                 </p>
                 <code>scripts/agent/panel.sh {superagent.profile}</code>

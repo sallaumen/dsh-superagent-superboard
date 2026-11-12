@@ -114,5 +114,7 @@ config :agent_board, :setup_readers,
 config :agent_board, agent_tools_home: "/nonexistent-agent-tools-home"
 # The agents' instructions are compared only when a test asks.
 config :agent_board, agent_policy_check_on_boot: false
+# The agents' logs hold their panels' launch tokens: a test builds its own.
+config :agent_board, dsh_superagent_home: "/nonexistent-dsh-superagent-home"
 # The daily folder retention removes directories: a test asks for it by name.
 config :agent_board, agent_folder_sweep: false
