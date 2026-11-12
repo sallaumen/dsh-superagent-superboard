@@ -223,6 +223,7 @@ and is recorded as `automatic`.
 | `retry_provision_superagent` | red | runs a failed provisioning again with the stored source and checkout, one attempt at a time; it refuses a profile or state it did not create | UI: `AgentAction` "Tentar de novo" on the failed project, two steps |
 | `remove_superagent` | red | stops the agent, archives profile/state and removes the project from the board | UI: `AgentAction` "Remover", two steps |
 | `scale_superagent` | yellow | changes `maxWorkers` through the DSH settings API | UI: −/+ on the project card |
+| `apply_agent_policy` | yellow | replaces the agent's three prompt sections with the board's policy plus the project's kept rules, at the revision just read (`Superagents.Policy.apply/4`) | UI: "Aplicar a política a este agente" in the project's controls, after the list of what changes; one click |
 | `grant_agent_access` | red | puts a person on one project's `allowed` list through the DSH settings API and, when the sentence names issues, requeues their refused mentions | UI: `AgentAction` "Liberar" / "Liberar e rodar" on the project in Configurações → Projetos |
 | `revoke_agent_access` | red | takes a person off that list and sets their old mentions aside; mentions on issues without a ticket are ignored, those on issues with a ticket may still be weighed as a follow-up, and their open tickets may be refused (the repository owner cannot be removed) | UI: `AgentAction` "Revogar" |
 | `dismiss_access_request` | yellow | sets a request aside until the person mentions the bot again (`agent_access_dismissals`) | UI: one click on "Dispensar" |
@@ -309,8 +310,9 @@ that already worked).
   order. A task with no workpad is dispatched from its request alone, as
   before. The DeepSeek runner is not dispatched by the board: it resumes
   from Retomada because the Communication prompt tells it to read the
-  section first, once the owner saves that prompt (`scripts/agent/prompts.sh
-  put`); until then only local dispatches resume (`runners_test.exs`).
+  section first, once the owner applies the policy to that agent
+  (Configurações → Projetos, "The agent's policy" below); until then only
+  local dispatches resume (`runners_test.exs`).
 - Without a workpad, or with the section empty, the text heuristics stay
   exactly as before: a "?" in the summary or in the newest comment, "PR" with
   "review" in the report, `mix precommit` sentences in the reports.
@@ -1115,6 +1117,48 @@ that watches one GitHub repository and picks the issues whose body mentions
 - **Creating a dsh task is the dispatch**: the board opens the issue with the
   mention and the superagent picks it up. There is no per-task process to
   start, stop or budget; the `/state` read is the availability signal.
+
+## The agent's policy
+
+An agent's instructions are three sections of text held by its orchestrator:
+Communication, Ticket scope and Delivery requirements. Every agent of every
+board is meant to hold the same ones, and nobody should need a terminal for
+that (`AgentBoard.Superagents.Policy`).
+
+- **The policy is the three files** in `docs/agent/prompts/`, compiled into
+  the module (`@external_resource`): a board gets a new policy with an
+  update. What an agent should hold is the policy's lines followed by its
+  project's own rules, which are extra lines per section stored in `settings`
+  (`agent_policy_rules:<profile>`, JSON; no row when there is none).
+- **Reading:** `Policy.compare/2` asks the agent for its prompt config
+  (`Manager.prompts/1`, `GET /prompts`) and answers, per section, how many of
+  the policy's lines it lacks, the lines only it has and the project's rules.
+  A line is one rule: the files hold one paragraph per line.
+- **Writing is one click and nothing else.** `Policy.apply/4` saves the
+  desired text at the revision it has just read (`Manager.save_prompts/3`,
+  `PUT /prompts` with `baseRevision`): a save made in the dsh panel in between
+  is `:conflict`, shown as "nothing was applied", never an overwrite. The
+  owner ticks which agent-only lines stay as project rules; the others are
+  replaced. The other keys of the config (the agent's skills) travel
+  unchanged. It is the action `apply_agent_policy` of the registry (yellow:
+  one click after the list of what changes), so each apply is a decision row
+  and a `policy_applied` event of the superagent. No timer, boot step or
+  update applies a policy.
+- **The bell.** What the board last saw per agent lives in memory
+  (`Policy.differing/0`): each agent is compared once at boot (the moment an
+  update can have changed the policy; `:agent_policy_check_on_boot`, off in
+  tests), when a project's controls open, and after an apply. Any agent
+  differing puts one item first in Attention that opens Projects
+  (`Inbox.providers/1`). An agent that does not answer is unknown, never
+  "differs". An edit made in the dsh panel is seen at the next of those
+  reads, not at once.
+- **A new agent** is provisioned with the policy for the three sections, not
+  with the text the source agent holds that day (`DshProvisioner`); the
+  source only lends the other keys.
+- The tests: `superagents/policy_test.exs` (compare, apply, kept and dropped
+  rules, conflict, unknown) and `superagents_panel_test.exs` (the bell item,
+  the panel, one click, a silent agent). The provisioning change has no test
+  of its own: the provisioner's test stops before the prompts.
 
 ## Routing (mode "suggest")
 

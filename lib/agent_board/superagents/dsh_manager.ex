@@ -209,6 +209,36 @@ defmodule AgentBoard.Superagents.DshManager do
     end
   end
 
+  @impl true
+  def prompts(%Superagent{} = superagent) do
+    case get(superagent, "/prompts") do
+      {:ok, 200, %{"current" => %{"revision" => revision, "config" => %{} = config}}}
+      when is_integer(revision) ->
+        {:ok, %{revision: revision, config: config}}
+
+      {:ok, 200, _body} ->
+        {:error, :prompts_missing}
+
+      {:ok, status, _body} ->
+        {:error, {:http, status}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # The orchestrator refuses a `baseRevision` that is no longer the current
+  # one: whoever saved in between (the dsh panel) is not overwritten.
+  @impl true
+  def save_prompts(%Superagent{} = superagent, %{} = config, base_revision) do
+    case put(superagent, "/prompts", %{"config" => config, "baseRevision" => base_revision}) do
+      {:ok, 200, %{"revision" => revision}} when is_integer(revision) -> {:ok, revision}
+      {:ok, 409, _body} -> {:error, :conflict}
+      {:ok, status, _body} -> {:error, {:http, status}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp get(superagent, path), do: request(superagent, :get, path, nil)
   defp post(superagent, path, body), do: request(superagent, :post, path, body)
   defp put(superagent, path, body), do: request(superagent, :put, path, body)

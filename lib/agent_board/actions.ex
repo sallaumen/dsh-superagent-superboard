@@ -74,6 +74,7 @@ defmodule AgentBoard.Actions do
   alias AgentBoard.Board.{Attachments, PrivateContext, Repository, SplitGraph, Task}
   alias AgentBoard.Intake.IssueBody
   alias AgentBoard.Release
+  alias AgentBoard.Superagents.Policy
   alias AgentBoard.Sync.Worker
   alias AgentBoard.Voice.Phrases
 
@@ -104,6 +105,7 @@ defmodule AgentBoard.Actions do
     :pause_superagent,
     :resume_superagent,
     :scale_superagent,
+    :apply_agent_policy,
     :grant_agent_access,
     :revoke_agent_access,
     :dismiss_access_request,
@@ -219,6 +221,12 @@ defmodule AgentBoard.Actions do
 
   defp spec(:scale_superagent),
     do: %{risk: :yellow, does: "muda o limite de sessões simultâneas do superagent"}
+
+  defp spec(:apply_agent_policy),
+    do: %{
+      risk: :yellow,
+      does: "troca as instruções do superagent pela política do board, com as regras do projeto"
+    }
 
   defp spec(:grant_agent_access),
     do: %{
@@ -363,6 +371,12 @@ defmodule AgentBoard.Actions do
 
   def phrase(:resume_superagent, %{superagent: superagent}, _lang),
     do: "Retomar novas tarefas em #{project(superagent)}?"
+
+  def phrase(:apply_agent_policy, %{superagent: superagent}, "en-US"),
+    do: "Apply the board's policy to the agent of #{project(superagent)}?"
+
+  def phrase(:apply_agent_policy, %{superagent: superagent}, _lang),
+    do: "Aplicar a política do board ao agente de #{project(superagent)}?"
 
   def phrase(:scale_superagent, %{superagent: superagent, workers: workers}, "en-US"),
     do: "Change #{project(superagent)} from #{superagent.max_workers} to #{workers} workers?"
@@ -901,6 +915,22 @@ defmodule AgentBoard.Actions do
 
       {:error, reason} ->
         {:error, gettext("Could not change the limit: %{reason}", reason: describe(reason))}
+    end
+  end
+
+  defp execute(:apply_agent_policy, %{superagent: superagent} = params) do
+    case Policy.apply(superagent, Map.get(params, :keep, [])) do
+      {:ok, _revision} ->
+        {:ok, gettext("Applied. The agent's next task already follows it.")}
+
+      {:error, :conflict} ->
+        {:error,
+         gettext(
+           "The agent's instructions changed while you were looking. Nothing was applied: check again below."
+         )}
+
+      {:error, reason} ->
+        {:error, gettext("Not applied: %{reason}", reason: describe(reason))}
     end
   end
 

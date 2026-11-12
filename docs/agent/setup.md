@@ -255,8 +255,15 @@ Communication, Ticket scope and Delivery requirements -- are versioned in
 [`prompts/communication.md`](prompts/communication.md),
 [`prompts/scope.md`](prompts/scope.md) and
 [`prompts/delivery.md`](prompts/delivery.md) as the literal text the orchestrator holds, next to
-`revision`, the revision they were read from, and move through
-`scripts/agent/prompts.sh`:
+`revision`, the revision they were read from.
+
+**Applying them is a click, not a command.** Those three files are the
+board's policy (`AgentBoard.Superagents.Policy`): they reach every board with
+an update, the Attention bell says when an agent holds another text, and
+Configurações → Projetos → the project's controls → "Instruções do agente"
+shows what differs and applies it. Nobody who uses the board needs a terminal
+for this. The script below is the maintainer's tool for the files themselves
+(reading what the dsh panel holds into git, comparing):
 
 ```sh
 scripts/agent/prompts.sh get    # write the active sections and their revision to the files

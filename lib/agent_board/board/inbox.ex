@@ -7,6 +7,7 @@ defmodule AgentBoard.Board.Inbox do
   alias AgentBoard.{Board, Lanes, Repo, Workpad}
   alias AgentBoard.Board.{Comment, Task}
   alias AgentBoard.ElevenLabs.Account
+  alias AgentBoard.Superagents.Policy
 
   @message_limit 30
   @alert_limit 30
@@ -24,7 +25,31 @@ defmodule AgentBoard.Board.Inbox do
   """
   @spec providers(DateTime.t()) :: [map()]
   def providers(now \\ DateTime.utc_now()) do
-    [eleven_labs(now), ai_budget() | ai_refusals(now)] |> Enum.reject(&is_nil/1)
+    [agent_policy(), eleven_labs(now), ai_budget() | ai_refusals(now)]
+    |> Enum.reject(&is_nil/1)
+  end
+
+  # Agents whose instructions are not the board's policy (`Superagents.Policy`,
+  # from what it last saw): the owner applies it in Projects, with one click.
+  defp agent_policy do
+    case length(Policy.differing()) do
+      0 ->
+        nil
+
+      count ->
+        %{
+          key: "agent-policy",
+          kind: gettext("Agent"),
+          title:
+            ngettext(
+              "%{count} agent's instructions differ from the board's policy",
+              "%{count} agents' instructions differ from the board's policy",
+              count
+            ),
+          detail: gettext("See what changes and apply it in Projects."),
+          section: "projects"
+        }
+    end
   end
 
   defp eleven_labs(now) do

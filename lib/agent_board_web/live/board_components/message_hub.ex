@@ -184,7 +184,8 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
                 phx-value-section={item.section}
                 data-board-menu-link
               >
-                <span class="ab-hub-item__meta"><span>{pgettext("attention kind", "Provider")}</span></span>
+                <span class="ab-hub-item__meta"><span>{item[:kind] ||
+                  pgettext("attention kind", "Provider")}</span></span>
                 <strong>{item.title}</strong>
                 <span class="ab-hub-item__detail">{item.detail}</span>
                 <span class="ab-hub-item__action">

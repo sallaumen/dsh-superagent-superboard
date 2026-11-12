@@ -7,7 +7,7 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   @behaviour AgentBoard.Superagents.Provisioner
 
   alias AgentBoard.{AgentAccess, Superagents}
-  alias AgentBoard.Superagents.{BotAccess, DshManager, Superagent}
+  alias AgentBoard.Superagents.{BotAccess, DshManager, Policy, Superagent}
 
   @doc false
   def provision(%Superagent{} = superagent, %Superagent{} = source, attrs) do
@@ -280,13 +280,19 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
+  # A new agent is born with the board's policy (`Superagents.Policy`), not
+  # with whatever text the source agent holds today; the source only lends
+  # the other keys of the config (its skills).
   defp put_prompts(superagent, source_prompts, new_prompts) do
     config = get_in(source_prompts, ["current", "config"])
     base = get_in(new_prompts, ["current", "revision"]) || 0
 
-    if is_map(config),
-      do: ok(put(superagent, "/prompts", %{"config" => config, "baseRevision" => base})),
-      else: {:error, :prompts_missing}
+    if is_map(config) do
+      config = Map.merge(config, Policy.base())
+      ok(put(superagent, "/prompts", %{"config" => config, "baseRevision" => base}))
+    else
+      {:error, :prompts_missing}
+    end
   end
 
   defp ok({:ok, 200, _body}), do: :ok
