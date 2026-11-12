@@ -3,13 +3,32 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   Real provisioning for a new project: copy a ready superagent profile,
   rewrite its port/state, start it, copy the source/policy/prompts/executor
   configuration, validate setup and roll back a failed half-project.
+
+  A machine's first agent (`:first`) has no profile to copy. Its profile is
+  created the way the prototype's own install does it: `dsh <profile>
+  --from-default-profile web --dump-config`, then `dsh plugin --profile
+  <profile> add link:<the agent's code>`, then the patch with the port and the
+  state folder. That first command replaces a profile that exists, so it runs
+  only for a name that is not on disk. The agent's code is cloned and built
+  when the machine does not have it (`Prototype.install/1`), and the bot's
+  `gh` wrapper is written when missing. The agent is then configured from its
+  own defaults, with the bot's CLI and, when the board knows who the owner is
+  on GitHub, the owner as the one person allowed to ask. Two things stay the
+  person's: `dsh` itself with a model, and the bot's sign-in; without them
+  this stops before creating anything.
   """
   @behaviour AgentBoard.Superagents.Provisioner
 
   alias AgentBoard.{AgentAccess, Superagents}
-  alias AgentBoard.Superagents.{BotAccess, DshManager, Policy, Superagent}
+  alias AgentBoard.Superagents.{Bot, BotAccess, DshManager, Policy, Prototype, Superagent}
+
+  @wrapper """
+  #!/bin/sh
+  GH_CONFIG_DIR="$HOME/.config/gh-agent" exec gh "$@"
+  """
 
   @doc false
+  @impl true
   def provision(%Superagent{} = superagent, %Superagent{} = source, attrs) do
     # Nothing is touched until the target is known to be free: what is on disk
     # before this attempt is not this attempt's to remove.
@@ -20,7 +39,150 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
+  def provision(%Superagent{} = superagent, :first, attrs) do
+    with :ok <- validate(attrs),
+         :ok <- first_target_free(superagent),
+         :ok <- first_ready() do
+      build_first(superagent, attrs, File.exists?(superagent.state_dir))
+    end
+  end
+
   def provision(_superagent, nil, _attrs), do: {:error, :source_required}
+
+  @doc """
+  Whether this machine can take a first agent: `dsh` in the board's PATH and
+  a GitHub sign-in for the bot. Read before the owner is asked to confirm.
+  """
+  @impl true
+  def first_ready do
+    cond do
+      not dsh?() -> {:error, :dsh_missing}
+      not Bot.signed_in?() -> {:error, :bot_missing}
+      true -> :ok
+    end
+  end
+
+  # `:dsh_on_path` stands in for this machine's PATH in tests.
+  defp dsh? do
+    case Application.get_env(:agent_board, :dsh_on_path) do
+      nil -> System.find_executable("dsh") != nil
+      found -> found
+    end
+  end
+
+  defp first_target_free(superagent) do
+    to = profile_dir(superagent.profile)
+
+    cond do
+      not is_binary(to) -> {:error, :invalid_profile}
+      not inside_state?(superagent.state_dir) -> {:error, :invalid_state_dir}
+      File.exists?(to) -> {:error, :profile_exists}
+      true -> :ok
+    end
+  end
+
+  # What is on disk before the profile exists (the agent's code, the bot's
+  # wrapper) stays after a failure: neither is this project's alone.
+  defp build_first(superagent, attrs, state_existed?) do
+    with :ok <- Prototype.install(runner()),
+         :ok <- bot_wrapper(),
+         :ok <- first_bot_access(superagent) do
+      attrs = Map.merge(attrs, %{cli: Bot.cli(), allowed: owner()})
+
+      with :ok <- create_profile(superagent),
+           :ok <- start(superagent),
+           :ok <- wait_api(superagent, 60),
+           :ok <- configure(superagent, superagent, attrs),
+           :ok <- wait_ready(superagent, 60) do
+        {:ok,
+         %{profile: superagent.profile, port: superagent.port, state_dir: superagent.state_dir}}
+      else
+        {:error, reason} -> undo(superagent, reason, state_existed?)
+      end
+    end
+  end
+
+  # Every command of the install is a tool this module or `Prototype` names,
+  # run through env with its arguments as separate words: never a shell
+  # string, and nothing a request typed. A test replaces it.
+  defp runner, do: Application.get_env(:agent_board, :first_agent_runner, &through_env/2)
+
+  defp through_env(words, opts), do: System.cmd("/usr/bin/env", words, opts)
+
+  # The source refuses a repository the bot cannot push to: the owner's token
+  # invites it and its own CLI accepts, as for every other project. A bot the
+  # board cannot name is not a failure here: saving the settings still checks.
+  defp first_bot_access(superagent) do
+    with {:ok, bot} <- Bot.login(),
+         %{owner: _, name: _} = repository <- repository_of(superagent) do
+      BotAccess.ensure(repository, bot, Bot.cli())
+    else
+      _unknown -> :ok
+    end
+  end
+
+  # The one person a first agent listens to is whoever the board's token is.
+  defp owner do
+    case AgentBoard.GitHub.login() do
+      {:ok, login} -> [login]
+      _unknown -> []
+    end
+  end
+
+  defp bot_wrapper do
+    cli = Bot.cli()
+
+    # The path is the board's own setting (`Bot.cli/0`), not outside data;
+    # written the way this module writes a profile's patch.
+    if File.exists?(cli) do
+      :ok
+    else
+      with :ok <- :filelib.ensure_dir(cli),
+           :ok <- :file.write_file(cli, @wrapper) do
+        :file.change_mode(cli, 0o755)
+      end
+    end
+  end
+
+  defp create_profile(superagent) do
+    dir = profile_dir(superagent.profile)
+    # dsh writes under DSH_HOME: the same folder the board reads profiles from.
+    opts = [env: [{"DSH_HOME", Path.dirname(Path.expand(Superagents.profiles_root()))}]]
+
+    with :ok <-
+           dsh([superagent.profile, "--from-default-profile", "web", "--dump-config"], opts),
+         :ok <-
+           dsh(
+             ["plugin", "--profile", superagent.profile, "add", "link:" <> Prototype.home()],
+             opts
+           ),
+         true <- File.dir?(dir) || {:error, :profile_not_created},
+         :ok <- :file.write_file(Path.join(dir, "cordis.patch.yml"), first_patch(superagent)) do
+      :filelib.ensure_dir(Path.join(superagent.state_dir, "work"))
+      :ok
+    end
+  end
+
+  defp dsh(args, opts) do
+    case runner().(["dsh" | args], [stderr_to_stdout: true] ++ opts) do
+      {_output, 0} -> :ok
+      {output, _code} -> {:error, {:command, "dsh", String.slice(output, -500, 500)}}
+    end
+  rescue
+    exception -> {:error, {:command, "dsh", Exception.message(exception)}}
+  end
+
+  defp first_patch(superagent) do
+    """
+    - id: webserver
+      config:
+        host: 127.0.0.1
+        port: #{superagent.port}
+    - id: dsh-superagent
+      config:
+        stateDir: #{superagent.state_dir}
+    """
+  end
 
   defp build(superagent, source, attrs, state_existed?) do
     with :ok <- copy_profile(superagent, source),
@@ -207,11 +369,11 @@ defmodule AgentBoard.Superagents.DshProvisioner do
          {:ok, 200, new_settings} <- get(superagent, "/settings"),
          {:ok, 200, source_prompts} <- get(source, "/prompts"),
          {:ok, 200, new_prompts} <- get(superagent, "/prompts"),
-         :ok <- put_source(superagent, source_settings, new_settings),
+         :ok <- put_source(superagent, source_settings, new_settings, attrs),
          :ok <- wait_api(superagent, 60),
          {:ok, 200, after_source} <- get(superagent, "/settings"),
          :ok <- put_executor(superagent, source_settings, after_source, attrs),
-         :ok <- put_policy(superagent, source_settings, after_source),
+         :ok <- put_policy(superagent, source_settings, after_source, attrs),
          :ok <- put_prompts(superagent, source_prompts, new_prompts) do
       :ok
     else
@@ -221,7 +383,8 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
-  defp put_source(superagent, source_settings, new_settings) do
+  # `attrs.cli` is the bot's CLI for a first agent, whose own settings have none.
+  defp put_source(superagent, source_settings, new_settings, attrs) do
     source = source_block(source_settings)
     current = source_block(new_settings)
 
@@ -229,6 +392,7 @@ defmodule AgentBoard.Superagents.DshProvisioner do
       config = get_in(source, ["value", "config"]) || source["config"] || %{}
       config = Map.put(config, "repository", repository(superagent))
       config = Map.put(config, "observeIssues", true)
+      config = if attrs[:cli], do: Map.put(config, "cli", attrs.cli), else: config
 
       ok(
         put(superagent, "/settings/source:github", %{
@@ -264,14 +428,16 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
-  defp put_policy(superagent, source_settings, new_settings) do
+  # `attrs.allowed` are the logins a first agent starts listening to: until
+  # its list has someone, no request becomes a ticket.
+  defp put_policy(superagent, source_settings, new_settings, attrs) do
     source = get_in(source_settings, ["blocks", "policy"])
     current = get_in(new_settings, ["blocks", "policy"])
 
     if source && current do
       ok(
         put(superagent, "/settings/policy", %{
-          "value" => source["value"],
+          "value" => allowing(source["value"], attrs[:allowed]),
           "revision" => current["revision"] || 0
         })
       )
@@ -279,6 +445,15 @@ defmodule AgentBoard.Superagents.DshProvisioner do
       {:error, :policy_block_missing}
     end
   end
+
+  defp allowing(%{} = value, [_login | _rest] = logins) do
+    sources = if is_map(value["sources"]), do: value["sources"], else: %{}
+    github = if is_map(sources["github"]), do: sources["github"], else: %{}
+    github = Map.put(github, "allowed", Enum.map(logins, &%{"id" => &1}))
+    Map.put(value, "sources", Map.put(sources, "github", github))
+  end
+
+  defp allowing(value, _none), do: value
 
   # A new agent is born with the board's policy (`Superagents.Policy`), not
   # with whatever text the source agent holds today; the source only lends

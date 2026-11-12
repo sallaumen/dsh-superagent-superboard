@@ -1227,37 +1227,22 @@ defmodule AgentBoardWeb.BoardLive do
 
     with {:ok, _} <- Actions.run(:add_repository, %{owner: owner, name: name}, ui()),
          repository when not is_nil(repository) <- Board.repository_by_slug("#{owner}/#{name}"),
-         {:ok, source} <- Superagents.default_source(),
+         {:ok, action, source} <- project_source(),
          {:ok, preview} <-
            Superagents.preview(repository, source, %{path: path, workers: workers}) do
-      phrase =
-        Actions.phrase(
-          :provision_superagent,
-          %{
-            repository: repository,
-            source: source,
-            path: path
-          },
-          Locale.language()
-        )
+      params = %{repository: repository, source: source, path: path, workers: preview.workers}
 
       {:noreply,
        socket
        |> assign(:repos, Board.list_repositories())
        |> assign(:project_pending, %{
-         params: %{repository: repository, source: source, path: path, workers: preview.workers},
-         phrase: phrase
+         action: action,
+         params: params,
+         phrase: Actions.phrase(action, params, Locale.language())
        })}
     else
-      {:error, :no_working_profile} ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext(
-             "No DSH working profile on this machine. Run dsh once to create the superagent profile."
-           )
-         )}
+      {:error, reason} when reason in [:dsh_missing, :bot_missing] ->
+        {:noreply, put_flash(socket, :error, first_agent_blocked(reason))}
 
       {:error, reason} ->
         {:noreply,
@@ -1268,6 +1253,33 @@ defmodule AgentBoardWeb.BoardLive do
          )}
     end
   end
+
+  # A machine with an agent copies its profile; one without installs its
+  # first, when dsh and the bot's sign-in are there.
+  defp project_source do
+    case Superagents.default_source() do
+      {:ok, source} ->
+        {:ok, :provision_superagent, source}
+
+      {:error, :no_working_profile} ->
+        with :ok <- Superagents.first_ready(), do: {:ok, :install_first_superagent, :first}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp first_agent_blocked(:dsh_missing),
+    do:
+      gettext(
+        "This would be the machine's first agent, and the dsh command of DeepSeek Harness is not on it. Install the Harness and its command, then add the project again."
+      )
+
+  defp first_agent_blocked(:bot_missing),
+    do:
+      gettext(
+        "This would be the machine's first agent, and it has no GitHub sign-in yet. AI and setup shows the command that signs the agent's account in; then add the project again."
+      )
 
   defp track_project(socket, owner, name) do
     owner = String.trim(owner)
@@ -1684,14 +1696,12 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_event("add_project_confirm", _params, socket) do
     case socket.assigns.project_pending do
-      %{params: params, phrase: phrase} ->
+      %{action: action, params: params, phrase: phrase} ->
         {:noreply,
          socket
          |> assign(project_pending: nil, provisioning: true)
          |> start_async(:provision, fn ->
-           Superagents.detached(fn ->
-             Actions.run(:provision_superagent, params, ui(), confirm: phrase)
-           end)
+           Superagents.detached(fn -> Actions.run(action, params, ui(), confirm: phrase) end)
          end)}
 
       _ ->

@@ -2,6 +2,8 @@ defmodule AgentBoard.Superagents.FakeProvisioner do
   @moduledoc "Test provisioner: records the call and answers the row's own paths, or `attrs.fail`."
   @behaviour AgentBoard.Superagents.Provisioner
 
+  def first_ready, do: Application.get_env(:agent_board, :fake_first_ready, :ok)
+
   def provision(_superagent, _source, %{fail: reason}), do: {:error, reason}
 
   def provision(superagent, source, attrs) do

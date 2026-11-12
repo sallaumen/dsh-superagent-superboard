@@ -542,7 +542,7 @@ defmodule AgentBoard.Setup do
   defp reader(:config, :cli), do: &executable?/1
   defp reader(:config, :voice), do: &ElevenLabs.configured?/0
 
-  defp reader(:live, :github), do: &github_login/0
+  defp reader(:live, :github), do: &GitHub.login/0
 
   defp reader(:live, :agents) do
     fn ->
@@ -559,10 +559,8 @@ defmodule AgentBoard.Setup do
   defp reader(:live, :agent_tools),
     do: fn -> for({tool, _formula} <- @agent_tools, do: {tool, recent(tool)}) end
 
-  defp reader(:config, :agent_bot),
-    do: fn -> File.regular?(Path.join(bot_config(), "hosts.yml")) end
-
-  defp reader(:live, :agent_bot), do: &bot_login/0
+  defp reader(:config, :agent_bot), do: &Superagents.Bot.signed_in?/0
+  defp reader(:live, :agent_bot), do: &Superagents.Bot.login/0
 
   defp reader(:live, :cli), do: &cli_login/1
   defp reader(:live, :voice), do: &ElevenLabs.subscription/0
@@ -580,20 +578,6 @@ defmodule AgentBoard.Setup do
         superagent.repository && "#{superagent.repository.owner}/#{superagent.repository.name}",
       model: Superagents.profile_model(superagent)
     }
-  end
-
-  defp github_login do
-    if GitHub.configured?() do
-      case Req.get(GitHub.client(), url: "/user", retry: false) do
-        {:ok, %Req.Response{status: 200, body: %{"login" => login}}} -> {:ok, login}
-        {:ok, %Req.Response{status: status}} -> {:error, {:http, status}}
-        {:error, reason} -> {:error, reason}
-      end
-    else
-      {:error, :not_configured}
-    end
-  rescue
-    exception -> {:error, exception}
   end
 
   # Listing models is free on all three providers; a completion would be a paid call.
@@ -659,25 +643,6 @@ defmodule AgentBoard.Setup do
       _fine_or_unread -> :ok
     end
   end
-
-  defp bot_config,
-    do: Application.get_env(:agent_board, :agent_gh_config, Path.expand("~/.config/gh-agent"))
-
-  # The agent's own sign-in, asked the way dsh-superagent asks: its login is
-  # a public name, and nothing else of the answer is kept.
-  defp bot_login do
-    with true <- File.regular?(Path.join(bot_config(), "hosts.yml")) || {:error, :missing},
-         gh when is_binary(gh) <- System.find_executable("gh") || {:error, :missing} do
-      case timed(gh, ["api", "user", "--jq", ".login"], [{"GH_CONFIG_DIR", bot_config()}]) do
-        {:ok, {output, 0}} -> bot_named(String.trim(output))
-        {:ok, {_output, _status}} -> {:error, :logged_out}
-        nil -> {:error, :timeout}
-      end
-    end
-  end
-
-  defp bot_named(""), do: {:error, :logged_out}
-  defp bot_named(login), do: {:ok, login}
 
   # `command` is a path `System.find_executable/1` answered for a tool this
   # module names; no request reaches it. Run through env, as the CLIs above.

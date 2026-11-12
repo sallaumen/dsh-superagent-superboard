@@ -215,12 +215,16 @@ defmodule AgentBoard.Superagents do
 
   @doc """
   The default source for a new project: the machine's main `superagent`
-  profile when it exists, else the first profile on disk. `{:error,
-  :no_working_profile}` means dsh has never created a profile here.
+  profile when it exists, else the first profile on disk that loads
+  dsh-superagent. `{:error, :no_working_profile}` means no agent was ever set
+  up here, and the project's agent would be the machine's first
+  (`provision/4` with `:first`): a profile of the Harness itself, such as
+  `desktop`, is not an agent to copy.
   """
   def default_source do
-    case Enum.find(profiles_on_disk(), &(&1.name == "superagent")) ||
-           List.first(profiles_on_disk()) do
+    agents = Enum.filter(profiles_on_disk(), & &1.agent?)
+
+    case Enum.find(agents, &(&1.name == "superagent")) || List.first(agents) do
       nil -> {:error, :no_working_profile}
       %{name: name, port: port} when is_integer(port) -> {:ok, source_struct(name, port)}
       %{name: name} -> {:error, {:profile_port_missing, name}}
@@ -250,13 +254,21 @@ defmodule AgentBoard.Superagents do
          port: port,
          state_dir: Path.join(state_root(), profile),
          workers: Map.get(attrs, :workers, 3),
-         source_profile: source.profile
+         source_profile: source_profile(source)
        }}
     end
   end
 
+  @doc "Whether this machine can take its first agent (`Provisioner.first_ready/0`)."
+  def first_ready(provisioner \\ Provisioner.impl()), do: provisioner.first_ready()
+
+  defp source_profile(:first), do: nil
+  defp source_profile(%Superagent{profile: profile}), do: profile
+
   defp source_struct(name, port), do: %Superagent{profile: name, port: port}
 
+  # The machine's first agent has no profile to copy: the provisioner creates one.
+  defp normalize_source(:first), do: {:ok, :first}
   defp normalize_source(%Superagent{} = source), do: {:ok, source}
   defp normalize_source(name) when is_binary(name), do: source_by_profile(name)
   defp normalize_source(nil), do: {:error, :source_required}
@@ -316,7 +328,7 @@ defmodule AgentBoard.Superagents do
              max_workers: Map.get(attrs, :workers, 3),
              created_by: Map.get(attrs, :actor, "owner"),
              checkout_path: Map.get(attrs, :path),
-             source_profile: source.profile
+             source_profile: source_profile(source)
            }) do
       superagent
       |> provisioner.provision(source, attrs)
@@ -345,6 +357,22 @@ defmodule AgentBoard.Superagents do
          {:ok, superagent} <- claim_retry(superagent) do
       superagent
       |> provisioner.provision(source, attrs)
+      |> settle_provision(superagent, "error")
+    end
+  end
+
+  # A first agent that did not come up: there is still no profile to copy.
+  def retry_provision(
+        %Superagent{provision_failed_at: %DateTime{}, source_profile: nil, checkout_path: path} =
+          superagent,
+        provisioner
+      )
+      when is_binary(path) do
+    attrs = %{path: path, workers: superagent.max_workers}
+
+    with {:ok, superagent} <- claim_retry(superagent) do
+      superagent
+      |> provisioner.provision(:first, attrs)
       |> settle_provision(superagent, "error")
     end
   end

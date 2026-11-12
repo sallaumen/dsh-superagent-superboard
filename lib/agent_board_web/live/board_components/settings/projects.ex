@@ -552,10 +552,16 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               type="button"
               class="ab-btn ab-btn--sm ab-btn--primary"
               phx-click="add_project_confirm"
-              phx-disable-with={gettext("Creating…")}
+              phx-disable-with={
+                if first_agent?(@project_pending),
+                  do: gettext("Installing…"),
+                  else: gettext("Creating…")
+              }
               disabled={@provisioning}
             >
-              {gettext("Create superagent")}
+              {if first_agent?(@project_pending),
+                do: gettext("Install the agent"),
+                else: gettext("Create superagent")}
             </button>
             <button
               type="button"
@@ -660,6 +666,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   defp desired_line(%{desired_state: "paused"}), do: gettext("should be paused")
   defp desired_line(%{desired_state: "stopped"}), do: gettext("should be stopped")
   defp desired_line(_superagent), do: nil
+
+  defp first_agent?(pending),
+    do: is_map(pending) and pending[:action] == :install_first_superagent
 
   defp error_text(%{last_error: nil, observed_state: "error"}) do
     gettext("The agent is in an error state. Open the controls to try again.")

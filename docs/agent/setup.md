@@ -176,6 +176,11 @@ repositories of the agents listed in Configurações → Projetos.
 `AgentState` reads both `~/.dsh/state/superagent*/orchestrator.sqlite` files,
 so the board shows both DeepSeek lanes without a restart of the agents.
 
+On a machine that never had an agent, the board does this document's steps
+3 and 4 itself: "Adicionar projeto" in Configurações → Projetos installs the
+first agent once `dsh` is on the machine and the bot is signed in (§2), and
+"IAs e setup" says which of the two is missing.
+
 An agent set up this way is not on the board yet. Configurações → Projetos
 lists it under "Agentes nesta máquina que o board não acompanha"; "Adicionar
 ao board" asks the agent which repository it serves and registers it.

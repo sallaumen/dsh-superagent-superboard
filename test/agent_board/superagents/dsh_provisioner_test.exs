@@ -6,7 +6,7 @@ defmodule AgentBoard.Superagents.DshProvisionerTest do
   use ExUnit.Case, async: false
 
   alias AgentBoard.Board.Repository
-  alias AgentBoard.Superagents.{DshProvisioner, Superagent}
+  alias AgentBoard.Superagents.{DshProvisioner, Policy, Superagent}
 
   defmodule RefusingAgent do
     @moduledoc false
@@ -222,5 +222,196 @@ defmodule AgentBoard.Superagents.DshProvisionerTest do
 
     assert text =~ "@robo"
     refute File.exists?(Path.join(context.profiles, "new"))
+  end
+
+  describe "a machine's first agent" do
+    defmodule FreshAgent do
+      @moduledoc "An agent as it first boots: its own defaults, and every save reported to the test."
+      import Plug.Conn
+
+      @api "/orchestrator/api"
+
+      def init(options), do: options
+
+      def call(conn, _options) do
+        {:ok, body, conn} = read_body(conn)
+        path = String.replace_prefix(conn.request_path, @api, "")
+        if conn.method == "PUT", do: send(:first_agent_test, {:saved, path, Jason.decode!(body)})
+
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(200, Jason.encode!(answer(path)))
+      end
+
+      defp answer("/state"), do: %{health: %{runtime: %{state: "ready"}}}
+
+      defp answer("/settings") do
+        %{
+          sources: [
+            %{
+              id: "github",
+              revision: 0,
+              value: %{
+                enabled: true,
+                config: %{repository: "", cli: "", pollSeconds: 60, observeIssues: false}
+              }
+            }
+          ],
+          blocks: %{
+            executor: %{
+              revision: 0,
+              value: %{model: nil, maxWorkers: 3, directory: "", prepare: "", blockedCommands: []}
+            },
+            policy: %{revision: 0, value: %{rules: [%{id: "example"}], sources: %{}}}
+          }
+        }
+      end
+
+      defp answer("/prompts"),
+        do: %{current: %{revision: 0, config: %{communication: "old", skills: %{kept: "yes"}}}}
+
+      defp answer(_path), do: %{saved: true}
+    end
+
+    setup context do
+      Process.register(self(), :first_agent_test)
+      home = Path.join(context.root, "agent-code")
+      File.mkdir_p!(Path.join(home, "scripts"))
+      File.write!(Path.join(home, "scripts/dsh-superagent"), "")
+      File.mkdir_p!(Path.join(context.root, "gh-agent"))
+      File.write!(Path.join(context.root, "gh-agent/hosts.yml"), "")
+      test = self()
+
+      # dsh as the rehearsal showed it: the first command leaves the profile's folder.
+      runner = fn ["dsh" | args], opts ->
+        send(test, {:dsh, args, opts[:env]})
+
+        case args do
+          [profile, "--from-default-profile", "web", "--dump-config"] ->
+            File.mkdir_p!(Path.join(context.profiles, profile))
+            File.write!(Path.join([context.profiles, profile, "cordis.patch.yml"]), "[]\n")
+            {"", 0}
+
+          ["plugin" | _rest] ->
+            Process.get(:plugin_answer, {"", 0})
+        end
+      end
+
+      for {key, value} <- [
+            dsh_on_path: true,
+            dsh_superagent_home: home,
+            agent_gh_config: Path.join(context.root, "gh-agent"),
+            agent_gh_cli: Path.join(context.root, "bin/gh-agent"),
+            first_agent_runner: runner,
+            github_client: fn ->
+              Req.new(
+                base_url: "https://api.github.test",
+                plug: {Req.Test, __MODULE__},
+                retry: false
+              )
+            end
+          ] do
+        previous = Application.get_env(:agent_board, key)
+        Application.put_env(:agent_board, key, value)
+
+        on_exit(fn ->
+          if previous,
+            do: Application.put_env(:agent_board, key, previous),
+            else: Application.delete_env(:agent_board, key)
+        end)
+      end
+
+      Req.Test.set_req_test_to_shared(%{})
+      on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
+      Req.Test.stub(__MODULE__, fn conn -> Req.Test.json(conn, %{"login" => "octo"}) end)
+
+      server = start_supervised!({Bandit, plug: FreshAgent, port: 0, ip: :loopback}, id: :fresh)
+      {:ok, {_ip, port}} = ThousandIsland.listener_info(server)
+
+      %{home: home, first: %{project(context) | profile: "first", port: port}}
+    end
+
+    test "gets a profile of its own, the bot's CLI and the owner as the one allowed", context do
+      %{first: first, home: home} = context
+
+      assert {:ok, %{profile: "first"}} =
+               DshProvisioner.provision(first, :first, %{path: context.checkout, workers: 2})
+
+      # The profile: created by dsh under the folder the board reads, then the plugin.
+      dsh_home = Path.dirname(context.profiles)
+
+      assert_received {:dsh, ["first", "--from-default-profile", "web", "--dump-config"],
+                       [{"DSH_HOME", ^dsh_home}]}
+
+      plugin = "link:" <> home
+      assert_received {:dsh, ["plugin", "--profile", "first", "add", ^plugin], _env}
+
+      patch = File.read!(Path.join([context.profiles, "first", "cordis.patch.yml"]))
+      assert patch =~ "port: #{first.port}"
+      assert patch =~ "stateDir: #{first.state_dir}"
+      assert patch =~ "- id: dsh-superagent"
+
+      # The bot's wrapper, written because it was not there.
+      cli = Path.join(context.root, "bin/gh-agent")
+      assert File.read!(cli) =~ ~s(GH_CONFIG_DIR="$HOME/.config/gh-agent" exec gh "$@")
+      assert Bitwise.band(File.stat!(cli).mode, 0o111) != 0
+
+      # The settings: the agent's own defaults, with what a first agent lacks.
+      assert_received {:saved, "/settings/source:github", %{"value" => %{"config" => source}}}
+
+      assert %{
+               "repository" => "owner/name",
+               "cli" => ^cli,
+               "observeIssues" => true,
+               "pollSeconds" => 60
+             } = source
+
+      assert_received {:saved, "/settings/executor", %{"value" => executor}}
+      assert executor["maxWorkers"] == 2
+      assert executor["directory"] == Path.join(first.state_dir, "work")
+      assert executor["prepare"] =~ context.checkout
+
+      assert_received {:saved, "/settings/policy", %{"value" => policy}}
+      assert policy["rules"] == [%{"id" => "example"}]
+      assert policy["sources"]["github"]["allowed"] == [%{"id" => "octo"}]
+
+      assert_received {:saved, "/prompts", %{"config" => prompts}}
+      assert prompts["communication"] == Policy.base()["communication"]
+      assert prompts["skills"] == %{"kept" => "yes"}
+    end
+
+    test "never runs dsh for a profile that is already on disk", context do
+      File.mkdir_p!(Path.join(context.profiles, "first"))
+      File.write!(Path.join([context.profiles, "first", "cordis.patch.yml"]), "mine\n")
+
+      assert DshProvisioner.provision(context.first, :first, %{path: context.checkout}) ==
+               {:error, :profile_exists}
+
+      refute_received {:dsh, _args, _env}
+      assert File.read!(Path.join([context.profiles, "first", "cordis.patch.yml"])) == "mine\n"
+    end
+
+    test "a plugin that does not install undoes the profile and says what dsh said", context do
+      Process.put(:plugin_answer, {"ERR_PNPM_LINK no such package", 1})
+
+      assert {:error, {:command, "dsh", "ERR_PNPM_LINK no such package"}} =
+               DshProvisioner.provision(context.first, :first, %{path: context.checkout})
+
+      refute File.exists?(Path.join(context.profiles, "first"))
+      refute File.exists?(context.first.state_dir)
+    end
+
+    test "stops before anything without dsh or without the bot's sign-in", context do
+      File.rm!(Path.join(context.root, "gh-agent/hosts.yml"))
+      assert DshProvisioner.first_ready() == {:error, :bot_missing}
+
+      assert DshProvisioner.provision(context.first, :first, %{path: context.checkout}) ==
+               {:error, :bot_missing}
+
+      Application.put_env(:agent_board, :dsh_on_path, false)
+      assert DshProvisioner.first_ready() == {:error, :dsh_missing}
+      refute_received {:dsh, _args, _env}
+      refute File.exists?(Path.join(context.root, "bin/gh-agent"))
+    end
   end
 end

@@ -7,16 +7,15 @@ defmodule AgentBoard.Superagents.DshManager do
   @behaviour AgentBoard.Superagents.Manager
 
   alias AgentBoard.Orchestrator
-  alias AgentBoard.Superagents.Superagent
+  alias AgentBoard.Superagents.{Prototype, Superagent}
 
-  @default_script Path.expand(
-                    "~/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype/scripts/dsh-superagent"
-                  )
-
-  @doc "The manager script; `:superagent_manager_script` or `DSH_SUPERAGENT_MANAGER` wins."
+  @doc """
+  The manager script; `:superagent_manager_script` or `DSH_SUPERAGENT_MANAGER`
+  wins, else the one in the agent's code on this machine (`Prototype`).
+  """
   def script do
     Application.get_env(:agent_board, :superagent_manager_script) ||
-      System.get_env("DSH_SUPERAGENT_MANAGER") || @default_script
+      System.get_env("DSH_SUPERAGENT_MANAGER") || Prototype.manager()
   end
 
   @impl true

@@ -44,6 +44,22 @@ defmodule AgentBoard.GitHub do
   defp token,
     do: Application.get_env(:agent_board, :github_token, System.get_env("GITHUB_TOKEN", ""))
 
+  @doc "Who the board's token is on GitHub: a free read of `/user`."
+  @spec login() :: {:ok, String.t()} | {:error, term()}
+  def login do
+    if configured?() do
+      case Req.get(client(), url: "/user", retry: false) do
+        {:ok, %Req.Response{status: 200, body: %{"login" => login}}} -> {:ok, login}
+        {:ok, %Req.Response{status: status}} -> {:error, {:http, status}}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:error, :not_configured}
+    end
+  rescue
+    exception -> {:error, exception}
+  end
+
   @doc false
   def build do
     token = token()

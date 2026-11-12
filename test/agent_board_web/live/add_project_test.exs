@@ -13,7 +13,7 @@ defmodule AgentBoardWeb.AddProjectTest do
 
     File.write!(
       Path.join([profiles, "superagent", "cordis.patch.yml"]),
-      "webserver:\n  port: 3082\n"
+      "webserver:\n  port: 3082\n- id: dsh-superagent\n"
     )
 
     previous = Application.get_env(:agent_board, :dsh_profiles_dir)
@@ -110,38 +110,93 @@ defmodule AgentBoardWeb.AddProjectTest do
     end)
   end
 
-  test "without a working profile the form explains instead of failing silently", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("fixture", "base-no-source")
+  describe "a machine with no agent yet" do
+    setup do
+      empty =
+        Path.join(System.tmp_dir!(), "dsh-profiles-empty-#{System.unique_integer([:positive])}")
 
-    empty =
-      Path.join(System.tmp_dir!(), "dsh-profiles-empty-#{System.unique_integer([:positive])}")
+      File.mkdir_p!(empty)
 
-    File.mkdir_p!(empty)
+      for {key, value} <- [dsh_profiles_dir: empty, superagent_provisioner: FakeProvisioner] do
+        previous = Application.get_env(:agent_board, key)
+        Application.put_env(:agent_board, key, value)
 
-    previous = Application.get_env(:agent_board, :dsh_profiles_dir)
-    Application.put_env(:agent_board, :dsh_profiles_dir, empty)
+        on_exit(fn ->
+          if previous,
+            do: Application.put_env(:agent_board, key, previous),
+            else: Application.delete_env(:agent_board, key)
+        end)
+      end
 
-    on_exit(fn ->
-      if previous,
-        do: Application.put_env(:agent_board, :dsh_profiles_dir, previous),
-        else: Application.delete_env(:agent_board, :dsh_profiles_dir)
+      on_exit(fn ->
+        Application.delete_env(:agent_board, :fake_first_ready)
+        File.rm_rf!(empty)
+      end)
 
-      File.rm_rf!(empty)
-    end)
+      :ok
+    end
 
-    {:ok, view, _html} =
-      live(conn, ~p"/?repo=fixture/base-no-source&panel=settings&section=repositories")
+    defp add_first(conn, name) do
+      {:ok, _repo} = Board.add_repository("fixture", "base-#{name}")
 
-    view
-    |> form("#track-repo", %{
-      "owner" => "fixture",
-      "name" => "nosource",
-      "path" => "/tmp/x",
-      "create_agent" => "true"
-    })
-    |> render_submit()
+      {:ok, view, _html} =
+        live(conn, ~p"/?repo=fixture/base-#{name}&panel=settings&section=repositories")
 
-    assert has_element?(view, ".toast", "Nenhum perfil DSH de trabalho nesta máquina")
-    refute has_element?(view, "#add-project-confirm")
+      view
+      |> form("#track-repo", %{
+        "owner" => "fixture",
+        "name" => name,
+        "path" => "/tmp/#{name}",
+        "create_agent" => "true",
+        "workers" => "2"
+      })
+      |> render_submit()
+
+      view
+    end
+
+    test "the form offers to install the first agent, and the confirmed click does it", %{
+      conn: conn
+    } do
+      view = add_first(conn, "first")
+
+      assert has_element?(
+               view,
+               "#add-project-confirm",
+               "Instalar o primeiro agente DeepSeek desta máquina, para first?"
+             )
+
+      assert has_element?(view, "#add-project-confirm", "baixa e compila o código do agente")
+      # Asking installed nothing.
+      refute Superagents.get_by_repository(Board.repository_by_slug("fixture/first"))
+
+      view |> element("#add-project-confirm button", "Instalar o agente") |> render_click()
+      Process.sleep(150)
+      _ = render(view)
+
+      assert %{profile: "superagent-first", source_profile: nil, max_workers: 2} =
+               Superagents.get_by_repository(Board.repository_by_slug("fixture/first"))
+
+      assert %{outcome: "ok", decision: "confirmed"} =
+               AgentBoard.Repo.get_by!(AgentBoard.Actions.Decision,
+                 action: "install_first_superagent"
+               )
+    end
+
+    test "without dsh the form says what the machine lacks and asks nothing", %{conn: conn} do
+      Application.put_env(:agent_board, :fake_first_ready, {:error, :dsh_missing})
+      view = add_first(conn, "nodsh")
+
+      assert render(view) =~ "o comando dsh do DeepSeek Harness não está nela"
+      refute has_element?(view, "#add-project-confirm")
+    end
+
+    test "without a sign-in for the agent the form points at AI and setup", %{conn: conn} do
+      Application.put_env(:agent_board, :fake_first_ready, {:error, :bot_missing})
+      view = add_first(conn, "nobot")
+
+      assert render(view) =~ "ele ainda não tem login no GitHub"
+      refute has_element?(view, "#add-project-confirm")
+    end
   end
 end
