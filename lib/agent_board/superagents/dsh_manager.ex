@@ -29,6 +29,34 @@ defmodule AgentBoard.Superagents.DshManager do
   end
 
   @impl true
+  def identity(%Superagent{} = superagent) do
+    case get(superagent, "/state") do
+      {:ok, 200, %{} = body} ->
+        accounts = get_in(body, ["setup", "accounts"])
+        accounts = if is_map(accounts), do: accounts, else: %{}
+
+        {:ok,
+         %{
+           repository: text(accounts["repository"]),
+           bot: text(accounts["agent"]),
+           max_workers: workers(get_in(body, ["load", "maxWorkers"]))
+         }}
+
+      {:ok, status, _body} ->
+        {:error, {:http, status}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp text(value) when is_binary(value) and value != "", do: value
+  defp text(_value), do: nil
+
+  defp workers(value) when is_integer(value) and value > 0, do: value
+  defp workers(_value), do: nil
+
+  @impl true
   def start(%Superagent{} = superagent), do: manager(superagent, "start")
   @impl true
   def stop(%Superagent{} = superagent), do: manager(superagent, "stop")

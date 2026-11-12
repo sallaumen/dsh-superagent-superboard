@@ -2430,6 +2430,10 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-projects__list + .ab-project-add { padding-top: 0; border-top: 0; }
 .ab-project-add h3 { margin: 0; color: var(--ink); font-size: 14px; line-height: 20px; font-weight: 600; }
 .ab-project-add > .ab-meta { margin: 0; }
+.ab-installed { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.ab-installed > li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.ab-installed__identity { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.ab-installed__identity code { color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: anywhere; }
 .ab-project-add__form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: var(--space-3) var(--space-4); }
 .ab-project-add__form label { display: grid; gap: 6px; min-width: 0; color: var(--ink-muted); font-size: 12px; }
 .ab-project-add__form label:not(.ab-project-add__create) input { width: 100%; height: 40px; padding: 0 var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; }

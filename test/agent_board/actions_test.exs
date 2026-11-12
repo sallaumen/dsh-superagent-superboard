@@ -36,6 +36,7 @@ defmodule AgentBoard.ActionsTest do
     :dispatch_task,
     :stop_execution,
     :provision_superagent,
+    :adopt_superagent,
     :retry_provision_superagent,
     :remove_superagent,
     :start_superagent,
@@ -226,6 +227,9 @@ defmodule AgentBoard.ActionsTest do
       :sweep_agent_folders ->
         %{superagent: superagent!(repo, name), days: 30}
 
+      :adopt_superagent ->
+        %{profile: "superagent-installed", port: 3391}
+
       :start_agent ->
         %{opts: [starter: fn -> flunk("the agent must not start") end]}
 
@@ -282,7 +286,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 21
+      assert length(reds) == 22
 
       for name <- reds do
         params = red_params(name, context)
@@ -296,7 +300,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 21
+      assert Repo.aggregate(Task, :count, :id) == 22
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -979,7 +983,7 @@ defmodule AgentBoard.ActionsTest do
        ["lib/agent_board/agent_control.ex", "lib/agent_board/superagents/dsh_manager.ex"]},
       {~r/\bAgentControl\.(retry|start_agent)\(/, []},
       {~r/\bRunners\.dispatch\(/, []},
-      {~r/\bSuperagents\.retry_provision\(/, []},
+      {~r/\bSuperagents\.(retry_provision|adoptable|adopt)\(/, []},
       {~r/\bAgentAccess\.(grant|revoke|dismiss)\(/, []},
       {~r/\b(Voice\.put_\w+|ElevenLabs\.save_voice)\(/, []},
       # Policy.apply is the effect behind :apply_agent_policy; it stores the

@@ -103,6 +103,29 @@ defmodule AgentBoard.Superagents.FakeManager do
     end
   end
 
+  # An agent the board does not follow has no id yet: its profile names it.
+  def put_identity(profile, identity),
+    do: Agent.update(__MODULE__, &Map.put(&1, {:identity, profile}, identity))
+
+  def identity(%{profile: profile}) do
+    case Agent.get(__MODULE__, &Map.get(&1, {:identity, profile})) do
+      nil -> {:error, :econnrefused}
+      {:after_start, identity} -> started(profile, identity)
+      identity -> {:ok, identity}
+    end
+  end
+
+  defp started(profile, identity) do
+    if Agent.get(__MODULE__, &Map.get(&1, {:started, profile})),
+      do: {:ok, identity},
+      else: {:error, :econnrefused}
+  end
+
+  def start(%{id: nil, profile: profile}) do
+    Agent.update(__MODULE__, &Map.put(&1, {:started, profile}, true))
+    :ok
+  end
+
   def start(%{id: id}) do
     Agent.update(__MODULE__, &Map.put(&1, id, %{state: "ready"}))
     :ok

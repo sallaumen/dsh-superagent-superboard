@@ -15,6 +15,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
   alias AgentBoard.Orchestrator
+  alias AgentBoard.Superagents
   alias AgentBoardWeb.BoardComponents.AgentAction
   alias AgentBoardWeb.BoardComponents.Settings.{ProjectAccess, ProjectLeftovers, ProjectPolicy}
   alias AgentBoardWeb.Time
@@ -29,7 +30,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   @impl true
   def mount(socket) do
-    {:ok, assign(socket, expanded: nil, workers: 1, create_agent: true, prefill: %{})}
+    {:ok,
+     assign(socket, expanded: nil, workers: 1, create_agent: true, prefill: %{}, installed: [])}
   end
 
   @impl true
@@ -47,7 +49,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             else: nil
       end
 
-    {:ok, assign(socket, :expanded, expanded)}
+    # Agents installed outside the board: a few small files, read only while
+    # this section is on screen.
+    installed = if socket.assigns.active, do: Superagents.unregistered(), else: []
+
+    {:ok, assign(socket, expanded: expanded, installed: installed)}
   end
 
   @impl true
@@ -397,6 +403,41 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
           </div>
         </li>
       </ul>
+
+      <section
+        :if={@installed != []}
+        id="installed-agents"
+        class="ab-project-add"
+        aria-labelledby="installed-agents-title"
+      >
+        <h3 id="installed-agents-title">
+          {gettext("Agents on this machine the board does not follow")}
+        </h3>
+        <p class="ab-meta">
+          {gettext(
+            "They were installed outside the board. Adding one asks the agent which repository it serves and starts following it; the agent's configuration is not changed."
+          )}
+        </p>
+        <ul class="ab-installed">
+          <li :for={entry <- @installed} id={"installed-#{entry.name}"}>
+            <div class="ab-installed__identity">
+              <code>{entry.name}</code>
+              <span class="ab-meta">{gettext("port %{port}", port: entry.port)}</span>
+            </div>
+            <.live_component
+              module={AgentAction}
+              id={"adopt-#{entry.name}"}
+              mode={:adopt_superagent}
+              tone={:primary}
+              profile={entry.name}
+              port={entry.port}
+              label={gettext("Add to the board…")}
+              confirm_label={gettext("Add to the board")}
+              busy_label={gettext("Adding…")}
+            />
+          </li>
+        </ul>
+      </section>
 
       <section id="add-project" class="ab-project-add" aria-labelledby="add-project-title">
         <h3 id="add-project-title">{gettext("Add project")}</h3>

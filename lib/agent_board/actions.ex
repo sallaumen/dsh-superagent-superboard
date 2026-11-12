@@ -98,6 +98,7 @@ defmodule AgentBoard.Actions do
     :dispatch_task,
     :stop_execution,
     :provision_superagent,
+    :adopt_superagent,
     :retry_provision_superagent,
     :remove_superagent,
     :start_superagent,
@@ -200,6 +201,12 @@ defmodule AgentBoard.Actions do
 
   defp spec(:provision_superagent),
     do: %{risk: :red, does: "cria profile, porta, state e setup de um superagent novo"}
+
+  defp spec(:adopt_superagent),
+    do: %{
+      risk: :red,
+      does: "passa a acompanhar um superagent já instalado nesta máquina; liga se estiver parado"
+    }
 
   defp spec(:retry_provision_superagent),
     do: %{risk: :red, does: "provisiona de novo um superagent cuja tentativa falhou"}
@@ -473,6 +480,18 @@ defmodule AgentBoard.Actions do
     do:
       "Dispensar o pedido de @#{login} em #{project(superagent)}? Uma nova menção traz o " <>
         "pedido de volta."
+
+  def phrase(:adopt_superagent, %{profile: profile, port: port}, "en-US"),
+    do:
+      "Add the agent #{profile} (port #{port}) to the board? The board asks it which " <>
+        "repository it serves, starts following that repository and keeps the agent running; " <>
+        "it is started now if it is stopped. Its configuration is not changed."
+
+  def phrase(:adopt_superagent, %{profile: profile, port: port}, _lang),
+    do:
+      "Adicionar ao board o agente #{profile} (porta #{port})? O board pergunta a ele de qual " <>
+        "repositório é, passa a acompanhar esse repositório e a manter o agente ligado; se " <>
+        "estiver parado, é ligado agora. A configuração dele não muda."
 
   def phrase(:provision_superagent, %{repository: repo, source: source, path: path}, "en-US"),
     do:
@@ -904,6 +923,37 @@ defmodule AgentBoard.Actions do
 
       {:error, reason} ->
         {:error, gettext("Could not provision: %{reason}", reason: describe(reason))}
+    end
+  end
+
+  defp execute(:adopt_superagent, %{profile: profile}) do
+    with {:ok, %{owner: owner, name: name} = candidate} <- Superagents.adoptable(profile),
+         {:ok, _tracked} <- Board.add_repository(owner, name),
+         %Repository{} = repository <- Board.find_repository(owner, name) do
+      Superagents.adopt(candidate, repository)
+    end
+    |> case do
+      {:ok, superagent} ->
+        {:ok,
+         gettext("Added: the board now follows %{project} with the agent %{profile}.",
+           project: project(superagent),
+           profile: superagent.profile
+         )}
+
+      {:error, :not_found} ->
+        {:error, gettext("That agent is no longer waiting to be added: reload Projects.")}
+
+      {:error, :no_repository} ->
+        {:error,
+         gettext(
+           "The agent does not say which repository it serves: finish its setup in the dsh panel, then add it."
+         )}
+
+      {:error, :already_registered} ->
+        {:error, gettext("The repository this agent serves already has an agent on the board.")}
+
+      {:error, reason} ->
+        {:error, gettext("The agent did not answer: %{reason}", reason: describe(reason))}
     end
   end
 
@@ -1411,6 +1461,13 @@ defmodule AgentBoard.Actions do
 
   defp describe({:setup, text}) when is_binary(text), do: text
 
+  defp describe({:already_installed, profile}),
+    do:
+      gettext(
+        "this machine already has an agent installed for this repository (%{profile}); add it to the board in Projects instead.",
+        profile: profile
+      )
+
   defp describe(:provision_failed),
     do: gettext("this project's setup did not finish; use Try again.")
 
@@ -1435,6 +1492,7 @@ defmodule AgentBoard.Actions do
     do: profile
 
   defp subject(:provision_superagent, %{repository: repo}), do: "#{repo.owner}/#{repo.name}"
+  defp subject(:adopt_superagent, %{profile: profile}), do: profile
 
   defp subject(:create_tasks, %{repository: repo, requests: requests}),
     do: "#{repo.owner}/#{repo.name} (#{length(requests)})"

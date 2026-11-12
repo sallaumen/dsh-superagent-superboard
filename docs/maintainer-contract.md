@@ -222,6 +222,7 @@ and is recorded as `automatic`.
 | `start_superagent` | red | starts the DeepSeek superagent of one project | UI: `AgentAction` "Ligar" in the Superagentes panel, two steps; "Religar o agente" on that project's board when its agent is down |
 | `stop_superagent` | red | stops that superagent; in-flight work is interrupted | UI: `AgentAction` "Parar", two steps |
 | `pause_superagent` / `resume_superagent` | yellow | pauses/resumes new work without killing the process | UI: one click |
+| `adopt_superagent` | red | follows an agent installed on this machine outside the board: asks it which repository it serves, starts it when stopped, tracks that repository and registers the row (`Superagents.adoptable/2`, `adopt/2`); the agent's configuration is not changed | UI: "Adicionar ao board…" in Projects, per installed agent, with the sentence |
 | `retry_provision_superagent` | red | runs a failed provisioning again with the stored source and checkout, one attempt at a time; it refuses a profile or state it did not create | UI: `AgentAction` "Tentar de novo" on the failed project, two steps |
 | `remove_superagent` | red | stops the agent, archives profile/state and removes the project from the board | UI: `AgentAction` "Remover", two steps |
 | `scale_superagent` | yellow | changes `maxWorkers` through the DSH settings API | UI: −/+ on the project card |
@@ -1158,6 +1159,36 @@ that (`AgentBoard.Superagents.Policy`).
   rules, conflict, unknown) and `superagents_panel_test.exs` (the bell item,
   the panel, one click, a silent agent). The provisioning change has no test
   of its own: the provisioner's test stops before the prompts.
+
+## An agent installed outside the board
+
+The board's first agents were rows a migration wrote for the owner's two
+repositories; another board starts with none, and an agent set up by hand
+(the prototype's `SETUP.md`) runs without the board seeing it.
+
+- **What waits to be added** (`Superagents.unregistered/0`): a profile under
+  `~/.dsh/profiles` whose `cordis.patch.yml` loads `dsh-superagent` with a
+  port and a `stateDir`, and whose name and port are in no row. Projects reads
+  it while that section is on screen (a few small files, no network) and
+  lists it above "Adicionar projeto".
+- **Adding is the red action `adopt_superagent`.** Nothing is typed: the
+  agent says who it is (`Manager.identity/1`, `GET /state`:
+  `setup.accounts.repository`, `setup.accounts.agent`, `load.maxWorkers`). An
+  agent that does not answer is started through the manager and asked again
+  for up to a minute. The registry then tracks that repository and
+  `Superagents.adopt/2` registers the row, wanted running, with the agent's
+  own profile, port, state folder and session limit. The agent's profile,
+  settings and prompts are not touched.
+- **Refused:** an agent that names no repository (its setup is not finished),
+  a repository that already has an agent on the board, an agent that never
+  answers. Nothing is tracked or registered then.
+- **No second agent on one repository.** `Superagents.provision/4` asks each
+  waiting agent that answers and refuses a new project for a repository one
+  of them already serves (`{:already_installed, profile}`): a copy would
+  answer the same mentions twice.
+- The tests (`superagents/adopt_test.exs`, `adopt_agent_test.exs`) build
+  their own profiles folder; the test environment's `:dsh_profiles_dir` does
+  not exist, so no test reads this machine's agents.
 
 ## The dsh panel, signed in
 
