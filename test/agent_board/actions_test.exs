@@ -919,14 +919,19 @@ defmodule AgentBoard.ActionsTest do
           agents: fn -> [] end,
           cli: fn _ -> {:error, :missing} end,
           board_ai: fn -> %{provider: :rehearsal} end,
-          voice: fn -> {:error, :not_configured} end
+          voice: fn -> {:error, :not_configured} end,
+          # No agent yet, and nothing of a first one on this machine: optional
+          # parts that are not there are off, and the check still passes.
+          waiting: fn -> 0 end,
+          agent_tools: fn -> [{"node", :ok}, {"tmux", :missing}] end,
+          agent_bot: fn -> {:error, :missing} end
         ]
       )
 
       assert {:ok, {_rows, %{latest: %{passed?: true}}}} = Actions.run(:check_setup, %{}, owner)
       saved = Settings.get("setup_check_passed") |> Jason.decode!()
       assert Map.keys(saved) |> Enum.sort() == ["at", "counts"]
-      assert saved["counts"] == %{"ok" => 3, "off" => 4}
+      assert saved["counts"] == %{"ok" => 3, "off" => 6}
 
       assert %Decision{action: "check_setup", risk: "green", decision: "automatic", outcome: "ok"} =
                last()
