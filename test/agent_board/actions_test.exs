@@ -43,6 +43,7 @@ defmodule AgentBoard.ActionsTest do
     :pause_superagent,
     :resume_superagent,
     :scale_superagent,
+    :apply_agent_policy,
     :grant_agent_access,
     :revoke_agent_access,
     :dismiss_access_request,
@@ -950,8 +951,12 @@ defmodule AgentBoard.ActionsTest do
       {~r/\bSuperagents\.retry_provision\(/, []},
       {~r/\bAgentAccess\.(grant|revoke|dismiss)\(/, []},
       {~r/\b(Voice\.put_\w+|ElevenLabs\.save_voice)\(/, []},
+      # Policy.apply is the effect behind :apply_agent_policy; it stores the
+      # project's own rules.
+      {~r/\bPolicy\.apply\(/, []},
       {~r/\bSettings\.put\(/,
        [
+         "lib/agent_board/superagents/policy.ex",
          "lib/agent_board/voice.ex",
          "lib/agent_board/eleven_labs.ex",
          "lib/agent_board/daily_summary.ex"

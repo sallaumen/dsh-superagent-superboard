@@ -16,7 +16,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   alias AgentBoard.Orchestrator
   alias AgentBoardWeb.BoardComponents.AgentAction
-  alias AgentBoardWeb.BoardComponents.Settings.ProjectAccess
+  alias AgentBoardWeb.BoardComponents.Settings.{ProjectAccess, ProjectPolicy}
   alias AgentBoardWeb.Time
 
   attr :active, :boolean, default: false
@@ -278,6 +278,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               superagent={superagent}
               visible={@active and expanded?(@expanded, superagent)}
               tz_offset={@tz_offset}
+            />
+
+            <.live_component
+              module={ProjectPolicy}
+              id={"project-#{superagent.id}-policy-panel"}
+              superagent={superagent}
+              visible={@active and expanded?(@expanded, superagent)}
             />
 
             <div class="ab-project__foot">
