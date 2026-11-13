@@ -20,7 +20,16 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   @behaviour AgentBoard.Superagents.Provisioner
 
   alias AgentBoard.{AgentAccess, Superagents}
-  alias AgentBoard.Superagents.{Bot, BotAccess, DshManager, Policy, Prototype, Superagent}
+
+  alias AgentBoard.Superagents.{
+    AlpineRuntime,
+    Bot,
+    BotAccess,
+    DshManager,
+    Policy,
+    Prototype,
+    Superagent
+  }
 
   @wrapper """
   #!/bin/sh
@@ -43,7 +52,8 @@ defmodule AgentBoard.Superagents.DshProvisioner do
   def provision(%Superagent{} = superagent, :first, attrs) do
     with :ok <- validate(attrs),
          :ok <- first_target_free(superagent),
-         :ok <- first_ready() do
+         :ok <- first_ready(),
+         :ok <- AlpineRuntime.check() do
       build_first(superagent, attrs, File.exists?(superagent.state_dir))
     end
   end

@@ -39,7 +39,7 @@ Esta etapa é opcional. O [DeepSeek Harness](https://www.deepseek.com/en/harness
 | Execução | `Python 3.8+` e `tmux` |
 | Conta | Uma conta GitHub separada para o bot, com acesso de escrita; um provedor de modelo configurado no perfil do Harness |
 
-1. Instale o [comando do Harness](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#install): `npm install -g @deepseek-ai/dsh@0.2.1-rc.3`. Confira com `dsh --version`. No Linux, use Debian com `procps`; o teste no Alpine não chegou ao fim.
+1. Instale o [comando do Harness](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#install): `npm install -g @deepseek-ai/dsh@0.2.1-rc.3`. Confira com `dsh --version`. No Debian, instale `procps`. No Alpine, substitua o comando global do npm pelos [passos para Alpine](#instalação-no-alpine-linux-arm64).
 2. Para o provedor padrão da API DeepSeek, defina `DEEPSEEK_API_KEY` no `.env.local` e reinicie o board. Para usar outro provedor, configure-o no [Harness](https://www.deepseek.com/en/harness/).
 3. [Entre com a conta do bot](agent/setup.md#2-the-bot-identity) e confira o login do GitHub. Deixe o board criar o perfil do projeto.
 
@@ -53,6 +53,25 @@ Abra **Configurações → Projetos → Conectar o Super Agent** e escolha o cam
 Para instalar pelo terminal, siga o [guia oficial](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md). Veja também os [requisitos e permissões](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#prerequisites).
 
 **Teste uma tarefa real.** De uma conta autorizada, abra uma issue pequena e mencione o login real do bot. Em um repositório de jogo, por exemplo: “@seu-bot Documente um controle que já existe no README e abra um PR.” Confira a resposta na issue e, no painel, o ticket e o PR associado. Conectar o perfil por si só não envia tarefas.
+
+### Instalação no Alpine Linux (ARM64)
+
+Use Node 22 **para musl** (validado com `22.23.5`; a [imagem oficial Node 22 Alpine](https://hub.docker.com/_/node) inclui esse binário). Na máquina do agente instale `procps-ng`, Python 3, tmux, Git e GitHub CLI. Para compilar módulos nativos do npm, podem ser necessários `cmake`, `build-base` e `linux-headers`.
+
+Na pasta do board, instale o Harness em um diretório próprio. O manifesto seleciona a dependência compatível com musl sem alterar o Harness global:
+
+```sh
+node --version   # 22.19+ na linha 22.x
+agent_tools="$HOME/.local/share/superboard/alpine-harness"
+mkdir -p "$agent_tools"
+cp scripts/agent/alpine/package.json "$agent_tools/"
+npm install --prefix "$agent_tools"
+export PATH="$agent_tools/node_modules/.bin:$PATH"
+dsh --version
+node priv/agent/check-alpine-harness.cjs "$(command -v dsh)"
+```
+
+Se o último comando terminar sem saída e com código zero, mantenha esse `PATH` e o Node 22 no processo que inicia o board (inclusive no serviço). Siga com o login do bot e a confirmação em **Configurações → Projetos**. O código `134` foi reproduzido com o binário incompatível do Koffi; `42` indica que o gerenciador não reconhece o nome do processo Node. [Diagnóstico em inglês](agent/setup.md#alpine-linux-arm64).
 
 ## Do pedido às issues
 

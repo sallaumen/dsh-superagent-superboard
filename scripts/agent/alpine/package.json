@@ -1,0 +1,6 @@
+{
+  "name": "superboard-alpine-harness",
+  "private": true,
+  "dependencies": { "@deepseek-ai/dsh": "0.2.1-rc.3" },
+  "overrides": { "koffi": "3.3.8" }
+}

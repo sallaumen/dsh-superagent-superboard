@@ -9620,3 +9620,13 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Waiting for required checks"
 msgstr ""
+
+#: lib/agent_board/superagents/alpine_runtime.ex:33
+#, elixir-autogen, elixir-format
+msgid "The Harness could not load its native runtime. Follow the Alpine installation guide for the compatible Koffi dependency, then try again."
+msgstr ""
+
+#: lib/agent_board/superagents/alpine_runtime.ex:26
+#, elixir-autogen, elixir-format
+msgid "The agent manager cannot recognize this Node process. Use Node 22 as described in the Alpine installation guide, then try again."
+msgstr ""
