@@ -17,6 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
   alias AgentBoardWeb.Time
 
+  attr :gates, :map, default: %{}
   attr :running, :list, required: true
   attr :frozen, :boolean, default: false
   attr :frozen_at, :any, default: nil
@@ -95,6 +96,12 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
             <code>{task.step.code}</code>
             <span :if={task.step.note} class="ab-meta ab-run__note" title={task.step.note}>{task.step.note}</span>
           </div>
+
+          <AgentBoardWeb.BoardComponents.MergeProgress.progress
+            :for={{{:pull_request, number}, _} <- task.phases}
+            snapshot={@gates[number]}
+            compact
+          />
 
           <%!-- ValueChange (on #sec-now): the count of done stages rising draws the line into the new one. --%>
           <div

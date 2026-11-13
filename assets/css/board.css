@@ -3024,3 +3024,8 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .sb-skills__item button { min-height: 44px; color: var(--you); cursor: pointer; }
 .sb-skills__item small { color: var(--ink-muted); font-size: 12px; }
 @media (max-width: 399px) { .sb-chat { padding-inline: 14px; } .sb-skills__card { padding-inline: 10px; } }
+
+/* Merge evidence follows the selected PR; long CI job names wrap on phones. */
+.ab-merge-progress { display: grid; gap: .45rem; padding-block: .65rem; min-width: 0; overflow-wrap: anywhere; }
+.ab-merge-progress ul { list-style: none; padding: 0; margin: 0; }
+.ab-merge-progress li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem; padding-block: .3rem; }
