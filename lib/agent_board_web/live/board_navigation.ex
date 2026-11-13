@@ -138,6 +138,7 @@ defmodule AgentBoardWeb.BoardNavigation do
       inspector_tab: "conversa",
       settings_section: section,
       project_path: path,
+      project_selection: {params["project"], params["area"]},
       settings_costs: costs_params(params),
       history_list: if(params["list"] == "prs", do: "prs", else: "tasks"),
       history_query: String.slice(params["q"] || "", 0, 120),

@@ -2398,10 +2398,10 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-merge-heading { display: flex; justify-content: space-between; gap: var(--space-3); align-items: center; }
 .ab-merge-heading h4 { font-size: 15px; font-weight: 600; }
 .ab-merge-body { display: grid; gap: var(--space-3); }
-.ab-merge-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: var(--space-2) var(--space-4); margin: 0; }
-.ab-merge-facts dt { color: var(--ink-muted); font-size: 12px; }
-.ab-merge-facts dd { margin: 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
-.ab-merge-facts code { font: 12px var(--font-mono); }
+.ab-merge-summary, .ab-merge-revision { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-2); margin: 0; }
+.ab-merge-summary { font-size: 14px; }
+.ab-merge-revision { color: var(--ink-muted); font-size: 12px; }
+.ab-merge-revision code { font: 12px var(--font-mono); }
 .ab-merge-checklist { border-block: 1px solid var(--line); }
 .ab-merge-checklist summary { cursor: pointer; padding: var(--space-3) 0; font-size: 13px; line-height: 20px; }
 .ab-merge-checklist summary span { display: inline-block; margin-inline-start: var(--space-3); color: var(--ink-muted); }

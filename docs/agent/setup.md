@@ -358,7 +358,7 @@ Run the host-specific tests with the same Node runtime as DSH:
 
 ### Update the Harness for connected projects
 
-Open the board on **localhost → Settings → Projects → Sync agent runtimes**.
+Open the board on **localhost → Settings → Projects → Agent maintenance → Sync agent runtimes**.
 The list above the button is the scope you are approving. Progress and the
 last result appear beside each project; you can leave Settings while it runs.
 

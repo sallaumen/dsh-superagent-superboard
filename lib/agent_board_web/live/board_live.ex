@@ -138,6 +138,7 @@ defmodule AgentBoardWeb.BoardLive do
         panel: nil,
         settings_section: nil,
         project_path: "github",
+        project_selection: {nil, nil},
         settings_costs: %{page: nil, days: nil},
         reload_pending: false,
         attention_timer: nil,
@@ -3388,6 +3389,7 @@ defmodule AgentBoardWeb.BoardLive do
             active={@panel == "settings"}
             section={@settings_section}
             project_path={@project_path}
+            project_selection={@project_selection}
             costs={@settings_costs}
             log_view={
               %{

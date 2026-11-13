@@ -7,6 +7,8 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
   alias AgentBoard.{Board, Repo, Superagents}
   alias AgentBoard.Superagents.{FakeManager, FakeProvisioner, Leftovers, Policy, Superagent}
 
+  alias AgentBoardWeb.BoardComponents.Settings.ProjectMerge
+
   defp superagent!(repo, attrs) do
     {:ok, superagent} =
       Superagents.create(
@@ -106,21 +108,92 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     agent = superagent!(repo, %{observed_state: "ready"})
     FakeManager.put_github_source(agent.id, {:ok, %{enabled: false}})
     {:ok, view, _} = live(conn, "/?repo=fixture/guard&panel=settings&section=projects")
-    render_async(view)
+    render_async(view, 5_000)
     row = "#project-#{agent.id} .ab-project__row"
     assert has_element?(view, row, "Ligado")
     assert has_element?(view, row, "Trava inativa")
     refute has_element?(view, row <> " [phx-click=superagent_scale]")
     view |> element(row) |> render_click()
-    render_async(view)
+    render_async(view, 5_000)
     panel = "#project-#{agent.id}-merge"
     assert has_element?(view, panel, "Trava inativa")
 
     FakeManager.put_github_source(agent.id, {:error, :unavailable})
     view |> element(panel <> " button[phx-click=refresh]") |> render_click()
-    render_async(view)
+    render_async(view, 5_000)
     assert has_element?(view, row, "Trava não verificada")
     assert has_element?(view, panel, "Trava não verificada")
+  end
+
+  test "a machine policy names its source without attributing rules to a GitHub revision" do
+    policy = %{
+      branch: "main",
+      sha: String.duplicate("a", 40),
+      url: nil,
+      source: :machine,
+      result: {:ok, %{"review" => true, "local" => ["Unit"], "github" => []}}
+    }
+
+    html =
+      render_component(&ProjectMerge.render/1,
+        id: "machine-policy",
+        myself: 1,
+        policy: policy,
+        last_policy: nil,
+        enforcement: :active
+      )
+
+    assert html =~ "Regras de merge configuradas nesta máquina"
+    assert html =~ "Aprovação independente obrigatória"
+    assert html =~ "Ver 1 check obrigatório"
+    refute html =~ "Ver política na main"
+    refute html =~ "aaaaaaaa"
+  end
+
+  test "a project bookmark restores the area independently of the board repository", %{conn: conn} do
+    {:ok, board} = Board.add_repository("fixture", "board-filter")
+    {:ok, repo} = Board.add_repository("fixture", "bookmark")
+    agent = superagent!(repo, %{})
+    list = "/?panel=settings&repo=fixture%2Fboard-filter&section=projects"
+    {:ok, view, _} = live(conn, list)
+    view |> element("#project-#{agent.id} .ab-project__row") |> render_click()
+
+    assert_patch(
+      view,
+      "/?panel=settings&project=fixture%2Fbookmark&repo=fixture%2Fboard-filter&section=projects"
+    )
+
+    view
+    |> element("#project-#{agent.id}-details [phx-value-section=maintenance]")
+    |> render_click()
+
+    url = assert_patch(view)
+    assert URI.decode_query(URI.parse(url).query)["area"] == "maintenance"
+
+    {:ok, reopened, _} = live(conn, url)
+
+    assert has_element?(
+             reopened,
+             "#project-#{agent.id}-details:not([hidden]) [phx-value-section=maintenance][aria-pressed=true]"
+           )
+
+    render_patch(reopened, list <> "&project=fixture%2Fbookmark&area=retired")
+
+    assert has_element?(
+             reopened,
+             "#project-#{agent.id}-details [phx-value-section=merge][aria-pressed=true]"
+           )
+
+    render_patch(reopened, list <> "&project=fixture%2Fboard-filter&area=access")
+    assert has_element?(reopened, "#tracked-#{board.id}-merge:not([hidden])")
+    render_patch(reopened, list <> "&project=fixture%2Fremoved&area=access")
+    refute has_element?(reopened, ".ab-project__row[aria-expanded=true]")
+
+    assert has_element?(
+             reopened,
+             "#settings-projects [role=status]",
+             "Este projeto não está conectado"
+           )
   end
 
   test "an agent with other instructions is in the bell, and one click applies the policy",

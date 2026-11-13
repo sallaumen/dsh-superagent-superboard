@@ -18,8 +18,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   alias AgentBoard.Actions
   alias AgentBoard.GitHub
-  alias AgentBoard.ProjectMergePolicy
   alias AgentBoard.Orchestrator
+  alias AgentBoard.ProjectMergePolicy
   alias AgentBoard.Superagents
   alias AgentBoard.Superagents.RuntimeSync
   alias AgentBoardWeb.BoardComponents.AgentAction
@@ -35,6 +35,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   alias AgentBoardWeb.Locale
   alias AgentBoardWeb.Time
 
+  @areas ~w(merge access instructions maintenance)
+
+  attr :project_selection, :any, default: {nil, nil}
   attr :project_path, :string, required: true
   attr :repo, :map, default: nil
   attr :active, :boolean, default: false
@@ -75,26 +78,44 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         Enum.any?(socket.assigns.superagents, &(runtime_status(&1) == "waiting"))
       )
 
-    expanded =
-      case socket.assigns.expanded do
-        nil ->
-          nil
+    # Resolve the bookmark against what is still connected. The board repo
+    # filter and the project being inspected are independent.
+    tracked = tracked_only(socket.assigns.repos, socket.assigns.superagents)
+    slugs = Map.new(tracked, &{"repo-#{&1.id}", "#{&1.owner}/#{&1.name}"})
 
-        id ->
-          if Enum.any?(socket.assigns.superagents, &(to_string(&1.id) == to_string(id))) or
-               Enum.any?(socket.assigns.repos, &("repo-#{&1.id}" == id)),
-             do: to_string(id),
-             else: nil
-      end
+    projects =
+      Map.merge(slugs, Map.new(socket.assigns.superagents, &{to_string(&1.id), project_name(&1)}))
+
+    {slug, area} = socket.assigns.project_selection
+
+    expanded =
+      if socket.assigns.active and socket.assigns.project_path == "list",
+        do: selected_id(projects, slug)
+
+    detail =
+      if expanded && !String.starts_with?(expanded, "repo-") && area in @areas,
+        do: area,
+        else: "merge"
 
     # Agents installed outside the board: a few small files, read only while
     # this section is on screen.
     {:ok,
      socket
-     |> assign(expanded: expanded, github_configured?: GitHub.configured?())
+     |> assign(
+       projects: projects,
+       expanded: expanded,
+       missing_project:
+         socket.assigns.active && socket.assigns.project_path == "list" && is_binary(slug) &&
+           is_nil(expanded),
+       detail: detail,
+       github_configured?: GitHub.configured?()
+     )
      |> sync_guards()
      |> read_profiles()}
   end
+
+  defp selected_id(projects, slug),
+    do: Enum.find_value(projects, fn {id, name} -> name == slug && id end)
 
   # Compare connection identities, not ticker timestamps. Re-entering Projects
   # samples again; unrelated broadcasts do not contact every agent.
@@ -121,8 +142,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   defp read_guards(socket, agents) do
     ids = Enum.map(agents, & &1.id)
 
-    socket
-    |> start_async(:guards, fn ->
+    start_async(socket, :guards, fn ->
       results =
         Task.Supervisor.async_stream_nolink(
           AgentBoard.Superagents.TaskSupervisor,
@@ -195,15 +215,23 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   @impl true
   def handle_event("toggle_project", %{"id" => id}, socket) do
-    id = to_string(id)
-    expanded = if to_string(socket.assigns.expanded) == id, do: nil, else: id
-    {:noreply, assign(socket, expanded: expanded, detail: "merge")}
+    case Map.fetch(socket.assigns.projects, id) do
+      {:ok, slug} ->
+        {:noreply,
+         navigate(socket, if(socket.assigns.expanded == id, do: %{}, else: %{"project" => slug}))}
+
+      :error ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("project_detail", %{"id" => id, "section" => section}, socket)
-      when section in ~w(merge access instructions maintenance) do
-    {:noreply,
-     if(socket.assigns.expanded == id, do: assign(socket, :detail, section), else: socket)}
+      when section in @areas do
+    if id == socket.assigns.expanded do
+      {:noreply, navigate(socket, %{"project" => socket.assigns.projects[id], "area" => section})}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("prefill_project", %{"owner" => owner, "name" => name}, socket) do
@@ -271,6 +299,10 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         role="status"
       >
         {gettext("No project yet. Add a repository below to get started.")}
+      </p>
+
+      <p :if={@missing_project} class="ab-meta" role="status">
+        {gettext("This project is no longer connected to the board.")}
       </p>
 
       <div id="project-setup-options" hidden={!@setup_open}>
@@ -893,6 +925,12 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
     </div>
     """
   end
+
+  defp navigate(socket, params),
+    do:
+      push_patch(socket,
+        to: BoardNavigation.settings_path(socket.assigns.repo, "projects", params)
+      )
 
   defp max_workers, do: Orchestrator.worker_range().last
 
