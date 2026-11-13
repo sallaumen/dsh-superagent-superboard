@@ -82,6 +82,7 @@ config :agent_board, Oban,
     {Oban.Plugins.Cron,
      crontab: [
        {"*/5 * * * *", AgentBoard.Sync.Worker},
+       {"* * * * *", AgentBoard.Sync.BlockedMerges},
        {"*/5 * * * *", AgentBoard.Usage.Worker}
      ]}
   ]

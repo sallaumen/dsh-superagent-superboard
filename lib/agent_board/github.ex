@@ -1,6 +1,8 @@
 defmodule AgentBoard.GitHub do
   @moduledoc "The GitHub client: read-only for the sync, plus the board's writes."
 
+  require Logger
+
   @transient_statuses [500, 502, 503, 504]
   @repeatable_methods [:get, :head, :patch]
   @never_sent [:econnrefused, :nxdomain, :ehostunreach, :enetunreach]
@@ -43,6 +45,46 @@ defmodule AgentBoard.GitHub do
 
   defp token,
     do: Application.get_env(:agent_board, :github_token, System.get_env("GITHUB_TOKEN", ""))
+
+  @doc "Latest closing transition for up to twelve issues in one repository; a partial GraphQL result is not evidence."
+  def issue_closures(client, repository, numbers) do
+    true = length(numbers) in 1..12 and Enum.all?(numbers, &(is_integer(&1) and &1 > 0))
+
+    fields =
+      Enum.map_join(numbers, " ", fn n ->
+        "i#{n}:issue(number:#{n}){ number state timelineItems(last:1,itemTypes:[CLOSED_EVENT,REOPENED_EVENT]){ nodes{ __typename ... on ClosedEvent{ closer{ __typename ... on PullRequest{ number mergedAt repository{nameWithOwner} } } } } } }"
+      end)
+
+    query = "query($owner:String!,$name:String!){repository(owner:$owner,name:$name){#{fields}}}"
+    variables = %{owner: repository.owner, name: repository.name}
+
+    response =
+      Req.post!(client,
+        url: "/graphql",
+        json: %{query: query, variables: variables},
+        retry: false,
+        receive_timeout: 8_000
+      )
+
+    case body!(response) do
+      %{"errors" => errors} when is_list(errors) ->
+        if Enum.any?(errors, &(is_map(&1) && &1["type"] == "RATE_LIMITED")) do
+          raise AgentBoard.GitHub.RateLimited, retry_after: wait_seconds(response)
+        else
+          Logger.warning(
+            "GitHub returned partial issue closure evidence for #{repository.owner}/#{repository.name}"
+          )
+
+          %{}
+        end
+
+      %{"data" => %{"repository" => issues}} when is_map(issues) ->
+        issues
+
+      _ ->
+        %{}
+    end
+  end
 
   @doc "Who the board's token is on GitHub: a free read of `/user`."
   @spec login() :: {:ok, String.t()} | {:error, term()}

@@ -588,6 +588,8 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The failure block of the open task: the same words as its card, with
   # the attempts and which of them the board asked for.
+  defp inspector_failure(_socket, %{state: state}) when state in ["done", "closed"], do: nil
+
   defp inspector_failure(socket, task) do
     ticket =
       socket.assigns
