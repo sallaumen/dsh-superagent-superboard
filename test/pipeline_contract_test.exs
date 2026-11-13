@@ -9,7 +9,7 @@ defmodule AgentBoard.PipelineContractTest do
 
   defp aliases, do: Mix.Project.config()[:aliases]
 
-  test "gate is check-only and mirrors the CI gates job" do
+  test "the local backend gate is check-only" do
     assert aliases()[:gate] == [
              "deps.unlock --check-unused",
              "hex.audit",
@@ -47,52 +47,21 @@ defmodule AgentBoard.PipelineContractTest do
     end
   end
 
-  test "every alias the CI invokes exists" do
-    # mirrors .github/workflows/ci.yml: backend runs gate; frontend runs the
-    # assets steps; the release job runs compile/phx.digest/release directly.
-    for alias_name <- [:gate, :"assets.setup", :"assets.build", :"assets.deploy"] do
-      assert Keyword.get(aliases(), alias_name) != nil,
-             "alias #{inspect(alias_name)} ausente"
-    end
+  test "the board requires the full local preflight and release, independent of Actions" do
+    policy = Jason.decode!(File.read!(".github/superboard-merge.json"))
+    assert policy["github"] == []
+    assert Map.values(policy["local"]) == [["make", "-j1", "check", "release"]]
   end
 
-  defp workflow do
-    File.read!(Path.join(File.cwd!(), ".github/workflows/ci.yml"))
-  end
-
-  test "the workflow has the five pipeline jobs" do
-    for job <- ["gates", "backend", "frontend", "library", "release"] do
-      assert String.contains?(workflow(), "\n  #{job}:"),
-             "job #{job} ausente no ci.yml"
-    end
-  end
-
-  test "the workflow cancels stale runs and supports manual dispatch" do
-    assert String.contains?(workflow(), "workflow_dispatch:")
-    assert String.contains?(workflow(), "concurrency:")
-    assert String.contains?(workflow(), "cancel-in-progress: true")
-  end
-
-  test "the workflow enforces the same commands the local pipelines run" do
-    wf = workflow()
-
-    for command <- [
-          "mix compile --warnings-as-errors",
-          "mix format --check-formatted",
-          "mix credo --strict",
-          "mix deps.unlock --check-unused",
-          "mix hex.audit",
-          "mix agent_kit.check",
-          "mix test --partitions 4",
-          "check_assets.sh",
-          "mix assets.setup",
-          "mix assets.build",
-          "mix assets.deploy",
-          "mix phx.digest",
-          "mix release --overwrite"
-        ] do
-      assert String.contains?(wf, command), "comando ausente no ci.yml: #{command}"
-    end
+  test "each PR gets one lightweight check without a database or dependency install" do
+    workflow = File.read!(".github/workflows/ci.yml")
+    assert workflow =~ "pull_request:"
+    assert workflow =~ "workflow_dispatch:"
+    assert workflow =~ "cancel-in-progress: true"
+    assert workflow =~ "python3 -m unittest discover -s test/merge_gate"
+    assert length(Regex.scan(~r/^    runs-on:/m, workflow)) == 1
+    refute workflow =~ "mix deps.get"
+    refute workflow =~ "services:"
   end
 
   test "shared practices have one authoring source and no copied consumer payload" do
@@ -103,7 +72,7 @@ defmodule AgentBoard.PipelineContractTest do
     assert Path.wildcard(".claude/skills/eak-*/SKILL.md") == []
     assert File.read!(".elixir-agent-kit/START.md") =~ "../deps/elixir_agent_kit/priv/library/"
 
-    for path <- ["Makefile", "scripts/ci-local.sh", ".github/workflows/ci.yml"] do
+    for path <- ["Makefile", "scripts/ci-local.sh"] do
       content = File.read!(path)
       assert content =~ "mix agent_kit.check"
       refute content =~ "validar_biblioteca.py"

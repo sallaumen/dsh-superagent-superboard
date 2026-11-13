@@ -9859,3 +9859,29 @@ msgstr ""
 
 msgid "Not required"
 msgstr ""
+
+#: lib/agent_board/lanes.ex:943
+#, elixir-autogen, elixir-format
+msgid "GitHub Actions failed on %{checks}; no evidence of local CI."
+msgstr ""
+
+#: lib/agent_board/lanes.ex:940
+#: lib/agent_board_web/live/board_components/inspector.ex:1229
+#, elixir-autogen, elixir-format
+msgid "GitHub Actions failed; no evidence of local CI."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/merge_progress.ex:82
+#, elixir-autogen, elixir-format
+msgid "Merge blocked · policy changed during validation"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:61
+#, elixir-autogen, elixir-format
+msgid "Merge policy configured on this machine"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:92
+#, elixir-autogen, elixir-format
+msgid "No merge policy configured for this project."
+msgstr ""

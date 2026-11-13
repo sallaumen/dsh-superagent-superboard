@@ -2,11 +2,8 @@ defmodule AgentBoard.LocalCI do
   @moduledoc """
   The local gate the executor actually ran, read from its own reports.
 
-  GitHub Actions is unavailable for this account because of the billing limit,
-  so a red remote check is not evidence that the code failed. When an agent
-  report says `mix precommit` passed (tests, format, Credo), that is the
-  trustworthy signal. The board only reads what the report says; a missing
-  statement stays unknown.
+  A failed remote check alone does not identify the cause or the outcome of
+  local validation. A missing local report stays unknown.
 
   Reports are text written by the executor. This module extracts the PR
   numbers they name, the local state and a short excerpt for the hover. It

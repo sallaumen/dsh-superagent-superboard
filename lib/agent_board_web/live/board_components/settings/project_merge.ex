@@ -69,7 +69,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
             <dt>{gettext("Default branch")}</dt>
             <dd>
               <a
-                :if={match?({:ok, _}, @policy.result)}
+                :if={@policy.url && match?({:ok, _}, @policy.result)}
                 class="ab-link"
                 href={@policy.url}
                 title={gettext("View merge policy on GitHub")}
@@ -78,7 +78,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
               >
                 <code>{@policy.branch}@{String.slice(@policy.sha, 0, 8)}</code>
               </a>
-              <code :if={!match?({:ok, _}, @policy.result)}>{@policy.branch}@{String.slice(
+              <code :if={!@policy.url || !match?({:ok, _}, @policy.result)}>{@policy.branch}@{String.slice(
                 @policy.sha,
                 0,
                 8
@@ -86,6 +86,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
             </dd>
           </div>
         </dl>
+        <p :if={@policy && @policy[:source] == :machine && @policy.result != :missing}>
+          {gettext("Merge policy configured on this machine")}
+        </p>
         <%= case @policy do %>
           <% %{result: {:ok, policy}} -> %>
             <details
@@ -115,18 +118,22 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
               </div>
             </details>
           <% %{result: :missing} -> %>
-            <p>{gettext("No merge policy on this branch.")}</p>
+            <p>{gettext("No merge policy configured for this project.")}</p>
           <% %{result: :invalid} -> %>
             <p>
               {gettext("The merge guard rejects this policy.")}
-              <a class="ab-link" href={@policy.url} target="_blank" rel="noopener noreferrer">{gettext(
-                "View merge policy on GitHub"
-              )}</a>
+              <a
+                :if={@policy.url}
+                class="ab-link"
+                href={@policy.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >{gettext("View merge policy on GitHub")}</a>
             </p>
           <% %{result: :unavailable} -> %>
             <p>{gettext("Could not read the repository policy.")}</p>
             <a
-              :if={@last_policy}
+              :if={@last_policy && @last_policy.url}
               class="ab-link"
               href={@last_policy.url}
               target="_blank"

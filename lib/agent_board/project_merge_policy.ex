@@ -19,17 +19,24 @@ defmodule AgentBoard.ProjectMergePolicy do
                "/git/ref/heads/" <> URI.encode(branch, &(&1 == ?/ or URI.char_unreserved?(&1)))
            ),
          true <- Regex.match?(@sha, sha) do
-      result =
+      {source, result} =
         case fetch(client, base <> "/contents/" <> @policy_path, ref: sha) do
-          {:ok, %{"encoding" => "base64", "content" => content}} -> describe(content)
-          :not_found -> :missing
-          _ -> :unavailable
+          {:ok, %{"encoding" => "base64", "content" => content}} ->
+            {:repository, describe(content)}
+
+          :not_found ->
+            {:machine, describe_local(slug)}
+
+          _ ->
+            {:repository, :unavailable}
         end
 
       %{
         branch: branch,
         sha: sha,
-        url: "https://github.com/#{slug}/blob/#{sha}/#{@policy_path}",
+        source: source,
+        url:
+          if(source == :repository, do: "https://github.com/#{slug}/blob/#{sha}/#{@policy_path}"),
         result: result
       }
     else
@@ -54,6 +61,14 @@ defmodule AgentBoard.ProjectMergePolicy do
   end
 
   defp describe(_), do: :unavailable
+
+  defp describe_local(slug) do
+    case guard(["describe-local", slug], []) do
+      {json, 0} -> {:ok, Jason.decode!(json)}
+      {_, 3} -> :missing
+      _ -> :invalid
+    end
+  end
 
   def enforcement(nil, _repo), do: :no_agent
 
