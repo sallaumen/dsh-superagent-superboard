@@ -18,8 +18,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
   alias AgentBoard.AgentTools
   alias AgentBoard.AI.Budget
   alias AgentBoard.Setup
-  alias AgentBoard.Setup.WorkerTitles
   alias AgentBoard.Setup.Validation
+  alias AgentBoard.Setup.WorkerTitles
   alias AgentBoardWeb.Time
 
   attr :active, :boolean, default: false

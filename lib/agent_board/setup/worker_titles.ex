@@ -1,6 +1,8 @@
 defmodule AgentBoard.Setup.WorkerTitles do
   @moduledoc "On-disk evidence from the same installer the owner runs on the Harness host."
 
+  alias AgentBoard.System.Git
+
   @script "scripts/agent/install-worker-titles.py"
   @states %{
     "installed" => :installed,
@@ -17,7 +19,7 @@ defmodule AgentBoard.Setup.WorkerTitles do
         Path.expand("~/.dsh")
 
     with python when is_binary(python) <- System.find_executable("python3"),
-         script = Path.join(AgentBoard.System.Git.root(), @script),
+         script = Path.join(Git.root(), @script),
          true <- File.regular?(script),
          {output, 0} <-
            System.cmd(python, [script, "--check"],
