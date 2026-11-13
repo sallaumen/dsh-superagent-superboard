@@ -15,6 +15,34 @@ An approval, when required, must cover the current commit and come from someone 
 
 Each attempt records a snapshot atomically under `~/.local/state/superboard/merge/OWNER/REPO/PR.json` (override with `SUPERBOARD_GATE_DIR` for both board and worker). Only check labels, states, revisions and outcomes are stored, not command output or credentials. Overlapping attempts on the same PR are refused. A later attempt reruns checks.
 
+## The executor's self-review
+
+Before requesting delivery, the executor reviews its own diff and leaves one
+comment on the PR, labelled as the author's self-review. That is not independent
+approval: it does not satisfy a policy's `review: true`, and the executor never
+submits a formal GitHub approval of its own work. When review is required, a
+different person approves the current commit.
+
+The comment records the full head SHA it covers, the scope reviewed, the exact
+commands and their real results, and what was not validated. Refresh it when the
+head changes; a comment for an older SHA is not evidence for the current one.
+Use placeholders only in this template — fill the comment with real values from
+that head, never with a result copied from another commit, PR or ticket.
+
+```markdown
+This is by an automated agent, not a human.
+
+## Author's self-review
+
+This is the author's self-review, not independent approval.
+
+- Head: `<full 40-character SHA>`
+- Scope: `<files/areas read in the diff and the acceptance criteria checked>`
+- Commands and actual results:
+  - `<exact command>` — `<actual result on this head>`
+- Not validated: `<check skipped and why, or the limitation>`
+```
+
 ## Existing profiles
 
 Newly provisioned agents and new Codex/Claude runs receive the guard automatically after updating the board. Existing DeepSeek profiles are **not** silently reconfigured. With the agent idle, use the installed board checkout and the profile's existing CLI:
