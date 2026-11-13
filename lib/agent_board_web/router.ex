@@ -32,6 +32,7 @@ defmodule AgentBoardWeb.Router do
   scope "/", AgentBoardWeb do
     pipe_through :browser
 
+    post "/superagents/synchronize", RuntimeSyncController, :create
     post "/language", LocaleController, :update
     post "/superagents/:id/panel", SuperagentPanelController, :open
 

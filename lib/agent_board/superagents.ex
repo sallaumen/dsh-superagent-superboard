@@ -10,7 +10,7 @@ defmodule AgentBoard.Superagents do
   alias AgentBoard.Board
   alias AgentBoard.Orchestrator
   alias AgentBoard.Repo
-  alias AgentBoard.Superagents.{Manager, Provisioner, Superagent, SuperagentEvent}
+  alias AgentBoard.Superagents.{Manager, Provisioner, RuntimeSync, Superagent, SuperagentEvent}
 
   @reconcile_pause_seconds 600
 
@@ -595,6 +595,10 @@ defmodule AgentBoard.Superagents do
     do: {:error, :provision_failed}
 
   def start(%Superagent{} = superagent, manager, actor) do
+    RuntimeSync.exclusive(superagent.id, fn -> do_start(superagent, manager, actor) end)
+  end
+
+  defp do_start(superagent, manager, actor) do
     case manager.start(superagent) do
       :ok ->
         set_desired(superagent, "running")
@@ -608,6 +612,10 @@ defmodule AgentBoard.Superagents do
 
   @doc "Stop the external process."
   def stop(%Superagent{} = superagent, manager \\ Manager.impl(), actor \\ "owner") do
+    RuntimeSync.exclusive(superagent.id, fn -> do_stop(superagent, manager, actor) end)
+  end
+
+  defp do_stop(superagent, manager, actor) do
     case manager.stop(superagent) do
       :ok ->
         set_desired(superagent, "stopped")
@@ -621,6 +629,10 @@ defmodule AgentBoard.Superagents do
 
   @doc "Pause or resume new work without killing the process."
   def pause(%Superagent{} = superagent, paused, manager \\ Manager.impl(), actor \\ "owner") do
+    RuntimeSync.exclusive(superagent.id, fn -> do_pause(superagent, paused, manager, actor) end)
+  end
+
+  defp do_pause(superagent, paused, manager, actor) do
     case manager.pause(superagent, paused) do
       :ok ->
         set_desired(superagent, if(paused, do: "paused", else: "running"))
@@ -639,6 +651,10 @@ defmodule AgentBoard.Superagents do
 
   @doc "Change the worker ceiling through the manager."
   def scale(%Superagent{} = superagent, workers, manager \\ Manager.impl()) do
+    RuntimeSync.exclusive(superagent.id, fn -> do_scale(superagent, workers, manager) end)
+  end
+
+  defp do_scale(superagent, workers, manager) do
     with true <-
            is_integer(workers) and workers > 0 and workers <= Orchestrator.worker_range().last,
          :ok <- manager.scale(superagent, workers) do
@@ -754,6 +770,10 @@ defmodule AgentBoard.Superagents do
   row. Nothing is deleted: the archive keeps the profile/state for recovery.
   """
   def remove(%Superagent{} = superagent, manager \\ Manager.impl()) do
+    RuntimeSync.exclusive(superagent.id, fn -> do_remove(superagent, manager) end)
+  end
+
+  defp do_remove(superagent, manager) do
     with :ok <- stop_running(superagent, manager),
          {:ok, archive} <- archive_dirs(superagent),
          {:ok, _} <- Repo.delete(superagent) do
