@@ -46,7 +46,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   @impl true
   def mount(socket) do
-    {:ok, assign(socket, expanded: nil, workers: 1, prefill: %{}, installed: [])}
+    {:ok, assign(socket, expanded: nil, detail: "merge", workers: 1, prefill: %{}, installed: [])}
   end
 
   @impl true
@@ -95,7 +95,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   def handle_event("toggle_project", %{"id" => id}, socket) do
     id = to_string(id)
     expanded = if to_string(socket.assigns.expanded) == id, do: nil, else: id
-    {:noreply, assign(socket, :expanded, expanded)}
+    {:noreply, assign(socket, expanded: expanded, detail: "merge")}
+  end
+
+  def handle_event("project_detail", %{"id" => id, "section" => section}, socket)
+      when section in ~w(merge access instructions maintenance) do
+    {:noreply,
+     if(socket.assigns.expanded == id, do: assign(socket, :detail, section), else: socket)}
   end
 
   def handle_event("prefill_project", %{"owner" => owner, "name" => name}, socket) do
@@ -340,84 +346,109 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             class="ab-project__details"
             hidden={not expanded?(@expanded, superagent)}
           >
-            <.live_component
-              :if={superagent.repository}
-              module={ProjectMerge}
-              id={"project-#{superagent.id}-merge"}
-              repo={superagent.repository}
-              agent={superagent}
-              visible={@active and expanded?(@expanded, superagent)}
-            />
-            <.live_component
-              module={ProjectAccess}
-              id={"project-#{superagent.id}-access"}
-              project={access_project(@access_projects, superagent)}
-              superagent={superagent}
-              visible={@active and expanded?(@expanded, superagent)}
-              tz_offset={@tz_offset}
-            />
+            <div class="ab-project-switch" role="group" aria-label={gettext("Project controls")}>
+              <button
+                :for={
+                  {section, label} <- [
+                    {"merge", gettext("Merge")},
+                    {"access", gettext("Access")},
+                    {"instructions", gettext("Instructions")},
+                    {"maintenance", gettext("Maintenance")}
+                  ]
+                }
+                type="button"
+                aria-pressed={to_string(@detail == section)}
+                aria-controls={"project-#{superagent.id}-view-#{section}"}
+                phx-click="project_detail"
+                phx-value-id={superagent.id}
+                phx-value-section={section}
+                phx-target={@myself}
+              >{label}</button>
+            </div>
+            <div id={"project-#{superagent.id}-view-merge"} hidden={@detail != "merge"}>
+              <.live_component
+                :if={superagent.repository}
+                module={ProjectMerge}
+                id={"project-#{superagent.id}-merge"}
+                repo={superagent.repository}
+                agent={superagent}
+                visible={@active and expanded?(@expanded, superagent)}
+              />
+            </div>
+            <div id={"project-#{superagent.id}-view-access"} hidden={@detail != "access"}>
+              <.live_component
+                module={ProjectAccess}
+                id={"project-#{superagent.id}-access"}
+                project={access_project(@access_projects, superagent)}
+                superagent={superagent}
+                visible={@active and expanded?(@expanded, superagent)}
+                tz_offset={@tz_offset}
+              />
+            </div>
+            <div id={"project-#{superagent.id}-view-instructions"} hidden={@detail != "instructions"}>
+              <.live_component
+                module={ProjectPolicy}
+                id={"project-#{superagent.id}-policy-panel"}
+                superagent={superagent}
+                visible={@active and expanded?(@expanded, superagent)}
+              />
+            </div>
+            <div id={"project-#{superagent.id}-view-maintenance"} hidden={@detail != "maintenance"}>
+              <.live_component
+                module={ProjectLeftovers}
+                id={"project-#{superagent.id}-leftovers-panel"}
+                superagent={superagent}
+                visible={@active and expanded?(@expanded, superagent)}
+              />
 
-            <.live_component
-              module={ProjectPolicy}
-              id={"project-#{superagent.id}-policy-panel"}
-              superagent={superagent}
-              visible={@active and expanded?(@expanded, superagent)}
-            />
-
-            <.live_component
-              module={ProjectLeftovers}
-              id={"project-#{superagent.id}-leftovers-panel"}
-              superagent={superagent}
-              visible={@active and expanded?(@expanded, superagent)}
-            />
-
-            <div class="ab-project__foot">
-              <details class="ab-project__fold">
-                <summary>{gettext("State folder")}</summary>
-                <code>{superagent.state_dir}</code>
-              </details>
-              <details class="ab-project__fold">
-                <summary>{gettext("dsh panel")}</summary>
-                <.form
-                  for={%{}}
-                  action={~p"/superagents/#{superagent.id}/panel"}
-                  method="post"
-                  target="_blank"
-                  rel="noopener"
-                  id={"project-#{superagent.id}-panel-form"}
-                >
-                  <button type="submit" class="ab-btn ab-btn--sm">
-                    {gettext("Open the panel signed in")}
-                  </button>
-                </.form>
-              </details>
-              <details :if={technical_details?(superagent)} class="ab-project__fold">
-                <summary>{gettext("Technical details")}</summary>
-                <code>{superagent.last_error}</code>
-              </details>
-              <div class="ab-project__foot-actions">
-                <.live_component
-                  :if={remote_action(superagent) in [:start_superagent, :stop_superagent]}
-                  module={AgentAction}
-                  id={"project-#{remote_action(superagent)}-#{superagent.id}"}
-                  mode={remote_action(superagent)}
-                  tone={if remote_action(superagent) == :stop_superagent, do: :halt, else: :primary}
-                  superagent={superagent}
-                  label={remote_label(superagent)}
-                  confirm_label={remote_label(superagent)}
-                  busy_label={gettext("Applying…")}
-                />
-                <.live_component
-                  module={AgentAction}
-                  id={"project-remove-#{superagent.id}"}
-                  mode={:remove_superagent}
-                  tone={:halt}
-                  superagent={superagent}
-                  label={gettext("Archive project…")}
-                  confirm_label={gettext("Archive project")}
-                  cancel_label={gettext("Keep")}
-                  busy_label={gettext("Archiving…")}
-                />
+              <div class="ab-project__foot">
+                <details class="ab-project__fold">
+                  <summary>{gettext("State folder")}</summary>
+                  <code>{superagent.state_dir}</code>
+                </details>
+                <details class="ab-project__fold">
+                  <summary>{gettext("dsh panel")}</summary>
+                  <.form
+                    for={%{}}
+                    action={~p"/superagents/#{superagent.id}/panel"}
+                    method="post"
+                    target="_blank"
+                    rel="noopener"
+                    id={"project-#{superagent.id}-panel-form"}
+                  >
+                    <button type="submit" class="ab-btn ab-btn--sm">
+                      {gettext("Open the panel signed in")}
+                    </button>
+                  </.form>
+                </details>
+                <details :if={technical_details?(superagent)} class="ab-project__fold">
+                  <summary>{gettext("Technical details")}</summary>
+                  <code>{superagent.last_error}</code>
+                </details>
+                <div class="ab-project__foot-actions">
+                  <.live_component
+                    :if={remote_action(superagent) in [:start_superagent, :stop_superagent]}
+                    module={AgentAction}
+                    id={"project-#{remote_action(superagent)}-#{superagent.id}"}
+                    mode={remote_action(superagent)}
+                    tone={if remote_action(superagent) == :stop_superagent, do: :halt, else: :primary}
+                    superagent={superagent}
+                    label={remote_label(superagent)}
+                    confirm_label={remote_label(superagent)}
+                    busy_label={gettext("Applying…")}
+                  />
+                  <.live_component
+                    module={AgentAction}
+                    id={"project-remove-#{superagent.id}"}
+                    mode={:remove_superagent}
+                    tone={:halt}
+                    superagent={superagent}
+                    label={gettext("Archive project…")}
+                    confirm_label={gettext("Archive project")}
+                    cancel_label={gettext("Keep")}
+                    busy_label={gettext("Archiving…")}
+                  />
+                </div>
               </div>
             </div>
           </div>

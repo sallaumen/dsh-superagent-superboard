@@ -41,7 +41,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
   def render(assigns) do
     ~H"""
     <section id={@id} class="ab-policy" aria-labelledby={@id <> "-title"}>
-      <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <div class="ab-merge-heading">
         <h4 id={@id <> "-title"}>{gettext("Merge requirements")}</h4>
         <button
           class="ab-btn ab-btn--sm"
@@ -51,36 +51,69 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
           disabled={is_nil(@policy) || is_nil(@enforcement)}
         >{gettext("Refresh")}</button>
       </div>
-      <div aria-live="polite" class="grid gap-2">
-        <p><strong>{gettext("DeepSeek merge guard")}</strong> · {guard_label(@enforcement)}</p>
-        <p :if={@policy && @policy[:branch]} class="ab-meta break-all">
-          {gettext("Default branch")} ·
-          <code>{@policy.branch}@{String.slice(@policy.sha, 0, 8)}</code>
-        </p>
+      <div class="ab-merge-body" aria-live="polite">
+        <dl class="ab-merge-facts">
+          <div>
+            <dt>{gettext("DeepSeek merge guard")}</dt>
+            <dd class={@enforcement == :active && "ab-status--run"}>{guard_label(@enforcement)}</dd>
+          </div>
+          <div :if={match?(%{result: {:ok, _}}, @policy)}>
+            <dt>{gettext("Independent approval")}</dt>
+            <dd>
+              {if elem(@policy.result, 1)["review"],
+                do: gettext("Required"),
+                else: gettext("Not required")}
+            </dd>
+          </div>
+          <div :if={@policy && @policy[:branch]}>
+            <dt>{gettext("Default branch")}</dt>
+            <dd>
+              <a
+                :if={match?({:ok, _}, @policy.result)}
+                class="ab-link"
+                href={@policy.url}
+                title={gettext("View merge policy on GitHub")}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <code>{@policy.branch}@{String.slice(@policy.sha, 0, 8)}</code>
+              </a>
+              <code :if={!match?({:ok, _}, @policy.result)}>{@policy.branch}@{String.slice(
+                @policy.sha,
+                0,
+                8
+              )}</code>
+            </dd>
+          </div>
+        </dl>
         <%= case @policy do %>
           <% %{result: {:ok, policy}} -> %>
-            <p>
-              {if policy["review"],
-                do: gettext("Independent approval required by policy"),
-                else: gettext("No independent approval required by policy")}
-            </p>
-            <div class="grid gap-3 sm:grid-cols-2">
-              <div :for={
-                {label, names} <- [
-                  {gettext("Local checks"), policy["local"]},
-                  {gettext("GitHub checks"), policy["github"]}
-                ]
-              }>
-                <h5>{label}</h5>
-                <p :if={names == []} class="ab-meta">{gettext("None configured")}</p>
-                <ul>
-                  <li :for={name <- names} class="[overflow-wrap:anywhere]">{name}</li>
-                </ul>
+            <details
+              id={@id <> "-checks"}
+              class="ab-merge-checklist"
+              phx-mounted={JS.ignore_attributes("open")}
+            >
+              <summary>
+                <strong>{gettext("Merge checks")}</strong>
+                <span>{gettext("Local checks")}: {length(policy["local"])} · {gettext("GitHub checks")}: {length(
+                  policy["github"]
+                )}</span>
+              </summary>
+              <div class="ab-merge-lists">
+                <div :for={
+                  {label, names} <- [
+                    {gettext("Local checks"), policy["local"]},
+                    {gettext("GitHub checks"), policy["github"]}
+                  ]
+                }>
+                  <h5>{label}</h5>
+                  <p :if={names == []} class="ab-meta">{gettext("None configured")}</p>
+                  <ul>
+                    <li :for={name <- names}>{name}</li>
+                  </ul>
+                </div>
               </div>
-            </div>
-            <a class="ab-link" href={@policy.url} target="_blank" rel="noopener noreferrer">{gettext(
-              "View merge policy on GitHub"
-            )}</a>
+            </details>
           <% %{result: :missing} -> %>
             <p>{gettext("No merge policy on this branch.")}</p>
           <% %{result: :invalid} -> %>

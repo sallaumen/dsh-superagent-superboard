@@ -64,6 +64,13 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     |> element("#project-#{superagent.id} button[phx-click=toggle_project]")
     |> render_click()
 
+    controls = "#project-#{superagent.id}-details"
+    assert has_element?(view, controls <> " [phx-value-section=merge][aria-pressed=true]")
+    assert has_element?(view, "#project-#{superagent.id}-view-maintenance[hidden]")
+    view |> element(controls <> " [phx-value-section=maintenance]") |> render_click()
+    assert has_element?(view, "#project-#{superagent.id}-view-merge[hidden]")
+    assert has_element?(view, "#project-#{superagent.id}-view-maintenance:not([hidden])")
+
     assert has_element?(
              view,
              "#project-#{superagent.id}-details .ab-project__fold",

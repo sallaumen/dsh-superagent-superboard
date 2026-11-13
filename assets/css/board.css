@@ -2388,6 +2388,26 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-project__error-details summary { width: max-content; cursor: pointer; color: var(--ink-muted); font-size: 12px; }
 .ab-project__error-details code { display: block; max-height: 160px; margin-top: 6px; overflow: auto; overflow-wrap: anywhere; color: var(--ink); font-family: var(--font-mono); font-size: 11.5px; white-space: pre-wrap; }
 .ab-project__details { padding: 2px 0 18px; }
+/* Expanded project: one decision at a time. Native buttons keep keyboard
+   navigation and the disclosure keeps the full CI names available. */
+.ab-project-switch { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); gap: 0 var(--space-2); }
+.ab-project-switch button { min-height: 44px; padding: 0 var(--space-2); border-bottom: 2px solid transparent; color: var(--ink-muted); font-size: 13px; cursor: pointer; }
+.ab-project-switch button[aria-pressed="true"] { color: var(--ink); border-color: var(--you); font-weight: 600; }
+.ab-project-switch button:hover { background: var(--paper-sunk); }
+.ab-project-switch button:focus-visible, .ab-merge-checklist summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.ab-project-switch ~ div > .ab-policy:first-child { border-top: 0; }
+.ab-merge-heading { display: flex; justify-content: space-between; gap: var(--space-3); align-items: center; }
+.ab-merge-heading h4 { font-size: 15px; font-weight: 600; }
+.ab-merge-body { display: grid; gap: var(--space-3); }
+.ab-merge-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: var(--space-2) var(--space-4); margin: 0; }
+.ab-merge-facts dt { color: var(--ink-muted); font-size: 12px; }
+.ab-merge-facts dd { margin: 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.ab-merge-facts code { font: 12px var(--font-mono); }
+.ab-merge-checklist { border-block: 1px solid var(--line); }
+.ab-merge-checklist summary { cursor: pointer; padding: var(--space-3) 0; font-size: 13px; line-height: 20px; }
+.ab-merge-checklist summary span { display: inline-block; margin-inline-start: var(--space-3); color: var(--ink-muted); }
+.ab-merge-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: var(--space-3); padding-bottom: var(--space-3); }
+.ab-merge-lists li { margin-top: var(--space-1); font-size: 13px; overflow-wrap: anywhere; }
 .ab-policy { display: grid; gap: 10px; padding: 16px 0; border-top: 1px solid var(--line); }
 .ab-policy h5 { margin: 0; color: var(--ink); font-size: 13px; line-height: 18px; font-weight: 600; }
 .ab-policy form { display: grid; justify-items: start; gap: 12px; }

@@ -9835,3 +9835,27 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Board"
 msgstr ""
+
+msgid "Merge"
+msgstr ""
+
+msgid "Access"
+msgstr ""
+
+msgid "Instructions"
+msgstr ""
+
+msgid "Maintenance"
+msgstr ""
+
+msgid "Project controls"
+msgstr ""
+
+msgid "Independent approval"
+msgstr ""
+
+msgid "Required"
+msgstr ""
+
+msgid "Not required"
+msgstr ""
