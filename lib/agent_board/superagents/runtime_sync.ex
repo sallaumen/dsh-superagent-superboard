@@ -13,13 +13,15 @@ defmodule AgentBoard.Superagents.RuntimeSync do
   @pending ~w(waiting pending)
   @statuses ~w(updated current paused busy changed identity unavailable in_progress failed)
   @interval :timer.seconds(15)
+  @external_resource Path.expand("../../../priv/agent/harness/package-lock.json", __DIR__)
+  @lock_digest Base.encode16(:crypto.hash(:sha256, File.read!(@external_resource)), case: :lower)
 
   def start_link(opts),
     do: GenServer.start_link(__MODULE__, opts, name: Keyword.get(opts, :name, __MODULE__))
 
   def start(targets, server \\ __MODULE__) do
     owner = Oban.config().node
-    lock = lock_digest()
+    lock = @lock_digest
 
     {:ok, :ok} =
       Repo.transaction(fn ->
@@ -55,13 +57,6 @@ defmodule AgentBoard.Superagents.RuntimeSync do
           agent |> Ecto.Changeset.change(runtime_sync: receipt) |> Repo.update!()
         end
     end
-  end
-
-  defp lock_digest do
-    Application.app_dir(:agent_board, "priv/agent/harness/package-lock.json")
-    |> File.read!()
-    |> then(&:crypto.hash(:sha256, &1))
-    |> Base.encode16(case: :lower)
   end
 
   defp identity(agent), do: [agent.profile, agent.port, agent.state_dir]
@@ -152,7 +147,7 @@ defmodule AgentBoard.Superagents.RuntimeSync do
   defp drain_rows([], _runner), do: :ok
 
   defp drain_rows(rows, runner) do
-    lock = lock_digest()
+    lock = @lock_digest
 
     Enum.each(rows, fn {id, receipt} ->
       exclusive(id, fn -> attempt(id, receipt, lock, runner) end)
