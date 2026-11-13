@@ -2362,26 +2362,25 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .settings-pane--projects { max-width: none; }
 .ab-projects { display: grid; gap: var(--space-5); }
 .ab-projects__empty { margin: 0; padding: var(--space-5); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); color: var(--ink-muted); font-size: 13px; line-height: 20px; }
-.ab-projects__list { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(7.5rem, 0.7fr) auto minmax(8rem, 0.9fr) auto; gap: 0 var(--space-4); margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
-/* shortcut: subgrid needs Safari 16 / Chrome 117; an older browser stacks a row's cells. Add an @supports fallback if one must be supported. */
-.ab-project { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; border-bottom: 1px solid var(--line); }
-.ab-project > * { grid-column: 1 / -1; }
-.ab-project__row { display: grid; grid-template-columns: subgrid; align-items: center; row-gap: var(--space-4); padding: 14px 0; }
-.ab-project__identity { min-width: 0; }
-.ab-project__name { margin: 0; font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
-.ab-project__owner { color: var(--ink-faint); font-weight: 400; }
-.ab-project__access { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 3px 0 0; color: var(--ink-muted); font-size: 12px; line-height: 17px; text-wrap: balance; }
-.ab-project__waiting { display: inline-flex; align-items: center; gap: 5px; color: var(--you); font-weight: 500; }
-.ab-project__state { display: grid; gap: 2px; justify-items: start; }
-.ab-project__state .ab-status { white-space: nowrap; }
-.ab-project__state .ab-meta { margin: 0; font-size: 11.5px; line-height: 16px; }
+.ab-projects__list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.ab-project { border-bottom: 1px solid var(--line); }
+.ab-project__row { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) minmax(7rem, .35fr) minmax(9rem, .45fr) 1rem; align-items: center; gap: 4px var(--space-3); min-height: 52px; padding: 10px var(--space-2); text-align: start; cursor: pointer; }
+.ab-project__row:hover, .ab-project__row[aria-expanded=true] { background: var(--paper-sunk); }
+.ab-project__row:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.ab-project__name { font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
+.ab-project__owner { color: var(--ink-muted); font-weight: 400; }
+.ab-project__guard, .ab-project__notice { color: var(--ink-muted); font-size: 12px; line-height: 18px; }
+.ab-project__guard[data-state=active] { color: var(--agent); }
+.ab-project__guard[data-state=inactive], .ab-project__notice { color: var(--stale); }
+.ab-project__notice { margin: 0 var(--space-2) var(--space-2); }
+.ab-project__row[aria-expanded=true] .ab-project__chevron { transform: rotate(180deg); }
+.ab-project__agent-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-5); padding-block: var(--space-3); }
 .ab-project__agents { display: inline-flex; align-items: center; gap: 6px; }
 .ab-project__agent-count { min-width: 18px; color: var(--ink); font: 500 12.5px/18px var(--font-mono); font-variant-numeric: tabular-nums; text-align: center; }
 .ab-project__profile { display: grid; justify-items: start; gap: 1px; min-width: 0; }
 .ab-project__profile code { min-width: 0; color: var(--ink); font-family: var(--font-mono); font-size: 11.5px; line-height: 16px; overflow-wrap: anywhere; }
 .ab-project__profile .ab-link { flex: none; white-space: nowrap; }
 .ab-project__actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; }
-.ab-project--tracked .ab-project__actions { grid-column: -2; }
 .ab-project__error { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 14px; margin: 0 0 14px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--halt-wash); color: var(--ink); font-size: 12.5px; line-height: 19px; }
 .ab-project__error p { flex: 1 1 320px; margin: 0; overflow-wrap: anywhere; }
 .ab-project__error-details { flex: 1 1 100%; }
@@ -2491,22 +2490,15 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-project-add__submit { grid-column: 1 / -1; justify-self: start; min-height: 40px; }
 
 @media (max-width: 900px) {
-  .ab-projects__list { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .ab-project__row { row-gap: var(--space-3); }
-  .ab-project__identity { grid-column: 1 / -1; }
-  .ab-project__state { grid-column: 1; grid-row: 2; }
-  .ab-project__agents { grid-column: 2; grid-row: 2; }
-  .ab-project__profile { grid-column: 1 / -1; grid-row: 3; }
-  .ab-project__actions { grid-column: 3; grid-row: 2; }
   .ab-project-access__grid { grid-template-columns: 1fr; }
   .ab-project-add__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
-  .ab-projects__list { grid-template-columns: minmax(0, 1fr) auto; }
-  .ab-project__agents, .ab-project__actions { grid-column: 2; justify-self: end; }
-  .ab-project__profile { grid-column: 1; }
-  .ab-project__actions { grid-row: 3; }
-  .ab-project--tracked .ab-project__actions { grid-column: 2; grid-row: 2; }
+  .ab-project__row { grid-template-columns: auto minmax(0, 1fr) 1rem; }
+  .ab-project__identity { grid-column: 1 / 3; }
+  .ab-project__row .ab-status { grid-column: 1; grid-row: 2; }
+  .ab-project__guard { grid-column: 2; grid-row: 2; }
+  .ab-project__chevron { grid-column: 3; grid-row: 1 / 3; }
   .ab-project__fold summary, .ab-project__error-details summary, .ab-project-access__guide summary { padding: 7px 0; }
   .ab-project__foot-actions { margin-left: 0; }
   .ab-project-add__form { grid-template-columns: 1fr; }

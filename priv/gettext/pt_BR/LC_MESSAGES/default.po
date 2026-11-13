@@ -9893,3 +9893,24 @@ msgid "%{count} connected"
 msgid_plural "%{count} connected"
 msgstr[0] "%{count} conectado"
 msgstr[1] "%{count} conectados"
+
+msgid "Guard active"
+msgstr "Trava ativa"
+
+msgid "Guard inactive"
+msgstr "Trava inativa"
+
+msgid "Guard unverified"
+msgstr "Trava não verificada"
+
+msgid "Guard not applicable"
+msgstr "Trava não se aplica"
+
+msgid "Checking guard…"
+msgstr "Verificando trava…"
+
+msgid "Concurrent tasks"
+msgstr "Tarefas simultâneas"
+
+msgid "Profile"
+msgstr "Perfil"

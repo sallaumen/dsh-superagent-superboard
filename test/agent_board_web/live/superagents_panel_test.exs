@@ -99,6 +99,30 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     end)
   end
 
+  test "an online worker can have an inactive or unverifiable guard; refresh updates both views",
+       %{conn: conn} do
+    fake_manager()
+    {:ok, repo} = Board.add_repository("fixture", "guard")
+    agent = superagent!(repo, %{observed_state: "ready"})
+    FakeManager.put_github_source(agent.id, {:ok, %{enabled: false}})
+    {:ok, view, _} = live(conn, "/?repo=fixture/guard&panel=settings&section=projects")
+    render_async(view)
+    row = "#project-#{agent.id} .ab-project__row"
+    assert has_element?(view, row, "Ligado")
+    assert has_element?(view, row, "Trava inativa")
+    refute has_element?(view, row <> " [phx-click=superagent_scale]")
+    view |> element(row) |> render_click()
+    render_async(view)
+    panel = "#project-#{agent.id}-merge"
+    assert has_element?(view, panel, "Trava inativa")
+
+    FakeManager.put_github_source(agent.id, {:error, :unavailable})
+    view |> element(panel <> " button[phx-click=refresh]") |> render_click()
+    render_async(view)
+    assert has_element?(view, row, "Trava não verificada")
+    assert has_element?(view, panel, "Trava não verificada")
+  end
+
   test "an agent with other instructions is in the bell, and one click applies the policy",
        %{conn: conn} do
     fake_manager()

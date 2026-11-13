@@ -14,16 +14,20 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
   end
 
   defp load(socket) do
-    %{repo: repo, agent: agent} = socket.assigns
+    repo = socket.assigns.repo
 
     socket
-    |> assign(policy: nil, enforcement: nil)
+    |> assign(:policy, nil)
     |> start_async(:policy, fn -> ProjectMergePolicy.load(repo) end)
-    |> start_async(:enforcement, fn -> ProjectMergePolicy.enforcement(agent, repo) end)
   end
 
   @impl true
-  def handle_event("refresh", _, socket), do: {:noreply, load(socket)}
+  def handle_event("refresh", _, socket) do
+    if id = socket.assigns.agent_id,
+      do: send_update(socket.assigns.guard_owner, refresh_guard: id)
+
+    {:noreply, load(socket)}
+  end
 
   @impl true
   def handle_async(:policy, {:ok, %{result: {:ok, _}} = value}, socket),
@@ -33,9 +37,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
 
   def handle_async(:policy, {:exit, _}, socket),
     do: {:noreply, assign(socket, policy: %{result: :unavailable})}
-
-  def handle_async(:enforcement, {:exit, _}, socket),
-    do: {:noreply, assign(socket, enforcement: :unknown)}
 
   @impl true
   def render(assigns) do
@@ -151,9 +152,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
     """
   end
 
-  defp guard_label(:active), do: gettext("Active")
-  defp guard_label(:inactive), do: gettext("Inactive")
-  defp guard_label(:no_agent), do: gettext("No agent connected")
-  defp guard_label(:unknown), do: gettext("Could not verify")
-  defp guard_label(nil), do: gettext("Checking…")
+  def guard_label(:active), do: gettext("Guard active")
+  def guard_label(:inactive), do: gettext("Guard inactive")
+  def guard_label(:no_agent), do: gettext("Guard not applicable")
+  def guard_label(:unknown), do: gettext("Guard unverified")
+  def guard_label(nil), do: gettext("Checking guard…")
 end
