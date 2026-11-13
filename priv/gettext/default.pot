@@ -9630,3 +9630,7 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "The agent manager cannot recognize this Node process. Use Node 22 as described in the Alpine installation guide, then try again."
 msgstr ""
+
+msgctxt "PR status"
+msgid "Open"
+msgstr ""

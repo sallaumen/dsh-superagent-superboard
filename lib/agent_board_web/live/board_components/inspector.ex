@@ -1130,6 +1130,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp usage_cost(_), do: "—"
 
   defp pr_tab(assigns) do
+    assigns = assign(assigns, :badge, pr_badge(assigns.pr, assigns.gate, assigns.ci))
+
     ~H"""
     <div>
       <div :if={is_nil(@pr)} class="ab-sec__empty">
@@ -1142,7 +1144,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           <span>{@pr.title}</span>
         </div>
         <div class="ab-insp__facts">
-          <.status_mark kind={pr_kind(@pr, @ci)} word={pr_word(@pr, @ci)} />
+          <.status_mark kind={elem(@badge, 0)} word={elem(@badge, 1)} />
           <span :if={@pr.merged_at} class="ab-meta">
             mesclado às {Time.local_time(@pr.merged_at, @offset)}
           </span>
@@ -1189,13 +1191,16 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp status_word("archived"), do: gettext("Archived")
   defp status_word(_state), do: gettext("Unknown")
 
-  defp pr_kind(_pr, %{state: :fail}), do: :cifail
-  defp pr_kind(%{state: "merged"}, _ci), do: :done
-  defp pr_kind(_pr, _ci), do: :review
+  # The guard records "merged" only after GitHub confirms delivery. Its result
+  # can arrive before sync updates this PR; never project it onto another head.
+  defp pr_badge(%{state: "merged"}, _, _), do: {:done, pgettext("status", "Merged")}
 
-  defp pr_word(_pr, %{state: :fail}), do: gettext("Local CI failed")
-  defp pr_word(%{state: "merged"}, _ci), do: gettext("Merged")
-  defp pr_word(_pr, _ci), do: gettext("Open")
+  defp pr_badge(%{number: n, head_sha: sha}, %{"state" => "merged", "pr" => n, "head" => sha}, _)
+       when is_binary(sha),
+       do: {:done, pgettext("status", "Merged")}
+
+  defp pr_badge(_, _, %{state: :fail}), do: {:cifail, gettext("Local CI failed")}
+  defp pr_badge(_, _, _), do: {:review, pgettext("PR status", "Open")}
 
   defp pr_ci(_pr, %{state: :pass}), do: gettext("Local CI passed")
   defp pr_ci(_pr, %{state: :fail}), do: gettext("Local CI failed")

@@ -9630,3 +9630,7 @@ msgstr "O Harness não conseguiu carregar a biblioteca nativa. Siga o guia de in
 #, elixir-autogen, elixir-format
 msgid "The agent manager cannot recognize this Node process. Use Node 22 as described in the Alpine installation guide, then try again."
 msgstr "O gerenciador do agente não reconhece este processo Node. Use o Node 22 conforme o guia de instalação no Alpine e tente novamente."
+
+msgctxt "PR status"
+msgid "Open"
+msgstr "Aberto"
