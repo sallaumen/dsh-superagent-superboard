@@ -2108,3 +2108,12 @@ Repeated clicks reuse a pending request. The helper checks both running and
 queued work and checks again under pause before handing off the process. A changed
 identity or dependency lock, a stopped/paused agent, or unreadable load never
 authorizes a reload. Remaining current is a successful outcome with no restart.
+
+### Local preflight evidence
+
+The script owns the stage transitions of its sequential `all` run; the
+board reads the latest receipt for the ticket or local dispatch worktree,
+bounded by the assignment's start and, if known, its end. Reuse the merge
+progress refresh tick for visible tasks and the open inspector, including on
+reconnect. Do not infer a pass from silence, use these records to change task
+state, or feed them into merge policy. See [the pipeline contract](../PIPELINES.md#local-preflight-on-the-task).

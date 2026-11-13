@@ -9739,3 +9739,43 @@ msgstr "Não foi possível verificar"
 
 msgid "Last verified policy · %{revision}"
 msgstr "Última política verificada · %{revision}"
+
+#, elixir-autogen, elixir-format
+msgid "Local preflight"
+msgstr "Validação local"
+
+#, elixir-autogen, elixir-format
+msgid "Starting revision"
+msgstr "Revisão no início"
+
+#, elixir-autogen, elixir-format
+msgid "Local preflight passed"
+msgstr "Validação local aprovada"
+
+#, elixir-autogen, elixir-format
+msgid "Local preflight: %{stage} · %{status}"
+msgstr "Validação local: %{stage} · %{status}"
+
+#, elixir-autogen, elixir-format
+msgid "Backend"
+msgstr "Backend"
+
+#, elixir-autogen, elixir-format
+msgid "Frontend"
+msgstr "Frontend"
+
+#, elixir-autogen, elixir-format
+msgid "Practice library"
+msgstr "Biblioteca de práticas"
+
+#, elixir-autogen, elixir-format
+msgid "Not run"
+msgstr "Não executada"
+
+#, elixir-autogen, elixir-format
+msgid "Interrupted"
+msgstr "Interrompida"
+
+#, elixir-autogen, elixir-format
+msgid "No recent signal"
+msgstr "Sem sinal recente"

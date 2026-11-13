@@ -17,6 +17,7 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
   alias AgentBoardWeb.Time
 
+  attr :preflights, :map, default: %{}
   attr :gates, :map, default: %{}
   attr :running, :list, required: true
   attr :frozen, :boolean, default: false
@@ -91,7 +92,12 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
             <span>{gettext("no signal for %{duration}", duration: Time.duration(task.silence.seconds))}</span>
           </div>
 
-          <div :if={task.step} class="ab-run__step">
+          <AgentBoardWeb.BoardComponents.Preflight.progress snapshot={@preflights[task.id]} compact />
+
+          <div
+            :if={task.step && !match?(%{state: "running"}, @preflights[task.id])}
+            class="ab-run__step"
+          >
             <span class="ab-meta">{if @frozen, do: gettext("last step seen"), else: gettext("now")}</span>
             <code>{task.step.code}</code>
             <span :if={task.step.note} class="ab-meta ab-run__note" title={task.step.note}>{task.step.note}</span>

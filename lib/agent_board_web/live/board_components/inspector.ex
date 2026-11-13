@@ -25,6 +25,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :dispatch_ceiling, :float, default: 5.0
   attr :dispatch_fallback, :any, default: nil
   attr :usage, :map, default: nil
+  attr :preflight, :map, default: nil
   attr :gate, :map, default: nil
   attr :pr, :any, default: nil
   attr :ci, :map, default: nil
@@ -140,6 +141,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             {gettext("GitHub issue")}
           </a>
         </div>
+
+        <AgentBoardWeb.BoardComponents.Preflight.progress snapshot={@preflight} />
 
         <.failure_block :if={@failure} failure={@failure} task={@task} offset={@tz_offset} />
 

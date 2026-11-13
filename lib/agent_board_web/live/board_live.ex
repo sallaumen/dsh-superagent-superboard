@@ -162,6 +162,8 @@ defmodule AgentBoardWeb.BoardLive do
         inspector_usage: nil,
         inspector_pr: nil,
         inspector_ci: nil,
+        preflights: %{},
+        inspector_preflight_source: nil,
         gate_snapshots: %{},
         gate_heads: %{},
         inspector_failure: nil,
@@ -266,7 +268,25 @@ defmodule AgentBoardWeb.BoardLive do
           into: %{},
           do: {n, snapshot}
 
-    assign(socket, :gate_snapshots, snapshots)
+    socket |> assign(:gate_snapshots, snapshots) |> refresh_preflights()
+  end
+
+  defp refresh_preflights(socket) do
+    sources = Map.new(socket.assigns.work.running, &{&1.id, &1.preflight_source})
+
+    sources =
+      case socket.assigns.conversation do
+        nil -> sources
+        task -> Map.put(sources, task.id, socket.assigns.inspector_preflight_source)
+      end
+
+    snapshots =
+      for {id, source} <- sources,
+          snapshot = AgentBoard.Preflight.read(source),
+          into: %{},
+          do: {id, snapshot}
+
+    assign(socket, :preflights, snapshots)
   end
 
   defp default_repo(repos) do
@@ -389,6 +409,11 @@ defmodule AgentBoardWeb.BoardLive do
 
     %{
       tickets: tickets,
+      local_runs:
+        board.running
+        |> Enum.filter(&(&1.executor in ["claude", "codex"]))
+        |> Enum.map(& &1.id)
+        |> Runners.latest_for_tasks(),
       silences: AgentSignal.silences(board.running, tickets, now),
       stall_after: AgentSignal.stall_after(),
       now: now,
@@ -415,6 +440,7 @@ defmodule AgentBoardWeb.BoardLive do
       number: task.number,
       title: task.title,
       step: worktree && worktree.step,
+      preflight_source: preflight_source(task, ticket, run.local_runs[task.id]),
       elapsed: elapsed(task, run),
       silence: silence,
       stalled: AgentSignal.stalled?(silence, run.stall_after),
@@ -423,6 +449,12 @@ defmodule AgentBoardWeb.BoardLive do
       phases: Tickets.stages(ticket, worktree)
     }
   end
+
+  defp preflight_source(%{executor: executor}, _ticket, execution)
+       when executor in ["claude", "codex"],
+       do: AgentBoard.Preflight.source(execution)
+
+  defp preflight_source(_task, ticket, _execution), do: AgentBoard.Preflight.source(ticket)
 
   defp tickets_by_number(tickets, repo) do
     tickets
@@ -473,6 +505,7 @@ defmodule AgentBoardWeb.BoardLive do
           inspector_executions: [],
           inspector_executions_for: nil,
           inspector_runner_executions: [],
+          inspector_preflight_source: nil,
           inspector_dispatch_paused: false,
           inspector_dispatch_active: false,
           inspector_dispatch_ceiling: 5.0,
@@ -500,6 +533,11 @@ defmodule AgentBoardWeb.BoardLive do
         executions = inspector_executions(socket, task)
         runner_executions = Runners.for_task(task.id)
 
+        ticket =
+          tickets_by_number(socket.assigns.agent_snapshot.tickets, socket.assigns.repo)[
+            task.number
+          ]
+
         assign(
           socket,
           [
@@ -510,6 +548,8 @@ defmodule AgentBoardWeb.BoardLive do
             inspector_executions_for:
               if(socket.assigns.inspector_tab == "execucoes", do: task.id, else: nil),
             inspector_runner_executions: runner_executions,
+            inspector_preflight_source:
+              preflight_source(task, ticket, List.first(runner_executions)),
             inspector_dispatch_paused: Runners.paused?(),
             inspector_dispatch_active:
               Enum.any?(runner_executions, &(&1.status in ["starting", "running"])),
@@ -1132,6 +1172,7 @@ defmodule AgentBoardWeb.BoardLive do
       |> load(socket.assigns.repo)
       |> refresh_conversation()
       |> load_inspector()
+      |> refresh_preflights()
       |> announce(old_board, old_sync, old_needs)
       |> VoiceConversation.check_answers()
       |> mark_open_conversation_seen()
@@ -3062,6 +3103,7 @@ defmodule AgentBoardWeb.BoardLive do
                   <.now_lane
                     running={@work.running}
                     gates={@gate_snapshots}
+                    preflights={@preflights}
                     retrying={@work.retrying}
                     frozen={@freshness.frozen?}
                     frozen_at={@freshness.at}
@@ -3176,6 +3218,7 @@ defmodule AgentBoardWeb.BoardLive do
             pr={@inspector_pr}
             gate={@inspector_pr && @gate_snapshots[@inspector_pr.number]}
             ci={@inspector_ci}
+            preflight={@conversation && @preflights[@conversation.id]}
             failure={@inspector_failure}
             tz_offset={@tz_offset}
             live={@freshness.live?}
