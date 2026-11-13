@@ -239,9 +239,6 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           aria-labelledby="settings-projects-title"
         >
           <h3 id="settings-projects-title">{gettext("Projects")}</h3>
-          <p class="settings-pane__intro">
-            {gettext("Each project follows a GitHub repository. Connecting an agent is optional.")}
-          </p>
           <.live_component
             module={Projects}
             id="settings-projects"

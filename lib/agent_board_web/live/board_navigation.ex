@@ -146,6 +146,8 @@ defmodule AgentBoardWeb.BoardNavigation do
   end
 
   defp project_setup("projects", "agent", pending), do: {"agent", pending}
+  defp project_setup("projects", "github", _pending), do: {"github", nil}
+  defp project_setup("projects", _path, _pending), do: {"list", nil}
   defp project_setup(_section, _path, _pending), do: {"github", nil}
 
   # Settings → Costs: the page and the window, checked by the section itself.

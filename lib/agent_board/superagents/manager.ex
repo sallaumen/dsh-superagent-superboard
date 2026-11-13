@@ -8,6 +8,7 @@ defmodule AgentBoard.Superagents.Manager do
 
   alias AgentBoard.Superagents.Superagent
 
+  @callback github_source(Superagent.t()) :: {:ok, map()} | {:error, term()}
   @callback status(Superagent.t()) :: {:ok, map()} | {:error, term()}
   @callback start(Superagent.t()) :: :ok | {:error, term()}
   @callback stop(Superagent.t()) :: :ok | {:error, term()}

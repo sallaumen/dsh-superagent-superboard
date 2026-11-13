@@ -57,6 +57,17 @@ class Delivery(unittest.TestCase):
         self.proc.start()
         self.addCleanup(self.proc.stop)
 
+    def test_installed_checks_actual_launcher_and_repository(self):
+        launcher = guard.install(self.folder, "org/repo", sys.executable)
+        worker = self.folder / "worker-gh"
+        self.assertFalse(guard.installed(self.folder, "org/repo", worker))
+        worker.write_text(f"#!/bin/sh\nexec '{launcher}' \"$@\"\n")
+        worker.chmod(0o700)
+        self.assertTrue(guard.installed(self.folder, "org/repo", worker))
+        self.assertFalse(guard.installed(self.folder, "org/other", worker))
+        launcher.write_text("#!/bin/sh\nexit 0\n")
+        self.assertFalse(guard.installed(self.folder, "org/repo", worker))
+
     def test_pass_and_atomic_head(self):
         self.merge.deliver()
         self.assertEqual(self.merges[0][-3:], ["--squash","--match-head-commit",self.sha])

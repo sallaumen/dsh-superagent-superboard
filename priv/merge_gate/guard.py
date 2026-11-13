@@ -27,6 +27,27 @@ def run(args):
     return subprocess.check_output(args, text=True, timeout=30).strip()
 
 
+def launcher_text(slug, delegate):
+    return "#!/bin/sh\nexec " + shlex.join(
+        ["python3", str(Path(__file__).resolve()), "worker", slug, delegate]) + ' "$@"\n'
+
+
+def installed(folder, slug, worker):
+    launcher = Path(folder).resolve() / "gh"
+    delegate = json.loads((launcher.parent / "superboard-delegate.json").read_text())["cli"]
+    # dsh generates this wrapper when it applies the source configuration.
+    # Read the executable handoff; never run either wrapper to inspect it.
+    worker = Path(worker)
+    lines = worker.read_text().splitlines() if worker.is_file() and os.access(worker, os.X_OK) else []
+    try:
+        handoff = shlex.split(lines[-1]) if lines else []
+    except ValueError:
+        return False
+    return (handoff == ["exec", str(launcher), "$@"] and launcher.is_file() and os.access(launcher, os.X_OK) and
+            isinstance(delegate, str) and os.path.isabs(delegate) and os.access(delegate, os.X_OK) and
+            launcher.read_text() == launcher_text(slug, delegate))
+
+
 def install(folder, slug, delegate):
     if not SLUG.fullmatch(slug) or any(x in (".", "..") for x in slug.split("/")):
         raise Blocked("Invalid repository")
@@ -43,8 +64,7 @@ def install(folder, slug, delegate):
         raise Blocked("Missing GitHub CLI")
     (folder / "superboard-delegate.json").write_text(json.dumps({"cli": delegate}))
     launcher = folder / "gh"
-    launcher.write_text("#!/bin/sh\nexec " + shlex.join(
-        ["python3", str(Path(__file__).resolve()), "worker", slug, delegate]) + ' "$@"\n')
+    launcher.write_text(launcher_text(slug, delegate))
     launcher.chmod(0o755)
     return launcher
 
@@ -240,6 +260,12 @@ if __name__ == "__main__":
     try:
         if sys.argv[1] == "install":
             print(install(*sys.argv[2:]))
+        elif sys.argv[1] == "describe":
+            config = policy(json.loads(base64.b64decode(os.environ["SUPERBOARD_POLICY_CONTENT"])))
+            print(json.dumps({"review": config["review"], "local": sorted(config["local"]),
+                              "github": config["github"]}))
+        elif sys.argv[1] == "installed":
+            sys.exit(0 if installed(*sys.argv[2:]) else 1)
         elif sys.argv[1] == "worker":
             worker(sys.argv[2], sys.argv[3], sys.argv[4:])
         else:
