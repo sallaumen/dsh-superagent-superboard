@@ -127,18 +127,26 @@ defmodule AgentBoardWeb.BoardNavigation do
 
     view = if params["view"] == "hoje", do: "hoje", else: nil
 
+    section = settings_section(panel, params["section"])
+    {path, pending} = project_setup(section, params["path"], socket.assigns.project_pending)
+
     assign(socket,
+      project_pending: pending,
       panel: panel,
       conversation: nil,
       comments: [],
       inspector_tab: "conversa",
-      settings_section: settings_section(panel, params["section"]),
+      settings_section: section,
+      project_path: path,
       settings_costs: costs_params(params),
       history_list: if(params["list"] == "prs", do: "prs", else: "tasks"),
       history_query: String.slice(params["q"] || "", 0, 120),
       view: view
     )
   end
+
+  defp project_setup("projects", "agent", pending), do: {"agent", pending}
+  defp project_setup(_section, _path, _pending), do: {"github", nil}
 
   # Settings → Costs: the page and the window, checked by the section itself.
   defp costs_params(params) do

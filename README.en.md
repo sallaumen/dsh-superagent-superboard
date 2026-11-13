@@ -55,13 +55,13 @@ docker run --name dsh-board-postgres \
    PORT=4002 mix phx.server
    ```
 
-3. Open **[localhost:4002](http://127.0.0.1:4002)**. In **Settings → Projects → Add project**, enter `owner/repository`. For GitHub alone, leave the option to create an agent unchecked. After sync, select the project in the sidebar to see its issues and PRs. If nothing appears, check the last sync in **Settings → System → Activity**.
+3. Open **[localhost:4002](http://127.0.0.1:4002)**. In **Settings → AI and setup → Use GitHub only**, enter the owner and repository name, then select **Track repository**. After sync, select the project in the sidebar to see its issues and PRs. If nothing appears, check the last sync in **Settings → System → Activity**.
 
 Change the UI language under **Settings → System → Board language**. **Settings → AI and setup** lists which integrations are ready and remembers the date and outcome of the last check. A missing AI provider affects AI features; you can still browse GitHub data. To keep the board running on macOS, see [Run as a service](docs/operations.md#run-as-a-service).
 
 ## Install and connect the agent
 
-Use this path if you want an authorized person to mention a bot on an issue and get an implementation back in a PR. There are **two downloads**:
+Use this path if you want an authorized person to mention a bot on an issue and get an implementation back in a PR. With the Harness and bot account configured, the board can install the first agent: open **Settings → Projects → Connect the Super Agent**, enter the repository, review the installation and confirm. For manual installation or an existing profile, follow the steps below.
 
 1. **[Download DeepSeek Harness](https://www.deepseek.com/en/harness/)**, which hosts the sessions. Configure a model provider for the Harness. A key in the board does not automatically configure the Harness profile.
 2. **[Get the DeepSeek Super Agent](https://github.com/deepseek-ai/dsh-superagent-prototype)**, the package that watches a repository and coordinates workers:
@@ -72,7 +72,7 @@ Use this path if you want an authorized person to mention a bot on an issue and 
    ```
 
 3. **Install and configure the package.** Open that folder in your coding assistant and ask: *“Read this repository’s SETUP.md and walk me through setting up dsh-superagent.”* The [official guided setup](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md) covers the repository, a dedicated bot account, authorized senders and execution policy. For terminal instructions, use the [official manual install](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#install), including creating the profile and starting it. Cloning alone does not start the agent.
-4. **Connect it to the board.** On the machine running the Harness, open **Settings → Projects** and add the detected profile to the matching project. For another repository, see [Set up a second profile](docs/agent/setup.md#a-second-repository-optional). In **AI and setup**, check that the agent responds.
+4. **Connect it to the board.** On the machine running the Harness, open **Settings → Projects → Connect the Super Agent**. Select **Look for profiles again** after installation, then add the detected profile to the matching project. For another repository, see [Set up a second profile](docs/agent/setup.md#a-second-repository-optional). In **AI and setup**, check that the agent responds.
 5. **Try one small issue.** From an authorized account, mention your bot and describe a verifiable result. Follow the ticket in the board and the reply on GitHub. [Verify the installation](docs/agent/setup.md#5-verify-it-is-configured-and-alive) if you need to distinguish an idle agent from a stopped agent.
 
 **Agent prerequisites:** Node.js 22.19+ or 24+, pnpm, Git 2.32+, Python 3.8+, tmux, GitHub CLI 2.48+ and a local clone of the target repository. Workers run with the operating system user’s privileges; the [deployment guide](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md) covers isolating accounts and credentials. For session titles such as `SB - Fix project filters`, see **Settings → AI and setup → Harness session names**.

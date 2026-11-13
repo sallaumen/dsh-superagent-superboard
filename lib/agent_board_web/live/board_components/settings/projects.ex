@@ -18,8 +18,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   alias AgentBoard.Superagents
   alias AgentBoardWeb.BoardComponents.AgentAction
   alias AgentBoardWeb.BoardComponents.Settings.{ProjectAccess, ProjectLeftovers, ProjectPolicy}
+  alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Time
 
+  attr :project_path, :string, required: true
+  attr :repo, :map, default: nil
   attr :active, :boolean, default: false
   attr :superagents, :list, default: []
   attr :access_projects, :list, default: []
@@ -30,8 +33,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   @impl true
   def mount(socket) do
-    {:ok,
-     assign(socket, expanded: nil, workers: 1, create_agent: true, prefill: %{}, installed: [])}
+    {:ok, assign(socket, expanded: nil, workers: 1, prefill: %{}, installed: [])}
   end
 
   @impl true
@@ -51,9 +53,18 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
     # Agents installed outside the board: a few small files, read only while
     # this section is on screen.
-    installed = if socket.assigns.active, do: Superagents.unregistered(), else: []
+    {:ok, socket |> assign(:expanded, expanded) |> read_profiles()}
+  end
 
-    {:ok, assign(socket, expanded: expanded, installed: installed)}
+  defp read_profiles(socket) do
+    if socket.assigns.active and socket.assigns.project_path == "agent" do
+      assign(socket,
+        installed: Superagents.unregistered(),
+        source?: match?({:ok, _}, Superagents.default_source())
+      )
+    else
+      assign(socket, installed: [], source?: false)
+    end
   end
 
   @impl true
@@ -64,11 +75,16 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   end
 
   def handle_event("prefill_project", %{"owner" => owner, "name" => name}, socket) do
-    {:noreply, assign(socket, prefill: %{"owner" => owner, "name" => name}, create_agent: true)}
+    {:noreply,
+     socket
+     |> assign(prefill: %{"owner" => owner, "name" => name})
+     |> push_patch(
+       to: BoardNavigation.settings_path(socket.assigns.repo, "projects", %{"path" => "agent"})
+     )}
   end
 
-  def handle_event("toggle_create_agent", _params, socket) do
-    {:noreply, assign(socket, :create_agent, not socket.assigns.create_agent)}
+  def handle_event("refresh_profiles", _params, socket) do
+    {:noreply, socket |> read_profiles() |> put_flash(:info, gettext("Profile list refreshed."))}
   end
 
   def handle_event("change_workers", %{"delta" => delta}, socket) do
@@ -84,9 +100,28 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
     ~H"""
     <div id={@id} class="ab-projects">
-      <p :if={@superagents == [] and @tracked == []} class="ab-projects__empty" role="status">
+      <p
+        :if={@superagents == [] and @tracked == [] and @project_path == "github"}
+        class="ab-projects__empty"
+        role="status"
+      >
         {gettext("No project yet. Add a repository below to get started.")}
       </p>
+      <nav class="setup-paths" aria-label={gettext("Project setup")}>
+        <.link
+          :for={
+            {path, label} <- [
+              {"github", gettext("Use GitHub only")},
+              {"agent", gettext("Connect the Super Agent")}
+            ]
+          }
+          patch={BoardNavigation.settings_path(@repo, "projects", %{"path" => path})}
+          aria-current={@project_path == path && "page"}
+          class={["ab-btn", @project_path == path && "ab-btn--primary"]}
+        >
+          {label}
+        </.link>
+      </nav>
 
       <p :if={@superagents != [] or @tracked != []} class="ab-projects__summary" role="status">
         <span :if={@superagents != []}>{gettext("%{ready} of %{total} on",
@@ -393,7 +428,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                     value: %{owner: repo.owner, name: repo.name},
                     target: @myself
                   )
-                  |> JS.focus(to: "#add-project-path")
                 }
                 disabled={@provisioning}
               >
@@ -405,7 +439,50 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
       </ul>
 
       <section
-        :if={@installed != []}
+        :if={@project_path == "agent"}
+        class="ab-project-add"
+        id="agent-install"
+        aria-labelledby="agent-install-title"
+      >
+        <h3 id="agent-install-title">{gettext("Connect a DeepSeek profile")}</h3>
+        <p :if={@installed == [] && !@source?} class="ab-meta">
+          {gettext(
+            "No profile detected. Install DeepSeek Harness and sign in with the bot account. Then enter the repository below to review the first agent installation, or follow the manual guide."
+          )}
+        </p>
+        <p :if={@installed != []} class="ab-meta">
+          {gettext(
+            "A profile was found on this machine. Choose it below to connect the repository it already watches."
+          )}
+        </p>
+        <p :if={@installed == [] && @source?} class="ab-meta">
+          {gettext(
+            "A local profile is available. Use it to create an agent for another repository below."
+          )}
+        </p>
+        <div class="setup-paths">
+          <a
+            class="ab-link"
+            href="https://www.deepseek.com/en/harness/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >{gettext("Download DeepSeek Harness")}</a>
+          <a
+            class="ab-link"
+            href="https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md"
+            target="_blank"
+            rel="noopener noreferrer"
+          >{gettext("Super Agent setup guide")}</a>
+          <button
+            type="button"
+            class="ab-btn ab-btn--sm"
+            phx-click="refresh_profiles"
+            phx-target={@myself}
+          >{gettext("Look for profiles again")}</button>
+        </div>
+      </section>
+      <section
+        :if={@project_path == "agent" && @installed != []}
         id="installed-agents"
         class="ab-project-add"
         aria-labelledby="installed-agents-title"
@@ -439,12 +516,25 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         </ul>
       </section>
 
-      <section id="add-project" class="ab-project-add" aria-labelledby="add-project-title">
+      <section
+        id="add-project"
+        class="ab-project-add"
+        aria-labelledby="add-project-title"
+      >
         <h3 id="add-project-title">{gettext("Add project")}</h3>
-        <p class="ab-meta">
+        <p :if={@project_path == "github"} class="ab-meta">
           {gettext(
-            "Track a repository and, if you want, create its own DeepSeek agent. Nothing starts without your confirmation."
+            "To follow issues and pull requests, set GITHUB_TOKEN in .env.local and restart the board. Read access is enough. Then enter the repository below."
           )}
+          <a
+            class="ab-link"
+            href="https://github.com/settings/tokens"
+            target="_blank"
+            rel="noopener noreferrer"
+          >{gettext("GitHub token settings")}</a>
+        </p>
+        <p :if={@project_path == "agent"} class="ab-meta">
+          {gettext("Review the repository, local folder and worker limit before confirming.")}
         </p>
 
         <form id="track-repo" phx-submit="add_project" class="ab-project-add__form">
@@ -461,7 +551,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               required
             />
           </label>
-          <div class="ab-project-add__path">
+          <input :if={@project_path == "agent"} type="hidden" name="create_agent" value="true" />
+          <div :if={@project_path == "agent"} class="ab-project-add__path">
             <label>
               <span>{gettext("Local folder, with .git")}</span>
               <input
@@ -476,20 +567,12 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             </p>
           </div>
 
-          <label class="ab-project-add__create">
-            <input
-              type="checkbox"
-              name="create_agent"
-              value="true"
-              checked={@create_agent}
-              disabled={@provisioning}
-              phx-click="toggle_create_agent"
-              phx-target={@myself}
-            />
-            <span>{gettext("Create a DeepSeek agent for it")}</span>
-          </label>
-
-          <div class="ab-project-add__workers" role="group" aria-label={gettext("Initial agents")}>
+          <div
+            :if={@project_path == "agent"}
+            class="ab-project-add__workers"
+            role="group"
+            aria-label={gettext("Initial agents")}
+          >
             <span>{gettext("Agents")}</span>
             <button
               type="button"
@@ -498,7 +581,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               phx-click="change_workers"
               phx-value-delta="-1"
               phx-target={@myself}
-              disabled={@workers <= 1 or @provisioning or not @create_agent}
+              disabled={@workers <= 1 or @provisioning}
             >−</button>
             <input
               class="ab-project-add__worker-input"
@@ -509,7 +592,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               max={max_workers()}
               step="1"
               aria-label={gettext("Initial agents")}
-              disabled={not @create_agent or @provisioning}
+              disabled={@provisioning}
             />
             <button
               type="button"
@@ -518,7 +601,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               phx-click="change_workers"
               phx-value-delta="1"
               phx-target={@myself}
-              disabled={@workers >= max_workers() or @provisioning or not @create_agent}
+              disabled={@workers >= max_workers() or @provisioning}
             >+</button>
           </div>
 
@@ -528,7 +611,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             phx-disable-with={gettext("Adding…")}
             disabled={@provisioning}
           >
-            {gettext("Add project")}
+            {if @project_path == "agent",
+              do: gettext("Review agent setup"),
+              else: gettext("Track repository")}
           </button>
         </form>
 

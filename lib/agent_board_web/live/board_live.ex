@@ -138,6 +138,7 @@ defmodule AgentBoardWeb.BoardLive do
         highlight_changes: false,
         panel: nil,
         settings_section: nil,
+        project_path: "github",
         settings_costs: %{page: nil, days: nil},
         reload_pending: false,
         attention_timer: nil,
@@ -2746,7 +2747,7 @@ defmodule AgentBoardWeb.BoardLive do
               <h2>{gettext("No repositories being tracked.")}</h2>
               <p>
                 {gettext(
-                  "Start with Settings → AI and setup: it says which AI does what, checks what is configured and points to the next step, from the GitHub token to the first project."
+                  "Connect a GitHub repository to see its issues and pull requests. You can add a Super Agent later to work on them."
                 )}
               </p>
               <button
@@ -3295,6 +3296,7 @@ defmodule AgentBoardWeb.BoardLive do
             dispatch_paused={@dispatch_paused}
             active={@panel == "settings"}
             section={@settings_section}
+            project_path={@project_path}
             costs={@settings_costs}
             log_view={
               %{
