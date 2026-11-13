@@ -20,6 +20,8 @@ defmodule AgentBoard.Superagents.Prototype do
 
   @legacy "~/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype"
   @repository "https://github.com/deepseek-ai/dsh-superagent-prototype.git"
+  # Upstream source revision against which the bundled extension is tested.
+  @revision "8c32a9dc5d72c033816c6a8110b37f40cf94fba4"
   @setting "dsh_superagent_home"
 
   @doc "The checkout's folder."
@@ -63,11 +65,27 @@ defmodule AgentBoard.Superagents.Prototype do
         {:error, {:prototype_in_the_way, target}}
 
       true ->
-        with :ok <- step(run, "git", ["clone", "--depth", "1", @repository, target], []),
-             :ok <- step(run, "pnpm", ["install"], cd: target),
-             :ok <- step(run, "pnpm", ["build"], cd: target) do
-          Settings.put(@setting, target)
-        end
+        install_new(run, target)
+    end
+  end
+
+  defp install_new(run, target) do
+    # Never let a failed build look like an installed manager on the next attempt.
+    stage = target <> ".installing"
+    patch = Application.app_dir(:agent_board, "priv/agent/duplicate-issue-notice.patch")
+
+    # Git creates its destination. Leave an interrupted checkout for inspection.
+    with {:error, :enoent} <- File.lstat(stage),
+         :ok <- step(run, "git", ["clone", "--no-checkout", @repository, stage], []),
+         :ok <- step(run, "git", ["checkout", "--detach", @revision], cd: stage),
+         :ok <- step(run, "git", ["apply", patch], cd: stage),
+         :ok <- step(run, "pnpm", ["install", "--frozen-lockfile"], cd: stage),
+         :ok <- step(run, "pnpm", ["build"], cd: stage),
+         :ok <- File.rename(stage, target) do
+      Settings.put(@setting, target)
+    else
+      {:ok, %File.Stat{}} -> {:error, {:prototype_in_the_way, stage}}
+      error -> error
     end
   end
 
