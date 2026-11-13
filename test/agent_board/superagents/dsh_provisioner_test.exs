@@ -361,10 +361,13 @@ defmodule AgentBoard.Superagents.DshProvisionerTest do
 
       assert %{
                "repository" => "owner/name",
-               "cli" => ^cli,
+               "cli" => guarded,
                "observeIssues" => true,
                "pollSeconds" => 60
              } = source
+
+      assert File.read!(guarded) =~ "guard.py"
+      assert File.read!(guarded) =~ cli
 
       assert_received {:saved, "/settings/executor", %{"value" => executor}}
       assert executor["maxWorkers"] == 2

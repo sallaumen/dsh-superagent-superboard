@@ -396,11 +396,12 @@ defmodule AgentBoard.Runners do
 
     - Leia o AGENTS.md do repositório e siga os contratos dele.
     - Trabalhe só neste worktree e nesta branch.
-    - Rode `scripts/ci-local.sh all` no head antes de abrir o PR.
+    - Rode as verificações do próprio repositório no commit final.
     - Abra o PR com `Closes ##{task.number}` no corpo, usando o `gh` já
       autenticado nesta máquina.
-    - Depois do gate verde no head, faça o squash-merge do PR e traga o
-      número do PR e o resultado.
+    - Para entregar, use somente `gh pr merge N --match-head-commit SHA_COMPLETO`
+      neste worktree. O gate aplica a política da base. Se recusar, informe o
+      motivo e mantenha o PR aberto; nunca contorne o gate.
     - No GitHub, comece cada comentário com "This is by an automated agent,
       not a human." e mantenha um workpad com `## Relatório do agente`,
       `### Plano`, `### Validação`, `### Pergunta` e `### Bloqueio`. Se parar

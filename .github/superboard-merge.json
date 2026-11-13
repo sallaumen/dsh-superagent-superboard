@@ -1,0 +1,20 @@
+{
+  "method": "squash",
+  "review": false,
+  "local": {
+    "Project preflight": [
+      "scripts/ci-local.sh",
+      "all"
+    ]
+  },
+  "github": [
+    "github-actions/gates · format, credo e deps",
+    "github-actions/backend · partição 1",
+    "github-actions/backend · partição 2",
+    "github-actions/backend · partição 3",
+    "github-actions/backend · partição 4",
+    "github-actions/frontend · assets",
+    "github-actions/biblioteca de capacidades",
+    "github-actions/release · caminho misto (backend + frontend)"
+  ]
+}
