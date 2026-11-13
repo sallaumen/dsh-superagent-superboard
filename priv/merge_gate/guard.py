@@ -140,6 +140,12 @@ class Merge:
         remote = self.remote(config)
         rows.extend(dict(name=k, source="github", state=v) for k, v in remote.items())
         self.save(review=info["reviewDecision"] or "NONE", review_required=config["review"])
+        def refresh_remote():
+            current = self.remote(config)
+            for row in rows[len(local):]:
+                row["state"] = current[row["name"]]
+            self.save()
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
             events = queue.Queue()
 
@@ -154,10 +160,23 @@ class Merge:
             by_name = {row["name"]: row for row in rows[:len(local)]}
             for name, argv in local.items():
                 pool.submit(execute, name, argv)
-            for _ in range(2 * len(local)):
-                name, state = events.get()
+            remaining = 2 * len(local)
+            while remaining:
+                try:
+                    name, state = events.get(timeout=15)
+                except queue.Empty:
+                    refresh_remote()
+                    continue
+                remaining -= 1
                 by_name[name]["state"] = state
                 self.save()
+        # Keep short hosted runs visible even after the local commands finish.
+        until = time.monotonic() + 120
+        while (all(row["state"] == "passed" for row in rows[:len(local)])
+               and any(row["state"] in ("running", "queued", "pending") for row in rows[len(local):])
+               and time.monotonic() < until):
+            time.sleep(5)
+            refresh_remote()
         # Refetch at the decision. The hosted service still enforces branch rules.
         info = self.info()
         self.verify(info, owner, base)
@@ -181,7 +200,7 @@ class Merge:
             raise Blocked("review_required")
         if info["mergeable"] != "MERGEABLE" or info["mergeStateStatus"] not in ("CLEAN", "HAS_HOOKS"):
             raise Blocked("github_blocks_merge")
-        self.save(state="merging")
+        self.save(state="merging", review="APPROVED" if approved else info["reviewDecision"] or "NONE")
         subprocess.run([self.cli, "pr", "merge", str(self.number), "-R", self.repo,
                         "--" + config["method"], "--match-head-commit", self.expected], check=True)
         self.save(state="merged")

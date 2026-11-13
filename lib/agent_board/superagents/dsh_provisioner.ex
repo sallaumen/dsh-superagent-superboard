@@ -398,12 +398,12 @@ defmodule AgentBoard.Superagents.DshProvisioner do
       with {:ok, guarded} <- install_gate(folder, repository(superagent), delegate) do
         config = Map.put(config, "cli", guarded)
 
-      ok(
-        put(superagent, "/settings/source:github", %{
-          "value" => Map.put(current["value"] || %{}, "config", config),
-          "revision" => current["revision"] || 0
-        })
-      )
+        ok(
+          put(superagent, "/settings/source:github", %{
+            "value" => Map.put(current["value"] || %{}, "config", config),
+            "revision" => current["revision"] || 0
+          })
+        )
       end
     else
       {:error, :source_block_missing}
