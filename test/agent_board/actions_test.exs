@@ -40,6 +40,7 @@ defmodule AgentBoard.ActionsTest do
     :adopt_superagent,
     :retry_provision_superagent,
     :remove_superagent,
+    :sync_agent_runtimes,
     :start_superagent,
     :stop_superagent,
     :pause_superagent,
@@ -235,6 +236,9 @@ defmodule AgentBoard.ActionsTest do
         {:ok, target} = Board.add_repository("fixture", "first-agent-target")
         %{repository: target, path: "/tmp/checkout", workers: 2}
 
+      :sync_agent_runtimes ->
+        %{targets: %{repo.id => "fixture/project"}}
+
       :start_agent ->
         %{opts: [starter: fn -> flunk("the agent must not start") end]}
 
@@ -291,7 +295,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 23
+      assert length(reds) == 24
 
       for name <- reds do
         params = red_params(name, context)
@@ -305,7 +309,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 23
+      assert Repo.aggregate(Task, :count, :id) == length(reds)
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 

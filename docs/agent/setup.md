@@ -349,3 +349,20 @@ layout and leaves other sessions and custom session names alone.
 Run the host-specific tests with the same Node runtime as DSH:
 
 `node --test ops/harness-worker-titles/worker-titles.test.mjs`.
+
+### Update the Harness for connected projects
+
+Open the board on **localhost → Settings → Projects → Sync agent runtimes**.
+The list above the button is the scope you are approving. Progress and the
+last result appear beside each project; you can leave Settings while it runs.
+
+The board uses the Harness dependency lock shipped with **this board version**.
+It installs that runtime once per machine and checks each registered local
+profile against its repository, state directory and manager. An outdated, idle
+agent briefly pauses and reloads on the same profile and port. An up-to-date
+agent keeps its process. Busy, paused, stopped and unverified agents are
+skipped; click again after work finishes. GitHub-only projects need no action.
+The board stays online, the global npm installation is unchanged, and no code
+is written to the connected repositories. Manage agents on another machine
+from that machine's board. A failed result means the handoff could not be
+verified: check the project status and logs before retrying.

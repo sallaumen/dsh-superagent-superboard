@@ -9631,6 +9631,57 @@ msgstr "O Harness não conseguiu carregar a biblioteca nativa. Siga o guia de in
 msgid "The agent manager cannot recognize this Node process. Use Node 22 as described in the Alpine installation guide, then try again."
 msgstr "O gerenciador do agente não reconhece este processo Node. Use o Node 22 conforme o guia de instalação no Alpine e tente novamente."
 
+msgid "Waiting to check"
+msgstr "Aguardando verificação"
+
+msgid "Harness updated"
+msgstr "Harness atualizado"
+
+msgid "Harness already current"
+msgstr "Harness já atualizado"
+
+msgid "Skipped: agent paused"
+msgstr "Ignorado: agente pausado"
+
+msgid "Skipped: work in progress or queued"
+msgstr "Ignorado: há trabalho em andamento ou na fila"
+
+msgid "Skipped: agent state changed"
+msgstr "Ignorado: o estado do agente mudou"
+
+msgid "Skipped: project identity changed"
+msgstr "Ignorado: a identidade do projeto mudou"
+
+msgid "Skipped: agent unavailable"
+msgstr "Ignorado: agente indisponível"
+
+msgid "Another synchronization is in progress"
+msgstr "Outra sincronização em andamento"
+
+msgid "Could not verify the update. Check the agent before retrying."
+msgstr "Não foi possível verificar a atualização. Confira o agente antes de tentar novamente."
+
+msgid "From localhost, update idle agents to the Harness bundled with this board. Busy agents keep working; try again when they finish."
+msgstr "Abra o board em localhost para atualizar os agentes ociosos com o Harness desta versão do board. Os ocupados continuam trabalhando; tente novamente quando terminarem."
+
+msgid "Synchronizing…"
+msgstr "Sincronizando…"
+
+msgid "Sync agent runtimes"
+msgstr "Sincronizar Harness dos projetos"
+
+msgid "Synchronization started."
+msgstr "Sincronização iniciada."
+
+msgid "Synchronization is already running."
+msgstr "Já existe uma sincronização em andamento."
+
+msgid "Review the current project list and try again."
+msgstr "Confira a lista atual de projetos e tente novamente."
+
+msgid "Open Settings on localhost to manage this machine’s agents."
+msgstr "Abra Configurações em localhost para administrar os agentes desta máquina."
+
 msgctxt "PR status"
 msgid "Open"
 msgstr "Aberto"
