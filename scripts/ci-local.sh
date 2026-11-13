@@ -69,17 +69,53 @@ run_release() {
   MIX_ENV="prod" mix release --overwrite
 }
 
+# Progress is observational. A missing reporter or unwritable state directory
+# must never skip a command, change its exit status or block a focused run.
+progress() {
+  python3 "$ROOT/scripts/ci-progress.py" "$1" "$CURRENT" "$RUN" 2>/dev/null || :
+}
+
+finish_progress() {
+  local rc=$?
+  if [[ -n "$RUN" ]]; then
+    kill "$WATCH" 2>/dev/null || :
+    wait "$WATCH" 2>/dev/null || :
+    if [[ $rc == 0 ]]; then progress passed
+    elif [[ $rc == 130 || $rc == 143 ]]; then progress interrupted
+    else progress failed; fi
+  fi
+}
+
+run_all() {
+  CURRENT=backend
+  RUN=""
+  RUN=$(progress start)
+  if [[ -n "$RUN" ]]; then
+    python3 "$ROOT/scripts/ci-progress.py" watch "$$" "$RUN" </dev/null >/dev/null 2>&1 &
+    WATCH=$!
+    trap finish_progress EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+  fi
+  run_backend
+  CURRENT=frontend
+  if [[ -n "$RUN" ]]; then progress running; fi
+  run_frontend
+  CURRENT=library
+  if [[ -n "$RUN" ]]; then progress running; fi
+  run_library
+}
+
 case "${1:-all}" in
   backend) run_backend ;;
   frontend) run_frontend ;;
   library) run_library ;;
   release) run_release ;;
-  all) run_backend; run_frontend; run_library ;;
+  all) run_all ;;
   *)
     echo "Uso: $0 [backend|frontend|library|release|all]" >&2
     exit 2
     ;;
 esac
 
-CURRENT="—"
 echo "OK: pipeline(s) verdes."

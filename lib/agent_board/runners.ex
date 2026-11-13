@@ -60,6 +60,19 @@ defmodule AgentBoard.Runners do
   @spec get_execution(integer()) :: Execution.t() | nil
   def get_execution(id) when is_integer(id), do: Repo.get(Execution, id)
 
+  @doc "Most recent dispatch for each visible local task; one query for the whole lane."
+  def latest_for_tasks([]), do: %{}
+
+  def latest_for_tasks(ids) do
+    Repo.all(
+      from e in Execution,
+        where: e.task_id in ^ids,
+        distinct: e.task_id,
+        order_by: [asc: e.task_id, desc: e.id]
+    )
+    |> Map.new(&{&1.task_id, &1})
+  end
+
   @doc "Every execution of a task, newest first."
   def for_task(task_id) do
     Repo.all(from e in Execution, where: e.task_id == ^task_id, order_by: [desc: e.id])

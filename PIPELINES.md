@@ -122,3 +122,21 @@ Two systems run beside the board, and neither is on the board's critical path:
 
 The board **mirrors** both: the sync reads GitHub, the AI panel reads
 `ai_calls`. Stop the board and both keep working.
+
+## Local preflight on the task
+
+Running `scripts/ci-local.sh all` (also the default with no argument) reports
+backend, frontend and library. The Now card shows the current step; the task
+inspector lists each outcome and the commit at the start, even before a PR
+exists. Single targets and release do not replace this record. A failure still
+stops at the first failing command and preserves its exit code.
+
+On a shared host the script writes a small atomic receipt per worktree to
+`~/.local/state/superboard/preflight/` (override `SUPERBOARD_PREFLIGHT_DIR`
+for both processes). No output, file contents or credentials are included.
+Reporting requires Python 3; reporting failures do not fail or skip checks.
+The board only reads a receipt for a known task worktree and attempt window.
+A newer invocation in the same worktree supersedes the previous one. An
+unconfirmed run has no recent heartbeat; it is never reported as passed.
+These rows describe the local run only, including uncommitted changes; they
+are not GitHub checks or approval to merge a revision.

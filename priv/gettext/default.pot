@@ -9739,3 +9739,43 @@ msgstr ""
 
 msgid "Last verified policy · %{revision}"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Local preflight"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Starting revision"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Local preflight passed"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Local preflight: %{stage} · %{status}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Backend"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Frontend"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Practice library"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Not run"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Interrupted"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "No recent signal"
+msgstr ""
