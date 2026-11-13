@@ -9681,3 +9681,7 @@ msgstr "Confira a lista atual de projetos e tente novamente."
 
 msgid "Open Settings on localhost to manage this machine’s agents."
 msgstr "Abra Configurações em localhost para administrar os agentes desta máquina."
+
+msgctxt "PR status"
+msgid "Open"
+msgstr "Aberto"

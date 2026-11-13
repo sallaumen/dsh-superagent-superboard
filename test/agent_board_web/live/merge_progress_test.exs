@@ -80,10 +80,20 @@ defmodule AgentBoardWeb.MergeProgressTest do
     send(view.pid, :merge_check_tick)
     assert has_element?(view, ".ab-merge-progress", "Node falhou")
 
+    write.(%{snapshot | state: "merging"})
+    send(view.pid, :merge_check_tick)
+    assert has_element?(view, ".ab-pr-facts .ab-status", "Aberto")
+
+    write.(%{snapshot | state: "merged"})
+    send(view.pid, :merge_check_tick)
+    assert has_element?(view, ".ab-pr-facts .ab-status", "Mesclado")
+    assert Repo.get!(PullRequest, pr.id).state == "open"
+
     Repo.update!(PullRequest.changeset(pr, %{head_sha: String.duplicate("b", 40)}))
     send(view.pid, :board_updated)
     send(view.pid, :merge_check_tick)
     assert has_element?(view, ".ab-merge-progress", "Aguardando verificações da revisão atual")
+    assert has_element?(view, ".ab-pr-facts .ab-status", "Aberto")
     refute has_element?(view, ".ab-merge-progress li")
     path = Path.join(dir, "42.json")
     other = Path.join(root, "outside.json")

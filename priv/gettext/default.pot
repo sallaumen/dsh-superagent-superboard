@@ -9681,3 +9681,7 @@ msgstr ""
 
 msgid "Open Settings on localhost to manage this machine’s agents."
 msgstr ""
+
+msgctxt "PR status"
+msgid "Open"
+msgstr ""
