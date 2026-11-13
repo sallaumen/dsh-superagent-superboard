@@ -24,6 +24,11 @@ fail() {
   exit 1
 }
 
+guard="$(cd "$(dirname "$0")/../.." && pwd)/priv/merge_gate/guard.py"
+delegate="$(command -v gh)" || fail "GitHub CLI unavailable"
+python3 "$guard" install "$RUN_DIR/merge-bin" "${REPO_SLUG:?}" "$delegate" >/dev/null || fail "Merge gate unavailable"
+export PATH="$RUN_DIR/merge-bin:$PATH"
+
 mkdir -p "$RUN_DIR"
 status "starting"
 

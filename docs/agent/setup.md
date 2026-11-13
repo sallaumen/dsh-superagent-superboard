@@ -246,8 +246,7 @@ only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
 
 ## 8. Merge policy
 
-The host has no merge logic. Whether the agent merges is prompt text: the
-**Delivery requirements** team section. The three team sections --
+The managed worker CLI enforces the [project merge checks](merge-checks.md). Delivery requirements tell the worker when to request that operation. The three team sections --
 Communication, Ticket scope and Delivery requirements -- are versioned in
 [`prompts/communication.md`](prompts/communication.md),
 [`prompts/scope.md`](prompts/scope.md) and
@@ -288,22 +287,9 @@ Its Delivery section names a different gate, the one `o_colmex`'s AGENTS.md
 asks for: `mix format --check-formatted`, `mix lint` and the focused tests,
 with the full `mix precommit` for a broad-risk change.
 
-The built-in text lets a person merge every PR. This deployment delegates
-merging to the agent: [`prompts/delivery.md`](prompts/delivery.md) says that nobody
-reviews PRs by hand and that the executor merges each PR it opened, as the
-bot, once all of these hold: the work is complete; `mix precommit` passed on
-the head commit and the PR and the report say so; no human review asks for
-changes; `gh pr view --json mergeable` answers `MERGEABLE`. GitHub Actions
-is never a reason to wait (it cannot run here: billing). It merges with
-`gh pr merge <n> --merge --match-head-commit <sha>` before it reports, puts
-`Closes #<issue>` in the PR so the merge closes the issue, and reports the PR
-as merged, never as ready for review. It never merges a PR someone else
-opened.
-
-For that the bot needs write permission on the repository and the base
-branch needs no rule that requires a review. Sessions read the newest
-revision on their next model request; no restart. The panel's history
-restores an earlier revision.
+Existing profiles keep their CLI and active revision until their owner adopts the
+guard and updates their prompts. Do not apply the prompt on its own.
+See [existing profile setup](merge-checks.md#existing-profiles).
 
 The board marks the task done as soon as the ticket ends `merged`, whatever
 its last report said.

@@ -382,16 +382,32 @@ defmodule AgentBoard.Superagents.DshProvisioner do
       config = get_in(source, ["value", "config"]) || source["config"] || %{}
       config = Map.put(config, "repository", repository(superagent))
       config = Map.put(config, "observeIssues", true)
-      config = if attrs[:cli], do: Map.put(config, "cli", attrs.cli), else: config
+      delegate = attrs[:cli] || config["cli"] || Bot.cli()
+      folder = Path.join(profile_dir(superagent.profile), "merge-bin")
 
-      ok(
-        put(superagent, "/settings/source:github", %{
-          "value" => Map.put(current["value"] || %{}, "config", config),
-          "revision" => current["revision"] || 0
-        })
-      )
+      with {:ok, guarded} <- install_gate(folder, repository(superagent), delegate) do
+        config = Map.put(config, "cli", guarded)
+
+        ok(
+          put(superagent, "/settings/source:github", %{
+            "value" => Map.put(current["value"] || %{}, "config", config),
+            "revision" => current["revision"] || 0
+          })
+        )
+      end
     else
       {:error, :source_block_missing}
+    end
+  end
+
+  defp install_gate(folder, slug, cli) do
+    guard = Application.app_dir(:agent_board, "priv/merge_gate/guard.py")
+
+    case System.cmd("/usr/bin/env", ["python3", guard, "install", folder, slug, cli],
+           stderr_to_stdout: true
+         ) do
+      {path, 0} -> {:ok, String.trim(path)}
+      {_error, _status} -> {:error, :merge_gate_install_failed}
     end
   end
 
