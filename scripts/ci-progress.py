@@ -27,10 +27,15 @@ def record(action, stage, run):
                                   text=True, check=True).stdout.strip()
             run = str(time.time_ns())
             data = dict(run=run, head=head, started=int(run) // 1000)
+            reason = os.environ.get("UI_REASON")
+            if reason in ("screen", "interaction", "appearance", "copy", "unknown", "none"):
+                data["ui_reason"] = reason
         else:
             data = json.loads(target.read_bytes())
             if data["run"] != run or data["state"] != "running":
                 return  # A newer invocation owns this worktree.
+        if stage == "ui_review" and action == "failed":
+            data["ui_failure"] = os.environ.get("UI_FAILED_SCREEN")
         if action != "heartbeat":
             data.update(stage=stage, state="running" if action == "start" else action)
         data["at"] = int(time.time())

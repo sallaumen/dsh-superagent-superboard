@@ -9780,6 +9780,62 @@ msgstr "Interrompida"
 msgid "No recent signal"
 msgstr "Sem sinal recente"
 
+#, elixir-autogen, elixir-format
+msgid "UI review"
+msgstr "Revisão de UI"
+
+#, elixir-autogen, elixir-format
+msgid "UI review: browser interaction code changed."
+msgstr "O código de interação do navegador mudou."
+
+#, elixir-autogen, elixir-format
+msgid "UI review: styles or visual assets changed."
+msgstr "Os estilos ou recursos visuais mudaram."
+
+#, elixir-autogen, elixir-format
+msgid "UI review: a screen, component or route changed."
+msgstr "Uma tela, um componente ou uma rota mudou."
+
+#, elixir-autogen, elixir-format
+msgid "UI review: interface translations changed."
+msgstr "As traduções da interface mudaram."
+
+#, elixir-autogen, elixir-format
+msgid "UI review: the change could not be compared with the base branch."
+msgstr "A revisão foi incluída porque não foi possível comparar a mudança com a base."
+
+#, elixir-autogen, elixir-format
+msgid "UI review not needed: no interface files changed."
+msgstr "Revisão de UI dispensada: nenhum arquivo da interface mudou."
+
+#, elixir-autogen, elixir-format
+msgid "WebKit checked the board, inspector, request form and settings on desktop and mobile."
+msgstr "O WebKit verificou o painel, o inspetor, o formulário de pedido e as configurações em desktop e celular."
+
+#, elixir-autogen, elixir-format
+msgid "Browser check failed: %{screen}."
+msgstr "Falha na verificação: %{screen}."
+
+#, elixir-autogen, elixir-format
+msgid "The browser check failed. See the local preflight output for the failing interaction."
+msgstr "A verificação no navegador falhou. Consulte a saída da validação local para identificar a interação."
+
+#, elixir-autogen, elixir-format
+msgid "The test board or WebKit could not start. The interface was not verified."
+msgstr "O painel de teste ou o WebKit não iniciou. A interface não foi verificada."
+
+#, elixir-autogen, elixir-format
+msgid "Task inspector"
+msgstr "Inspetor da tarefa"
+
+#, elixir-autogen, elixir-format
+msgid "Request form"
+msgstr "Formulário de pedido"
+
+#, elixir-autogen, elixir-format
+msgid "Board"
+msgstr "Painel"
+
 msgid "Merge"
 msgstr "Merge"
 

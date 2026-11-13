@@ -9780,6 +9780,62 @@ msgstr ""
 msgid "No recent signal"
 msgstr ""
 
+#, elixir-autogen, elixir-format
+msgid "UI review"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "UI review: browser interaction code changed."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "UI review: styles or visual assets changed."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "UI review: a screen, component or route changed."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "UI review: interface translations changed."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "UI review: the change could not be compared with the base branch."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "UI review not needed: no interface files changed."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "WebKit checked the board, inspector, request form and settings on desktop and mobile."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Browser check failed: %{screen}."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The browser check failed. See the local preflight output for the failing interaction."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The test board or WebKit could not start. The interface was not verified."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Task inspector"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Request form"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Board"
+msgstr ""
+
 msgid "Merge"
 msgstr ""
 

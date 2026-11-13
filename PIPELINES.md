@@ -10,7 +10,7 @@ This document answers "which script do I run now?". It defines the repository's 
 | Frontend | Asset sources, setup, build, and deploy | `scripts/check_assets.sh` + asset tasks | `make frontend` | `frontend · assets` |
 | Library | References to the versioned kit | `mix agent_kit.check` | `make library` | `biblioteca de capacidades` (capability library) |
 | Mixed (release) | The combined path of a deploy | release sequence (below) | `make release` | `release · caminho misto` (mixed path) |
-| All | Backend, frontend, and library, before delivering | `scripts/ci-local.sh all` | `make check` | `gates`, `backend`, `frontend`, `library` |
+| All | Backend, frontend, library, then local UI review when applicable | `scripts/ci-local.sh all` | `make check` | `gates`, `backend`, `frontend`, `library` |
 
 The executable commands live in [Makefile](Makefile),
 [scripts/ci-local.sh](scripts/ci-local.sh), and the
@@ -58,7 +58,7 @@ body: changes to those contracts require checking the consumers.
 The backend gate runs `mix hex.audit` on the lockfile; the frontend preflight runs `npm audit --prefix scripts/agent/alpine` on the optional Harness installer. Both query package advisories and must pass. An unavailable registry is not a clean result.
 
 Before delivering any PR, run **`scripts/ci-local.sh all`**. It runs backend,
-frontend, and library sequentially and fails at the first red pipeline. During
+frontend, and library sequentially, followed by the [conditional UI review](#automatic-local-ui-review). It stops at the first failure. During
 the work, use `make` for an isolated pipeline. When the deployment path changes,
 also run `scripts/ci-local.sh release`.
 
@@ -126,7 +126,7 @@ The board **mirrors** both: the sync reads GitHub, the AI panel reads
 ## Local preflight on the task
 
 Running `scripts/ci-local.sh all` (also the default with no argument) reports
-backend, frontend and library. The Now card shows the current step; the task
+backend, frontend, library and any selected UI review. The Now card shows the current step; the task
 inspector lists each outcome and the commit at the start, even before a PR
 exists. Single targets and release do not replace this record. A failure still
 stops at the first failing command and preserves its exit code.
@@ -140,3 +140,34 @@ A newer invocation in the same worktree supersedes the previous one. An
 unconfirmed run has no recent heartbeat; it is never reported as passed.
 These rows describe the local run only, including uncommitted changes; they
 are not GitHub checks or approval to merge a revision.
+
+### Automatic local UI review
+
+After backend, frontend and library pass, `ci-local.sh all` runs a **real
+headless WebKit check** if the checkout differs from its merge base with
+`origin/main` in a screen, component, route, template, browser interaction,
+stylesheet, image/font or interface translation. The comparison includes
+committed and uncommitted work, deletions, both sides of renames and nonignored
+new files. Fetch the target branch before working. If the base is unavailable
+the review runs conservatively. Backend-only changes, focused targets and
+release do not acquire this additional stage. The existing GitHub jobs stay
+unchanged.
+
+Requires Node, Playwright with its matching WebKit installed locally, the
+backend's test database and the frontend's compiled assets. The runner resolves
+the project's installed Playwright or the shared pinned local installation;
+`SUPERBOARD_PLAYWRIGHT` may point to another installed Playwright package.
+No browser is downloaded by a preflight. The app starts on a private loopback
+port with disposable fixture rows in a rolled-back test transaction. With these
+prerequisites in place the browser step alone is reproducible with
+`MIX_ENV=test mix run --no-start scripts/ui-review/run.exs` (use the same
+`MIX_TEST_PARTITION` as backend).
+
+The smoke review checks the board, keyboard opening of a task, its inspector,
+editing a request without submitting it, and system settings at 1440 and
+375 px. It checks a connected LiveView, horizontal overflow and browser errors,
+and writes screenshots under ignored `tmp/ui-review/`. This is a common screen
+check, not a visual sign-off for every state of a changed feature. The inspector
+reports why it ran, which surface failed, or why it was not required. An
+unavailable browser or fixture returns 2; a failing surface returns 10–13.
+Neither is a pass. A failed required stage still stops before the browser check.

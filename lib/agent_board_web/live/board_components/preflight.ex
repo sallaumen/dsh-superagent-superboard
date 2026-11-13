@@ -18,6 +18,10 @@ defmodule AgentBoardWeb.BoardComponents.Preflight do
           <small class="ab-meta">{label(status)}</small>
         </li>
       </ul>
+      <p :if={!@compact && @snapshot[:ui_reason]} class="ab-meta">
+        {reason(@snapshot.ui_reason)}
+        <span :if={@snapshot.stage == "ui_review"}>{result(@snapshot)}</span>
+      </p>
     </section>
     """
   end
@@ -27,12 +31,51 @@ defmodule AgentBoardWeb.BoardComponents.Preflight do
   defp headline(%{stage: stage, state: state}),
     do: gettext("Local preflight: %{stage} · %{status}", stage: name(stage), status: label(state))
 
+  defp reason("interaction"), do: gettext("UI review: browser interaction code changed.")
+  defp reason("appearance"), do: gettext("UI review: styles or visual assets changed.")
+  defp reason("screen"), do: gettext("UI review: a screen, component or route changed.")
+  defp reason("copy"), do: gettext("UI review: interface translations changed.")
+
+  defp reason("unknown"),
+    do: gettext("UI review: the change could not be compared with the base branch.")
+
+  defp reason("none"), do: gettext("UI review not needed: no interface files changed.")
+  defp reason(_), do: nil
+
+  defp result(%{state: "passed"}),
+    do:
+      gettext(
+        "WebKit checked the board, inspector, request form and settings on desktop and mobile."
+      )
+
+  defp result(%{state: "failed", ui_failure: screen})
+       when screen in ~w(board inspector composer settings),
+       do: gettext("Browser check failed: %{screen}.", screen: screen_label(screen))
+
+  defp result(%{state: "failed"}),
+    do:
+      gettext(
+        "The browser check failed. See the local preflight output for the failing interaction."
+      )
+
+  defp result(%{state: "unavailable"}),
+    do: gettext("The test board or WebKit could not start. The interface was not verified.")
+
+  defp result(_), do: nil
+
+  defp screen_label("board"), do: gettext("Board")
+  defp screen_label("inspector"), do: gettext("Task inspector")
+  defp screen_label("composer"), do: gettext("Request form")
+  defp screen_label("settings"), do: gettext("Settings")
+
+  defp name("ui_review"), do: gettext("UI review")
   defp name("backend"), do: gettext("Backend")
   defp name("frontend"), do: gettext("Frontend")
   defp name("library"), do: gettext("Practice library")
   defp label("running"), do: gettext("Running")
   defp label("passed"), do: gettext("Passed")
   defp label("failed"), do: gettext("Failed")
+  defp label("unavailable"), do: gettext("Unavailable")
   defp label("pending"), do: gettext("Pending")
   defp label("not_run"), do: gettext("Not run")
   defp label("interrupted"), do: gettext("Interrupted")

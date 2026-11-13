@@ -80,8 +80,17 @@ finish_progress() {
   if [[ -n "$RUN" ]]; then
     kill "$WATCH" 2>/dev/null || :
     wait "$WATCH" 2>/dev/null || :
+    if [[ "$CURRENT" == ui_review ]]; then
+      case "$rc" in
+        10) export UI_FAILED_SCREEN=board ;;
+        11) export UI_FAILED_SCREEN=inspector ;;
+        12) export UI_FAILED_SCREEN=composer ;;
+        13) export UI_FAILED_SCREEN=settings ;;
+      esac
+    fi
     if [[ $rc == 0 ]]; then progress passed
     elif [[ $rc == 130 || $rc == 143 ]]; then progress interrupted
+    elif [[ "$CURRENT" == ui_review && $rc == 2 ]]; then progress unavailable
     else progress failed; fi
   fi
 }
@@ -89,6 +98,9 @@ finish_progress() {
 run_all() {
   CURRENT=backend
   RUN=""
+  unset UI_FAILED_SCREEN
+  UI_REASON=$(python3 "$ROOT/scripts/ui-review/select.py") || UI_REASON=unknown
+  export UI_REASON
   RUN=$(progress start)
   if [[ -n "$RUN" ]]; then
     python3 "$ROOT/scripts/ci-progress.py" watch "$$" "$RUN" </dev/null >/dev/null 2>&1 &
@@ -104,6 +116,14 @@ run_all() {
   CURRENT=library
   if [[ -n "$RUN" ]]; then progress running; fi
   run_library
+  if [[ "$UI_REASON" != none ]]; then
+    CURRENT=ui_review
+    if [[ -n "$RUN" ]]; then progress running; fi
+    echo "== UI review: WebKit (reason: $UI_REASON) =="
+    # Use the test database already prepared by backend; only fixture rows,
+    # inside a transaction. No dev server, external URL or delivery action.
+    MIX_ENV=test mix run --no-start scripts/ui-review/run.exs
+  fi
 }
 
 case "${1:-all}" in
