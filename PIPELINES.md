@@ -28,8 +28,8 @@ body: changes to those contracts require checking the consumers.
 
 | Script | When to use it | Environment | Effects | Expected output |
 |---|---|---|---|---|
-| `mix setup` | Prepare a development checkout | `MIX_ENV=dev` | installs dependencies, prepares the database with seeds, and compiles assets | app ready to start; outside CI because it applies seeds |
-| `mix ecto.setup` | Create/migrate and seed the development database | `MIX_ENV=dev` | writes to the database; runs `priv/repo/seeds.exs` | database and seeds ready; not a gate |
+| `mix setup` | Prepare a development checkout | `MIX_ENV=dev` | installs dependencies, creates and migrates the database, and compiles assets | app ready to start; no projects added |
+| `mix ecto.setup` | Create and migrate the development database | `MIX_ENV=dev` | writes the schema; keeps existing projects | empty project list on a fresh database; not a gate |
 | `mix ecto.reset` | Deliberately recreate the disposable local database | `MIX_ENV=dev` | **deletes the database** and runs `ecto.setup` | database recreated; outside CI and the pre-flight |
 | `mix test` | Test behaviors; accepts a file and filters | `:test` automatically | creates/migrates the test database before the suite | tests green; CI uses partitions |
 | `mix test test/secret_scan_test.exs` | Before committing anything that touched configuration, fixtures or docs with examples; it also runs inside every `mix test`, so `mix precommit`, `mix gate` and the CI's `backend` job all carry it | `:test` automatically | read-only over the files git tracks or would add (ignored files such as `.env.local` are left alone) | no finding; a finding names file, line and kind of key, never the value |

@@ -512,7 +512,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     refute has_element?(view, "#tracked-#{with_agent.id}")
     assert has_element?(view, ".ab-projects__summary", "1 sem agente")
 
-    view |> element("#{row} button", "Criar agente") |> render_click()
+    view |> element("#{row} button", "Conectar agente") |> render_click()
 
     assert_patch(view, "/?panel=settings&path=agent&repo=fixture%2Fwith-agent&section=projects")
     assert has_element?(view, "#agent-install")

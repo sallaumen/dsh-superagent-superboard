@@ -4,7 +4,7 @@
 
 ## Acompanhar um repositório
 
-Para rodar o painel, instale `Git`, `Elixir 1.19`, `Erlang/OTP 27` e `PostgreSQL 16`. O banco de desenvolvimento é `agent_board_dev`, em `127.0.0.1:5434`, com usuário e senha `board`. Se preferir Docker:
+Para rodar o painel, instale o [Git](https://git-scm.com/downloads) e o [Elixir com Erlang/OTP](https://elixir-lang.org/install.html). Confira com `git --version` e `elixir --version`: o painel é testado com `Elixir 1.19` e `Erlang/OTP 27`. Para o banco, escolha **uma** opção: [PostgreSQL 16](https://www.postgresql.org/download/) ou [Docker](https://docs.docker.com/get-started/get-docker/) com o comando abaixo. O banco de desenvolvimento é `agent_board_dev`, em `127.0.0.1:5434`, com usuário e senha `board`. Se preferir Docker:
 
 ```sh
 docker run --name dsh-board-postgres -d -p 127.0.0.1:5434:5432 \
@@ -19,14 +19,14 @@ docker run --name dsh-board-postgres -d -p 127.0.0.1:5434:5432 \
    cp .env .env.local
    ```
 
-2. Defina `GITHUB_TOKEN` em `.env.local` ([configurar token no GitHub](https://github.com/settings/tokens)). Acesso de leitura basta para acompanhar; para publicar pedidos, permita a criação de issues. Mantenha esse arquivo fora do Git. Inicie o painel:
+2. Defina `GITHUB_TOKEN` em `.env.local` ([configurar token no GitHub](https://github.com/settings/tokens)). Em um token de acesso granular, selecione o dono e o repositório. Para acompanhar, permita leitura de conteúdo, issues, pull requests e checks; para publicar pedidos, use **Issues: read and write**. Esse token é do painel, não do bot. Mantenha esse arquivo fora do Git. Inicie o painel (se o Mix pedir para instalar Hex ou Rebar, aceite):
 
    ```sh
    mix setup
    PORT=4002 mix phx.server
    ```
 
-3. Abra [localhost:4002](http://127.0.0.1:4002). Para mudar o idioma, use **Settings → System → Board language**. Em **Configurações → IAs e setup → Usar só o GitHub**, informe o dono e o nome do repositório e clique em **Acompanhar repositório**. Depois da sincronização, abra o projeto na lateral. Se continuar vazio, verifique **Configurações → Sistema → Atividade**.
+3. Uma instalação nova começa **sem projetos**. Abra [localhost:4002](http://127.0.0.1:4002). Para mudar o idioma, use **Settings → System → Board language**. Em **Configurações → IAs e setup → Usar só o GitHub**, informe o dono e o nome do repositório e clique em **Acompanhar repositório**. Use campos separados: em `octocat/Hello-World`, o dono é `octocat` e o nome é `Hello-World`. Abra o projeto na lateral. A sincronização automática roda aproximadamente a cada cinco minutos; **Sem agente** é esperado nesse modo. Se continuar vazio, verifique **Configurações → Sistema → Atividade**.
 
 ## Conectar o Super Agent
 
@@ -39,9 +39,9 @@ Esta etapa é opcional. O [DeepSeek Harness](https://www.deepseek.com/en/harness
 | Execução | `Python 3.8+` e `tmux` |
 | Conta | Uma conta GitHub separada para o bot, com acesso de escrita; um provedor de modelo configurado no perfil do Harness |
 
-1. [Baixe o Harness](https://www.deepseek.com/en/harness/), instale o comando `dsh` e [faça login com a conta do bot](agent/setup.md#2-the-bot-identity). **IAs e setup** indica o que falta na máquina.
-2. Abra **Configurações → Projetos → Conectar o Super Agent**. Para a primeira instalação, informe o repositório e a pasta local, revise a proposta e confirme. **Já tem um perfil?** Use **Buscar perfis novamente** e adicione o perfil detectado. Para instalar pelo terminal, siga o [guia oficial](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md).
-3. De uma conta autorizada, mencione o bot em uma issue pequena. Confira o ticket no painel e a resposta na issue. Veja também os [requisitos e permissões oficiais](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#prerequisites).
+1. [Baixe o Harness](https://www.deepseek.com/en/harness/), instale o comando `dsh` e configure o provedor de modelo. Na máquina do board, confira com `dsh --version` e [faça login com a conta do bot](agent/setup.md#2-the-bot-identity). **IAs e setup** indica o que falta na máquina.
+2. Abra **Configurações → Projetos → Conectar o Super Agent**. **O repositório já tem agente?** Use **Buscar perfis novamente**, escolha o perfil detectado e confirme **Adicionar ao board**. Assim você conecta o agente existente sem criar outro. **É o primeiro agente da máquina?** Clone o *projeto que vai receber o trabalho*. Informe o mesmo dono e repositório, a pasta que contém o `.git` dele e o limite de execuções. Revise e confirme. O bot precisa de escrita: conceda o acesso no repositório ou permita que o board faça isso se seu token puder gerenciar colaboradores. Para instalar pelo terminal, siga o [guia oficial](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md).
+3. De uma conta autorizada, mencione o bot em uma issue pequena. Por exemplo: `@seu-bot Documente um controle do jogo que já existe no README e abra um PR.` Troque a menção pelo login real. Confira a resposta ou o registro de trabalho na issue e, no painel, o ticket e o PR associado. Só conectar o perfil não envia tarefas. Veja também os [requisitos e permissões oficiais](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#prerequisites).
 
 ## Do pedido às issues
 

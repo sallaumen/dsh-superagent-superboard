@@ -64,7 +64,10 @@ defmodule AgentBoard.Setup do
     {"gh", "gh"}
   ]
   @agent_minimum %{"node" => "22.19.0", "gh" => "2.48.0"}
-  @bot_login "mkdir -p ~/.config/gh-agent && GH_CONFIG_DIR=~/.config/gh-agent gh auth login"
+  @bot_login "mkdir -p ~/.config/gh-agent && env -u GH_TOKEN -u GITHUB_TOKEN GH_CONFIG_DIR=~/.config/gh-agent gh auth login"
+
+  @doc "How to sign the bot in separately from the board owner."
+  def bot_login_command, do: @bot_login
 
   @doc "The rows from configuration only, with no network."
   @spec checklist(keyword()) :: [row()]

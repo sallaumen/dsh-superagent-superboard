@@ -1226,9 +1226,9 @@ defmodule AgentBoardWeb.BoardLive do
     path = if path == "", do: Path.expand("~/projects/#{name}"), else: Path.expand(path)
     workers = worker_count(params["workers"])
 
-    with {:ok, _} <- Actions.run(:add_repository, %{owner: owner, name: name}, ui()),
+    with {:ok, action, source} <- project_source(),
+         {:ok, _} <- Actions.run(:add_repository, %{owner: owner, name: name}, ui()),
          repository when not is_nil(repository) <- Board.repository_by_slug("#{owner}/#{name}"),
-         {:ok, action, source} <- project_source(),
          {:ok, preview} <-
            Superagents.preview(repository, source, %{path: path, workers: workers}) do
       params = %{repository: repository, source: source, path: path, workers: preview.workers}
