@@ -525,7 +525,12 @@ defmodule AgentBoard.SuperagentsTest do
   defp with_profiles(tmp, fun) do
     File.mkdir_p!(Path.join(tmp, "superagent"))
     File.mkdir_p!(Path.join(tmp, "desktop"))
-    File.write!(Path.join([tmp, "superagent", "cordis.patch.yml"]), "webserver:\n  port: 3082\n")
+
+    File.write!(
+      Path.join([tmp, "superagent", "cordis.patch.yml"]),
+      "webserver:\n  port: 3082\n- id: dsh-superagent\n"
+    )
+
     File.write!(Path.join([tmp, "desktop", "cordis.patch.yml"]), "webserver:\n  port: 3083\n")
 
     previous = Application.get_env(:agent_board, :dsh_profiles_dir)
@@ -558,6 +563,42 @@ defmodule AgentBoard.SuperagentsTest do
       assert other.port == 3083
       assert {:error, :profile_missing} = Superagents.source_by_profile("nope")
     end)
+  end
+
+  test "a profile of the Harness itself is not an agent to copy" do
+    tmp = Path.join(System.tmp_dir!(), "dsh-profiles-#{System.unique_integer([:positive])}")
+
+    with_profiles(tmp, fn ->
+      File.rm_rf!(Path.join(tmp, "superagent"))
+
+      assert [%{name: "desktop", agent?: false}] = Superagents.profiles_on_disk()
+      assert {:error, :no_working_profile} = Superagents.default_source()
+    end)
+  end
+
+  test "a machine's first agent is provisioned with no profile to copy, and can be retried", %{
+    repo: repo
+  } do
+    assert {:ok, %{source_profile: nil, profile: profile}} =
+             Superagents.preview(repo, :first, %{workers: 2})
+
+    assert {:error, :unreachable} =
+             Superagents.provision(
+               repo,
+               :first,
+               %{path: "/tmp/first", workers: 2, fail: :unreachable},
+               FakeProvisioner
+             )
+
+    assert %{profile: ^profile, source_profile: nil, checkout_path: "/tmp/first"} =
+             failed = Superagents.get_by_repository(repo)
+
+    assert %DateTime{} = failed.provision_failed_at
+
+    assert {:ok, _superagent} = Superagents.retry_provision(failed, FakeProvisioner)
+
+    assert {_row, :first, %{path: "/tmp/first", workers: 2}} =
+             Process.get({FakeProvisioner, :last})
   end
 
   test "without any profile on disk the default source is an error" do
@@ -631,6 +672,7 @@ defmodule AgentBoard.SuperagentsTest do
   describe "a provisioning that failed" do
     defmodule FailingProvisioner do
       @behaviour AgentBoard.Superagents.Provisioner
+      def first_ready, do: :ok
       def provision(_superagent, _source, _attrs), do: {:error, "the bot cannot push"}
     end
 

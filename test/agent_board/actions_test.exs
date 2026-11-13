@@ -36,6 +36,7 @@ defmodule AgentBoard.ActionsTest do
     :dispatch_task,
     :stop_execution,
     :provision_superagent,
+    :install_first_superagent,
     :adopt_superagent,
     :retry_provision_superagent,
     :remove_superagent,
@@ -230,6 +231,10 @@ defmodule AgentBoard.ActionsTest do
       :adopt_superagent ->
         %{profile: "superagent-installed", port: 3391}
 
+      :install_first_superagent ->
+        {:ok, target} = Board.add_repository("fixture", "first-agent-target")
+        %{repository: target, path: "/tmp/checkout", workers: 2}
+
       :start_agent ->
         %{opts: [starter: fn -> flunk("the agent must not start") end]}
 
@@ -286,7 +291,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 22
+      assert length(reds) == 23
 
       for name <- reds do
         params = red_params(name, context)
@@ -300,7 +305,7 @@ defmodule AgentBoard.ActionsTest do
         assert last().action == Atom.to_string(name)
       end
 
-      assert Repo.aggregate(Task, :count, :id) == 22
+      assert Repo.aggregate(Task, :count, :id) == 23
       assert Repo.aggregate(Comment, :count, :id) == 0
     end
 
@@ -989,6 +994,8 @@ defmodule AgentBoard.ActionsTest do
       {~r/\bAgentControl\.(retry|start_agent)\(/, []},
       {~r/\bRunners\.dispatch\(/, []},
       {~r/\bSuperagents\.(retry_provision|adoptable|adopt)\(/, []},
+      # Cloning and building the agent's code is part of installing a first agent.
+      {~r/\bPrototype\.install\(/, ["lib/agent_board/superagents/dsh_provisioner.ex"]},
       {~r/\bAgentAccess\.(grant|revoke|dismiss)\(/, []},
       {~r/\b(Voice\.put_\w+|ElevenLabs\.save_voice)\(/, []},
       # Policy.apply is the effect behind :apply_agent_policy; it stores the
@@ -1000,6 +1007,8 @@ defmodule AgentBoard.ActionsTest do
        [
          "lib/agent_board/superagents/policy.ex",
          "lib/agent_board/superagents/leftovers.ex",
+         # Where the board installed the agent's code, remembered by the install.
+         "lib/agent_board/superagents/prototype.ex",
          "lib/agent_board/voice.ex",
          "lib/agent_board/eleven_labs.ex",
          "lib/agent_board/daily_summary.ex"

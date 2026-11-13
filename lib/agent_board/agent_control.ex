@@ -22,6 +22,7 @@ defmodule AgentBoard.AgentControl do
 
   alias AgentBoard.{Board, Orchestrator, Repo}
   alias AgentBoard.Board.Repository
+  alias AgentBoard.Superagents.Prototype
 
   @start_timeout_ms 90_000
 
@@ -155,11 +156,7 @@ defmodule AgentBoard.AgentControl do
   # The same manager the LaunchAgent uses (scripts/agent/keepalive.sh), but
   # without --respect-stop: the owner asked for it.
   defp run_manager do
-    home =
-      System.get_env("DSH_SUPERAGENT_HOME") ||
-        Path.expand("~/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype")
-
-    manager = Path.join(home, "scripts/dsh-superagent")
+    manager = Prototype.manager()
 
     if File.exists?(manager) do
       System.cmd("python3", [manager, "start"], stderr_to_stdout: true)

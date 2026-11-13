@@ -222,6 +222,7 @@ and is recorded as `automatic`.
 | `start_superagent` | red | starts the DeepSeek superagent of one project | UI: `AgentAction` "Ligar" in the Superagentes panel, two steps; "Religar o agente" on that project's board when its agent is down |
 | `stop_superagent` | red | stops that superagent; in-flight work is interrupted | UI: `AgentAction` "Parar", two steps |
 | `pause_superagent` / `resume_superagent` | yellow | pauses/resumes new work without killing the process | UI: one click |
+| `install_first_superagent` | red | installs this machine's first DeepSeek agent: clones and builds the agent's code when the machine has none, creates the profile with `dsh`, writes the bot's `gh` wrapper when missing, starts the agent and configures it from its own defaults (`Superagents.provision/4` with `:first`) | UI: "Adicionar projeto" on a machine with no agent profile, preview then confirm |
 | `adopt_superagent` | red | follows an agent installed on this machine outside the board: asks it which repository it serves, starts it when stopped, tracks that repository and registers the row (`Superagents.adoptable/2`, `adopt/2`); the agent's configuration is not changed | UI: "Adicionar ao board…" in Projects, per installed agent, with the sentence |
 | `retry_provision_superagent` | red | runs a failed provisioning again with the stored source and checkout, one attempt at a time; it refuses a profile or state it did not create | UI: `AgentAction` "Tentar de novo" on the failed project, two steps |
 | `remove_superagent` | red | stops the agent, archives profile/state and removes the project from the board | UI: `AgentAction` "Remover", two steps |
@@ -1207,6 +1208,71 @@ repositories; another board starts with none, and an agent set up by hand
 - The tests (`superagents/adopt_test.exs`, `adopt_agent_test.exs`) build
   their own profiles folder; the test environment's `:dsh_profiles_dir` does
   not exist, so no test reads this machine's agents.
+
+## A machine's first agent
+
+"Adicionar projeto" copies an agent's profile, so a machine that never had
+an agent had nothing to copy and was told to use a terminal. The same form
+now installs the first one (`DshProvisioner.provision/3` with `:first`, the
+action `install_first_superagent`).
+
+- **When:** no profile on disk loads `dsh-superagent`
+  (`Superagents.default_source/0` answers `:no_working_profile`; a profile of
+  the Harness itself, such as `desktop`, is not an agent and is never copied).
+  A machine that has an agent installed by hand adopts it instead ("An agent
+  installed outside the board").
+- **Two things stay the person's,** and the form refuses before asking when
+  either is missing (`first_ready/0`): the `dsh` command of DeepSeek Harness
+  in the board's `PATH`, with a model set up in the Harness, and the bot's
+  GitHub sign-in (`Superagents.Bot`, `~/.config/gh-agent`). The board never
+  signs in and never sees a password or a token.
+- **What the confirmed action does,** in order, each step of the
+  prototype's own install (`docs/006-deployment.md`):
+  1. the agent's code: when the machine has none, `git clone` of the public
+     repository beside the profiles (`~/.dsh/dsh-superagent`), `pnpm install`
+     and `pnpm build`, and its folder is remembered (`settings`,
+     `dsh_superagent_home`; `Superagents.Prototype`);
+  2. the bot's wrapper `~/.local/bin/gh-agent`, written when missing;
+  3. write access for the bot on the repository (`BotAccess.ensure/3`), as
+     for every project;
+  4. the profile: `dsh <profile> --from-default-profile web --dump-config`,
+     `dsh plugin --profile <profile> add link:<the agent's code>`, then
+     `cordis.patch.yml` with the port and the state folder, all under the
+     `DSH_HOME` the board reads profiles from;
+  5. start through the manager, then the settings saved through the
+     Management API from the agent's own defaults: the GitHub source with the
+     repository and the bot's CLI, the executor with the folder and the
+     prepare command, the policy with the board's GitHub login as the one
+     person allowed to ask (when the board's token says who that is), and
+     the board's prompt policy.
+- **`--from-default-profile` replaces a profile that exists.** It runs only
+  for a name that is not on disk (`:profile_exists` otherwise), and the name
+  is the project's own (`superagent-<repository>`), never `superagent`.
+- **A failure** undoes the profile and the state folder like any
+  provisioning, and leaves the row for "Tentar de novo"; the agent's code and
+  the bot's wrapper stay, as neither belongs to one project.
+- **Where the agent's code is** has one answer for the whole board
+  (`Prototype.home/0`): the application's setting (tests), then
+  `DSH_SUPERAGENT_HOME`, then the folder the board installed, then the place
+  it has always been on the owner's machine. A board that never installed it
+  reads no row and finds what it found before. The manager script
+  (`DshManager.script/0`), the restart and the signed-in panel link all ask
+  it.
+- **Verified against the real `dsh` (0.2.1-rc.3), in a scratch `DSH_HOME`:**
+  the two `dsh` commands create the profile and install the plugin; a fresh
+  agent boots waiting for setup (`repositoryUnset`), answers `GET settings`
+  and `GET prompts` in the shape the provisioner reads, accepts the executor
+  and policy saves, and refuses a source whose CLI does not exist with a
+  sentence. **Not run for real:** the clone and build of the agent's code,
+  the GitHub source save with a real bot, and the whole sequence on a clean
+  machine.
+- The tests: `superagents/prototype_test.exs` (where the code is, the
+  install with a fake runner), `superagents/dsh_provisioner_test.exs` ("a
+  machine's first agent": the commands and their `DSH_HOME`, the patch, the
+  wrapper, each save, a profile already on disk, a failed plugin, the two
+  refusals), `superagents_test.exs` (the first agent's row and its retry),
+  `add_project_test.exs` (the sentence, the confirmed click, the two
+  refusals).
 
 ## The dsh panel, signed in
 

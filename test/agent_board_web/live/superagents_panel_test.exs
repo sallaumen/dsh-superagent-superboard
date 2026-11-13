@@ -343,7 +343,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     File.write!(
       Path.join([profiles, "superagent", "cordis.patch.yml"]),
-      "webserver:\n  port: 3082\n"
+      "webserver:\n  port: 3082\n- id: dsh-superagent\n"
     )
 
     previous = Application.get_env(:agent_board, :superagent_provisioner)

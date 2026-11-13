@@ -16,26 +16,19 @@ defmodule AgentBoard.Superagents.PanelLink do
   the board never sends a browser anywhere else.
   """
 
-  alias AgentBoard.Superagents.Superagent
-
-  @default_home "~/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype"
+  alias AgentBoard.Superagents.{Prototype, Superagent}
 
   @type reason :: {:unreadable, File.posix()} | :no_log | :no_address | :foreign
 
   @spec url(Superagent.t()) :: {:ok, String.t()} | {:error, reason()}
   def url(%Superagent{profile: profile, port: port}) do
-    dir = Path.join(home(), ".artifacts")
+    dir = Path.join(Prototype.home(), ".artifacts")
 
     with {:ok, names} <- list(dir),
          {:ok, log} <- newest(dir, names, profile),
          {:ok, address} <- address(log) do
       own(address, port)
     end
-  end
-
-  defp home do
-    Application.get_env(:agent_board, :dsh_superagent_home) ||
-      System.get_env("DSH_SUPERAGENT_HOME") || Path.expand(@default_home)
   end
 
   defp list(dir) do

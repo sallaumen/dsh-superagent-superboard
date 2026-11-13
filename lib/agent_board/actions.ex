@@ -98,6 +98,7 @@ defmodule AgentBoard.Actions do
     :dispatch_task,
     :stop_execution,
     :provision_superagent,
+    :install_first_superagent,
     :adopt_superagent,
     :retry_provision_superagent,
     :remove_superagent,
@@ -201,6 +202,13 @@ defmodule AgentBoard.Actions do
 
   defp spec(:provision_superagent),
     do: %{risk: :red, does: "cria profile, porta, state e setup de um superagent novo"}
+
+  defp spec(:install_first_superagent),
+    do: %{
+      risk: :red,
+      does:
+        "instala o primeiro superagent desta máquina: baixa o código do agente se faltar, cria o profile, liga e configura"
+    }
 
   defp spec(:adopt_superagent),
     do: %{
@@ -493,6 +501,22 @@ defmodule AgentBoard.Actions do
         "repositório é, passa a acompanhar esse repositório e a manter o agente ligado; se " <>
         "estiver parado, é ligado agora. A configuração dele não muda."
 
+  def phrase(:install_first_superagent, %{repository: repo, path: path}, "en-US"),
+    do:
+      "Install this machine's first DeepSeek agent, for #{repo_name(repo)}? The board " <>
+        "downloads and builds the agent's code if this machine does not have it, creates a " <>
+        "profile, port and state, starts the agent and sets it up for the repository with the " <>
+        "bot's account, using the checkout #{short(path)}. It gives the bot write access to " <>
+        "the repository if it lacks it. This takes a few minutes."
+
+  def phrase(:install_first_superagent, %{repository: repo, path: path}, _lang),
+    do:
+      "Instalar o primeiro agente DeepSeek desta máquina, para #{repo_name(repo)}? O board " <>
+        "baixa e compila o código do agente se esta máquina ainda não o tiver, cria profile, " <>
+        "porta e state, liga o agente e o configura para o repositório com a conta do bot, " <>
+        "usando o checkout #{short(path)}. Dá ao bot acesso de escrita no repositório, se " <>
+        "faltar. Leva alguns minutos."
+
   def phrase(:provision_superagent, %{repository: repo, source: source, path: path}, "en-US"),
     do:
       "Provision DeepSeek for #{repo_name(repo)} from #{source.profile}? The board creates " <>
@@ -504,6 +528,23 @@ defmodule AgentBoard.Actions do
       "Provisionar o DeepSeek para #{repo_name(repo)} a partir de #{source.profile}? O board " <>
         "cria profile, porta e state, usa o checkout #{short(path)} e dá ao bot acesso de " <>
         "escrita no repositório, se faltar."
+
+  # A first agent that did not come up has no profile it was copied from.
+  def phrase(
+        :retry_provision_superagent,
+        %{superagent: %{source_profile: nil} = superagent},
+        "en-US"
+      ),
+      do:
+        "Install #{project(superagent)}'s agent again, this machine's first? The board creates " <>
+          "a profile, port and state, uses the checkout " <>
+          "#{short(superagent.checkout_path)}, and gives the bot write access if it lacks it."
+
+  def phrase(:retry_provision_superagent, %{superagent: %{source_profile: nil} = superagent}, _),
+    do:
+      "Instalar de novo o agente de #{project(superagent)}, o primeiro desta máquina? O board " <>
+        "cria profile, porta e state, usa o checkout " <>
+        "#{short(superagent.checkout_path)} e dá ao bot acesso de escrita, se faltar."
 
   def phrase(:retry_provision_superagent, %{superagent: superagent}, "en-US"),
     do:
@@ -923,6 +964,24 @@ defmodule AgentBoard.Actions do
 
       {:error, reason} ->
         {:error, gettext("Could not provision: %{reason}", reason: describe(reason))}
+    end
+  end
+
+  defp execute(:install_first_superagent, %{repository: repository, path: path} = params) do
+    case Superagents.provision(repository, :first, %{
+           path: path,
+           workers: Map.get(params, :workers, 3)
+         }) do
+      {:ok, superagent} ->
+        {:ok,
+         gettext(
+           "The first agent is installed: %{profile} on port %{port}. The status updates on the ticker.",
+           profile: superagent.profile,
+           port: superagent.port
+         )}
+
+      {:error, reason} ->
+        {:error, gettext("Could not install the agent: %{reason}", reason: describe(reason))}
     end
   end
 
@@ -1461,6 +1520,31 @@ defmodule AgentBoard.Actions do
 
   defp describe({:setup, text}) when is_binary(text), do: text
 
+  defp describe(:dsh_missing),
+    do:
+      gettext(
+        "the dsh command of DeepSeek Harness is not on this machine. Install the Harness and its command, then try again."
+      )
+
+  defp describe(:bot_missing),
+    do:
+      gettext(
+        "the agent has no GitHub sign-in on this machine yet. AI and setup shows the command that signs it in."
+      )
+
+  defp describe({:prototype_in_the_way, path}),
+    do:
+      gettext(
+        "the folder %{path} exists but is not the agent's code. Move it away and try again.",
+        path: path
+      )
+
+  defp describe({:command, tool, output}),
+    do: gettext("%{tool} failed: %{output}", tool: tool, output: output)
+
+  defp describe(:profile_not_created),
+    do: gettext("dsh did not create the agent's profile.")
+
   defp describe({:already_installed, profile}),
     do:
       gettext(
@@ -1493,6 +1577,9 @@ defmodule AgentBoard.Actions do
 
   defp subject(:provision_superagent, %{repository: repo}), do: "#{repo.owner}/#{repo.name}"
   defp subject(:adopt_superagent, %{profile: profile}), do: profile
+
+  defp subject(:install_first_superagent, %{repository: repo}),
+    do: "#{repo.owner}/#{repo.name}"
 
   defp subject(:create_tasks, %{repository: repo, requests: requests}),
     do: "#{repo.owner}/#{repo.name} (#{length(requests)})"
