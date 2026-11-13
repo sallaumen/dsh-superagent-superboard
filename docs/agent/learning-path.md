@@ -39,8 +39,8 @@ flowchart LR
 
 This repository is exactly that design: the [agent](how-it-works.md) is
 `dsh-superagent` (a router + workers in their own sessions), and the board is the
-mirror and the operations desk — the same system in one figure is in the
-[hub](../README.md#the-system-in-one-figure).
+mirror and the operations desk. The [board overview](../../README.en.md) shows
+what the operator sees and explains when to connect the agent.
 
 ## 2. Step 1 — install DeepSeek Harness (≈10 min)
 
