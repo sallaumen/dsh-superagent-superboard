@@ -695,6 +695,9 @@ defmodule AgentBoard.Actions do
   def phrase(:set_max_workers, %{max: max}, _lang),
     do: "Mudar o limite do executor para #{max} #{if max == 1, do: "agente", else: "agentes"}?"
 
+  def phrase(:set_project_stages, %{repository: repo, ids: ids}, _lang) when is_map(ids),
+    do: "Alterar as regras de qualidade de #{repo.owner}/#{repo.name}?"
+
   def phrase(:set_project_stages, %{repository: repo, ids: ids}, _lang),
     do: "Alterar as etapas locais de #{repo.owner}/#{repo.name} (#{length(ids)} selecionadas)?"
 

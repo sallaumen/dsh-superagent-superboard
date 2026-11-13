@@ -52,6 +52,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   def mount(socket) do
     {:ok,
      assign(socket,
+       query: "",
+       limit: 20,
        expanded: nil,
        detail: "merge",
        workers: 1,
@@ -248,6 +250,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
      socket |> read_profiles() |> BoardNotice.notify(:info, gettext("Profile list refreshed."))}
   end
 
+  def handle_event("filter_projects", %{"query" => q}, socket),
+    do: {:noreply, assign(socket, query: String.slice(q, 0, 150), limit: 20)}
+
+  def handle_event("more_projects", _, socket), do: {:noreply, update(socket, :limit, &(&1 + 20))}
+
   def handle_event("change_workers", %{"delta" => delta}, socket) do
     delta = if to_string(delta) == "-1", do: -1, else: 1
     workers = socket.assigns.workers + delta
@@ -264,6 +271,28 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         assigns,
         :setup_open,
         assigns.project_path in ["github", "agent"] or assigns.repos == []
+      )
+
+    entries =
+      (Enum.map(assigns.superagents, &{project_name(&1), :agent, &1}) ++
+         Enum.map(assigns.tracked, &{"#{&1.owner}/#{&1.name}", :tracked, &1}))
+      |> Enum.filter(fn {name, _, _} ->
+        String.contains?(String.downcase(name), String.downcase(String.trim(assigns.query)))
+      end)
+      |> Enum.sort_by(fn {name, type, _} -> {type, String.downcase(name)} end)
+
+    page = Enum.take(entries, assigns.limit)
+    # Bookmarks beyond the first page must still render the selected project.
+    selected =
+      Enum.find(entries, fn {name, _, _} -> name == elem(assigns.project_selection, 0) end)
+
+    page = if selected && selected not in page, do: [selected | page], else: page
+
+    assigns =
+      assign(assigns,
+        found: length(entries),
+        agent_page: for({_, :agent, a} <- page, do: a),
+        tracked_page: for({_, :tracked, r} <- page, do: r)
       )
 
     ~H"""
@@ -579,13 +608,33 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         </section>
       </div>
 
+      <form
+        :if={length(@repos) > 1}
+        id="project-directory-filter"
+        phx-change="filter_projects"
+        phx-submit="filter_projects"
+        phx-target={@myself}
+        class="ab-directory-search"
+      >
+        <label for="project-directory-query">{gettext("Find a project")}</label>
+        <input
+          id="project-directory-query"
+          type="search"
+          name="query"
+          value={@query}
+          placeholder={gettext("Owner or repository name")}
+          phx-debounce="200"
+        />
+        <small class="ab-meta" role="status">{@found} / {map_size(@projects)}</small>
+      </form>
+      <p :if={@found == 0 and @query != ""}>{gettext("No matching projects.")}</p>
       <ul
         :if={@superagents != [] or @tracked != []}
         class="ab-projects__list"
         aria-label={gettext("Projects")}
       >
         <li
-          :for={superagent <- @superagents}
+          :for={superagent <- @agent_page}
           id={"project-#{superagent.id}"}
           class="ab-project"
           data-expanded={to_string(expanded?(@expanded, superagent))}
@@ -670,7 +719,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               <button
                 :for={
                   {section, label} <- [
-                    {"merge", gettext("Merge")},
+                    {"merge", gettext("Quality & merge")},
                     {"access", gettext("Access")},
                     {"instructions", gettext("Instructions")},
                     {"maintenance", gettext("Maintenance")}
@@ -691,6 +740,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                 module={ProjectMerge}
                 id={"project-#{superagent.id}-merge"}
                 repo={superagent.repository}
+                checkout={superagent.checkout_path}
                 agent_id={superagent.id}
                 guard_owner={@myself}
                 enforcement={@guards[superagent.id]}
@@ -785,7 +835,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                 module={ProjectLeftovers}
                 id={"project-#{superagent.id}-leftovers-panel"}
                 superagent={superagent}
-                visible={@active and expanded?(@expanded, superagent)}
+                visible={@active and expanded?(@expanded, superagent) and @detail == "maintenance"}
               />
 
               <div class="ab-project__foot">
@@ -841,7 +891,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
           </div>
         </li>
 
-        <li :for={repo <- @tracked} id={"tracked-#{repo.id}"} class="ab-project ab-project--tracked">
+        <li
+          :for={repo <- @tracked_page}
+          id={"tracked-#{repo.id}"}
+          class="ab-project ab-project--tracked"
+        >
           <button
             type="button"
             class="ab-project__row"
@@ -890,6 +944,12 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         </li>
       </ul>
 
+      <button
+        :if={@found > @limit}
+        class="ab-btn ab-btn--sm"
+        phx-click="more_projects"
+        phx-target={@myself}
+      >{gettext("Show more projects")}</button>
       <details
         :if={@superagents != []}
         id="project-runtime-maintenance"

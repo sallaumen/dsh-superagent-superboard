@@ -1,0 +1,19 @@
+{
+  "mix-format": {"stack": "Elixir", "markers": ["mix.exs"], "mode": "always", "paths": ["*.ex", "*.exs", "mix.lock"]},
+  "mix-lint": {"stack": "Elixir", "markers": ["mix.exs"], "mode": "changed", "paths": ["*.ex", "*.exs", "mix.lock"], "contains": ":credo"},
+  "mix-test": {"stack": "Elixir", "markers": ["mix.exs"], "mode": "always", "paths": ["*.ex", "*.exs", "mix.lock"]},
+  "npm-test": {"stack": "JavaScript / TypeScript", "markers": ["package.json"], "mode": "always", "paths": ["*.js", "*.jsx", "*.ts", "*.tsx", "*.mjs", "*.cjs", "*.css", "*.scss", "*.html", "*.vue", "*.svelte", "package*.json", "*-lock.*", "pnpm-lock.yaml", "yarn.lock", "assets/*", "public/*", "src/*", "*.heex", "playwright*", "cypress/*"], "manifest": "package.json", "script": "test"},
+  "npm-lint": {"stack": "JavaScript / TypeScript", "markers": ["package.json"], "mode": "changed", "paths": ["*.js", "*.jsx", "*.ts", "*.tsx", "*.mjs", "*.cjs", "*.css", "*.scss", "*.html", "*.vue", "*.svelte", "package*.json", "*-lock.*", "pnpm-lock.yaml", "yarn.lock", "assets/*", "public/*", "src/*", "*.heex", "playwright*", "cypress/*"], "manifest": "package.json", "script": "lint"},
+  "npm-build": {"stack": "JavaScript / TypeScript", "markers": ["package.json"], "mode": "changed", "paths": ["*.js", "*.jsx", "*.ts", "*.tsx", "*.mjs", "*.cjs", "*.css", "*.scss", "*.html", "*.vue", "*.svelte", "package*.json", "*-lock.*", "pnpm-lock.yaml", "yarn.lock", "assets/*", "public/*", "src/*", "*.heex", "playwright*", "cypress/*"], "manifest": "package.json", "script": "build"},
+  "npm-e2e": {"stack": "JavaScript / TypeScript", "markers": ["package.json"], "mode": "changed", "paths": ["*.js", "*.jsx", "*.ts", "*.tsx", "*.mjs", "*.cjs", "*.css", "*.scss", "*.html", "*.vue", "*.svelte", "package*.json", "*-lock.*", "pnpm-lock.yaml", "yarn.lock", "assets/*", "public/*", "src/*", "*.heex", "playwright*", "cypress/*"], "manifest": "package.json", "script": "test:e2e"},
+  "cargo-format": {"stack": "Rust", "markers": ["Cargo.toml"], "mode": "changed", "paths": ["*.rs", "Cargo.*"]},
+  "cargo-test": {"stack": "Rust", "markers": ["Cargo.toml"], "mode": "always", "paths": ["*.rs", "Cargo.*"]},
+  "pytest": {"stack": "Python", "markers": ["pytest.ini", "pyproject.toml", "requirements.txt", "requirements-dev.txt", "setup.cfg", "tox.ini", "Pipfile"], "mode": "always", "paths": ["*.py"], "contains": "pytest"},
+  "composer-test": {"stack": "PHP", "markers": ["composer.json"], "mode": "always", "paths": ["*.php", "composer.*"], "manifest": "composer.json", "script": "test"},
+  "go-test": {"stack": "Go", "markers": ["go.mod"], "mode": "always", "paths": ["*.go", "go.mod", "go.sum"]},
+  "go-vet": {"stack": "Go", "markers": ["go.mod"], "mode": "changed", "paths": ["*.go", "go.mod", "go.sum"]},
+  "ruby-test": {"stack": "Ruby", "markers": ["Gemfile"], "mode": "always", "paths": ["*.rb", "Gemfile*"], "contains": "rspec"},
+  "java-test": {"stack": "Java", "markers": ["pom.xml"], "mode": "always", "paths": ["*.java", "pom.xml"]},
+  "dotnet-test": {"stack": "C# / .NET", "markers": ["*.sln", "*.slnx", "*.csproj"], "mode": "always", "paths": ["*.cs", "*.csproj", "*.sln"]},
+  "swift-test": {"stack": "Swift", "markers": ["Package.swift"], "mode": "always", "paths": ["*.swift", "Package.resolved"]}
+}

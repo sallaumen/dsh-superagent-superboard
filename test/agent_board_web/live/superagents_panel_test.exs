@@ -137,6 +137,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     html =
       render_component(&ProjectMerge.render/1,
         id: "machine-policy",
+        profile: nil,
         stage_ids: [],
         stage_notice: nil,
         myself: 1,
@@ -296,6 +297,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     |> element("#project-#{superagent.id} button[phx-click=toggle_project]")
     |> render_click()
 
+    view |> element("#project-#{superagent.id} [phx-value-section=maintenance]") |> render_click()
     render_async(view, 10_000)
     panel = "#project-#{superagent.id}-leftovers"
 

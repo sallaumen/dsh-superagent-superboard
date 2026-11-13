@@ -12,7 +12,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
          last_policy: nil,
          enforcement: nil,
          stage_ids: nil,
-         stage_notice: nil
+         stage_notice: nil,
+         stack: nil,
+         profile: nil
        )}
 
   @impl true
@@ -25,9 +27,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
   defp load(socket) do
     repo = socket.assigns.repo
 
+    checkout = socket.assigns[:checkout]
+
     socket
     |> assign(policy: nil, stage_ids: nil, stage_notice: nil)
-    |> start_async(:stage_ids, fn -> ProjectStages.load(repo) end)
+    |> start_async(:stage_ids, fn -> ProjectStages.profile(repo, checkout) end)
     |> start_async(:policy, fn -> ProjectMergePolicy.load(repo) end)
   end
 
@@ -39,18 +43,29 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
     {:noreply, load(socket)}
   end
 
-  def handle_event("save_stages", params, socket) do
-    %{stage_ids: current, repo: repo, visible: visible} = socket.assigns
-    ids = params["stages"] || []
+  def handle_event("choose_stack", %{"stack" => stack}, socket) do
+    if List.keymember?(ProjectStages.groups(), stack, 0),
+      do: {:noreply, assign(socket, stack: stack, stage_notice: nil)},
+      else: {:noreply, socket}
+  end
 
-    with true <- visible and is_list(current) and is_list(ids),
+  def handle_event("save_stages", %{"rules" => rules}, socket) when is_map(rules) do
+    %{profile: profile, repo: repo, visible: visible, stack: stack} = socket.assigns
+    allowed = List.keyfind(ProjectStages.groups(), stack, 0)
+
+    with true <- visible && is_map(profile) && allowed != nil,
+         true <-
+           Enum.all?(rules, fn {id, m} ->
+             id in elem(allowed, 1) and m in ~w(always changed off)
+           end),
+         changes = Map.reject(rules, fn {i, m} -> profile["modes"][i] == m end),
          :ok <-
            Actions.run(
              :set_project_stages,
-             %{repository: repo, ids: ids, expected: current},
+             %{repository: repo, ids: changes, expected: profile["stored"]},
              Actions.owner(:ui)
            ) do
-      {:noreply, assign(socket, stage_ids: ids, stage_notice: :saved)}
+      {:noreply, socket |> load() |> assign(stage_notice: :saved)}
     else
       _ -> {:noreply, assign(socket, stage_notice: :error)}
     end
@@ -64,6 +79,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
       "npm-lint" -> gettext("Lint")
       "npm-e2e" -> gettext("Browser tests")
       "npm-build" -> gettext("Build")
+      "go-vet" -> gettext("Static analysis")
       _ -> gettext("Tests")
     end
   end
@@ -72,8 +88,17 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
   def handle_async(:policy, {:ok, %{result: {:ok, _}} = value}, socket),
     do: {:noreply, assign(socket, policy: value, last_policy: value)}
 
-  def handle_async(:stage_ids, {:ok, {:ok, ids}}, socket),
-    do: {:noreply, assign(socket, stage_ids: ids)}
+  def handle_async(:stage_ids, {:ok, {:ok, profile}}, socket) do
+    groups = ordered_groups(profile)
+    ids = for {id, mode} <- profile["modes"], mode != "off", do: id
+
+    {:noreply,
+     assign(socket,
+       stage_ids: ids,
+       profile: profile,
+       stack: socket.assigns.stack || elem(hd(groups), 0)
+     )}
+  end
 
   def handle_async(:stage_ids, _, socket),
     do: {:noreply, assign(socket, stage_ids: :unavailable)}
@@ -97,53 +122,72 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
           disabled={is_nil(@policy) || is_nil(@enforcement)}
         >{gettext("Refresh")}</button>
       </div>
-      <details
-        class="ab-merge-checklist"
-        id={@id <> "-stages"}
-        phx-mounted={JS.ignore_attributes("open")}
-      >
-        <summary>
-          <strong>{gettext("Local task checks")}</strong>
-          <span :if={is_list(@stage_ids)}>{ngettext(
-            "1 selected",
-            "%{count} selected",
-            length(@stage_ids)
-          )}</span>
-        </summary>
-        <p>
-          {gettext(
-            "Choose checks for this project. They run in the task folder and do not require GitHub Actions."
-          )}
-        </p>
-        <form
-          :if={is_list(@stage_ids)}
-          id={@id <> "-stage-form"}
-          phx-submit="save_stages"
-          phx-target={@myself}
-        >
-          <div class="ab-merge-lists">
-            <fieldset :for={{tool, choices} <- stage_groups()}>
-              <legend>{tool}</legend>
-              <label :for={{id, command} <- choices} class="ab-stage-choice">
-                <input type="checkbox" name="stages[]" value={id} checked={id in @stage_ids} />
-                <span>{stage_label(id)} <code class="ab-meta">{Enum.join(command, " ")}</code></span>
-              </label>
-            </fieldset>
+      <section id={@id <> "-stages"} class="ab-quality">
+        <header>
+          <h5>{gettext("Quality rules")}</h5>
+          <p class="ab-meta">
+            {gettext("Tests and checks for this project. Merge requirements below still apply.")}
+          </p>
+        </header>
+        <%= if is_list(@stage_ids) and not is_nil(@profile) do %>
+          <p class="ab-quality__source">{profile_label(@profile)}</p>
+          <div class="ab-quality__editor">
+            <form
+              id={@id <> "-language-form"}
+              phx-change="choose_stack"
+              phx-target={@myself}
+              class="ab-quality__stack"
+            >
+              <label for={@id <> "-language"}>{gettext("Technology")}</label>
+              <select class="voice-select" id={@id <> "-language"} name="stack">
+                <option
+                  :for={{name, ids} <- ordered_groups(@profile)}
+                  value={name}
+                  selected={name == @stack}
+                >
+                  {name}{if Enum.any?(ids, &(&1 in @profile["detected"])),
+                    do: " · " <> gettext("Detected")}
+                </option>
+              </select>
+            </form>
+            <form id={@id <> "-stage-form"} phx-submit="save_stages" phx-target={@myself}>
+              <div :for={id <- stack_ids(@stack)} class="ab-quality__rule">
+                <label for={@id <> "-" <> id}>
+                  <strong>{stage_label(id)}</strong>
+                  <code>{command(id)}</code>
+                  <small
+                    :if={@profile["available"] and id not in @profile["detected"]}
+                    class="ab-meta"
+                  >{gettext("Not detected in this checkout")}</small>
+                </label>
+                <select class="voice-select" id={@id <> "-" <> id} name={"rules[#{id}]"}>
+                  <option
+                    :for={{mode, label} <- modes()}
+                    value={mode}
+                    selected={@profile["modes"][id] == mode}
+                  >
+                    {label}
+                  </option>
+                </select>
+              </div>
+              <button class="ab-btn ab-btn--sm" type="submit">{gettext("Save checks")}</button>
+            </form>
           </div>
-          <button class="ab-btn ab-btn--sm" type="submit">{gettext("Save checks")}</button>
-        </form>
-        <p :if={@stage_ids == :unavailable}>
-          {gettext("Could not read the local checks. Refresh to try again.")}
+        <% else %>
+          <p class="ab-meta">
+            {if @stage_ids == :unavailable,
+              do: gettext("Could not read the local checks. Refresh to try again."),
+              else: gettext("Loading…")}
+          </p>
+        <% end %>
+        <p :if={@stage_notice} role="status">
+          {if @stage_notice == :saved,
+            do: gettext("Local checks saved for this project."),
+            else: gettext("Checks were not saved. Refresh to load the current selection.")}
         </p>
-        <p :if={is_nil(@stage_ids)}>{gettext("Loading…")}</p>
-        <p aria-live="polite">
-          <span :if={@stage_notice == :saved}>{gettext("Local checks saved for this project.")}</span>
-          <span :if={@stage_notice == :error}>{gettext(
-            "Checks were not saved. Refresh to load the current selection."
-          )}</span>
-        </p>
-      </details>
+      </section>
       <div class="ab-merge-body" aria-live="polite">
+        <h5>{gettext("Merge requirements")}</h5>
         <p class="ab-merge-summary">
           <span class={@enforcement == :active && "ab-status--run"}>{guard_label(@enforcement)}</span>
           <%= if match?(%{result: {:ok, _}}, @policy) do %>
@@ -247,17 +291,37 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
   def guard_label(:unknown), do: gettext("Guard unverified")
   def guard_label(nil), do: gettext("Checking guard…")
 
-  defp stage_groups do
-    groups = %{
-      "mix" => "Elixir",
-      "npm" => "Node.js",
-      "cargo" => "Rust",
-      "python3" => "Python",
-      "composer" => "PHP"
-    }
+  defp ordered_groups(p),
+    do:
+      Enum.sort_by(ProjectStages.groups(), fn {name, ids} ->
+        {not Enum.any?(ids, &(&1 in p["detected"])), name}
+      end)
 
-    ProjectStages.choices()
-    |> Enum.group_by(fn {_, [cmd | _]} -> Map.fetch!(groups, cmd) end)
-    |> Enum.sort()
+  defp stack_ids(stack), do: elem(List.keyfind(ProjectStages.groups(), stack, 0), 1)
+
+  defp modes,
+    do: [
+      {"always", gettext("Every task")},
+      {"changed", gettext("On related changes")},
+      {"off", gettext("Off")}
+    ]
+
+  defp command(id) do
+    {:ok, args} = ProjectStages.command(id)
+    Enum.join(args, " ")
   end
+
+  defp profile_label(%{"available" => false}),
+    do:
+      gettext(
+        "Waiting for a local checkout. Defaults will apply when the worker detects the stack."
+      )
+
+  defp profile_label(%{"detected" => []}),
+    do: gettext("No supported toolchain detected. You can choose rules manually.")
+
+  defp profile_label(%{"stored" => nil}),
+    do: gettext("Recommended rules are active automatically for the detected stack.")
+
+  defp profile_label(_), do: gettext("Project preferences are active for this checkout.")
 end

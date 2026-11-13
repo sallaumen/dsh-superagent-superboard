@@ -4,6 +4,25 @@ defmodule AgentBoard.ProjectStages do
   @external_resource @catalog
   @commands @catalog |> File.read!() |> Jason.decode!()
 
+  @rules_path Path.expand("../../priv/merge_gate/stack-rules.json", __DIR__)
+  @external_resource @rules_path
+  @rules @rules_path |> File.read!() |> Jason.decode!()
+  def groups,
+    do:
+      @rules
+      |> Enum.sort_by(fn {id, rule} -> {rule["mode"] != "always", id} end)
+      |> Enum.group_by(fn {_, rule} -> rule["stack"] end, &elem(&1, 0))
+      |> Enum.sort()
+
+  def rule(id), do: Map.fetch!(@rules, id)
+
+  def profile(repo, checkout) do
+    case call(repo, "profile", [checkout || AgentBoard.Runners.repo_path(repo)]) do
+      {json, 0} -> Jason.decode(json)
+      _ -> {:error, :unavailable}
+    end
+  end
+
   def choices, do: Enum.sort_by(@commands, &elem(&1, 0))
   def command(id), do: Map.fetch(@commands, id)
 
@@ -11,6 +30,13 @@ defmodule AgentBoard.ProjectStages do
     case call(repo, "get", []) do
       {json, 0} -> Jason.decode(json)
       _ -> {:error, :unavailable}
+    end
+  end
+
+  def save(repo, changes, expected) when is_map(changes) do
+    case call(repo, "rules", Enum.map([changes, expected], &Jason.encode!/1)) do
+      {_, 0} -> :ok
+      _ -> {:error, :not_saved}
     end
   end
 
