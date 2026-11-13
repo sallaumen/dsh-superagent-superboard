@@ -9779,3 +9779,27 @@ msgstr "Interrompida"
 #, elixir-autogen, elixir-format
 msgid "No recent signal"
 msgstr "Sem sinal recente"
+
+msgid "Merge"
+msgstr "Merge"
+
+msgid "Access"
+msgstr "Acesso"
+
+msgid "Instructions"
+msgstr "Instruções"
+
+msgid "Maintenance"
+msgstr "Manutenção"
+
+msgid "Project controls"
+msgstr "Controles do projeto"
+
+msgid "Independent approval"
+msgstr "Aprovação independente"
+
+msgid "Required"
+msgstr "Obrigatória"
+
+msgid "Not required"
+msgstr "Dispensada"
