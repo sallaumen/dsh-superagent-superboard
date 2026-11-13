@@ -1,5 +1,5 @@
-// Clear the LiveView flash itself, including its copy behind the modal.
-export const SettingsNotice = {
+// Manual and automatic dismissal both clear the flash on the owning LiveView.
+export const BoardNotice = {
   mounted() {
     this.schedule = () => {
       clearTimeout(this.timer)

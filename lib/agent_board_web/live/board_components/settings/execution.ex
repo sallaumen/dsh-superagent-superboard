@@ -9,6 +9,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   """
   use AgentBoardWeb, :live_component
 
+  alias AgentBoardWeb.BoardNotice
+
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
   alias AgentBoard.{Actions, AI, Runners}
@@ -34,8 +36,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
        saved: %{},
        draft: %{},
        dirty: [],
-       error: nil,
-       saved_notice: false
+       error: nil
      )}
   end
 
@@ -51,7 +52,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
 
       {:ok,
        socket
-       |> assign(snapshot: snapshot, saved: saved, draft: draft, error: nil, saved_notice: false)
+       |> assign(snapshot: snapshot, saved: saved, draft: draft, error: nil)
        |> assign_dirty()}
     else
       {:ok, socket}
@@ -64,14 +65,14 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
 
     {:noreply,
      socket
-     |> assign(draft: draft, error: nil, saved_notice: false)
+     |> assign(draft: draft, error: nil)
      |> assign_dirty()}
   end
 
   def handle_event("discard", _params, socket) do
     {:noreply,
      socket
-     |> assign(draft: socket.assigns.saved, dirty: [], error: nil, saved_notice: false)}
+     |> assign(draft: socket.assigns.saved, dirty: [], error: nil)}
   end
 
   def handle_event("save", params, socket) do
@@ -92,12 +93,12 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
            saved: saved,
            draft: saved,
            dirty: [],
-           error: nil,
-           saved_notice: true
-         )}
+           error: nil
+         )
+         |> BoardNotice.notify(:info, gettext("Limits saved."))}
 
       {:error, message} ->
-        {:noreply, assign(socket, draft: draft, error: message, saved_notice: false)}
+        {:noreply, assign(socket, draft: draft, error: message)}
     end
   end
 
@@ -279,7 +280,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
             >{gettext("Save limits")}</button>
           </div>
         </div>
-        <p :if={@saved_notice} class="settings-saved" role="status">{gettext("Limits saved.")}</p>
       </form>
     </div>
     """

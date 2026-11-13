@@ -184,7 +184,7 @@ defmodule AgentBoardWeb.MessageInboxTest do
       "version" => old_version
     })
 
-    assert has_element?(view, "#message-inbox .ab-hub-menu__notice", "A resposta mudou")
+    assert has_element?(view, "#flash-group #flash-error", "A resposta mudou")
     assert has_element?(view, "#message-inbox summary[aria-label='Mensagens da Yasme, 1 nova']")
     assert has_element?(view, "#message-inbox .ab-hub-item", "Resposta editada")
   end

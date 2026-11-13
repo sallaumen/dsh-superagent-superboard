@@ -8,7 +8,7 @@ export const BoardMenu = {
     }
     this.closeOnOutside = (event) => {
       if (document.querySelector(".board-dialog[open]")) return
-      if (!this.el.contains(event.target)) this.el.open = false
+      if (!event.target.closest(".board-notice") && !this.el.contains(event.target)) this.el.open = false
     }
     this.closeOnEscape = (event) => {
       if (event.key !== "Escape" || !this.el.open || document.querySelector(".board-dialog[open]")) return

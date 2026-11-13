@@ -44,7 +44,7 @@ exists, not before.
 | Change | Treatment | Surface |
 |---|---|---|
 | Opening a panel or dialog | 200 ms, opacity + 6 px + scale 0.995, `--ease-enter` | `.board-dialog[open]` |
-| Temporary notice (toast) | 200 ms, opacity + 4 px, `--ease-enter` | `.toast .alert`, `.ab-toast`, `.settings-notice` |
+| Temporary notice (toast) | 200 ms, opacity + 4 px, `--ease-enter` | `.toast .alert`, `.ab-toast`, `.board-notice` |
 | Hover, focus and button/link state | 110 ms of background and border, `--ease-standard` | `button, a`, `.ab-btn`, `.ab-need` |
 | Voice bars | slow loop only under `no-preference`; it communicates real state, not decoration | keyframes `voice-flow` |
 | DeepSeek peak flame | 2.6 s flicker of the flame's scale from its base, `--ease-standard`, only under `no-preference` and only while `Providers.peak?/1` is true; off-peak the moon is still. The switch itself is a cut: the icon changes at the hour | `.ab-peak.is-peak .hero-fire` |

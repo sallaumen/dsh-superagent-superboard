@@ -1164,7 +1164,6 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-objective__bar { height: 5px; border-radius: var(--radius-pill); background: var(--paper-sunk); overflow: hidden; }
 .ab-objective__bar span { display: block; height: 100%; background: var(--agent); }
 
-.settings-saved { margin: 0; color: var(--agent); font-size: 12.5px; }
 
 /* the settings menu is normally an absolute dropdown in the rail; inside the
    Configurações panel it is inline so the dialog can scroll it */
@@ -1590,28 +1589,33 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 
 /* Settings keeps one task in view; the rail holds navigation, not a long page. */
 #panel-settings.board-dialog[open] { display: flex; flex-direction: column; height: min(720px, calc(100dvh - 32px)); overflow: hidden; }
-#panel-settings .panel-heading { flex: none; }
-.settings-notices {
-  position: absolute; z-index: 2; inset-inline: var(--space-4); bottom: var(--space-4);
+/* The dialog holds its heading and notices still; only its content scrolls. */
+.board-dialog[open]:has(> .panel-scroll) { display: flex; flex-direction: column; overflow: hidden; }
+.board-dialog > .panel-heading { flex: none; }
+.panel-scroll { min-height: 0; overflow-y: auto; }
+#panel-settings > .panel-scroll { display: contents; }
+.board-notices {
+  position: absolute; z-index: 3; inset-inline: var(--space-4); bottom: var(--space-4);
   display: grid; justify-items: end; gap: var(--space-3); pointer-events: none;
 }
-.settings-notice {
+#flash-group .board-notices { position: fixed; z-index: 50; bottom: max(var(--space-4), env(safe-area-inset-bottom)); }
+.board-notice {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
   gap: var(--space-3); width: fit-content; max-width: min(100%, 26rem);
   padding-inline: var(--space-4) var(--space-2); border: 1px solid var(--line-strong);
   border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink);
   box-shadow: var(--shadow-layer); pointer-events: auto; font: 500 14px/20px var(--font-sans);
 }
-.settings-notice > span { color: var(--you); }
-.settings-notice[data-kind="error"] > span { color: var(--halt); }
-.settings-notice p { margin-block: var(--space-3); overflow-wrap: anywhere; }
-.settings-notice button {
+.board-notice > span { color: var(--you); }
+.board-notice[data-kind="error"] > span { color: var(--halt); }
+.board-notice p { margin-block: var(--space-3); overflow-wrap: anywhere; }
+.board-notice button {
   display: grid; place-items: center; width: 44px; height: 44px;
   border-radius: var(--radius-sm); color: var(--ink-muted); cursor: pointer;
 }
-.settings-notice button:hover { background: var(--paper-sunk); color: var(--ink); }
+.board-notice button:hover { background: var(--paper-sunk); color: var(--ink); }
 @media (prefers-reduced-motion: no-preference) {
-  .settings-notice { animation: notice-enter var(--motion-enter) var(--ease-enter); }
+  .board-notice { animation: notice-enter var(--motion-enter) var(--ease-enter); }
 }
 .settings-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); flex: 1; min-height: 0; }
 .settings-nav { display: flex; flex-direction: column; gap: 2px; padding: 22px 12px 14px; border-right: 1px solid var(--line); background: var(--paper-sunk); overflow-y: auto; }
@@ -1745,7 +1749,6 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-hub-menu__mark-all { min-height: 44px; padding: 0 6px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--you); font-size: 12px; font-weight: 600; cursor: pointer; }
 .ab-hub-menu__mark-all:hover:not(:disabled) { background: var(--you-wash); }
 .ab-hub-menu__mark-all:disabled { color: var(--ink-faint); cursor: default; }
-.ab-hub-menu__notice { margin: 0; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--stale-wash); color: var(--stale); font-size: 12.5px; line-height: 18px; }
 .ab-hub-menu__empty { margin: 0; padding: 26px 20px; color: var(--ink-muted); font-size: 13px; line-height: 20px; }
 .ab-hub-menu__list { margin: 0; padding: 0; list-style: none; }
 .ab-hub-menu__list li + li { border-top: 1px solid var(--line); }
@@ -2390,8 +2393,6 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-policy form { display: grid; justify-items: start; gap: 12px; }
 .ab-policy__state { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--ink); font-size: 13px; line-height: 20px; }
 .ab-policy__state.is-behind { color: var(--stale); font-weight: 600; }
-.ab-policy__notice { margin: 0; color: var(--agent); font-size: 13px; line-height: 20px; }
-.ab-policy__notice.is-error { color: var(--halt); }
 .ab-policy__sections, .ab-policy__lines { display: grid; gap: 10px; width: 100%; margin: 0; padding: 0; list-style: none; }
 .ab-policy__sections > li { display: grid; gap: 4px; font-size: 13px; line-height: 20px; }
 .ab-policy__rules { display: grid; gap: 6px; width: 100%; font-size: 13px; line-height: 20px; }

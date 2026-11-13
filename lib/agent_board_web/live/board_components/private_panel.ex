@@ -13,6 +13,8 @@ defmodule AgentBoardWeb.BoardComponents.PrivatePanel do
   """
   use AgentBoardWeb, :live_component
 
+  alias AgentBoardWeb.BoardNotice
+
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1]
 
   alias AgentBoard.Board
@@ -26,7 +28,7 @@ defmodule AgentBoardWeb.BoardComponents.PrivatePanel do
   def mount(socket) do
     {:ok,
      socket
-     |> assign(task_id: nil, saved: nil, error: nil, folder: "", notice: nil, role: "reference")
+     |> assign(task_id: nil, saved: nil, error: nil, folder: "", role: "reference")
      |> allow_upload(:private_files,
        accept: @accepted,
        max_entries: Attachments.max_files(),
@@ -155,13 +157,6 @@ defmodule AgentBoardWeb.BoardComponents.PrivatePanel do
           >
             {entry.client_name}: {gettext("not accepted (type or size)")}
           </p>
-          <p
-            :if={@notice}
-            class={["ab-meta", @notice.tone == :error && "ab-compose__error"]}
-            role="status"
-          >
-            {@notice.text}
-          </p>
         </form>
 
         <ul :if={@files != []} id={"#{@id}-files"} class="ab-private__list">
@@ -251,11 +246,11 @@ defmodule AgentBoardWeb.BoardComponents.PrivatePanel do
         text = gettext("%{name}: %{count} files copied.", name: name, count: files)
 
         {:noreply,
-         socket |> assign(dir: dir, folder: "", notice: %{tone: :ok, text: text}) |> refresh()}
+         socket |> assign(dir: dir, folder: "") |> BoardNotice.notify(:info, text) |> refresh()}
 
       {:error, reason} ->
         {:noreply,
-         assign(socket, folder: folder, notice: %{tone: :error, text: folder_error(reason)})}
+         socket |> assign(folder: folder) |> BoardNotice.notify(:error, folder_error(reason))}
     end
   end
 
@@ -276,16 +271,16 @@ defmodule AgentBoardWeb.BoardComponents.PrivatePanel do
         {:ok, PrivateContext.put_file(repository, dir, entry.client_name, content, role)}
       end)
 
-    notice =
+    {kind, text} =
       case stored do
         {:ok, relative} ->
-          %{tone: :ok, text: gettext("%{name} saved.", name: relative)}
+          {:info, gettext("%{name} saved.", name: relative)}
 
         {:error, _reason} ->
-          %{tone: :error, text: gettext("Could not save the file on this machine.")}
+          {:error, gettext("Could not save the file on this machine.")}
       end
 
-    {:noreply, socket |> assign(dir: dir, notice: notice) |> refresh()}
+    {:noreply, socket |> assign(dir: dir) |> BoardNotice.notify(kind, text) |> refresh()}
   end
 
   defp handle_progress(:private_files, _entry, socket), do: {:noreply, socket}

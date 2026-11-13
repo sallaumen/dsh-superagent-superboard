@@ -90,7 +90,6 @@ defmodule AgentBoardWeb.BoardLive do
         last_visit: last_visit,
         message_seen: message_seen,
         inbox_filter: "all",
-        inbox_notice: nil,
         inbox: %{messages: [], alerts: [], providers: []},
         tz_offset: tz_offset,
         work: empty_work(),
@@ -1093,6 +1092,9 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_info(:agent_access_changed, socket),
     do: {:noreply, refresh_agent_access(socket)}
 
+  def handle_info({:board_notice, kind, text}, socket),
+    do: {:noreply, put_flash(socket, kind, text)}
+
   # The row that held the button leaves on the next read, so the result is
   # said here (AgentAction).
   def handle_info({:agent_access_done, text}, socket),
@@ -1461,7 +1463,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_event("filter_inbox", %{"filter" => filter}, socket)
       when filter in ["all", "unread"] do
-    {:noreply, assign(socket, inbox_filter: filter, inbox_notice: nil)}
+    {:noreply, assign(socket, :inbox_filter, filter)}
   end
 
   def handle_event("filter_inbox", _params, socket), do: {:noreply, socket}
@@ -1477,22 +1479,19 @@ defmodule AgentBoardWeb.BoardLive do
       key = Integer.to_string(task_id)
 
       if Map.get(socket.assigns.message_seen, key) == version do
-        {:noreply, assign(socket, :inbox_notice, nil)}
+        {:noreply, socket}
       else
         {:noreply,
          socket
-         |> assign(
-           message_seen: Map.put(socket.assigns.message_seen, key, version),
-           inbox_notice: nil
-         )
+         |> assign(:message_seen, Map.put(socket.assigns.message_seen, key, version))
          |> push_event("message_seen", %{task_id: task_id, version: version, quick: true})}
       end
     else
       _ ->
         {:noreply,
-         assign(
+         put_flash(
            socket,
-           :inbox_notice,
+           :error,
            gettext("The reply changed. Read the new message before marking it.")
          )}
     end
@@ -1501,7 +1500,7 @@ defmodule AgentBoardWeb.BoardLive do
   def handle_event("mark_inbox_message_seen", _params, socket),
     do:
       {:noreply,
-       assign(socket, :inbox_notice, gettext("That reply was not found. Reload the window."))}
+       put_flash(socket, :error, gettext("That reply was not found. Reload the window."))}
 
   def handle_event("mark_messages_seen", _params, socket) do
     versions =
@@ -1512,11 +1511,11 @@ defmodule AgentBoardWeb.BoardLive do
     seen = Map.merge(socket.assigns.message_seen, versions)
 
     if seen == socket.assigns.message_seen do
-      {:noreply, assign(socket, :inbox_notice, nil)}
+      {:noreply, socket}
     else
       {:noreply,
        socket
-       |> assign(message_seen: seen, inbox_notice: nil)
+       |> assign(:message_seen, seen)
        |> push_event("messages_seen", %{versions: versions})}
     end
   end
@@ -2741,7 +2740,7 @@ defmodule AgentBoardWeb.BoardLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={if @panel in [nil, "conversation"], do: @flash, else: %{}}>
       <div
         id="board-page"
         phx-hook="BoardPanels"
@@ -2779,7 +2778,6 @@ defmodule AgentBoardWeb.BoardLive do
                 providers={@inbox.providers}
                 seen={@message_seen}
                 filter={@inbox_filter}
-                notice={@inbox_notice}
               >
                 <BoardComponents.PeakRate.mark
                   :if={@peak_rate}
@@ -3259,6 +3257,7 @@ defmodule AgentBoardWeb.BoardLive do
           class="board-dialog ab-composer-dialog"
           aria-labelledby="composer-title"
         >
+          <AgentBoardWeb.BoardNotice.notices :if={@panel == "composer"} flash={@flash} />
           <.composer
             :if={@repo}
             repo={"#{@repo.owner}/#{@repo.name}"}

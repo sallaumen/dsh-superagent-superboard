@@ -213,7 +213,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     render_async(view, 10_000)
 
     # The button leaves with the last folder; the panel says what happened.
-    assert has_element?(view, panel, "2 pastas removidas")
+    assert has_element?(view, "#panel-settings-info", "2 pastas removidas")
     refute has_element?(view, button)
     refute File.dir?(fixture.dirs["old"])
     refute File.dir?(fixture.dirs["recent"])

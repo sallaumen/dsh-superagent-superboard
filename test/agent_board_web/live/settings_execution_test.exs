@@ -44,6 +44,8 @@ defmodule AgentBoardWeb.SettingsExecutionTest do
     })
     |> render_submit()
 
+    assert has_element?(view, "#panel-settings-info", "Limites salvos.")
+    refute has_element?(view, "#flash-group .board-notice")
     assert Settings.get("dispatch_monthly_usd") == "0"
     assert Settings.get("dispatch_codex_timeout_minutes") == "30"
     assert Settings.get("dispatch_reserve_percent") == "20"
