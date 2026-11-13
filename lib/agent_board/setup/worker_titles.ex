@@ -18,11 +18,11 @@ defmodule AgentBoard.Setup.WorkerTitles do
       Application.get_env(:agent_board, :worker_titles_home) || System.get_env("DSH_HOME") ||
         Path.expand("~/.dsh")
 
-    with python when is_binary(python) <- System.find_executable("python3"),
-         script = Path.join(Git.root(), @script),
-         true <- File.regular?(script),
+    script = Path.join(Git.root(), @script)
+
+    with true <- File.regular?(script),
          {output, 0} <-
-           System.cmd(python, [script, "--check"],
+           System.cmd("python3", [script, "--check"],
              env: [{"DSH_HOME", home}],
              stderr_to_stdout: true
            ) do
