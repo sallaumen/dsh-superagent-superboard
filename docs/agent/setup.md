@@ -360,8 +360,11 @@ The board uses the Harness dependency lock shipped with **this board version**.
 It installs that runtime once per machine and checks each registered local
 profile against its repository, state directory and manager. An outdated, idle
 agent briefly pauses and reloads on the same profile and port. An up-to-date
-agent keeps its process. Busy, paused, stopped and unverified agents are
-skipped; click again after work finishes. GitHub-only projects need no action.
+agent keeps its process. Busy agents show **Update pending**. The board checks again every 15 seconds;
+once both running and queued work reach zero, it applies the requested version
+or reports that the Harness is already current. The request survives closing
+Settings or restarting the board. Paused, stopped and unverified profiles are
+not restarted. A changed repository, profile or dependency lock needs a new click. GitHub-only projects need no action.
 The board stays online, the global npm installation is unchanged, and no code
 is written to the connected repositories. Manage agents on another machine
 from that machine's board. A failed result means the handoff could not be

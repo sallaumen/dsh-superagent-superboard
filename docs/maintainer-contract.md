@@ -2097,3 +2097,14 @@ the selected PR every two seconds without querying GitHub. No record means
 unknown, not green. Another head invalidates the check rows. A worker whose
 active snapshot stops updating for 90 seconds is shown as last observed.
 Old tickets continue to show the facts the board already knows.
+
+### Deferred Harness maintenance
+
+The local, confirmed `sync_agent_runtimes` action records the approved project
+identity and Harness lock digest in Postgres (`superagents.runtime_sync`).
+Settings reads that receipt and receives progress through PubSub. The originating
+board checks unfinished requests every 15 seconds, independently of the browser.
+Repeated clicks reuse a pending request. The helper checks both running and
+queued work and checks again under pause before handing off the process. A changed
+identity or dependency lock, a stopped/paused agent, or unreadable load never
+authorizes a reload. Remaining current is a successful outcome with no restart.

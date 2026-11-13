@@ -35,8 +35,10 @@ def lock(path):
         yield
 
 
-def prepare():
+def prepare(expected_lock=None):
     digest = hashlib.sha256((MANIFEST / "package-lock.json").read_bytes()).hexdigest()
+    if expected_lock is not None and digest != expected_lock:
+        raise Skip("changed")
     dest = ROOT / digest
     with lock(ROOT / ".install.lock"):
         if not dest.exists():
@@ -45,6 +47,8 @@ def prepare():
                 stage.mkdir()
                 for name in ("package.json", "package-lock.json"):
                     shutil.copyfile(MANIFEST / name, stage / name)
+                if hashlib.sha256((stage / "package-lock.json").read_bytes()).hexdigest() != digest:
+                    raise Skip("changed")
                 run("npm", "ci", "--no-audit", "--no-fund", "--fetch-retries=1",
                     env={k: v for k, v in os.environ.items() if k in ("HOME", "PATH", "TMPDIR", "USER", "LOGNAME")}, cwd=stage, timeout=420)
                 run(str(stage / "node_modules/.bin/dsh"), "--version", env=clean_env())
@@ -133,13 +137,21 @@ class Profile:
             link.replace(self.selection)
 
 
-def idle(s, paused):
+def workload(s, paused):
+    if s.get("paused") is not paused:
+        return "changed"
     load = s.get("load") or {}
-    return (s.get("paused") is paused and type(load.get("running")) is int
-            and type(load.get("queued")) is int and load["running"] == load["queued"] == 0)
+    counts = [load.get("running"), load.get("queued")]
+    if not all(type(n) is int and n >= 0 for n in counts):
+        return "unavailable"
+    return "busy" if any(counts) else "idle"
 
 
-def sync(p):
+def idle(s, paused):
+    return workload(s, paused) == "idle"
+
+
+def sync(p, expected_lock=None):
     with lock(ROOT / "locks" / p.profile):
         try:
             s = p.snapshot()
@@ -149,18 +161,25 @@ def sync(p):
             return "paused"
         if (s.get("health", {}).get("runtime") or {}).get("state") != "ready":
             return "unavailable"
-        if not idle(s, False):
-            return "busy"
+        load = workload(s, False)
+        if load != "idle":
+            return load
         old = p.launcher()
-        cli = prepare()
+        cli = prepare(expected_lock)
         if old.resolve() == cli.resolve():
             p.select(cli)
             return "current"
-        if not idle(p.snapshot(), False) or p.launcher() != old:
+        load = workload(p.snapshot(), False)
+        if load != "idle":
+            return load
+        if p.launcher() != old:
             return "changed"
         try:
             p.api("executor/pause", {"paused": True})
-            if not idle(p.snapshot(), True) or p.launcher() != old:
+            load = workload(p.snapshot(), True)
+            if load != "idle":
+                return load
+            if p.launcher() != old:
                 return "changed"
             try:
                 # The manager holds its operation lock across stop and start.
@@ -195,8 +214,11 @@ def main():
     for key in ("profile", "repo", "manager", "state"):
         parser.add_argument("--"+key, required=True)
     parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--expected-lock")
+    options = vars(parser.parse_args())
+    expected = options.pop("expected_lock")
     try:
-        print(sync(Profile(**vars(parser.parse_args()))))
+        print(sync(Profile(**options), expected))
     except Skip as exc:
         print(str(exc))
     except BlockingIOError:

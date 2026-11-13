@@ -50,7 +50,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   @impl true
   def update(assigns, socket) do
     socket = assign(socket, assigns)
-    socket = assign(socket, :runtime_sync, RuntimeSync.status())
+
+    socket =
+      assign(
+        socket,
+        :checking_runtimes,
+        Enum.any?(socket.assigns.superagents, &(runtime_status(&1) == "waiting"))
+      )
 
     expanded =
       case socket.assigns.expanded do
@@ -149,17 +155,17 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         <input type="hidden" name="confirm" value={sync_phrase(@superagents)} />
         <p class="ab-meta">
           {gettext(
-            "From localhost, update idle agents to the Harness bundled with this board. Busy agents keep working; try again when they finish."
+            "Idle agents update now. Busy agents update automatically after their last task finishes and the queue is empty."
           )}
         </p>
         <p id="runtime-targets" class="ab-meta">{sync_phrase(@superagents)}</p>
         <button
           class="ab-btn"
           type="submit"
-          disabled={@runtime_sync.running}
+          disabled={@checking_runtimes}
           aria-describedby="runtime-targets"
         >
-          {if @runtime_sync.running,
+          {if @checking_runtimes,
             do: gettext("Synchronizing…"),
             else: gettext("Sync agent runtimes")}
         </button>
@@ -181,7 +187,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               <p class="ab-project__name">
                 <span class="ab-project__owner">{owner(superagent)}/</span><strong>{name(superagent)}</strong>
               </p>
-              <p :if={result = @runtime_sync.rows[superagent.id]} class="ab-meta" role="status">
+              <p :if={result = runtime_status(superagent)} class="ab-meta" role="status">
                 {sync_result(result)}
               </p>
               <p class="ab-project__access">
@@ -782,11 +788,17 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         Locale.language()
       )
 
+  defp runtime_status(%{runtime_sync: %{"status" => status}}), do: status
+  defp runtime_status(_), do: nil
+
   defp sync_result("waiting"), do: gettext("Waiting to check")
   defp sync_result("updated"), do: gettext("Harness updated")
   defp sync_result("current"), do: gettext("Harness already current")
   defp sync_result("paused"), do: gettext("Skipped: agent paused")
-  defp sync_result("busy"), do: gettext("Skipped: work in progress or queued")
+
+  defp sync_result("pending"),
+    do: gettext("Update pending — waiting for work and queue to finish")
+
   defp sync_result("changed"), do: gettext("Skipped: agent state changed")
   defp sync_result("identity"), do: gettext("Skipped: project identity changed")
   defp sync_result("unavailable"), do: gettext("Skipped: agent unavailable")
