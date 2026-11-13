@@ -14,12 +14,15 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
+  alias AgentBoard.Actions
   alias AgentBoard.GitHub
   alias AgentBoard.Orchestrator
   alias AgentBoard.Superagents
+  alias AgentBoard.Superagents.RuntimeSync
   alias AgentBoardWeb.BoardComponents.AgentAction
   alias AgentBoardWeb.BoardComponents.Settings.{ProjectAccess, ProjectLeftovers, ProjectPolicy}
   alias AgentBoardWeb.BoardNavigation
+  alias AgentBoardWeb.Locale
   alias AgentBoardWeb.Time
 
   attr :project_path, :string, required: true
@@ -40,6 +43,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   @impl true
   def update(assigns, socket) do
     socket = assign(socket, assigns)
+    socket = assign(socket, :runtime_sync, RuntimeSync.status())
 
     expanded =
       case socket.assigns.expanded do
@@ -142,6 +146,32 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         </span>
       </p>
 
+      <form
+        :if={@superagents != []}
+        action={~p"/superagents/synchronize"}
+        method="post"
+        class="ab-projects__maintenance"
+      >
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+        <input type="hidden" name="confirm" value={sync_phrase(@superagents)} />
+        <p class="ab-meta">
+          {gettext(
+            "From localhost, update idle agents to the Harness bundled with this board. Busy agents keep working; try again when they finish."
+          )}
+        </p>
+        <p id="runtime-targets" class="ab-meta">{sync_phrase(@superagents)}</p>
+        <button
+          class="ab-btn"
+          type="submit"
+          disabled={@runtime_sync.running}
+          aria-describedby="runtime-targets"
+        >
+          {if @runtime_sync.running,
+            do: gettext("Synchronizing…"),
+            else: gettext("Sync agent runtimes")}
+        </button>
+      </form>
+
       <ul
         :if={@superagents != [] or @tracked != []}
         class="ab-projects__list"
@@ -157,6 +187,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             <div class="ab-project__identity">
               <p class="ab-project__name">
                 <span class="ab-project__owner">{owner(superagent)}/</span><strong>{name(superagent)}</strong>
+              </p>
+              <p :if={result = @runtime_sync.rows[superagent.id]} class="ab-meta" role="status">
+                {sync_result(result)}
               </p>
               <p class="ab-project__access">
                 <span
@@ -711,6 +744,27 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
     do: Enum.count(superagents, &(&1.observed_state == "ready"))
 
   defp agent_total(superagents), do: Enum.sum(Enum.map(superagents, & &1.max_workers))
+
+  defp sync_phrase(agents),
+    do:
+      Actions.phrase(
+        :sync_agent_runtimes,
+        %{targets: RuntimeSync.targets(agents)},
+        Locale.language()
+      )
+
+  defp sync_result("waiting"), do: gettext("Waiting to check")
+  defp sync_result("updated"), do: gettext("Harness updated")
+  defp sync_result("current"), do: gettext("Harness already current")
+  defp sync_result("paused"), do: gettext("Skipped: agent paused")
+  defp sync_result("busy"), do: gettext("Skipped: work in progress or queued")
+  defp sync_result("changed"), do: gettext("Skipped: agent state changed")
+  defp sync_result("identity"), do: gettext("Skipped: project identity changed")
+  defp sync_result("unavailable"), do: gettext("Skipped: agent unavailable")
+  defp sync_result("in_progress"), do: gettext("Another synchronization is in progress")
+
+  defp sync_result("failed"),
+    do: gettext("Could not verify the update. Check the agent before retrying.")
 
   defp project_name(%{repository: %{owner: owner, name: name}}), do: "#{owner}/#{name}"
   defp project_name(_superagent), do: gettext("this project")

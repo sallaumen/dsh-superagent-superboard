@@ -74,7 +74,7 @@ defmodule AgentBoard.Actions do
   alias AgentBoard.Board.{Attachments, PrivateContext, Repository, SplitGraph, Task}
   alias AgentBoard.Intake.IssueBody
   alias AgentBoard.Release
-  alias AgentBoard.Superagents.{Leftovers, Policy}
+  alias AgentBoard.Superagents.{Leftovers, Policy, RuntimeSync}
   alias AgentBoard.Sync.Worker
   alias AgentBoard.Voice.Phrases
 
@@ -102,6 +102,7 @@ defmodule AgentBoard.Actions do
     :adopt_superagent,
     :retry_provision_superagent,
     :remove_superagent,
+    :sync_agent_runtimes,
     :start_superagent,
     :stop_superagent,
     :pause_superagent,
@@ -221,6 +222,9 @@ defmodule AgentBoard.Actions do
 
   defp spec(:remove_superagent),
     do: %{risk: :red, does: "para o superagent e arquiva profile/state; o projeto sai do board"}
+
+  defp spec(:sync_agent_runtimes),
+    do: %{risk: :red, does: "atualiza o Harness dos projetos registrados e ociosos desta máquina"}
 
   defp spec(:start_superagent),
     do: %{risk: :red, does: "inicia o superagent DeepSeek de um projeto"}
@@ -379,6 +383,14 @@ defmodule AgentBoard.Actions do
     do:
       "Parar a execução do #{executor_name(execution.executor)} na tarefa ##{task.number}? " <>
         "O processo é encerrado e o resultado parcial fica em Execuções."
+
+  def phrase(:sync_agent_runtimes, %{targets: targets}, lang) do
+    names = targets |> Map.values() |> Enum.sort() |> Enum.join(", ")
+
+    if lang == "en-US",
+      do: "Update idle agents for: " <> names,
+      else: "Atualizar os agentes ociosos de: " <> names
+  end
 
   def phrase(:start_superagent, %{superagent: superagent}, "en-US"),
     do:
@@ -1036,6 +1048,8 @@ defmodule AgentBoard.Actions do
         {:error, gettext("Could not remove: %{reason}", reason: describe(reason))}
     end
   end
+
+  defp execute(:sync_agent_runtimes, %{targets: targets}), do: RuntimeSync.start(targets)
 
   defp execute(:start_superagent, %{superagent: superagent}) do
     case Superagents.start(superagent) do

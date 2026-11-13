@@ -23,6 +23,14 @@ set -u
 
 MANAGER="$DSH_SUPERAGENT_HOME/scripts/dsh-superagent"
 PROFILE="${DSH_SUPERAGENT_PROFILE:-superagent}"
+case "$PROFILE" in
+  ""|[!a-zA-Z0-9_]*|*[!a-zA-Z0-9_.-]*) ;;
+  *)
+    runtime_bin="$HOME/.local/share/superboard/runtimes/profiles/$PROFILE"
+    if [ -x "$runtime_bin/dsh" ]; then
+      PATH="$runtime_bin:$PATH"; export PATH
+    fi ;;
+esac
 LOG="${DSH_SUPERAGENT_KEEPALIVE_LOG:-$HOME/Library/Logs/dsh-superagent-keepalive.log}"
 LOG_MAX_BYTES="${DSH_SUPERAGENT_KEEPALIVE_LOG_MAX_BYTES:-1048576}"
 
