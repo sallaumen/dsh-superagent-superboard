@@ -74,11 +74,16 @@ defmodule AgentBoard.Superagents.Prototype do
     stage = target <> ".installing"
     patch = Application.app_dir(:agent_board, "priv/agent/duplicate-issue-notice.patch")
 
+    branch_patch = Path.join(Path.dirname(patch), "assignment-branch.patch")
+    helper = Path.join(Path.dirname(patch), "superboard-branch.py")
+
     # Git creates its destination. Leave an interrupted checkout for inspection.
     with {:error, :enoent} <- File.lstat(stage),
          :ok <- step(run, "git", ["clone", "--no-checkout", @repository, stage], []),
          :ok <- step(run, "git", ["checkout", "--detach", @revision], cd: stage),
          :ok <- step(run, "git", ["apply", patch], cd: stage),
+         :ok <- step(run, "git", ["apply", branch_patch], cd: stage),
+         :ok <- step(run, "cp", [helper, "scripts/superboard-branch.py"], cd: stage),
          :ok <- step(run, "pnpm", ["install", "--frozen-lockfile"], cd: stage),
          :ok <- step(run, "pnpm", ["build"], cd: stage),
          :ok <- File.rename(stage, target) do

@@ -95,6 +95,16 @@ it when that file is gone. Directories under `work/` that match no ticket in
 the sqlite (an earlier database, another repository) are listed on stderr and
 left alone.
 
+For GitHub issues using the board's worktree setup, the executor checks its
+branch before sending the assignment to the worker. First runs keep the
+prepared ticket branch. For a follow-up after its previous PRs are closed,
+it starts from the current default branch on
+`agent/run-<assignment-id>/<ticket-name>`. The final segment lets the Harness
+bind the PR. An open PR stays on its existing branch. The worker's
+`gh pr create` checks the assigned head and reuses the PR for that branch,
+including after a lost response. Dirty work is never reset to prepare a new
+branch. Installed profiles receive this behavior via runtime synchronization.
+
 ## What the board adds
 
 - **Visibility**: the five columns, the conversation, the AI panel.

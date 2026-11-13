@@ -1,0 +1,69 @@
+diff --git a/src/executor/dsh.ts b/src/executor/dsh.ts
+index 26234f3..3794f2d 100644
+--- a/src/executor/dsh.ts
++++ b/src/executor/dsh.ts
+@@ -8,6 +8,7 @@ import { key, latestAssignment, latestReport, liveTicket, runningAssignment, thr
+ import type { AssessmentOutcome, Assignment, EngineForExecutor, Execution, Executor, Mandate, PolicyEffect, Ticket, TicketInput, Trigger }
+   from '../core/index.ts'
+ import type { Machine } from '../deployment.ts'
++import { packagePath } from '../infra/paths.ts'
+ import { runAsWorker, verifyDirectory } from '../infra/environment.ts'
+ import type { Settings } from '../policy.ts'
+ import type { Store } from '../app/store.ts'
+@@ -443,6 +444,20 @@ export class DshExecutor implements Executor {
+     // The background work of the Assignment this one replaces stops first, so its end does not clear this one's message.
+     await this.stopped(ticket.id)
+     if (!current()) return
++    let branch: string | undefined
++    if (source?.source === 'github' && source.meta.isPr !== true && ticket.execution &&
++        this.host.store.settings().executor.prepare.includes('agent/$DSH_SUPERAGENT_NAME')) {
++      const repo = this.host.environment(ticket).find(v => v.key === 'DSH_SUPERAGENT_GITHUB_REPOSITORY')?.value
++      if (!repo) throw new PrepareFailed('Missing repository for ticket branch')
++      const owned = (ticket.follows ?? []).filter(f => f.own && f.thread.startsWith('github:'))
++      const fresh = ticket.assignments.length > 1 && owned.length > 0 && owned.every(f => f.closed)
++      try {
++        branch = (await runAsWorker(this.host.context.subprocess, ['python3', packagePath('scripts', 'superboard-branch.py'),
++          'prepare', repo, ticket.execution.name, assignment.id, fresh ? 'new' : 'keep'], workspace,
++          AbortSignal.any([this.host.lifetime, AbortSignal.timeout(PREPARE_TIMEOUT_MS)]))).trim()
++      } catch (error) { throw new PrepareFailed(`Assignment branch not ready: ${error instanceof Error ? error.message : error}`) }
++      if (!current()) return
++    }
+     // A message put back for this Assignment may still wait in the Session, kept by a restart's cancel or persisted across a
+     // crash, where this launch's message would take it into a step beside the copy delivered next: that copy is the only one.
+     for (const id of this.host.store.tickets.get(ticket.id)?.undelivered ?? []) agent.inbox.remove(this.host.sessions.promptedId(id))
+@@ -462,8 +477,10 @@ export class DshExecutor implements Executor {
+       : JSON.stringify({ ticket_id: ticket.id, title: ticket.title, ...(brief ? { assignment: brief } : {}),
+         ...(read ? { assignment_chars: chars, assignment_read: read } : {}), ...(card ? { trigger: card } : {}),
+         ...(batch.length ? { batch } : {}), ...retried })
++    const delivery = branch ? JSON.stringify({ ...JSON.parse(text), branch,
++      delivery: 'This assignment is already on its delivery branch. Stay on it, push this exact head, then use gh pr create once; reuse the returned PR for later updates. Do not rename the branch or replace the PR.' }) : text
+     const requestId = later ? `assignment:${ticket.id}:${assignment.id}` : first
+-    await this.host.sessions.prompt(sessionId, requestId, text, 'queue',
++    await this.host.sessions.prompt(sessionId, requestId, delivery, 'queue',
+       () => { if (!current()) throw new Error('Launch authorization changed before worker delivery') },
+       () => { this.host.engine.assignmentStarted(ticket.id, assignment.id) })
+     this.host.engine.assignmentStarted(ticket.id, assignment.id)
+diff --git a/src/infra/environment.ts b/src/infra/environment.ts
+index b6d92c3..94bc9cc 100644
+--- a/src/infra/environment.ts
++++ b/src/infra/environment.ts
+@@ -8,6 +8,7 @@ import { realpathSync } from 'node:fs'
+ import { delimiter, join, resolve } from 'node:path'
+ import type { SubprocessOutputReader, SubprocessRuntime } from '@deepseek-ai/dsh-subprocess'
+ import type { Deployment } from '../deployment.ts'
++import { packagePath } from './paths.ts'
+ import { SetupError } from '../setup.ts'
+ import { CliError } from './commands.ts'
+ 
+@@ -97,7 +98,10 @@ export async function writeEnvironment(deployment: Pick<Deployment, 'stateDir' |
+   ].join('\n')
+   const run = (program: string): string => `${withoutShims}\nexec ${shellQuote(program)} "$@"`
+   const fail = (message: string): string => `echo ${shellQuote(message)} >&2\nexit 1`
+-  await shim('gh', run(github.cli))
++  const prGuard = packagePath('scripts', 'superboard-branch.py')
++  await shim('gh', `${withoutShims}
++if [ "$1" = pr ] && [ "$2" = create ]; then exec python3 ${shellQuote(prGuard)} create ${shellQuote(github.cli)} "$@"; fi
++exec ${shellQuote(github.cli)} "$@"`)
+   await shim('lark-cli', feishu ? run(feishu.cli) : fail('lark-cli is unavailable: this installation has no Feishu bot.'))
+   for (const name of new Set(blockedCommands.filter(name => !WORKER_COMMANDS.includes(name)))) {
+     await shim(name, fail(`${name} is blocked in this installation; use gh, which acts as ${github.login}.`))

@@ -93,6 +93,11 @@ class Delivery(unittest.TestCase):
         launcher.write_text("#!/bin/sh\nexit 0\n")
         self.assertFalse(guard.installed(self.folder, "org/repo", worker))
 
+    def test_create_with_leading_repo_option_requires_assignment_guard(self):
+        for args in (["-R", "org/repo", "pr", "create"], ["pr", "--repo=org/repo", "create"]):
+            with self.assertRaisesRegex(guard.Blocked, "Use gh pr create"):
+                guard.worker("org/repo", "gh", args)
+
     def test_pass_and_atomic_head(self):
         self.merge.deliver()
         self.assertEqual(self.merges[0][-3:], ["--squash","--match-head-commit",self.sha])

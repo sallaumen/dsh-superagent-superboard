@@ -15,10 +15,19 @@ defmodule AgentBoard.Superagents.RuntimeSync do
   @interval :timer.seconds(15)
   @cli_lock Path.expand("../../../priv/agent/harness/package-lock.json", __DIR__)
   @notice_patch Path.expand("../../../priv/agent/duplicate-issue-notice.patch", __DIR__)
+  @branch_patch Path.expand("../../../priv/agent/assignment-branch.patch", __DIR__)
+  @helper Path.expand("../../../priv/agent/superboard-branch.py", __DIR__)
+  @external_resource @branch_patch
+  @external_resource @helper
   @external_resource @cli_lock
   @external_resource @notice_patch
   @lock_digest Base.encode16(
-                 :crypto.hash(:sha256, [File.read!(@cli_lock), File.read!(@notice_patch)]),
+                 :crypto.hash(:sha256, [
+                   File.read!(@cli_lock),
+                   File.read!(@notice_patch),
+                   File.read!(@branch_patch),
+                   File.read!(@helper)
+                 ]),
                  case: :lower
                )
 
