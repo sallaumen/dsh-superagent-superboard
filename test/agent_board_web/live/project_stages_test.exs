@@ -30,6 +30,14 @@ defmodule AgentBoardWeb.ProjectStagesTest do
     view |> element(open) |> render_click()
     render_async(view, 5_000)
     picker = "#tracked-#{repo.id}-merge-policy-language"
+
+    assert has_element?(
+             view,
+             picker <> " option[value=''][selected]",
+             "Tecnologia ainda não detectada"
+           )
+
+    refute has_element?(view, form_id)
     view |> element(picker <> "-form") |> render_change(%{"stack" => "JavaScript / TypeScript"})
 
     view

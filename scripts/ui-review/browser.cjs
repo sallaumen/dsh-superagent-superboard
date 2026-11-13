@@ -74,6 +74,22 @@ async function review(browser, url) {
       await example.selectOption("always");
       await checks.scrollIntoViewIfNeeded();
       await capture("project-stages");
+
+      await search.fill("sample/project-17");
+      const undetected = page.locator(".ab-project--tracked").filter({hasText: "sample/project-17"});
+      await undetected.getByRole("button", {name: /sample\/project-17/, expanded: false}).click();
+      const editor = undetected.locator("section[id$='-stages']");
+      const picker = editor.getByLabel("Tecnologia", {exact: true});
+      await picker.waitFor();
+      assert.equal(await picker.inputValue(), "");
+      assert.equal((await picker.locator("option:checked").textContent()).trim(), "Tecnologia ainda não detectada");
+      assert.equal(await editor.locator("form[id$='-stage-form']").count(), 0);
+      await editor.scrollIntoViewIfNeeded();
+      await capture("technology-undetected");
+      await picker.selectOption("Rust");
+      await editor.getByText("cargo test --locked", {exact: true}).waitFor();
+      assert.equal(await picker.inputValue(), "Rust");
+      await capture("technology-chosen");
     }
     assert.deepEqual(errors, [], "Browser console or page errors: " + errors.join("; "));
   } finally {

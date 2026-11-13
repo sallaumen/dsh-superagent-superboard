@@ -3082,6 +3082,7 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-quality__source { color: var(--ink-muted); border-inline-start: 3px solid var(--agent); padding-inline-start: 10px; font-size: 13px; }
 .ab-quality__editor { display: grid; grid-template-columns: minmax(9rem, 1fr) minmax(0, 2.2fr); align-items: start; gap: 18px; }
 .ab-quality__editor form { display: grid; width: 100%; gap: 4px; }
+.ab-quality__stack:only-child { grid-column: 1 / -1; max-width: 22rem; }
 .ab-quality__stack select { width: 100%; }
 .ab-quality__rule { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 50px; width: 100%; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .ab-quality__rule code, .ab-check-reason { display: block; color: var(--ink-muted); font-size: 12px; overflow-wrap: anywhere; }
