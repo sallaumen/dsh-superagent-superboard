@@ -10,6 +10,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectPolicy do
   """
   use AgentBoardWeb, :live_component
 
+  alias AgentBoardWeb.BoardNotice
+
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
   alias AgentBoard.Actions
@@ -23,7 +25,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectPolicy do
 
   @impl true
   def mount(socket),
-    do: {:ok, assign(socket, comparison: nil, error: nil, loading: false, notice: nil)}
+    do: {:ok, assign(socket, comparison: nil, error: nil, loading: false)}
 
   @impl true
   def update(assigns, socket) do
@@ -55,19 +57,19 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectPolicy do
     keep = params |> Map.get("keep", []) |> List.wrap()
 
     # A write: it goes through the action registry, which records it.
-    notice =
+    {kind, text} =
       case Actions.run(
              :apply_agent_policy,
              %{superagent: socket.assigns.superagent, keep: keep},
              Actions.owner(:ui),
              language: Locale.language()
            ) do
-        {:ok, text} when is_binary(text) -> {:ok, text}
+        {:ok, text} when is_binary(text) -> {:info, text}
         {:error, text} when is_binary(text) -> {:error, text}
         {:error, reason} -> {:error, FailureText.text(reason)}
       end
 
-    {:noreply, socket |> assign(notice: notice) |> load()}
+    {:noreply, socket |> BoardNotice.notify(kind, text) |> load()}
   end
 
   @impl true
@@ -80,13 +82,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectPolicy do
     >
       <h5 id={"project-#{@superagent.id}-policy-title"}>{gettext("Agent's instructions")}</h5>
 
-      <p
-        :if={@notice}
-        class={["ab-policy__notice", elem(@notice, 0) == :error && "is-error"]}
-        role="status"
-      >
-        {elem(@notice, 1)}
-      </p>
       <p :if={@loading and is_nil(@comparison)} class="ab-meta" role="status">
         {gettext("Reading the agent's instructions…")}
       </p>

@@ -11,6 +11,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectAccess do
   """
   use AgentBoardWeb, :live_component
 
+  alias AgentBoardWeb.BoardNotice
+
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1]
 
   alias AgentBoard.{Actions, AgentAccess}
@@ -32,8 +34,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectAccess do
        loaded_for: nil,
        candidates: %{},
        form_errors: %{},
-       checking: false,
-       notice: nil
+       checking: false
      )}
   end
 
@@ -52,8 +53,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectAccess do
           loaded_for: current_id,
           candidates: %{},
           form_errors: %{},
-          checking: false,
-          notice: nil
+          checking: false
         )
       else
         socket
@@ -135,9 +135,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectAccess do
     with %{} = project <- socket.assigns.project,
          %{} = request <- Enum.find(project.requests, &(&1.login == login)),
          {:ok, _text} <- dismiss(socket.assigns.superagent, request) do
-      {:noreply, assign(socket, notice: nil)}
+      {:noreply, socket}
     else
-      {:error, text} when is_binary(text) -> {:noreply, assign(socket, notice: text)}
+      {:error, text} when is_binary(text) -> {:noreply, BoardNotice.notify(socket, :error, text)}
       _gone -> {:noreply, socket}
     end
   end
@@ -185,7 +185,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectAccess do
     ~H"""
     <div id={@id} class="ab-project-access">
       <%= if @visible do %>
-        <p :if={@notice} class="ab-project-access__notice" role="status">{@notice}</p>
         <p :if={is_nil(@project)} class="ab-meta" role="status">{gettext("Reading access…")}</p>
 
         <%= if @project do %>

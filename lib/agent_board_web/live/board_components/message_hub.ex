@@ -13,7 +13,6 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
 
   attr :seen, :map, default: %{}
   attr :filter, :string, default: "all"
-  attr :notice, :string, default: nil
   slot :inner_block, doc: "a mark that sits first in the row, such as the peak hours"
 
   def hub(assigns) do
@@ -89,7 +88,6 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
               {gettext("Mark all as seen")}
             </button>
           </div>
-          <p :if={@notice} class="ab-hub-menu__notice" role="alert">{@notice}</p>
           <p :if={@messages == []} class="ab-hub-menu__empty">
             {gettext("No replies yet. Conversations appear here when Yasme answers.")}
           </p>

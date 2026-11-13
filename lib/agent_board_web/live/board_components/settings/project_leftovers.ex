@@ -11,6 +11,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectLeftovers do
   """
   use AgentBoardWeb, :live_component
 
+  alias AgentBoardWeb.BoardNotice
+
   alias AgentBoard.Actions
   alias AgentBoard.Superagents.Leftovers
   alias AgentBoardWeb.BoardComponents.AgentAction
@@ -21,14 +23,14 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectLeftovers do
 
   @impl true
   def mount(socket),
-    do: {:ok, assign(socket, survey: nil, error: nil, loading: false, notice: nil, days: nil)}
+    do: {:ok, assign(socket, survey: nil, error: nil, loading: false, days: nil)}
 
   @impl true
   # The red button finished: what the screen says is no longer on the disk,
   # and the button itself leaves when nothing is left, so the result is said
   # here.
   def update(%{done: _mode, text: text}, socket),
-    do: {:ok, socket |> assign(notice: {:removed, text}) |> load()}
+    do: {:ok, socket |> BoardNotice.notify(:info, text) |> load()}
 
   def update(assigns, socket) do
     showing = assigns[:visible] == true and socket.assigns[:visible] != true
@@ -64,19 +66,22 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectLeftovers do
       end
 
     # A write: it goes through the action registry, which records it.
-    notice =
+    {kind, text} =
       case Actions.run(
              :set_agent_folder_days,
              %{superagent: socket.assigns.superagent, days: days},
              Actions.owner(:ui),
              language: Locale.language()
            ) do
-        {:ok, text} -> {:ok, text}
+        {:ok, text} -> {:info, text}
         {:error, text} when is_binary(text) -> {:error, text}
         {:error, reason} -> {:error, FailureText.text(reason)}
       end
 
-    {:noreply, assign(socket, notice: notice, days: Leftovers.days(socket.assigns.superagent))}
+    {:noreply,
+     socket
+     |> BoardNotice.notify(kind, text)
+     |> assign(days: Leftovers.days(socket.assigns.superagent))}
   end
 
   @impl true
@@ -91,9 +96,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectLeftovers do
         {gettext("Folders of ended tickets")}
       </h5>
 
-      <p :if={match?({:removed, _text}, @notice)} class="ab-policy__notice" role="status">
-        {elem(@notice, 1)}
-      </p>
       <p :if={@loading and is_nil(@survey)} class="ab-meta" role="status">
         {gettext("Measuring the folders…")}
       </p>
@@ -144,13 +146,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectLeftovers do
           </option>
         </select>
       </form>
-      <p
-        :if={@notice && elem(@notice, 0) != :removed}
-        class={["ab-policy__notice", elem(@notice, 0) == :error && "is-error"]}
-        role="status"
-      >
-        {elem(@notice, 1)}
-      </p>
       <p :if={@days} class="ab-meta">{retention(@days, @survey)}</p>
       <p class="ab-meta">
         {gettext("Only the folders go. Each ticket, its issue, its pull request and its branch stay.")}

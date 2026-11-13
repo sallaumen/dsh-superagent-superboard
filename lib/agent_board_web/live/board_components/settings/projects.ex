@@ -12,6 +12,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   """
   use AgentBoardWeb, :live_component
 
+  alias AgentBoardWeb.BoardNotice
+
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
   alias AgentBoard.Actions
@@ -106,7 +108,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   end
 
   def handle_event("refresh_profiles", _params, socket) do
-    {:noreply, socket |> read_profiles() |> put_flash(:info, gettext("Profile list refreshed."))}
+    {:noreply,
+     socket |> read_profiles() |> BoardNotice.notify(:info, gettext("Profile list refreshed."))}
   end
 
   def handle_event("change_workers", %{"delta" => delta}, socket) do

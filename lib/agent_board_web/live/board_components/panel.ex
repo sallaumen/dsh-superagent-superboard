@@ -2,9 +2,8 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
   @moduledoc "Native dialog shell; region content remains mounted for draft preservation."
   use AgentBoardWeb, :html
 
-  alias AgentBoardWeb.BoardComponents.VoicePresence
-
-  alias AgentBoardWeb.BoardComponents.Controls
+  alias AgentBoardWeb.BoardComponents.{Controls, VoicePresence}
+  alias AgentBoardWeb.BoardNotice
 
   attr :icon, :string, default: nil
   attr :name, :string, required: true
@@ -33,46 +32,10 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
       <p class="panel-reconnect text-warning" role="status">
         {gettext("Reconnecting · showing saved data")}
       </p>
-      <.settings_notices :if={@active and @name == "settings"} flash={@flash} />
-      <div :if={@active and @name != "settings"} class="panel-flashes">
-        <.flash
-          :for={kind <- [:info, :error]}
-          id={"panel-#{@name}-#{kind}"}
-          kind={kind}
-          flash={@flash}
-        />
-      </div>
-      {render_slot(@inner_block)}
+      <BoardNotice.notices :if={@active} flash={@flash} prefix={"panel-#{@name}"} />
+      <div class="panel-scroll">{render_slot(@inner_block)}</div>
       <VoicePresence.stage :if={@active} id={"voice-presence-#{@name}"} />
     </dialog>
-    """
-  end
-
-  defp settings_notices(assigns) do
-    ~H"""
-    <div class="settings-notices">
-      <div
-        :for={kind <- [:info, :error]}
-        :if={message = Phoenix.Flash.get(@flash, kind)}
-        id={"panel-settings-#{kind}"}
-        class="settings-notice"
-        data-kind={kind}
-        phx-hook="SettingsNotice"
-      >
-        <.icon
-          name={if kind == :error, do: "hero-exclamation-circle", else: "hero-information-circle"}
-          class="size-5"
-        />
-        <p role={if kind == :error, do: "alert", else: "status"}>{message}</p>
-        <button
-          type="button"
-          aria-label={gettext("Dismiss")}
-          phx-click={JS.push("lv:clear-flash", value: %{key: kind})}
-        >
-          <.icon name="hero-x-mark" class="size-4" />
-        </button>
-      </div>
-    </div>
     """
   end
 end

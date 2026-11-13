@@ -5,6 +5,8 @@ defmodule AgentBoardWeb.Layouts do
   """
   use AgentBoardWeb, :html
 
+  alias AgentBoardWeb.BoardNotice
+
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
   # skeleton of your application, namely HTML headers
@@ -52,9 +54,8 @@ defmodule AgentBoardWeb.Layouts do
 
   def flash_group(assigns) do
     ~H"""
-    <div id={@id} aria-live="polite">
-      <.flash kind={:info} flash={@flash} />
-      <.flash kind={:error} flash={@flash} />
+    <div id={@id}>
+      <BoardNotice.notices flash={@flash} />
 
       <.flash
         id="client-error"

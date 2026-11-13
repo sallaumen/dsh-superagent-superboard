@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {readFileSync} from 'node:fs'
-const source = readFileSync(new URL('../../assets/js/hooks/settings_notice.js', import.meta.url), 'utf8')
-const {SettingsNotice} = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
+const source = readFileSync(new URL('../../assets/js/hooks/board_notice.js', import.meta.url), 'utf8')
+const {BoardNotice} = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
 
 test('a new message gets its own three seconds; a board refresh does not extend them', t => {
   t.mock.timers.enable({apis: ['setTimeout']})
@@ -11,7 +11,7 @@ test('a new message gets its own three seconds; a board refresh does not extend 
     textContent: 'First message',
     querySelector: () => ({click: () => dismissals++}),
   })
-  const notice = {...SettingsNotice, el}
+  const notice = {...BoardNotice, el}
   notice.mounted()
   t.mock.timers.tick(2500)
   el.textContent = 'Next message'
