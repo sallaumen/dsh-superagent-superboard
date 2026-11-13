@@ -39,7 +39,9 @@ Esta etapa é opcional. O [DeepSeek Harness](https://www.deepseek.com/en/harness
 | Execução | `Python 3.8+` e `tmux` |
 | Conta | Uma conta GitHub separada para o bot, com acesso de escrita; um provedor de modelo configurado no perfil do Harness |
 
-[Baixe o Harness](https://www.deepseek.com/en/harness/), instale o comando `dsh` e configure o provedor de modelo. Na máquina do board, confira com `dsh --version` e [verifique o login separado do bot](agent/setup.md#2-the-bot-identity).
+1. Instale o [comando do Harness](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#install): `npm install -g @deepseek-ai/dsh@0.2.1-rc.3`. Confira com `dsh --version`. No Linux, use Debian com `procps`; o teste no Alpine não chegou ao fim.
+2. Para o provedor padrão da API DeepSeek, defina `DEEPSEEK_API_KEY` no `.env.local` e reinicie o board. Para usar outro provedor, configure-o no [Harness](https://www.deepseek.com/en/harness/).
+3. [Entre com a conta do bot](agent/setup.md#2-the-bot-identity) e confira o login do GitHub. Deixe o board criar o perfil do projeto.
 
 Abra **Configurações → Projetos → Conectar o Super Agent** e escolha o caminho da sua máquina:
 

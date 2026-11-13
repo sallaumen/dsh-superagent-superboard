@@ -458,6 +458,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                 "No profile found. Install DeepSeek Harness and its dsh command on the machine running the board. Then look for profiles again."
               )
 
+            {:error, :ps_missing} ->
+              gettext(
+                "The agent needs a full ps command to start. Install procps (procps-ng on Alpine), then review the installation again."
+              )
+
             {:error, :bot_missing} ->
               gettext(
                 "The Harness is installed. Sign in to GitHub with a separate bot account, then look for profiles again."
@@ -494,7 +499,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
           >{gettext("Download DeepSeek Harness")}</a>
           <a
             class="ab-link"
-            href="https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md"
+            href={first_install_guide()}
             target="_blank"
             rel="noopener noreferrer"
           >{gettext("Super Agent setup guide")}</a>
@@ -709,6 +714,15 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   defp project_name(%{repository: %{owner: owner, name: name}}), do: "#{owner}/#{name}"
   defp project_name(_superagent), do: gettext("this project")
+
+  defp first_install_guide do
+    page =
+      if AgentBoardWeb.Locale.language() == "pt-BR",
+        do: "primeiros-passos.md#conectar-o-super-agent",
+        else: "getting-started.md#connect-the-super-agent"
+
+    "https://github.com/sallaumen/dsh-superagent-superboard/blob/main/docs/" <> page
+  end
 
   defp owner(%{repository: %{owner: owner}}), do: owner
   defp owner(_superagent), do: gettext("repository removed")

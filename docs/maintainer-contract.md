@@ -1228,14 +1228,14 @@ action `install_first_superagent`).
   either is missing (`first_ready/0`): the `dsh` command of DeepSeek Harness
   in the board's `PATH`, with a model set up in the Harness, and the bot's
   GitHub sign-in (`Superagents.Bot`, `~/.config/gh-agent`). The board never
-  signs in and never sees a password or a token.
+  signs in and never sees a password or a token. Before confirmation, it also checks that the system’s `ps` supports the manager’s process fields.
 - **What the confirmed action does,** in order, each step of the
   prototype's own install (`docs/006-deployment.md`):
   1. the agent's code: when the machine has none, `git clone` of the public
      repository beside the profiles (`~/.dsh/dsh-superagent`), `pnpm install`
      and `pnpm build`, and its folder is remembered (`settings`,
      `dsh_superagent_home`; `Superagents.Prototype`);
-  2. the bot's wrapper `~/.local/bin/gh-agent`, written when missing;
+  2. the bot’s wrapper `~/.local/bin/gh-agent`, written when missing. Both the wrapper and the manager discard inherited owner GitHub tokens;
   3. write access for the bot on the repository (`BotAccess.ensure/3`), as
      for every project;
   4. the profile: `dsh <profile> --from-default-profile web --dump-config`,

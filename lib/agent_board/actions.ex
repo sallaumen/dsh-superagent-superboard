@@ -1526,6 +1526,12 @@ defmodule AgentBoard.Actions do
         "the dsh command of DeepSeek Harness is not on this machine. Install the Harness and its command, then try again."
       )
 
+  defp describe(:ps_missing),
+    do:
+      gettext(
+        "The agent needs a full ps command to start. Install procps (procps-ng on Alpine), then review the installation again."
+      )
+
   defp describe(:bot_missing),
     do:
       gettext(
