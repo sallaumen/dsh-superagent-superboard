@@ -223,6 +223,12 @@ scripts/agent/tickets.sh     # the ticket appears within seconds
 
 The ticket goes `progress` -> `ready` and the PR appears in the issue thread.
 
+### Duplicate GitHub issues
+
+When the Super Agent identifies a new issue as the same request as an already accepted issue, it can leave one comment on the duplicate with the original issue link and the reason. The duplicate stays open; the agent neither assigns another worker nor adds the duplicate to the original worker's conversation. Related requests with different deliverables remain separate. Decisions to ignore ordinary discussion stay silent.
+
+This is an extension of the upstream Super Agent, installed by the board when it builds a **new** prototype checkout. If a first build fails, inspect and move the partial `dsh-superagent.installing` directory aside before retrying. Connecting an existing unmodified checkout or synchronizing the Harness CLI does not install it. For an existing installation, prepare a separate copy of the prototype at commit `8c32a9dc5d72c033816c6a8110b37f40cf94fba4`, apply [the board patch](../../priv/agent/duplicate-issue-notice.patch) with `git apply`, then run `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Switch the intended profile's linked package only while its worker count **and** queue are zero. Keep the old checkout available for rollback; do not replace a shared running installation.
+
 ## 7. Shared practices in the executor's worktree
 
 The executor reads `AGENTS.md` in its own worktree under

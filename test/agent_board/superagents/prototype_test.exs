@@ -37,8 +37,12 @@ defmodule AgentBoard.Superagents.PrototypeTest do
   defp working(test) do
     fn [tool | args], opts ->
       send(test, {:ran, tool, args, opts[:cd]})
-      if tool == "git", do: File.mkdir_p!(Path.join(List.last(args), "scripts"))
-      if tool == "git", do: File.write!(Path.join(List.last(args), "scripts/dsh-superagent"), "")
+
+      if tool == "git" and hd(args) == "clone" do
+        File.mkdir_p!(Path.join(List.last(args), "scripts"))
+        File.write!(Path.join(List.last(args), "scripts/dsh-superagent"), "")
+      end
+
       {"", 0}
     end
   end
@@ -53,10 +57,14 @@ defmodule AgentBoard.Superagents.PrototypeTest do
     assert Prototype.target() == target
     assert Prototype.install(working(self())) == :ok
 
-    assert_received {:ran, "git", ["clone", "--depth", "1", url, ^target], nil}
+    assert_received {:ran, "git", ["clone", "--no-checkout", url, stage], nil}
     assert url == "https://github.com/deepseek-ai/dsh-superagent-prototype.git"
-    assert_received {:ran, "pnpm", ["install"], ^target}
-    assert_received {:ran, "pnpm", ["build"], ^target}
+    assert_received {:ran, "git", ["checkout", "--detach", revision], ^stage}
+    assert String.length(revision) == 40
+    assert_received {:ran, "git", ["apply", patch], ^stage}
+    assert File.regular?(patch)
+    assert_received {:ran, "pnpm", ["install", "--frozen-lockfile"], ^stage}
+    assert_received {:ran, "pnpm", ["build"], ^stage}
 
     # From now on this is where every agent's manager is.
     assert Settings.get("dsh_superagent_home") == target
@@ -66,14 +74,24 @@ defmodule AgentBoard.Superagents.PrototypeTest do
     assert Prototype.install(fn _, _ -> flunk("nothing to run") end) == :ok
   end
 
-  test "a step that fails stops the install, names the tool and remembers nothing" do
+  test "a failed build is never reused as an installation", %{target: target} do
     failing = fn
-      ["git" | _args], _opts -> {"", 0}
-      ["pnpm" | _args], _opts -> {"ERR_PNPM_FETCH no network", 1}
+      ["git", "clone" | args], _opts ->
+        File.mkdir_p!(List.last(args))
+        {"", 0}
+
+      ["git" | _args], _opts ->
+        {"", 0}
+
+      ["pnpm" | _args], _opts ->
+        {"ERR_PNPM_FETCH no network", 1}
     end
 
     assert {:error, {:command, "pnpm", "ERR_PNPM_FETCH no network"}} = Prototype.install(failing)
     assert Settings.get("dsh_superagent_home") == nil
+    refute File.exists?(target)
+    stage = target <> ".installing"
+    assert {:error, {:prototype_in_the_way, ^stage}} = Prototype.install(fn _, _ -> flunk() end)
   end
 
   test "a folder at the target that is not the agent's code is left alone", %{target: target} do
