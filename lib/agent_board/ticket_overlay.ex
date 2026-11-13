@@ -39,6 +39,11 @@ defmodule AgentBoard.TicketOverlay do
         do: base,
         else: from(t in base, where: t.state not in ["done", "closed"])
 
+    # A confirmed GitHub reopen starts a new round of work. Apply this guard
+    # in the write itself: the poller can hold a ticket read before the sync.
+    at = if overlay == "done", do: opts[:ended_at], else: started_at
+    base = after_reopen(base, at)
+
     now = DateTime.utc_now()
 
     Repo.update_all(from(t in base, where: t.state != ^overlay),
@@ -54,4 +59,9 @@ defmodule AgentBoard.TicketOverlay do
 
     :ok
   end
+
+  defp after_reopen(base, nil), do: from(t in base, where: is_nil(t.github_reopened_at))
+
+  defp after_reopen(base, at),
+    do: from(t in base, where: is_nil(t.github_reopened_at) or t.github_reopened_at < ^at)
 end

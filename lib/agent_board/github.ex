@@ -52,7 +52,7 @@ defmodule AgentBoard.GitHub do
 
     fields =
       Enum.map_join(numbers, " ", fn n ->
-        "i#{n}:issue(number:#{n}){ number state timelineItems(last:1,itemTypes:[CLOSED_EVENT,REOPENED_EVENT]){ nodes{ __typename ... on ClosedEvent{ closer{ __typename ... on PullRequest{ number mergedAt repository{nameWithOwner} } } } } } }"
+        "i#{n}:issue(number:#{n}){ number state timelineItems(last:1,itemTypes:[CLOSED_EVENT,REOPENED_EVENT]){ nodes{ __typename ... on ReopenedEvent{ createdAt } ... on ClosedEvent{ closer{ __typename ... on PullRequest{ number mergedAt repository{nameWithOwner} } } } } } }"
       end)
 
     query = "query($owner:String!,$name:String!){repository(owner:$owner,name:$name){#{fields}}}"

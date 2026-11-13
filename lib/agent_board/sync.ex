@@ -26,6 +26,8 @@ defmodule AgentBoard.Sync do
 
   alias AgentBoard.Board.{Commit, PullRequest, Repository, SplitGraph, Task}
 
+  alias AgentBoard.Sync.ReopenedTickets
+
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()), do: client |> run() |> length()
 
@@ -138,7 +140,7 @@ defmodule AgentBoard.Sync do
 
     commits = sync_commits(client, repository)
 
-    apply_tickets(repository, issues)
+    apply_tickets(repository, issues, client)
     sync_comments(repository, client)
     Board.reconcile_resolved_tasks(repository)
 
@@ -345,7 +347,7 @@ defmodule AgentBoard.Sync do
 
   # A reopened issue is work again: its `done` task goes back to the queue.
   # This runs before the tickets and `Board.reconcile_resolved_tasks/1`, so a
-  # merged ticket or a resolved linked PR still brings it back to `done`. Only
+  # merge can still finish it unless GitHub confirms a later reopen. Only
   # an issue changed after the board last decided the state is reopened, so
   # that `done` is not undone and redone on every sync.
   defp reopen_task(_repository, _number, nil), do: 0
@@ -575,13 +577,17 @@ defmodule AgentBoard.Sync do
 
   # -- the tickets ------------------------------------------------------------
 
-  def apply_tickets(repository, issues) do
+  defp apply_tickets(repository, issues, client) do
     by_number = Map.new(issues, &{&1["number"], &1})
 
-    AgentState.tickets()
-    |> Enum.filter(&AgentState.same_repository?(&1, repository))
-    |> Tickets.by_number()
-    |> Enum.each(fn {number, ticket} ->
+    tickets =
+      AgentState.tickets()
+      |> Enum.filter(&AgentState.same_repository?(&1, repository))
+      |> Tickets.by_number()
+
+    ReopenedTickets.reconcile(client, repository, by_number, tickets)
+
+    Enum.each(tickets, fn {number, ticket} ->
       case Tickets.state(ticket,
              workpad: fn -> Board.agent_workpad(repository.id, number) end,
              asked?: fn -> Board.agent_asked?(repository.id, number) end
@@ -590,14 +596,17 @@ defmodule AgentBoard.Sync do
           :ok
 
         overlay ->
-          apply_overlay(repository, by_number[number], number, overlay, ticket["started_at"])
+          apply_overlay(repository, by_number[number], number, overlay, ticket)
       end
     end)
   end
 
-  defp apply_overlay(repository, issue, number, overlay, started_at) do
+  defp apply_overlay(repository, issue, number, overlay, ticket) do
     if issue && not (issue["state"] == "closed" and overlay != "done") do
-      TicketOverlay.apply(repository, number, overlay, started_at, include_finished: true)
+      TicketOverlay.apply(repository, number, overlay, ticket["started_at"],
+        include_finished: true,
+        ended_at: ticket["ended_at"]
+      )
     end
   end
 
