@@ -2117,3 +2117,7 @@ bounded by the assignment's start and, if known, its end. Reuse the merge
 progress refresh tick for visible tasks and the open inspector, including on
 reconnect. Do not infer a pass from silence, use these records to change task
 state, or feed them into merge policy. See [the pipeline contract](../PIPELINES.md#local-preflight-on-the-task).
+
+Only a receipt that selected UI review may add the browser step to the card
+and inspector. Display the selection reason, the actual result and a failed
+surface if reported. Old three-stage receipts retain their original meaning.

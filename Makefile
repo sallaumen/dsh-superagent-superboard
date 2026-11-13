@@ -30,4 +30,5 @@ release: ## Pipeline misto: assets em dev; compile, digest e release em prod
 
 coverage: ## Relatório de cobertura da suíte (HTML em cover/, ignorado pelo git)
 	MIX_ENV=test mix test --cover
-check: backend frontend library ## Os pipelines de PR; release é separado
+check: ## Pré-voo do PR, incluindo revisão de UI quando aplicável
+	scripts/ci-local.sh all

@@ -5,6 +5,7 @@ defmodule AgentBoard.Preflight do
   """
 
   @stages ~w(backend frontend library)
+  @ui_reasons ~w(screen interaction appearance copy unknown)
   @max_receipt 1024
 
   def source(
@@ -60,23 +61,36 @@ defmodule AgentBoard.Preflight do
   end
 
   defp snapshot(
-         %{"head" => head, "started" => began, "state" => state, "stage" => stage, "at" => at},
+         %{"head" => head, "started" => began, "state" => state, "stage" => stage, "at" => at} =
+           data,
          since,
          until
        )
        when is_integer(began) and is_integer(at) and is_binary(head) and
-              state in ~w(running passed failed interrupted) and stage in @stages do
-    if in_attempt?(began, since, until) and valid_stage?(state, stage) and
+              state in ~w(running passed failed interrupted unavailable) do
+    reason = data["ui_reason"]
+    stages = if reason in @ui_reasons, do: @stages ++ ["ui_review"], else: @stages
+
+    if in_attempt?(began, since, until) and valid_stage?(state, stage, stages) and
          head =~ ~r/\A(?:[0-9a-f]{40}|[0-9a-f]{64})\z/ do
       state = observed(state, at, until)
-      %{head: head, stage: stage, state: state, rows: rows(stage, state)}
+
+      %{
+        head: head,
+        stage: stage,
+        state: state,
+        rows: rows(stage, state, stages),
+        ui_failure: data["ui_failure"],
+        ui_reason: reason
+      }
     end
   end
 
   defp snapshot(_, _, _), do: nil
 
-  defp valid_stage?("passed", stage), do: stage == "library"
-  defp valid_stage?(_, _), do: true
+  defp valid_stage?("passed", stage, stages), do: stage == List.last(stages)
+  defp valid_stage?("unavailable", stage, stages), do: stage == "ui_review" and stage in stages
+  defp valid_stage?(_, stage, stages), do: stage in stages
 
   defp in_attempt?(began, since, until), do: began >= since and (is_nil(until) or began <= until)
 
@@ -86,8 +100,8 @@ defmodule AgentBoard.Preflight do
 
   defp observed(state, _at, _until), do: state
 
-  defp rows(stage, state) do
-    {done, [_ | next]} = Enum.split_while(@stages, &(&1 != stage))
+  defp rows(stage, state, stages) do
+    {done, [_ | next]} = Enum.split_while(stages, &(&1 != stage))
     later = if state in ~w(failed interrupted), do: "not_run", else: "pending"
     Enum.map(done, &{&1, "passed"}) ++ [{stage, state}] ++ Enum.map(next, &{&1, later})
   end
