@@ -1,16 +1,10 @@
-# The voice conversation with the agent
+# Chat and voice
 
-Kit workflow: `async-state` (each turn has an owner, a key and an outcome).
-Date: 2026-11-07.
+For a first spoken conversation, follow [Talk to the board](first-request.md#talk-to-the-board). This reference covers input modes, replies, supported commands and costs.
 
 ## Can you talk while the agent edits code?
 
-Yes, and the design already separates the two things. The board (this Phoenix
-app) and the agent that writes code (`dsh-superagent`) are different processes.
-The conversation runs in the board: it reads the board and answers. Its only path
-to the code is the same as a button: open an issue (which the agent picks up on
-its own), stop or archive a task. Talking to the board never interrupts a running
-ticket, never enters the worktree and never writes to the agent's sqlite.
+Yes. Chat runs in the board, independently of the coding agent. Asking for a status update does not interrupt a ticket. When you ask the board to take an action, Chat uses the same action controls as the interface.
 
 ## How to use it
 

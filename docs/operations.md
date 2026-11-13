@@ -1,6 +1,6 @@
 # Operations and troubleshooting
 
-Use this guide after the [quick start](../README.en.md#quick-start). It covers the long-running service, credentials, diagnostics, and the board's operating limits.
+Use this guide after the [quick start](getting-started.md#track-a-github-repository). It covers the long-running service, credentials, diagnostics, and the board's operating limits.
 
 ## Run as a service
 

@@ -39,7 +39,7 @@ flowchart LR
 
 This repository is exactly that design: the [agent](how-it-works.md) is
 `dsh-superagent` (a router + workers in their own sessions), and the board is the
-mirror and the operations desk. The [board overview](../../README.en.md) shows
+mirror and the operations desk. The [board overview](../../README.md) shows
 what the operator sees and explains when to connect the agent.
 
 ## 2. Step 1 — install DeepSeek Harness (≈10 min)
@@ -139,9 +139,7 @@ It is the "codes without anyone asking" part. More technical than steps 1 and
 2, but the setup was designed for an agent to guide you one question at a time.
 You need a GitHub repository of your own.
 
-**What the machine needs:** Node.js 22.19+, pnpm, git, tmux, Python 3.8+, the
-GitHub CLI (`gh`), and DeepSeek Harness. Not sure you have everything? The setup
-agent checks and adds whatever is missing to the plan.
+Check the [agent prerequisites](../getting-started.md#connect-the-super-agent). The setup assistant checks your machine and identifies any missing tools.
 
 **Download the code:**
 
