@@ -13,7 +13,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
          enforcement: nil,
          stage_ids: nil,
          stage_notice: nil,
-         stack: nil,
+         chosen_stack: nil,
          profile: nil
        )}
 
@@ -45,13 +45,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
 
   def handle_event("choose_stack", %{"stack" => stack}, socket) do
     if List.keymember?(ProjectStages.groups(), stack, 0),
-      do: {:noreply, assign(socket, stack: stack, stage_notice: nil)},
+      do: {:noreply, assign(socket, chosen_stack: stack, stage_notice: nil)},
       else: {:noreply, socket}
   end
 
   def handle_event("save_stages", %{"rules" => rules}, socket) when is_map(rules) do
-    %{profile: profile, repo: repo, visible: visible, stack: stack} = socket.assigns
-    allowed = List.keyfind(ProjectStages.groups(), stack, 0)
+    %{profile: profile, repo: repo, visible: visible} = socket.assigns
+    allowed = List.keyfind(ProjectStages.groups(), selected_stack(socket.assigns), 0)
 
     with true <- visible && is_map(profile) && allowed != nil,
          true <-
@@ -89,15 +89,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
     do: {:noreply, assign(socket, policy: value, last_policy: value)}
 
   def handle_async(:stage_ids, {:ok, {:ok, profile}}, socket) do
-    groups = ordered_groups(profile)
     ids = for {id, mode} <- profile["modes"], mode != "off", do: id
 
-    {:noreply,
-     assign(socket,
-       stage_ids: ids,
-       profile: profile,
-       stack: socket.assigns.stack || elem(hd(groups), 0)
-     )}
+    {:noreply, assign(socket, stage_ids: ids, profile: profile)}
   end
 
   def handle_async(:stage_ids, _, socket),
@@ -110,6 +104,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :stack, selected_stack(assigns))
+
     ~H"""
     <section id={@id} class="ab-policy" aria-labelledby={@id <> "-title"}>
       <div class="ab-merge-heading">
@@ -140,6 +136,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
             >
               <label for={@id <> "-language"}>{gettext("Technology")}</label>
               <select class="voice-select" id={@id <> "-language"} name="stack">
+                <option :if={is_nil(@stack)} value="" selected disabled>
+                  {gettext("Technology not yet detected")}
+                </option>
                 <option
                   :for={{name, ids} <- ordered_groups(@profile)}
                   value={name}
@@ -150,7 +149,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
                 </option>
               </select>
             </form>
-            <form id={@id <> "-stage-form"} phx-submit="save_stages" phx-target={@myself}>
+            <form :if={@stack} id={@id <> "-stage-form"} phx-submit="save_stages" phx-target={@myself}>
               <div :for={id <- stack_ids(@stack)} class="ab-quality__rule">
                 <label for={@id <> "-" <> id}>
                   <strong>{stage_label(id)}</strong>
@@ -290,6 +289,16 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
   def guard_label(:no_agent), do: gettext("Guard not applicable")
   def guard_label(:unknown), do: gettext("Guard unverified")
   def guard_label(nil), do: gettext("Checking guard…")
+
+  defp selected_stack(%{chosen_stack: stack}) when is_binary(stack), do: stack
+
+  defp selected_stack(%{profile: %{"detected" => detected}}) do
+    Enum.find_value(ProjectStages.groups(), fn {name, ids} ->
+      if Enum.any?(ids, &(&1 in detected)), do: name
+    end)
+  end
+
+  defp selected_stack(_assigns), do: nil
 
   defp ordered_groups(p),
     do:

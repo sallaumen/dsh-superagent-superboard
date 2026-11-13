@@ -10176,3 +10176,6 @@ msgstr "Arquivo alterado corresponde a %{pattern}."
 #, elixir-autogen, elixir-format
 msgid "Not detected in this checkout"
 msgstr "Não detectado neste projeto"
+
+msgid "Technology not yet detected"
+msgstr "Tecnologia ainda não detectada"

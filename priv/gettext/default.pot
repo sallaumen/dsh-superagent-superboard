@@ -10176,3 +10176,6 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Not detected in this checkout"
 msgstr ""
+
+msgid "Technology not yet detected"
+msgstr ""
