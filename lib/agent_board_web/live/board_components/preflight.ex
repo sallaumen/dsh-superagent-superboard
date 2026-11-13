@@ -23,8 +23,14 @@ defmodule AgentBoardWeb.BoardComponents.Preflight do
         <span :if={@snapshot.stage == "ui_review"}>{result(@snapshot)}</span>
       </p>
     </section>
+    <.progress :if={!@compact && @snapshot && @snapshot[:other]} snapshot={@snapshot.other} />
     """
   end
+
+  defp headline(%{kind: :project, state: "passed"}), do: gettext("Project checks passed")
+
+  defp headline(%{kind: :project, stage: stage, state: state}),
+    do: gettext("Project checks: %{stage} · %{status}", stage: name(stage), status: label(state))
 
   defp headline(%{state: "passed"}), do: gettext("Local preflight passed")
 
@@ -72,6 +78,12 @@ defmodule AgentBoardWeb.BoardComponents.Preflight do
   defp name("backend"), do: gettext("Backend")
   defp name("frontend"), do: gettext("Frontend")
   defp name("library"), do: gettext("Practice library")
+
+  defp name(id) do
+    {:ok, command} = AgentBoard.ProjectStages.command(id)
+    Enum.join(command, " ")
+  end
+
   defp label("running"), do: gettext("Running")
   defp label("passed"), do: gettext("Passed")
   defp label("failed"), do: gettext("Failed")

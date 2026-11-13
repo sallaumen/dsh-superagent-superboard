@@ -56,6 +56,17 @@ async function review(browser, url) {
       await page.goto(url + "&panel=settings&section=system");
       await page.locator("#settings-system-title").waitFor();
       await capture("settings");
+
+      await page.goto(url + "&panel=settings&section=projects");
+      const project = page.locator(".ab-project--tracked").filter({hasText: "ui-fixture/"});
+      await project.getByRole("button", {name: /regras de merge|requisitos de merge|merge/i}).first().click();
+      const checks = project.locator("details[id$='-stages']");
+      await checks.locator("summary").click();
+      const example = checks.locator("input[value='npm-test']");
+      await example.check();
+      assert.ok(await example.isChecked());
+      await capture("project-stages");
+      await example.uncheck();
     }
     assert.deepEqual(errors, [], "Browser console or page errors: " + errors.join("; "));
   } finally {

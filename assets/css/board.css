@@ -2403,6 +2403,9 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-merge-facts dt { color: var(--ink-muted); font-size: 12px; }
 .ab-merge-facts dd { margin: 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
 .ab-merge-facts code { font: 12px var(--font-mono); }
+.ab-stage-choice { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; cursor: pointer; }
+.ab-stage-choice code { display: block; overflow-wrap: anywhere; }
+.ab-merge-checklist fieldset { min-width: 0; }
 .ab-merge-checklist { border-block: 1px solid var(--line); }
 .ab-merge-checklist summary { cursor: pointer; padding: var(--space-3) 0; font-size: 13px; line-height: 20px; }
 .ab-merge-checklist summary span { display: inline-block; margin-inline-start: var(--space-3); color: var(--ink-muted); }

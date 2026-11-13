@@ -9885,3 +9885,85 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "No merge policy configured for this project."
 msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:105
+#, elixir-autogen, elixir-format
+msgid "1 selected"
+msgid_plural "%{count} selected"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:61
+#, elixir-autogen, elixir-format
+msgid "Build"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:139
+#, elixir-autogen, elixir-format
+msgid "Checks were not saved. Refresh to load the current selection."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:112
+#, elixir-autogen, elixir-format
+msgid "Choose checks for this project. They run in the task folder and do not require GitHub Actions."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:134
+#, elixir-autogen, elixir-format
+msgid "Could not read the local checks. Refresh to try again."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:57
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:58
+#, elixir-autogen, elixir-format
+msgid "Format"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:59
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:60
+#, elixir-autogen, elixir-format
+msgid "Lint"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:138
+#, elixir-autogen, elixir-format
+msgid "Local checks saved for this project."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:104
+#, elixir-autogen, elixir-format
+msgid "Local task checks"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/merge_progress.ex:82
+#, elixir-autogen, elixir-format
+msgid "Project checks failed. See the task inspector."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/preflight.ex:30
+#, elixir-autogen, elixir-format
+msgid "Project checks passed"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/preflight.ex:33
+#, elixir-autogen, elixir-format
+msgid "Project checks: %{stage} · %{status}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:131
+#, elixir-autogen, elixir-format
+msgid "Save checks"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:62
+#, elixir-autogen, elixir-format
+msgid "Tests"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:215
+#, elixir-autogen, elixir-format
+msgid "The selected checks and an independent approval are required to merge."
+msgstr ""
+
+msgid "Browser tests"
+msgstr ""

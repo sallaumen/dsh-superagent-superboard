@@ -29,6 +29,11 @@ delegate="$(command -v gh)" || fail "GitHub CLI unavailable"
 python3 "$guard" install "$RUN_DIR/merge-bin" "${REPO_SLUG:?}" "$delegate" >/dev/null || fail "Merge gate unavailable"
 export PATH="$RUN_DIR/merge-bin:$PATH"
 
+finish_task() {
+  python3 "$(dirname "$guard")/task_stages.py" run "$REPO_SLUG" || fail "A validação local do projeto falhou. Consulte as etapas no inspetor."
+  status "done"
+}
+
 mkdir -p "$RUN_DIR"
 status "starting"
 
@@ -65,7 +70,7 @@ if [ "$EXECUTOR" = "claude" ]; then
     jq -r '.result // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/result" || true
     [ -s "$RUN_DIR/result" ] || printf 'Execução concluída.\n' > "$RUN_DIR/result"
     jq -r '.total_cost_usd // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/cost_usd" || true
-    status "done"
+    finish_task
   else
     jq -r '.total_cost_usd // empty' "$RUN_DIR/claude.json" 2>/dev/null > "$RUN_DIR/cost_usd" || true
 
@@ -97,7 +102,7 @@ else
   if [ "$rc" -eq 0 ] && [ -z "$codex_error" ]; then
     [ -s "$RUN_DIR/last.txt" ] && cp "$RUN_DIR/last.txt" "$RUN_DIR/result" \
       || printf 'Execução concluída.\n' > "$RUN_DIR/result"
-    status "done"
+    finish_task
   else
     if [ -n "$codex_error" ]; then
       printf '%s\n' "$codex_error" > "$RUN_DIR/error"
