@@ -131,6 +131,11 @@ differ. Change a general rule upstream, not here.
   run after it in the same sync, so a merged ticket still makes it `done`.
   Only an issue whose `updated_at` is newer than the task's
   `state_changed_at` is reopened, so that `done` is not redone every sync.
+- A blocked ticket can outlive its merge. Once a minute the board checks
+  blocked issues with a PR owned by their open ticket. It marks the task done
+  and broadcasts the change only when GitHub's latest closing event names that
+  merged PR in the same repository. Mentions, manual closes and old PRs do
+  not establish this link. This check does not write to the Harness.
 - A **blocker task** points at the task it unblocks through
   `tasks.blocker_for_task_id`. It is created through the same `create_tasks`
   action as any request, with the agent's mention and the link; the queue
