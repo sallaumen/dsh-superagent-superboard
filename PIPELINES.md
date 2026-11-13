@@ -67,7 +67,7 @@ content and installer tests belong to the kit repository. Usage and exit codes:
 an omitted target is equivalent to `all`; success returns 0, an unknown target
 returns 2, and a failure of one command stops the execution with a non-zero
 status.
-Service installation is in [README.md](README.md#run-as-a-service); the
+Service installation is in [the operations guide](docs/operations.md#run-as-a-service); the
 pre-flight does not start or restart the service.
 
 ## Why separate backend and frontend
