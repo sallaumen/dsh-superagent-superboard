@@ -2428,6 +2428,8 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-project-access__guide p { margin: var(--space-2) 0 0; }
 .ab-project-access__howto { padding: var(--space-3); border-radius: var(--radius-sm); background: var(--paper-sunk); font-size: 13px; line-height: 20px; user-select: all; }
 
+.setup-paths { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.setup-paths .ab-btn, .setup-paths .ab-link { min-height: 44px; display: inline-flex; align-items: center; }
 .ab-project-add { display: grid; gap: var(--space-3); padding-top: var(--space-5); border-top: 1px solid var(--line); }
 .ab-projects__list + .ab-project-add { padding-top: 0; border-top: 0; }
 .ab-project-add h3 { margin: 0; color: var(--ink); font-size: 14px; line-height: 20px; font-weight: 600; }
@@ -2438,11 +2440,9 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-installed__identity code { color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; overflow-wrap: anywhere; }
 .ab-project-add__form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: var(--space-3) var(--space-4); }
 .ab-project-add__form label { display: grid; gap: 6px; min-width: 0; color: var(--ink-muted); font-size: 12px; }
-.ab-project-add__form label:not(.ab-project-add__create) input { width: 100%; height: 40px; padding: 0 var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; }
+.ab-project-add__form label input { width: 100%; height: 40px; padding: 0 var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; }
 .ab-project-add__path { display: grid; gap: 6px; min-width: 0; }
 .ab-project-add__hint { margin: 0; color: var(--ink-faint); font-size: 11.5px; line-height: 16px; }
-.ab-project-add__form .ab-project-add__create { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 13px; }
-.ab-project-add__create input { width: 16px; height: 16px; accent-color: var(--you); }
 .ab-project-add__workers { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 12px; }
 .ab-project-add__workers output { min-width: 20px; color: var(--ink); font: 500 12.5px/18px var(--font-mono); font-variant-numeric: tabular-nums; text-align: center; }
 .ab-project-add__submit { grid-column: 1 / -1; justify-self: start; min-height: 40px; }
@@ -2467,7 +2467,7 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   .ab-project__fold summary, .ab-project__error-details summary, .ab-project-access__guide summary { padding: 7px 0; }
   .ab-project__foot-actions { margin-left: 0; }
   .ab-project-add__form { grid-template-columns: 1fr; }
-  .ab-project-add__path, .ab-project-add__create, .ab-project-add__workers, .ab-project-add__submit { grid-column: 1; }
+  .ab-project-add__path, .ab-project-add__workers, .ab-project-add__submit { grid-column: 1; }
   .ab-project-access__form label { flex-basis: 100%; }
   .ab-project-access__actions .ab-btn, .ab-project-access__form .ab-btn { min-height: 40px; }
 }

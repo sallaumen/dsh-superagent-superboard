@@ -181,7 +181,7 @@ defmodule AgentBoard.Setup do
         Map.merge(row, %{
           state: :off,
           detail: gettext("No project has its own agent: issues for DeepSeek would not move."),
-          fix: %{section: "projects", label: gettext("Create an agent")}
+          fix: %{section: "projects", path: "agent", label: gettext("Create an agent")}
         })
 
       waiting ->
@@ -193,7 +193,7 @@ defmodule AgentBoard.Setup do
               "%{count} agents are installed on this machine, and the board does not follow them yet.",
               waiting
             ),
-          fix: %{section: "projects", label: gettext("Add it in Projects")}
+          fix: %{section: "projects", path: "agent", label: gettext("Add it in Projects")}
         })
     end
   end

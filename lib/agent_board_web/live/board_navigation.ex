@@ -127,12 +127,18 @@ defmodule AgentBoardWeb.BoardNavigation do
 
     view = if params["view"] == "hoje", do: "hoje", else: nil
 
+    agent_setup? =
+      panel == "settings" and settings_section(panel, params["section"]) == "projects" and
+        params["path"] == "agent"
+
     assign(socket,
+      project_pending: if(agent_setup?, do: socket.assigns.project_pending),
       panel: panel,
       conversation: nil,
       comments: [],
       inspector_tab: "conversa",
       settings_section: settings_section(panel, params["section"]),
+      project_path: if(agent_setup?, do: "agent", else: "github"),
       settings_costs: costs_params(params),
       history_list: if(params["list"] == "prs", do: "prs", else: "tasks"),
       history_query: String.slice(params["q"] || "", 0, 120),

@@ -51,6 +51,19 @@ defmodule AgentBoardWeb.AdoptAgentTest do
 
     {:ok, view, _html} = live(conn, "/?repo=fixture/adopt-panel&panel=settings&section=projects")
 
+    refute has_element?(view, "#installed-agents")
+
+    profile =
+      Path.join(
+        Application.fetch_env!(:agent_board, :dsh_profiles_dir),
+        "superagent/cordis.patch.yml"
+      )
+
+    File.rename!(profile, profile <> ".later")
+    view |> element(".ab-projects nav a", "Conectar o Super Agent") |> render_click()
+    refute has_element?(view, "#installed-agents")
+    File.rename!(profile <> ".later", profile)
+    view |> element("#agent-install button", "Buscar perfis novamente") |> render_click()
     assert has_element?(view, "#installed-superagent code", "superagent")
     assert has_element?(view, "#installed-superagent", "porta 3311")
 

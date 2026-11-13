@@ -55,13 +55,13 @@ docker run --name dsh-board-postgres \
    PORT=4002 mix phx.server
    ```
 
-3. Abra **[localhost:4002](http://127.0.0.1:4002)**. Em **Configurações → Projetos → Adicionar projeto**, informe `dono/repositório`. Para usar só o GitHub, deixe desmarcada a opção de criar um agente. Depois da sincronização, abra o projeto na lateral para conferir as issues e os PRs. Se não aparecerem, veja a última sincronização em **Configurações → Sistema → Atividade**.
+3. Abra **[localhost:4002](http://127.0.0.1:4002)**. Em **Configurações → IAs e setup → Usar só o GitHub**, informe o dono e o nome do repositório e clique em **Acompanhar repositório**. Depois da sincronização, abra o projeto na lateral para conferir as issues e os PRs. Se não aparecerem, veja a última sincronização em **Configurações → Sistema → Atividade**.
 
-O idioma da interface pode ser trocado em **Settings → System → Board language**. Em **Configurações → IA e setup**, a verificação mostra o que está pronto para cada integração e guarda a data do último resultado. Uma IA ausente afeta os recursos de IA; ela não impede a consulta ao GitHub. Para manter o painel rodando no macOS, veja [como instalar o serviço](docs/operations.md#run-as-a-service).
+O idioma da interface pode ser trocado em **Settings → System → Board language**. Em **Configurações → IAs e setup**, a verificação mostra o que está pronto para cada integração e guarda a data do último resultado. Uma IA ausente afeta os recursos de IA; ela não impede a consulta ao GitHub. Para manter o painel rodando no macOS, veja [como instalar o serviço](docs/operations.md#run-as-a-service).
 
 ## Instalar e conectar o agente
 
-Faça esta parte se quiser que alguém possa mencionar a conta do agente em uma issue e receber uma implementação em um PR. O fluxo começa com **dois downloads diferentes**:
+Faça esta parte se quiser que alguém possa mencionar a conta do agente em uma issue e receber uma implementação em um PR. Com o Harness e a conta do bot configurados, o board também pode instalar o primeiro agente: em **Configurações → Projetos → Conectar o Super Agent**, informe o repositório, revise a instalação e confirme. Se preferir instalar manualmente ou já tiver um perfil, siga os passos abaixo.
 
 1. **[Baixe o DeepSeek Harness](https://www.deepseek.com/en/harness/)**, o ambiente que hospeda as sessões. Configure um provedor de modelo para o Harness. A chave configurada no board não configura automaticamente esse perfil.
 2. **[Baixe o DeepSeek Super Agent](https://github.com/deepseek-ai/dsh-superagent-prototype)**, o pacote que observa um repositório e coordena seus executores. No terminal:
@@ -72,10 +72,10 @@ Faça esta parte se quiser que alguém possa mencionar a conta do agente em uma 
    ```
 
 3. **Instale e configure o pacote.** Abra essa pasta no seu assistente de código e peça: *“Leia o SETUP.md deste repositório e configure o dsh-superagent comigo.”* O [roteiro oficial de instalação](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md) cobre repositório, conta GitHub separada para o bot, quem pode acioná-lo e política de trabalho. Se preferir o terminal, siga a [instalação manual oficial](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#install), incluindo o perfil dedicado e a inicialização. **Clonar o repositório sozinho não inicia o agente.**
-4. **Conecte ao board.** Na máquina em que o Harness está instalado, abra **Configurações → Projetos** no board. Adicione o perfil detectado ao projeto correspondente. Para outro repositório, veja [como configurar um segundo perfil](docs/agent/setup.md#a-second-repository-optional). Em **IA e setup**, confira se o agente responde.
+4. **Conecte ao board.** Na máquina em que o Harness está instalado, abra **Configurações → Projetos → Conectar o Super Agent** no board. Clique em **Buscar perfis novamente** depois da instalação. Adicione o perfil detectado ao projeto correspondente. Para outro repositório, veja [como configurar um segundo perfil](docs/agent/setup.md#a-second-repository-optional). Em **IAs e setup**, confira se o agente responde.
 5. **Faça o primeiro teste.** De uma conta autorizada, abra uma issue pequena, mencione a conta do seu bot e diga qual resultado espera. Acompanhe o ticket no painel e a resposta na issue. A [verificação da instalação](docs/agent/setup.md#5-verify-it-is-configured-and-alive) ajuda a distinguir um agente parado de um agente ocioso.
 
-**Pré-requisitos do agente:** Node.js 22.19+ ou 24+, pnpm, Git 2.32+, Python 3.8+, tmux e GitHub CLI 2.48+, além de um clone local do repositório de trabalho. Os executores rodam com os privilégios do usuário do sistema; o [guia de implantação](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md) explica como isolar contas e credenciais. Para identificar as sessões como `SIGLA - Nome da tarefa`, use **Configurações → IA e setup → Nomes das sessões do Harness**.
+**Pré-requisitos do agente:** Node.js 22.19+ ou 24+, pnpm, Git 2.32+, Python 3.8+, tmux e GitHub CLI 2.48+, além de um clone local do repositório de trabalho. Os executores rodam com os privilégios do usuário do sistema; o [guia de implantação](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md) explica como isolar contas e credenciais. Para identificar as sessões como `SIGLA - Nome da tarefa`, use **Configurações → IAs e setup → Nomes das sessões do Harness**.
 
 ## De um pedido a várias issues
 

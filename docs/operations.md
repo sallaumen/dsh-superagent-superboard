@@ -99,7 +99,7 @@ AI does what and, on "Check the setup", proves each part without spending:
 |---|---|---|
 | GitHub | `GITHUB_TOKEN` | a token at github.com/settings/tokens |
 | Projects | a tracked repository | Settings → Projects |
-| DeepSeek agents (optional) | a superagent per project | Settings → Projects, "Create a DeepSeek agent"; its model is in the profile ([agent setup](agent/setup.md)) |
+| DeepSeek agents (optional) | a superagent per project | Settings → Projects → Connect the Super Agent; its model is in the profile ([agent setup](agent/setup.md)) |
 | Claude Code (optional) | the CLI at `CLAUDE_BIN`, signed in | `claude auth login` |
 | Codex (optional) | the CLI at `CODEX_BIN`, signed in | `codex login` |
 | The board's own AI | `DEEPSEEK_API_KEY`, `GEMINI_API_KEY` or `OPENAI_API_KEY` | the provider's key page (linked in `.env`) |

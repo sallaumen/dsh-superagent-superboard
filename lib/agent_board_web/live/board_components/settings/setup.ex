@@ -364,6 +364,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
       class="ab-btn ab-btn--sm setup__fix"
       phx-click="select_section"
       phx-value-section={@fix.section}
+      phx-value-path={@fix[:path]}
       phx-target={@parent}
     >
       {@fix.label}

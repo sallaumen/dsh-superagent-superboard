@@ -40,7 +40,8 @@ defmodule AgentBoardWeb.AddProjectTest do
     {:ok, _repo} = Board.add_repository("fixture", "base")
 
     with_sources(fn ->
-      {:ok, view, _html} = live(conn, ~p"/?repo=fixture/base&panel=settings&section=repositories")
+      {:ok, view, _html} =
+        live(conn, ~p"/?repo=fixture/base&panel=settings&section=repositories&path=agent")
 
       view
       |> form("#track-repo", %{
@@ -65,12 +66,25 @@ defmodule AgentBoardWeb.AddProjectTest do
     end)
   end
 
+  test "leaving the agent path cancels its pending confirmation", %{conn: conn} do
+    with_sources(fn ->
+      {:ok, view, _} = live(conn, "/?panel=settings&section=projects&path=agent")
+      view |> form("#track-repo", %{"owner" => "fixture", "name" => "switch"}) |> render_submit()
+      assert has_element?(view, "#add-project-confirm")
+      view |> element(".ab-projects nav a", "Usar só o GitHub") |> render_click()
+      refute has_element?(view, "#add-project-confirm")
+      view |> element(".ab-projects nav a", "Conectar o Super Agent") |> render_click()
+      refute has_element?(view, "#add-project-confirm")
+      assert Superagents.list() == []
+    end)
+  end
+
   test "the workers typed above the agent's limit are provisioned at the limit", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "base-limit")
 
     with_sources(fn ->
       {:ok, view, _html} =
-        live(conn, ~p"/?repo=fixture/base-limit&panel=settings&section=repositories")
+        live(conn, ~p"/?repo=fixture/base-limit&panel=settings&section=repositories&path=agent")
 
       view
       |> form("#track-repo", %{
@@ -98,7 +112,7 @@ defmodule AgentBoardWeb.AddProjectTest do
       {:ok, view, _html} =
         live(conn, ~p"/?repo=fixture/base-track&panel=settings&section=repositories")
 
-      view |> element("#track-repo input[name=create_agent]") |> render_click()
+      refute has_element?(view, "#track-repo [name=create_agent]")
 
       view
       |> form("#track-repo", %{"owner" => "fixture", "name" => "tracked"})
@@ -140,7 +154,7 @@ defmodule AgentBoardWeb.AddProjectTest do
       {:ok, _repo} = Board.add_repository("fixture", "base-#{name}")
 
       {:ok, view, _html} =
-        live(conn, ~p"/?repo=fixture/base-#{name}&panel=settings&section=repositories")
+        live(conn, ~p"/?repo=fixture/base-#{name}&panel=settings&section=repositories&path=agent")
 
       view
       |> form("#track-repo", %{

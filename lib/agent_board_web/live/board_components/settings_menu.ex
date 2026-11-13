@@ -14,6 +14,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   attr :active, :boolean, default: false
   attr :repo, :map, default: nil
+  attr :project_path, :string, default: "github"
   attr :version, :map, required: true
   attr :voice, :map, required: true
   attr :busy, :boolean, default: false
@@ -67,16 +68,19 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   defp select_section(_key, previous, _opening, _next), do: previous
 
   @impl true
-  def handle_event("select_section", %{"section" => section}, socket) do
+  def handle_event("select_section", %{"section" => section} = params, socket) do
     case BoardNavigation.canonical_settings_section(section) do
       nil ->
         {:noreply, socket}
 
       key ->
+        extra =
+          if key == "projects" and params["path"] == "agent", do: %{"path" => "agent"}, else: %{}
+
         {:noreply,
          socket
          |> assign(section: key)
-         |> push_patch(to: BoardNavigation.settings_path(socket.assigns[:repo], key))}
+         |> push_patch(to: BoardNavigation.settings_path(socket.assigns[:repo], key, extra))}
     end
   end
 
@@ -203,9 +207,23 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           <h3 id="settings-setup-title">{gettext("AI and setup")}</h3>
           <p class="settings-pane__intro">
             {gettext(
-              "The board uses AI in three roles. Here you see which one does what, what it costs, and whether each part is ready."
+              "Choose how to connect a project. You can check other integrations separately below."
             )}
           </p>
+          <div class="setup-paths" aria-label={gettext("Project setup")} role="group">
+            <.link
+              patch={BoardNavigation.settings_path(@repo, "projects", %{"path" => "github"})}
+              class="ab-btn"
+            >
+              {gettext("Use GitHub only")}
+            </.link>
+            <.link
+              patch={BoardNavigation.settings_path(@repo, "projects", %{"path" => "agent"})}
+              class="ab-btn"
+            >
+              {gettext("Connect the Super Agent")}
+            </.link>
+          </div>
           <.live_component
             module={Setup}
             id="settings-setup"
@@ -222,11 +240,13 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
         >
           <h3 id="settings-projects-title">{gettext("Projects")}</h3>
           <p class="settings-pane__intro">
-            {gettext("Each project is a repository, its DeepSeek agent and who can call it.")}
+            {gettext("Each project follows a GitHub repository. Connecting an agent is optional.")}
           </p>
           <.live_component
             module={Projects}
             id="settings-projects"
+            project_path={@project_path}
+            repo={@repo}
             active={@active == true and @section == "projects"}
             superagents={@superagents}
             repos={@repos}

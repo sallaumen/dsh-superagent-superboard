@@ -364,7 +364,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     end)
 
     {:ok, view, _html} =
-      live(conn, "/?repo=fixture/target-panel&panel=settings&section=projects")
+      live(conn, "/?repo=fixture/target-panel&panel=settings&section=projects&path=agent")
 
     view
     |> form("#track-repo", %{
@@ -514,9 +514,11 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     view |> element("#{row} button", "Criar agente") |> render_click()
 
+    assert_patch(view, "/?panel=settings&path=agent&repo=fixture%2Fwith-agent&section=projects")
+    assert has_element?(view, "#agent-install")
     assert has_element?(view, "#track-repo input[name=owner][value=fixture]")
     assert has_element?(view, "#track-repo input[name=name][value=tracked-only]")
-    assert has_element?(view, "#track-repo input[name=create_agent][checked]")
+    refute has_element?(view, "#add-project-confirm")
   end
 
   test "a board with only tracked repositories is not empty", %{conn: conn} do

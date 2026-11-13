@@ -1190,6 +1190,7 @@ repositories; another board starts with none, and an agent set up by hand
   port and a `stateDir`, and whose name and port are in no row. Projects reads
   it while that section is on screen (a few small files, no network) and
   lists it above "Adicionar projeto".
+- On first access, Setup links to two project paths. Projects defaults to GitHub tracking (owner and repository only). The agent path links to the official Harness download and agent setup, can rescan local profiles, and keeps adoption and provisioning behind their existing confirmations. The choice lives in the URL; choosing a path does not start anything.
 - **Adding is the red action `adopt_superagent`.** Nothing is typed: the
   agent says who it is (`Manager.identity/1`, `GET /state`:
   `setup.accounts.repository`, `setup.accounts.agent`, `load.maxWorkers`). An
