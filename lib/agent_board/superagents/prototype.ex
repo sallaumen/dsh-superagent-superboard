@@ -83,7 +83,7 @@ defmodule AgentBoard.Superagents.Prototype do
          :ok <- step(run, "git", ["checkout", "--detach", @revision], cd: stage),
          :ok <- step(run, "git", ["apply", patch], cd: stage),
          :ok <- step(run, "git", ["apply", branch_patch], cd: stage),
-         :ok <- File.cp(helper, Path.join(stage, "scripts/superboard-branch.py")),
+         :ok <- step(run, "cp", [helper, "scripts/superboard-branch.py"], cd: stage),
          :ok <- step(run, "pnpm", ["install", "--frozen-lockfile"], cd: stage),
          :ok <- step(run, "pnpm", ["build"], cd: stage),
          :ok <- File.rename(stage, target) do

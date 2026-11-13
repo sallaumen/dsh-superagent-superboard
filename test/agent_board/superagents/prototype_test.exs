@@ -63,6 +63,8 @@ defmodule AgentBoard.Superagents.PrototypeTest do
     assert String.length(revision) == 40
     assert_received {:ran, "git", ["apply", patch], ^stage}
     assert File.regular?(patch)
+    assert_received {:ran, "cp", [helper, "scripts/superboard-branch.py"], ^stage}
+    assert File.regular?(helper)
     assert_received {:ran, "pnpm", ["install", "--frozen-lockfile"], ^stage}
     assert_received {:ran, "pnpm", ["build"], ^stage}
 
@@ -80,7 +82,7 @@ defmodule AgentBoard.Superagents.PrototypeTest do
         File.mkdir_p!(Path.join(List.last(args), "scripts"))
         {"", 0}
 
-      ["git" | _args], _opts ->
+      [tool | _args], _opts when tool in ["git", "cp"] ->
         {"", 0}
 
       ["pnpm" | _args], _opts ->

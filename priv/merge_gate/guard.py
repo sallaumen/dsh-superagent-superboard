@@ -321,6 +321,19 @@ class Merge:
 
 
 def worker(repo, cli, args):
+    # The Harness assignment guard expects the command before repository options.
+    if args[:2] != ["pr", "create"] and "create" in args:
+        command = []
+        flags = iter(args)
+        for flag in flags:
+            if flag in ("-R", "--repo"):
+                next(flags, None)
+            elif not flag.startswith(("-R", "--repo=")):
+                command.append(flag)
+            if len(command) == 2:
+                break
+        if command == ["pr", "create"]:
+            raise Blocked("Use gh pr create with repository options after create")
     if "merge" in args and "pr" in args and args[:2] != ["pr", "merge"]:
         raise Blocked("Use gh pr merge NUMBER --match-head-commit SHA")
     if args[:2] == ["pr", "create"]:
