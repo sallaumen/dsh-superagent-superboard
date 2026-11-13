@@ -28,6 +28,8 @@ Each attempt records a snapshot atomically under `~/.local/state/superboard/merg
 ## Choose task checks in the panel
 
 In **Settings → Projects**, find the repository by name and open **Quality & merge**.
+The merge requirements appear first. **Task stages** summarizes how many steps run on every task or on related changes. Choose **Edit stages** (or **Choose technology** when none has been detected and there are no active stages) to see the commands. Closing the editor discards unsaved changes.
+
 A connected project with no saved preferences automatically uses the recommended
 rules for its root toolchains. No repository files or Actions configuration are
 written. Detection is read-only and needs a matching local Git checkout; the

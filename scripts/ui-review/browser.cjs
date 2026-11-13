@@ -59,11 +59,24 @@ async function review(browser, url) {
 
       await page.goto(url + "&panel=settings&section=projects");
       const search = page.locator("#project-directory-query");
+      const count = page.locator("#project-directory-filter [role=status]");
+      assert.equal(await count.count(), 0);
+      await search.fill("no-such-fixture");
+      await count.filter({hasText: /^0 \/ /}).waitFor();
       await search.fill("ui-fixture");
+      await count.filter({hasText: /^1 \/ /}).waitFor();
       await page.locator(".ab-project--tracked").filter({hasText: "sample/"}).first().waitFor({state:"hidden"});
       const project = page.locator(".ab-project--tracked").filter({hasText: "ui-fixture/"});
       await project.getByRole("button", {name: /ui-fixture\//, expanded: false}).click();
       const checks = project.locator("section[id$='-stages']");
+      const edit = checks.getByRole("button", {name: "Editar etapas"});
+      await edit.waitFor();
+      assert.match(await checks.locator(".ab-quality__summary").innerText(), /1 etapa em toda tarefa · 2 etapas por alteração/);
+      assert.equal(await checks.locator("select").count(), 0);
+      const merge = project.locator(".ab-merge-body");
+      assert.ok((await merge.boundingBox()).y < (await checks.boundingBox()).y);
+      await capture("project-summary");
+      await edit.press("Enter");
       await checks.locator("select[name=stack]").waitFor();
       assert.equal(await checks.locator("select[name=stack]").inputValue(), "JavaScript / TypeScript");
       const example = checks.locator("select[name='rules[npm-test]']");
@@ -71,7 +84,10 @@ async function review(browser, url) {
       assert.equal(await checks.locator("select[name='rules[npm-lint]']").inputValue(), "changed");
       await example.selectOption("off");
       assert.equal(await example.inputValue(), "off");
-      await example.selectOption("always");
+      await checks.getByRole("button", {name:"Fechar editor"}).click();
+      await edit.press("Enter");
+      await example.waitFor();
+      assert.equal(await example.inputValue(), "always");
       await checks.scrollIntoViewIfNeeded();
       await capture("project-stages");
 
@@ -80,6 +96,7 @@ async function review(browser, url) {
       await undetected.getByRole("button", {name: /sample\/project-17/, expanded: false}).click();
       const editor = undetected.locator("section[id$='-stages']");
       const picker = editor.getByLabel("Tecnologia", {exact: true});
+      await editor.getByRole("button", {name:"Escolher tecnologia"}).click();
       await picker.waitFor();
       assert.equal(await picker.inputValue(), "");
       assert.equal((await picker.locator("option:checked").textContent()).trim(), "Tecnologia ainda não detectada");
@@ -90,6 +107,9 @@ async function review(browser, url) {
       await editor.getByText("cargo test --locked", {exact: true}).waitFor();
       assert.equal(await picker.inputValue(), "Rust");
       await capture("technology-chosen");
+      await search.fill(" ");
+      await count.waitFor({state:"detached"});
+      await search.fill("");
     }
     assert.deepEqual(errors, [], "Browser console or page errors: " + errors.join("; "));
   } finally {

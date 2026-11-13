@@ -13,6 +13,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
          enforcement: nil,
          stage_ids: nil,
          stage_notice: nil,
+         editing: false,
          chosen_stack: nil,
          profile: nil
        )}
@@ -21,7 +22,12 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
   def update(assigns, socket) do
     load? = assigns.visible and !socket.assigns[:visible]
     socket = assign(socket, assigns)
-    {:ok, if(load?, do: load(socket), else: socket)}
+
+    cond do
+      load? -> {:ok, load(socket)}
+      assigns.visible -> {:ok, socket}
+      true -> {:ok, assign(socket, editing: false, chosen_stack: nil)}
+    end
   end
 
   defp load(socket) do
@@ -43,6 +49,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
     {:noreply, load(socket)}
   end
 
+  def handle_event("toggle_stage_editor", _, socket) do
+    {:noreply,
+     assign(socket, editing: !socket.assigns.editing, chosen_stack: nil, stage_notice: nil)}
+  end
+
   def handle_event("choose_stack", %{"stack" => stack}, socket) do
     if List.keymember?(ProjectStages.groups(), stack, 0),
       do: {:noreply, assign(socket, chosen_stack: stack, stage_notice: nil)},
@@ -53,7 +64,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
     %{profile: profile, repo: repo, visible: visible} = socket.assigns
     allowed = List.keyfind(ProjectStages.groups(), selected_stack(socket.assigns), 0)
 
-    with true <- visible && is_map(profile) && allowed != nil,
+    with true <- visible && socket.assigns.editing && is_map(profile) && allowed != nil,
          true <-
            Enum.all?(rules, fn {id, m} ->
              id in elem(allowed, 1) and m in ~w(always changed off)
@@ -65,7 +76,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
              %{repository: repo, ids: changes, expected: profile["stored"]},
              Actions.owner(:ui)
            ) do
-      {:noreply, socket |> load() |> assign(stage_notice: :saved)}
+      {:noreply,
+       socket |> load() |> assign(editing: false, chosen_stack: nil, stage_notice: :saved)}
     else
       _ -> {:noreply, assign(socket, stage_notice: :error)}
     end
@@ -118,73 +130,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
           disabled={is_nil(@policy) || is_nil(@enforcement)}
         >{gettext("Refresh")}</button>
       </div>
-      <section id={@id <> "-stages"} class="ab-quality">
-        <header>
-          <h5>{gettext("Quality rules")}</h5>
-          <p class="ab-meta">
-            {gettext("Tests and checks for this project. Merge requirements below still apply.")}
-          </p>
-        </header>
-        <%= if is_list(@stage_ids) and not is_nil(@profile) do %>
-          <p class="ab-quality__source">{profile_label(@profile)}</p>
-          <div class="ab-quality__editor">
-            <form
-              id={@id <> "-language-form"}
-              phx-change="choose_stack"
-              phx-target={@myself}
-              class="ab-quality__stack"
-            >
-              <label for={@id <> "-language"}>{gettext("Technology")}</label>
-              <select class="voice-select" id={@id <> "-language"} name="stack">
-                <option :if={is_nil(@stack)} value="" selected disabled>
-                  {gettext("Technology not yet detected")}
-                </option>
-                <option
-                  :for={{name, ids} <- ordered_groups(@profile)}
-                  value={name}
-                  selected={name == @stack}
-                >
-                  {name}{if Enum.any?(ids, &(&1 in @profile["detected"])),
-                    do: " · " <> gettext("Detected")}
-                </option>
-              </select>
-            </form>
-            <form :if={@stack} id={@id <> "-stage-form"} phx-submit="save_stages" phx-target={@myself}>
-              <div :for={id <- stack_ids(@stack)} class="ab-quality__rule">
-                <label for={@id <> "-" <> id}>
-                  <strong>{stage_label(id)}</strong>
-                  <code>{command(id)}</code>
-                  <small
-                    :if={@profile["available"] and id not in @profile["detected"]}
-                    class="ab-meta"
-                  >{gettext("Not detected in this checkout")}</small>
-                </label>
-                <select class="voice-select" id={@id <> "-" <> id} name={"rules[#{id}]"}>
-                  <option
-                    :for={{mode, label} <- modes()}
-                    value={mode}
-                    selected={@profile["modes"][id] == mode}
-                  >
-                    {label}
-                  </option>
-                </select>
-              </div>
-              <button class="ab-btn ab-btn--sm" type="submit">{gettext("Save checks")}</button>
-            </form>
-          </div>
-        <% else %>
-          <p class="ab-meta">
-            {if @stage_ids == :unavailable,
-              do: gettext("Could not read the local checks. Refresh to try again."),
-              else: gettext("Loading…")}
-          </p>
-        <% end %>
-        <p :if={@stage_notice} role="status">
-          {if @stage_notice == :saved,
-            do: gettext("Local checks saved for this project."),
-            else: gettext("Checks were not saved. Refresh to load the current selection.")}
-        </p>
-      </section>
       <div class="ab-merge-body" aria-live="polite">
         <h5>{gettext("Merge requirements")}</h5>
         <p class="ab-merge-summary">
@@ -280,6 +225,95 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
           <code title={@policy.sha}>{String.slice(@policy.sha, 0, 8)}</code>
         </p>
       </div>
+      <section id={@id <> "-stages"} class="ab-quality">
+        <h5>{gettext("Task stages")}</h5>
+        <%= if is_list(@stage_ids) and not is_nil(@profile) do %>
+          <div class="ab-quality__overview">
+            <p class="ab-quality__summary">{stages_summary(@profile)}</p>
+            <button
+              type="button"
+              id={@id <> "-edit-stages"}
+              class="ab-btn ab-btn--sm"
+              phx-click="toggle_stage_editor"
+              phx-target={@myself}
+              aria-expanded={to_string(@editing)}
+              aria-controls={@id <> "-editor"}
+            >
+              {cond do
+                @editing -> gettext("Close editor")
+                @profile["detected"] == [] and @stage_ids == [] -> gettext("Choose technology")
+                true -> gettext("Edit stages")
+              end}
+            </button>
+          </div>
+          <div id={@id <> "-editor"} hidden={!@editing}>
+            <%= if @editing do %>
+              <p class="ab-quality__source">{profile_label(@profile)}</p>
+              <div class="ab-quality__editor">
+                <form
+                  id={@id <> "-language-form"}
+                  phx-change="choose_stack"
+                  phx-target={@myself}
+                  class="ab-quality__stack"
+                >
+                  <label for={@id <> "-language"}>{gettext("Technology")}</label>
+                  <select class="voice-select" id={@id <> "-language"} name="stack">
+                    <option :if={is_nil(@stack)} value="" selected disabled>
+                      {gettext("Technology not yet detected")}
+                    </option>
+                    <option
+                      :for={{name, ids} <- ordered_groups(@profile)}
+                      value={name}
+                      selected={name == @stack}
+                    >
+                      {name}{if Enum.any?(ids, &(&1 in @profile["detected"])),
+                        do: " · " <> gettext("Detected")}
+                    </option>
+                  </select>
+                </form>
+                <form
+                  :if={@stack}
+                  id={@id <> "-stage-form"}
+                  phx-submit="save_stages"
+                  phx-target={@myself}
+                >
+                  <div :for={id <- stack_ids(@stack)} class="ab-quality__rule">
+                    <label for={@id <> "-" <> id}>
+                      <strong>{stage_label(id)}</strong>
+                      <code>{command(id)}</code>
+                      <small
+                        :if={@profile["available"] and id not in @profile["detected"]}
+                        class="ab-meta"
+                      >{gettext("Not detected in this checkout")}</small>
+                    </label>
+                    <select class="voice-select" id={@id <> "-" <> id} name={"rules[#{id}]"}>
+                      <option
+                        :for={{mode, label} <- modes()}
+                        value={mode}
+                        selected={@profile["modes"][id] == mode}
+                      >
+                        {label}
+                      </option>
+                    </select>
+                  </div>
+                  <button class="ab-btn ab-btn--sm" type="submit">{gettext("Save checks")}</button>
+                </form>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="ab-meta">
+            {if @stage_ids == :unavailable,
+              do: gettext("Could not read the local checks. Refresh to try again."),
+              else: gettext("Loading…")}
+          </p>
+        <% end %>
+        <p :if={@stage_notice} role="status">
+          {if @stage_notice == :saved,
+            do: gettext("Local checks saved for this project."),
+            else: gettext("Checks were not saved. Refresh to load the current selection.")}
+        </p>
+      </section>
     </section>
     """
   end
@@ -289,6 +323,38 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
   def guard_label(:no_agent), do: gettext("Guard not applicable")
   def guard_label(:unknown), do: gettext("Guard unverified")
   def guard_label(nil), do: gettext("Checking guard…")
+
+  defp stages_summary(profile) do
+    technologies =
+      for {name, ids} <- ProjectStages.groups(),
+          Enum.any?(ids, &(&1 in profile["detected"])),
+          do: name
+
+    counts = Enum.frequencies(Map.values(profile["modes"]))
+    always = Map.get(counts, "always", 0)
+    changed = Map.get(counts, "changed", 0)
+
+    [
+      if(technologies == [],
+        do: gettext("Technology not yet detected"),
+        else: Enum.join(technologies, ", ")
+      ),
+      if(always > 0,
+        do: ngettext("%{count} stage on every task", "%{count} stages on every task", always)
+      ),
+      if(changed > 0,
+        do:
+          ngettext(
+            "%{count} stage on related changes",
+            "%{count} stages on related changes",
+            changed
+          )
+      ),
+      if(technologies != [] and always + changed == 0, do: gettext("No active stages"))
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" · ")
+  end
 
   defp selected_stack(%{chosen_stack: stack}) when is_binary(stack), do: stack
 

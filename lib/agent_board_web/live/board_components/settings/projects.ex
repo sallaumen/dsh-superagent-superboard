@@ -273,11 +273,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         assigns.project_path in ["github", "agent"] or assigns.repos == []
       )
 
+    filter = String.downcase(String.trim(assigns.query))
+
     entries =
       (Enum.map(assigns.superagents, &{project_name(&1), :agent, &1}) ++
          Enum.map(assigns.tracked, &{"#{&1.owner}/#{&1.name}", :tracked, &1}))
       |> Enum.filter(fn {name, _, _} ->
-        String.contains?(String.downcase(name), String.downcase(String.trim(assigns.query)))
+        String.contains?(String.downcase(name), filter)
       end)
       |> Enum.sort_by(fn {name, type, _} -> {type, String.downcase(name)} end)
 
@@ -290,6 +292,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
     assigns =
       assign(assigns,
+        filtering: filter != "",
         found: length(entries),
         agent_page: for({_, :agent, a} <- page, do: a),
         tracked_page: for({_, :tracked, r} <- page, do: r)
@@ -625,9 +628,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
           placeholder={gettext("Owner or repository name")}
           phx-debounce="200"
         />
-        <small class="ab-meta" role="status">{@found} / {map_size(@projects)}</small>
+        <small :if={@filtering} class="ab-meta" role="status">{@found} / {map_size(@projects)}</small>
       </form>
-      <p :if={@found == 0 and @query != ""}>{gettext("No matching projects.")}</p>
+      <p :if={@found == 0 and @filtering}>{gettext("No matching projects.")}</p>
       <ul
         :if={@superagents != [] or @tracked != []}
         class="ab-projects__list"

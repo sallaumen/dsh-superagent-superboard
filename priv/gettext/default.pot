@@ -10179,3 +10179,28 @@ msgstr ""
 
 msgid "Technology not yet detected"
 msgstr ""
+
+msgid "Task stages"
+msgstr ""
+
+msgid "Close editor"
+msgstr ""
+
+msgid "Choose technology"
+msgstr ""
+
+msgid "Edit stages"
+msgstr ""
+
+msgid "No active stages"
+msgstr ""
+
+msgid "%{count} stage on every task"
+msgid_plural "%{count} stages on every task"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "%{count} stage on related changes"
+msgid_plural "%{count} stages on related changes"
+msgstr[0] ""
+msgstr[1] ""
