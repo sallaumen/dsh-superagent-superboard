@@ -10179,3 +10179,28 @@ msgstr "Não detectado neste projeto"
 
 msgid "Technology not yet detected"
 msgstr "Tecnologia ainda não detectada"
+
+msgid "Task stages"
+msgstr "Etapas da tarefa"
+
+msgid "Close editor"
+msgstr "Fechar editor"
+
+msgid "Choose technology"
+msgstr "Escolher tecnologia"
+
+msgid "Edit stages"
+msgstr "Editar etapas"
+
+msgid "No active stages"
+msgstr "Nenhuma etapa ativa"
+
+msgid "%{count} stage on every task"
+msgid_plural "%{count} stages on every task"
+msgstr[0] "%{count} etapa em toda tarefa"
+msgstr[1] "%{count} etapas em toda tarefa"
+
+msgid "%{count} stage on related changes"
+msgid_plural "%{count} stages on related changes"
+msgstr[0] "%{count} etapa por alteração"
+msgstr[1] "%{count} etapas por alteração"

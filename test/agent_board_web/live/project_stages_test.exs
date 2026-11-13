@@ -30,6 +30,9 @@ defmodule AgentBoardWeb.ProjectStagesTest do
     view |> element(open) |> render_click()
     render_async(view, 5_000)
     picker = "#tracked-#{repo.id}-merge-policy-language"
+    toggle = "#tracked-#{repo.id}-merge-policy-edit-stages"
+    refute has_element?(view, picker)
+    view |> element(toggle, "Escolher tecnologia") |> render_click()
 
     assert has_element?(
              view,
@@ -47,11 +50,21 @@ defmodule AgentBoardWeb.ProjectStagesTest do
     |> render_submit()
 
     render_async(view, 5_000)
+    refute has_element?(view, form_id)
+
+    assert has_element?(
+             view,
+             "#tracked-#{repo.id} .ab-quality__summary",
+             "3 etapas em toda tarefa"
+           )
+
+    assert has_element?(view, toggle <> "[aria-expanded=false]", "Editar etapas")
     assert {:ok, ["npm-lint", "npm-test", "npm-build"]} = ProjectStages.load(repo)
     assert {:ok, []} = ProjectStages.load(other)
     bookmark = assert_patch(view)
     {:ok, again, _} = live(conn, bookmark)
     render_async(again, 5_000)
+    again |> element(toggle) |> render_click()
     again |> element(picker <> "-form") |> render_change(%{"stack" => "JavaScript / TypeScript"})
 
     assert has_element?(
