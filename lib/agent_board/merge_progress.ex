@@ -13,9 +13,7 @@ defmodule AgentBoard.MergeProgress do
     slug = String.downcase("#{owner}/#{name}")
 
     with true <- Regex.match?(~r/\A[a-z0-9_-]+\/[a-z0-9_.-]+\z/, slug) and name not in [".", ".."],
-         path = Path.join([root(), slug, "#{number}.json"]),
-         {:ok, %{size: size, type: :regular}} when size <= 131_072 <- File.stat(path),
-         {:ok, text} <- File.read(path),
+         {:ok, text} <- read_record(root(), slug, number),
          {:ok, snapshot} <- Jason.decode(text) do
       snapshot_for(snapshot, slug, number, head)
     else
@@ -24,6 +22,31 @@ defmodule AgentBoard.MergeProgress do
   end
 
   def read(_repo, _number, _head), do: nil
+
+  # Slug components are validated above; refuse links in worker-owned directories
+  # and cap the actual read even if the file was replaced since lstat.
+  defp read_record(root, slug, number) do
+    [owner, project] = String.split(slug, "/")
+    owner_dir = Path.join(root, owner)
+    project_dir = Path.join(owner_dir, project)
+    path = Path.join(project_dir, "#{number}.json")
+
+    with {:ok, %{type: :directory}} <- File.lstat(owner_dir),
+         {:ok, %{type: :directory}} <- File.lstat(project_dir),
+         {:ok, %{type: :regular}} <- File.lstat(path),
+         {:ok, fd} <- :file.open(path, [:read, :raw, :binary]) do
+      try do
+        case :file.pread(fd, 0, 131_073) do
+          {:ok, bytes} when byte_size(bytes) <= 131_072 -> {:ok, bytes}
+          _ -> :error
+        end
+      after
+        :file.close(fd)
+      end
+    else
+      _ -> :error
+    end
+  end
 
   defp snapshot_for(
          %{

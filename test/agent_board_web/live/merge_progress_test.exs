@@ -85,5 +85,11 @@ defmodule AgentBoardWeb.MergeProgressTest do
     send(view.pid, :merge_check_tick)
     assert has_element?(view, ".ab-merge-progress", "Aguardando verificações da revisão atual")
     refute has_element?(view, ".ab-merge-progress li")
+    path = Path.join(dir, "42.json")
+    other = Path.join(root, "outside.json")
+    File.rename!(path, other)
+    File.ln_s!(other, path)
+    assert AgentBoard.MergeProgress.read(repo, 42, @head) == nil
+    assert AgentBoard.MergeProgress.read(%{owner: "fixture", name: ".."}, 42, @head) == nil
   end
 end
