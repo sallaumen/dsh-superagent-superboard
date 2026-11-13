@@ -388,8 +388,8 @@ defmodule AgentBoard.Actions do
     names = targets |> Map.values() |> Enum.sort() |> Enum.join(", ")
 
     if lang == "en-US",
-      do: "Update idle agents for: " <> names,
-      else: "Atualizar os agentes ociosos de: " <> names
+      do: "Update when the agents and their queues are idle: " <> names,
+      else: "Atualizar quando os agentes e suas filas estiverem livres: " <> names
   end
 
   def phrase(:start_superagent, %{superagent: superagent}, "en-US"),

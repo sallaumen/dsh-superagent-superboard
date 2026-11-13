@@ -9,6 +9,7 @@ defmodule AgentBoard.Superagents.Superagent do
   @observed ~w(unknown starting ready paused error stopped)
 
   schema "superagents" do
+    field :runtime_sync, :map
     field :profile, :string
     field :port, :integer
     field :state_dir, :string

@@ -47,8 +47,7 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     assert post(conn, ~p"/superagents/synchronize", confirm: phrase) |> redirected_to(303) ==
              @projects
 
-    wait_for_completion()
-    assert RuntimeSync.status().rows[agent.id] == "paused"
+    wait_for_result(agent.id, "paused")
     assert render(view) =~ "Ignorado: agente pausado"
   end
 
@@ -85,8 +84,59 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     assert :ok = Task.await(task)
   end
 
-  defp wait_for_completion do
-    assert_receive :runtime_sync_changed, 2000
-    if RuntimeSync.status().running, do: wait_for_completion()
+  test "a pending update survives its owner, coalesces clicks and completes only once idle", %{
+    conn: conn
+  } do
+    {:ok, repo} = Board.add_repository("fixture", "deferred")
+
+    {:ok, agent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "test-deferred",
+        port: 3312,
+        state_dir: "/tmp/test-deferred"
+      })
+
+    {:ok, view, _html} = live(conn, @projects)
+    owner = self()
+
+    runner = fn _, _, _ ->
+      send(owner, {:attempt, self()})
+
+      receive do
+        {:load, answer} -> answer
+      end
+    end
+
+    opts = [name: :deferred_runtime_test, interval: :manual, runner: runner]
+    worker = start_supervised!({RuntimeSync, opts})
+    targets = RuntimeSync.targets([Superagents.get(agent.id)])
+    Superagents.subscribe()
+    assert :ok = RuntimeSync.start(targets, worker)
+    assert_receive {:attempt, task}
+    send(task, {:load, "busy"})
+    wait_for_result(agent.id, "pending")
+    request = Superagents.get(agent.id).runtime_sync["request"]
+    assert render(view) =~ "Atualização pendente"
+
+    stop_supervised!(RuntimeSync)
+    worker = start_supervised!({RuntimeSync, opts})
+    assert has_element?(view, "#project-#{agent.id} [role=status]", "Atualização pendente")
+    send(worker, :tick)
+    assert_receive {:attempt, next}
+    for _ <- 1..5, do: RuntimeSync.start(targets, worker)
+    assert Superagents.get(agent.id).runtime_sync["request"] == request
+    send(next, {:load, "updated"})
+    wait_for_result(agent.id, "updated")
+    assert render(view) =~ "Harness atualizado"
+    send(worker, :tick)
+    refute_receive {:attempt, _}
+  end
+
+  defp wait_for_result(id, expected) do
+    assert_receive :runtime_sync_changed, 3000
+
+    unless Superagents.get(id).runtime_sync["status"] == expected,
+      do: wait_for_result(id, expected)
   end
 end

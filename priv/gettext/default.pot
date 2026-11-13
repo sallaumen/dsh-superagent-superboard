@@ -9643,7 +9643,7 @@ msgstr ""
 msgid "Skipped: agent paused"
 msgstr ""
 
-msgid "Skipped: work in progress or queued"
+msgid "Update pending — waiting for work and queue to finish"
 msgstr ""
 
 msgid "Skipped: agent state changed"
@@ -9661,7 +9661,7 @@ msgstr ""
 msgid "Could not verify the update. Check the agent before retrying."
 msgstr ""
 
-msgid "From localhost, update idle agents to the Harness bundled with this board. Busy agents keep working; try again when they finish."
+msgid "Idle agents update now. Busy agents update automatically after their last task finishes and the queue is empty."
 msgstr ""
 
 msgid "Synchronizing…"

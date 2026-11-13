@@ -65,6 +65,7 @@ config :agent_board, runner_tick_interval: 3_600_000
 # a tick, so the suite drives it (and a sandboxed row cannot be touched by a
 # process outside the test).
 config :agent_board, superagent_tick_interval: :manual
+config :agent_board, runtime_sync_interval: :manual
 
 # A status read the ticker kills (6 s in production) is exercised with a fake
 # that answers late; the suite must not wait those seconds.

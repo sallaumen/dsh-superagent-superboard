@@ -1079,12 +1079,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   def handle_info(:runtime_sync_changed, socket) do
-    send_update(AgentBoardWeb.BoardComponents.Settings.Projects,
-      id: "settings-projects",
-      sync_refresh: true
-    )
-
-    {:noreply, socket}
+    {:noreply, assign(socket, :superagents, Superagents.list())}
   end
 
   def handle_info(:superagents_changed, socket) do

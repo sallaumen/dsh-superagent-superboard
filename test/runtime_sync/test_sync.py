@@ -60,10 +60,12 @@ class Synchronization(unittest.TestCase):
         self.agent.paused = True
         self.assertEqual(runtime.sync(self.agent), "paused")
         self.agent.paused = False
-        for load in ({}, {"running": 1, "queued": 0}, {"running": 0, "queued": 1},
-                     {"running": False, "queued": 0}):
+        for load in ({"running": 1, "queued": 0}, {"running": 0, "queued": 1}):
             self.agent.load = load
             self.assertEqual(runtime.sync(self.agent), "busy")
+        for load in ({}, {"running": False, "queued": 0}, {"running": 0, "queued": -1}):
+            self.agent.load = load
+            self.assertEqual(runtime.sync(self.agent), "unavailable")
         self.prepare.assert_not_called()
         self.assertEqual(self.agent.restarts, [])
 
@@ -73,9 +75,18 @@ class Synchronization(unittest.TestCase):
             self.agent.load["queued"] = 1
 
         self.agent.api = change_pause
-        self.assertEqual(runtime.sync(self.agent), "changed")
+        self.assertEqual(runtime.sync(self.agent), "busy")
         self.assertFalse(self.agent.paused)
         self.assertEqual(self.agent.restarts, [])
+
+    def test_busy_then_queued_then_idle_applies_the_same_runtime_once(self):
+        for running, queued, outcome in ((1, 0, "busy"), (0, 1, "busy"), (0, 0, "updated"), (0, 0, "current")):
+            self.agent.load = {"running": running, "queued": queued}
+            self.assertEqual(runtime.sync(self.agent), outcome)
+            if running or queued:
+                self.assertFalse(self.agent.paused)
+                self.assertEqual(self.agent.restarts, [])
+        self.assertEqual(self.agent.restarts, [self.target])
 
     def test_process_failure_recovers_previous_launcher_then_resumes(self):
         with patch.object(self.agent, "change", side_effect=RuntimeError), \

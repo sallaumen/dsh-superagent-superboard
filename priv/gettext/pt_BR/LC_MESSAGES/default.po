@@ -9643,8 +9643,8 @@ msgstr "Harness já atualizado"
 msgid "Skipped: agent paused"
 msgstr "Ignorado: agente pausado"
 
-msgid "Skipped: work in progress or queued"
-msgstr "Ignorado: há trabalho em andamento ou na fila"
+msgid "Update pending — waiting for work and queue to finish"
+msgstr "Atualização pendente — aguardando o fim das tarefas e da fila"
 
 msgid "Skipped: agent state changed"
 msgstr "Ignorado: o estado do agente mudou"
@@ -9661,8 +9661,8 @@ msgstr "Outra sincronização em andamento"
 msgid "Could not verify the update. Check the agent before retrying."
 msgstr "Não foi possível verificar a atualização. Confira o agente antes de tentar novamente."
 
-msgid "From localhost, update idle agents to the Harness bundled with this board. Busy agents keep working; try again when they finish."
-msgstr "Abra o board em localhost para atualizar os agentes ociosos com o Harness desta versão do board. Os ocupados continuam trabalhando; tente novamente quando terminarem."
+msgid "Idle agents update now. Busy agents update automatically after their last task finishes and the queue is empty."
+msgstr "Agentes ociosos atualizam agora. Os ocupados atualizam automaticamente quando a última tarefa terminar e a fila estiver vazia."
 
 msgid "Synchronizing…"
 msgstr "Sincronizando…"
