@@ -37,6 +37,19 @@ fi
 # 4. Os testes de JS (node:test). Glob sem aspas: `node --test` recusa um diretório.
 node --test test/assets/*.mjs || fail "testes de JS (test/assets) falharam"
 
+# Harness uses node:sqlite. Hosted runners also keep newer Node releases in
+# RUNNER_TOOL_CACHE when their default shell node is older.
+harness_node="$(command -v node)"
+if ! "$harness_node" -e "require('node:sqlite')" >/dev/null 2>&1 && [[ -n "${RUNNER_TOOL_CACHE:-}" ]]; then
+  for candidate in "$RUNNER_TOOL_CACHE"/node/{24,22}.*/*/bin/node; do
+    if [[ -x "$candidate" ]] && "$candidate" -e "require('node:sqlite')" >/dev/null 2>&1; then
+      harness_node="$candidate"
+      break
+    fi
+  done
+fi
+"$harness_node" --test ops/harness-worker-titles/worker-titles.test.mjs || fail "Harness worker titles require Node 22.19+ or 24+ with node:sqlite"
+
 if ((errors > 0)); then
   echo "check_assets: $errors problema(s)." >&2
   exit 1

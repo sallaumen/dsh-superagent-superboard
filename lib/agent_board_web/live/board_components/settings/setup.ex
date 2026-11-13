@@ -18,6 +18,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
   alias AgentBoard.AgentTools
   alias AgentBoard.AI.Budget
   alias AgentBoard.Setup
+  alias AgentBoard.Setup.WorkerTitles
   alias AgentBoard.Setup.Validation
   alias AgentBoardWeb.Time
 
@@ -32,6 +33,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
        assign(socket,
          rows: nil,
          tools: [],
+         worker_titles: nil,
          checking: false,
          check_error: false,
          history: %{latest: nil, passed: nil}
@@ -62,6 +64,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
           rows: Setup.checklist(),
           history: Validation.history(),
           tools: AgentTools.inventory(),
+          worker_titles: WorkerTitles.status(),
           check_error: false
         )
       else
@@ -72,6 +75,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
   end
 
   @impl true
+  def handle_event("refresh_worker_titles", _params, %{assigns: %{active: true}} = socket),
+    do: {:noreply, assign(socket, :worker_titles, WorkerTitles.status())}
+
+  def handle_event("refresh_worker_titles", _params, socket), do: {:noreply, socket}
+
   def handle_event("check", _params, %{assigns: %{checking: true}} = socket),
     do: {:noreply, socket}
 
@@ -188,6 +196,50 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
       </section>
 
       <section
+        :if={@worker_titles}
+        id="setup-worker-titles"
+        class="settings-subpane setup__class"
+        aria-labelledby="setup-worker-titles-title"
+      >
+        <h4 id="setup-worker-titles-title">{gettext("Harness session names")}</h4>
+        <p class="settings-pane__intro">
+          {gettext(
+            "Optional · Background tasks appear as PROJECT - Task, for example SB - Fix filters."
+          )}
+        </p>
+        <p role="status"><b>{worker_titles_status(@worker_titles)}</b></p>
+        <p :if={@worker_titles != :installed} class="ab-meta">
+          {if @worker_titles == :conflict,
+            do:
+              gettext(
+                "The managed section in cordis.patch.yml is incomplete. Repair it before running the installer."
+              ),
+            else: gettext("From the board checkout on the Harness machine, run:")}
+        </p>
+        <div :if={@worker_titles != :installed}>
+          <code class="break-all">{WorkerTitles.command()}</code>
+          <button
+            type="button"
+            class="ab-btn ab-btn--quiet ab-btn--sm"
+            phx-click={
+              Phoenix.LiveView.JS.dispatch("board:copy", detail: %{text: WorkerTitles.command()})
+            }
+          >{gettext("Copy command")}</button>
+        </div>
+        <p :if={@worker_titles == :installed} class="ab-meta">
+          {gettext(
+            "Open Harness after installation and check a worker in Sessions. The board cannot confirm that a running profile has loaded the plugin."
+          )}
+        </p>
+        <button
+          type="button"
+          class="ab-btn ab-btn--sm"
+          phx-click="refresh_worker_titles"
+          phx-target={@myself}
+        >{gettext("Recheck installation")}</button>
+      </section>
+
+      <section
         :if={@tools != []}
         id="setup-tools"
         class="settings-subpane setup__class"
@@ -236,6 +288,12 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
     </div>
     """
   end
+
+  defp worker_titles_status(:installed), do: gettext("Installed on this machine")
+  defp worker_titles_status(:missing), do: gettext("Not installed on this machine")
+  defp worker_titles_status(:needs_update), do: gettext("Installation needs an update or repair")
+  defp worker_titles_status(:conflict), do: gettext("Harness configuration needs repair")
+  defp worker_titles_status(:unknown), do: gettext("Could not check this machine")
 
   attr :title, :string, required: true
   attr :items, :any, required: true
