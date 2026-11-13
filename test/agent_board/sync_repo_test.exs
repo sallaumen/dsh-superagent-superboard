@@ -987,7 +987,8 @@ defmodule AgentBoard.SyncRepoTest do
     assert %Task{state: "done", archived: true} = Repo.one(Task)
   end
 
-  test "a reopened issue whose agent ticket merged stays done, once", %{repo: repo} do
+  test "a merged ticket remains done without a newer reopen, but a confirmed reopen survives sync and poll",
+       %{repo: repo} do
     path = Path.join(System.tmp_dir!(), "sync-reopen-#{System.unique_integer([:positive])}.db")
     {:ok, db} = Exqlite.Sqlite3.open(path)
     previous = Application.get_env(:agent_board, :state_db)
@@ -999,7 +1000,7 @@ defmodule AgentBoard.SyncRepoTest do
     end)
 
     merged =
-      ~s({"mandate":{"basis":{"scope":{"number":26}}},"assignments":[{"state":"ended"}],"ended":{"at":"2026-11-07T00:01:15.000Z","by":"executor","outcome":"merged"}})
+      ~s({"channels":[{"address":{"url":"https://github.com/sallaumen/arena-rogue/issues/26"}}],"mandate":{"basis":{"scope":{"number":26}}},"assignments":[{"state":"ended"}],"ended":{"at":"2026-11-07T00:01:15.000Z","by":"executor","outcome":"merged"}})
 
     :ok = Exqlite.Sqlite3.execute(db, "create table ticket (value text)")
     :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{merged}')")
@@ -1020,6 +1021,53 @@ defmodule AgentBoard.SyncRepoTest do
     Repo.update_all(Task, set: [state_changed_at: decided_at])
     sync_issue_states(repo, 26, ["open"])
     assert %Task{state: "done", state_changed_at: ^decided_at} = Repo.one(Task)
+
+    reopened = ~U[2026-11-07 01:00:00Z]
+    updated = Map.put(issue(26, "open"), "updated_at", DateTime.to_iso8601(reopened))
+
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/graphql" ->
+          send(self(), :read_history)
+
+          Req.Test.json(conn, %{
+            data: %{
+              repository: %{
+                i26: %{
+                  number: 26,
+                  state: "OPEN",
+                  timelineItems: %{nodes: [%{__typename: "ReopenedEvent", createdAt: reopened}]}
+                }
+              }
+            }
+          })
+
+        "/repos/sallaumen/arena-rogue/issues" ->
+          Req.Test.json(conn, [updated])
+
+        _ ->
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    # The pre-fix board may already have decided "done" after the reopen.
+    Repo.update_all(Task, set: [state_changed_at: DateTime.add(reopened, 120)])
+    assert :ok = Sync.sync_repo(client(), repo)
+    assert_received :read_history
+
+    assert %Task{state: "queued", github_reopened_at: ^reopened, state_changed_at: at} =
+             Repo.one(Task)
+
+    AgentBoard.TicketPoller.poll(%{})
+    assert :ok = Sync.sync_repo(client(), repo)
+    refute_received :read_history
+    assert %Task{state: "queued", state_changed_at: ^at} = Repo.one(Task)
+
+    # New work is not suppressed by the boundary.
+    AgentBoard.TicketOverlay.apply(repo, 26, "running", DateTime.add(reopened, 10))
+    assert Repo.one(Task).state == "running"
+    sync_issue_states(repo, 26, ["closed"])
+    assert Repo.one(Task).state == "done"
   end
 
   test "a pull request becomes a merged task with its rollups", %{repo: repo} do

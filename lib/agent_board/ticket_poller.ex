@@ -91,11 +91,11 @@ defmodule AgentBoard.TicketPoller do
             asked?: fn -> Board.agent_asked?(repo.id, number) end
           ),
         overlay != nil,
-        do: {number, overlay, ticket["started_at"]}
+        do: {number, overlay, ticket["started_at"], ticket["ended_at"]}
   end
 
   defp apply_overlays(repo, overlays) do
-    for {number, overlay, started_at} <- overlays,
-        do: TicketOverlay.apply(repo, number, overlay, started_at)
+    for {number, overlay, started_at, ended_at} <- overlays,
+        do: TicketOverlay.apply(repo, number, overlay, started_at, ended_at: ended_at)
   end
 end
