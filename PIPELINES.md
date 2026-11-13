@@ -43,7 +43,7 @@ body: changes to those contracts require checking the consumers.
 | `mix assets.setup` | First run / frontend CI | `MIX_ENV=dev` | downloads the tailwind/esbuild binaries | tools installed |
 | `mix assets.build` | When changing CSS/JS | `MIX_ENV=dev` | writes `priv/static/assets/` | bundle built without error |
 | `mix assets.deploy` | Validate the production asset path | `MIX_ENV=dev` | minifies + `phx.digest` | digest manifest generated |
-| [scripts/check_assets.sh](scripts/check_assets.sh) | When changing CSS/JS (first step of the frontend pipeline) | local machine with `node` on the PATH | none (read-only) | entries present, tailwind pipeline configured, authored JS without debug, JS tests (`node --test test/assets/*.mjs`) green |
+| [scripts/check_assets.sh](scripts/check_assets.sh) | When changing CSS/JS (first step of the frontend pipeline) | local machine with `node` on the PATH | none (read-only) | entries present, tailwind pipeline configured, authored JS without debug, JS tests and Harness worker-title contract tests (Node 22.19+ or 24+ with `node:sqlite`) green |
 | `make help` | Discover the available targets | `make` | none | target names and a reference to this matrix |
 | `make backend` | Full backend checks, including Sobelow | pins `MIX_ENV=test` | those of `mix gate` (Dialyzer included) and Sobelow | equivalent to the checks of the `gates` + `backend` jobs |
 | `make frontend` | Validate sources and production assets | pins `MIX_ENV=dev` | asset checks, setup, build, and deploy | equivalent to the `frontend` job |

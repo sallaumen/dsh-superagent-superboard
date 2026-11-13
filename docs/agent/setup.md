@@ -333,3 +333,29 @@ its last report said.
 - **Do not read `ready` as merged.** Without the merge policy above a `ready`
   ticket means "a human reviews this"; with it, the ticket ends `merged`
   within the same run or says why a person must merge.
+
+### Names in the Harness Sessions list
+
+Open **Settings → AI and setup → Harness session names**. The check compares the
+managed home patch and installed files with this checkout; it makes no writes.
+Use **Recheck installation** after running the command. An installed status is
+evidence on the board host, not proof a running Harness profile has loaded it.
+For a remote Harness host, run the command there and use `--check` there too.
+
+Run `scripts/agent/install-worker-titles.py` on the Harness host (Node 22.19+
+or 24+). It installs a host plugin and one marked entry in the home patch,
+preserving the other entries. It also applies to future profiles. To uninstall,
+remove the marked entry and reload the host. Do not restart a profile with an
+assignment in progress.
+
+The worker title uses the repository and the ticket title: `AR - Redesign do HUD`,
+`COL - Ajustar menu` or `SB - Corrigir filtros`. Other project names use up to
+three initials, or three letters for a single word. When a separate desktop host
+lists a worker whose title has not reached its in-memory cache, the plugin reads
+that ticket's title without opening its session. It never modifies the agent
+database. It recognizes the standard `state/<profile>/work/<name>-<id-prefix>`
+layout and leaves other sessions and custom session names alone.
+
+Run the host-specific tests with the same Node runtime as DSH:
+
+`node --test ops/harness-worker-titles/worker-titles.test.mjs`.
