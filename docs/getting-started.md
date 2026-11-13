@@ -41,8 +41,17 @@ You can stop here. To publish your first request or try voice, follow the [first
 | Worker tools | `Python 3.8+` and `tmux` |
 | Identity | A separate GitHub bot account with repository write access; a model provider configured in the Harness profile |
 
-1. [Download Harness](https://www.deepseek.com/en/harness/), install its `dsh` command and configure its model provider. From the board machine, run `dsh --version`, then [sign in as the bot](agent/setup.md#2-the-bot-identity). **Settings → AI and setup** shows missing tools and sign-in steps.
-2. Open **Settings → Projects → Connect the Super Agent**. **Already have an agent for this repository?** Select **Look for profiles again**, find its profile under the detected agents and confirm **Add to the board**. This connects the existing agent instead of creating a second one. **First agent on this machine?** Clone the *target project* locally (not the board or Harness). Enter the same owner and repo, the path containing its `.git`, and a worker limit. Review the installation and confirm. The bot needs write access: grant it in the target repository beforehand, or let the board grant it if your token can manage collaborators. For a manual installation, use the [upstream setup guide](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md).
-3. From an authorized GitHub account, mention the bot in a small issue with a verifiable outcome. For example: `@your-bot Document one existing game control in the README and open a PR.` Use the actual bot login. Check for its reply or workpad on the issue, then for the ticket and linked PR in the board. Adding a profile alone does not submit a task.
+[Download Harness](https://www.deepseek.com/en/harness/), install its `dsh` command and configure its model provider. Run `dsh --version` on the board machine and [verify the bot’s separate GitHub sign-in](agent/setup.md#2-the-bot-identity).
+
+Open **Settings → Projects → Connect the Super Agent**, then choose the path that matches your machine:
+
+| What you have | Next step |
+| --- | --- |
+| An agent already watching this repo | Select **Look for profiles again**. Choose the detected profile and confirm **Add to the board**. There is no need to create another agent. |
+| No agent yet | Clone the **target project**, enter its owner, name and the folder containing its `.git`, then choose the worker limit. Review and confirm the first installation. The bot needs write access; grant it in the target repo or let the board grant it with a token that can manage collaborators. |
+
+For a manual installation, use the [upstream setup guide](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md).
+
+**Check one real task.** From an authorized account, open a small issue and mention the actual bot login. For a game repo, try “@your-bot Document one existing game control in the README and open a PR.” Look for the bot’s reply on the issue, then the ticket and linked PR in the board. Connecting the profile by itself does not submit a task.
 
 [Deployment prerequisites and permissions](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#prerequisites) · [Verify the agent](agent/setup.md#5-verify-it-is-configured-and-alive) · [Add a second repository](agent/setup.md#a-second-repository-optional)

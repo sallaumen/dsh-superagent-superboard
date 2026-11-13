@@ -39,9 +39,18 @@ Esta etapa é opcional. O [DeepSeek Harness](https://www.deepseek.com/en/harness
 | Execução | `Python 3.8+` e `tmux` |
 | Conta | Uma conta GitHub separada para o bot, com acesso de escrita; um provedor de modelo configurado no perfil do Harness |
 
-1. [Baixe o Harness](https://www.deepseek.com/en/harness/), instale o comando `dsh` e configure o provedor de modelo. Na máquina do board, confira com `dsh --version` e [faça login com a conta do bot](agent/setup.md#2-the-bot-identity). **IAs e setup** indica o que falta na máquina.
-2. Abra **Configurações → Projetos → Conectar o Super Agent**. **O repositório já tem agente?** Use **Buscar perfis novamente**, escolha o perfil detectado e confirme **Adicionar ao board**. Assim você conecta o agente existente sem criar outro. **É o primeiro agente da máquina?** Clone o *projeto que vai receber o trabalho*. Informe o mesmo dono e repositório, a pasta que contém o `.git` dele e o limite de execuções. Revise e confirme. O bot precisa de escrita: conceda o acesso no repositório ou permita que o board faça isso se seu token puder gerenciar colaboradores. Para instalar pelo terminal, siga o [guia oficial](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md).
-3. De uma conta autorizada, mencione o bot em uma issue pequena. Por exemplo: `@seu-bot Documente um controle do jogo que já existe no README e abra um PR.` Troque a menção pelo login real. Confira a resposta ou o registro de trabalho na issue e, no painel, o ticket e o PR associado. Só conectar o perfil não envia tarefas. Veja também os [requisitos e permissões oficiais](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#prerequisites).
+[Baixe o Harness](https://www.deepseek.com/en/harness/), instale o comando `dsh` e configure o provedor de modelo. Na máquina do board, confira com `dsh --version` e [verifique o login separado do bot](agent/setup.md#2-the-bot-identity).
+
+Abra **Configurações → Projetos → Conectar o Super Agent** e escolha o caminho da sua máquina:
+
+| O que você tem | Próximo passo |
+| --- | --- |
+| Um agente que já acompanha esse repositório | Use **Buscar perfis novamente**, escolha o perfil detectado e confirme **Adicionar ao board**. Não é preciso criar outro agente. |
+| Nenhum agente ainda | Clone o **projeto que receberá o trabalho**, informe o dono, o nome e a pasta que contém o `.git`, depois escolha o limite de execuções. Revise e confirme a instalação. O bot precisa de escrita: conceda o acesso no repositório ou deixe o board fazer isso com um token que possa gerenciar colaboradores. |
+
+Para instalar pelo terminal, siga o [guia oficial](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/SETUP.md). Veja também os [requisitos e permissões](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#prerequisites).
+
+**Teste uma tarefa real.** De uma conta autorizada, abra uma issue pequena e mencione o login real do bot. Em um repositório de jogo, por exemplo: “@seu-bot Documente um controle que já existe no README e abra um PR.” Confira a resposta na issue e, no painel, o ticket e o PR associado. Conectar o perfil por si só não envia tarefas.
 
 ## Do pedido às issues
 
