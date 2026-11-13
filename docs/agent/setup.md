@@ -227,7 +227,7 @@ The ticket goes `progress` -> `ready` and the PR appears in the issue thread.
 
 When the Super Agent identifies a new issue as the same request as an already accepted issue, it can leave one comment on the duplicate with the original issue link and the reason. The duplicate stays open; the agent neither assigns another worker nor adds the duplicate to the original worker's conversation. Related requests with different deliverables remain separate. Decisions to ignore ordinary discussion stay silent.
 
-This is an extension of the upstream Super Agent, installed by the board when it builds a **new** prototype checkout. If a first build fails, inspect and move the partial `dsh-superagent.installing` directory aside before retrying. Connecting an existing unmodified checkout or synchronizing the Harness CLI does not install it. For an existing installation, prepare a separate copy of the prototype at commit `8c32a9dc5d72c033816c6a8110b37f40cf94fba4`, apply [the board patch](../../priv/agent/duplicate-issue-notice.patch) with `git apply`, then run `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test` and `pnpm build`. Switch the intended profile's linked package only while its worker count **and** queue are zero. Keep the old checkout available for rollback; do not replace a shared running installation.
+This is an extension of the upstream Super Agent, installed by the board when it builds a **new** prototype checkout. If a first build fails, inspect and move the partial `dsh-superagent.installing` directory aside before retrying. For an existing local installation, use **Settings → Projects → Sync agent runtimes**. This builds the tested extension separately, preserves tracked local source fixes, and switches only the linked profile once it is idle. An incompatible revision, custom build configuration or unsupported package link is left unchanged; inspect it before retrying.
 
 ## 7. Shared practices in the executor's worktree
 
@@ -370,7 +370,7 @@ agent keeps its process. Busy agents show **Update pending**. The board checks a
 once both running and queued work reach zero, it applies the requested version
 or reports that the Harness is already current. The request survives closing
 Settings or restarting the board. Paused, stopped and unverified profiles are
-not restarted. A changed repository, profile or dependency lock needs a new click. GitHub-only projects need no action.
+not restarted. A changed repository, profile, extension or dependency lock needs a new click. GitHub-only projects need no action.
 The board stays online, the global npm installation is unchanged, and no code
 is written to the connected repositories. Manage agents on another machine
 from that machine's board. A failed result means the handoff could not be

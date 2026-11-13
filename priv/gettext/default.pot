@@ -9661,7 +9661,7 @@ msgstr ""
 msgid "Could not verify the update. Check the agent before retrying."
 msgstr ""
 
-msgid "Idle agents update now. Busy agents update automatically after their last task finishes and the queue is empty."
+msgid "Sync the Harness and duplicate-issue notices. Idle agents update now; busy agents wait until their work and queue are finished."
 msgstr ""
 
 msgid "Synchronizing…"
