@@ -33,6 +33,8 @@ defmodule AgentBoardWeb.PreflightTest do
     for file <- ~w(ci-local.sh ci-progress.py),
         do: File.cp!("scripts/#{file}", "#{dir}/scripts/#{file}")
 
+    File.mkdir_p!(Path.join(dir, "scripts/ui-review"))
+    File.cp!("scripts/ui-review/select.py", "#{dir}/scripts/ui-review/select.py")
     {_, 0} = System.cmd("git", ["init", "-q", dir])
 
     {_, 0} =
@@ -50,6 +52,8 @@ defmodule AgentBoardWeb.PreflightTest do
         "-qm",
         "fixture"
       ])
+
+    {_, 0} = System.cmd("git", ["-C", dir, "update-ref", "refs/remotes/origin/main", "HEAD"])
 
     {:ok, repo} = Board.add_repository("fixture", "local-progress")
 
@@ -85,6 +89,43 @@ defmodule AgentBoardWeb.PreflightTest do
     assert has_element?(view, "#task-#{task.id}", "Validação local: Backend · Rodando")
     view |> element("#task-#{task.id} .ab-run__title") |> render_click()
     assert has_element?(view, "#conversation [aria-current=step]", "Backend")
+
+    # Select from the effective checkout: no UI for a clean or backend-only
+    # tree, then an untracked hook, a committed hook, and its pending deletion.
+    selector = fn ->
+      {reason, 0} = System.cmd("python3", ["scripts/ui-review/select.py"], cd: dir)
+      String.trim(reason)
+    end
+
+    assert selector.() == "none"
+    File.write!(Path.join(dir, "mix.exs"), "# backend only")
+    assert selector.() == "none"
+    File.mkdir_p!(Path.join(dir, "assets/js"))
+    File.write!(Path.join(dir, "assets/js/changed.js"), "")
+    assert selector.() == "interaction"
+    {_, 0} = System.cmd("git", ["add", "assets/js/changed.js"], cd: dir)
+
+    {_, 0} =
+      System.cmd(
+        "git",
+        [
+          "-c",
+          "user.name=fixture",
+          "-c",
+          "user.email=a@example.org",
+          "-c",
+          "commit.gpgsign=false",
+          "commit",
+          "-qm",
+          "UI change"
+        ],
+        cd: dir
+      )
+
+    assert selector.() == "interaction"
+    {_, 0} = System.cmd("git", ["update-ref", "refs/remotes/origin/main", "HEAD"], cd: dir)
+    File.rm!(Path.join(dir, "assets/js/changed.js"))
+    assert selector.() == "interaction"
 
     for {cmd, rc} <- [{"mix", 0}, {"pg_isready", 0}, {"npm", 23}] do
       file = Path.join(tmp, cmd)
@@ -144,10 +185,39 @@ defmodule AgentBoardWeb.PreflightTest do
              state: "passed",
              rows: [{"backend", "passed"}, {"frontend", "passed"}, {"library", "passed"}]
            } = ticket |> Preflight.source() |> Preflight.read()
+
+    File.mkdir_p!(Path.join(dir, "assets/js"))
+    File.write!(Path.join(dir, "assets/js/changed.js"), "// changed")
+    File.write!(Path.join(dir, "scripts/check_assets.sh"), "exit 0")
+    File.write!(Path.join(tmp, "npm"), "#!/bin/sh\nexit 0")
+    File.write!(Path.join(tmp, "mix"), "#!/bin/sh\n[ \"$1\" != run ] || exit 11")
+
+    {_, 11} =
+      System.cmd("bash", ["scripts/ci-local.sh"],
+        cd: dir,
+        env: [{"PATH", tmp <> ":" <> System.fetch_env!("PATH")}],
+        stderr_to_stdout: true
+      )
+
+    send(fresh.pid, :merge_check_tick)
+    assert has_element?(fresh, "#task-#{task.id}", "Revisão de UI · Falhou")
+    assert has_element?(fresh, "#conversation", "O código de interação do navegador mudou.")
+    assert has_element?(fresh, "#conversation", "Falha na verificação: Inspetor da tarefa.")
+
+    assert %{
+             rows: [
+               {"backend", "passed"},
+               {"frontend", "passed"},
+               {"library", "passed"},
+               {"ui_review", "failed"}
+             ]
+           } = ticket |> Preflight.source() |> Preflight.read()
   end
 
   defp report(dir, args) do
-    {out, 0} = System.cmd("python3", ["scripts/ci-progress.py" | args], cd: dir)
+    {out, 0} =
+      System.cmd("python3", ["scripts/ci-progress.py" | args], cd: dir, env: [{"UI_REASON", nil}])
+
     String.trim(out)
   end
 end
