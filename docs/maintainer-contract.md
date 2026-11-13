@@ -2084,3 +2084,13 @@ database held 24 such `Sync.Worker` rows, each from a different boot.
   card's − and + count from.
 - The web layer never talks to GitHub directly: it goes through `AgentBoard.Board`
   and `AgentBoard.GitHub`.
+
+## Managed merge progress
+
+The decision belongs to the managed worker CLI (see [Project merge checks](agent/merge-checks.md)).
+The board reads its atomic snapshot, scoped by repository, PR and the mirrored
+head. Connected boards refresh evidence for visible running/review cards and
+the selected PR every two seconds without querying GitHub. No record means
+unknown, not green. Another head invalidates the check rows. A worker whose
+active snapshot stops updating for 90 seconds is shown as last observed.
+Old tickets continue to show the facts the board already knows.

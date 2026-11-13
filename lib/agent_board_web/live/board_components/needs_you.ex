@@ -7,6 +7,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
   alias AgentBoardWeb.BoardComponents.AgentAction
   alias AgentBoardWeb.Time
 
+  attr :gates, :map, default: %{}
   attr :needs, :list, required: true
   attr :max, :integer, default: 5
   attr :selected, :any, default: nil
@@ -91,7 +92,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
             <div class={["ab-need__why", tone(need.kind)]}>
               <.markup text={need.why} />
               <span
-                :if={need[:ci]}
+                :if={need[:ci] && !@gates[need[:pull_number]]}
                 class={[
                   "ab-tag",
                   need.ci.state == "fail" && "ab-tag--halt",
@@ -104,6 +105,10 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
               </span>
             </div>
 
+            <AgentBoardWeb.BoardComponents.MergeProgress.progress
+              snapshot={@gates[need[:pull_number]]}
+              compact
+            />
             <div class="ab-need__actions">
               <%= for action <- need.actions do %>
                 <.live_component

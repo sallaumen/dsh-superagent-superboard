@@ -163,6 +163,8 @@ defmodule AgentBoardWeb.BoardLive do
         inspector_usage: nil,
         inspector_pr: nil,
         inspector_ci: nil,
+        gate_snapshots: %{},
+        gate_heads: %{},
         inspector_failure: nil,
         inspector_blockers: [],
         unblock: nil,
@@ -198,7 +200,10 @@ defmodule AgentBoardWeb.BoardLive do
 
     # The voice settings are board-wide: a change in another tab, by the API
     # or by a spoken command reaches this socket (handle_info setting_changed).
-    if connected?(socket), do: subscribe_board_wide()
+    if connected?(socket) do
+      subscribe_board_wide()
+      Process.send_after(self(), :merge_check_tick, 2_000)
+    end
 
     socket = maybe_check_version(socket)
 
@@ -243,6 +248,28 @@ defmodule AgentBoardWeb.BoardLive do
 
   # The board opens on the project the agent is actually working on; the
   # first active repository is the fallback.
+  defp refresh_merge_checks(socket) do
+    %{repo: repo, inspector_pr: selected, work: work, gate_heads: heads} = socket.assigns
+
+    numbers =
+      for task <- Map.get(work, :running, []),
+          {{:pull_request, number}, _} <- task.phases,
+          is_integer(number),
+          do: number
+
+    needs = for need <- Map.get(work, :needs, []), n = need[:pull_number], do: n
+    visible = needs ++ numbers
+    visible = if selected, do: [selected.number | visible], else: visible
+
+    snapshots =
+      for n <- Enum.uniq(visible),
+          snapshot = AgentBoard.MergeProgress.read(repo, n, heads[n]),
+          into: %{},
+          do: {n, snapshot}
+
+    assign(socket, :gate_snapshots, snapshots)
+  end
+
   defp default_repo(repos) do
     Enum.find(repos, &(&1.name == "o_colmex")) || List.first(repos)
   end
@@ -793,10 +820,12 @@ defmodule AgentBoardWeb.BoardLive do
             agent: agent
           )
 
+        heads = Board.pull_heads(repo.id)
+
         local_ci =
           LocalCI.by_pr(repo, agent.tickets,
             workpads: Board.agent_workpads(repo.id),
-            heads: Board.pull_heads(repo.id)
+            heads: heads
           )
 
         # The last answer: a runner that accepts and never answers would hold
@@ -808,6 +837,7 @@ defmodule AgentBoardWeb.BoardLive do
         assign(socket,
           repo: repo,
           local_ci: local_ci,
+          gate_heads: heads,
           board: board,
           flow: flow,
           resume: nil,
@@ -926,6 +956,11 @@ defmodule AgentBoardWeb.BoardLive do
 
   def handle_info({:composer_timeout, ref}, socket),
     do: {:noreply, ComposerLifecycle.timeout(socket, ref)}
+
+  def handle_info(:merge_check_tick, socket) do
+    Process.send_after(self(), :merge_check_tick, 2_000)
+    {:noreply, refresh_merge_checks(socket)}
+  end
 
   def handle_info(:version_check, socket) do
     if Application.get_env(:agent_board, :version_check_on_mount, true) do
@@ -1149,6 +1184,7 @@ defmodule AgentBoardWeb.BoardLive do
       |> LogMonitor.sync(params)
       |> load_inspector()
       |> load_panel()
+      |> refresh_merge_checks()
       |> ComposerLifecycle.load_routing()
 
     # Entering "Hoje" from an already loaded repository reads the other
@@ -3023,6 +3059,7 @@ defmodule AgentBoardWeb.BoardLive do
                 <div :if={not empty?(@board)} class="ab-lanes">
                   <.now_lane
                     running={@work.running}
+                    gates={@gate_snapshots}
                     retrying={@work.retrying}
                     frozen={@freshness.frozen?}
                     frozen_at={@freshness.at}
@@ -3032,6 +3069,7 @@ defmodule AgentBoardWeb.BoardLive do
                   />
                   <.needs_you
                     needs={@work.needs}
+                    gates={@gate_snapshots}
                     max={if @needs_expanded, do: 999, else: 5}
                     selected={@conversation && @conversation.id}
                     last_visit={@last_visit}
@@ -3134,6 +3172,7 @@ defmodule AgentBoardWeb.BoardLive do
             dispatch_fallback={@inspector_dispatch_fallback}
             usage={@inspector_usage}
             pr={@inspector_pr}
+            gate={@inspector_pr && @gate_snapshots[@inspector_pr.number]}
             ci={@inspector_ci}
             failure={@inspector_failure}
             tz_offset={@tz_offset}

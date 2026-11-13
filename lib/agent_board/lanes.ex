@@ -282,6 +282,7 @@ defmodule AgentBoard.Lanes do
       title: task.title,
       why: task_why(task, kind, ticket, pull, context),
       ci: ci,
+      pull_number: pull && pull.number,
       age_seconds: Time.age_seconds(at, context.now),
       is_new: new?(at, context.last_visit),
       actions: need_actions(task, kind, pull, context)

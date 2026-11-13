@@ -25,6 +25,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   attr :dispatch_ceiling, :float, default: 5.0
   attr :dispatch_fallback, :any, default: nil
   attr :usage, :map, default: nil
+  attr :gate, :map, default: nil
   attr :pr, :any, default: nil
   attr :ci, :map, default: nil
   attr :tz_offset, :integer, default: 0
@@ -322,7 +323,8 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               offset={@tz_offset}
             />
           <% "pr" -> %>
-            <.pr_tab pr={@pr} ci={@ci} offset={@tz_offset} />
+            <AgentBoardWeb.BoardComponents.MergeProgress.progress :if={@pr} snapshot={@gate} />
+            <.pr_tab gate={@gate} pr={@pr} ci={@ci} offset={@tz_offset} />
           <% "privado" -> %>
             <.live_component
               module={AgentBoardWeb.BoardComponents.PrivatePanel}
@@ -1145,12 +1147,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
             mesclado às {Time.local_time(@pr.merged_at, @offset)}
           </span>
           <span
+            :if={!@gate}
             class={["ab-meta", local_ci_pass?(@ci) && "ab-ci-local"]}
             title={pr_ci_title(@pr, @ci)}
           >
             {pr_ci(@pr, @ci)}
           </span>
-          <span class="ab-meta">{pr_review(@pr.review_state)}</span>
+          <span :if={!@gate} class="ab-meta">{pr_review(@pr.review_state)}</span>
         </div>
         <a
           :if={@pr.url}
