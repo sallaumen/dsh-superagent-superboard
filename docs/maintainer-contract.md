@@ -5,7 +5,7 @@ requires this guide when changing application behavior. Operator setup lives
 in [README.md](../README.md); validation lives in [PIPELINES.md](../PIPELINES.md).
 The general Elixir patterns behind these rules (network clients, per-item sync
 isolation, LiveView loading and async jobs, claims before effects, test knobs) are
-in the kit's [Elixir references](https://github.com/sallaumen/elixir-agent-kit/blob/v0.8.0/priv/library/ELIXIR.md);
+in the kit's [Elixir references](https://github.com/sallaumen/elixir-agent-kit/blob/v1.0.0/priv/library/ELIXIR.md);
 this contract fixes the board's own values, events and limits, and wins where they
 differ. Change a general rule upstream, not here.
 

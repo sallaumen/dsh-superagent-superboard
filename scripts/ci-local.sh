@@ -44,6 +44,7 @@ run_frontend() {
   CURRENT="frontend"
   echo "== frontend: check_assets -> assets.setup -> build -> deploy (MIX_ENV=dev) =="
   require_mix
+  npm audit --prefix scripts/agent/alpine --audit-level=low
   bash scripts/check_assets.sh
   MIX_ENV="dev" mix assets.setup
   MIX_ENV="dev" mix assets.build

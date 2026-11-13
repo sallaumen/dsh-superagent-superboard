@@ -12,6 +12,7 @@ defmodule AgentBoard.PipelineContractTest do
   test "gate is check-only and mirrors the CI gates job" do
     assert aliases()[:gate] == [
              "deps.unlock --check-unused",
+             "hex.audit",
              "agent_kit.check",
              "compile --warnings-as-errors",
              "format --check-formatted",
@@ -80,6 +81,7 @@ defmodule AgentBoard.PipelineContractTest do
           "mix format --check-formatted",
           "mix credo --strict",
           "mix deps.unlock --check-unused",
+          "mix hex.audit",
           "mix agent_kit.check",
           "mix test --partitions 4",
           "check_assets.sh",

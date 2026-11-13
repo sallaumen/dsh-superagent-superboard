@@ -6,7 +6,7 @@ This document answers "which script do I run now?". It defines the repository's 
 
 | Pipeline | What it validates | Canonical script | `make` target | CI job |
 |---|---|---|---|---|
-| Backend | Orphan dependencies, agent practices, warnings, formatting, credo, Dialyzer, tests (the secret scan among them), and Sobelow | `mix gate` + `mix sobelow --exit` | `make backend` | `gates` + `backend` (Dialyzer local only for now) |
+| Backend | Orphan dependencies, Hex advisory audit, agent practices, warnings, formatting, credo, Dialyzer, tests (the secret scan among them), and Sobelow | `mix gate` + `mix sobelow --exit` | `make backend` | `gates` + `backend` (Dialyzer local only for now) |
 | Frontend | Asset sources, setup, build, and deploy | `scripts/check_assets.sh` + asset tasks | `make frontend` | `frontend · assets` |
 | Library | References to the versioned kit | `mix agent_kit.check` | `make library` | `biblioteca de capacidades` (capability library) |
 | Mixed (release) | The combined path of a deploy | release sequence (below) | `make release` | `release · caminho misto` (mixed path) |
@@ -55,6 +55,8 @@ body: changes to those contracts require checking the consumers.
 | [scripts/service.sh](scripts/service.sh) | Start the server via launchd, or for manual diagnosis | `mix` on the PATH; `MIX_ENV=dev` and `PORT=4099` by default; waits for Postgres at `AGENT_BOARD_DB_HOST`:`AGENT_BOARD_DB_PORT` (`127.0.0.1:5434`) for up to `AGENT_BOARD_DB_WAIT` seconds (300); with `AGENT_BOARD_LOG` set (the plist sets it), rotates the log above `AGENT_BOARD_LOG_MAX_BYTES` (50 MB); all overridable from the environment | with `AGENT_BOARD_LOG`, moves the log to `<log>.1` if it passed the limit (one old copy) and starts writing to it; waits for the database (`pg_isready`, or `nc` without it) and exits with 75 if it does not respond, so launchd tries again; then `deps.get`, `ecto.migrate`, and starts a persistent process with `PHX_SERVER=true`; accesses configured services | server active; not a gate and does not run in CI |
 | [scripts/agent/keepalive.sh](scripts/agent/keepalive.sh) | Restart the agent orchestrator when it went down without a deliberate `stop`; launchd runs it at login and every 5 min ([ops/com.dsh.superagent.plist](ops/com.dsh.superagent.plist)) | `python3` on the PATH; `DSH_SUPERAGENT_HOME` points to the prototype (default in `scripts/agent/_common.sh`); log in `DSH_SUPERAGENT_KEEPALIVE_LOG` (`~/Library/Logs/dsh-superagent-keepalive.log`) | asks `scripts/dsh-superagent status`; if the agent went down and the `manually-stopped` marker is absent, runs `start --respect-stop`, which opens `dsh` in the `dsh-superagent` tmux session; status 2 or 3 only logs; one log line per action, log moved to `.1` above 1 MB | agent up, or nothing to do; not a gate and does not run in CI |
 
+The backend gate runs `mix hex.audit` on the lockfile; the frontend preflight runs `npm audit --prefix scripts/agent/alpine` on the optional Harness installer. Both query package advisories and must pass. An unavailable registry is not a clean result.
+
 Before delivering any PR, run **`scripts/ci-local.sh all`**. It runs backend,
 frontend, and library sequentially and fails at the first red pipeline. During
 the work, use `make` for an isolated pipeline. When the deployment path changes,
@@ -101,7 +103,7 @@ CI's goal is still to verify in a clean environment; the rule only avoids blocki
 ## Adopting this design in another project
 
 1. Copy the `Makefile` structure: one target per pipeline, keeping the local checks equivalent to the corresponding CI jobs.
-2. For the library, follow the [kit installation prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v0.8.0/docs/INSTALL_WITH_AI.md) and run `mix agent_kit.check` after downloading the dependencies.
+2. For the library, follow the [kit installation prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v1.0.0/docs/INSTALL_WITH_AI.md) and run `mix agent_kit.check` after downloading the dependencies.
 3. Adapt the release job to your stack: build assets in the environment where the frontend tools exist and assemble the artifact in the production environment.
 4. Keep this matrix up to date when a new script appears — a script without a row here has no defined "when to use".
 

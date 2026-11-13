@@ -10,14 +10,14 @@ Check the [agent requirements table](../getting-started.md#connect-the-super-age
 
 Tested with Alpine `3.24.3`, musl, Node `22.23.5`, pnpm `11.7.0` and Harness `0.2.1-rc.3`. In the board's OS account, use a **Node 22 build for musl** (for containers, the [official Node 22 Alpine image](https://hub.docker.com/_/node) provides it). Install `procps-ng`, Python 3, tmux, Git and GitHub CLI on the agent machine. The native npm build may also need `cmake`, `build-base` and `linux-headers`.
 
-From the board checkout, install the CLI into a **dedicated directory**. The manifest pins Koffi for this installation only; it does not replace system packages or copy a profile.
+From the board checkout, install the CLI into a **dedicated directory**. The lockfile pins the audited dependency tree, including the Koffi build for musl. Use the same two files and `npm ci` to update this dedicated installation. An existing global Harness is not updated by the board.
 
 ```sh
 node --version   # 22.19+ on the 22.x line
 agent_tools="$HOME/.local/share/superboard/alpine-harness"
 mkdir -p "$agent_tools"
-cp scripts/agent/alpine/package.json "$agent_tools/"
-npm install --prefix "$agent_tools"
+cp scripts/agent/alpine/package.json scripts/agent/alpine/package-lock.json "$agent_tools/"
+npm ci --prefix "$agent_tools"
 export PATH="$agent_tools/node_modules/.bin:$PATH"
 dsh --version
 node priv/agent/check-alpine-harness.cjs "$(command -v dsh)"
@@ -247,7 +247,7 @@ only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
 - Treat a `ready` report as evidence only for what it names. A report that
   names no practice file read means the kit was not loaded; a model name
   establishes nothing. The kit's
-  [compatibility note](https://github.com/sallaumen/elixir-agent-kit/blob/v0.8.0/docs/compatibility.md)
+  [compatibility note](https://github.com/sallaumen/elixir-agent-kit/blob/v1.0.0/docs/compatibility.md)
   describes the fresh-session check.
 - **Recommended: [Ponytail](https://github.com/DietrichGebert/ponytail) on
   every executor.** It keeps the executor to the least new code that solves the

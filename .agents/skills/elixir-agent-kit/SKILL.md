@@ -3,7 +3,7 @@ name: elixir-agent-kit
 description: "Use first, before opening source files to change behavior or review code in this Elixir project, when the task matches a shared workflow: screens and accessibility, data and migrations, provider calls, asynchronous or process state, performance, tests, code review, debugging, build or delivery. Routes to the versioned Elixir Agent Kit read from the Mix dependency."
 ---
 
-# Elixir Agent Kit 0.8.0
+# Elixir Agent Kit 1.0.0
 
 Before opening any source file for a change or a review:
 
@@ -11,16 +11,21 @@ Before opening any source file for a change or a review:
    stored data or a provider call, code quality or process state, an operational
    domain, or delivery. Then name its size (small, medium or large), revising it
    after the first inspection when the code shows otherwise.
-2. Pick one workflow from the tables below. When two neighbors fit, the
-   [routing guide](../../../deps/elixir_agent_kit/priv/library/ROUTING.md) separates them. A bounded, fully specified
-   edit picks NONE.
+2. Pick one workflow from the tables below and let the size from step 1 change
+   the choice: a small, fully specified edit picks NONE; a medium task picks the
+   narrowest workflow for its one risk; a large task picks the workflow for its
+   primary risk and uses its `Size` section to slice it, or
+   [delivery-coordination](../../../deps/elixir_agent_kit/priv/library/skills/delivery-coordination/SKILL.md) when the
+   work is several deliveries across owners. When two neighbors fit, the
+   [routing guide](../../../deps/elixir_agent_kit/priv/library/ROUTING.md) separates them.
 3. Read that workflow's SKILL.md from the dependency together with the
    [shared contract](../../../deps/elixir_agent_kit/priv/library/CONTRACT.md); copy neither into this project.
 4. State the workflow ID or NONE and the size in your reply or report, with the
    reason in one line and the workflow's `Start at` input as the first thing you
-   open; then investigate the way the workflow says, producing the artifact its
-   first step asks for. The local contracts say what this project must do; the
-   workflow says how to inspect, decide and prove it.
+   open; then apply its `Size` section for the stated size, investigate the way
+   the workflow says, and produce the artifact its first step asks for. The local
+   contracts say what this project must do; the workflow says how to inspect,
+   decide and prove it.
 5. For a large task, before the first edit, write the plan from the
    [task-plan template](../../../deps/elixir_agent_kit/priv/library/templates/task-plan.md) in
    `.elixir-agent-kit/plans/`, following the contract's

@@ -160,7 +160,7 @@ pipeline contract.
 ## Shared practices
 
 The board consumes the [Elixir Agent Kit](https://github.com/sallaumen/elixir-agent-kit)
-through a tag pinned in `mix.exs` (v0.8.0 today), only in dev/test. After
+through a tag pinned in `mix.exs` (v1.0.0 today), only in dev/test. After
 `mix deps.get`, use [.elixir-agent-kit/START.md](../.elixir-agent-kit/START.md):
 it points to the dependency's contract and workflows. Only the small index, the
 ownership state, and the references in `AGENTS.md`/`CLAUDE.md` stay in this

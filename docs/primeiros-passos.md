@@ -39,7 +39,17 @@ Esta etapa é opcional. O [DeepSeek Harness](https://www.deepseek.com/en/harness
 | Execução | `Python 3.8+` e `tmux` |
 | Conta | Uma conta GitHub separada para o bot, com acesso de escrita; um provedor de modelo configurado no perfil do Harness |
 
-1. Instale o [comando do Harness](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#install): `npm install -g @deepseek-ai/dsh@0.2.1-rc.3`. Confira com `dsh --version`. No Debian, instale `procps`. No Alpine, substitua o comando global do npm pelos [passos para Alpine](#instalação-no-alpine-linux-arm64).
+1. Na pasta do board, instale o Harness com as versões fixadas abaixo. Use um diretório próprio e mantenha o `bin` no PATH que inicia o board. No Debian instale `procps`; no Alpine confira também os [pré-requisitos da plataforma](#instalação-no-alpine-linux-arm64).
+
+   ```sh
+   agent_tools="$HOME/.local/share/superboard/harness"
+   mkdir -p "$agent_tools"
+   cp scripts/agent/alpine/package.json scripts/agent/alpine/package-lock.json "$agent_tools/"
+   npm ci --prefix "$agent_tools"
+   export PATH="$agent_tools/node_modules/.bin:$PATH"
+   dsh --version
+   ```
+
 2. Para o provedor padrão da API DeepSeek, defina `DEEPSEEK_API_KEY` no `.env.local` e reinicie o board. Para usar outro provedor, configure-o no [Harness](https://www.deepseek.com/en/harness/).
 3. [Entre com a conta do bot](agent/setup.md#2-the-bot-identity) e confira o login do GitHub. Deixe o board criar o perfil do projeto.
 
@@ -64,8 +74,8 @@ Na pasta do board, instale o Harness em um diretório próprio. O manifesto sele
 node --version   # 22.19+ na linha 22.x
 agent_tools="$HOME/.local/share/superboard/alpine-harness"
 mkdir -p "$agent_tools"
-cp scripts/agent/alpine/package.json "$agent_tools/"
-npm install --prefix "$agent_tools"
+cp scripts/agent/alpine/package.json scripts/agent/alpine/package-lock.json "$agent_tools/"
+npm ci --prefix "$agent_tools"
 export PATH="$agent_tools/node_modules/.bin:$PATH"
 dsh --version
 node priv/agent/check-alpine-harness.cjs "$(command -v dsh)"
