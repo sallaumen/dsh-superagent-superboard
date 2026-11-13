@@ -749,6 +749,8 @@ Agora and the detail):
 
 ## Setup
 
+A fresh `mix setup` creates the schema with no tracked repositories. Adding a repository is the operator’s choice. Existing installations keep their projects.
+
 What the board needs to work, in dependency order, is one contract
 (`AgentBoard.Setup`), read by Settings (AI and setup, the first section) and
 by nothing else that computes it on its own. Each row has a class (`:work`

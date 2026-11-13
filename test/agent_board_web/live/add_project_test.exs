@@ -201,6 +201,9 @@ defmodule AgentBoardWeb.AddProjectTest do
       Application.put_env(:agent_board, :fake_first_ready, {:error, :dsh_missing})
       view = add_first(conn, "nodsh")
 
+      assert has_element?(view, "#agent-install", "Instale o DeepSeek Harness")
+      refute Board.repository_by_slug("fixture/nodsh")
+
       assert render(view) =~ "o comando dsh do DeepSeek Harness não está nela"
       refute has_element?(view, "#add-project-confirm")
     end
@@ -208,6 +211,9 @@ defmodule AgentBoardWeb.AddProjectTest do
     test "without a sign-in for the agent the form points at AI and setup", %{conn: conn} do
       Application.put_env(:agent_board, :fake_first_ready, {:error, :bot_missing})
       view = add_first(conn, "nobot")
+
+      assert has_element?(view, "#agent-install code", "GH_CONFIG_DIR")
+      refute Board.repository_by_slug("fixture/nobot")
 
       assert render(view) =~ "ele ainda não tem login no GitHub"
       refute has_element?(view, "#add-project-confirm")

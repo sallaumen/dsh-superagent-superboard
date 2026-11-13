@@ -14,6 +14,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
+  alias AgentBoard.GitHub
   alias AgentBoard.Orchestrator
   alias AgentBoard.Superagents
   alias AgentBoardWeb.BoardComponents.AgentAction
@@ -53,17 +54,20 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
     # Agents installed outside the board: a few small files, read only while
     # this section is on screen.
-    {:ok, socket |> assign(:expanded, expanded) |> read_profiles()}
+    {:ok,
+     socket
+     |> assign(expanded: expanded, github_configured?: GitHub.configured?())
+     |> read_profiles()}
   end
 
   defp read_profiles(socket) do
     if socket.assigns.active and socket.assigns.project_path == "agent" do
-      assign(socket,
-        installed: Superagents.unregistered(),
-        source?: match?({:ok, _}, Superagents.default_source())
-      )
+      installed = Superagents.unregistered()
+      source? = match?({:ok, _}, Superagents.default_source())
+      readiness = if installed == [] and not source?, do: Superagents.first_ready()
+      assign(socket, installed: installed, source?: source?, first_ready: readiness)
     else
-      assign(socket, installed: [], source?: false)
+      assign(socket, installed: [], source?: false, first_ready: nil)
     end
   end
 
@@ -405,7 +409,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                 <span class="ab-project__owner">{repo.owner}/</span><strong>{repo.name}</strong>
               </p>
               <p class="ab-project__access">
-                {gettext("The board follows it; no agent works on it.")}
+                {gettext(
+                  "GitHub tracking is on. No agent is connected to this board for this repository."
+                )}
               </p>
             </div>
 
@@ -421,7 +427,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                 type="button"
                 class="ab-btn ab-btn--sm"
                 aria-label={
-                  gettext("Create agent for %{project}", project: "#{repo.owner}/#{repo.name}")
+                  gettext("Connect an agent for %{project}", project: "#{repo.owner}/#{repo.name}")
                 }
                 phx-click={
                   JS.push("prefill_project",
@@ -431,7 +437,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                 }
                 disabled={@provisioning}
               >
-                {gettext("Create agent…")}
+                {gettext("Connect agent…")}
               </button>
             </div>
           </div>
@@ -446,9 +452,28 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
       >
         <h3 id="agent-install-title">{gettext("Connect a DeepSeek profile")}</h3>
         <p :if={@installed == [] && !@source?} class="ab-meta">
-          {gettext(
-            "No profile detected. Install DeepSeek Harness and sign in with the bot account. Then enter the repository below to review the first agent installation, or follow the manual guide."
-          )}
+          {case @first_ready do
+            {:error, :dsh_missing} ->
+              gettext(
+                "No profile found. Install DeepSeek Harness and its dsh command on the machine running the board. Then look for profiles again."
+              )
+
+            {:error, :bot_missing} ->
+              gettext(
+                "The Harness is installed. Sign in to GitHub with a separate bot account, then look for profiles again."
+              )
+
+            :ok ->
+              gettext(
+                "No profile found. Enter the repository and its local checkout below to review the first agent installation."
+              )
+
+            _ ->
+              gettext(
+                "No profile found. Follow the Super Agent setup guide, then look for profiles again."
+              )
+          end}
+          <code :if={@first_ready == {:error, :bot_missing}} class="break-all">{AgentBoard.Setup.bot_login_command()}</code>
         </p>
         <p :if={@installed != []} class="ab-meta">
           {gettext(
@@ -522,7 +547,12 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         aria-labelledby="add-project-title"
       >
         <h3 id="add-project-title">{gettext("Add project")}</h3>
-        <p :if={@project_path == "github"} class="ab-meta">
+        <p :if={@project_path == "github" and @github_configured?} class="ab-meta">
+          {gettext(
+            "A GitHub token is configured. Enter the repository owner and name. Tracking does not start an agent."
+          )}
+        </p>
+        <p :if={@project_path == "github" and not @github_configured?} class="ab-meta">
           {gettext(
             "To follow issues and pull requests, set GITHUB_TOKEN in .env.local and restart the board. Read access is enough. Then enter the repository below."
           )}
@@ -540,7 +570,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         <form id="track-repo" phx-submit="add_project" class="ab-project-add__form">
           <label>
             <span>{gettext("Owner")}</span>
-            <input name="owner" placeholder="sallaumen" value={@prefill["owner"]} required />
+            <input name="owner" placeholder="octocat" value={@prefill["owner"]} required />
           </label>
           <label>
             <span>{gettext("Repository")}</span>

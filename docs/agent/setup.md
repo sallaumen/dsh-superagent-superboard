@@ -12,22 +12,16 @@ The agent acts as its own GitHub account, never as you:
 
 ```sh
 mkdir -p ~/.config/gh-agent
-GH_CONFIG_DIR=~/.config/gh-agent gh auth login      # log in as the bot
+env -u GH_TOKEN -u GITHUB_TOKEN GH_CONFIG_DIR=~/.config/gh-agent gh auth login      # log in as the bot
 ```
 
-`~/.local/bin/gh-agent` is a one-line wrapper:
+Verify the separate sign-in **before** starting installation. The login below must be the bot, not the account used by the board:
 
 ```sh
-#!/bin/sh
-GH_CONFIG_DIR="$HOME/.config/gh-agent" exec gh "$@"
+env -u GH_TOKEN -u GITHUB_TOKEN GH_CONFIG_DIR="$HOME/.config/gh-agent" gh api user --jq .login
 ```
 
-Verify:
-
-```sh
-gh-agent auth status          # the bot's login
-gh-agent api user --jq .login # must print the bot, not you
-```
+When you install through Settings, the board creates the bot wrapper at `~/.local/bin/gh-agent` if missing. For a manual installation, follow the [upstream account instructions](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#agent-github-account).
 
 ## 3. The profile
 
