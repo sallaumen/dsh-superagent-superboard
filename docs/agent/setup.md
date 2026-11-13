@@ -1,21 +1,10 @@
 # Setting the agent up on another machine
 
-Starting from zero — installing DeepSeek Harness, learning Creator Mode,
-putting the first Super-Agent on a repository — is the
-[learning path](learning-path.md); this document is the precise, machine-by-machine
-reference once the pieces exist.
-
-The agent needs four things: Node + DeepSeek Harness, a profile, a GitHub
-identity for the bot, and a repository it is allowed to touch.
+For a first installation from Settings, use [Connect the Super Agent](../getting-started.md#connect-the-super-agent). This reference covers the bot account, profiles, startup and merge policy.
 
 ## 1. Prerequisites
 
-```sh
-node --version          # 22+
-dsh --version           # DeepSeek Harness
-gh --version
-git --version
-```
+Check the [agent requirements table](../getting-started.md#connect-the-super-agent) before setting up the bot account. On the host, run `dsh --version` to confirm the Harness CLI is available to the board.
 
 ## 2. The bot identity
 
