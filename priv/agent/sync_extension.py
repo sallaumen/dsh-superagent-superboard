@@ -35,7 +35,7 @@ def replace(path, value):
 
 class Binding:
     def __init__(self, directory):
-        self.directory = directory
+        self.directory = directory.resolve(strict=True)
         self.link = directory / "node_modules" / PACKAGE
         self.manifest = directory / "package.json"
         self.lockfile = directory / "pnpm-lock.yaml"

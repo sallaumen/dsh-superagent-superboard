@@ -13,7 +13,7 @@ class ProfileBinding(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
-        self.root = Path(temp.name)
+        self.root = Path(temp.name).resolve()
         self.source = self.root / "source"
         self.source.mkdir()
         self.profile = self.root / "profiles" / "arena"
