@@ -24,6 +24,7 @@ defmodule AgentBoard.Superagents.DshProvisioner do
 
   @wrapper """
   #!/bin/sh
+  unset GH_TOKEN GITHUB_TOKEN
   GH_CONFIG_DIR="$HOME/.config/gh-agent" exec gh "$@"
   """
 
@@ -58,7 +59,7 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     cond do
       not dsh?() -> {:error, :dsh_missing}
       not Bot.signed_in?() -> {:error, :bot_missing}
-      true -> :ok
+      true -> manager_tools()
     end
   end
 
@@ -67,6 +68,17 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     case Application.get_env(:agent_board, :dsh_on_path) do
       nil -> System.find_executable("dsh") != nil
       found -> found
+    end
+  end
+
+  # BusyBox has a ps binary but cannot list the process fields the manager needs.
+  # Probe only the board process, discarding its output (no command lines logged).
+  defp manager_tools do
+    case System.cmd("/usr/bin/env", ["ps", "-ww", "-p", System.pid(), "-o", "pid=,ucomm=,args="],
+           stderr_to_stdout: true
+         ) do
+      {_output, 0} -> :ok
+      _other -> {:error, :ps_missing}
     end
   end
 
@@ -282,35 +294,13 @@ defmodule AgentBoard.Superagents.DshProvisioner do
     end
   end
 
+  # A fresh profile starts in "waiting for setup" (exit 3). Its API must
+  # be reachable so configure/3 can supply the repository and bot.
   defp start(superagent) do
-    args = [
-      DshManager.script(),
-      "--profile",
-      superagent.profile,
-      "--url",
-      url(superagent),
-      "start"
-    ]
-
-    case System.cmd("python3", args, stderr_to_stdout: true) do
-      {output, 0} ->
-        _ = output
-        :ok
-
-      {output, _code} when byte_size(output) > 0 ->
-        # The manager treats a slow first boot as a failed start but leaves the
-        # process running; the API check below is the real readiness gate.
-        if String.contains?(output, "Startup health check timed out") do
-          :ok
-        else
-          {:error, {:manager, 1, String.slice(output, 0, 500)}}
-        end
-
-      {output, code} ->
-        {:error, {:manager, code, String.slice(output, 0, 500)}}
+    case DshManager.start(superagent) do
+      {:error, {:manager, 3, _output}} -> :ok
+      result -> result
     end
-  rescue
-    exception -> {:error, exception}
   end
 
   defp wait_api(superagent, attempts) do

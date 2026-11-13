@@ -208,6 +208,21 @@ defmodule AgentBoardWeb.AddProjectTest do
       refute has_element?(view, "#add-project-confirm")
     end
 
+    test "an incompatible ps points to the fix before registering the repo", %{conn: conn} do
+      Application.put_env(:agent_board, :fake_first_ready, {:error, :ps_missing})
+      view = add_first(conn, "busybox")
+
+      assert has_element?(view, "#agent-install", "Instale procps")
+
+      assert has_element?(
+               view,
+               "#agent-install a[href$='primeiros-passos.md#conectar-o-super-agent']"
+             )
+
+      refute has_element?(view, "#add-project-confirm")
+      refute Board.repository_by_slug("fixture/busybox")
+    end
+
     test "without a sign-in for the agent the form points at AI and setup", %{conn: conn} do
       Application.put_env(:agent_board, :fake_first_ready, {:error, :bot_missing})
       view = add_first(conn, "nobot")

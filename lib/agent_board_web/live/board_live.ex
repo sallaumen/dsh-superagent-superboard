@@ -1242,7 +1242,7 @@ defmodule AgentBoardWeb.BoardLive do
          phrase: Actions.phrase(action, params, Locale.language())
        })}
     else
-      {:error, reason} when reason in [:dsh_missing, :bot_missing] ->
+      {:error, reason} when reason in [:dsh_missing, :bot_missing, :ps_missing] ->
         {:noreply, put_flash(socket, :error, first_agent_blocked(reason))}
 
       {:error, reason} ->
@@ -1274,6 +1274,12 @@ defmodule AgentBoardWeb.BoardLive do
     do:
       gettext(
         "This would be the machine's first agent, and the dsh command of DeepSeek Harness is not on it. Install the Harness and its command, then add the project again."
+      )
+
+  defp first_agent_blocked(:ps_missing),
+    do:
+      gettext(
+        "The agent needs a full ps command to start. Install procps (procps-ng on Alpine), then review the installation again."
       )
 
   defp first_agent_blocked(:bot_missing),

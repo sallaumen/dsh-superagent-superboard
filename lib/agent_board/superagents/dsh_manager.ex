@@ -173,9 +173,11 @@ defmodule AgentBoard.Superagents.DshManager do
   defp same_login?(_entry, _login), do: false
 
   defp manager(superagent, command) do
-    args = ["--profile", superagent.profile, "--url", url(superagent), command]
+    args = ["--profile", superagent.profile, "--url", origin(superagent), command]
 
-    case System.cmd("python3", [script() | args], stderr_to_stdout: true) do
+    opts = [stderr_to_stdout: true, env: [{"GH_TOKEN", nil}, {"GITHUB_TOKEN", nil}]]
+
+    case System.cmd("python3", [script() | args], opts) do
       {_output, 0} ->
         :ok
 
@@ -287,5 +289,6 @@ defmodule AgentBoard.Superagents.DshManager do
     end
   end
 
-  defp url(superagent), do: "http://127.0.0.1:#{superagent.port}/orchestrator/api"
+  defp origin(superagent), do: "http://127.0.0.1:#{superagent.port}"
+  defp url(superagent), do: origin(superagent) <> "/orchestrator/api"
 end

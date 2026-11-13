@@ -9476,3 +9476,10 @@ msgstr "Conectar um agente a %{project}"
 #, elixir-autogen, elixir-format
 msgid "GitHub tracking is on. No agent is connected to this board for this repository."
 msgstr "O GitHub está sendo acompanhado. Nenhum agente está conectado a este board para este repositório."
+
+#: lib/agent_board/actions.ex:1531
+#: lib/agent_board_web/live/board_components/settings/projects.ex:462
+#: lib/agent_board_web/live/board_live.ex:1281
+#, elixir-autogen, elixir-format
+msgid "The agent needs a full ps command to start. Install procps (procps-ng on Alpine), then review the installation again."
+msgstr "O agente precisa do comando ps completo para iniciar. Instale procps (procps-ng no Alpine) e revise a instalação novamente."

@@ -334,6 +334,15 @@ defmodule AgentBoard.Superagents.DshProvisionerTest do
     test "gets a profile of its own, the bot's CLI and the owner as the one allowed", context do
       %{first: first, home: home} = context
 
+      # The real manager appends /orchestrator/api itself and returns 3
+      # until the first repository is configured.
+      File.write!(Path.join(context.root, "manager.py"), """
+      import os, sys
+      assert sys.argv[sys.argv.index('--url') + 1] == 'http://127.0.0.1:#{first.port}'
+      assert 'GH_TOKEN' not in os.environ and 'GITHUB_TOKEN' not in os.environ
+      sys.exit(3 if sys.argv[-1] == 'start' else 0)
+      """)
+
       assert {:ok, %{profile: "first"}} =
                DshProvisioner.provision(first, :first, %{path: context.checkout, workers: 2})
 
@@ -355,6 +364,26 @@ defmodule AgentBoard.Superagents.DshProvisionerTest do
       cli = Path.join(context.root, "bin/gh-agent")
       assert File.read!(cli) =~ ~s(GH_CONFIG_DIR="$HOME/.config/gh-agent" exec gh "$@")
       assert Bitwise.band(File.stat!(cli).mode, 0o111) != 0
+      # Even a caller with owner credentials must run gh as the bot.
+      fake_gh = Path.join(Path.dirname(cli), "gh")
+
+      File.write!(
+        fake_gh,
+        "#!/bin/sh\ntest -z \"$GH_TOKEN$GITHUB_TOKEN\" && echo \"$GH_CONFIG_DIR\""
+      )
+
+      File.chmod!(fake_gh, 0o755)
+
+      assert {identity_dir, 0} =
+               System.cmd(cli, ["api", "user"],
+                 env: [
+                   {"PATH", Path.dirname(cli)},
+                   {"GH_TOKEN", "owner"},
+                   {"GITHUB_TOKEN", "owner"}
+                 ]
+               )
+
+      assert String.trim(identity_dir) == Path.expand("~/.config/gh-agent")
 
       # The settings: the agent's own defaults, with what a first agent lacks.
       assert_received {:saved, "/settings/source:github", %{"value" => %{"config" => source}}}
