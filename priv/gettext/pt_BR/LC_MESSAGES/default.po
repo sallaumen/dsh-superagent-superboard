@@ -9885,3 +9885,11 @@ msgstr "Regras de merge configuradas nesta máquina"
 #, elixir-autogen, elixir-format
 msgid "No merge policy configured for this project."
 msgstr "Este projeto não tem regras de merge configuradas."
+
+msgid "Agent maintenance"
+msgstr "Manutenção dos agentes"
+
+msgid "%{count} connected"
+msgid_plural "%{count} connected"
+msgstr[0] "%{count} conectado"
+msgstr[1] "%{count} conectados"

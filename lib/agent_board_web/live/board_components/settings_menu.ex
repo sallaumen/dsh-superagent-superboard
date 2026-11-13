@@ -238,7 +238,6 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane settings-pane--projects"
           aria-labelledby="settings-projects-title"
         >
-          <h3 id="settings-projects-title">{gettext("Projects")}</h3>
           <.live_component
             module={Projects}
             id="settings-projects"

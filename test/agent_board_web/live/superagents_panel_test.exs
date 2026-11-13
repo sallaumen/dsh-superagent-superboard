@@ -41,7 +41,12 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
              "#project-#{superagent.id} a[href='http://127.0.0.1:#{superagent.port}/']"
            )
 
-    refute has_element?(view, "#project-setup-options[open]")
+    assert has_element?(view, "#project-setup-options[hidden]")
+
+    assert has_element?(
+             view,
+             ".ab-projects__list + details:not([open]) form[action='/superagents/synchronize']"
+           )
 
     # The button posts to the board, with the session's token; no address is in the page.
     form = "#project-#{superagent.id}-panel-form"
@@ -387,7 +392,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert superagent.max_workers == 2
   end
 
-  test "each project keeps its own agent pool and the list sums the total", %{conn: conn} do
+  test "each project keeps its own agent pool and the header counts repositories", %{conn: conn} do
     {:ok, one} = Board.add_repository("fixture", "pool-one")
     {:ok, two} = Board.add_repository("fixture", "pool-two")
     first = superagent!(one, %{max_workers: 2})
@@ -395,7 +400,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     {:ok, view, _html} = live(conn, "/?repo=fixture/pool-one&panel=settings&section=projects")
 
-    assert has_element?(view, ".ab-projects__summary", "6 agentes")
+    assert has_element?(view, "#settings-projects-title", "2 conectados")
     assert has_element?(view, "#project-#{first.id} .ab-project__agent-count", "2")
     assert has_element?(view, "#project-#{second.id} .ab-project__agent-count", "4")
 
@@ -510,7 +515,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert has_element?(view, row, "fixture/tracked-only")
     assert has_element?(view, row, "Sem agente")
     refute has_element?(view, "#tracked-#{with_agent.id}")
-    assert has_element?(view, ".ab-projects__summary", "1 sem agente")
+    assert has_element?(view, "#settings-projects-title", "2 conectados")
 
     view |> element("#{row} button", "Conectar agente") |> render_click()
 

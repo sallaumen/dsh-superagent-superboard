@@ -2515,8 +2515,10 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   .ab-project-access__actions .ab-btn, .ab-project-access__form .ab-btn { min-height: 40px; }
 }
 .ab-projects__maintenance { display: grid; justify-items: start; gap: var(--space-2); overflow-wrap: anywhere; }
-.ab-projects__summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 0; color: var(--ink-muted); font-size: 12.5px; line-height: 18px; }
-.ab-projects__summary span { white-space: nowrap; }
+.ab-projects__heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); }
+.ab-projects__heading small { color: var(--ink-muted); font-size: 13px; font-weight: 400; }
+.ab-projects__heading .ab-btn, #project-runtime-maintenance summary { min-height: 44px; align-content: center; }
+#project-runtime-maintenance form { margin: var(--space-2) 0; }
 .ab-project-add__worker-input::-webkit-inner-spin-button, .ab-project-add__worker-input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
 .ab-project-add__worker-input { appearance: textfield; -moz-appearance: textfield; width: 54px; height: 36px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: center; }
 
