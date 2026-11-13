@@ -13,6 +13,8 @@ import sys
 import tempfile
 import urllib.request
 
+import sync_extension as extension
+
 HERE = Path(__file__).resolve().parent
 ROOT = Path.home() / ".local/share/superboard/runtimes"
 MANIFEST = HERE / "harness"
@@ -37,7 +39,8 @@ def lock(path):
 
 def prepare(expected_lock=None):
     digest = hashlib.sha256((MANIFEST / "package-lock.json").read_bytes()).hexdigest()
-    if expected_lock is not None and digest != expected_lock:
+    package_digest = hashlib.sha256((MANIFEST / "package-lock.json").read_bytes() + extension.PATCH.read_bytes()).hexdigest()
+    if expected_lock is not None and package_digest != expected_lock:
         raise Skip("changed")
     dest = ROOT / digest
     with lock(ROOT / ".install.lock"):
@@ -73,12 +76,14 @@ LOCAL_HTTP = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedi
 
 
 class Profile:
-    def __init__(self, profile, port, repo, manager, state):
+    def __init__(self, profile, port, repo, manager, state, profiles_root=None):
         if not re.fullmatch(r"[a-zA-Z0-9_][A-Za-z0-9_.-]*", profile) or not 0 < port < 65536:
             raise ValueError("invalid profile")
         self.profile, self.repo, self.state = profile, repo, Path(state).resolve()
         self.origin = f"http://127.0.0.1:{port}"
         self.cmd = [sys.executable, manager, "--profile", profile, "--url", self.origin]
+        self.manager = Path(manager)
+        self.directory = Path(profiles_root or Path.home() / ".dsh/profiles").expanduser() / profile
         self.selection = ROOT / "profiles" / profile
 
     def api(self, path, body=None):
@@ -164,35 +169,47 @@ def sync(p, expected_lock=None):
         load = workload(s, False)
         if load != "idle":
             return load
+        pid = p.pid()
         old = p.launcher()
         cli = prepare(expected_lock)
-        if old.resolve() == cli.resolve():
+        binding = extension.Binding(p.directory)
+        target = extension.prepare(binding, ROOT.parent / "extensions", p.manager, run, lock)
+        rebind = binding.source != target
+        if not rebind and old.resolve() == cli.resolve() and extension.has_dispatch(p):
             p.select(cli)
             return "current"
         load = workload(p.snapshot(), False)
         if load != "idle":
             return load
-        if p.launcher() != old:
+        if p.pid() != pid or p.launcher() != old:
             return "changed"
         try:
             p.api("executor/pause", {"paused": True})
             load = workload(p.snapshot(), True)
             if load != "idle":
                 return load
-            if p.launcher() != old:
+            if p.pid() != pid or p.launcher() != old:
                 return "changed"
+            switched = False
             try:
+                if rebind:
+                    binding.switch(target)
+                    switched = True
                 # The manager holds its operation lock across stop and start.
                 p.change("restart", cli)
                 if p.launcher().resolve() != cli.resolve():
                     raise RuntimeError("unexpected launcher")
                 p.snapshot()
+                if p.pid() == pid or binding.link.resolve() != target or not extension.has_dispatch(p):
+                    raise RuntimeError("extension not active")
                 p.select(cli)
             except Exception:
                 # Do not start over a foreign listener, a manual stop or duplicate.
                 # The manager enforces uniqueness; a normal start cannot replace
                 # a live, failed process.
                 try:
+                    if switched:
+                        binding.restore()
                     p.recover(old, cli)
                 finally:
                     raise RuntimeError("handoff failed; inspect agent status")
@@ -215,6 +232,7 @@ def main():
         parser.add_argument("--"+key, required=True)
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--expected-lock")
+    parser.add_argument("--profiles-root")
     options = vars(parser.parse_args())
     expected = options.pop("expected_lock")
     try:

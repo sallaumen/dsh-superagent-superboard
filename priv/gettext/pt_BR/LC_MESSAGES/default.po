@@ -9661,8 +9661,8 @@ msgstr "Outra sincronização em andamento"
 msgid "Could not verify the update. Check the agent before retrying."
 msgstr "Não foi possível verificar a atualização. Confira o agente antes de tentar novamente."
 
-msgid "Idle agents update now. Busy agents update automatically after their last task finishes and the queue is empty."
-msgstr "Agentes ociosos atualizam agora. Os ocupados atualizam automaticamente quando a última tarefa terminar e a fila estiver vazia."
+msgid "Sync the Harness and duplicate-issue notices. Idle agents update now; busy agents wait until their work and queue are finished."
+msgstr "Sincronize o Harness e os avisos de issues duplicadas. Agentes ociosos atualizam agora; os ocupados esperam terminar as tarefas e esvaziar a fila."
 
 msgid "Synchronizing…"
 msgstr "Sincronizando…"

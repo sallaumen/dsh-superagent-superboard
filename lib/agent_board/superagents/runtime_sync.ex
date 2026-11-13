@@ -13,8 +13,14 @@ defmodule AgentBoard.Superagents.RuntimeSync do
   @pending ~w(waiting pending)
   @statuses ~w(updated current paused busy changed identity unavailable in_progress failed)
   @interval :timer.seconds(15)
-  @external_resource Path.expand("../../../priv/agent/harness/package-lock.json", __DIR__)
-  @lock_digest Base.encode16(:crypto.hash(:sha256, File.read!(@external_resource)), case: :lower)
+  @cli_lock Path.expand("../../../priv/agent/harness/package-lock.json", __DIR__)
+  @notice_patch Path.expand("../../../priv/agent/duplicate-issue-notice.patch", __DIR__)
+  @external_resource @cli_lock
+  @external_resource @notice_patch
+  @lock_digest Base.encode16(
+                 :crypto.hash(:sha256, [File.read!(@cli_lock), File.read!(@notice_patch)]),
+                 case: :lower
+               )
 
   def start_link(opts),
     do: GenServer.start_link(__MODULE__, opts, name: Keyword.get(opts, :name, __MODULE__))
@@ -214,6 +220,8 @@ defmodule AgentBoard.Superagents.RuntimeSync do
       lock,
       "--profile",
       agent.profile,
+      "--profiles-root",
+      Path.expand(Superagents.profiles_root()),
       "--manager",
       DshManager.script(),
       "--port",

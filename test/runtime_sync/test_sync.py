@@ -10,6 +10,11 @@ import sync_runtime as runtime
 
 class Agent:
     profile = "fixture"
+    manager = Path("/agent/scripts/dsh-superagent")
+    directory = Path("/profiles/fixture")
+
+    def pid(self):
+        return 1 + len(self.restarts)
 
     def __init__(self):
         self.paused = False
@@ -48,6 +53,18 @@ class Synchronization(unittest.TestCase):
         self.prepare = prepare.start()
         self.addCleanup(prepare.stop)
         self.agent = Agent()
+        binding = patch.object(runtime.extension, "Binding")
+        self.binding = binding.start().return_value
+        self.addCleanup(binding.stop)
+        self.package = Path("/installed/package")
+        self.binding.source = self.package
+        self.binding.link.resolve.return_value = self.package
+        build = patch.object(runtime.extension, "prepare", return_value=self.package)
+        self.build = build.start()
+        self.addCleanup(build.stop)
+        check = patch.object(runtime.extension, "has_dispatch", return_value=True)
+        self.dispatch = check.start()
+        self.addCleanup(check.stop)
 
     def test_restart_only_once_and_keep_selection(self):
         self.assertEqual(runtime.sync(self.agent), "updated")
@@ -96,6 +113,31 @@ class Synchronization(unittest.TestCase):
             rollback.assert_called_once_with(self.agent.cli, self.target)
         self.assertFalse(self.agent.paused)
         self.assertIsNone(self.agent.selected)
+
+    def test_extension_only_change_waits_for_queue_and_shares_one_restart(self):
+        self.agent.cli = self.target
+        self.binding.source = Path("/old/package")
+        for running, queued in ((1, 1), (0, 1)):
+            self.agent.load = {"running": running, "queued": queued}
+            self.assertEqual(runtime.sync(self.agent), "busy")
+        self.build.assert_not_called()
+        self.binding.switch.assert_not_called()
+        self.agent.load = {"running": 0, "queued": 0}
+        self.assertEqual(runtime.sync(self.agent), "updated")
+        self.binding.switch.assert_called_once_with(self.package)
+        self.binding.source = self.package
+        self.assertEqual(runtime.sync(self.agent), "current")
+        self.assertEqual(self.agent.restarts, [self.target])
+
+    def test_inactive_extension_after_restart_restores_old_package(self):
+        self.binding.source = Path("/old/package")
+        self.dispatch.return_value = False
+        with patch.object(self.agent, "recover", create=True) as recover:
+            with self.assertRaisesRegex(RuntimeError, "handoff failed"):
+                runtime.sync(self.agent)
+            self.binding.restore.assert_called_once()
+            recover.assert_called_once()
+        self.assertFalse(self.agent.paused)
 
     def test_other_operator_holds_same_profile_lock(self):
         with runtime.lock(runtime.ROOT / "locks" / self.agent.profile):
