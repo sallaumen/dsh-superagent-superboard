@@ -41,7 +41,7 @@ You can stop here. To publish your first request or try voice, follow the [first
 | Worker tools | `Python 3.8+` and `tmux` |
 | Identity | A separate GitHub bot account with repository write access; a model provider configured in the Harness profile |
 
-1. Install the [Harness CLI](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#install): `npm install -g @deepseek-ai/dsh@0.2.1-rc.3`. Check with `dsh --version`. On Linux, use Debian with `procps`; the Alpine run did not complete.
+1. Install the [Harness CLI](https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/docs/006-deployment.md#install): `npm install -g @deepseek-ai/dsh@0.2.1-rc.3`. Check with `dsh --version`. On Debian install `procps`. On Alpine, use the [Alpine installation steps](agent/setup.md#alpine-linux-arm64) instead of the global npm command.
 2. For the default DeepSeek API provider, set `DEEPSEEK_API_KEY` in the board’s `.env.local` and restart the board. For another provider, configure it in [Harness](https://www.deepseek.com/en/harness/).
 3. [Sign in as the bot](agent/setup.md#2-the-bot-identity) and verify its GitHub login. Leave profile creation to the board.
 

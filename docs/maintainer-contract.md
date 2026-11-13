@@ -1266,9 +1266,12 @@ action `install_first_superagent`).
   agent boots waiting for setup (`repositoryUnset`), answers `GET settings`
   and `GET prompts` in the shape the provisioner reads, accepts the executor
   and policy saves, and refuses a source whose CLI does not exist with a
-  sentence. **Not run for real:** the clone and build of the agent's code,
-  the GitHub source save with a real bot, and the whole sequence on a clean
-  machine.
+  sentence. The complete first install, GitHub source, worker and PR were
+  subsequently verified on Debian 12 and Alpine ARM64 with an isolated repository
+  and fresh profiles. On Alpine, before downloading the prototype or creating a
+  profile, the confirmed install probes the selected Harness's native
+  subprocess library and the process name seen by the upstream manager.
+  See the [verified runtime and installation](agent/setup.md#alpine-linux-arm64).
 - The tests: `superagents/prototype_test.exs` (where the code is, the
   install with a fake runner), `superagents/dsh_provisioner_test.exs` ("a
   machine's first agent": the commands and their `DSH_HOME`, the patch, the

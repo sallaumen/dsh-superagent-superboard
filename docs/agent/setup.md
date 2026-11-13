@@ -6,6 +6,27 @@ For a first installation from Settings, use [Connect the Super Agent](../getting
 
 Check the [agent requirements table](../getting-started.md#connect-the-super-agent) before setting up the bot account. On the host, run `dsh --version` to confirm the Harness CLI is available to the board.
 
+### Alpine Linux (ARM64)
+
+Tested with Alpine `3.24.3`, musl, Node `22.23.5`, pnpm `11.7.0` and Harness `0.2.1-rc.3`. In the board's OS account, use a **Node 22 build for musl** (for containers, the [official Node 22 Alpine image](https://hub.docker.com/_/node) provides it). Install `procps-ng`, Python 3, tmux, Git and GitHub CLI on the agent machine. The native npm build may also need `cmake`, `build-base` and `linux-headers`.
+
+From the board checkout, install the CLI into a **dedicated directory**. The manifest pins Koffi for this installation only; it does not replace system packages or copy a profile.
+
+```sh
+node --version   # 22.19+ on the 22.x line
+agent_tools="$HOME/.local/share/superboard/alpine-harness"
+mkdir -p "$agent_tools"
+cp scripts/agent/alpine/package.json "$agent_tools/"
+npm install --prefix "$agent_tools"
+export PATH="$agent_tools/node_modules/.bin:$PATH"
+dsh --version
+node priv/agent/check-alpine-harness.cjs "$(command -v dsh)"
+```
+
+The last command should exit successfully without output. Keep **this PATH and Node 22** in the environment that starts the board, including its service after a restart. Continue with the [bot login](#2-the-bot-identity) and confirm the installation in Settings.
+
+**Why Alpine differs:** Koffi `3.1.1` tries its generic Linux binary before the musl binary. On the tested ARM64 system the generic binary aborted Node (exit `134`) as the Harness checked the GitHub account. Koffi `3.3.8` detects musl. Separately, the upstream manager looks for a process named `node` or `dsh`; the tested Alpine Node `24.22.3` reported `MainThread` (probe exit `42`). No version of a model or GitHub token fixes either condition.
+
 ## 2. The bot identity
 
 The agent acts as its own GitHub account, never as you:
