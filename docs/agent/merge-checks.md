@@ -25,6 +25,33 @@ An approval, when required, must cover the current commit and come from someone 
 
 Each attempt records a snapshot atomically under `~/.local/state/superboard/merge/OWNER/REPO/PR.json` (override with `SUPERBOARD_GATE_DIR` for both board and worker). Only policy origin, check labels, states, revisions and outcomes are stored, not command output or credentials. Overlapping attempts on the same PR are refused. A later attempt reruns checks.
 
+## Choose task checks in the panel
+
+In **Settings → Projects**, expand a project, open **Merge** (or **Merge
+requirements** for a tracked project), then **Local task checks**. Select
+the commands your project supports and save. For example, a Node.js project
+can run lint, unit tests, its build and its browser test script. Nothing is
+installed and saving does not run a command. Clear the selection to remove
+only these additional checks. Existing repository and machine policies remain
+in force. If neither exists, a nonempty selection provides a local-only policy
+with squash and independent review; with no selection the guard refuses delivery.
+
+The selection is stored outside the checkout under
+`~/.config/superboard/task-stages/owner/repo.json` for the board/worker OS user.
+Only the fixed catalog in `priv/merge_gate/stages.json` can be selected. Local
+tools and project scripts must already be available. A missing tool or script
+fails that stage and stops the sequence. A concurrent settings change must be
+refreshed before saving.
+
+A managed worker runs the selected stages in order before `gh pr create`, then
+verifies them again on the exact head at guarded merge. Codex/Claude local
+dispatch also checks before reporting successful completion, even without a PR.
+Existing DeepSeek profiles need an active merge guard (see below); an inactive
+worker does not produce evidence. The running card names the current command,
+and the task inspector keeps each outcome for that worktree and attempt. No
+GitHub Actions run is involved. Changing a selection during merge verification
+blocks delivery; an older receipt never authorizes a new commit.
+
 ## The executor's self-review
 
 Before requesting delivery, the executor reviews its own diff and leaves one

@@ -88,7 +88,7 @@ always apply. The GitHub API is still needed to verify and merge the PR.
 ## Adopting this design in another project
 
 No Actions workflow, Makefile, or kit installation is required in a managed
-repository. Configure its existing commands on the board machine using the
+repository. In Settings → Projects → Merge requirements → Local task checks, select the commands the task should run. For other commands, use the
 [per-project policy](docs/agent/merge-checks.md). A policy already present on
 the destination branch takes priority. With neither policy, the worker does
 not merge. The commands belong to that project: a Rust or JavaScript ticket

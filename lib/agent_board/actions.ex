@@ -117,6 +117,7 @@ defmodule AgentBoard.Actions do
     :dismiss_access_request,
     :start_agent,
     :set_max_workers,
+    :set_project_stages,
     :add_repository,
     :change_setting,
     :dismiss_summary,
@@ -287,6 +288,9 @@ defmodule AgentBoard.Actions do
 
   defp spec(:set_max_workers),
     do: %{risk: :yellow, does: "muda o teto de workers do runner; − e + desfazem"}
+
+  defp spec(:set_project_stages),
+    do: %{risk: :yellow, does: "escolhe verificações locais para as tarefas de um projeto"}
 
   defp spec(:add_repository), do: %{risk: :yellow, does: "passa a acompanhar um repositório"}
 
@@ -690,6 +694,9 @@ defmodule AgentBoard.Actions do
 
   def phrase(:set_max_workers, %{max: max}, _lang),
     do: "Mudar o limite do executor para #{max} #{if max == 1, do: "agente", else: "agentes"}?"
+
+  def phrase(:set_project_stages, %{repository: repo, ids: ids}, _lang),
+    do: "Alterar as etapas locais de #{repo.owner}/#{repo.name} (#{length(ids)} selecionadas)?"
 
   def phrase(:add_repository, %{owner: owner, name: name}, _lang),
     do: "Acompanhar #{owner}/#{name} no quadro?"
@@ -1185,6 +1192,13 @@ defmodule AgentBoard.Actions do
   defp execute(:set_max_workers, %{max: max} = params),
     do: Orchestrator.set_max_workers(orchestrator(params), max)
 
+  defp execute(:set_project_stages, %{repository: %Repository{} = repo, ids: ids, expected: old}) do
+    with :ok <- AgentBoard.ProjectStages.save(repo, ids, old) do
+      Board.broadcast(repo.id)
+      :ok
+    end
+  end
+
   defp execute(:add_repository, %{owner: owner, name: name}),
     do: Board.add_repository(owner, name)
 
@@ -1610,6 +1624,7 @@ defmodule AgentBoard.Actions do
     do: "ticket #{id}" <> if(params[:number], do: " ##{params.number}", else: "")
 
   defp subject(:set_max_workers, %{max: max}), do: "maxWorkers=#{max}"
+  defp subject(:set_project_stages, %{repository: repo}), do: "#{repo.owner}/#{repo.name}"
   defp subject(:add_repository, %{owner: owner, name: name}), do: "#{owner}/#{name}"
   defp subject(:change_setting, %{setting: setting}), do: setting
   defp subject(:dismiss_summary, %{id: id}), do: "daily_summary #{id}"
