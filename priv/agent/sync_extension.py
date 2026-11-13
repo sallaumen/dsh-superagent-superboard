@@ -7,13 +7,22 @@ import subprocess
 import tempfile
 
 PATCH = Path(__file__).with_name("duplicate-issue-notice.patch")
+BRANCH_PATCH = PATCH.with_name("assignment-branch.patch")
+BRANCH_HELPER = PATCH.with_name("superboard-branch.py")
+
+
+def payload():
+    return PATCH.read_bytes() + BRANCH_PATCH.read_bytes() + BRANCH_HELPER.read_bytes()
+
+
 UPSTREAM = "8c32a9dc5d72c033816c6a8110b37f40cf94fba4"
 PACKAGE = "dsh-superagent"
 
 
 def compiled(path):
     bundle = path / "lib/index.js"
-    return bundle.is_file() and b"duplicate-issue-notice" in bundle.read_bytes()
+    return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py"))
+            and (path / "scripts/superboard-branch.py").read_bytes() == BRANCH_HELPER.read_bytes())
 
 
 def has_dispatch(profile):
@@ -79,7 +88,7 @@ class Binding:
 def prepare(binding, root, manager, run, lock):
     source = binding.source
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
-    patch = PATCH.read_bytes()
+    patch = payload()
     version = hashlib.sha256(patch).hexdigest()
     receipt = ".superboard-extension"
     if source.parent == root and (source / receipt).is_file() and (source / receipt).read_text() == version and compiled(source):
@@ -91,7 +100,8 @@ def prepare(binding, root, manager, run, lock):
         return run("git", "-C", str(source), *args)
     if git("rev-parse", "HEAD").strip() != UPSTREAM:
         raise ValueError("unsupported prototype revision")
-    if git("ls-files", "--others", "--exclude-standard").strip():
+    allowed = {receipt, "scripts/superboard-branch.py"} if source.parent == root else {"scripts/superboard-branch.py"}
+    if set(git("ls-files", "--others", "--exclude-standard").splitlines()) - allowed:
         raise ValueError("untracked prototype files")
     # Preserve tracked local source fixes; never execute locally altered install/build scripts.
     names = git("diff", "--name-only", "HEAD").splitlines()
@@ -110,10 +120,12 @@ def prepare(binding, root, manager, run, lock):
                     local = Path(tmp) / "local.patch"
                     local.write_bytes(diff)
                     run("git", "apply", str(local), cwd=stage)
-                try:
-                    run("git", "apply", "--reverse", "--check", str(PATCH), cwd=stage)
-                except subprocess.CalledProcessError:
-                    run("git", "apply", str(PATCH), cwd=stage)
+                for component in (PATCH, BRANCH_PATCH):
+                    try:
+                        run("git", "apply", "--reverse", "--check", str(component), cwd=stage)
+                    except subprocess.CalledProcessError:
+                        run("git", "apply", str(component), cwd=stage)
+                (stage / "scripts/superboard-branch.py").write_bytes(BRANCH_HELPER.read_bytes())
                 env = {k: v for k, v in os.environ.items() if k in ("HOME", "PATH", "TMPDIR", "USER", "LOGNAME")}
                 # Do not inherit a service working directory or GitHub credentials.
                 run("pnpm", "install", "--frozen-lockfile", cwd=stage, env=env, timeout=420)

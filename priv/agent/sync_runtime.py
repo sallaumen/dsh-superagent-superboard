@@ -39,7 +39,7 @@ def lock(path):
 
 def prepare(expected_lock=None):
     digest = hashlib.sha256((MANIFEST / "package-lock.json").read_bytes()).hexdigest()
-    package_digest = hashlib.sha256((MANIFEST / "package-lock.json").read_bytes() + extension.PATCH.read_bytes()).hexdigest()
+    package_digest = hashlib.sha256((MANIFEST / "package-lock.json").read_bytes() + extension.payload()).hexdigest()
     if expected_lock is not None and package_digest != expected_lock:
         raise Skip("changed")
     dest = ROOT / digest

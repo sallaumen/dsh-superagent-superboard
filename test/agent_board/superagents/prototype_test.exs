@@ -77,7 +77,7 @@ defmodule AgentBoard.Superagents.PrototypeTest do
   test "a failed build is never reused as an installation", %{target: target} do
     failing = fn
       ["git", "clone" | args], _opts ->
-        File.mkdir_p!(List.last(args))
+        File.mkdir_p!(Path.join(List.last(args), "scripts"))
         {"", 0}
 
       ["git" | _args], _opts ->
