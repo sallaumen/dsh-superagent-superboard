@@ -27,8 +27,7 @@ Each attempt records a snapshot atomically under `~/.local/state/superboard/merg
 
 ## Choose task checks in the panel
 
-In **Settings → Projects**, expand a project, open **Merge** (or **Merge
-requirements** for a tracked project), then **Local task checks**. Select
+In **Settings → Projects**, expand the project row. In **Project policy**, open **Local task checks**. Select
 the commands your project supports and save. For example, a Node.js project
 can run lint, unit tests, its build and its browser test script. Nothing is
 installed and saving does not run a command. Clear the selection to remove
