@@ -1,7 +1,7 @@
 # ADRs
 
 Architecture and process decision records for this repository, in the format of
-the Elixir Agent Kit [decision](https://github.com/sallaumen/elixir-agent-kit/blob/v0.8.0/priv/library/templates/decision.md) template
+the Elixir Agent Kit [decision](https://github.com/sallaumen/elixir-agent-kit/blob/v1.0.0/priv/library/templates/decision.md) template
 (local copy at `deps/elixir_agent_kit/priv/library/templates/decision.md` after `mix deps.get`).
 
 | No. | Decision | Status |
