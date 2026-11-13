@@ -763,6 +763,7 @@ browser), a state and the fix for the next step.
   the owner's click, never on mount or when a section opens, and it is not an
   AI call (no `ai_calls` row, no budget). The CLI output names the account:
   only the verdict is kept.
+- Optional Harness session names have a separate local, read-only installation check. The installer owns the on-disk contract; its result is not proof of runtime activation and does not affect the global receipt.
 - Each completed manual check leaves a board-wide receipt in Settings:
   `setup_check_passed` or `setup_check_issues`, UTC date and counts only.
   Optional parts that are off do not prevent a pass. The newest receipt is

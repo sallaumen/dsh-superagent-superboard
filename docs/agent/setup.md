@@ -331,6 +331,12 @@ its last report said.
 
 ### Names in the Harness Sessions list
 
+Open **Settings → AI and setup → Harness session names**. The check compares the
+managed home patch and installed files with this checkout; it makes no writes.
+Use **Recheck installation** after running the command. An installed status is
+evidence on the board host, not proof a running Harness profile has loaded it.
+For a remote Harness host, run the command there and use `--check` there too.
+
 Run `scripts/agent/install-worker-titles.py` on the Harness host (Node 22.19+
 or 24+). It installs a host plugin and one marked entry in the home patch,
 preserving the other entries. It also applies to future profiles. To uninstall,

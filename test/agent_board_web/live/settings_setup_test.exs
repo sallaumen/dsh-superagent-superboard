@@ -40,6 +40,40 @@ defmodule AgentBoardWeb.SettingsSetupTest do
     :ok
   end
 
+  @tag :tmp_dir
+  test "optional Harness setup detects install and drift, without touching the validation receipt",
+       %{conn: conn, tmp_dir: tmp} do
+    home = Path.join(tmp, "harness")
+    previous = Application.fetch_env!(:agent_board, :worker_titles_home)
+    Application.put_env(:agent_board, :worker_titles_home, home)
+    on_exit(fn -> Application.put_env(:agent_board, :worker_titles_home, previous) end)
+    {:ok, view, _} = live(conn, "/?panel=settings&section=setup")
+    card = "#setup-worker-titles"
+    assert has_element?(view, card, "Não instalado nesta máquina")
+    assert has_element?(view, card <> " code", "python3 scripts/agent/install-worker-titles.py")
+    refute File.exists?(home)
+    File.mkdir_p!(home)
+    patch = Path.join(home, "cordis.patch.yml")
+    File.write!(patch, "# keep this existing setting\n")
+
+    assert {_, 0} =
+             System.cmd("python3", ["scripts/agent/install-worker-titles.py"],
+               env: [{"DSH_HOME", home}]
+             )
+
+    assert File.read!(patch) =~ "# keep this existing setting"
+    view |> element(card <> " [phx-click=refresh_worker_titles]") |> render_click()
+    assert has_element?(view, card, "Instalado nesta máquina")
+    refute has_element?(view, card <> " code")
+    File.write!(Path.join(home, "superboard-plugins/worker-titles/index.js"), "old version")
+    view |> element(card <> " [phx-click=refresh_worker_titles]") |> render_click()
+    assert has_element?(view, card, "atualização ou reparo")
+    File.write!(patch, "# >>> superboard-worker-titles >>>\n")
+    view |> element(card <> " [phx-click=refresh_worker_titles]") |> render_click()
+    assert has_element?(view, card, "configuração do Harness precisa de reparo")
+    refute has_element?(view, "#setup-last-check")
+  end
+
   defp restore(nil), do: Application.delete_env(:agent_board, :setup_readers)
   defp restore(value), do: Application.put_env(:agent_board, :setup_readers, value)
 

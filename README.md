@@ -101,6 +101,11 @@ For a long-running launchd service, environment loading, logs, and
 troubleshooting, use the [operations guide](docs/operations.md). Never commit
 `.env.local`.
 
+For names such as `SB - Fix filters` in the DeepSeek Harness sidebar, open
+**Settings → AI and setup → Harness session names**. It shows whether this
+machine has the matching plugin and how to install or update it.
+See [Harness session names](docs/agent/setup.md#names-in-the-harness-sessions-list).
+
 ## Explore further
 
 | Goal | Start here |
