@@ -9967,3 +9967,60 @@ msgstr ""
 
 msgid "Browser tests"
 msgstr ""
+
+msgid "Agent maintenance"
+msgstr ""
+
+msgid "%{count} connected"
+msgid_plural "%{count} connected"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Guard active"
+msgstr ""
+
+msgid "Guard inactive"
+msgstr ""
+
+msgid "Guard unverified"
+msgstr ""
+
+msgid "Guard not applicable"
+msgstr ""
+
+msgid "Checking guard…"
+msgstr ""
+
+msgid "Concurrent tasks"
+msgstr ""
+
+msgid "Profile"
+msgstr ""
+
+msgid "Project policy"
+msgstr ""
+
+msgid "Independent approval required"
+msgstr ""
+
+msgid "Independent approval not required"
+msgstr ""
+
+msgid "View %{count} required check"
+msgid_plural "View %{count} required checks"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "%{count} local"
+msgid_plural "%{count} local"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "%{local} and %{hosted} on GitHub"
+msgstr ""
+
+msgid "View policy on %{branch}"
+msgstr ""
+
+msgid "This project is no longer connected to the board."
+msgstr ""

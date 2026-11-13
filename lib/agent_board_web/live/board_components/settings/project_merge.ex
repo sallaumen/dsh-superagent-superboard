@@ -23,17 +23,21 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
   end
 
   defp load(socket) do
-    %{repo: repo, agent: agent} = socket.assigns
+    repo = socket.assigns.repo
 
     socket
-    |> assign(policy: nil, enforcement: nil, stage_ids: nil, stage_notice: nil)
+    |> assign(policy: nil, stage_ids: nil, stage_notice: nil)
     |> start_async(:stage_ids, fn -> ProjectStages.load(repo) end)
     |> start_async(:policy, fn -> ProjectMergePolicy.load(repo) end)
-    |> start_async(:enforcement, fn -> ProjectMergePolicy.enforcement(agent, repo) end)
   end
 
   @impl true
-  def handle_event("refresh", _, socket), do: {:noreply, load(socket)}
+  def handle_event("refresh", _, socket) do
+    if id = socket.assigns.agent_id,
+      do: send_update(socket.assigns.guard_owner, refresh_guard: id)
+
+    {:noreply, load(socket)}
+  end
 
   def handle_event("save_stages", params, socket) do
     %{stage_ids: current, repo: repo, visible: visible} = socket.assigns
@@ -79,15 +83,12 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
   def handle_async(:policy, {:exit, _}, socket),
     do: {:noreply, assign(socket, policy: %{result: :unavailable})}
 
-  def handle_async(:enforcement, {:exit, _}, socket),
-    do: {:noreply, assign(socket, enforcement: :unknown)}
-
   @impl true
   def render(assigns) do
     ~H"""
     <section id={@id} class="ab-policy" aria-labelledby={@id <> "-title"}>
       <div class="ab-merge-heading">
-        <h4 id={@id <> "-title"}>{gettext("Merge requirements")}</h4>
+        <h4 id={@id <> "-title"}>{gettext("Project policy")}</h4>
         <button
           class="ab-btn ab-btn--sm"
           type="button"
@@ -143,40 +144,15 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
         </p>
       </details>
       <div class="ab-merge-body" aria-live="polite">
-        <dl class="ab-merge-facts">
-          <div>
-            <dt>{gettext("DeepSeek merge guard")}</dt>
-            <dd class={@enforcement == :active && "ab-status--run"}>{guard_label(@enforcement)}</dd>
-          </div>
-          <div :if={match?(%{result: {:ok, _}}, @policy)}>
-            <dt>{gettext("Independent approval")}</dt>
-            <dd>
-              {if elem(@policy.result, 1)["review"],
-                do: gettext("Required"),
-                else: gettext("Not required")}
-            </dd>
-          </div>
-          <div :if={@policy && @policy[:branch]}>
-            <dt>{gettext("Default branch")}</dt>
-            <dd>
-              <a
-                :if={@policy.url && match?({:ok, _}, @policy.result)}
-                class="ab-link"
-                href={@policy.url}
-                title={gettext("View merge policy on GitHub")}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <code>{@policy.branch}@{String.slice(@policy.sha, 0, 8)}</code>
-              </a>
-              <code :if={!@policy.url || !match?({:ok, _}, @policy.result)}>{@policy.branch}@{String.slice(
-                @policy.sha,
-                0,
-                8
-              )}</code>
-            </dd>
-          </div>
-        </dl>
+        <p class="ab-merge-summary">
+          <span class={@enforcement == :active && "ab-status--run"}>{guard_label(@enforcement)}</span>
+          <%= if match?(%{result: {:ok, _}}, @policy) do %>
+            <span aria-hidden="true">·</span>
+            <span>{if elem(@policy.result, 1)["review"],
+              do: gettext("Independent approval required"),
+              else: gettext("Independent approval not required")}</span>
+          <% end %>
+        </p>
         <p :if={@policy && @policy[:source] == :machine && @policy.result != :missing}>
           {gettext("Merge policy configured on this machine")}
         </p>
@@ -188,9 +164,14 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
               phx-mounted={JS.ignore_attributes("open")}
             >
               <summary>
-                <strong>{gettext("Merge checks")}</strong>
-                <span>{gettext("Local checks")}: {length(policy["local"])} · {gettext("GitHub checks")}: {length(
-                  policy["github"]
+                <strong>{ngettext(
+                  "View %{count} required check",
+                  "View %{count} required checks",
+                  length(policy["local"]) + length(policy["github"])
+                )}</strong>
+                <span>{gettext("%{local} and %{hosted} on GitHub",
+                  local: ngettext("%{count} local", "%{count} local", length(policy["local"])),
+                  hosted: length(policy["github"])
                 )}</span>
               </summary>
               <div class="ab-merge-lists">
@@ -242,10 +223,29 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
           <% _ -> %>
             <p>{gettext("Reading merge requirements…")}</p>
         <% end %>
+        <p :if={@policy && @policy[:branch] && @policy[:source] != :machine} class="ab-merge-revision">
+          <a
+            :if={@policy.url && match?({:ok, _}, @policy.result)}
+            class="ab-link"
+            href={@policy.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {gettext("View policy on %{branch}", branch: @policy.branch)}
+          </a>
+          <span :if={!@policy.url || !match?({:ok, _}, @policy.result)}>{@policy.branch}</span>
+          <code title={@policy.sha}>{String.slice(@policy.sha, 0, 8)}</code>
+        </p>
       </div>
     </section>
     """
   end
+
+  def guard_label(:active), do: gettext("Guard active")
+  def guard_label(:inactive), do: gettext("Guard inactive")
+  def guard_label(:no_agent), do: gettext("Guard not applicable")
+  def guard_label(:unknown), do: gettext("Guard unverified")
+  def guard_label(nil), do: gettext("Checking guard…")
 
   defp stage_groups do
     groups = %{
@@ -260,10 +260,4 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectMerge do
     |> Enum.group_by(fn {_, [cmd | _]} -> Map.fetch!(groups, cmd) end)
     |> Enum.sort()
   end
-
-  defp guard_label(:active), do: gettext("Active")
-  defp guard_label(:inactive), do: gettext("Inactive")
-  defp guard_label(:no_agent), do: gettext("No agent connected")
-  defp guard_label(:unknown), do: gettext("Could not verify")
-  defp guard_label(nil), do: gettext("Checking…")
 end

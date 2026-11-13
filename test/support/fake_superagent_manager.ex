@@ -2,7 +2,12 @@ defmodule AgentBoard.Superagents.FakeManager do
   @moduledoc "Test adapter: an Agent holds the observed state per superagent id."
   @behaviour AgentBoard.Superagents.Manager
 
-  def github_source(_superagent), do: {:error, :unavailable}
+  def put_github_source(id, result),
+    do: Agent.update(__MODULE__, &Map.put(&1, {:source, id}, result))
+
+  def github_source(%{id: id}) do
+    Agent.get(__MODULE__, &Map.get(&1, {:source, id}, {:error, :unavailable}))
+  end
 
   def start do
     case Agent.start_link(fn -> %{} end, name: __MODULE__) do

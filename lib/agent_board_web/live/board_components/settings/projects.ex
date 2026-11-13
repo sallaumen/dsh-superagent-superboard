@@ -19,6 +19,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   alias AgentBoard.Actions
   alias AgentBoard.GitHub
   alias AgentBoard.Orchestrator
+  alias AgentBoard.ProjectMergePolicy
   alias AgentBoard.Superagents
   alias AgentBoard.Superagents.RuntimeSync
   alias AgentBoardWeb.BoardComponents.AgentAction
@@ -34,6 +35,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   alias AgentBoardWeb.Locale
   alias AgentBoardWeb.Time
 
+  @areas ~w(merge access instructions maintenance)
+
+  attr :project_selection, :any, default: {nil, nil}
   attr :project_path, :string, required: true
   attr :repo, :map, default: nil
   attr :active, :boolean, default: false
@@ -46,10 +50,24 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   @impl true
   def mount(socket) do
-    {:ok, assign(socket, expanded: nil, detail: "merge", workers: 1, prefill: %{}, installed: [])}
+    {:ok,
+     assign(socket,
+       expanded: nil,
+       detail: "merge",
+       workers: 1,
+       prefill: %{},
+       installed: [],
+       guard_targets: [],
+       guards: %{}
+     )}
   end
 
   @impl true
+  def update(%{refresh_guard: id}, socket) do
+    agent = Enum.find(socket.assigns.superagents, &(&1.id == id))
+    {:ok, if(agent && socket.assigns.active, do: refresh_guard(socket, agent), else: socket)}
+  end
+
   def update(assigns, socket) do
     socket = assign(socket, assigns)
 
@@ -60,24 +78,128 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         Enum.any?(socket.assigns.superagents, &(runtime_status(&1) == "waiting"))
       )
 
-    expanded =
-      case socket.assigns.expanded do
-        nil ->
-          nil
+    # Resolve the bookmark against what is still connected. The board repo
+    # filter and the project being inspected are independent.
+    tracked = tracked_only(socket.assigns.repos, socket.assigns.superagents)
+    slugs = Map.new(tracked, &{"repo-#{&1.id}", "#{&1.owner}/#{&1.name}"})
 
-        id ->
-          if Enum.any?(socket.assigns.superagents, &(to_string(&1.id) == to_string(id))) or
-               Enum.any?(socket.assigns.repos, &("repo-#{&1.id}" == id)),
-             do: to_string(id),
-             else: nil
-      end
+    projects =
+      Map.merge(slugs, Map.new(socket.assigns.superagents, &{to_string(&1.id), project_name(&1)}))
+
+    {slug, area} = socket.assigns.project_selection
+
+    expanded =
+      if socket.assigns.active and socket.assigns.project_path == "list",
+        do: selected_id(projects, slug)
+
+    detail =
+      if expanded && !String.starts_with?(expanded, "repo-") && area in @areas,
+        do: area,
+        else: "merge"
 
     # Agents installed outside the board: a few small files, read only while
     # this section is on screen.
     {:ok,
      socket
-     |> assign(expanded: expanded, github_configured?: GitHub.configured?())
+     |> assign(
+       projects: projects,
+       expanded: expanded,
+       missing_project:
+         socket.assigns.active && socket.assigns.project_path == "list" && is_binary(slug) &&
+           is_nil(expanded),
+       detail: detail,
+       github_configured?: GitHub.configured?()
+     )
+     |> sync_guards()
      |> read_profiles()}
+  end
+
+  defp selected_id(projects, slug),
+    do: Enum.find_value(projects, fn {id, name} -> name == slug && id end)
+
+  # Compare connection identities, not ticker timestamps. Re-entering Projects
+  # samples again; unrelated broadcasts do not contact every agent.
+  defp sync_guards(socket) do
+    agents =
+      if socket.assigns.active,
+        do: Enum.filter(socket.assigns.superagents, & &1.repository),
+        else: []
+
+    targets = Enum.sort(Enum.map(agents, &guard_target/1))
+
+    if targets == socket.assigns.guard_targets do
+      socket
+    else
+      socket
+      |> cancel_async(:guards)
+      |> assign(guard_targets: targets, guards: %{})
+      |> read_guards(agents)
+    end
+  end
+
+  defp read_guards(socket, []), do: socket
+
+  defp read_guards(socket, agents) do
+    ids = Enum.map(agents, & &1.id)
+
+    start_async(socket, :guards, fn ->
+      results =
+        Task.Supervisor.async_stream_nolink(
+          AgentBoard.Superagents.TaskSupervisor,
+          agents,
+          &ProjectMergePolicy.enforcement(&1, &1.repository),
+          max_concurrency: 4,
+          timeout: 8_000,
+          on_timeout: :kill_task
+        )
+
+      Enum.zip_with(ids, results, fn id, result ->
+        {id,
+         case result do
+           {:ok, status} -> status
+           _ -> :unknown
+         end}
+      end)
+    end)
+  end
+
+  defp guard_target(agent),
+    do: {agent.id, agent.profile, agent.port, agent.state_dir, project_name(agent)}
+
+  defp refresh_guard(socket, agent) do
+    socket
+    |> assign(:guards, Map.delete(socket.assigns.guards, agent.id))
+    |> start_async({:guard, guard_target(agent)}, fn ->
+      ProjectMergePolicy.enforcement(agent, agent.repository)
+    end)
+  end
+
+  @impl true
+  def handle_async({:guard, target}, result, socket) do
+    status =
+      case result do
+        {:ok, state} -> state
+        _ -> :unknown
+      end
+
+    guards =
+      if target in socket.assigns.guard_targets,
+        do: Map.put(socket.assigns.guards, elem(target, 0), status),
+        else: socket.assigns.guards
+
+    {:noreply, assign(socket, :guards, guards)}
+  end
+
+  def handle_async(:guards, {:ok, results}, socket),
+    do: {:noreply, assign(socket, :guards, Map.merge(socket.assigns.guards, Map.new(results)))}
+
+  def handle_async(:guards, {:exit, _}, socket) do
+    guards =
+      Map.new(socket.assigns.guard_targets, fn {id, _, _, _, _} ->
+        {id, Map.get(socket.assigns.guards, id, :unknown)}
+      end)
+
+    {:noreply, assign(socket, :guards, guards)}
   end
 
   defp read_profiles(socket) do
@@ -93,15 +215,23 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   @impl true
   def handle_event("toggle_project", %{"id" => id}, socket) do
-    id = to_string(id)
-    expanded = if to_string(socket.assigns.expanded) == id, do: nil, else: id
-    {:noreply, assign(socket, expanded: expanded, detail: "merge")}
+    case Map.fetch(socket.assigns.projects, id) do
+      {:ok, slug} ->
+        {:noreply,
+         navigate(socket, if(socket.assigns.expanded == id, do: %{}, else: %{"project" => slug}))}
+
+      :error ->
+        {:noreply, socket}
+    end
   end
 
   def handle_event("project_detail", %{"id" => id, "section" => section}, socket)
-      when section in ~w(merge access instructions maintenance) do
-    {:noreply,
-     if(socket.assigns.expanded == id, do: assign(socket, :detail, section), else: socket)}
+      when section in @areas do
+    if id == socket.assigns.expanded do
+      {:noreply, navigate(socket, %{"project" => socket.assigns.projects[id], "area" => section})}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("prefill_project", %{"owner" => owner, "name" => name}, socket) do
@@ -129,8 +259,40 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   def render(assigns) do
     assigns = assign(assigns, :tracked, tracked_only(assigns.repos, assigns.superagents))
 
+    assigns =
+      assign(
+        assigns,
+        :setup_open,
+        assigns.project_path in ["github", "agent"] or assigns.repos == []
+      )
+
     ~H"""
     <div id={@id} class="ab-projects">
+      <header class="ab-projects__heading">
+        <h3 id="settings-projects-title">
+          {gettext("Projects")}
+          <small :if={@repos != []}>· {ngettext(
+            "%{count} connected",
+            "%{count} connected",
+            length(@repos)
+          )}</small>
+        </h3>
+        <.link
+          :if={!@setup_open or @repos != []}
+          class="ab-btn ab-btn--sm"
+          aria-controls="project-setup-options"
+          aria-expanded={to_string(@setup_open)}
+          patch={
+            BoardNavigation.settings_path(
+              @repo,
+              "projects",
+              if(@setup_open, do: %{}, else: %{"path" => "github"})
+            )
+          }
+        >
+          {if @setup_open, do: gettext("Close"), else: gettext("Add project")}
+        </.link>
+      </header>
       <p
         :if={@superagents == [] and @tracked == [] and @project_path != "agent"}
         class="ab-projects__empty"
@@ -139,391 +301,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         {gettext("No project yet. Add a repository below to get started.")}
       </p>
 
-      <p :if={@superagents != [] or @tracked != []} class="ab-projects__summary" role="status">
-        <span :if={@superagents != []}>{gettext("%{ready} of %{total} on",
-          ready: ready_count(@superagents),
-          total: length(@superagents)
-        )}</span>
-        <span :if={@superagents != []} aria-hidden="true">·</span>
-        <span :if={@superagents != []}>
-          {ngettext("%{count} agent", "%{count} agents", agent_total(@superagents))}
-        </span>
-        <span :if={@superagents != [] and @tracked != []} aria-hidden="true">·</span>
-        <span :if={@tracked != []}>
-          {ngettext("%{count} without an agent", "%{count} without an agent", length(@tracked))}
-        </span>
+      <p :if={@missing_project} class="ab-meta" role="status">
+        {gettext("This project is no longer connected to the board.")}
       </p>
 
-      <form
-        :if={@superagents != []}
-        action={~p"/superagents/synchronize"}
-        method="post"
-        class="ab-projects__maintenance"
-      >
-        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-        <input type="hidden" name="confirm" value={sync_phrase(@superagents)} />
-        <p class="ab-meta">
-          {gettext(
-            "Sync the Harness and duplicate-issue notices. Idle agents update now; busy agents wait until their work and queue are finished."
-          )}
-        </p>
-        <p id="runtime-targets" class="ab-meta">{sync_phrase(@superagents)}</p>
-        <button
-          class="ab-btn"
-          type="submit"
-          disabled={@checking_runtimes}
-          aria-describedby="runtime-targets"
-        >
-          {if @checking_runtimes,
-            do: gettext("Synchronizing…"),
-            else: gettext("Sync agent runtimes")}
-        </button>
-      </form>
-
-      <ul
-        :if={@superagents != [] or @tracked != []}
-        class="ab-projects__list"
-        aria-label={gettext("Projects")}
-      >
-        <li
-          :for={superagent <- @superagents}
-          id={"project-#{superagent.id}"}
-          class="ab-project"
-          data-expanded={to_string(expanded?(@expanded, superagent))}
-        >
-          <div class="ab-project__row">
-            <div class="ab-project__identity">
-              <p class="ab-project__name">
-                <span class="ab-project__owner">{owner(superagent)}/</span><strong>{name(superagent)}</strong>
-              </p>
-              <p :if={result = runtime_status(superagent)} class="ab-meta" role="status">
-                {sync_result(result)}
-              </p>
-              <p class="ab-project__access">
-                <span
-                  :if={waiting_count(access_project(@access_projects, superagent)) > 0}
-                  class="ab-project__waiting"
-                >
-                  <.glyph kind={:you} />
-                  {ngettext(
-                    "%{count} waiting for access",
-                    "%{count} waiting for access",
-                    waiting_count(access_project(@access_projects, superagent))
-                  )}
-                </span>
-                <span :if={waiting_count(access_project(@access_projects, superagent)) == 0}>
-                  {access_summary(
-                    access_project(@access_projects, superagent),
-                    superagent,
-                    @tz_offset
-                  )}
-                </span>
-              </p>
-            </div>
-
-            <div class="ab-project__state">
-              <span class={["ab-status", state_status(superagent)]}>
-                <.glyph kind={state_glyph(superagent)} />
-                {state_word(superagent)}
-              </span>
-              <span :if={desired_line(superagent)} class="ab-meta">{desired_line(superagent)}</span>
-            </div>
-
-            <div class="ab-project__agents">
-              <button
-                type="button"
-                class="ab-btn ab-btn--sm ab-btn--icon"
-                aria-label={
-                  gettext("One fewer agent in %{project}", project: project_name(superagent))
-                }
-                phx-click="superagent_scale"
-                phx-value-id={superagent.id}
-                phx-value-delta="-1"
-                disabled={superagent.max_workers <= 1}
-              >−</button>
-              <span
-                class="ab-project__agent-count"
-                title={gettext("Agents configured for this project")}
-              >
-                {superagent.max_workers}<span class="ab-sr">{gettext("agents")}</span>
-              </span>
-              <button
-                type="button"
-                class="ab-btn ab-btn--sm ab-btn--icon"
-                aria-label={
-                  gettext("One more agent in %{project}", project: project_name(superagent))
-                }
-                phx-click="superagent_scale"
-                phx-value-id={superagent.id}
-                phx-value-delta="1"
-                disabled={superagent.max_workers >= max_workers()}
-              >+</button>
-            </div>
-
-            <div class="ab-project__profile">
-              <code title={superagent.profile}>{superagent.profile}</code>
-            </div>
-
-            <div class="ab-project__actions">
-              <button
-                :if={superagent.observed_state == "ready"}
-                type="button"
-                class="ab-btn ab-btn--sm"
-                phx-click="superagent_command"
-                phx-value-id={superagent.id}
-                phx-value-action="pause"
-              >
-                {gettext("Pause")}
-              </button>
-              <button
-                :if={superagent.observed_state == "paused"}
-                type="button"
-                class="ab-btn ab-btn--sm"
-                phx-click="superagent_command"
-                phx-value-id={superagent.id}
-                phx-value-action="resume"
-              >
-                {gettext("Resume")}
-              </button>
-              <button
-                type="button"
-                class="ab-btn ab-btn--icon ab-btn--sm"
-                aria-expanded={to_string(expanded?(@expanded, superagent))}
-                aria-controls={"project-#{superagent.id}-details"}
-                aria-label={
-                  if expanded?(@expanded, superagent),
-                    do: gettext("Close %{project}", project: project_name(superagent)),
-                    else: gettext("Open %{project}", project: project_name(superagent))
-                }
-                phx-click="toggle_project"
-                phx-value-id={superagent.id}
-                phx-target={@myself}
-              >
-                <.icon
-                  name="hero-chevron-down"
-                  class={["size-4", expanded?(@expanded, superagent) && "rotate-180"]}
-                />
-              </button>
-            </div>
-          </div>
-
-          <div
-            :if={error_text(superagent)}
-            class="ab-project__error"
-            role="status"
-            id={"project-#{superagent.id}-error"}
-          >
-            <p>{error_text(superagent)}</p>
-            <details :if={technical_details?(superagent)} class="ab-project__error-details">
-              <summary>{gettext("Technical details")}</summary>
-              <code>{superagent.last_error}</code>
-            </details>
-            <.live_component
-              :if={remote_action(superagent) == :retry_provision_superagent}
-              module={AgentAction}
-              id={"project-retry_provision_superagent-#{superagent.id}"}
-              mode={:retry_provision_superagent}
-              tone={:primary}
-              superagent={superagent}
-              label={remote_label(superagent)}
-              confirm_label={remote_label(superagent)}
-              busy_label={gettext("Applying…")}
-            />
-            <button
-              :if={is_nil(superagent.last_error)}
-              type="button"
-              class="ab-btn ab-btn--sm ab-btn--quiet"
-              phx-click="toggle_project"
-              phx-value-id={superagent.id}
-              phx-target={@myself}
-            >
-              {gettext("Open controls")}
-            </button>
-          </div>
-
-          <div
-            id={"project-#{superagent.id}-details"}
-            class="ab-project__details"
-            hidden={not expanded?(@expanded, superagent)}
-          >
-            <div class="ab-project-switch" role="group" aria-label={gettext("Project controls")}>
-              <button
-                :for={
-                  {section, label} <- [
-                    {"merge", gettext("Merge")},
-                    {"access", gettext("Access")},
-                    {"instructions", gettext("Instructions")},
-                    {"maintenance", gettext("Maintenance")}
-                  ]
-                }
-                type="button"
-                aria-pressed={to_string(@detail == section)}
-                aria-controls={"project-#{superagent.id}-view-#{section}"}
-                phx-click="project_detail"
-                phx-value-id={superagent.id}
-                phx-value-section={section}
-                phx-target={@myself}
-              >{label}</button>
-            </div>
-            <div id={"project-#{superagent.id}-view-merge"} hidden={@detail != "merge"}>
-              <.live_component
-                :if={superagent.repository}
-                module={ProjectMerge}
-                id={"project-#{superagent.id}-merge"}
-                repo={superagent.repository}
-                agent={superagent}
-                visible={@active and expanded?(@expanded, superagent)}
-              />
-            </div>
-            <div id={"project-#{superagent.id}-view-access"} hidden={@detail != "access"}>
-              <.live_component
-                module={ProjectAccess}
-                id={"project-#{superagent.id}-access"}
-                project={access_project(@access_projects, superagent)}
-                superagent={superagent}
-                visible={@active and expanded?(@expanded, superagent)}
-                tz_offset={@tz_offset}
-              />
-            </div>
-            <div id={"project-#{superagent.id}-view-instructions"} hidden={@detail != "instructions"}>
-              <.live_component
-                module={ProjectPolicy}
-                id={"project-#{superagent.id}-policy-panel"}
-                superagent={superagent}
-                visible={@active and expanded?(@expanded, superagent)}
-              />
-            </div>
-            <div id={"project-#{superagent.id}-view-maintenance"} hidden={@detail != "maintenance"}>
-              <.live_component
-                module={ProjectLeftovers}
-                id={"project-#{superagent.id}-leftovers-panel"}
-                superagent={superagent}
-                visible={@active and expanded?(@expanded, superagent)}
-              />
-
-              <div class="ab-project__foot">
-                <details class="ab-project__fold">
-                  <summary>{gettext("State folder")}</summary>
-                  <code>{superagent.state_dir}</code>
-                </details>
-                <details class="ab-project__fold">
-                  <summary>{gettext("dsh panel")}</summary>
-                  <.form
-                    for={%{}}
-                    action={~p"/superagents/#{superagent.id}/panel"}
-                    method="post"
-                    target="_blank"
-                    rel="noopener"
-                    id={"project-#{superagent.id}-panel-form"}
-                  >
-                    <button type="submit" class="ab-btn ab-btn--sm">
-                      {gettext("Open the panel signed in")}
-                    </button>
-                  </.form>
-                </details>
-                <details :if={technical_details?(superagent)} class="ab-project__fold">
-                  <summary>{gettext("Technical details")}</summary>
-                  <code>{superagent.last_error}</code>
-                </details>
-                <div class="ab-project__foot-actions">
-                  <.live_component
-                    :if={remote_action(superagent) in [:start_superagent, :stop_superagent]}
-                    module={AgentAction}
-                    id={"project-#{remote_action(superagent)}-#{superagent.id}"}
-                    mode={remote_action(superagent)}
-                    tone={if remote_action(superagent) == :stop_superagent, do: :halt, else: :primary}
-                    superagent={superagent}
-                    label={remote_label(superagent)}
-                    confirm_label={remote_label(superagent)}
-                    busy_label={gettext("Applying…")}
-                  />
-                  <.live_component
-                    module={AgentAction}
-                    id={"project-remove-#{superagent.id}"}
-                    mode={:remove_superagent}
-                    tone={:halt}
-                    superagent={superagent}
-                    label={gettext("Archive project…")}
-                    confirm_label={gettext("Archive project")}
-                    cancel_label={gettext("Keep")}
-                    busy_label={gettext("Archiving…")}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </li>
-
-        <li :for={repo <- @tracked} id={"tracked-#{repo.id}"} class="ab-project ab-project--tracked">
-          <div class="ab-project__row">
-            <div class="ab-project__identity">
-              <p class="ab-project__name">
-                <span class="ab-project__owner">{repo.owner}/</span><strong>{repo.name}</strong>
-              </p>
-              <p class="ab-project__access">
-                {gettext(
-                  "GitHub tracking is on. No agent is connected to this board for this repository."
-                )}
-              </p>
-            </div>
-
-            <div class="ab-project__state">
-              <span class="ab-status ab-status--queue">
-                <.glyph kind={:queue} />
-                {gettext("No agent")}
-              </span>
-            </div>
-
-            <div class="ab-project__actions">
-              <button
-                type="button"
-                class="ab-btn ab-btn--sm"
-                phx-click="toggle_project"
-                phx-value-id={"repo-#{repo.id}"}
-                phx-target={@myself}
-                aria-expanded={to_string(@expanded == "repo-#{repo.id}")}
-                aria-controls={"tracked-#{repo.id}-merge"}
-              >{gettext("Merge requirements")}</button>
-              <button
-                type="button"
-                class="ab-btn ab-btn--sm"
-                aria-label={
-                  gettext("Connect an agent for %{project}", project: "#{repo.owner}/#{repo.name}")
-                }
-                phx-click={
-                  JS.push("prefill_project",
-                    value: %{owner: repo.owner, name: repo.name},
-                    target: @myself
-                  )
-                }
-                disabled={@provisioning}
-              >
-                {gettext("Connect agent…")}
-              </button>
-            </div>
-          </div>
-          <div
-            id={"tracked-#{repo.id}-merge"}
-            hidden={@expanded != "repo-#{repo.id}"}
-            class="ab-project__details"
-          >
-            <.live_component
-              module={ProjectMerge}
-              id={"tracked-#{repo.id}-merge-policy"}
-              repo={repo}
-              agent={nil}
-              visible={@active and @expanded == "repo-#{repo.id}"}
-            />
-          </div>
-        </li>
-      </ul>
-
-      <details
-        class="ab-project-add"
-        id="project-setup-options"
-        open={@project_path in ["github", "agent"] or (@superagents == [] and @tracked == [])}
-      >
-        <summary class="ab-link">{gettext("Add project")}</summary>
+      <div id="project-setup-options" hidden={!@setup_open}>
         <nav class="setup-paths" aria-label={gettext("Project setup")}>
           <.link
             :for={
@@ -795,10 +577,360 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             </div>
           </div>
         </section>
+      </div>
+
+      <ul
+        :if={@superagents != [] or @tracked != []}
+        class="ab-projects__list"
+        aria-label={gettext("Projects")}
+      >
+        <li
+          :for={superagent <- @superagents}
+          id={"project-#{superagent.id}"}
+          class="ab-project"
+          data-expanded={to_string(expanded?(@expanded, superagent))}
+        >
+          <button
+            type="button"
+            class="ab-project__row"
+            aria-expanded={to_string(expanded?(@expanded, superagent))}
+            aria-controls={"project-#{superagent.id}-details"}
+            phx-click="toggle_project"
+            phx-value-id={superagent.id}
+            phx-target={@myself}
+          >
+            <span class="ab-project__identity ab-project__name"><span class="ab-project__owner">{owner(
+              superagent
+            )}/</span><strong>{name(superagent)}</strong></span>
+            <span class={["ab-status", state_status(superagent)]}><.glyph kind={
+              state_glyph(superagent)
+            } />{state_word(superagent)}</span>
+            <span class="ab-project__guard" data-state={@guards[superagent.id]}>{ProjectMerge.guard_label(
+              @guards[superagent.id]
+            )}</span>
+            <.icon name="hero-chevron-down" class="size-4 ab-project__chevron" />
+          </button>
+          <p
+            :if={runtime_status(superagent) not in [nil, "current", "updated"]}
+            class="ab-project__notice"
+            role="status"
+          >
+            {sync_result(runtime_status(superagent))}
+          </p>
+          <p
+            :if={waiting_count(access_project(@access_projects, superagent)) > 0}
+            class="ab-project__notice"
+          >
+            {ngettext(
+              "%{count} waiting for access",
+              "%{count} waiting for access",
+              waiting_count(access_project(@access_projects, superagent))
+            )}
+          </p>
+          <div
+            :if={error_text(superagent)}
+            class="ab-project__error"
+            role="status"
+            id={"project-#{superagent.id}-error"}
+          >
+            <p>{error_text(superagent)}</p>
+            <details :if={technical_details?(superagent)} class="ab-project__error-details">
+              <summary>{gettext("Technical details")}</summary>
+              <code>{superagent.last_error}</code>
+            </details>
+            <.live_component
+              :if={remote_action(superagent) == :retry_provision_superagent}
+              module={AgentAction}
+              id={"project-retry_provision_superagent-#{superagent.id}"}
+              mode={:retry_provision_superagent}
+              tone={:primary}
+              superagent={superagent}
+              label={remote_label(superagent)}
+              confirm_label={remote_label(superagent)}
+              busy_label={gettext("Applying…")}
+            />
+            <button
+              :if={is_nil(superagent.last_error)}
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="toggle_project"
+              phx-value-id={superagent.id}
+              phx-target={@myself}
+            >
+              {gettext("Open controls")}
+            </button>
+          </div>
+
+          <div
+            id={"project-#{superagent.id}-details"}
+            class="ab-project__details"
+            hidden={not expanded?(@expanded, superagent)}
+          >
+            <div class="ab-project-switch" role="group" aria-label={gettext("Project controls")}>
+              <button
+                :for={
+                  {section, label} <- [
+                    {"merge", gettext("Merge")},
+                    {"access", gettext("Access")},
+                    {"instructions", gettext("Instructions")},
+                    {"maintenance", gettext("Maintenance")}
+                  ]
+                }
+                type="button"
+                aria-pressed={to_string(@detail == section)}
+                aria-controls={"project-#{superagent.id}-view-#{section}"}
+                phx-click="project_detail"
+                phx-value-id={superagent.id}
+                phx-value-section={section}
+                phx-target={@myself}
+              >{label}</button>
+            </div>
+            <div id={"project-#{superagent.id}-view-merge"} hidden={@detail != "merge"}>
+              <.live_component
+                :if={superagent.repository}
+                module={ProjectMerge}
+                id={"project-#{superagent.id}-merge"}
+                repo={superagent.repository}
+                agent_id={superagent.id}
+                guard_owner={@myself}
+                enforcement={@guards[superagent.id]}
+                visible={@active and expanded?(@expanded, superagent)}
+              />
+            </div>
+            <div id={"project-#{superagent.id}-view-access"} hidden={@detail != "access"}>
+              <p class="ab-meta">
+                {access_summary(access_project(@access_projects, superagent), superagent, @tz_offset)}
+              </p>
+              <.live_component
+                module={ProjectAccess}
+                id={"project-#{superagent.id}-access"}
+                project={access_project(@access_projects, superagent)}
+                superagent={superagent}
+                visible={@active and expanded?(@expanded, superagent)}
+                tz_offset={@tz_offset}
+              />
+            </div>
+            <div id={"project-#{superagent.id}-view-instructions"} hidden={@detail != "instructions"}>
+              <.live_component
+                module={ProjectPolicy}
+                id={"project-#{superagent.id}-policy-panel"}
+                superagent={superagent}
+                visible={@active and expanded?(@expanded, superagent)}
+              />
+            </div>
+            <div id={"project-#{superagent.id}-view-maintenance"} hidden={@detail != "maintenance"}>
+              <div class="ab-project__agent-controls">
+                <div class="ab-project__agents">
+                  <span class="ab-meta">{gettext("Concurrent tasks")}</span>
+                  <button
+                    type="button"
+                    class="ab-btn ab-btn--sm ab-btn--icon"
+                    aria-label={
+                      gettext("One fewer agent in %{project}", project: project_name(superagent))
+                    }
+                    phx-click="superagent_scale"
+                    phx-value-id={superagent.id}
+                    phx-value-delta="-1"
+                    disabled={superagent.max_workers <= 1}
+                  >−</button>
+                  <span
+                    class="ab-project__agent-count"
+                    title={gettext("Agents configured for this project")}
+                  >
+                    {superagent.max_workers}<span class="ab-sr">{gettext("agents")}</span>
+                  </span>
+                  <button
+                    type="button"
+                    class="ab-btn ab-btn--sm ab-btn--icon"
+                    aria-label={
+                      gettext("One more agent in %{project}", project: project_name(superagent))
+                    }
+                    phx-click="superagent_scale"
+                    phx-value-id={superagent.id}
+                    phx-value-delta="1"
+                    disabled={superagent.max_workers >= max_workers()}
+                  >+</button>
+                </div>
+
+                <div class="ab-project__profile">
+                  <span class="ab-meta">{gettext("Profile")}</span><code title={superagent.profile}>{superagent.profile}</code>
+                </div>
+
+                <div class="ab-project__actions">
+                  <button
+                    :if={superagent.observed_state == "ready"}
+                    type="button"
+                    class="ab-btn ab-btn--sm"
+                    phx-click="superagent_command"
+                    phx-value-id={superagent.id}
+                    phx-value-action="pause"
+                  >
+                    {gettext("Pause")}
+                  </button>
+                  <button
+                    :if={superagent.observed_state == "paused"}
+                    type="button"
+                    class="ab-btn ab-btn--sm"
+                    phx-click="superagent_command"
+                    phx-value-id={superagent.id}
+                    phx-value-action="resume"
+                  >
+                    {gettext("Resume")}
+                  </button>
+                </div>
+              </div>
+              <p :if={desired_line(superagent)} class="ab-meta">{desired_line(superagent)}</p>
+              <p :if={result = runtime_status(superagent)} class="ab-meta">{sync_result(result)}</p>
+              <.live_component
+                module={ProjectLeftovers}
+                id={"project-#{superagent.id}-leftovers-panel"}
+                superagent={superagent}
+                visible={@active and expanded?(@expanded, superagent)}
+              />
+
+              <div class="ab-project__foot">
+                <details class="ab-project__fold">
+                  <summary>{gettext("State folder")}</summary>
+                  <code>{superagent.state_dir}</code>
+                </details>
+                <details class="ab-project__fold">
+                  <summary>{gettext("dsh panel")}</summary>
+                  <.form
+                    for={%{}}
+                    action={~p"/superagents/#{superagent.id}/panel"}
+                    method="post"
+                    target="_blank"
+                    rel="noopener"
+                    id={"project-#{superagent.id}-panel-form"}
+                  >
+                    <button type="submit" class="ab-btn ab-btn--sm">
+                      {gettext("Open the panel signed in")}
+                    </button>
+                  </.form>
+                </details>
+                <details :if={technical_details?(superagent)} class="ab-project__fold">
+                  <summary>{gettext("Technical details")}</summary>
+                  <code>{superagent.last_error}</code>
+                </details>
+                <div class="ab-project__foot-actions">
+                  <.live_component
+                    :if={remote_action(superagent) in [:start_superagent, :stop_superagent]}
+                    module={AgentAction}
+                    id={"project-#{remote_action(superagent)}-#{superagent.id}"}
+                    mode={remote_action(superagent)}
+                    tone={if remote_action(superagent) == :stop_superagent, do: :halt, else: :primary}
+                    superagent={superagent}
+                    label={remote_label(superagent)}
+                    confirm_label={remote_label(superagent)}
+                    busy_label={gettext("Applying…")}
+                  />
+                  <.live_component
+                    module={AgentAction}
+                    id={"project-remove-#{superagent.id}"}
+                    mode={:remove_superagent}
+                    tone={:halt}
+                    superagent={superagent}
+                    label={gettext("Archive project…")}
+                    confirm_label={gettext("Archive project")}
+                    cancel_label={gettext("Keep")}
+                    busy_label={gettext("Archiving…")}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li :for={repo <- @tracked} id={"tracked-#{repo.id}"} class="ab-project ab-project--tracked">
+          <button
+            type="button"
+            class="ab-project__row"
+            phx-click="toggle_project"
+            phx-value-id={"repo-#{repo.id}"}
+            phx-target={@myself}
+            aria-expanded={to_string(@expanded == "repo-#{repo.id}")}
+            aria-controls={"tracked-#{repo.id}-merge"}
+          >
+            <span class="ab-project__identity ab-project__name"><span class="ab-project__owner">{repo.owner}/</span><strong>{repo.name}</strong></span>
+            <span class="ab-status ab-status--queue"><.glyph kind={:queue} />{gettext("No agent")}</span>
+            <span class="ab-project__guard">{ProjectMerge.guard_label(:no_agent)}</span>
+            <.icon name="hero-chevron-down" class="size-4 ab-project__chevron" />
+          </button>
+          <div
+            id={"tracked-#{repo.id}-merge"}
+            hidden={@expanded != "repo-#{repo.id}"}
+            class="ab-project__details"
+          >
+            <.live_component
+              module={ProjectMerge}
+              id={"tracked-#{repo.id}-merge-policy"}
+              repo={repo}
+              agent_id={nil}
+              guard_owner={@myself}
+              enforcement={:no_agent}
+              visible={@active and @expanded == "repo-#{repo.id}"}
+            />
+            <button
+              type="button"
+              class="ab-btn ab-btn--sm"
+              aria-label={
+                gettext("Connect an agent for %{project}", project: "#{repo.owner}/#{repo.name}")
+              }
+              phx-click={
+                JS.push("prefill_project",
+                  value: %{owner: repo.owner, name: repo.name},
+                  target: @myself
+                )
+              }
+              disabled={@provisioning}
+            >
+              {gettext("Connect agent…")}
+            </button>
+          </div>
+        </li>
+      </ul>
+
+      <details
+        :if={@superagents != []}
+        id="project-runtime-maintenance"
+        class="ab-project__fold"
+        phx-mounted={JS.ignore_attributes("open")}
+      >
+        <summary>{gettext("Agent maintenance")}</summary>
+        <form
+          action={~p"/superagents/synchronize"}
+          method="post"
+          class="ab-projects__maintenance"
+        >
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="confirm" value={sync_phrase(@superagents)} />
+          <p class="ab-meta">
+            {gettext(
+              "Sync the Harness and duplicate-issue notices. Idle agents update now; busy agents wait until their work and queue are finished."
+            )}
+          </p>
+          <p id="runtime-targets" class="ab-meta">{sync_phrase(@superagents)}</p>
+          <button
+            class="ab-btn"
+            type="submit"
+            disabled={@checking_runtimes}
+            aria-describedby="runtime-targets"
+          >
+            {if @checking_runtimes,
+              do: gettext("Synchronizing…"),
+              else: gettext("Sync agent runtimes")}
+          </button>
+        </form>
       </details>
     </div>
     """
   end
+
+  defp navigate(socket, params),
+    do:
+      push_patch(socket,
+        to: BoardNavigation.settings_path(socket.assigns.repo, "projects", params)
+      )
 
   defp max_workers, do: Orchestrator.worker_range().last
 
@@ -808,11 +940,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   end
 
   defp expanded?(expanded, superagent), do: to_string(expanded) == to_string(superagent.id)
-
-  defp ready_count(superagents),
-    do: Enum.count(superagents, &(&1.observed_state == "ready"))
-
-  defp agent_total(superagents), do: Enum.sum(Enum.map(superagents, & &1.max_workers))
 
   defp sync_phrase(agents),
     do:

@@ -28,13 +28,13 @@ defmodule AgentBoardWeb.ProjectStagesTest do
     open = "#tracked-#{repo.id} button[phx-click=toggle_project]"
     form_id = "#tracked-#{repo.id}-merge-policy-stage-form"
     view |> element(open) |> render_click()
-    render_async(view)
+    render_async(view, 5_000)
     view |> form(form_id, %{"stages" => ["npm-build", "npm-test", "npm-lint"]}) |> render_submit()
     assert {:ok, ["npm-lint", "npm-test", "npm-build"]} = ProjectStages.load(repo)
     assert {:ok, []} = ProjectStages.load(other)
-    {:ok, again, _} = live(conn, url)
-    again |> element(open) |> render_click()
-    render_async(again)
+    bookmark = assert_patch(view)
+    {:ok, again, _} = live(conn, bookmark)
+    render_async(again, 5_000)
     assert has_element?(again, form_id <> " input[value=npm-test][checked]")
     refute has_element?(again, form_id <> " input[value=pytest][checked]")
 

@@ -14,6 +14,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   attr :active, :boolean, default: false
   attr :repo, :map, default: nil
+  attr :project_selection, :any, default: {nil, nil}
   attr :project_path, :string, default: "github"
   attr :version, :map, required: true
   attr :voice, :map, required: true
@@ -238,11 +239,11 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane settings-pane--projects"
           aria-labelledby="settings-projects-title"
         >
-          <h3 id="settings-projects-title">{gettext("Projects")}</h3>
           <.live_component
             module={Projects}
             id="settings-projects"
             project_path={@project_path}
+            project_selection={@project_selection}
             repo={@repo}
             active={@active == true and @section == "projects"}
             superagents={@superagents}

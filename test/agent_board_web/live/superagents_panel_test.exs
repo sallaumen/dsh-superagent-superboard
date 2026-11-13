@@ -7,6 +7,8 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
   alias AgentBoard.{Board, Repo, Superagents}
   alias AgentBoard.Superagents.{FakeManager, FakeProvisioner, Leftovers, Policy, Superagent}
 
+  alias AgentBoardWeb.BoardComponents.Settings.ProjectMerge
+
   defp superagent!(repo, attrs) do
     {:ok, superagent} =
       Superagents.create(
@@ -41,7 +43,12 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
              "#project-#{superagent.id} a[href='http://127.0.0.1:#{superagent.port}/']"
            )
 
-    refute has_element?(view, "#project-setup-options[open]")
+    assert has_element?(view, "#project-setup-options[hidden]")
+
+    assert has_element?(
+             view,
+             ".ab-projects__list + details:not([open]) form[action='/superagents/synchronize']"
+           )
 
     # The button posts to the board, with the session's token; no address is in the page.
     form = "#project-#{superagent.id}-panel-form"
@@ -92,6 +99,103 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
         do: Application.put_env(:agent_board, :superagent_manager, previous),
         else: Application.delete_env(:agent_board, :superagent_manager)
     end)
+  end
+
+  test "an online worker can have an inactive or unverifiable guard; refresh updates both views",
+       %{conn: conn} do
+    fake_manager()
+    {:ok, repo} = Board.add_repository("fixture", "guard")
+    agent = superagent!(repo, %{observed_state: "ready"})
+    FakeManager.put_github_source(agent.id, {:ok, %{enabled: false}})
+    {:ok, view, _} = live(conn, "/?repo=fixture/guard&panel=settings&section=projects")
+    render_async(view, 5_000)
+    row = "#project-#{agent.id} .ab-project__row"
+    assert has_element?(view, row, "Ligado")
+    assert has_element?(view, row, "Trava inativa")
+    refute has_element?(view, row <> " [phx-click=superagent_scale]")
+    view |> element(row) |> render_click()
+    render_async(view, 5_000)
+    panel = "#project-#{agent.id}-merge"
+    assert has_element?(view, panel, "Trava inativa")
+
+    FakeManager.put_github_source(agent.id, {:error, :unavailable})
+    view |> element(panel <> " button[phx-click=refresh]") |> render_click()
+    render_async(view, 5_000)
+    assert has_element?(view, row, "Trava não verificada")
+    assert has_element?(view, panel, "Trava não verificada")
+  end
+
+  test "a machine policy names its source without attributing rules to a GitHub revision" do
+    policy = %{
+      branch: "main",
+      sha: String.duplicate("a", 40),
+      url: nil,
+      source: :machine,
+      result: {:ok, %{"review" => true, "local" => ["Unit"], "github" => []}}
+    }
+
+    html =
+      render_component(&ProjectMerge.render/1,
+        id: "machine-policy",
+        stage_ids: [],
+        stage_notice: nil,
+        myself: 1,
+        policy: policy,
+        last_policy: nil,
+        enforcement: :active
+      )
+
+    assert html =~ "Regras de merge configuradas nesta máquina"
+    assert html =~ "Aprovação independente obrigatória"
+    assert html =~ "Ver 1 check obrigatório"
+    refute html =~ "Ver política na main"
+    refute html =~ "aaaaaaaa"
+  end
+
+  test "a project bookmark restores the area independently of the board repository", %{conn: conn} do
+    {:ok, board} = Board.add_repository("fixture", "board-filter")
+    {:ok, repo} = Board.add_repository("fixture", "bookmark")
+    agent = superagent!(repo, %{})
+    list = "/?panel=settings&repo=fixture%2Fboard-filter&section=projects"
+    {:ok, view, _} = live(conn, list)
+    view |> element("#project-#{agent.id} .ab-project__row") |> render_click()
+
+    assert_patch(
+      view,
+      "/?panel=settings&project=fixture%2Fbookmark&repo=fixture%2Fboard-filter&section=projects"
+    )
+
+    view
+    |> element("#project-#{agent.id}-details [phx-value-section=maintenance]")
+    |> render_click()
+
+    url = assert_patch(view)
+    assert URI.decode_query(URI.parse(url).query)["area"] == "maintenance"
+
+    {:ok, reopened, _} = live(conn, url)
+
+    assert has_element?(
+             reopened,
+             "#project-#{agent.id}-details:not([hidden]) [phx-value-section=maintenance][aria-pressed=true]"
+           )
+
+    render_patch(reopened, list <> "&project=fixture%2Fbookmark&area=retired")
+
+    assert has_element?(
+             reopened,
+             "#project-#{agent.id}-details [phx-value-section=merge][aria-pressed=true]"
+           )
+
+    render_patch(reopened, list <> "&project=fixture%2Fboard-filter&area=access")
+    assert has_element?(reopened, "#tracked-#{board.id}-merge:not([hidden])")
+    render_patch(reopened, list <> "&project=fixture%2Fremoved&area=access")
+    refute has_element?(reopened, ".ab-project__row[aria-expanded=true]")
+
+    assert has_element?(
+             reopened,
+             "#settings-projects [role=status]",
+             "Este projeto não está conectado"
+           )
   end
 
   test "an agent with other instructions is in the bell, and one click applies the policy",
@@ -387,7 +491,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert superagent.max_workers == 2
   end
 
-  test "each project keeps its own agent pool and the list sums the total", %{conn: conn} do
+  test "each project keeps its own agent pool and the header counts repositories", %{conn: conn} do
     {:ok, one} = Board.add_repository("fixture", "pool-one")
     {:ok, two} = Board.add_repository("fixture", "pool-two")
     first = superagent!(one, %{max_workers: 2})
@@ -395,7 +499,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     {:ok, view, _html} = live(conn, "/?repo=fixture/pool-one&panel=settings&section=projects")
 
-    assert has_element?(view, ".ab-projects__summary", "6 agentes")
+    assert has_element?(view, "#settings-projects-title", "2 conectados")
     assert has_element?(view, "#project-#{first.id} .ab-project__agent-count", "2")
     assert has_element?(view, "#project-#{second.id} .ab-project__agent-count", "4")
 
@@ -510,7 +614,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert has_element?(view, row, "fixture/tracked-only")
     assert has_element?(view, row, "Sem agente")
     refute has_element?(view, "#tracked-#{with_agent.id}")
-    assert has_element?(view, ".ab-projects__summary", "1 sem agente")
+    assert has_element?(view, "#settings-projects-title", "2 conectados")
 
     view |> element("#{row} button", "Conectar agente") |> render_click()
 

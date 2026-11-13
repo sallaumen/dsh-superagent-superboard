@@ -9967,3 +9967,60 @@ msgstr "O merge exige as etapas selecionadas e uma aprovação independente."
 
 msgid "Browser tests"
 msgstr "Testes no navegador"
+
+msgid "Agent maintenance"
+msgstr "Manutenção dos agentes"
+
+msgid "%{count} connected"
+msgid_plural "%{count} connected"
+msgstr[0] "%{count} conectado"
+msgstr[1] "%{count} conectados"
+
+msgid "Guard active"
+msgstr "Trava ativa"
+
+msgid "Guard inactive"
+msgstr "Trava inativa"
+
+msgid "Guard unverified"
+msgstr "Trava não verificada"
+
+msgid "Guard not applicable"
+msgstr "Trava não se aplica"
+
+msgid "Checking guard…"
+msgstr "Verificando trava…"
+
+msgid "Concurrent tasks"
+msgstr "Tarefas simultâneas"
+
+msgid "Profile"
+msgstr "Perfil"
+
+msgid "Project policy"
+msgstr "Política do projeto"
+
+msgid "Independent approval required"
+msgstr "Aprovação independente obrigatória"
+
+msgid "Independent approval not required"
+msgstr "Aprovação independente dispensada"
+
+msgid "View %{count} required check"
+msgid_plural "View %{count} required checks"
+msgstr[0] "Ver %{count} check obrigatório"
+msgstr[1] "Ver %{count} checks obrigatórios"
+
+msgid "%{count} local"
+msgid_plural "%{count} local"
+msgstr[0] "%{count} local"
+msgstr[1] "%{count} locais"
+
+msgid "%{local} and %{hosted} on GitHub"
+msgstr "%{local} e %{hosted} no GitHub"
+
+msgid "View policy on %{branch}"
+msgstr "Ver política na %{branch}"
+
+msgid "This project is no longer connected to the board."
+msgstr "Este projeto não está conectado ao board."
