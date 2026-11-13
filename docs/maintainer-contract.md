@@ -2138,3 +2138,11 @@ delivery, selections supplement the authoritative policy; no policy and no stage
 still blocks. The worker owns a separate worktree receipt, with the selected IDs,
 current stage, commit, timestamps and state; never a transcript. The inspector
 can show both that receipt and the built-in preflight for the same attempt.
+
+
+New projects inherit stack recommendations without a settings write. The owner
+can override individual checks; existing explicit lists remain authoritative.
+A skipped conditional check is not evidence of success. Worker receipts include
+the selection reason, and the inspector distinguishes policy skips from checks
+not reached because of failure. Folder inventories are read when Maintenance
+is opened. Searching and paging these inventories never deletes or moves files.

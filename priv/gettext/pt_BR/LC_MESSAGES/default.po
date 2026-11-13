@@ -10024,3 +10024,155 @@ msgstr "Ver política na %{branch}"
 
 msgid "This project is no longer connected to the board."
 msgstr "Este projeto não está conectado ao board."
+
+#: lib/agent_board_web/live/board_components/preflight.ex:33
+#, elixir-autogen, elixir-format
+msgid "A previous step stopped the run."
+msgstr "Uma etapa anterior interrompeu a execução."
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:155
+#, elixir-autogen, elixir-format
+msgid "Browse folders eligible for cleanup"
+msgstr "Consultar pastas disponíveis para limpeza"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:149
+#, elixir-autogen, elixir-format
+msgid "Detected"
+msgstr "Detectada"
+
+#: lib/agent_board_web/live/board_components/preflight.ex:34
+#, elixir-autogen, elixir-format
+msgid "Disabled in project settings."
+msgstr "Desativada nas configurações do projeto."
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:296
+#, elixir-autogen, elixir-format
+msgid "Every task"
+msgstr "Toda tarefa"
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:161
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:162
+#, elixir-autogen, elixir-format
+msgid "Find a folder"
+msgstr "Buscar pasta"
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:613
+#, elixir-autogen, elixir-format
+msgid "Find a project"
+msgstr "Buscar projeto"
+
+#: lib/agent_board_web/live/board_components/preflight.ex:42
+#, elixir-autogen, elixir-format
+msgid "No applicable project checks"
+msgstr "Nenhuma verificação se aplica a esta tarefa"
+
+#: lib/agent_board_web/live/board_components/preflight.ex:35
+#, elixir-autogen, elixir-format
+msgid "No changed files match this check."
+msgstr "Nenhum arquivo alterado corresponde a esta regra."
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:169
+#, elixir-autogen, elixir-format
+msgid "No matching folders."
+msgstr "Nenhuma pasta encontrada."
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:624
+#, elixir-autogen, elixir-format
+msgid "No matching projects."
+msgstr "Nenhum projeto encontrado."
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:313
+#, elixir-autogen, elixir-format
+msgid "No supported toolchain detected. You can choose rules manually."
+msgstr "Nenhuma tecnologia do catálogo foi detectada. Você pode escolher as regras manualmente."
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:297
+#, elixir-autogen, elixir-format
+msgid "On related changes"
+msgstr "Por alteração"
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:619
+#, elixir-autogen, elixir-format
+msgid "Owner or repository name"
+msgstr "Nome do repositório ou da organização"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:318
+#, elixir-autogen, elixir-format
+msgid "Project preferences are active for this checkout."
+msgstr "As preferências salvas se aplicam a este projeto."
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:716
+#, elixir-autogen, elixir-format
+msgid "Quality & merge"
+msgstr "Qualidade e merge"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:127
+#, elixir-autogen, elixir-format
+msgid "Quality rules"
+msgstr "Regras de qualidade"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:316
+#, elixir-autogen, elixir-format
+msgid "Recommended rules are active automatically for the detected stack."
+msgstr "As regras recomendadas já estão ativas para a tecnologia detectada."
+
+#: lib/agent_board_web/live/board_components/preflight.ex:41
+#, elixir-autogen, elixir-format
+msgid "Required for every task in this project."
+msgstr "Obrigatória em toda tarefa deste projeto."
+
+#: lib/agent_board_web/live/board_components/settings/project_leftovers.ex:175
+#, elixir-autogen, elixir-format
+msgid "Show more folders"
+msgstr "Mostrar mais pastas"
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:946
+#, elixir-autogen, elixir-format
+msgid "Show more projects"
+msgstr "Mostrar mais projetos"
+
+#: lib/agent_board_web/live/board_components/merge_progress.ex:99
+#: lib/agent_board_web/live/board_components/preflight.ex:104
+#, elixir-autogen, elixir-format
+msgid "Skipped"
+msgstr "Pulada"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:82
+#, elixir-autogen, elixir-format
+msgid "Static analysis"
+msgstr "Análise estática"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:141
+#, elixir-autogen, elixir-format
+msgid "Technology"
+msgstr "Tecnologia"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:129
+#, elixir-autogen, elixir-format
+msgid "Tests and checks for this project. Merge requirements below still apply."
+msgstr "Escolha quando rodar cada etapa. Os requisitos de merge abaixo continuam obrigatórios."
+
+#: lib/agent_board_web/live/board_components/preflight.ex:39
+#, elixir-autogen, elixir-format
+msgid "The change could not be compared; running as a precaution."
+msgstr "Não foi possível comparar as alterações. A etapa foi incluída por precaução."
+
+#: lib/agent_board_web/live/board_components/preflight.ex:36
+#, elixir-autogen, elixir-format
+msgid "The task changed files covered by this check."
+msgstr "A tarefa alterou arquivos cobertos por esta regra."
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:308
+#, elixir-autogen, elixir-format
+msgid "Waiting for a local checkout. Defaults will apply when the worker detects the stack."
+msgstr "Aguardando uma cópia local. As regras padrão entram em vigor quando o executor identifica a tecnologia."
+
+#: lib/agent_board_web/live/board_components/preflight.ex:36
+#, elixir-autogen, elixir-format
+msgid "Changed file matches %{pattern}."
+msgstr "Arquivo alterado corresponde a %{pattern}."
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex
+#, elixir-autogen, elixir-format
+msgid "Not detected in this checkout"
+msgstr "Não detectado neste projeto"

@@ -23,6 +23,13 @@ class Delivery(unittest.TestCase):
         home = patch.object(Path, "home", return_value=self.folder)
         home.start()
         self.addCleanup(home.stop)
+        # Snapshot/merge tests stub Git; real checkout detection has its own fixture.
+        profile = patch.object(guard.task_stages.stack_rules, "checkout", return_value=".")
+        profile.start()
+        self.addCleanup(profile.stop)
+        detect = patch.object(guard.task_stages.stack_rules, "detected", return_value=[])
+        detect.start()
+        self.addCleanup(detect.stop)
         self.base_entry = ""
         self.annotations = []
         self.steps = []
@@ -212,16 +219,16 @@ class Delivery(unittest.TestCase):
     def test_panel_adds_checks_without_removing_repository_requirements(self):
         guard.task_stages.save("org/repo", ["npm-test"], [])
         self.runs.clear()
-        with patch.object(guard.task_stages, "execute", side_effect=lambda repo, ids, cb: cb(ids[0], "passed")) as execute:
+        with patch.object(guard.task_stages, "execute", side_effect=lambda repo, ids, cb: cb(next(iter(ids)), "passed")) as execute:
             with self.assertRaisesRegex(guard.Blocked, "checks_outstanding"):
                 self.merge.deliver()
-            self.assertEqual(execute.call_args.args[:2], ("org/repo", ["npm-test"]))
+            self.assertEqual(execute.call_args.args[:2], ("org/repo", {"npm-test": "required"}))
         self.assertFalse(self.merges)
 
     def test_panel_only_needs_review_and_cannot_approve_a_changed_selection(self):
         guard.task_stages.save("org/repo", ["npm-test"], [])
         self.cfg = None
-        with patch.object(guard.task_stages, "execute", side_effect=lambda repo, ids, cb: cb(ids[0], "passed")):
+        with patch.object(guard.task_stages, "execute", side_effect=lambda repo, ids, cb: cb(next(iter(ids)), "passed")):
             with self.assertRaisesRegex(guard.Blocked, "review_required"):
                 self.merge.deliver()
         def change(*_args):

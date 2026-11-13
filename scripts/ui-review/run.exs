@@ -26,9 +26,41 @@ defmodule BrowserReview do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo, ownership_timeout: :infinity)
     :ok = Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
 
+    checkout = Path.join(System.tmp_dir!(), "board-quality-review-" <> Ecto.UUID.generate())
+
     try do
       name = "review-" <> Ecto.UUID.generate()
       {:ok, repo} = Board.add_repository("ui-fixture", name)
+
+      # Disposable source for stack detection: no upstream access, all DB writes rolled back.
+      File.mkdir_p!(checkout)
+
+      File.write!(
+        Path.join(checkout, "package.json"),
+        Jason.encode!(%{scripts: %{test: "node --test", lint: "eslint .", build: "vite build"}})
+      )
+
+      for args <- [
+            ["init", "-q"],
+            ["remote", "add", "origin", "https://github.com/ui-fixture/#{name}.git"],
+            ["add", "package.json"],
+            [
+              "-c",
+              "user.name=UI Fixture",
+              "-c",
+              "user.email=fixture@example.org",
+              "-c",
+              "commit.gpgsign=false",
+              "commit",
+              "-qm",
+              "fixture"
+            ]
+          ] do
+        {_, 0} = System.cmd("git", args, cd: checkout)
+      end
+
+      :ok = AgentBoard.Settings.put("dispatch_repo_path:ui-fixture/#{name}", checkout)
+      for number <- 1..22, do: Board.add_repository("sample", "project-#{number}")
 
       task =
         Repo.insert!(
@@ -69,6 +101,7 @@ defmodule BrowserReview do
 
       code
     after
+      File.rm_rf!(checkout)
       Ecto.Adapters.SQL.Sandbox.checkin(Repo)
     end
   end

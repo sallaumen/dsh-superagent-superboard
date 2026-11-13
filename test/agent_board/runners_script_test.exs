@@ -19,6 +19,14 @@ defmodule AgentBoard.RunnersScriptTest do
     git(repo, ["-c", "user.email=t@example.com", "-c", "user.name=T", "commit", "-qm", "init"])
     git(repo, ["remote", "add", "origin", remote])
     git(repo, ["push", "-q", "origin", "main"])
+    # Keep the real fetch offline while the checkout has the same origin identity
+    # the worker verifies before planning local checks.
+    ssh = Path.join(root, "fixture-ssh")
+    File.write!(ssh, "#!/bin/sh\nexec git upload-pack \"$(dirname \"$0\")/remote.git\"\n")
+    File.chmod!(ssh, 0o700)
+    git(repo, ["config", "core.sshCommand", ssh])
+    git(repo, ["remote", "set-url", "origin", "git@github.com:fixture/repo.git"])
+
     File.write!(Path.join(run, "prompt.md"), "Faça o trabalho.\n")
 
     on_exit(fn -> File.rm_rf!(root) end)

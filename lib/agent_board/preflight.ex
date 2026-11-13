@@ -6,7 +6,7 @@ defmodule AgentBoard.Preflight do
 
   @stages ~w(backend frontend library)
   @ui_reasons ~w(screen interaction appearance copy unknown)
-  @max_receipt 1024
+  @max_receipt 8192
 
   def source(
         %{"repository" => repo, "execution" => %{"directory" => dir}, "started_at" => since} =
@@ -81,10 +81,17 @@ defmodule AgentBoard.Preflight do
          kind
        )
        when is_integer(began) and is_integer(at) and is_binary(head) and
-              state in ~w(running passed failed interrupted unavailable) do
+              state in ~w(running passed failed interrupted unavailable skipped) do
     stages = stages_for(kind, data)
 
-    if stages != [] and in_attempt?(began, since, until) and valid_stage?(state, stage, stages) and
+    reasons = Map.get(data, "reasons", %{})
+
+    active =
+      if is_map(reasons),
+        do: Enum.reject(stages, &(reasons[&1] in ["disabled", "unrelated"])),
+        else: []
+
+    if in_attempt?(began, since, until) and valid_receipt?(stages, active, stage, state, reasons) and
          head =~ ~r/\A(?:[0-9a-f]{40}|[0-9a-f]{64})\z/ do
       state = observed(state, at, until)
 
@@ -94,7 +101,8 @@ defmodule AgentBoard.Preflight do
         kind: kind,
         stage: stage,
         state: state,
-        rows: rows(stage, state, stages),
+        rows: decision_rows(stages, active, stage, state),
+        reasons: reasons,
         ui_failure: data["ui_failure"],
         ui_reason: data["ui_reason"]
       }
@@ -102,6 +110,31 @@ defmodule AgentBoard.Preflight do
   end
 
   defp snapshot(_, _, _, _), do: nil
+
+  defp valid_receipt?([], _, _, _, _), do: false
+  defp valid_receipt?(_, _, _, _, reasons) when not is_map(reasons), do: false
+
+  defp valid_receipt?(stages, active, stage, state, reasons) do
+    valid_reasons =
+      reasons == %{} or
+        (Enum.sort(Map.keys(reasons)) == Enum.sort(stages) and
+           Enum.all?(reasons, &valid_reason?/1))
+
+    valid_reasons and valid_stage?(state, stage, active)
+  end
+
+  defp valid_reason?({id, "matched:" <> pattern}) do
+    match?({:ok, _}, AgentBoard.ProjectStages.command(id)) and
+      pattern in AgentBoard.ProjectStages.rule(id)["paths"]
+  end
+
+  defp valid_reason?({_, reason}),
+    do: reason in ~w(disabled unrelated matched required unknown_diff)
+
+  defp decision_rows(stages, active, stage, state) do
+    results = if active == [], do: %{}, else: Map.new(rows(stage, state, active))
+    Enum.map(stages, &{&1, Map.get(results, &1, "skipped")})
+  end
 
   defp stages_for(:project, data), do: project_stages(data["stages"])
 
@@ -117,6 +150,7 @@ defmodule AgentBoard.Preflight do
 
   defp project_stages(_), do: []
 
+  defp valid_stage?("skipped", _, stages), do: stages == []
   defp valid_stage?("passed", stage, stages), do: stage == List.last(stages)
   defp valid_stage?("unavailable", stage, stages), do: stage == "ui_review" and stage in stages
   defp valid_stage?(_, stage, stages), do: stage in stages

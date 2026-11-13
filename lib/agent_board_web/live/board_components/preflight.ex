@@ -14,7 +14,10 @@ defmodule AgentBoardWeb.BoardComponents.Preflight do
       </small>
       <ul :if={!@compact}>
         <li :for={{stage, status} <- @snapshot.rows} aria-current={status == "running" && "step"}>
-          <span>{name(stage)}</span>
+          <span>{name(stage)}<small
+            :if={@snapshot[:reasons] && @snapshot.reasons[stage]}
+            class="ab-check-reason"
+          >{why(@snapshot.reasons[stage], status)}</small></span>
           <small class="ab-meta">{label(status)}</small>
         </li>
       </ul>
@@ -27,6 +30,22 @@ defmodule AgentBoardWeb.BoardComponents.Preflight do
     """
   end
 
+  def why(_, "not_run"), do: gettext("A previous step stopped the run.")
+  def why("disabled", _), do: gettext("Disabled in project settings.")
+  def why("unrelated", _), do: gettext("No changed files match this check.")
+
+  def why("matched:" <> pattern, _),
+    do: gettext("Changed file matches %{pattern}.", pattern: pattern)
+
+  def why("matched", _), do: gettext("The task changed files covered by this check.")
+
+  def why("unknown_diff", _),
+    do: gettext("The change could not be compared; running as a precaution.")
+
+  def why("required", _), do: gettext("Required for every task in this project.")
+  def why(_, _), do: nil
+
+  defp headline(%{state: "skipped"}), do: gettext("No applicable project checks")
   defp headline(%{kind: :project, state: "passed"}), do: gettext("Project checks passed")
 
   defp headline(%{kind: :project, stage: stage, state: state}),
@@ -88,6 +107,7 @@ defmodule AgentBoardWeb.BoardComponents.Preflight do
   defp label("passed"), do: gettext("Passed")
   defp label("failed"), do: gettext("Failed")
   defp label("unavailable"), do: gettext("Unavailable")
+  defp label("skipped"), do: gettext("Skipped")
   defp label("pending"), do: gettext("Pending")
   defp label("not_run"), do: gettext("Not run")
   defp label("interrupted"), do: gettext("Interrupted")

@@ -27,20 +27,31 @@ Each attempt records a snapshot atomically under `~/.local/state/superboard/merg
 
 ## Choose task checks in the panel
 
-In **Settings → Projects**, expand the project row. In **Project policy**, open **Local task checks**. Select
-the commands your project supports and save. For example, a Node.js project
-can run lint, unit tests, its build and its browser test script. Nothing is
-installed and saving does not run a command. Clear the selection to remove
-only these additional checks. Existing repository and machine policies remain
-in force. If neither exists, a nonempty selection provides a local-only policy
-with squash and independent review; with no selection the guard refuses delivery.
+In **Settings → Projects**, find the repository by name and open **Quality & merge**.
+A connected project with no saved preferences automatically uses the recommended
+rules for its root toolchains. No repository files or Actions configuration are
+written. Detection is read-only and needs a matching local Git checkout; the
+worker can detect the stack even when that checkout is not available to the UI.
+Only the selected stack's rules are shown. Switch technologies to add an explicit
+rule. Saving changes to one stack preserves the others. Existing selections,
+including explicitly empty ones, retain their original meaning.
 
-The selection is stored outside the checkout under
-`~/.config/superboard/task-stages/owner/repo.json` for the board/worker OS user.
-Only the fixed catalog in `priv/merge_gate/stages.json` can be selected. Local
-tools and project scripts must already be available. A missing tool or script
-fails that stage and stops the sequence. A concurrent settings change must be
-refreshed before saving.
+The catalog covers Elixir, JavaScript/TypeScript (npm), Rust, Python (pytest),
+PHP (Composer), Go, Ruby (RSpec), Java (Maven), .NET and Swift. Markers and
+file patterns live in `priv/merge_gate/stack-rules.json`; fixed commands in
+`stages.json`. Detection reads tracked root manifests from HEAD and the base;
+it does not guess commands inside nested packages. Project-declared npm or
+Composer scripts must exist. Workers need the tools installed.
+
+**Every task** always runs; **on related changes** compares committed, staged,
+unstaged and nonignored new files with the merge base (including deletions and
+both sides of renames). At merge the actual PR base is used. An unknown diff
+runs conditional checks conservatively. **Off** is an explicit project override.
+The inspector records the decision for each relevant check and distinguishes
+a rule skip from a later step blocked by failure. No applicable checks is not
+a passing local gate. Repository and machine merge policy requirements stay
+binding; without either, delivery needs actual local validation and independent
+review. Overrides live in `~/.config/superboard/task-stages/owner/repo.json`.
 
 A managed worker runs the selected stages in order before `gh pr create`, then
 verifies them again on the exact head at guarded merge. Codex/Claude local

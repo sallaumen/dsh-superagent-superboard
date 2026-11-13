@@ -58,15 +58,22 @@ async function review(browser, url) {
       await capture("settings");
 
       await page.goto(url + "&panel=settings&section=projects");
+      const search = page.locator("#project-directory-query");
+      await search.fill("ui-fixture");
+      await page.locator(".ab-project--tracked").filter({hasText: "sample/"}).first().waitFor({state:"hidden"});
       const project = page.locator(".ab-project--tracked").filter({hasText: "ui-fixture/"});
       await project.getByRole("button", {name: /ui-fixture\//, expanded: false}).click();
-      const checks = project.locator("details[id$='-stages']");
-      await checks.locator("summary").click();
-      const example = checks.locator("input[value='npm-test']");
-      await example.check();
-      assert.ok(await example.isChecked());
+      const checks = project.locator("section[id$='-stages']");
+      await checks.locator("select[name=stack]").waitFor();
+      assert.equal(await checks.locator("select[name=stack]").inputValue(), "JavaScript / TypeScript");
+      const example = checks.locator("select[name='rules[npm-test]']");
+      assert.equal(await example.inputValue(), "always");
+      assert.equal(await checks.locator("select[name='rules[npm-lint]']").inputValue(), "changed");
+      await example.selectOption("off");
+      assert.equal(await example.inputValue(), "off");
+      await example.selectOption("always");
+      await checks.scrollIntoViewIfNeeded();
       await capture("project-stages");
-      await example.uncheck();
     }
     assert.deepEqual(errors, [], "Browser console or page errors: " + errors.join("; "));
   } finally {

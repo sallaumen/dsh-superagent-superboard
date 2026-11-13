@@ -6,7 +6,7 @@ defmodule AgentBoard.MergeProgress do
   """
 
   @states ~w(checking blocked merging merged)
-  @check_states ~w(queued running passed failed pending missing ambiguous)
+  @check_states ~w(queued running passed failed pending missing ambiguous skipped)
 
   def read(%{owner: owner, name: name}, number, head)
       when is_integer(number) and number > 0 do

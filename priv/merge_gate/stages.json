@@ -9,5 +9,11 @@
   "cargo-format": ["cargo", "fmt", "--check"],
   "cargo-test": ["cargo", "test", "--locked"],
   "pytest": ["python3", "-m", "pytest"],
-  "composer-test": ["composer", "test"]
+  "composer-test": ["composer", "test"],
+  "go-test": ["go", "test", "./..."],
+  "go-vet": ["go", "vet", "./..."],
+  "ruby-test": ["bundle", "exec", "rspec"],
+  "java-test": ["mvn", "--batch-mode", "test"],
+  "dotnet-test": ["dotnet", "test"],
+  "swift-test": ["swift", "test"]
 }

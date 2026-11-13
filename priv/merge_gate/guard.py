@@ -224,10 +224,12 @@ class Merge:
         base = info["baseRefOid"]
         owner = self.api("user")["login"]
         self.verify(info, owner, base)
-        stages = task_stages.load(self.repo)
-        source, config = self.configuration(base, stages)
+        stages = task_stages.plan(self.repo, base)
+        selection = task_stages.stored(self.repo)
+        required = [i for i in stages if stages[i] not in ("disabled", "unrelated")]
+        source, config = self.configuration(base, required)
         rows = self.snapshot["checks"]
-        project_rows = {i: dict(name=" ".join(task_stages.CATALOG[i]), source="local", state="queued") for i in stages}
+        project_rows = {i: dict(name=" ".join(task_stages.CATALOG[i]), source="local", state="queued" if i in required else "skipped", reason=stages[i]) for i in stages}
         rows.extend(project_rows.values())
         local = config["local"]
         rows.extend(dict(name=k, source="local", state="queued") for k in local)
@@ -278,7 +280,7 @@ class Merge:
                 self.save()
         # Keep short hosted runs visible even after the local commands finish.
         until = time.monotonic() + 120
-        while (all(row["state"] == "passed" for row in rows[:local_end])
+        while (all(row["state"] in ("passed", "skipped") for row in rows[:local_end])
                and any(row["state"] in ("running", "queued", "pending") for row in rows[local_end:])
                and time.monotonic() < until):
             time.sleep(5)
@@ -286,14 +288,14 @@ class Merge:
         # Refetch at the decision. The hosted service still enforces branch rules.
         info = self.info()
         self.verify(info, owner, base)
-        if task_stages.load(self.repo) != stages or (source != "repository" and
-                self.configuration(base, stages) != (source, config)):
+        if task_stages.stored(self.repo) != selection or task_stages.plan(self.repo, base) != stages or (source != "repository" and
+                self.configuration(base, required) != (source, config)):
             raise Blocked("policy_changed")
         remote = self.remote(config)
         for row in rows[local_end:]:
             row["state"] = remote[row["name"]]
         self.save(review=info["reviewDecision"] or "NONE")
-        if any(row["state"] != "passed" for row in rows):
+        if any(r["state"] != "passed" for r in rows if r.get("reason") not in ("unrelated", "disabled")):
             raise Blocked("checks_outstanding")
         reviews = json.loads(run([self.cli, "api", "--paginate", "--slurp",
                                  f"repos/{self.repo}/pulls/{self.number}/reviews?per_page=100"]))
@@ -322,7 +324,7 @@ def worker(repo, cli, args):
     if "merge" in args and "pr" in args and args[:2] != ["pr", "merge"]:
         raise Blocked("Use gh pr merge NUMBER --match-head-commit SHA")
     if args[:2] == ["pr", "create"]:
-        task_stages.execute(repo, task_stages.load(repo))
+        task_stages.execute(repo, task_stages.plan(repo))
     if args[:2] != ["pr", "merge"]:
         os.execvp(cli, [cli, *args])
     parser = argparse.ArgumentParser(allow_abbrev=False)

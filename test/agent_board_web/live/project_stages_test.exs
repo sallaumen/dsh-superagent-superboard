@@ -29,14 +29,27 @@ defmodule AgentBoardWeb.ProjectStagesTest do
     form_id = "#tracked-#{repo.id}-merge-policy-stage-form"
     view |> element(open) |> render_click()
     render_async(view, 5_000)
-    view |> form(form_id, %{"stages" => ["npm-build", "npm-test", "npm-lint"]}) |> render_submit()
+    picker = "#tracked-#{repo.id}-merge-policy-language"
+    view |> element(picker <> "-form") |> render_change(%{"stack" => "JavaScript / TypeScript"})
+
+    view
+    |> form(form_id, %{
+      "rules" => %{"npm-build" => "always", "npm-test" => "always", "npm-lint" => "always"}
+    })
+    |> render_submit()
+
+    render_async(view, 5_000)
     assert {:ok, ["npm-lint", "npm-test", "npm-build"]} = ProjectStages.load(repo)
     assert {:ok, []} = ProjectStages.load(other)
     bookmark = assert_patch(view)
     {:ok, again, _} = live(conn, bookmark)
     render_async(again, 5_000)
-    assert has_element?(again, form_id <> " input[value=npm-test][checked]")
-    refute has_element?(again, form_id <> " input[value=pytest][checked]")
+    again |> element(picker <> "-form") |> render_change(%{"stack" => "JavaScript / TypeScript"})
+
+    assert has_element?(
+             again,
+             form_id <> " select[name='rules[npm-test]'] option[value=always][selected]"
+           )
 
     dir = Path.join(tmp, "work")
     File.mkdir_p!(dir)
@@ -102,6 +115,9 @@ defmodule AgentBoardWeb.ProjectStagesTest do
     assert has_element?(board, "#task-#{task.id}", "npm test · Falhou")
     board |> element("#task-#{task.id} .ab-run__title") |> render_click()
 
+    assert has_element?(board, "#conversation", "Obrigatória em toda tarefa deste projeto.")
+    assert has_element?(board, "#conversation", "Uma etapa anterior interrompeu a execução.")
+
     for {command, state} <- [
           {"npm run lint", "Passou"},
           {"npm test", "Falhou"},
@@ -109,6 +125,37 @@ defmodule AgentBoardWeb.ProjectStagesTest do
         ] do
       row = board |> element("#conversation .ab-merge-progress li", command) |> render()
       assert row =~ state
+    end
+
+    # The same task, without a PR or hosted checks: show skipped, then the
+    # matching source pattern when a new, untracked file changes the decision.
+    {_, 0} = System.cmd("git", ["update-ref", "refs/remotes/origin/main", "HEAD"], cd: dir)
+    {:ok, profile} = ProjectStages.profile(repo, dir)
+
+    :ok =
+      ProjectStages.save(
+        repo,
+        %{"npm-test" => "off", "npm-lint" => "changed", "npm-build" => "changed"},
+        profile["stored"]
+      )
+
+    for {file, expected} <- [
+          {"README.md", "Nenhum arquivo alterado corresponde a esta regra."},
+          {"new.ts", "Arquivo alterado corresponde a *.ts."}
+        ] do
+      File.write!(Path.join(dir, file), "")
+
+      {_, 0} =
+        System.cmd("python3", [script, "run", "fixture/checks"],
+          cd: dir,
+          env: [{"PATH", tmp <> ":" <> System.fetch_env!("PATH")} | env],
+          stderr_to_stdout: true
+        )
+
+      send(board.pid, :merge_check_tick)
+      assert has_element?(board, "#conversation", expected)
+      assert has_element?(board, "#conversation", "Desativada nas configurações do projeto.")
+      assert has_element?(board, "#conversation", "Pulada")
     end
   end
 end

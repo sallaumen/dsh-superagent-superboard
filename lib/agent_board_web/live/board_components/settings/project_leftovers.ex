@@ -23,7 +23,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectLeftovers do
 
   @impl true
   def mount(socket),
-    do: {:ok, assign(socket, survey: nil, error: nil, loading: false, days: nil)}
+    do:
+      {:ok,
+       assign(socket, survey: nil, error: nil, loading: false, days: nil, query: "", limit: 8)}
 
   @impl true
   # The red button finished: what the screen says is no longer on the disk,
@@ -84,8 +86,23 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectLeftovers do
      |> assign(days: Leftovers.days(socket.assigns.superagent))}
   end
 
+  def handle_event("find_folders", %{"query" => q}, socket),
+    do: {:noreply, assign(socket, query: String.slice(q, 0, 120), limit: 8)}
+
+  def handle_event("more_folders", _, socket), do: {:noreply, update(socket, :limit, &(&1 + 8))}
+
   @impl true
   def render(assigns) do
+    folders = if assigns.survey, do: assigns.survey.folders, else: []
+
+    matches =
+      Enum.filter(
+        folders,
+        &String.contains?(String.downcase(&1.name), String.downcase(assigns.query))
+      )
+
+    assigns = assign(assigns, matches: length(matches), page: Enum.take(matches, assigns.limit))
+
     ~H"""
     <section
       id={"project-#{@superagent.id}-leftovers"}
@@ -129,6 +146,39 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectLeftovers do
         </p>
       </div>
 
+      <details
+        :if={@survey && @survey.folders != []}
+        class="ab-folder-index"
+        id={@id <> "-folders"}
+        phx-mounted={JS.ignore_attributes("open")}
+      >
+        <summary>{gettext("Browse folders eligible for cleanup")}</summary>
+        <form
+          id={@id <> "-filter"}
+          phx-change="find_folders"
+          phx-submit="find_folders"
+          phx-target={@myself}
+        >
+          <input
+            type="search"
+            name="query"
+            value={@query}
+            aria-label={gettext("Find a folder")}
+            placeholder={gettext("Find a folder")}
+            phx-debounce="200"
+          />
+        </form>
+        <ul>
+          <li :for={folder <- @page}><code>{folder.name}</code><span>{folder.ended}</span></li>
+        </ul>
+        <p :if={@matches == 0}>{gettext("No matching folders.")}</p>
+        <button
+          :if={@matches > @limit}
+          class="ab-btn ab-btn--sm"
+          phx-click="more_folders"
+          phx-target={@myself}
+        >{gettext("Show more folders")}</button>
+      </details>
       <form
         :if={@days}
         id={"project-#{@superagent.id}-leftovers-form"}

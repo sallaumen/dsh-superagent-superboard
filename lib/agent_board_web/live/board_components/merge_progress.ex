@@ -21,7 +21,10 @@ defmodule AgentBoardWeb.BoardComponents.MergeProgress do
         )}</small>
         <ul :if={!@compact && @snapshot["checks"] != []}>
           <li :for={row <- @snapshot["checks"]}>
-            <span>{row["name"]}</span>
+            <span>{row["name"]}<small :if={row["reason"]} class="ab-check-reason">{AgentBoardWeb.BoardComponents.Preflight.why(
+              row["reason"],
+              row["state"]
+            )}</small></span>
             <small class="ab-meta">{if row["source"] == "local", do: gettext("Local"), else: "GitHub"} · {label(
               row["state"]
             )}</small>
@@ -54,7 +57,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeProgress do
     rows = snapshot["checks"]
     failed = Enum.find(rows, &(&1["state"] == "failed"))
     running = Enum.count(rows, &(&1["state"] == "running"))
-    outstanding = Enum.count(rows, &(&1["state"] != "passed"))
+    outstanding = Enum.count(rows, &(&1["state"] not in ["passed", "skipped"]))
 
     cond do
       failed ->
@@ -96,6 +99,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeProgress do
   defp reason("github_blocks_merge"), do: gettext("Merge blocked by GitHub")
   defp reason(_), do: gettext("Merge blocked · verification incomplete")
 
+  defp label("skipped"), do: gettext("Skipped")
   defp label("running"), do: gettext("Running")
   defp label("queued"), do: gettext("Queued")
   defp label("passed"), do: gettext("Passed")
