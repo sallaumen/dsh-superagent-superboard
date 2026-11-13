@@ -67,6 +67,9 @@ defmodule AgentBoardWeb.BoardComponents.MergeProgress do
           outstanding
         )
 
+      running == 1 ->
+        Enum.find(rows, &(&1["state"] == "running"))["name"] <> " · " <> gettext("Running")
+
       running > 0 ->
         ngettext("1 check running", "%{count} checks running in parallel", running)
 
@@ -77,6 +80,9 @@ defmodule AgentBoardWeb.BoardComponents.MergeProgress do
         gettext("Verifying merge conditions")
     end
   end
+
+  defp reason("project_stages_failed"),
+    do: gettext("Project checks failed. See the task inspector.")
 
   defp reason("review_required"), do: gettext("Merge blocked · review required")
   defp reason("policy_changed"), do: gettext("Merge blocked · policy changed during validation")

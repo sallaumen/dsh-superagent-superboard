@@ -906,7 +906,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
           <input type="hidden" name="confirm" value={sync_phrase(@superagents)} />
           <p class="ab-meta">
             {gettext(
-              "Idle agents update now. Busy agents update automatically after their last task finishes and the queue is empty."
+              "Sync the Harness and duplicate-issue notices. Idle agents update now; busy agents wait until their work and queue are finished."
             )}
           </p>
           <p id="runtime-targets" class="ab-meta">{sync_phrase(@superagents)}</p>

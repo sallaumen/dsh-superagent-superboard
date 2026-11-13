@@ -9661,8 +9661,8 @@ msgstr "Outra sincronização em andamento"
 msgid "Could not verify the update. Check the agent before retrying."
 msgstr "Não foi possível verificar a atualização. Confira o agente antes de tentar novamente."
 
-msgid "Idle agents update now. Busy agents update automatically after their last task finishes and the queue is empty."
-msgstr "Agentes ociosos atualizam agora. Os ocupados atualizam automaticamente quando a última tarefa terminar e a fila estiver vazia."
+msgid "Sync the Harness and duplicate-issue notices. Idle agents update now; busy agents wait until their work and queue are finished."
+msgstr "Sincronize o Harness e os avisos de issues duplicadas. Agentes ociosos atualizam agora; os ocupados esperam terminar as tarefas e esvaziar a fila."
 
 msgid "Synchronizing…"
 msgstr "Sincronizando…"
@@ -9885,6 +9885,88 @@ msgstr "Regras de merge configuradas nesta máquina"
 #, elixir-autogen, elixir-format
 msgid "No merge policy configured for this project."
 msgstr "Este projeto não tem regras de merge configuradas."
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:105
+#, elixir-autogen, elixir-format
+msgid "1 selected"
+msgid_plural "%{count} selected"
+msgstr[0] "1 selecionada"
+msgstr[1] "%{count} selecionadas"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:61
+#, elixir-autogen, elixir-format
+msgid "Build"
+msgstr "Build"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:139
+#, elixir-autogen, elixir-format
+msgid "Checks were not saved. Refresh to load the current selection."
+msgstr "As etapas não foram salvas. Clique em Atualizar para carregar a seleção atual."
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:112
+#, elixir-autogen, elixir-format
+msgid "Choose checks for this project. They run in the task folder and do not require GitHub Actions."
+msgstr "Escolha as etapas deste projeto. Elas rodam na pasta da tarefa, sem depender do GitHub Actions."
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:134
+#, elixir-autogen, elixir-format
+msgid "Could not read the local checks. Refresh to try again."
+msgstr "Não foi possível ler as etapas locais. Clique em Atualizar para tentar de novo."
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:57
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:58
+#, elixir-autogen, elixir-format
+msgid "Format"
+msgstr "Formatação"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:59
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:60
+#, elixir-autogen, elixir-format
+msgid "Lint"
+msgstr "Lint"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:138
+#, elixir-autogen, elixir-format
+msgid "Local checks saved for this project."
+msgstr "Etapas locais salvas para este projeto."
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:104
+#, elixir-autogen, elixir-format
+msgid "Local task checks"
+msgstr "Verificações locais das tarefas"
+
+#: lib/agent_board_web/live/board_components/merge_progress.ex:82
+#, elixir-autogen, elixir-format
+msgid "Project checks failed. See the task inspector."
+msgstr "As verificações do projeto falharam. Consulte o inspetor da tarefa."
+
+#: lib/agent_board_web/live/board_components/preflight.ex:30
+#, elixir-autogen, elixir-format
+msgid "Project checks passed"
+msgstr "Verificações do projeto passaram"
+
+#: lib/agent_board_web/live/board_components/preflight.ex:33
+#, elixir-autogen, elixir-format
+msgid "Project checks: %{stage} · %{status}"
+msgstr "Verificações do projeto: %{stage} · %{status}"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:131
+#, elixir-autogen, elixir-format
+msgid "Save checks"
+msgstr "Salvar etapas"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:62
+#, elixir-autogen, elixir-format
+msgid "Tests"
+msgstr "Testes"
+
+#: lib/agent_board_web/live/board_components/settings/project_merge.ex:215
+#, elixir-autogen, elixir-format
+msgid "The selected checks and an independent approval are required to merge."
+msgstr "O merge exige as etapas selecionadas e uma aprovação independente."
+
+msgid "Browser tests"
+msgstr "Testes no navegador"
 
 msgid "Agent maintenance"
 msgstr "Manutenção dos agentes"

@@ -361,6 +361,8 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     asked_task()
 
     send(view.pid, :board_updated)
+    # Wait for the LiveView to finish this update before checking its side effects.
+    render(view)
     refute_push_event(view, "voice_play", %{url: _}, 100)
     assert [%{action: "agent_answered"} | _] = Enum.reverse(Conversation.recent())
 

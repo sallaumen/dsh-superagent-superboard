@@ -2122,3 +2122,14 @@ state, or feed them into merge policy. See [the pipeline contract](../PIPELINES.
 Only a receipt that selected UI review may add the browser step to the card
 and inspector. Display the selection reason, the actual result and a failed
 surface if reported. Old three-stage receipts retain their original meaning.
+
+
+### Project task checks
+
+The yellow action `set_project_stages` records the owner's selection by repository.
+The board and managed worker share a machine-local allowlist selection independent
+of GitHub. Settings never runs commands or writes into a managed checkout. At
+delivery, selections supplement the authoritative policy; no policy and no stages
+still blocks. The worker owns a separate worktree receipt, with the selected IDs,
+current stage, commit, timestamps and state; never a transcript. The inspector
+can show both that receipt and the built-in preflight for the same attempt.

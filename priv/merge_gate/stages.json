@@ -1,0 +1,13 @@
+{
+  "mix-format": ["mix", "format", "--check-formatted"],
+  "mix-lint": ["mix", "credo", "--strict"],
+  "mix-test": ["mix", "test"],
+  "npm-lint": ["npm", "run", "lint"],
+  "npm-test": ["npm", "test"],
+  "npm-build": ["npm", "run", "build"],
+  "npm-e2e": ["npm", "run", "test:e2e"],
+  "cargo-format": ["cargo", "fmt", "--check"],
+  "cargo-test": ["cargo", "test", "--locked"],
+  "pytest": ["python3", "-m", "pytest"],
+  "composer-test": ["composer", "test"]
+}

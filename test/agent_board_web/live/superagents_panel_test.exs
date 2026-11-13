@@ -137,6 +137,8 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     html =
       render_component(&ProjectMerge.render/1,
         id: "machine-policy",
+        stage_ids: [],
+        stage_notice: nil,
         myself: 1,
         policy: policy,
         last_policy: nil,

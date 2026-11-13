@@ -193,6 +193,44 @@ class Delivery(unittest.TestCase):
         self.runs = []
         self.assertFalse(self.merge.optional_ci_unavailable())
 
+    def test_stage_selection_rejects_stale_edits_unknown_ids_and_unsafe_paths(self):
+        stages = guard.task_stages
+        stages.save("Org/Repo", ["npm-lint"], [])
+        self.assertEqual(stages.load("org/repo"), ["npm-lint"])
+        self.assertEqual(stages.load("org/other"), [])
+        with self.assertRaises(ValueError):
+            stages.save("org/repo", ["cargo-test"], [])
+        for value in [["other"], ["npm-test", "npm-test"], ["../repo"]]:
+            with self.assertRaises(ValueError):
+                stages.save("org/repo", value, ["npm-lint"])
+        with self.assertRaises(ValueError):
+            stages.load("../repo")
+        self.assertEqual(stages.load("org/repo"), ["npm-lint"])
+        stages.save("org/repo", [], ["npm-lint"])
+        self.assertEqual(stages.load("org/repo"), [])
+
+    def test_panel_adds_checks_without_removing_repository_requirements(self):
+        guard.task_stages.save("org/repo", ["npm-test"], [])
+        self.runs.clear()
+        with patch.object(guard.task_stages, "execute", side_effect=lambda repo, ids, cb: cb(ids[0], "passed")) as execute:
+            with self.assertRaisesRegex(guard.Blocked, "checks_outstanding"):
+                self.merge.deliver()
+            self.assertEqual(execute.call_args.args[:2], ("org/repo", ["npm-test"]))
+        self.assertFalse(self.merges)
+
+    def test_panel_only_needs_review_and_cannot_approve_a_changed_selection(self):
+        guard.task_stages.save("org/repo", ["npm-test"], [])
+        self.cfg = None
+        with patch.object(guard.task_stages, "execute", side_effect=lambda repo, ids, cb: cb(ids[0], "passed")):
+            with self.assertRaisesRegex(guard.Blocked, "review_required"):
+                self.merge.deliver()
+        def change(*_args):
+            guard.task_stages.save("org/repo", ["cargo-test"], ["npm-test"])
+        with patch.object(guard.task_stages, "execute", side_effect=change):
+            with self.assertRaisesRegex(guard.Blocked, "policy_changed"):
+                guard.Merge("gh","org/repo",42,self.sha,self.folder).deliver()
+        self.assertFalse(self.merges)
+
     def test_empty_policy(self):
         self.cfg.update(local={},github=[])
         with self.assertRaises(guard.Blocked):

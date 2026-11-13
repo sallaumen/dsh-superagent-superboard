@@ -55,6 +55,7 @@ defmodule AgentBoard.ActionsTest do
     :dismiss_access_request,
     :start_agent,
     :set_max_workers,
+    :set_project_stages,
     :add_repository,
     :change_setting,
     :dismiss_summary,

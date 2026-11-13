@@ -15,6 +15,9 @@ import sys
 import stat
 import time
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import task_stages
+
 POLICY = ".github/superboard-merge.json"
 SLUG = re.compile(r"[a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+")
 SHA = re.compile(r"[0-9a-f]{40}")
@@ -163,7 +166,7 @@ class Merge:
         pages = json.loads(run([self.cli, "api", "--paginate", "--slurp", path]))
         return check_states(names, [r for page in pages for r in page["check_runs"]], self.expected)
 
-    def configuration(self, base):
+    def configuration(self, base, stages):
         try:
             item = self.api(f"repos/{self.repo}/contents/{POLICY}?ref={base}")
         except subprocess.CalledProcessError as exc:
@@ -174,6 +177,10 @@ class Merge:
             try:
                 return "machine", machine_policy(self.repo)
             except FileNotFoundError as missing:
+                if stages:
+                    # No existing policy: the panel supplies local checks, never
+                    # blanket authorization to merge without independent review.
+                    return "panel", dict(method="squash", review=True, github=[], local={})
                 raise Blocked("policy_unavailable") from missing
         return "repository", policy(json.loads(base64.b64decode(item["content"])))
 
@@ -217,16 +224,31 @@ class Merge:
         base = info["baseRefOid"]
         owner = self.api("user")["login"]
         self.verify(info, owner, base)
-        source, config = self.configuration(base)
+        stages = task_stages.load(self.repo)
+        source, config = self.configuration(base, stages)
         rows = self.snapshot["checks"]
+        project_rows = {i: dict(name=" ".join(task_stages.CATALOG[i]), source="local", state="queued") for i in stages}
+        rows.extend(project_rows.values())
         local = config["local"]
         rows.extend(dict(name=k, source="local", state="queued") for k in local)
+        local_end = len(rows)
         remote = self.remote(config)
         rows.extend(dict(name=k, source="github", state=v) for k, v in remote.items())
         self.save(review=info["reviewDecision"] or "NONE", review_required=config["review"], policy_source=source)
+
+        def project_progress(stage, state):
+            project_rows[stage]["state"] = "failed" if state == "interrupted" else state
+            self.save()
+
+        if stages:
+            try:
+                task_stages.execute(self.repo, stages, project_progress)
+            except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                raise Blocked("project_stages_failed") from exc
+
         def refresh_remote():
             current = self.remote(config)
-            for row in rows[len(local):]:
+            for row in rows[local_end:]:
                 row["state"] = current[row["name"]]
             self.save()
 
@@ -241,7 +263,7 @@ class Merge:
                     ok = False
                 events.put((name, "passed" if ok else "failed"))
 
-            by_name = {row["name"]: row for row in rows[:len(local)]}
+            by_name = {row["name"]: row for row in rows[len(stages):local_end]}
             for name, argv in local.items():
                 pool.submit(execute, name, argv)
             remaining = 2 * len(local)
@@ -256,18 +278,19 @@ class Merge:
                 self.save()
         # Keep short hosted runs visible even after the local commands finish.
         until = time.monotonic() + 120
-        while (all(row["state"] == "passed" for row in rows[:len(local)])
-               and any(row["state"] in ("running", "queued", "pending") for row in rows[len(local):])
+        while (all(row["state"] == "passed" for row in rows[:local_end])
+               and any(row["state"] in ("running", "queued", "pending") for row in rows[local_end:])
                and time.monotonic() < until):
             time.sleep(5)
             refresh_remote()
         # Refetch at the decision. The hosted service still enforces branch rules.
         info = self.info()
         self.verify(info, owner, base)
-        if source == "machine" and self.configuration(base) != (source, config):
+        if task_stages.load(self.repo) != stages or (source != "repository" and
+                self.configuration(base, stages) != (source, config)):
             raise Blocked("policy_changed")
         remote = self.remote(config)
-        for row in rows[len(local):]:
+        for row in rows[local_end:]:
             row["state"] = remote[row["name"]]
         self.save(review=info["reviewDecision"] or "NONE")
         if any(row["state"] != "passed" for row in rows):
@@ -298,6 +321,8 @@ class Merge:
 def worker(repo, cli, args):
     if "merge" in args and "pr" in args and args[:2] != ["pr", "merge"]:
         raise Blocked("Use gh pr merge NUMBER --match-head-commit SHA")
+    if args[:2] == ["pr", "create"]:
+        task_stages.execute(repo, task_stages.load(repo))
     if args[:2] != ["pr", "merge"]:
         os.execvp(cli, [cli, *args])
     parser = argparse.ArgumentParser(allow_abbrev=False)
