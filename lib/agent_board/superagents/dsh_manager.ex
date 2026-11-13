@@ -268,6 +268,17 @@ defmodule AgentBoard.Superagents.DshManager do
     end
   end
 
+  @impl true
+  def github_source(superagent) do
+    with {:ok, 200, %{"sources" => sources}} when is_list(sources) <- get(superagent, "/settings"),
+         %{"value" => %{"config" => config, "enabled" => enabled}} when is_map(config) <-
+           Enum.find(sources, &(&1["id"] == "github")) do
+      {:ok, %{enabled: enabled, cli: config["cli"], repository: config["repository"]}}
+    else
+      _ -> {:error, :unavailable}
+    end
+  end
+
   defp get(superagent, path), do: request(superagent, :get, path, nil)
   defp post(superagent, path, body), do: request(superagent, :post, path, body)
   defp put(superagent, path, body), do: request(superagent, :put, path, body)

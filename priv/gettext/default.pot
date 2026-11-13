@@ -9630,3 +9630,57 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "The agent manager cannot recognize this Node process. Use Node 22 as described in the Alpine installation guide, then try again."
 msgstr ""
+
+msgid "Merge requirements"
+msgstr ""
+
+msgid "DeepSeek merge guard"
+msgstr ""
+
+msgid "Default branch"
+msgstr ""
+
+msgid "Independent approval required by policy"
+msgstr ""
+
+msgid "No independent approval required by policy"
+msgstr ""
+
+msgid "Local checks"
+msgstr ""
+
+msgid "GitHub checks"
+msgstr ""
+
+msgid "None configured"
+msgstr ""
+
+msgid "View merge policy on GitHub"
+msgstr ""
+
+msgid "No merge policy on this branch."
+msgstr ""
+
+msgid "The merge guard rejects this policy."
+msgstr ""
+
+msgid "Could not read the repository policy."
+msgstr ""
+
+msgid "Reading merge requirements…"
+msgstr ""
+
+msgid "Active"
+msgstr ""
+
+msgid "Inactive"
+msgstr ""
+
+msgid "No agent connected"
+msgstr ""
+
+msgid "Could not verify"
+msgstr ""
+
+msgid "Last verified policy · %{revision}"
+msgstr ""

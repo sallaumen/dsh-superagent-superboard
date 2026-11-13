@@ -36,6 +36,8 @@ defmodule AgentBoard.Superagents.TickerTest do
     @impl true
     def requeue(_superagent, _issue), do: {:ok, false}
     @impl true
+    def github_source(_agent), do: {:error, :unreachable}
+    @impl true
     def identity(_superagent), do: {:error, :unreachable}
     @impl true
     def prompts(_superagent), do: {:error, :unreachable}

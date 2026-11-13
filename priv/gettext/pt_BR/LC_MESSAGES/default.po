@@ -9630,3 +9630,57 @@ msgstr "O Harness não conseguiu carregar a biblioteca nativa. Siga o guia de in
 #, elixir-autogen, elixir-format
 msgid "The agent manager cannot recognize this Node process. Use Node 22 as described in the Alpine installation guide, then try again."
 msgstr "O gerenciador do agente não reconhece este processo Node. Use o Node 22 conforme o guia de instalação no Alpine e tente novamente."
+
+msgid "Merge requirements"
+msgstr "Requisitos de merge"
+
+msgid "DeepSeek merge guard"
+msgstr "Trava de merge do DeepSeek"
+
+msgid "Default branch"
+msgstr "Branch padrão"
+
+msgid "Independent approval required by policy"
+msgstr "A política exige aprovação de outra pessoa"
+
+msgid "No independent approval required by policy"
+msgstr "A política dispensa aprovação de outra pessoa"
+
+msgid "Local checks"
+msgstr "Checks locais"
+
+msgid "GitHub checks"
+msgstr "Checks do GitHub"
+
+msgid "None configured"
+msgstr "Nenhum configurado"
+
+msgid "View merge policy on GitHub"
+msgstr "Ver política de merge no GitHub"
+
+msgid "No merge policy on this branch."
+msgstr "Esta branch não tem política de merge."
+
+msgid "The merge guard rejects this policy."
+msgstr "A trava de merge não aceita esta política."
+
+msgid "Could not read the repository policy."
+msgstr "Não foi possível consultar a política do repositório."
+
+msgid "Reading merge requirements…"
+msgstr "Lendo os requisitos de merge…"
+
+msgid "Active"
+msgstr "Ativa"
+
+msgid "Inactive"
+msgstr "Inativa"
+
+msgid "No agent connected"
+msgstr "Sem agente conectado"
+
+msgid "Could not verify"
+msgstr "Não foi possível verificar"
+
+msgid "Last verified policy · %{revision}"
+msgstr "Última política verificada · %{revision}"
