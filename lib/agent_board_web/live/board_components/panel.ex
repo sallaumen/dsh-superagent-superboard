@@ -33,7 +33,8 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
       <p class="panel-reconnect text-warning" role="status">
         {gettext("Reconnecting · showing saved data")}
       </p>
-      <div :if={@active} class="panel-flashes">
+      <.settings_notices :if={@active and @name == "settings"} flash={@flash} />
+      <div :if={@active and @name != "settings"} class="panel-flashes">
         <.flash
           :for={kind <- [:info, :error]}
           id={"panel-#{@name}-#{kind}"}
@@ -44,6 +45,34 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
       {render_slot(@inner_block)}
       <VoicePresence.stage :if={@active} id={"voice-presence-#{@name}"} />
     </dialog>
+    """
+  end
+
+  defp settings_notices(assigns) do
+    ~H"""
+    <div class="settings-notices">
+      <div
+        :for={kind <- [:info, :error]}
+        :if={message = Phoenix.Flash.get(@flash, kind)}
+        id={"panel-settings-#{kind}"}
+        class="settings-notice"
+        data-kind={kind}
+        phx-hook="SettingsNotice"
+      >
+        <.icon
+          name={if kind == :error, do: "hero-exclamation-circle", else: "hero-information-circle"}
+          class="size-5"
+        />
+        <p role={if kind == :error, do: "alert", else: "status"}>{message}</p>
+        <button
+          type="button"
+          aria-label={gettext("Dismiss")}
+          phx-click={JS.push("lv:clear-flash", value: %{key: kind})}
+        >
+          <.icon name="hero-x-mark" class="size-4" />
+        </button>
+      </div>
+    </div>
     """
   end
 end

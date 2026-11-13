@@ -23,6 +23,7 @@ import "phoenix_html"
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/agent_board"
+import {SettingsNotice} from "./hooks/settings_notice"
 import {BoardPanels} from "./hooks/board_panels"
 import {BoardMenu} from "./hooks/board_menu"
 import {BoardClock} from "./hooks/board_clock"
@@ -73,7 +74,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     board_message_seen: localStorage.getItem("ab:message-seen"),
     board_tz_offset: new Date().getTimezoneOffset(),
   }),
-  hooks: {...colocatedHooks, DataAge, ThemeToggle, BoardMenu, BoardPanels, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, BoardFold, Composer, ValueChange, BoardMotion, CostsMotion, LogFeed, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr, ChatHistory, TaskConversation, ImageViewer},
+  hooks: {...colocatedHooks, DataAge, ThemeToggle, BoardMenu, BoardPanels, SettingsNotice, BoardClock, BoardConnection, BoardRestart, BoardKeyboard, BoardFold, Composer, ValueChange, BoardMotion, CostsMotion, LogFeed, VoiceCommand, VoicePlayer, VoicePresence, VoiceWispr, ChatHistory, TaskConversation, ImageViewer},
   dom: {
     onBeforeElUpdated(from, to) {
       // The native modal lifecycle belongs to BoardPanels, while LiveView updates its content.

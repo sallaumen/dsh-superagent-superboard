@@ -1591,6 +1591,28 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 /* Settings keeps one task in view; the rail holds navigation, not a long page. */
 #panel-settings.board-dialog[open] { display: flex; flex-direction: column; height: min(720px, calc(100dvh - 32px)); overflow: hidden; }
 #panel-settings .panel-heading { flex: none; }
+.settings-notices {
+  position: absolute; z-index: 2; inset-inline: var(--space-4); bottom: var(--space-4);
+  display: grid; justify-items: end; gap: var(--space-3); pointer-events: none;
+}
+.settings-notice {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+  gap: var(--space-3); width: fit-content; max-width: min(100%, 26rem);
+  padding-inline: var(--space-4) var(--space-2); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink);
+  box-shadow: var(--shadow-layer); pointer-events: auto; font: 500 14px/20px var(--font-sans);
+}
+.settings-notice > span { color: var(--you); }
+.settings-notice[data-kind="error"] > span { color: var(--halt); }
+.settings-notice p { margin-block: var(--space-3); overflow-wrap: anywhere; }
+.settings-notice button {
+  display: grid; place-items: center; width: 44px; height: 44px;
+  border-radius: var(--radius-sm); color: var(--ink-muted); cursor: pointer;
+}
+.settings-notice button:hover { background: var(--paper-sunk); color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .settings-notice { animation: notice-enter var(--motion-enter) var(--ease-enter); }
+}
 .settings-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); flex: 1; min-height: 0; }
 .settings-nav { display: flex; flex-direction: column; gap: 2px; padding: 22px 12px 14px; border-right: 1px solid var(--line); background: var(--paper-sunk); overflow-y: auto; }
 .settings-nav__items { display: flex; flex-direction: column; gap: 2px; }
