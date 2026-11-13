@@ -8,3 +8,5 @@ A terminal, CLI, library, configuration or backend change does not need screensh
 If the repository pins elixir-agent-kit, run `mix deps.get` before reading its practice index or running its gates: it only fetches the pinned dependencies, it never compiles the project. Do not build or test code the change does not touch.
 
 Never update or restart the board's service checkout (no `git pull` there, no `launchctl kickstart` of the board): the owner updates it from **Configurações → Sistema**. An unexpected restart interrupts the owner and other agents mid-ticket.
+
+After your own code review and before requesting merge, post or update one clearly labelled self-review comment on the PR for the full current head SHA. Explicitly say it is the author’s self-review, not independent approval. Record the diff and acceptance criteria you inspected, findings/fixes, exact validation commands or scripts run and their actual results, skipped checks and limitations. Never submit an approval of your own work. Refresh the comment if the head changes.
