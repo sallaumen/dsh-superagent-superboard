@@ -876,8 +876,8 @@ defmodule AgentBoard.Lanes do
     {"pass", gettext("Local CI passed"), local_title(local, pull)}
   end
 
-  defp ci_status(_pull, %{state: :fail} = local) do
-    {"fail", gettext("Local CI failed"), local_title(local, nil)}
+  defp ci_status(_pull, %{state: :fail, detail: detail}) do
+    {"fail", gettext("Local CI failed"), gettext("Local CI failed: %{detail}", detail: detail)}
   end
 
   # The workpad names a gate on another commit than the PR's head: the
@@ -937,11 +937,11 @@ defmodule AgentBoard.Lanes do
   defp remote_failure_title(pull) do
     case checks_label(pull) do
       "" ->
-        gettext("GitHub Actions failed (billing/no credit); no evidence of local CI.")
+        gettext("GitHub Actions failed; no evidence of local CI.")
 
       checks ->
         gettext(
-          "GitHub Actions failed on %{checks} (billing/no credit); no evidence of local CI.",
+          "GitHub Actions failed on %{checks}; no evidence of local CI.",
           checks: checks
         )
     end

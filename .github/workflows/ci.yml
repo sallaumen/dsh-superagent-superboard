@@ -1,185 +1,23 @@
 name: CI
-
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Um run novo no mesmo ref cancela o anterior: evita fila de jobs obsoletos
-# (importante com cota de runners limitada) e economiza tempo de espera.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  gates:
-    name: "gates · format, credo e deps"
+  smoke:
+    name: Verificação rápida
     runs-on: ubuntu-latest
-
-    env:
-      MIX_ENV: test
-
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
-        with:
-          elixir-version: "1.19"
-          otp-version: "27"
-
-      - name: Cache deps e builds
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            deps
-            _build
-          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
-
-      - run: mix deps.get
-      - run: mix hex.audit
-      - run: mix deps.unlock --check-unused
-      - run: mix agent_kit.check
-      - run: mix compile --warnings-as-errors
-      - run: mix format --check-formatted
-      - run: mix credo --strict
-
-      - name: Security scan
-        run: mix sobelow --exit
-
-  backend:
-    name: "backend · partição ${{ matrix.partition }}"
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        partition: [1, 2, 3, 4]
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: board
-          POSTGRES_PASSWORD: board
-        ports: ["5434:5432"]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      MIX_ENV: test
-      MIX_TEST_PARTITION: ${{ matrix.partition }}
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
-        with:
-          elixir-version: "1.19"
-          otp-version: "27"
-
-      - name: Cache deps e builds
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            deps
-            _build
-          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
-
-      - run: mix deps.get
-      - run: mix test --partitions 4
-
-  frontend:
-    name: "frontend · assets"
-    runs-on: ubuntu-latest
-
-    # esbuild/tailwind são dependências de dev, então o build de assets usa MIX_ENV=dev.
-    env:
-      MIX_ENV: dev
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
-        with:
-          elixir-version: "1.19"
-          otp-version: "27"
-
-      - name: Cache deps e ferramentas de assets
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            deps
-            _build
-          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
-
-      - run: mix deps.get
-      - run: npm audit --prefix scripts/agent/alpine --audit-level=low
-      - name: Checks determinísticos dos fontes
-        run: bash scripts/check_assets.sh
-      - run: mix assets.setup
-      - run: mix assets.build
-      - run: mix assets.deploy
-
-  library:
-    name: "biblioteca de capacidades"
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
-        with:
-          elixir-version: "1.19"
-          otp-version: "27"
-      - run: mix deps.get
-      - name: Confere referências às práticas compartilhadas
-        run: mix agent_kit.check
-
-  release:
-    name: "release · caminho misto (backend + frontend)"
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
-        with:
-          elixir-version: "1.19"
-          otp-version: "27"
-
-      - name: Cache deps e builds
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            deps
-            _build
-          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
-
-      - run: mix deps.get
-
-      # esbuild/tailwind só existem no ambiente dev; os assets são
-      # construídos em dev e apenas digeridos/embalados no ambiente prod.
-      - name: Constrói assets (toolchain de dev)
-        env:
-          MIX_ENV: dev
+      - name: Confira o pré-voo e as regras de entrega
         run: |
-          mix assets.setup
-          mix assets.build
-
-      - name: Compila produção
-        env:
-          MIX_ENV: prod
-        run: mix compile --warnings-as-errors
-
-      - name: Digere assets e monta o release
-        env:
-          MIX_ENV: prod
-        run: |
-          mix phx.digest
-          mix release --overwrite
+          bash -n scripts/ci-local.sh
+          python3 -m unittest discover -s test/merge_gate

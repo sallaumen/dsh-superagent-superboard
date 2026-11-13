@@ -4,25 +4,22 @@ This document answers "which script do I run now?". It defines the repository's 
 
 ## Overview
 
-| Pipeline | What it validates | Canonical script | `make` target | CI job |
-|---|---|---|---|---|
-| Backend | Orphan dependencies, Hex advisory audit, agent practices, warnings, formatting, credo, Dialyzer, tests (the secret scan among them), and Sobelow | `mix gate` + `mix sobelow --exit` | `make backend` | `gates` + `backend` (Dialyzer local only for now) |
-| Frontend | Asset sources, setup, build, and deploy | `scripts/check_assets.sh` + asset tasks | `make frontend` | `frontend · assets` |
-| Library | References to the versioned kit | `mix agent_kit.check` | `make library` | `biblioteca de capacidades` (capability library) |
-| Mixed (release) | The combined path of a deploy | release sequence (below) | `make release` | `release · caminho misto` (mixed path) |
-| All | Backend, frontend, library, then local UI review when applicable | `scripts/ci-local.sh all` | `make check` | `gates`, `backend`, `frontend`, `library` |
+The complete quality gate runs **locally on the proposed revision**. On the
+board, `make -j1 check release` runs the following stages in order and stops
+on failure. The hosted workflow is a quick second opinion, not the gate.
 
-The executable commands live in [Makefile](Makefile),
-[scripts/ci-local.sh](scripts/ci-local.sh), and the
-[workflow](.github/workflows/ci.yml). CI splits the backend checks between
-`gates` (dependencies, compilation, format, credo, and Sobelow) and `backend`
-(tests in partitions with `MIX_TEST_PARTITION`, each with its own database).
-Locally, `make backend` and the pre-flight run the whole suite and Sobelow.
-The frontend uses `MIX_ENV=dev`; `release` is a separate job in CI and opt-in in the pre-flight.
+| Local stage | Evidence |
+|---|---|
+| Backend | Dependencies and advisories, kit references, compilation, format, Credo, Dialyzer, tests with Postgres (including the secret scan), and Sobelow |
+| Frontend | npm audit, source and JS checks, development and production asset builds |
+| Library | Installed kit references |
+| UI, when selected | A headless WebKit review, with its reason and result on the task |
+| Release | Production compilation, digested assets and release packaging |
 
-The tests in `test/pipeline_contract_test.exs` verify the expected aliases and
-commands in the workflow. They do not compare this documentation or every script
-body: changes to those contracts require checking the consumers.
+Every PR gets one [quick GitHub check](.github/workflows/ci.yml): Bash syntax
+for the preflight and the Python merge-guard tests on Linux. It needs no
+database, dependency installation or paid third-party service. It can also be
+run manually. Passing it alone never satisfies the board’s delivery policy.
 
 ## Script matrix
 
@@ -31,24 +28,24 @@ body: changes to those contracts require checking the consumers.
 | `mix setup` | Prepare a development checkout | `MIX_ENV=dev` | installs dependencies, creates and migrates the database, and compiles assets | app ready to start; no projects added |
 | `mix ecto.setup` | Create and migrate the development database | `MIX_ENV=dev` | writes the schema; keeps existing projects | empty project list on a fresh database; not a gate |
 | `mix ecto.reset` | Deliberately recreate the disposable local database | `MIX_ENV=dev` | **deletes the database** and runs `ecto.setup` | database recreated; outside CI and the pre-flight |
-| `mix test` | Test behaviors; accepts a file and filters | `:test` automatically | creates/migrates the test database before the suite | tests green; CI uses partitions |
-| `mix test test/secret_scan_test.exs` | Before committing anything that touched configuration, fixtures or docs with examples; it also runs inside every `mix test`, so `mix precommit`, `mix gate` and the CI's `backend` job all carry it | `:test` automatically | read-only over the files git tracks or would add (ignored files such as `.env.local` are left alone) | no finding; a finding names file, line and kind of key, never the value |
+| `mix test` | Test behaviors; accepts a file and filters | `:test` automatically | creates/migrates the test database before the suite | tests green |
+| `mix test test/secret_scan_test.exs` | Before committing anything that touched configuration, fixtures or docs with examples; it also runs inside every `mix test`, so `mix precommit`, `mix gate` all carry it | `:test` automatically | read-only over the files git tracks or would add (ignored files such as `.env.local` are left alone) | no finding; a finding names file, line and kind of key, never the value |
 | `mix lint` | Fast iteration, no database | any | none (read-only) | format and credo green |
 | `mix precommit` | Before committing; applies fixes | `:test` automatically | removes orphan dependencies from the lockfile, formats, type-checks, and runs tests | formatting applied + gates green |
-| `mix gate` | Backend checks; CI splits its steps across jobs | run with `MIX_ENV=test` | compiles and creates/migrates the test database; does not change sources | dependencies, agent references, warnings, format, credo, Dialyzer, and tests green |
-| `mix dialyzer` | Type check; part of `mix gate` and `mix precommit` (the `gates` job runs it once the workflow change lands: it needs a token with the `workflow` scope) | `MIX_ENV=test` | builds the PLT in `_build/plts` the first time (minutes), then checks in seconds; does not change sources | `Total errors: 0`; a schema referenced as `t()` defines `@type t` |
+| `mix gate` | Full local backend checks | run with `MIX_ENV=test` | compiles and creates/migrates the test database; does not change sources | dependencies, agent references, warnings, format, credo, Dialyzer, and tests green |
+| `mix dialyzer` | Type check; part of `mix gate` and `mix precommit` | `MIX_ENV=test` | builds the PLT in `_build/plts` the first time (minutes), then checks in seconds; does not change sources | `Total errors: 0`; a schema referenced as `t()` defines `@type t` |
 | `mix sobelow --exit` | Security scan; part of `make backend` and the pre-flight | `MIX_ENV=test` | static analysis, without fixing sources | scan completes with no findings that fail the command |
-| `mix agent_kit.check` | Checks the versioned installation of the agent practices (part of `mix gate` and the gates job) | dev or test | read-only; does not start the application or call models | index and entry points consistent with the dependency and configuration |
-| `mix deps.unlock --check-unused` | Review the lockfile (part of `mix gate` and the CI gates job) | `:test` | none | no orphan dependencies |
-| `mix assets.setup` | First run / frontend CI | `MIX_ENV=dev` | downloads the tailwind/esbuild binaries | tools installed |
+| `mix agent_kit.check` | Checks the versioned installation of the agent practices (part of `mix gate`) | dev or test | read-only; does not start the application or call models | index and entry points consistent with the dependency and configuration |
+| `mix deps.unlock --check-unused` | Review the lockfile (part of `mix gate`) | `:test` | none | no orphan dependencies |
+| `mix assets.setup` | First frontend run | `MIX_ENV=dev` | downloads the tailwind/esbuild binaries | tools installed |
 | `mix assets.build` | When changing CSS/JS | `MIX_ENV=dev` | writes `priv/static/assets/` | bundle built without error |
 | `mix assets.deploy` | Validate the production asset path | `MIX_ENV=dev` | minifies + `phx.digest` | digest manifest generated |
 | [scripts/check_assets.sh](scripts/check_assets.sh) | When changing CSS/JS (first step of the frontend pipeline) | local machine with `node` on the PATH | none (read-only) | entries present, tailwind pipeline configured, authored JS without debug, JS tests and Harness worker-title contract tests (Node 22.19+ or 24+ with `node:sqlite`) green |
 | `make help` | Discover the available targets | `make` | none | target names and a reference to this matrix |
-| `make backend` | Full backend checks, including Sobelow | pins `MIX_ENV=test` | those of `mix gate` (Dialyzer included) and Sobelow | equivalent to the checks of the `gates` + `backend` jobs |
-| `make frontend` | Validate sources and production assets | pins `MIX_ENV=dev` | asset checks, setup, build, and deploy | equivalent to the `frontend` job |
-| `make library` | Validate references to the pinned dependency | dev | read-only | equivalent to the `library` job |
-| `make release` | Exercise production packaging | assets in dev; application in prod | builds the release and overwrites the previous artifact | equivalent to the `release` job; local opt-in |
+| `make backend` | Full backend checks, including Sobelow | pins `MIX_ENV=test` | those of `mix gate` (Dialyzer included) and Sobelow | backend checks pass |
+| `make frontend` | Validate sources and production assets | pins `MIX_ENV=dev` | asset checks, setup, build, and deploy | assets built |
+| `make library` | Validate references to the pinned dependency | dev | read-only | references valid |
+| `make release` | Exercise production packaging | assets in dev; application in prod | builds the release and overwrites the previous artifact | release artifact built |
 | `make check` | Run backend, frontend, and library | environments defined by each target | those of the three pipelines | PR checks green; does not include release |
 | `make coverage` | Audit test gaps | local machine | generates `cover/` (HTML) | report generated; exit != 0 if total coverage falls below 90% (Elixir's default threshold) |
 | [scripts/ci-local.sh](scripts/ci-local.sh) `[pipeline]` | Full pre-flight before opening a PR | local machine | those of the scripts above (release is opt-in) | all pipelines green |
@@ -72,40 +69,30 @@ status.
 Service installation is in [the operations guide](docs/operations.md#run-as-a-service); the
 pre-flight does not start or restart the service.
 
-## Why separate backend and frontend
-
-- **Different toolchains**: backend validates with `mix` (compilation + credo + tests with Postgres); frontend validates with `mix`'s own asset tasks (esbuild/tailwind are `runtime: :dev` dependencies). Mixing the two in one job hid which side broke.
-- **Attributable failure**: the job name (`backend · partição 2` — the test partition, `frontend · assets`, `biblioteca de capacidades` — the capability library) says what broke without opening logs.
-- **Independent cycles**: changing CSS does not need to reprocess the backend, and vice versa.
-
-## When to use the mixed pipeline
-
-The `release` job exists for the path that **needs** both sides together: the deploy. It builds the assets in the dev environment (where esbuild/tailwind exist), compiles production with warnings as errors, digests the assets, and assembles the release (`mix release`). Use it as a smoke test before a deploy and whenever the backend×frontend integration is the risk of the change — not as a gate for every PR (for that, the separate pipelines are faster and more specific).
-
 ## If CI cannot run (no token, billing, or runner)
 
-Binding rule, referenced by AGENTS.md: **when you notice that GitHub Actions is not starting, do not wait for it and do not keep re-triggering it.** The local pipeline becomes the official and **sufficient** gate.
+Do not repeatedly trigger a workflow that cannot start. Run the commands
+named in the project's merge policy on the current head. For the board that
+is `make -j1 check release`; record the commit and results in the PR. A
+successful local run needs no Actions receipt. An absent workflow is normal.
+Missing local tools, a failed test, or a result from another revision is
+never a pass.
 
-How to notice:
-
-- Jobs that fail within seconds with **zero steps** and an account annotation ("payments have failed / spending limit") = billing/token block, not a code defect.
-- No check appears on the PR = the runner was never assigned.
-
-What to do:
-
-1. Stop waiting and stop re-triggering runs (it does not help without resolving the block).
-2. Run `scripts/ci-local.sh all` and fix until green; include `scripts/ci-local.sh release` when the deployment path changes.
-3. Proceed with the delivery authorized in the session using the local run as evidence; record in the PR that CI was unavailable and which local command was run.
-4. When the account block is resolved, run CI manually (`workflow_dispatch`) on the latest `main` to restore the external verification.
-
-CI's goal is still to verify in a clean environment; the rule only avoids blocking deliveries because of an account block that is outside the repository.
+A failed remote check is not evidence of a billing problem. When GitHub reports
+an unstable PR with local-only requirements, the worker only accepts a hosted
+failure if GitHub identifies a startup failure or an Actions job with zero
+steps and a billing annotation. Unknown failures and actual test failures stop
+the merge. Explicitly required hosted checks, reviews, and branch protections
+always apply. The GitHub API is still needed to verify and merge the PR.
 
 ## Adopting this design in another project
 
-1. Copy the `Makefile` structure: one target per pipeline, keeping the local checks equivalent to the corresponding CI jobs.
-2. For the library, follow the [kit installation prompt](https://github.com/sallaumen/elixir-agent-kit/blob/v1.0.0/docs/INSTALL_WITH_AI.md) and run `mix agent_kit.check` after downloading the dependencies.
-3. Adapt the release job to your stack: build assets in the environment where the frontend tools exist and assemble the artifact in the production environment.
-4. Keep this matrix up to date when a new script appears — a script without a row here has no defined "when to use".
+No Actions workflow, Makefile, or kit installation is required in a managed
+repository. Configure its existing commands on the board machine using the
+[per-project policy](docs/agent/merge-checks.md). A policy already present on
+the destination branch takes priority. With neither policy, the worker does
+not merge. The commands belong to that project: a Rust or JavaScript ticket
+does not need the board's Elixir pipeline.
 
 ## History
 
@@ -150,8 +137,7 @@ stylesheet, image/font or interface translation. The comparison includes
 committed and uncommitted work, deletions, both sides of renames and nonignored
 new files. Fetch the target branch before working. If the base is unavailable
 the review runs conservatively. Backend-only changes, focused targets and
-release do not acquire this additional stage. The existing GitHub jobs stay
-unchanged.
+release do not acquire this additional stage. The GitHub smoke check does not run this review.
 
 Requires Node, Playwright with its matching WebKit installed locally, the
 backend's test database and the frontend's compiled assets. The runner resolves

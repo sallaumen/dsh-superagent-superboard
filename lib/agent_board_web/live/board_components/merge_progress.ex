@@ -79,6 +79,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeProgress do
   end
 
   defp reason("review_required"), do: gettext("Merge blocked · review required")
+  defp reason("policy_changed"), do: gettext("Merge blocked · policy changed during validation")
   defp reason("policy_unavailable"), do: gettext("Merge blocked · project policy unavailable")
   defp reason("revision_changed"), do: gettext("Merge blocked · revision changed")
   defp reason("worktree_changed"), do: gettext("Merge blocked · working copy changed")

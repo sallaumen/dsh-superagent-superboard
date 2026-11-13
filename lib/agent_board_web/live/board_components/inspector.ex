@@ -1226,7 +1226,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp pr_ci_title(_pr, %{state: :stale, detail: detail}), do: detail
 
   defp pr_ci_title(%{checks_state: "failure"}, _ci),
-    do: gettext("GitHub Actions failed (billing/no credit); no evidence of local CI.")
+    do: gettext("GitHub Actions failed; no evidence of local CI.")
 
   defp pr_ci_title(%{checks_state: "success"}, _ci), do: gettext("GitHub Actions passed.")
   defp pr_ci_title(_pr, _ci), do: gettext("No remote checks configured.")

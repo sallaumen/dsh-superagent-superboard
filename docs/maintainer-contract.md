@@ -2091,6 +2091,7 @@ database held 24 such `Sync.Worker` rows, each from a different boot.
 ## Managed merge progress
 
 The decision belongs to the managed worker CLI (see [Project merge checks](agent/merge-checks.md)).
+A destination policy takes precedence. Only confirmed absence permits a repository-specific policy on the worker machine. A required hosted check is never downgraded because Actions is unavailable.
 The board reads its atomic snapshot, scoped by repository, PR and the mirrored
 head. Connected boards refresh evidence for visible running/review cards and
 the selected PR every two seconds without querying GitHub. No record means

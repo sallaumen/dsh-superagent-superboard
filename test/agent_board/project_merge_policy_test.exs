@@ -39,6 +39,7 @@ defmodule AgentBoard.ProjectMergePolicyTest do
 
     result = Policy.read(@repo, github(200, policy))
     assert result.branch == "release/next"
+    assert result.source == :repository
     assert result.sha == @sha
 
     assert result.result ==
@@ -48,7 +49,7 @@ defmodule AgentBoard.ProjectMergePolicyTest do
   end
 
   test "does not present a missing, invalid, or unreadable policy as optional review" do
-    assert Policy.read(@repo, github(404, nil)).result == :missing
+    assert %{source: :machine, url: nil, result: :missing} = Policy.read(@repo, github(404, nil))
     assert Policy.read(@repo, github(200, %{"review" => false})).result == :invalid
     assert Policy.read(@repo, github(403, nil)).result == :unavailable
     assert Policy.enforcement(nil, @repo) == :no_agent

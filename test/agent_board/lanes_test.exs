@@ -55,6 +55,7 @@ defmodule AgentBoard.LanesTest do
     assert need.ci.local == false
     assert need.ci.title =~ "GitHub Actions falhou"
     assert need.ci.title =~ "sem evidência de CI local"
+    refute need.ci.title =~ "billing"
     assert Enum.any?(need.actions, &(&1[:url] == pull.url and &1.label == "Abrir PR #28"))
     assert Enum.any?(need.actions, &(&1[:task_id] == review.id))
   end
@@ -87,6 +88,15 @@ defmodule AgentBoard.LanesTest do
     assert need.ci.local == true
     assert need.ci.title =~ "billing"
     assert need.ci.title =~ "126 tests"
+
+    [failed] =
+      Lanes.needs(repo, %{ready: [review], blocked: [], question: []},
+        now: now,
+        tickets_by_number: %{27 => %{"numbers" => [27], "own_threads" => [28]}},
+        local_ci: %{28 => %{local[28] | state: :fail, detail: "unit: 1 failure"}}
+      )
+
+    assert failed.ci.title == "CI local falhou: unit: 1 failure"
   end
 
   test "a question quotes the workpad's Pergunta, not the comment's first line" do

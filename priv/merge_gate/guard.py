@@ -12,6 +12,7 @@ import queue
 import shlex
 import subprocess
 import sys
+import stat
 import time
 
 POLICY = ".github/superboard-merge.json"
@@ -85,6 +86,26 @@ def policy(data):
     return data
 
 
+def machine_policy(repo):
+    if not SLUG.fullmatch(repo) or repo.split("/")[1] in (".", ".."):
+        raise Blocked("Invalid repository")
+    owner, name = repo.lower().split("/")
+    root = Path.home() / ".config" / "superboard" / "quality"
+    path = root / owner / (name + ".json")
+    # Never follow policy links into a proposed checkout.
+    for entry in [root.parent.parent, root.parent, root, path.parent, path]:
+        meta = entry.lstat()
+        if (meta.st_uid != os.getuid() or meta.st_mode & 0o022 or
+                not (stat.S_ISREG(meta.st_mode) if entry == path else stat.S_ISDIR(meta.st_mode))):
+            raise Blocked("Invalid machine policy permissions")
+    if meta.st_size > 65536:
+        raise Blocked("Invalid machine policy size")
+    config = policy(json.loads(path.read_bytes()))
+    if not config["local"]:
+        raise Blocked("Machine policy requires local checks")
+    return config
+
+
 def check_states(required, runs, sha):
     result = {}
     for name in required:
@@ -142,24 +163,67 @@ class Merge:
         pages = json.loads(run([self.cli, "api", "--paginate", "--slurp", path]))
         return check_states(names, [r for page in pages for r in page["check_runs"]], self.expected)
 
+    def configuration(self, base):
+        try:
+            item = self.api(f"repos/{self.repo}/contents/{POLICY}?ref={base}")
+        except subprocess.CalledProcessError as exc:
+            # An API error alone is not evidence of an absent base policy.
+            if not SHA.fullmatch(base) or run(["git", "--no-replace-objects", "ls-tree",
+                                               "--full-tree", base, "--", POLICY]):
+                raise Blocked("policy_unavailable") from exc
+            try:
+                return "machine", machine_policy(self.repo)
+            except FileNotFoundError as missing:
+                raise Blocked("policy_unavailable") from missing
+        return "repository", policy(json.loads(base64.b64decode(item["content"])))
+
+    def optional_ci_unavailable(self):
+        # UNSTABLE can also mean a real test failure. Only excuse a failed
+        # Actions job if GitHub confirms it never ran and explains why.
+        path = f"repos/{self.repo}"
+        statuses = self.api(f"{path}/commits/{self.expected}/status")
+        if statuses["total_count"] and statuses["state"] != "success":
+            return False
+        pages = json.loads(run([self.cli, "api", "--paginate", "--slurp",
+                                f"{path}/commits/{self.expected}/check-runs?per_page=100&filter=latest"]))
+        unavailable = False
+        for page in pages:
+            for check in page["check_runs"]:
+                if check["head_sha"] != self.expected or check["status"] != "completed":
+                    return False
+                outcome = check["conclusion"]
+                if outcome in ("success", "neutral", "skipped"):
+                    continue
+                if check["app"]["id"] != 15368:  # GitHub Actions
+                    return False
+                if outcome == "startup_failure":
+                    unavailable = True
+                    continue
+                if outcome != "failure":
+                    return False
+                job = self.api(f"{path}/actions/jobs/{int(check['id'])}")
+                if job["head_sha"] != self.expected or job["steps"] != []:
+                    return False
+                annotations = self.api(f"{path}/check-runs/{int(check['id'])}/annotations")
+                if not any("job was not started" in a["message"].lower() and
+                           any(x in a["message"].lower() for x in ("payments", "spending limit", "billing"))
+                           for a in annotations):
+                    return False
+                unavailable = True
+        return unavailable
+
     def deliver(self):
         info = self.info()
         base = info["baseRefOid"]
         owner = self.api("user")["login"]
         self.verify(info, owner, base)
-        # The policy comes from the destination, never the proposed PR tree.
-        # A missing policy must not be mistaken for approval to use a default.
-        try:
-            item = self.api(f"repos/{self.repo}/contents/{POLICY}?ref={base}")
-        except subprocess.CalledProcessError as exc:
-            raise Blocked("policy_unavailable") from exc
-        config = policy(json.loads(base64.b64decode(item["content"])))
+        source, config = self.configuration(base)
         rows = self.snapshot["checks"]
         local = config["local"]
         rows.extend(dict(name=k, source="local", state="queued") for k in local)
         remote = self.remote(config)
         rows.extend(dict(name=k, source="github", state=v) for k, v in remote.items())
-        self.save(review=info["reviewDecision"] or "NONE", review_required=config["review"])
+        self.save(review=info["reviewDecision"] or "NONE", review_required=config["review"], policy_source=source)
         def refresh_remote():
             current = self.remote(config)
             for row in rows[len(local):]:
@@ -200,6 +264,8 @@ class Merge:
         # Refetch at the decision. The hosted service still enforces branch rules.
         info = self.info()
         self.verify(info, owner, base)
+        if source == "machine" and self.configuration(base) != (source, config):
+            raise Blocked("policy_changed")
         remote = self.remote(config)
         for row in rows[len(local):]:
             row["state"] = remote[row["name"]]
@@ -218,7 +284,10 @@ class Merge:
                 or any(r["state"] == "CHANGES_REQUESTED" for r in latest.values())
                 or (config["review"] and not approved)):
             raise Blocked("review_required")
-        if info["mergeable"] != "MERGEABLE" or info["mergeStateStatus"] not in ("CLEAN", "HAS_HOOKS"):
+        state = info["mergeStateStatus"]
+        if info["mergeable"] != "MERGEABLE" or not (
+                state in ("CLEAN", "HAS_HOOKS") or
+                (state == "UNSTABLE" and not config["github"] and self.optional_ci_unavailable())):
             raise Blocked("github_blocks_merge")
         self.save(state="merging", review="APPROVED" if approved else info["reviewDecision"] or "NONE")
         subprocess.run([self.cli, "pr", "merge", str(self.number), "-R", self.repo,
@@ -260,8 +329,14 @@ if __name__ == "__main__":
     try:
         if sys.argv[1] == "install":
             print(install(*sys.argv[2:]))
-        elif sys.argv[1] == "describe":
-            config = policy(json.loads(base64.b64decode(os.environ["SUPERBOARD_POLICY_CONTENT"])))
+        elif sys.argv[1] in ("describe", "describe-local"):
+            if sys.argv[1] == "describe-local":
+                try:
+                    config = machine_policy(sys.argv[2])
+                except FileNotFoundError:
+                    sys.exit(3)
+            else:
+                config = policy(json.loads(base64.b64decode(os.environ["SUPERBOARD_POLICY_CONTENT"])))
             print(json.dumps({"review": config["review"], "local": sorted(config["local"]),
                               "github": config["github"]}))
         elif sys.argv[1] == "installed":
