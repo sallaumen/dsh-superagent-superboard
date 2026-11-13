@@ -9631,6 +9631,61 @@ msgstr ""
 msgid "The agent manager cannot recognize this Node process. Use Node 22 as described in the Alpine installation guide, then try again."
 msgstr ""
 
+msgid "Waiting to check"
+msgstr ""
+
+msgid "Harness updated"
+msgstr ""
+
+msgid "Harness already current"
+msgstr ""
+
+msgid "Skipped: agent paused"
+msgstr ""
+
+msgid "Skipped: work in progress or queued"
+msgstr ""
+
+msgid "Skipped: agent state changed"
+msgstr ""
+
+msgid "Skipped: project identity changed"
+msgstr ""
+
+msgid "Skipped: agent unavailable"
+msgstr ""
+
+msgid "Another synchronization is in progress"
+msgstr ""
+
+msgid "Could not verify the update. Check the agent before retrying."
+msgstr ""
+
+msgid "From localhost, update idle agents to the Harness bundled with this board. Busy agents keep working; try again when they finish."
+msgstr ""
+
+msgid "Synchronizing…"
+msgstr ""
+
+msgid "Sync agent runtimes"
+msgstr ""
+
+msgid "Synchronization started."
+msgstr ""
+
+msgid "Synchronization is already running."
+msgstr ""
+
+msgid "Review the current project list and try again."
+msgstr ""
+
+msgid "Open Settings on localhost to manage this machine’s agents."
+msgstr ""
+
+msgctxt "PR status"
+msgid "Open"
+msgstr ""
+
 msgid "Merge requirements"
 msgstr ""
 

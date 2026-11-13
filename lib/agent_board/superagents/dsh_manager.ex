@@ -175,7 +175,7 @@ defmodule AgentBoard.Superagents.DshManager do
   defp manager(superagent, command) do
     args = ["--profile", superagent.profile, "--url", origin(superagent), command]
 
-    opts = [stderr_to_stdout: true, env: [{"GH_TOKEN", nil}, {"GITHUB_TOKEN", nil}]]
+    opts = [stderr_to_stdout: true, env: manager_env(superagent.profile)]
 
     case System.cmd("python3", [script() | args], opts) do
       {_output, 0} ->
@@ -188,6 +188,15 @@ defmodule AgentBoard.Superagents.DshManager do
     end
   rescue
     exception -> {:error, exception}
+  end
+
+  defp manager_env(profile) do
+    env = [{"GH_TOKEN", nil}, {"GITHUB_TOKEN", nil}]
+    bin = Path.join([System.user_home!(), ".local/share/superboard/runtimes/profiles", profile])
+
+    if Regex.match?(~r/\A[a-zA-Z0-9_][\w.-]*\z/, profile) and File.regular?(Path.join(bin, "dsh")),
+      do: [{"PATH", bin <> ":" <> System.get_env("PATH", "")} | env],
+      else: env
   end
 
   @doc false

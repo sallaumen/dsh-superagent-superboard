@@ -24,6 +24,7 @@ defmodule AgentBoard.Application do
       AgentBoard.Runners.Ticker,
       {Task.Supervisor, name: AgentBoard.Superagents.TaskSupervisor},
       {Task.Supervisor, name: AgentBoard.System.TaskSupervisor},
+      AgentBoard.Superagents.RuntimeSync,
       AgentBoard.Superagents.Ticker,
       AgentBoard.ElevenLabs.SpeechCache,
       AgentBoard.ElevenLabs.Account,
