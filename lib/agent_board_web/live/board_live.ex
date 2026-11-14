@@ -68,7 +68,7 @@ defmodule AgentBoardWeb.BoardLive do
   }
 
   alias AgentBoardWeb.BoardComponents.PeakRate
-  alias AgentBoardWeb.BoardComponents.VoicePresence
+  alias AgentBoardWeb.BoardComponents.Voice.Presence
 
   # The task actions a button may send, mapped explicitly (never to_atom).
   @task_actions %{"stop" => :stop_task, "archive" => :archive_task, "resume" => :resume_task}
@@ -3246,7 +3246,7 @@ defmodule AgentBoardWeb.BoardLive do
           />
         </div>
 
-        <VoicePresence.stage id="voice-presence-board" />
+        <Presence.stage id="voice-presence-board" />
         <div
           id="voice-command-shortcut"
           phx-hook="VoiceCommand"
@@ -3423,7 +3423,7 @@ defmodule AgentBoardWeb.BoardLive do
           active={@panel == "voice"}
           flash={@flash}
         >
-          <BoardComponents.VoiceConversationLog.log
+          <BoardComponents.Voice.ConversationLog.log
             turns={@voice_turns}
             thinking={@chat_turn != nil}
             language={@voice.language}
@@ -3431,7 +3431,7 @@ defmodule AgentBoardWeb.BoardLive do
             commands_open={@voice_commands_open}
             tz_offset={@tz_offset}
           />
-          <BoardComponents.VoiceActivityFeed.feed events={@voice_activity} tz_offset={@tz_offset} />
+          <BoardComponents.Voice.ActivityFeed.feed events={@voice_activity} tz_offset={@tz_offset} />
         </BoardComponents.Panel.shell>
       </div>
     </Layouts.app>

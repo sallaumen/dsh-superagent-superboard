@@ -1,5 +1,5 @@
 // A single outlet for the actual browser media phases. The voice presence
-// title (role="status" in voice_presence.ex) is the only live region; the
+// title (role="status" in board_components/voice/presence.ex) is the only live region; the
 // rest of that surface is visual and interactive.
 import {localize} from "./i18n"
 

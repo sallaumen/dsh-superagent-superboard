@@ -101,8 +101,8 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/settings/costs.ex:1052
 #: lib/agent_board_web/live/board_components/settings/setup.ex:395
-#: lib/agent_board_web/live/board_components/voice_presence.ex:27
-#: lib/agent_board_web/live/board_components/voice_presence.ex:28
+#: lib/agent_board_web/live/board_components/voice/presence.ex:27
+#: lib/agent_board_web/live/board_components/voice/presence.ex:28
 #, elixir-autogen, elixir-format
 msgid "Voice"
 msgstr ""
@@ -236,7 +236,7 @@ msgstr ""
 #: lib/agent_board_web/live/board_components/inspector.ex:665
 #: lib/agent_board_web/live/board_components/panel.ex:31
 #: lib/agent_board_web/live/board_components/settings/activity.ex:152
-#: lib/agent_board_web/live/board_components/voice_presence.ex:32
+#: lib/agent_board_web/live/board_components/voice/presence.ex:32
 #, elixir-autogen, elixir-format
 msgid "Close"
 msgstr ""
@@ -325,7 +325,7 @@ msgstr ""
 msgid "Failures and pending items"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:94
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:94
 #, elixir-autogen, elixir-format
 msgid "Forget conversation"
 msgstr ""
@@ -529,7 +529,7 @@ msgstr ""
 msgid "Nothing waiting for you."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:30
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:30
 #, elixir-autogen, elixir-format
 msgid "Nothing yet. Every step of a speech appears here in real time: transcription, model, voice, retries, and errors."
 msgstr ""
@@ -727,7 +727,7 @@ msgid "Scroll to older PRs"
 msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:551
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:81
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:81
 #, elixir-autogen, elixir-format
 msgid "Send"
 msgstr ""
@@ -859,7 +859,7 @@ msgstr ""
 msgid "The AI still has questions before splitting:"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:56
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:56
 #, elixir-autogen, elixir-format
 msgid "The agent is thinking..."
 msgstr ""
@@ -961,7 +961,7 @@ msgstr ""
 msgid "View on board"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:24
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:24
 #, elixir-autogen, elixir-format
 msgid "Voice activity"
 msgstr ""
@@ -991,7 +991,7 @@ msgstr ""
 msgid "Without mentioning the agent, DeepSeek won't pick up the request."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:60
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:60
 #, elixir-autogen, elixir-format
 msgid "Write to agent"
 msgstr ""
@@ -1145,8 +1145,8 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/composer.ex:356
 #: lib/agent_board_web/live/board_components/composer.ex:361
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:76
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:77
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:76
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:77
 #, elixir-autogen, elixir-format
 msgid "Dictate by voice"
 msgstr ""
@@ -1242,7 +1242,7 @@ msgstr ""
 msgid "Respond to agent..."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_command_list.ex:54
+#: lib/agent_board_web/live/board_components/voice/command_list.ex:54
 #, elixir-autogen, elixir-format
 msgid "Send this phrase now"
 msgstr ""
@@ -1460,7 +1460,7 @@ msgstr ""
 msgid "AI is out of quota now."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:117
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:117
 #, elixir-autogen, elixir-format
 msgid "Action"
 msgstr ""
@@ -2069,7 +2069,7 @@ msgstr ""
 msgid "the executor database did not respond"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:115
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:115
 #, elixir-autogen, elixir-format
 msgid "transcription"
 msgstr ""
@@ -2566,21 +2566,21 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/agent_board_web/live/board_components/settings/logs.ex:36
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:62
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:62
 #, elixir-autogen, elixir-format
 msgid "%{count} error"
 msgid_plural "%{count} errors"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:61
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:61
 #, elixir-autogen, elixir-format
 msgid "%{count} event"
 msgid_plural "%{count} events"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:85
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:85
 #, elixir-autogen, elixir-format
 msgid "%{count} from cache"
 msgstr ""
@@ -2597,7 +2597,7 @@ msgid_plural "%{count} requests queued"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:63
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:63
 #, elixir-autogen, elixir-format
 msgid "%{count} retry"
 msgid_plural "%{count} retries"
@@ -2628,7 +2628,7 @@ msgstr ""
 msgid "%{done} of %{total} queued; %{failed} failed."
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:84
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:84
 #, elixir-autogen, elixir-format
 msgid "%{minutes} min transcribed"
 msgstr ""
@@ -2665,7 +2665,7 @@ msgstr ""
 
 #: lib/agent_board/board/inbox.ex:42
 #: lib/agent_board_web/live/board_components/inspector.ex:717
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:44
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:44
 #, elixir-autogen, elixir-format
 msgid "Agent"
 msgstr ""
@@ -2914,12 +2914,12 @@ msgstr ""
 
 #: lib/agent_board_web/live/board_components/inspector.ex:717
 #: lib/agent_board_web/live/board_components/inspector.ex:739
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:44
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:44
 #, elixir-autogen, elixir-format
 msgid "You"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:120
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:120
 #, elixir-autogen, elixir-format
 msgid "browser"
 msgstr ""
@@ -2939,7 +2939,7 @@ msgstr ""
 msgid "medium"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:116
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:116
 #, elixir-autogen, elixir-format
 msgid "model"
 msgstr ""
@@ -2949,7 +2949,7 @@ msgstr ""
 msgid "must be between 1 and 16"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:54
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:54
 #, elixir-autogen, elixir-format
 msgid "no events"
 msgstr ""
@@ -2981,7 +2981,7 @@ msgstr ""
 msgid "research"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:121
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:121
 #, elixir-autogen, elixir-format
 msgid "screen"
 msgstr ""
@@ -3001,7 +3001,7 @@ msgstr ""
 msgid "small"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:114
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:114
 #, elixir-autogen, elixir-format
 msgid "speech"
 msgstr ""
@@ -3016,12 +3016,12 @@ msgstr ""
 msgid "task %{size}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:81
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:81
 #, elixir-autogen, elixir-format
 msgid "today: %{count} characters"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:80
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:80
 #, elixir-autogen, elixir-format
 msgid "today: %{count} of %{cap} characters"
 msgstr ""
@@ -3046,12 +3046,12 @@ msgstr ""
 msgid "updated %{age}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:118
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:118
 #, elixir-autogen, elixir-format
 msgid "voice"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_activity_feed.ex:119
+#: lib/agent_board_web/live/board_components/voice/activity_feed.ex:119
 #, elixir-autogen, elixir-format
 msgid "voices"
 msgstr ""
@@ -6423,7 +6423,7 @@ msgstr ""
 msgid "of %{total}"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:51
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:51
 #, elixir-autogen, elixir-format
 msgid "thought for %{time}"
 msgstr ""
@@ -8626,7 +8626,7 @@ msgstr ""
 msgid "All levels"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_command_list.ex:42
+#: lib/agent_board_web/live/board_components/voice/command_list.ex:42
 #, elixir-autogen, elixir-format
 msgid "All skills"
 msgstr ""
@@ -8636,7 +8636,7 @@ msgstr ""
 msgid "All sources"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:69
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:69
 #, elixir-autogen, elixir-format
 msgid "Ask about your board…"
 msgstr ""
@@ -8650,7 +8650,7 @@ msgstr ""
 msgid "Chat"
 msgstr ""
 
-#: lib/agent_board_web/live/board_components/voice_conversation_log.ex:35
+#: lib/agent_board_web/live/board_components/voice/conversation_log.ex:35
 #, elixir-autogen, elixir-format
 msgid "Chat history"
 msgstr ""

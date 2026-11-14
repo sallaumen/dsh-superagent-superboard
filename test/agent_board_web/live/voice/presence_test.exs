@@ -1,14 +1,14 @@
-defmodule AgentBoardWeb.BoardComponents.VoicePresenceTest do
+defmodule AgentBoardWeb.BoardComponents.Voice.PresenceTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest
 
-  alias AgentBoardWeb.BoardComponents.VoicePresence
+  alias AgentBoardWeb.BoardComponents.Voice.Presence
 
   # VoicePresence (JS) writes each voice phase into the title; assistive
   # technology hears it only because the title is a live region.
   test "the title is the live region the voice phases are announced through" do
-    html = render_component(&VoicePresence.stage/1, id: "voice-presence-board")
+    html = render_component(&Presence.stage/1, id: "voice-presence-board")
 
     assert html =~ ~s(id="voice-presence-board-title" class="voice-presence-title" role="status")
     refute html =~ "voice-feedback"

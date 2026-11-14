@@ -1,11 +1,11 @@
-defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeedTest do
+defmodule AgentBoardWeb.BoardComponents.Voice.ActivityFeedTest do
   @moduledoc "The voice feed's summary says what ElevenLabs cost today."
   use AgentBoard.DataCase, async: false
 
   import Phoenix.LiveViewTest
 
   alias AgentBoard.ElevenLabs.Usage
-  alias AgentBoardWeb.BoardComponents.VoiceActivityFeed
+  alias AgentBoardWeb.BoardComponents.Voice.ActivityFeed
 
   setup do
     Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")
@@ -16,7 +16,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeedTest do
 
   test "the usage line shows characters against the cap, minutes and cache hits" do
     line =
-      VoiceActivityFeed.usage(
+      ActivityFeed.usage(
         day(tts_characters: 3420, stt_seconds: 72.0, cache_hits: 18),
         20_000
       )
@@ -25,13 +25,13 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeedTest do
   end
 
   test "without a cap, minutes or hits the line is only the characters" do
-    assert VoiceActivityFeed.usage(day([]), 0) == "hoje: 0 caracteres"
+    assert ActivityFeed.usage(day([]), 0) == "hoje: 0 caracteres"
   end
 
   test "English usage uses English labels and number separators" do
     Gettext.put_locale(AgentBoardWeb.Gettext, "en")
 
-    assert VoiceActivityFeed.usage(
+    assert ActivityFeed.usage(
              day(tts_characters: 3420, stt_seconds: 72.0, cache_hits: 18),
              20_000
            ) == "today: 3,420 of 20,000 characters · 1.2 min transcribed · 18 from cache"
@@ -41,7 +41,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeedTest do
     Usage.record_tts(1500, :paid)
     Usage.record_tts(0, :cache)
 
-    html = render_component(&VoiceActivityFeed.feed/1, events: [])
+    html = render_component(&ActivityFeed.feed/1, events: [])
     assert html =~ "voice-usage-today"
     assert html =~ "hoje: 1.500 de 20.000 caracteres · 1 do cache"
   end
@@ -49,7 +49,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeedTest do
   test "an event's clock is the browser's, not UTC" do
     event = %{at: ~U[2026-11-09 14:15:30Z], stage: :tts, status: :ok, detail: "ok", ms: nil}
 
-    html = render_component(&VoiceActivityFeed.feed/1, events: [event], tz_offset: 180)
+    html = render_component(&ActivityFeed.feed/1, events: [event], tz_offset: 180)
 
     assert html =~ "11:15:30"
     refute html =~ "14:15:30<"

@@ -25,7 +25,7 @@ message, creates a task, or changes a task's state.
   `conversation.ex` render the recording buttons. `settings_menu.ex` links to
   dictation. Their existing text fields remain useful.
 - `assets/js/voice_state.js`, `hooks/voice_presence.js`, and the
-  `VoicePresence` component already display permission, listening,
+  `BoardComponents.Voice.Presence` component already display permission, listening,
   transcribing, speaking, completion, and error states. Reuse these states.
 - `POST /api/voice/transcribe` already sends audio to ElevenLabs and returns
   text. `BoardLive` and `AgentBoard.Voice` already support spoken board status.

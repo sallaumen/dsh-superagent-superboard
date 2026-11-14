@@ -1,4 +1,4 @@
-defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
+defmodule AgentBoardWeb.BoardComponents.Voice.ConversationLog do
   @moduledoc "The board's Chat: its persistent turns, skills and message composer."
   use Phoenix.Component
   use Gettext, backend: AgentBoardWeb.Gettext
@@ -6,7 +6,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
   import AgentBoardWeb.BoardComponents.Controls, only: [ico: 1]
   import AgentBoardWeb.BoardComponents.Markup, only: [markup: 1]
 
-  alias AgentBoardWeb.BoardComponents.VoiceCommandList
+  alias AgentBoardWeb.BoardComponents.Voice.CommandList
   alias AgentBoardWeb.Time
 
   attr :turns, :list, required: true
@@ -55,7 +55,7 @@ defmodule AgentBoardWeb.BoardComponents.VoiceConversationLog do
       <p :if={@thinking} class="voice-chat-thinking" role="status">
         {gettext("The agent is thinking...")}
       </p>
-      <VoiceCommandList.list open={@commands_open} language={@language} featured={@turns == []} />
+      <CommandList.list open={@commands_open} language={@language} featured={@turns == []} />
       <form id="voice-chat-form" phx-submit="voice_chat_send" class="sb-chat__form">
         <label for="voice-chat-text" class="sr-only">{gettext("Write to agent")}</label>
         <%!-- The draft belongs to this tab, even when a skill takes focus during a reply. --%>
