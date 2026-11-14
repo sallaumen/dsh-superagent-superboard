@@ -61,27 +61,40 @@ defmodule AgentBoard.Board.SplitGraph do
   end
 
   @doc """
+  Skips an already published objective or an incomplete split. A complete
+  split returns its tasks in request order and their edges, including tasks
+  recovered from a previous attempt.
+  """
+  @spec publication_plan(Objective.t(), [{map(), term()}]) ::
+          :skip | {:publish, [Task.t()], [{Task.t(), Task.t()}]}
+  def publication_plan(%Objective{issue_number: number}, _results) when is_integer(number),
+    do: :skip
+
+  def publication_plan(_objective, results) do
+    if Enum.all?(results, &match?({_request, {:ok, %Task{}, _outcome}}, &1)) do
+      tasks = for {_request, {:ok, task, _outcome}} <- results, do: task
+      {:publish, tasks, edges(results)}
+    else
+      :skip
+    end
+  end
+
+  @doc """
   Opens the issue that groups the split and mirrors the graph, once every task
   exists: a retry that completes the split publishes it. The issue never
   mentions the agent, so it starts no ticket.
   """
   @spec publish(map(), Objective.t(), [{map(), term()}], term()) :: :ok
-  def publish(_repository, %Objective{issue_number: number}, _results, _client)
-      when is_integer(number),
-      do: :ok
-
   def publish(repository, objective, results, client) do
-    if Enum.all?(results, &match?({_request, {:ok, %Task{}, _outcome}}, &1)) do
-      open_and_link(repository, objective, results, client)
-    else
-      :ok
+    case publication_plan(objective, results) do
+      :skip -> :ok
+      plan -> open_and_link(repository, objective, plan, client)
     end
   rescue
     exception -> failed(repository, objective.title, exception)
   end
 
-  defp open_and_link(repository, objective, results, client) do
-    tasks = for {_request, {:ok, task, _outcome}} <- results, do: task
+  defp open_and_link(repository, objective, {:publish, tasks, edges}, client) do
     body = objective.spec |> parent_body(objective, tasks) |> Executors.without_mention()
 
     issue =
@@ -96,7 +109,7 @@ defmodule AgentBoard.Board.SplitGraph do
     ids = Map.new(tasks, &{&1.number, issue_id(repository, &1, client)})
 
     issue["number"]
-    |> mirror_links(tasks, edges(results), ids)
+    |> mirror_links(tasks, edges, ids)
     |> Enum.each(&link(repository, objective, client, &1))
 
     Board.broadcast(repository.id)
