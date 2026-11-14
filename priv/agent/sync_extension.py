@@ -13,12 +13,13 @@ CONTAINER_PATCH = PATCH.with_name("container-worker.patch")
 CLEANUP_PATCH = PATCH.with_name("container-report-cleanup.patch")
 REVIEW_PATCH = PATCH.with_name("review-midpoint.patch")
 MERGED_DETAIL_PATCH = PATCH.with_name("merged-detail.patch")
+CONTEXT_PATCH = PATCH.with_name("isolated-context.patch")
 CONTAINER_HELPER = PATCH.with_name("container_worker.py")
 BRANCH_HELPER = PATCH.with_name("superboard-branch.py")
 
 
 def payload():
-    return PATCH.read_bytes() + BRANCH_PATCH.read_bytes() + PUBLICATION_PATCH.read_bytes() + CONTAINER_PATCH.read_bytes() + CLEANUP_PATCH.read_bytes() + REVIEW_PATCH.read_bytes() + MERGED_DETAIL_PATCH.read_bytes() + CONTAINER_HELPER.read_bytes() + BRANCH_HELPER.read_bytes()
+    return PATCH.read_bytes() + BRANCH_PATCH.read_bytes() + PUBLICATION_PATCH.read_bytes() + CONTAINER_PATCH.read_bytes() + CLEANUP_PATCH.read_bytes() + REVIEW_PATCH.read_bytes() + MERGED_DETAIL_PATCH.read_bytes() + CONTEXT_PATCH.read_bytes() + CONTAINER_HELPER.read_bytes() + BRANCH_HELPER.read_bytes()
 
 
 UPSTREAM = "8c32a9dc5d72c033816c6a8110b37f40cf94fba4"
@@ -29,7 +30,7 @@ def compiled(path):
     bundle = path / "lib/index.js"
     watcher = path / "lib/github-watch.js"
     github = watcher.read_bytes() if watcher.is_file() else b""
-    return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py", b"Publication is in progress or blocked", b"managed_publish"))
+    return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py", b"Publication is in progress or blocked", b"managed_publish", b"Isolated assignment requires a GitHub repository"))
             and all(tag in github for tag in (b"Review midpoint: PR #", b"mergedDetailRepo"))
             and (path / "scripts/container_worker.py").is_file()
             and (path / "scripts/container_worker.py").read_bytes() == CONTAINER_HELPER.read_bytes()
@@ -147,7 +148,7 @@ def prepare(binding, root, manager, run, lock):
                         components = (PATCH, CONTAINER_PATCH)
                     except subprocess.CalledProcessError:
                         components = (PATCH, BRANCH_PATCH, PUBLICATION_PATCH, CONTAINER_PATCH)
-                for component in (*components, CLEANUP_PATCH, REVIEW_PATCH, MERGED_DETAIL_PATCH):
+                for component in (*components, CLEANUP_PATCH, REVIEW_PATCH, MERGED_DETAIL_PATCH, CONTEXT_PATCH):
                     try:
                         run("git", "apply", "--reverse", "--check", str(component), cwd=stage)
                     except subprocess.CalledProcessError:
