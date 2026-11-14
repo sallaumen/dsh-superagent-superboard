@@ -1,7 +1,37 @@
 defmodule AgentBoard.Board.SplitGraphTest do
   use ExUnit.Case, async: true
 
-  alias AgentBoard.Board.{SplitGraph, Task}
+  alias AgentBoard.Board.{Objective, SplitGraph, Task}
+
+  describe "publication_plan/2" do
+    test "skips a published objective even when every task exists" do
+      results = [{%{key: "a"}, {:ok, %Task{id: 1}, :existing}}]
+
+      assert SplitGraph.publication_plan(%Objective{issue_number: 13}, results) == :skip
+    end
+
+    test "a failed request prevents publication of a partial group" do
+      results = [
+        {%{key: "a"}, {:ok, %Task{id: 1}, :created}},
+        {%{key: "b"}, {:error, :dependency_failed}}
+      ]
+
+      assert SplitGraph.publication_plan(%Objective{}, results) == :skip
+    end
+
+    test "a completed retry keeps request order and resolves a previous receipt as the blocker" do
+      blocker = %Task{id: 1}
+      blocked = %Task{id: 2}
+
+      results = [
+        {%{key: "b", depends_on: ["a"]}, {:ok, blocked, :created}},
+        {%{key: "a"}, {:ok, blocker, :existing}}
+      ]
+
+      assert SplitGraph.publication_plan(%Objective{}, results) ==
+               {:publish, [blocked, blocker], [{blocked, blocker}]}
+    end
+  end
 
   test "independent tasks are only sub-issues of the objective" do
     tasks = [%Task{number: 11}, %Task{number: 12}]
