@@ -2,11 +2,12 @@ defmodule AgentBoardWeb.PrivateFileControllerTest do
   @moduledoc "A private context's images reach the board's own page, and nothing else does."
   use AgentBoardWeb.ConnCase, async: true
 
-  alias AgentBoard.Board
   alias AgentBoard.Board.PrivateContext
+  alias AgentBoard.Board.Repository
+  alias AgentBoard.Repo
 
   setup do
-    {:ok, repo} = Board.add_repository("fixture", "private-files")
+    repo = Repo.insert!(%Repository{id: 2_147_483_649, owner: "fixture", name: "private-files"})
     dir = PrivateContext.issue_dir(4)
     {:ok, _} = PrivateContext.put_file(repo, dir, "tela.png", "PNGDATA", "before")
     :ok = PrivateContext.write_note(repo, dir, "senha: hunter2")
@@ -30,6 +31,7 @@ defmodule AgentBoardWeb.PrivateFileControllerTest do
           "/private/#{c.repo.id}/#{c.dir}/..",
           "/private/#{c.repo.id}/#{c.dir}",
           "/private/999999/#{c.dir}/files/before--tela.png",
+          "/private/9223372036854775808/#{c.dir}/files/before--tela.png",
           "/private/x/#{c.dir}/files/before--tela.png"
         ] do
       assert build_conn() |> get(path) |> response(404) == "", path

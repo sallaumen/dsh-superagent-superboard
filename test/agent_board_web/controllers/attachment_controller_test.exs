@@ -2,7 +2,8 @@ defmodule AgentBoardWeb.AttachmentControllerTest do
   @moduledoc "The board shows a private repository's images, and nothing else from it."
   use AgentBoardWeb.ConnCase, async: false
 
-  alias AgentBoard.Board
+  alias AgentBoard.Board.Repository
+  alias AgentBoard.Repo
 
   @stub AgentBoardWeb.AttachmentControllerTest.Stub
   @hash String.duplicate("a", 64)
@@ -16,7 +17,7 @@ defmodule AgentBoardWeb.AttachmentControllerTest do
     end)
 
     on_exit(fn -> Application.delete_env(:agent_board, :github_client) end)
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    repo = Repo.insert!(%Repository{id: 2_147_483_648, owner: "sallaumen", name: "arena-rogue"})
     %{repo: repo}
   end
 
@@ -63,6 +64,7 @@ defmodule AgentBoardWeb.AttachmentControllerTest do
     assert response(get(conn, "/attachments/#{repo.id}/#{@hash}/a%20b.png"), 404)
     assert response(get(conn, "/attachments/nope/#{@hash}/mock.png"), 404)
     assert response(get(conn, "/attachments/999999999/#{@hash}/mock.png"), 404)
+    assert response(get(conn, "/attachments/9223372036854775808/#{@hash}/mock.png"), 404)
     refute_received {:github, _, _}
   end
 

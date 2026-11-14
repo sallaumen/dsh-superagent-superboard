@@ -12,9 +12,9 @@ defmodule AgentBoardWeb.AttachmentController do
   alias AgentBoard.Board.Attachments
 
   def show(conn, %{"repo_id" => repo_id, "hash" => hash, "name" => name}) do
-    with number when is_integer(number) <- GitHub.number(repo_id),
+    with id when is_integer(id) <- Board.parse_id(repo_id),
          true <- Attachments.valid_path?(hash, name),
-         %{} = repository <- Board.repository(number) do
+         %{} = repository <- Board.repository(id) do
       serve(conn, repository, hash, name)
     else
       _not_an_attachment -> send_resp(conn, 404, "")
