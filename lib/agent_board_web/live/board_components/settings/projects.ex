@@ -960,6 +960,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
       <details
         :if={@superagents != []}
         id="project-runtime-maintenance"
+        open={@project_path == "maintenance"}
         class="ab-project__fold"
         phx-mounted={JS.ignore_attributes("open")}
       >

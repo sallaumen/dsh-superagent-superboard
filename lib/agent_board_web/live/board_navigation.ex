@@ -147,7 +147,10 @@ defmodule AgentBoardWeb.BoardNavigation do
   end
 
   defp project_setup("projects", "agent", pending), do: {"agent", pending}
-  defp project_setup("projects", "github", _pending), do: {"github", nil}
+
+  defp project_setup("projects", path, _pending) when path in ["github", "maintenance"],
+    do: {path, nil}
+
   defp project_setup("projects", _path, _pending), do: {"list", nil}
   defp project_setup(_section, _path, _pending), do: {"github", nil}
 
