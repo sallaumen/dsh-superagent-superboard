@@ -305,7 +305,11 @@ body { margin: 0; background: var(--paper); }
   .ab-insp { animation: insp-enter var(--motion-enter) cubic-bezier(0, 0, 0, 1) both; }
   @keyframes insp-enter { from { transform: translateX(24px); } }
 }
-.ab-insp__head { padding: 16px 16px 0; display: grid; gap: 6px; }
+.ab-insp__head { padding: 12px 16px 0; display: grid; gap: 4px; max-height: 38%; overflow-y: auto; flex: none; }
+.ab-insp__details > summary, .ab-insp__checks > summary { cursor: pointer; padding-block: 7px; font-size: 13px; line-height: 20px; }
+.ab-insp__checks > summary { font-weight: 600; }
+.ab-insp__details > summary { color: var(--ink-muted); }
+.ab-insp__details[open] { padding-bottom: 8px; }
 .ab-insp__bar { display: flex; align-items: center; gap: 8px; }
 .ab-insp__bar .ab-top__spacer { flex: 1; }
 .ab-insp h2 { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; text-wrap: balance; }
@@ -774,7 +778,7 @@ button.ab-need__title, button.ab-run__title { width: 100%; border: 0; background
 .ab-msg__who { flex-wrap: wrap; }
 .ab-pr-facts { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
 .ab-pr-facts .ab-need__title { font-size: var(--space-5); }
-.ab-insp .ab-tabs { margin-top: var(--space-2); }
+.ab-insp > .ab-tabs { margin: 0 16px; }
 .ab-insp .ab-insp__body { min-height: 0; }
 .ab-insp .ab-insp__foot { flex: none; }
 .ab-tl__txt a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
@@ -1148,7 +1152,7 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 /* the inspector head can grow with a long title or a failure block; on a
    phone it scrolls instead of pushing the tabs and the reply box off-screen */
 @media (max-width: 39.999rem) {
-  .ab-insp__head { overflow-y: auto; max-height: 55dvh; }
+  .ab-insp__details > summary, .ab-insp__checks > summary { min-height: 44px; align-content: center; }
   .ab-tab:focus-visible { outline-offset: -2px; }
 }
 
@@ -2212,36 +2216,20 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-unblock {
   display: grid;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
   padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--paper-sunk);
-  max-height: min(52vh, 32rem);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.ab-unblock__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-.ab-unblock__head strong { font-size: 13px; color: var(--ink); }
-.ab-unblock__quote {
-  display: grid;
-  gap: 2px;
-  padding-left: var(--space-2);
-  border-left: 2px solid var(--line-strong);
-}
+.ab-unblock__quote { display: grid; gap: var(--space-1); }
+.ab-unblock__quote strong { font-size: 13px; color: var(--ink); }
 .ab-unblock__quote p {
   margin: 0;
-  max-height: 7.5rem;
-  overflow: auto;
   color: var(--ink);
-  font-size: 12.5px;
-  line-height: 18px;
+  font-size: 14px;
+  line-height: 21px;
   white-space: pre-wrap;
 }
 .ab-unblock__links {

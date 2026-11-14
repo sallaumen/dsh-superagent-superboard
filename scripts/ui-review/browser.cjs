@@ -7,7 +7,7 @@ const { mkdir, mkdtemp } = require("node:fs/promises");
 const failures = {board: 10, inspector: 11, composer: 12, settings: 13};
 let screen = "board";
 
-async function review(browser, url) {
+async function review(browser, url, blockedId) {
   const ctx = await browser.newContext({ reducedMotion: "reduce" });
   try {
     const page = await ctx.newPage();
@@ -44,6 +44,50 @@ async function review(browser, url) {
       await capture("inspector");
       await page.locator('#conversation button[phx-click="close"]').press("Enter");
       await page.locator("#conversation").waitFor({ state: "hidden" });
+
+      await page.goto(url + "&panel=conversation&task=" + blockedId);
+      await page.locator(".phx-connected").first().waitFor();
+      const body = page.locator("#inspector-panel-conversa");
+      const block = body.locator("#unblock-panel");
+      const reply = page.locator("#ask-body");
+      const preflight = page.locator(".ab-insp__checks");
+      const details = page.locator(".ab-insp__details");
+      await block.getByText(/Preciso da sua decisão/).waitFor();
+      assert.match(await preflight.locator("summary").innerText(), /mix test · Falhou/);
+      assert.equal(await preflight.getAttribute("open"), null);
+      const readingArea = async (viewportHeight = height) => {
+        const area = await body.boundingBox();
+        const field = await reply.boundingBox();
+        assert.ok(area.height >= viewportHeight / 3, "Conversation lost its reading area: " + area.height);
+        assert.ok(field.y >= area.y + area.height - 1 && field.y + field.height <= viewportHeight, "Reply clipped");
+      };
+      await readingArea();
+      const quote = await block.locator(".ab-unblock__quote p").boundingBox();
+      const panel = await body.boundingBox();
+      assert.ok(quote.y >= panel.y && quote.y + quote.height <= panel.y + panel.height, "Decision not visible on open");
+      await capture("blocked-inspector");
+      const [shortWidth, shortHeight] = width === 375 ? [443, 828] : [1280, 720];
+      await page.setViewportSize({width: shortWidth, height: shortHeight});
+      await readingArea(shortHeight);
+      const resized = await body.boundingBox();
+      console.log("Blocked inspector reading area:", shortWidth, "×", shortHeight, Math.round(resized.height), "px");
+      await page.screenshot({ path: path.join(evidence, shortWidth + "-blocked-inspector.png") });
+      await page.setViewportSize({width, height});
+      await preflight.locator("summary").press("Enter");
+      await preflight.getByText("mix format --check-formatted").waitFor();
+      await readingArea();
+      await reply.fill("Rascunho local");
+      await details.locator("summary").click();
+      await details.getByText("Arquivar", {exact:true}).waitFor();
+      await block.locator("#open-blocker").click();
+      await block.locator("form").waitFor();
+      assert.notEqual(await preflight.getAttribute("open"), null, "Update closed checks");
+      assert.equal(await reply.inputValue(), "Rascunho local");
+      await readingArea();
+      await page.locator("#inspector-tab-atividade").click();
+      await page.locator("#inspector-panel-atividade").waitFor();
+      await page.locator("#inspector-tab-conversa").click();
+      await reply.waitFor();
 
       screen = "composer";
       await page.goto(url + "&panel=composer");
@@ -130,7 +174,7 @@ async function review(browser, url) {
     return;
   }
   try {
-    await review(browser, process.argv[2]);
+    await review(browser, process.argv[2], process.argv[3]);
     console.log("WebKit passed: board, inspector, composer and settings at 1440 and 375 px.");
   } finally {
     await browser.close();

@@ -2,17 +2,41 @@ defmodule AgentBoardWeb.BoardComponents.Preflight do
   @moduledoc "Local preflight evidence for the running card and task inspector."
   use AgentBoardWeb, :html
 
+  alias Phoenix.LiveView.JS
+
   attr :snapshot, :map, default: nil
   attr :compact, :boolean, default: false
+
+  attr :disclosure_id, :string, default: nil
+
+  def progress(%{snapshot: snapshot, disclosure_id: id} = assigns)
+      when not is_nil(snapshot) and is_binary(id) do
+    ~H"""
+    <details id={@disclosure_id} class="ab-insp__checks" phx-mounted={JS.ignore_attributes("open")}>
+      <summary>{headline(@snapshot)}</summary>
+      <.evidence snapshot={@snapshot} />
+      <.progress :if={@snapshot[:other]} snapshot={@snapshot.other} />
+    </details>
+    """
+  end
 
   def progress(assigns) do
     ~H"""
     <section :if={@snapshot} class="ab-merge-progress" aria-label={gettext("Local preflight")}>
       <strong>{headline(@snapshot)}</strong>
-      <small :if={!@compact} class="ab-meta">
+      <.evidence :if={!@compact} snapshot={@snapshot} />
+    </section>
+    <.progress :if={!@compact && @snapshot && @snapshot[:other]} snapshot={@snapshot.other} />
+    """
+  end
+
+  defp evidence(assigns) do
+    ~H"""
+    <div class="ab-merge-progress">
+      <small class="ab-meta">
         {gettext("Starting revision")} · {String.slice(@snapshot.head, 0, 8)}
       </small>
-      <ul :if={!@compact}>
+      <ul>
         <li :for={{stage, status} <- @snapshot.rows} aria-current={status == "running" && "step"}>
           <span>{name(stage)}<small
             :if={@snapshot[:reasons] && @snapshot.reasons[stage]}
@@ -21,12 +45,11 @@ defmodule AgentBoardWeb.BoardComponents.Preflight do
           <small class="ab-meta">{label(status)}</small>
         </li>
       </ul>
-      <p :if={!@compact && @snapshot[:ui_reason]} class="ab-meta">
+      <p :if={@snapshot[:ui_reason]} class="ab-meta">
         {reason(@snapshot.ui_reason)}
         <span :if={@snapshot.stage == "ui_review"}>{result(@snapshot)}</span>
       </p>
-    </section>
-    <.progress :if={!@compact && @snapshot && @snapshot[:other]} snapshot={@snapshot.other} />
+    </div>
     """
   end
 
