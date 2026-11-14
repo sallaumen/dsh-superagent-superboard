@@ -61,8 +61,15 @@ defmodule AgentBoard.Superagents.PrototypeTest do
     assert url == "https://github.com/deepseek-ai/dsh-superagent-prototype.git"
     assert_received {:ran, "git", ["checkout", "--detach", revision], ^stage}
     assert String.length(revision) == 40
-    assert_received {:ran, "git", ["apply", patch], ^stage}
-    assert File.regular?(patch)
+
+    # First install includes the same notification and isolation fixes as upgrades.
+    for name <-
+          ~w(review-midpoint.patch merged-detail.patch delayed-merged-notification.patch isolated-context.patch) do
+      path = Application.app_dir(:agent_board, "priv/agent/" <> name)
+      assert File.regular?(path)
+      assert_received {:ran, "git", ["apply", ^path], ^stage}
+    end
+
     assert_received {:ran, "cp", [helper, "scripts/superboard-branch.py"], ^stage}
     assert File.regular?(helper)
     assert_received {:ran, "pnpm", ["install", "--frozen-lockfile"], ^stage}

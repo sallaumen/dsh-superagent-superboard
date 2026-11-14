@@ -48,6 +48,21 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
              @projects
 
     wait_for_result(agent.id, "paused")
+    # Compare the receipt from the real controller with the installer's inputs.
+    dir = Application.app_dir(:agent_board, "priv/agent")
+
+    {digest, 0} =
+      System.cmd(
+        "python3",
+        [
+          "-B",
+          "-c",
+          "import sync_runtime; print(sync_runtime.package_digest())"
+        ],
+        cd: dir
+      )
+
+    assert Superagents.get(agent.id).runtime_sync["lock"] == String.trim(digest)
     assert render(view) =~ "Ignorado: agente pausado"
   end
 

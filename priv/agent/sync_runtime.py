@@ -37,10 +37,13 @@ def lock(path):
         yield
 
 
+def package_digest():
+    return hashlib.sha256((MANIFEST / "package-lock.json").read_bytes() + extension.payload()).hexdigest()
+
+
 def prepare(expected_lock=None):
     digest = hashlib.sha256((MANIFEST / "package-lock.json").read_bytes()).hexdigest()
-    package_digest = hashlib.sha256((MANIFEST / "package-lock.json").read_bytes() + extension.payload()).hexdigest()
-    if expected_lock is not None and package_digest != expected_lock:
+    if expected_lock is not None and package_digest() != expected_lock:
         raise Skip("changed")
     dest = ROOT / digest
     with lock(ROOT / ".install.lock"):

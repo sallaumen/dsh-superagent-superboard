@@ -362,6 +362,7 @@ Open the board on **localhost → Settings → Projects → Agent maintenance �
 The list above the button is the scope you are approving. Progress and the
 last result appear beside each project; you can leave Settings while it runs.
 
+First install and synchronization use the same [list of extension fixes](../../priv/agent/extension-files.json).
 The board uses the Harness dependency lock shipped with **this board version**.
 It installs that runtime once per machine and checks each registered local
 profile against its repository, state directory and manager. An outdated, idle
