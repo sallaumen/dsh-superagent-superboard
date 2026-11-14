@@ -36,5 +36,5 @@ defmodule AgentBoardWeb.RuntimeSyncController do
       conn
       |> put_flash(kind, message)
       |> put_status(:see_other)
-      |> redirect(to: ~p"/?panel=settings&section=projects")
+      |> redirect(to: ~p"/?panel=settings&section=projects&path=maintenance")
 end

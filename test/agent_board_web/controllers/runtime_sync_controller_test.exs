@@ -5,6 +5,7 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
   alias AgentBoard.Superagents.RuntimeSync
 
   @projects "/?panel=settings&section=projects"
+  @maintenance @projects <> "&path=maintenance"
 
   test "management is local even if the browser knows the confirmation", %{conn: conn} do
     conn =
@@ -38,14 +39,19 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     assert has_element?(view, "#runtime-targets", phrase)
     assert has_element?(view, "form[action='/superagents/synchronize'] button", "Sincronizar")
 
-    assert post(conn, ~p"/superagents/synchronize", confirm: "old scope") |> redirected_to(303) ==
-             @projects
+    refute has_element?(view, "#project-runtime-maintenance[open]")
+
+    stale = post(conn, ~p"/superagents/synchronize", confirm: "old scope")
+    assert redirected_to(stale, 303) == @maintenance
+    {:ok, retry_view, _} = live(recycle(stale), @maintenance)
+    assert has_element?(retry_view, "#project-runtime-maintenance[open] button")
 
     assert [%{decision: "refused"}] = Actions.recent()
     Superagents.subscribe()
 
-    assert post(conn, ~p"/superagents/synchronize", confirm: phrase) |> redirected_to(303) ==
-             @projects
+    accepted = post(conn, ~p"/superagents/synchronize", confirm: phrase)
+    assert redirected_to(accepted, 303) == @maintenance
+    {:ok, result_view, _} = live(recycle(accepted), @maintenance)
 
     wait_for_result(agent.id, "paused")
     # Compare the receipt from the real controller with the installer's inputs.
@@ -63,7 +69,8 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
       )
 
     assert Superagents.get(agent.id).runtime_sync["lock"] == String.trim(digest)
-    assert render(view) =~ "Ignorado: agente pausado"
+    assert has_element?(result_view, "#project-runtime-maintenance[open] button:not([disabled])")
+    assert has_element?(result_view, "#project-sync-#{agent.id}", "Ignorado: agente pausado")
   end
 
   test "saved profile edits have a specific result; older receipts keep their original meaning",
