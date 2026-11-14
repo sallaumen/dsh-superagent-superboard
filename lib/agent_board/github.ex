@@ -234,6 +234,11 @@ defmodule AgentBoard.GitHub do
     pages(client, "/repos/#{owner}/#{repo}/pulls", recent(), &updated_since?(&1, since))
   end
 
+  @doc "Read one pull by its repository and number, without listing other items."
+  def pull(client, owner, repo, number) do
+    client |> Req.get!(url: "/repos/#{owner}/#{repo}/pulls/#{number}") |> body!()
+  end
+
   defp pages(client, url, params, more?, page \\ 1) do
     response = Req.get!(client, url: url, params: [{:page, page} | params])
     items = body!(response)

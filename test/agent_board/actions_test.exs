@@ -62,6 +62,7 @@ defmodule AgentBoard.ActionsTest do
     :forget_conversation,
     :check_setup,
     :sync_now,
+    :sync_merged_pull,
     :update_board,
     :restart_board
   ]

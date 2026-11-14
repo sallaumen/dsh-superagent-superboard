@@ -12,6 +12,7 @@ defmodule AgentBoard.TicketPoller do
   alias AgentBoard.{AgentState, AgentWorktree, Board, TicketOverlay, Tickets}
   alias AgentBoard.Board.Repository
   alias AgentBoard.Repo
+  alias AgentBoard.Sync.MergedPull
 
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts, name: __MODULE__)
 
@@ -64,6 +65,7 @@ defmodule AgentBoard.TicketPoller do
 
       if Map.get(acc, repo.id) != hash do
         apply_overlays(repo, overlays)
+        MergedPull.enqueue_recent(repo, own)
         Board.broadcast(repo.id)
         Map.put(acc, repo.id, hash)
       else
