@@ -330,8 +330,10 @@ defmodule AgentBoard.Actions do
   @spec phrase(name(), map(), String.t()) :: String.t()
   def phrase(name, params, lang \\ "pt-BR")
 
-  def phrase(:create_tasks, %{repository: repo, requests: requests}, lang),
-    do: create_phrase(repo, requests, lang) <> held_note(requests, lang)
+  def phrase(:create_tasks, %{repository: repo, requests: requests}, lang) do
+    pending = pending_requests(requests)
+    create_phrase(repo, pending, lang) <> held_note(pending, lang)
+  end
 
   def phrase(:release_task, %{task: %{number: number}, repository: repo}, "en-US") do
     "Call the agent on ##{number} in #{repo_name(repo)}? " <>
@@ -892,16 +894,24 @@ defmodule AgentBoard.Actions do
 
   defp execute(:create_tasks, %{repository: repo, requests: requests} = params) do
     client = github(params)
-    requests = route_requests(repo, requests)
+    pending = route_requests(repo, pending_requests(requests))
 
     with_files =
-      with {:ok, requests} <- with_private(repo, requests, Map.get(params, :private)) do
+      with {:ok, requests} <- with_private(repo, pending, Map.get(params, :private)) do
         with_attachments(repo, requests, Map.get(params, :attachments, []), client)
       end
 
     case with_files do
-      {:ok, ready} -> finish_create_tasks(repo, ready, params, client)
-      {:error, results} -> {:ok, results}
+      {:ok, ready} ->
+        numbers = for %{key: key, receipt: %Task{number: n}} <- requests, into: %{}, do: {key, n}
+        created = Board.Requests.create_requests(repo, ready, client, numbers)
+        results = batch_results(requests, created)
+        SplitGraph.record(results)
+        maybe_objective(repo, params[:objective], results, client)
+        {:ok, results}
+
+      {:error, failures} ->
+        {:ok, batch_results(requests, failures)}
     end
   end
 
@@ -1333,12 +1343,17 @@ defmodule AgentBoard.Actions do
     |> Repo.update!()
   end
 
-  defp finish_create_tasks(repo, requests, params, client) do
-    results = Board.Requests.create_requests(repo, requests, client)
+  defp pending_requests(requests), do: Enum.reject(requests, &match?(%{receipt: %Task{}}, &1))
 
-    SplitGraph.record(results)
-    maybe_objective(repo, params[:objective], results, client)
-    {:ok, results}
+  # The graph and the receipt both need every member in the owner's order.
+  defp batch_results(requests, pending_results) do
+    {results, []} =
+      Enum.map_reduce(requests, pending_results, fn
+        %{receipt: %Task{} = task} = request, rest -> {{request, {:ok, task, :existing}}, rest}
+        _request, [result | rest] -> {result, rest}
+      end)
+
+    results
   end
 
   # The files come first: an issue that promises a mock it does not have
@@ -1410,8 +1425,12 @@ defmodule AgentBoard.Actions do
 
   defp outcome(:create_tasks, {:ok, results}) do
     case Enum.count(results, &match?({_request, {:error, _}}, &1)) do
-      0 -> {"ok", nil}
-      failed -> {"error", "#{failed} de #{length(results)} não entraram"}
+      0 ->
+        {"ok", nil}
+
+      failed ->
+        {"error",
+         "#{failed} de #{Enum.count(results, fn {r, _} -> not Map.has_key?(r, :receipt) end)} não entraram"}
     end
   end
 
@@ -1633,7 +1652,7 @@ defmodule AgentBoard.Actions do
     do: "#{repo.owner}/#{repo.name}"
 
   defp subject(:create_tasks, %{repository: repo, requests: requests}),
-    do: "#{repo.owner}/#{repo.name} (#{length(requests)})"
+    do: "#{repo.owner}/#{repo.name} (#{length(pending_requests(requests))})"
 
   defp subject(_name, %{task: %Task{number: n}}), do: "##{n}"
 

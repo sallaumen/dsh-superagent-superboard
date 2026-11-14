@@ -1082,6 +1082,21 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     view |> element("#open-create") |> render_click()
     assert has_element?(view, "#composer-receipt button", "Tentar as 1 que falharam")
 
+    assert has_element?(view, "#composer-retry-confirm", "Corrigir o gargalo")
+    refute has_element?(view, "#composer-retry-confirm", "Medir o carregamento")
+    first = Repo.one!(Task)
+    Repo.update!(Ecto.Changeset.change(first, state: "done"))
+
+    view |> element("#composer-receipt button", "Tentar as 1 que falharam") |> render_click()
+    render_async(view, 2000)
+
+    assert Repo.one!(
+             from d in AgentBoard.Actions.Decision,
+               where: d.action == "create_tasks",
+               order_by: [desc: d.id],
+               limit: 1
+           ).detail == "1 de 1 não entraram"
+
     counter = github(start: 101)
     view |> element("#composer-receipt button", "Tentar as 1 que falharam") |> render_click()
     render_async(view, 2000)
@@ -1093,6 +1108,11 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
 
     titles = Repo.all(from t in Task, select: t.title, order_by: t.id)
     assert titles == ["Medir o carregamento", "Corrigir o gargalo"]
+    dependent = Repo.get_by!(Task, number: 102)
+    assert dependent.body =~ "**Depende de:** #101"
+
+    assert Repo.get_by!(AgentBoard.Board.TaskDependency, task_id: dependent.id).blocked_by_task_id ==
+             first.id
   end
 
   test "a second submit while the first is in flight does nothing", %{conn: conn} do
