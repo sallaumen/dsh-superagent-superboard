@@ -4,9 +4,9 @@ defmodule AgentBoard.Board.Inbox do
   use Gettext, backend: AgentBoardWeb.Gettext
 
   alias AgentBoard.AI.{Budget, Call, Providers}
-  alias AgentBoard.{Board, Lanes, Repo, Workpad}
-  alias AgentBoard.Board.{Comment, Task}
+  alias AgentBoard.Board.{Comment, Task, TaskPullLinks}
   alias AgentBoard.ElevenLabs.Account
+  alias AgentBoard.{Lanes, Repo, Workpad}
   alias AgentBoard.Superagents.Policy
 
   @message_limit 30
@@ -150,7 +150,7 @@ defmodule AgentBoard.Board.Inbox do
           preload: [repository: r]
       )
 
-    resolved = tasks |> Enum.filter(&(&1.state == "ready")) |> Board.resolved_task_ids()
+    resolved = tasks |> Enum.filter(&(&1.state == "ready")) |> TaskPullLinks.resolved_task_ids()
     now = DateTime.utc_now()
 
     tasks

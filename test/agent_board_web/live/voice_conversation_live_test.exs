@@ -352,6 +352,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
              "O agente da tarefa 12 respondeu: Sim, rodei os testes e todos passaram."
 
     send(view.pid, :board_updated)
+    render(view)
     refute_push_event(view, "voice_play", %{url: _}, 100)
     assert [%{action: "agent_answered"} | _] = Enum.reverse(Conversation.recent())
   end
@@ -368,6 +369,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
     :ok = AgentBoard.Settings.put("voice_alert_answer", "1")
     send(view.pid, :board_updated)
+    render(view)
     refute_push_event(view, "voice_play", %{url: _}, 100)
   end
 
@@ -378,6 +380,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     asked_task()
 
     send(view.pid, :board_updated)
+    render(view)
     refute_push_event(view, "voice_play", %{url: _}, 100)
     assert [%{action: "agent_answered"} | _] = Enum.reverse(Conversation.recent())
   end

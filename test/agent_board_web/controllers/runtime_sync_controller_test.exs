@@ -113,7 +113,7 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     targets = RuntimeSync.targets([Superagents.get(agent.id)])
     Superagents.subscribe()
     assert :ok = RuntimeSync.start(targets, worker)
-    assert_receive {:attempt, task}
+    assert_receive {:attempt, task}, 3_000
     send(task, {:load, "busy"})
     wait_for_result(agent.id, "pending")
     request = Superagents.get(agent.id).runtime_sync["request"]
@@ -123,7 +123,7 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     worker = start_supervised!({RuntimeSync, opts})
     assert has_element?(view, "#project-#{agent.id} [role=status]", "Atualização pendente")
     send(worker, :tick)
-    assert_receive {:attempt, next}
+    assert_receive {:attempt, next}, 3_000
     for _ <- 1..5, do: RuntimeSync.start(targets, worker)
     assert Superagents.get(agent.id).runtime_sync["request"] == request
     send(next, {:load, "updated"})

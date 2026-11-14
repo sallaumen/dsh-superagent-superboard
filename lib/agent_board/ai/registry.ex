@@ -35,30 +35,6 @@ defmodule AgentBoard.AI.Registry do
     ]
   }
 
-  @tasks_schema %{
-    "type" => "object",
-    "additionalProperties" => false,
-    "properties" => %{
-      "tasks" => %{
-        "type" => "array",
-        "items" => %{
-          "type" => "object",
-          "additionalProperties" => false,
-          "properties" => %{
-            "title" => %{"type" => "string"},
-            "body" => %{"type" => "string"},
-            "kind" => %{"type" => "string", "enum" => AgentBoard.Board.Task.work_types()},
-            "acceptance" => %{"type" => "array", "items" => %{"type" => "string"}},
-            "depends_on" => %{"type" => "array", "items" => %{"type" => "integer"}},
-            "size" => %{"type" => "string", "enum" => AgentBoard.Board.Task.sizes()}
-          },
-          "required" => ["title", "body", "kind", "acceptance", "depends_on", "size"]
-        }
-      }
-    },
-    "required" => ["tasks"]
-  }
-
   @answer_schema %{
     "type" => "object",
     "additionalProperties" => false,
@@ -85,57 +61,6 @@ defmodule AgentBoard.AI.Registry do
       }
     },
     "required" => ["suggestions"]
-  }
-
-  @voice_agent_schema %{
-    "type" => "object",
-    "additionalProperties" => false,
-    "properties" => %{
-      "reply" => %{"type" => "string"},
-      "action" => %{
-        "type" => "string",
-        "enum" => [
-          "reply",
-          "create_task",
-          "open_task",
-          "select_repository",
-          "stop_task",
-          "archive_task",
-          "ask_task",
-          "confirm",
-          "cancel",
-          "forget",
-          "look",
-          "undo",
-          "help"
-        ]
-      },
-      "lookup" => %{
-        "type" => "string",
-        "enum" => ["", "task", "runs", "failures", "search", "activity"]
-      },
-      "direct" => %{"type" => "boolean"},
-      "request" => %{"type" => "string"},
-      "title" => %{"type" => "string"},
-      "details" => %{"type" => "array", "items" => %{"type" => "string"}},
-      "question" => %{"type" => "string"},
-      "task_number" => %{"type" => "integer"},
-      "repository" => %{"type" => "string"},
-      "executor" => %{"type" => "string", "enum" => ["" | AgentBoard.Executors.all()]}
-    },
-    "required" => [
-      "reply",
-      "action",
-      "request",
-      "title",
-      "details",
-      "question",
-      "task_number",
-      "repository",
-      "lookup",
-      "direct",
-      "executor"
-    ]
   }
 
   @voice_explain_schema %{
@@ -217,7 +142,7 @@ defmodule AgentBoard.AI.Registry do
       Unused fields are "", [], 0 or false. If a request is too vague to act on, choose
       reply and ask one short question.
       """,
-      json_schema: @voice_agent_schema
+      json_schema: :voice_agent
     },
     voice_explain: %{
       name: :voice_explain,
@@ -370,7 +295,7 @@ defmodule AgentBoard.AI.Registry do
       so do not repeat them. A body has up to 1200 characters, fewer when the
       task is simple: the whole list must fit one answer.
       """,
-      json_schema: @tasks_schema
+      json_schema: :tasks
     }
   }
 
@@ -378,7 +303,91 @@ defmodule AgentBoard.AI.Registry do
   def fetch(name), do: from_call(Map.get(@calls, name))
 
   defp from_call(nil), do: {:error, :unknown_call}
+  defp from_call(%{json_schema: :tasks} = spec), do: {:ok, %{spec | json_schema: tasks_schema()}}
+
+  defp from_call(%{json_schema: :voice_agent} = spec),
+    do: {:ok, %{spec | json_schema: voice_agent_schema()}}
+
   defp from_call(spec), do: {:ok, spec}
+
+  defp tasks_schema do
+    %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "properties" => %{
+        "tasks" => %{
+          "type" => "array",
+          "items" => %{
+            "type" => "object",
+            "additionalProperties" => false,
+            "properties" => %{
+              "title" => %{"type" => "string"},
+              "body" => %{"type" => "string"},
+              "kind" => %{"type" => "string", "enum" => AgentBoard.Board.Task.work_types()},
+              "acceptance" => %{"type" => "array", "items" => %{"type" => "string"}},
+              "depends_on" => %{"type" => "array", "items" => %{"type" => "integer"}},
+              "size" => %{"type" => "string", "enum" => AgentBoard.Board.Task.sizes()}
+            },
+            "required" => ["title", "body", "kind", "acceptance", "depends_on", "size"]
+          }
+        }
+      },
+      "required" => ["tasks"]
+    }
+  end
+
+  defp voice_agent_schema do
+    %{
+      "type" => "object",
+      "additionalProperties" => false,
+      "properties" => %{
+        "reply" => %{"type" => "string"},
+        "action" => %{
+          "type" => "string",
+          "enum" => [
+            "reply",
+            "create_task",
+            "open_task",
+            "select_repository",
+            "stop_task",
+            "archive_task",
+            "ask_task",
+            "confirm",
+            "cancel",
+            "forget",
+            "look",
+            "undo",
+            "help"
+          ]
+        },
+        "lookup" => %{
+          "type" => "string",
+          "enum" => ["", "task", "runs", "failures", "search", "activity"]
+        },
+        "direct" => %{"type" => "boolean"},
+        "request" => %{"type" => "string"},
+        "title" => %{"type" => "string"},
+        "details" => %{"type" => "array", "items" => %{"type" => "string"}},
+        "question" => %{"type" => "string"},
+        "task_number" => %{"type" => "integer"},
+        "repository" => %{"type" => "string"},
+        "executor" => %{"type" => "string", "enum" => ["" | AgentBoard.Executors.all()]}
+      },
+      "required" => [
+        "reply",
+        "action",
+        "request",
+        "title",
+        "details",
+        "question",
+        "task_number",
+        "repository",
+        "lookup",
+        "direct",
+        "executor"
+      ]
+    }
+  end
 
   @spec names() :: [atom()]
   def names, do: Map.keys(@calls)
