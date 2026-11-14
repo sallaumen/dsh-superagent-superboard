@@ -32,7 +32,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
     ]
 
   alias AgentBoard.{Actions, AI, Board, Executors, GitHub, Intake, Titles}
-  alias AgentBoard.Board.{Attachments, PrivateContext}
+  alias AgentBoard.Board.{Attachments, PrivateContext, RequestBatch}
   alias AgentBoard.Intake.{IssueBody, RepoDigest}
   alias AgentBoard.Routing
   alias AgentBoard.Routing.Signals
@@ -664,7 +664,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
     client = GitHub.client()
 
     job =
-      composer_job(:enqueue, requests, Enum.count(requests, &(not Map.has_key?(&1, :receipt))))
+      composer_job(:enqueue, requests, length(RequestBatch.pending(requests)))
 
     attachments = socket.assigns.composer_attachments
 
@@ -870,7 +870,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
     |> assign(
       composer_job: nil,
       composer_receipt: %{items: items},
-      composer_retry: if(failed > 0, do: {:enqueue, keep_receipts(requests, results)}),
+      composer_retry: if(failed > 0, do: {:enqueue, RequestBatch.for_retry(requests, results)}),
       composer_attachments: if(failed > 0, do: socket.assigns.composer_attachments, else: []),
       composer_private: if(failed > 0, do: socket.assigns.composer_private, else: new_private())
     )
@@ -896,15 +896,6 @@ defmodule AgentBoardWeb.ComposerLifecycle do
     socket
     |> cancel_async({:composer, ref})
     |> assign(composer_job: nil, composer_error: nil, composer_retry: nil)
-  end
-
-  # Keep the original requests (before files and dependency links were added).
-  # A successful member belongs to this batch even if its issue later closes.
-  defp keep_receipts(requests, results) do
-    Enum.zip_with(requests, results, fn
-      request, {_sent, {:ok, task, _outcome}} -> Map.put(request, :receipt, task)
-      request, {_sent, {:error, _reason}} -> request
-    end)
   end
 
   defp receipt_item(request, {:ok, task, outcome}),

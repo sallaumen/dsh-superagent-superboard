@@ -71,7 +71,7 @@ defmodule AgentBoard.Actions do
     Voice
   }
 
-  alias AgentBoard.Board.{Attachments, PrivateContext, Repository, SplitGraph, Task}
+  alias AgentBoard.Board.{Attachments, PrivateContext, Repository, RequestBatch, SplitGraph, Task}
   alias AgentBoard.Intake.IssueBody
   alias AgentBoard.Release
   alias AgentBoard.Superagents.{Leftovers, Policy, RuntimeSync}
@@ -331,7 +331,7 @@ defmodule AgentBoard.Actions do
   def phrase(name, params, lang \\ "pt-BR")
 
   def phrase(:create_tasks, %{repository: repo, requests: requests}, lang) do
-    pending = pending_requests(requests)
+    pending = RequestBatch.pending(requests)
     create_phrase(repo, pending, lang) <> held_note(pending, lang)
   end
 
@@ -894,7 +894,7 @@ defmodule AgentBoard.Actions do
 
   defp execute(:create_tasks, %{repository: repo, requests: requests} = params) do
     client = github(params)
-    pending = route_requests(repo, pending_requests(requests))
+    pending = route_requests(repo, RequestBatch.pending(requests))
 
     with_files =
       with {:ok, requests} <- with_private(repo, pending, Map.get(params, :private)) do
@@ -903,15 +903,15 @@ defmodule AgentBoard.Actions do
 
     case with_files do
       {:ok, ready} ->
-        numbers = for %{key: key, receipt: %Task{number: n}} <- requests, into: %{}, do: {key, n}
+        numbers = RequestBatch.confirmed_numbers(requests)
         created = Board.Requests.create_requests(repo, ready, client, numbers)
-        results = batch_results(requests, created)
+        results = RequestBatch.merge_results(requests, created)
         SplitGraph.record(results)
         maybe_objective(repo, params[:objective], results, client)
         {:ok, results}
 
       {:error, failures} ->
-        {:ok, batch_results(requests, failures)}
+        {:ok, RequestBatch.merge_results(requests, failures)}
     end
   end
 
@@ -1343,19 +1343,6 @@ defmodule AgentBoard.Actions do
     |> Repo.update!()
   end
 
-  defp pending_requests(requests), do: Enum.reject(requests, &match?(%{receipt: %Task{}}, &1))
-
-  # The graph and the receipt both need every member in the owner's order.
-  defp batch_results(requests, pending_results) do
-    {results, []} =
-      Enum.map_reduce(requests, pending_results, fn
-        %{receipt: %Task{} = task} = request, rest -> {{request, {:ok, task, :existing}}, rest}
-        _request, [result | rest] -> {result, rest}
-      end)
-
-    results
-  end
-
   # The files come first: an issue that promises a mock it does not have
   # would send the agent to work without it.
   defp with_attachments(repo, requests, files, client) do
@@ -1429,8 +1416,8 @@ defmodule AgentBoard.Actions do
         {"ok", nil}
 
       failed ->
-        {"error",
-         "#{failed} de #{Enum.count(results, fn {r, _} -> not Map.has_key?(r, :receipt) end)} não entraram"}
+        requests = Enum.map(results, &elem(&1, 0))
+        {"error", "#{failed} de #{length(RequestBatch.pending(requests))} não entraram"}
     end
   end
 
@@ -1652,7 +1639,7 @@ defmodule AgentBoard.Actions do
     do: "#{repo.owner}/#{repo.name}"
 
   defp subject(:create_tasks, %{repository: repo, requests: requests}),
-    do: "#{repo.owner}/#{repo.name} (#{length(pending_requests(requests))})"
+    do: "#{repo.owner}/#{repo.name} (#{length(RequestBatch.pending(requests))})"
 
   defp subject(_name, %{task: %Task{number: n}}), do: "##{n}"
 
