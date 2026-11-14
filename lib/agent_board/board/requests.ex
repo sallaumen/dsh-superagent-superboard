@@ -236,14 +236,7 @@ defmodule AgentBoard.Board.Requests do
       )
 
     claim
-    |> Task.changeset(%{
-      number: issue["number"],
-      url: issue["html_url"],
-      state: "queued",
-      state_changed_at: DateTime.utc_now(),
-      author: "board"
-    })
-    |> Repo.update()
+    |> finish_claim(issue)
     |> tap(&record_routing(&1, repository, executor, Map.get(request, :routing)))
     |> tap(fn
       {:ok, _task} -> Board.broadcast(repository.id)
@@ -256,6 +249,68 @@ defmodule AgentBoard.Board.Requests do
       })
 
       {:error, exception}
+  end
+
+  defp finish_claim(claim, issue) do
+    result =
+      claim
+      |> Task.changeset(%{
+        number: issue["number"],
+        url: issue["html_url"],
+        state: "queued",
+        state_changed_at: DateTime.utc_now(),
+        author: "board"
+      })
+      |> Repo.update(mode: :savepoint)
+
+    case result do
+      {:error, changeset} ->
+        if issue_number_taken?(changeset),
+          do: reconcile_mirror(claim, issue["number"]),
+          else: result
+
+      success ->
+        success
+    end
+  end
+
+  defp issue_number_taken?(changeset) do
+    Enum.any?(changeset.errors, fn {_field, {_msg, opts}} ->
+      opts[:constraint_name] == "tasks_repository_id_kind_number_index"
+    end)
+  end
+
+  # Sync owns the row it already observed, including its state and comments.
+  # Transfer the reservation and board-only fields together; never reopen the issue.
+  defp reconcile_mirror(claim, number) do
+    Repo.transact(fn ->
+      mirror =
+        Repo.one(
+          from t in Task,
+            where:
+              t.repository_id == ^claim.repository_id and t.kind == "issue" and
+                t.number == ^number,
+            where: is_nil(t.request_key),
+            lock: "FOR UPDATE"
+        )
+
+      with %Task{} <- mirror, {1, _} <- delete_claim(claim) do
+        attrs =
+          Map.take(claim, [
+            :request_key,
+            :origin_task_id,
+            :blocker_for_task_id,
+            :work_type,
+            :size,
+            :executor,
+            :held
+          ])
+
+        mirror |> Task.changeset(attrs) |> Repo.update()
+      else
+        _ -> {:error, :conflict}
+      end
+    end)
   end
 
   # The router's line for the task (AgentBoard.Routing.Decision). The issue

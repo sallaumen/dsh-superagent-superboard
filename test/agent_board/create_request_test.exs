@@ -583,6 +583,63 @@ defmodule AgentBoard.CreateRequestTest do
     assert Agent.get(counter, & &1) == 1
   end
 
+  test "a synced issue wins the row while the board keeps its request metadata", %{repo: repo} do
+    origin =
+      Repo.insert!(%Task{repository_id: repo.id, kind: "issue", number: 18, title: "Origin"})
+
+    caller = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      mirrored =
+        Repo.insert!(%Task{
+          repository_id: repo.id,
+          kind: "issue",
+          number: 71,
+          title: "Updated upstream",
+          body: "Edited upstream",
+          state: "running"
+        })
+
+      Repo.insert!(%AgentBoard.Board.Comment{task_id: mirrored.id, body: "Already working on it"})
+      send(caller, {:mirrored, mirrored.id})
+      Req.Test.json(conn, %{"number" => 71, "html_url" => "https://example.org/issues/71"})
+    end)
+
+    request =
+      routed(repo, %{
+        title: "Split task",
+        body: "Original",
+        key: "split-71",
+        executor: "dsh",
+        held: true,
+        origin_task_id: origin.id,
+        blocker_for_task_id: origin.id,
+        work_type: "ui",
+        size: "S"
+      })
+
+    assert {:ok, task, :created} = Board.Requests.create_request(repo, request, client())
+    assert_receive {:mirrored, id}
+    assert task.id == id
+    task = Repo.get!(Task, id)
+
+    assert {task.number, task.state, task.title, task.body} ==
+             {71, "running", "Updated upstream", "Edited upstream"}
+
+    assert {task.request_key, task.executor, task.held, task.work_type, task.size} ==
+             {"split-71", "dsh", true, "ui", "S"}
+
+    assert task.origin_task_id == origin.id and task.blocker_for_task_id == origin.id
+    assert [%{body: "Already working on it"}] = Board.comments(task)
+    assert [%{task_id: ^id}] = Repo.all(Decision)
+    assert Repo.aggregate(Task, :count) == 2
+
+    assert {:ok, %Task{id: ^id}, :existing} =
+             Board.Requests.create_request(repo, request, client())
+
+    refute_received {:mirrored, _}
+  end
+
   test "a GitHub failure is an error and leaves no task", %{repo: repo} do
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 500, "boom") end)
 
