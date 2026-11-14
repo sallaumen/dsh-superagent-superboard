@@ -380,4 +380,6 @@ The delivery rules that profile then follows — the branch the next run prepare
 and whether it reuses an open PR — are in
 [What a ticket leaves behind](how-it-works.md#what-a-ticket-leaves-behind).
 Synchronizing a profile only installs that behavior; it never creates a PR in
-the connected repository.
+the connected repository. If the managed publication command stops, the worker
+reports the block on the ticket; the recovery steps are in
+[When a managed PR cannot be published](merge-checks.md#when-a-managed-pr-cannot-be-published).
