@@ -1,0 +1,21 @@
+#!/bin/sh
+# Run only in the disposable check container. Unknown stage IDs fail closed.
+set -eu
+[ "$#" -gt 0 ] || { echo "No publication checks selected" >&2; exit 1; }
+cd /workspace
+mkdir -p "$HOME/.cache/elixir_make"
+cp /opt/board-cache/* "$HOME/.cache/elixir_make/"
+cp -R /opt/board-deps deps
+export MIX_ENV=test MIX_HOME=/home/worker/.mix MIX_REBAR3=/usr/bin/rebar3
+mkdir -p "$MIX_HOME"
+initdb -D /tmp/db -U board -A trust >/tmp/pg-init.log
+pg_ctl -D /tmp/db -o '-h 127.0.0.1 -k /tmp -p 5434' -l /tmp/postgres.log start
+trap 'pg_ctl -D /tmp/db -m immediate stop >/dev/null || :' EXIT
+for stage in "$@"; do
+  case "$stage" in
+    mix-format) mix format --check-formatted ;;
+    mix-lint) mix credo --strict ;;
+    mix-test) mix test ;;
+    *) echo "Unsupported board check: $stage" >&2; exit 1 ;;
+  esac
+done
