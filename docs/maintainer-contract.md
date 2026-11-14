@@ -356,6 +356,13 @@ that already worked).
   the board. It never writes issue state or advances the full sync cursor.
   Duplicate signals and restarts coalesce; the five-minute sync covers missing
   or stale signals (`merged_pull_test.exs`).
+- **Harness merge detection.** The managed GitHub source keeps its regular notification
+  interval. After a successful 60-second round it may read one PR detail halfway
+  to the next round. Only open, owned PRs of tickets that reported ready for
+  review in the last 15 minutes qualify. PRs share that one slot per profile
+  in rotation; idle profiles, slower intervals and failed rounds add no reads.
+  The extra read has a five-second deadline and never fetches CI, comments or
+  notifications. The regular round remains the fallback for errors and older PRs.
 - **The sync's GitHub budget.** The account's 5000 REST calls an hour are shared
   by every repository and every tool using the token. A pull stored as merged or
   closed at the same commit is not read again (reviews, checks) unless its checks

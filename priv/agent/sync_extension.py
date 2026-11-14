@@ -11,12 +11,13 @@ BRANCH_PATCH = PATCH.with_name("assignment-branch.patch")
 PUBLICATION_PATCH = PATCH.with_name("managed-publication.patch")
 CONTAINER_PATCH = PATCH.with_name("container-worker.patch")
 CLEANUP_PATCH = PATCH.with_name("container-report-cleanup.patch")
+REVIEW_PATCH = PATCH.with_name("review-midpoint.patch")
 CONTAINER_HELPER = PATCH.with_name("container_worker.py")
 BRANCH_HELPER = PATCH.with_name("superboard-branch.py")
 
 
 def payload():
-    return PATCH.read_bytes() + BRANCH_PATCH.read_bytes() + PUBLICATION_PATCH.read_bytes() + CONTAINER_PATCH.read_bytes() + CLEANUP_PATCH.read_bytes() + CONTAINER_HELPER.read_bytes() + BRANCH_HELPER.read_bytes()
+    return PATCH.read_bytes() + BRANCH_PATCH.read_bytes() + PUBLICATION_PATCH.read_bytes() + CONTAINER_PATCH.read_bytes() + CLEANUP_PATCH.read_bytes() + REVIEW_PATCH.read_bytes() + CONTAINER_HELPER.read_bytes() + BRANCH_HELPER.read_bytes()
 
 
 UPSTREAM = "8c32a9dc5d72c033816c6a8110b37f40cf94fba4"
@@ -26,6 +27,8 @@ PACKAGE = "dsh-superagent"
 def compiled(path):
     bundle = path / "lib/index.js"
     return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py", b"Publication is in progress or blocked", b"managed_publish"))
+            and (path / "lib/github-watch.js").is_file()
+            and b"Review midpoint: PR #" in (path / "lib/github-watch.js").read_bytes()
             and (path / "scripts/container_worker.py").is_file()
             and (path / "scripts/container_worker.py").read_bytes() == CONTAINER_HELPER.read_bytes()
             and (path / "scripts/superboard-branch.py").read_bytes() == BRANCH_HELPER.read_bytes())
@@ -142,7 +145,7 @@ def prepare(binding, root, manager, run, lock):
                         components = (PATCH, CONTAINER_PATCH)
                     except subprocess.CalledProcessError:
                         components = (PATCH, BRANCH_PATCH, PUBLICATION_PATCH, CONTAINER_PATCH)
-                for component in (*components, CLEANUP_PATCH):
+                for component in (*components, CLEANUP_PATCH, REVIEW_PATCH):
                     try:
                         run("git", "apply", "--reverse", "--check", str(component), cwd=stage)
                     except subprocess.CalledProcessError:
