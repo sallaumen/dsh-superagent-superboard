@@ -95,7 +95,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
     ~H"""
     <div id={@id} class="settings-layout">
       <nav class="settings-nav" aria-label={gettext("Settings sections")}>
-        <div class="settings-nav__items">
+        <div id="settings-section-navigation" class="settings-nav__items" phx-hook="SettingsNav">
           <button
             :for={{key, label} <- @sections}
             type="button"

@@ -7,6 +7,15 @@ const { mkdir, mkdtemp } = require("node:fs/promises");
 const failures = {board: 10, inspector: 11, composer: 12, settings: 13};
 let screen = "board";
 
+// Geometry alone misses fields covered by a sticky control.
+async function reachable(locator) {
+  return locator.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 &&
+      el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  });
+}
+
 async function review(browser, url, blockedId) {
   const ctx = await browser.newContext({ reducedMotion: "reduce" });
   try {
@@ -96,10 +105,45 @@ async function review(browser, url, blockedId) {
       assert.match(await input.inputValue(), /keyboard interaction/);
       await capture("composer");
 
+      await page.locator("#composer-form summary").filter({hasText: "Contexto privado"}).press("Enter");
+      const note = page.locator("#composer-private-note");
+      await note.fill("Rascunho privado sem envio");
+      for (const [w,h] of width === 375 ? [[320,568],[667,375],[375,812]] : [[1280,720],[1920,1080]]) {
+        await page.setViewportSize({width:w,height:h});
+        for (const field of [note, page.locator("#composer-private-folder")]) {
+          await field.focus();
+          await field.scrollIntoViewIfNeeded();
+          assert.ok(await reachable(field), "Field covered by composer actions at " + w);
+        }
+        const submit = page.locator("#composer-form .ab-compose__bar .ab-btn--primary");
+        await submit.scrollIntoViewIfNeeded();
+        assert.ok(await reachable(submit), "Cannot reach submit at " + w);
+        assert.equal(await note.inputValue(), "Rascunho privado sem envio");
+        if (w === 320) await capture("private-context");
+      }
+      await page.setViewportSize({width,height});
+
       screen = "settings";
       await page.goto(url + "&panel=settings&section=system");
       await page.locator("#settings-system-title").waitFor();
       await capture("settings");
+      const selected = page.locator(".settings-nav__item[aria-current=page]");
+      const selectedIsVisible = () => page.waitForFunction(() => {
+        const strip = document.querySelector(".settings-nav__items").getBoundingClientRect();
+        const r = document.querySelector(".settings-nav__item[aria-current=page]").getBoundingClientRect();
+        return r.left >= strip.left - 1 && r.right <= strip.right + 1;
+      });
+      await selectedIsVisible();
+      await page.locator(".settings-nav__item[phx-value-section=logs]").press("Enter");
+      await page.waitForURL(/section=logs/);
+      await page.goBack();
+      await page.waitForURL(/section=system/);
+      await selectedIsVisible();
+      assert.ok(await reachable(selected), "Active settings section outside viewport");
+      await page.setViewportSize({width:320,height:568});
+      await selectedIsVisible();
+      await capture("settings-current-section");
+      await page.setViewportSize({width,height});
 
       await page.goto(url + "&panel=settings&section=projects");
       const search = page.locator("#project-directory-query");
