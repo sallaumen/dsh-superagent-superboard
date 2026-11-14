@@ -17,7 +17,7 @@ defmodule AgentBoard.Board.Requests do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{Board, Executors, Repo, Routing}
-  alias AgentBoard.Board.{Repository, Task}
+  alias AgentBoard.Board.{Repository, RequestOrder, Task}
   alias AgentBoard.Intake.IssueBody
 
   # The column holds 255; past that Postgres raises instead of refusing, and
@@ -174,42 +174,13 @@ defmodule AgentBoard.Board.Requests do
   def create_requests(repository, requests, client) do
     {created, _numbers} =
       requests
-      |> Enum.with_index()
-      |> dependency_order()
+      |> RequestOrder.for_creation()
       |> Enum.map_reduce(%{}, fn {request, position}, numbers ->
         result = create_after_blockers(repository, request, numbers, client)
         {{position, {request, result}}, remember(numbers, request.key, result)}
       end)
 
     created |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))
-  end
-
-  defp dependency_order([]), do: []
-
-  defp dependency_order([first | _] = pending) do
-    waiting = MapSet.new(pending, fn {request, _position} -> request.key end)
-
-    next =
-      Enum.find(pending, fn {request, _position} ->
-        not Enum.any?(depends_on(request), &MapSet.member?(waiting, &1))
-      end) || Enum.find(pending, first, &in_cycle?(&1, pending))
-
-    [next | dependency_order(List.delete(pending, next))]
-  end
-
-  # With nothing free, only a task of the cycle may open early: one that merely
-  # waits for the cycle would lose the number it could have named.
-  defp in_cycle?({request, _position}, pending) do
-    by_key = Map.new(pending, fn {other, _position} -> {other.key, other} end)
-    reaches?(depends_on(request), request.key, by_key, MapSet.new())
-  end
-
-  defp reaches?(keys, target, by_key, seen) do
-    Enum.any?(keys, fn key ->
-      key == target or
-        (not MapSet.member?(seen, key) and is_map_key(by_key, key) and
-           reaches?(depends_on(by_key[key]), target, by_key, MapSet.put(seen, key)))
-    end)
   end
 
   defp create_after_blockers(repository, request, numbers, client) do
