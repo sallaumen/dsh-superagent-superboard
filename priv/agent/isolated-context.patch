@@ -15,3 +15,13 @@
      return new Promise((resolve, reject) => {
        const proc = spawn('python3', argv, {cwd:current.execution!.directory, stdio:['pipe','pipe','pipe'], signal})
        let out = '', err = ''
+@@ -359,7 +363,8 @@
+     const store = this.host.store
+     const parent = scopeParentOf(agent)
+     const allow = WORK_TOOLS.filter(name => agent.ctx.tools.get(name, parent))
+-    return [agent.ctx.tools.restrict({ allow }), agent.ctx.tools.guard(({ name }) => {
++    return [agent.ctx.tools.restrict({ allow }), agent.ctx.tools.guard(execution => {
++      const name = execution?.name ?? ''
+       const current = store.tickets.get(ticketId)
+       if (current && !['orchestrator_report', 'orchestrator_read', 'job_output', 'job_list'].includes(name)
+           && publicationStopped(current)) return 'Publication is in progress or blocked. Read the existing job result; if it failed, report blocked and end the turn. Do not retry by another route.'
