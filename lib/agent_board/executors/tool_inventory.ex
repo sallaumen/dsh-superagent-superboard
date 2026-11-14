@@ -1,4 +1,4 @@
-defmodule AgentBoard.AgentTools do
+defmodule AgentBoard.Executors.ToolInventory do
   @moduledoc """
   What each executor has installed on this machine: skills, plugins and MCP
   servers, read from the executor's own files under the home directory.

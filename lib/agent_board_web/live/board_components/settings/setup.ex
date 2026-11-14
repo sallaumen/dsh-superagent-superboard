@@ -7,7 +7,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
   proves them with free reads, in the background, and only then.
 
   Below them, what each agent has installed on this machine: skills, plugins
-  and MCP servers (`AgentBoard.AgentTools`), names only, read when the section
+  and MCP servers (`AgentBoard.Executors.ToolInventory`), names only, read when the section
   comes into view.
   """
   use AgentBoardWeb, :live_component
@@ -15,8 +15,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [glyph: 1]
 
   alias AgentBoard.Actions
-  alias AgentBoard.AgentTools
   alias AgentBoard.AI.Budget
+  alias AgentBoard.Executors.ToolInventory
   alias AgentBoard.Setup
   alias AgentBoard.Setup.Validation
   alias AgentBoard.Setup.WorkerTitles
@@ -63,7 +63,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
         assign(socket,
           rows: Setup.checklist(),
           history: Validation.history(),
-          tools: AgentTools.inventory(),
+          tools: ToolInventory.inventory(),
           worker_titles: WorkerTitles.status(),
           check_error: false
         )
