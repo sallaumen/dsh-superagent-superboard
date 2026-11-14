@@ -7,7 +7,7 @@ defmodule AgentBoard.Board.SplitGraph do
   never undoes an issue that already exists.
   """
 
-  alias AgentBoard.{Board, Executors, GitHub, Repo}
+  alias AgentBoard.{Board, GitHub, Repo}
   alias AgentBoard.Board.{Objective, Task, TaskDependency}
   alias AgentBoard.Intake.IssueBody
 
@@ -95,7 +95,8 @@ defmodule AgentBoard.Board.SplitGraph do
   end
 
   defp open_and_link(repository, objective, {:publish, tasks, edges}, client) do
-    body = objective.spec |> parent_body(objective, tasks) |> Executors.without_mention()
+    body =
+      IssueBody.parent(objective.request_text || objective.title, objective.spec || %{}, tasks)
 
     issue =
       GitHub.create_issue(client, repository.owner, repository.name, objective.title, body, [
@@ -114,9 +115,6 @@ defmodule AgentBoard.Board.SplitGraph do
 
     Board.broadcast(repository.id)
   end
-
-  defp parent_body(spec, objective, tasks),
-    do: IssueBody.parent(objective.request_text || objective.title, spec || %{}, tasks)
 
   defp issue_id(repository, task, client) do
     client |> GitHub.issue(repository.owner, repository.name, task.number) |> Map.fetch!("id")
