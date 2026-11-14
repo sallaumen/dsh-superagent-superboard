@@ -375,3 +375,9 @@ The board stays online, the global npm installation is unchanged, and no code
 is written to the connected repositories. Manage agents on another machine
 from that machine's board. A failed result means the handoff could not be
 verified: check the project status and logs before retrying.
+
+The delivery rules that profile then follows — the branch the next run prepares
+and whether it reuses an open PR — are in
+[What a ticket leaves behind](how-it-works.md#what-a-ticket-leaves-behind).
+Synchronizing a profile only installs that behavior; it never creates a PR in
+the connected repository.
