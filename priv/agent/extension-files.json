@@ -1,0 +1,14 @@
+{
+  "patches": [
+    "duplicate-issue-notice.patch",
+    "assignment-branch.patch",
+    "managed-publication.patch",
+    "container-worker.patch",
+    "container-report-cleanup.patch",
+    "review-midpoint.patch",
+    "merged-detail.patch",
+    "delayed-merged-notification.patch",
+    "isolated-context.patch"
+  ],
+  "helpers": ["container_worker.py", "superboard-branch.py"]
+}

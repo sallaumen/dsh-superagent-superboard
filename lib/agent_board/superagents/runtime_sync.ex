@@ -8,47 +8,18 @@ defmodule AgentBoard.Superagents.RuntimeSync do
   import Ecto.Query
 
   alias AgentBoard.{Repo, Superagents}
-  alias AgentBoard.Superagents.{DshManager, Superagent}
+  alias AgentBoard.Superagents.{DshManager, RuntimePackage, Superagent}
 
   @pending ~w(waiting pending)
   @statuses ~w(updated current paused busy changed identity unavailable in_progress failed)
   @interval :timer.seconds(15)
-  @cli_lock Path.expand("../../../priv/agent/harness/package-lock.json", __DIR__)
-  @notice_patch Path.expand("../../../priv/agent/duplicate-issue-notice.patch", __DIR__)
-  @branch_patch Path.expand("../../../priv/agent/assignment-branch.patch", __DIR__)
-  @publication_patch Path.expand("../../../priv/agent/managed-publication.patch", __DIR__)
-  @container_patch Path.expand("../../../priv/agent/container-worker.patch", __DIR__)
-  @cleanup_patch Path.expand("../../../priv/agent/container-report-cleanup.patch", __DIR__)
-  @external_resource @cleanup_patch
-  @container_helper Path.expand("../../../priv/agent/container_worker.py", __DIR__)
-  @external_resource @container_patch
-  @external_resource @container_helper
-  @external_resource @publication_patch
-  @helper Path.expand("../../../priv/agent/superboard-branch.py", __DIR__)
-  @external_resource @branch_patch
-  @external_resource @helper
-  @external_resource @cli_lock
-  @external_resource @notice_patch
-  @lock_digest Base.encode16(
-                 :crypto.hash(:sha256, [
-                   File.read!(@cli_lock),
-                   File.read!(@notice_patch),
-                   File.read!(@branch_patch),
-                   File.read!(@publication_patch),
-                   File.read!(@container_patch),
-                   File.read!(@cleanup_patch),
-                   File.read!(@container_helper),
-                   File.read!(@helper)
-                 ]),
-                 case: :lower
-               )
 
   def start_link(opts),
     do: GenServer.start_link(__MODULE__, opts, name: Keyword.get(opts, :name, __MODULE__))
 
   def start(targets, server \\ __MODULE__) do
     owner = Oban.config().node
-    lock = @lock_digest
+    lock = RuntimePackage.digest()
 
     {:ok, :ok} =
       Repo.transaction(fn ->
@@ -174,7 +145,7 @@ defmodule AgentBoard.Superagents.RuntimeSync do
   defp drain_rows([], _runner), do: :ok
 
   defp drain_rows(rows, runner) do
-    lock = @lock_digest
+    lock = RuntimePackage.digest()
 
     Enum.each(rows, fn {id, receipt} ->
       exclusive(id, fn -> attempt(id, receipt, lock, runner) end)

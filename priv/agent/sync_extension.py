@@ -6,21 +6,20 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-PATCH = Path(__file__).with_name("duplicate-issue-notice.patch")
-BRANCH_PATCH = PATCH.with_name("assignment-branch.patch")
-PUBLICATION_PATCH = PATCH.with_name("managed-publication.patch")
-CONTAINER_PATCH = PATCH.with_name("container-worker.patch")
-CLEANUP_PATCH = PATCH.with_name("container-report-cleanup.patch")
-REVIEW_PATCH = PATCH.with_name("review-midpoint.patch")
-MERGED_DETAIL_PATCH = PATCH.with_name("merged-detail.patch")
-DELAYED_PATCH = PATCH.with_name("delayed-merged-notification.patch")
-CONTEXT_PATCH = PATCH.with_name("isolated-context.patch")
-CONTAINER_HELPER = PATCH.with_name("container_worker.py")
-BRANCH_HELPER = PATCH.with_name("superboard-branch.py")
+HERE = Path(__file__).resolve().parent
+FILES = json.loads((HERE / "extension-files.json").read_text())
+PATCHES = tuple(HERE / name for name in FILES["patches"])
+HELPERS = tuple(HERE / name for name in FILES["helpers"])
+# These patches overlap earlier ones in previously installed source trees.
+BRANCH_PATCH = HERE / "assignment-branch.patch"
+PUBLICATION_PATCH = HERE / "managed-publication.patch"
+CONTAINER_PATCH = HERE / "container-worker.patch"
+CLEANUP_PATCH = HERE / "container-report-cleanup.patch"
+DELAYED_PATCH = HERE / "delayed-merged-notification.patch"
 
 
 def payload():
-    return PATCH.read_bytes() + BRANCH_PATCH.read_bytes() + PUBLICATION_PATCH.read_bytes() + CONTAINER_PATCH.read_bytes() + CLEANUP_PATCH.read_bytes() + REVIEW_PATCH.read_bytes() + MERGED_DETAIL_PATCH.read_bytes() + DELAYED_PATCH.read_bytes() + CONTEXT_PATCH.read_bytes() + CONTAINER_HELPER.read_bytes() + BRANCH_HELPER.read_bytes()
+    return b"".join(path.read_bytes() for path in (*PATCHES, *HELPERS))
 
 
 UPSTREAM = "8c32a9dc5d72c033816c6a8110b37f40cf94fba4"
@@ -33,9 +32,8 @@ def compiled(path):
     github = watcher.read_bytes() if watcher.is_file() else b""
     return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py", b"Publication is in progress or blocked", b"managed_publish", b"Isolated assignment requires a GitHub repository"))
             and all(tag in github for tag in (b"Review midpoint: PR #", b"mergedDetailRepo", b"mergedDetailCreatedAt"))
-            and (path / "scripts/container_worker.py").is_file()
-            and (path / "scripts/container_worker.py").read_bytes() == CONTAINER_HELPER.read_bytes()
-            and (path / "scripts/superboard-branch.py").read_bytes() == BRANCH_HELPER.read_bytes())
+            and all((path / "scripts" / helper.name).is_file() and
+                    (path / "scripts" / helper.name).read_bytes() == helper.read_bytes() for helper in HELPERS))
 
 
 def has_dispatch(profile):
@@ -113,7 +111,7 @@ def prepare(binding, root, manager, run, lock):
         return run("git", "-C", str(source), *args)
     if git("rev-parse", "HEAD").strip() != UPSTREAM:
         raise ValueError("unsupported prototype revision")
-    allowed = {"scripts/superboard-branch.py", "scripts/container_worker.py"}
+    allowed = {"scripts/" + helper.name for helper in HELPERS}
     if source.parent == root:
         allowed.add(receipt)
     if set(git("ls-files", "--others", "--exclude-standard").splitlines()) - allowed:
@@ -142,13 +140,13 @@ def prepare(binding, root, manager, run, lock):
                         run("git", "apply", "--reverse", "--check", str(CLEANUP_PATCH), cwd=stage)
                     except subprocess.CalledProcessError:
                         run("git", "apply", "--reverse", "--check", str(CONTAINER_PATCH), cwd=stage)
-                    components = (PATCH,)
+                    covered = {BRANCH_PATCH, PUBLICATION_PATCH, CONTAINER_PATCH}
                 except subprocess.CalledProcessError:
                     try:
                         run("git", "apply", "--reverse", "--check", str(PUBLICATION_PATCH), cwd=stage)
-                        components = (PATCH, CONTAINER_PATCH)
+                        covered = {BRANCH_PATCH, PUBLICATION_PATCH}
                     except subprocess.CalledProcessError:
-                        components = (PATCH, BRANCH_PATCH, PUBLICATION_PATCH, CONTAINER_PATCH)
+                        covered = set()
                 # The notification patch edits lines from the merged-detail patch.
                 # Unstack it in this disposable build only, so the older patch
                 # can be recognized when rebuilding an already upgraded profile.
@@ -158,13 +156,15 @@ def prepare(binding, root, manager, run, lock):
                     pass
                 else:
                     run("git", "apply", "--reverse", str(DELAYED_PATCH), cwd=stage)
-                for component in (*components, CLEANUP_PATCH, REVIEW_PATCH, MERGED_DETAIL_PATCH, DELAYED_PATCH, CONTEXT_PATCH):
+                for component in PATCHES:
+                    if component in covered:
+                        continue
                     try:
                         run("git", "apply", "--reverse", "--check", str(component), cwd=stage)
                     except subprocess.CalledProcessError:
                         run("git", "apply", str(component), cwd=stage)
-                (stage / "scripts/container_worker.py").write_bytes(CONTAINER_HELPER.read_bytes())
-                (stage / "scripts/superboard-branch.py").write_bytes(BRANCH_HELPER.read_bytes())
+                for helper in HELPERS:
+                    (stage / "scripts" / helper.name).write_bytes(helper.read_bytes())
                 env = {k: v for k, v in os.environ.items() if k in ("HOME", "PATH", "TMPDIR", "USER", "LOGNAME")}
                 # Do not inherit a service working directory or GitHub credentials.
                 run("pnpm", "install", "--frozen-lockfile", cwd=stage, env=env, timeout=420)
