@@ -110,7 +110,10 @@ branch. Installed profiles receive this behavior via runtime synchronization.
 - **Visibility**: the five columns, the conversation, the AI panel.
 - **Merged**: when the Harness reports which PR of the task was merged, the
   board confirms that PR on GitHub and updates the open board; the periodic
-  sync covers missing signals.
+  sync covers missing signals. A merge made directly on GitHub may take a
+  while to appear on the board: the Harness GitHub source reads notifications
+  periodically and respects the interval GitHub asks for, so the wait until
+  the next cycle varies.
 - **Intake**: a rough request refined into tasks before it becomes an issue
   (see [`../ai-layer.md`](../ai-layer.md)).
 - **Version**: whether this checkout is behind `main`, and a manual update.
