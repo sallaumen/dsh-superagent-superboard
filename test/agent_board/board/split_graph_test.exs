@@ -3,6 +3,28 @@ defmodule AgentBoard.Board.SplitGraphTest do
 
   alias AgentBoard.Board.{SplitGraph, Task}
 
+  test "independent tasks are only sub-issues of the objective" do
+    tasks = [%Task{number: 11}, %Task{number: 12}]
+    ids = %{11 => 1011, 12 => 1012}
+
+    assert SplitGraph.mirror_links(13, tasks, [], ids) == [
+             {:sub_issue, 13, 1011},
+             {:sub_issue, 13, 1012}
+           ]
+  end
+
+  test "the blocked issue number links to the blocker's GitHub ID after the sub-issues" do
+    blocker = %Task{number: 11}
+    blocked = %Task{number: 12}
+    ids = %{11 => 1011, 12 => 1012}
+
+    assert SplitGraph.mirror_links(13, [blocked, blocker], [{blocked, blocker}], ids) == [
+             {:sub_issue, 13, 1012},
+             {:sub_issue, 13, 1011},
+             {:blocked_by, 12, 1011}
+           ]
+  end
+
   test "a newly created task can depend on a receipt from a previous attempt" do
     a = %Task{id: 1}
     b = %Task{id: 2}

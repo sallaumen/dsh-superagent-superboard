@@ -14,6 +14,28 @@ defmodule AgentBoard.Board.SplitGraph do
   # The sync reads this label to keep a group's issue out of the queue.
   @objective_label "board:objective"
 
+  @doc """
+  Plans GitHub links for an objective, listing its sub-issues before its dependencies.
+
+  The source of each link is an issue number (the objective or the blocked task).
+  The target is the GitHub issue ID of the child or blocker. `ids_by_number`
+  must contain an entry for each target; a missing entry raises `KeyError`.
+  """
+  @spec mirror_links(pos_integer(), [Task.t()], [{Task.t(), Task.t()}], %{
+          pos_integer() => pos_integer()
+        }) ::
+          [{:sub_issue | :blocked_by, pos_integer(), pos_integer()}]
+  def mirror_links(parent_number, tasks, edges, ids_by_number) do
+    children =
+      for task <- tasks, do: {:sub_issue, parent_number, Map.fetch!(ids_by_number, task.number)}
+
+    dependencies =
+      for {task, blocker} <- edges,
+          do: {:blocked_by, task.number, Map.fetch!(ids_by_number, blocker.number)}
+
+    children ++ dependencies
+  end
+
   @doc "The label of an issue that groups a split's tasks."
   def objective_label, do: @objective_label
 
@@ -73,29 +95,9 @@ defmodule AgentBoard.Board.SplitGraph do
 
     ids = Map.new(tasks, &{&1.number, issue_id(repository, &1, client)})
 
-    Enum.each(tasks, fn task ->
-      link(repository, objective, fn ->
-        GitHub.add_sub_issue(
-          client,
-          repository.owner,
-          repository.name,
-          issue["number"],
-          ids[task.number]
-        )
-      end)
-    end)
-
-    Enum.each(edges(results), fn {task, blocker} ->
-      link(repository, objective, fn ->
-        GitHub.add_blocked_by(
-          client,
-          repository.owner,
-          repository.name,
-          task.number,
-          ids[blocker.number]
-        )
-      end)
-    end)
+    issue["number"]
+    |> mirror_links(tasks, edges(results), ids)
+    |> Enum.each(&link(repository, objective, client, &1))
 
     Board.broadcast(repository.id)
   end
@@ -107,8 +109,15 @@ defmodule AgentBoard.Board.SplitGraph do
     client |> GitHub.issue(repository.owner, repository.name, task.number) |> Map.fetch!("id")
   end
 
-  defp link(repository, objective, write) do
-    write.()
+  defp link(repository, objective, client, instruction) do
+    case instruction do
+      {:sub_issue, parent_number, child_id} ->
+        GitHub.add_sub_issue(client, repository.owner, repository.name, parent_number, child_id)
+
+      {:blocked_by, number, blocker_id} ->
+        GitHub.add_blocked_by(client, repository.owner, repository.name, number, blocker_id)
+    end
+
     :ok
   rescue
     exception -> failed(repository, objective.title, exception)
