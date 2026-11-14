@@ -82,7 +82,7 @@ defmodule AgentBoard.Intake.IssueBody do
     |> Enum.join("\n\n")
   end
 
-  @doc "The body of the issue that groups a split: the request in the owner's words."
+  @doc "The body of the issue that groups a split, with no active mention of the agent."
   @spec parent(String.t(), map(), [map()]) :: String.t()
   def parent(request, spec, tasks) do
     labels = labels(spec["language"])
@@ -91,6 +91,7 @@ defmodule AgentBoard.Intake.IssueBody do
     ["## #{labels.request}\n#{request}", context(spec, labels), "## #{labels.tasks}\n#{list}"]
     |> Enum.reject(&is_nil/1)
     |> Enum.join("\n\n")
+    |> Executors.without_mention()
   end
 
   @doc "The body as a person reads it on the board, which shows the files itself."
