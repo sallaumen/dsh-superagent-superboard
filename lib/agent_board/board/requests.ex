@@ -76,13 +76,13 @@ defmodule AgentBoard.Board.Requests do
   A cycle from the model is broken in list order, naming only what already has
   a number.
   """
-  @spec create_requests(Repository.t(), [map()], term()) ::
+  @spec create_requests(Repository.t(), [map()], term(), map()) ::
           [{map(), {:ok, Task.t(), :created | :existing} | {:error, term()}}]
-  def create_requests(repository, requests, client) do
+  def create_requests(repository, requests, client, confirmed_numbers \\ %{}) do
     {created, _numbers} =
       requests
       |> RequestOrder.for_creation()
-      |> Enum.map_reduce(%{}, fn {request, position}, numbers ->
+      |> Enum.map_reduce(confirmed_numbers, fn {request, position}, numbers ->
         result = create_after_blockers(repository, request, numbers, client)
         {{position, {request, result}}, remember(numbers, request.key, result)}
       end)
