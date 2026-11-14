@@ -363,6 +363,11 @@ that already worked).
   in rotation; idle profiles, slower intervals and failed rounds add no reads.
   The extra read has a five-second deadline and never fetches CI, comments or
   notifications. The regular round remains the fallback for errors and older PRs.
+- For a subscribed PR confirmed merged by GitHub, the Harness reuses its URL
+  and author in routine discussion polls for up to one hour, scoped to the
+  repository. It still reads conversation comments, inline comments and reviews
+  every round. Open and closed-but-unmerged PRs keep their lifecycle checks;
+  notifications and open tickets still consult GitHub directly.
 - **The sync's GitHub budget.** The account's 5000 REST calls an hour are shared
   by every repository and every tool using the token. A pull stored as merged or
   closed at the same commit is not read again (reviews, checks) unless its checks
