@@ -216,6 +216,17 @@ defmodule AgentBoard.ReleaseTest do
       assert %Task{held: false} = Repo.get_by!(Task, title: "Dados")
     end
 
+    test "a Codex dependency does not add a wait notice to the confirmation", %{repo: repo} do
+      requests = [
+        request(repo, "Dados", [], %{executor: "codex"}),
+        request(repo, "Tela", ["Dados"], %{executor: "codex"})
+      ]
+
+      phrase = Actions.phrase(:create_tasks, %{repository: repo, requests: requests})
+      assert phrase =~ "Codex"
+      refute phrase =~ "o board chama o agente"
+    end
+
     test "the sentence the owner confirms says the tree is released in order", %{repo: repo} do
       requests = [request(repo, "Dados", []), request(repo, "Tela", ["Dados"])]
 

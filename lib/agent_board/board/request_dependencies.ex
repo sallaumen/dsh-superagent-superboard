@@ -3,6 +3,10 @@ defmodule AgentBoard.Board.RequestDependencies do
 
   alias AgentBoard.Intake.IssueBody
 
+  @doc "Whether this executor waits for the board to release dependent tasks."
+  @spec holds_for_dependencies?(String.t() | nil) :: boolean()
+  def holds_for_dependencies?(executor), do: executor in [nil, "dsh"]
+
   @doc """
   Names blockers whose issue numbers are known and holds runner requests for them.
   A failed blocker prevents creation; a key with no number yet adds no link.
@@ -18,7 +22,7 @@ defmodule AgentBoard.Board.RequestDependencies do
       body = IssueBody.with_dependencies(request.body, blockers, Map.get(request, :language))
       prepared = %{request | body: body}
 
-      if blockers != [] and Map.get(request, :executor) in [nil, "dsh"],
+      if blockers != [] and holds_for_dependencies?(Map.get(request, :executor)),
         do: {:ok, Map.put(prepared, :held, true)},
         else: {:ok, prepared}
     end

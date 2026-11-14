@@ -3,6 +3,12 @@ defmodule AgentBoard.Board.RequestDependenciesTest do
 
   alias AgentBoard.Board.RequestDependencies
 
+  test "only DSH and the implicit runner wait for dependencies" do
+    assert RequestDependencies.holds_for_dependencies?("dsh")
+    assert RequestDependencies.holds_for_dependencies?(nil)
+    refute RequestDependencies.holds_for_dependencies?("codex")
+  end
+
   test "a DSH request names its blocker and waits for release" do
     request = %{executor: "dsh", depends_on: ["a"], body: "Fix the display", language: "pt"}
 
