@@ -75,7 +75,7 @@ defmodule AgentBoard.Actions do
   alias AgentBoard.Intake.IssueBody
   alias AgentBoard.Release
   alias AgentBoard.Superagents.{Leftovers, Policy, RuntimeSync}
-  alias AgentBoard.Sync.Worker
+  alias AgentBoard.Sync.{MergedPull, Worker}
   alias AgentBoard.Voice.Phrases
 
   @type name :: atom()
@@ -124,6 +124,7 @@ defmodule AgentBoard.Actions do
     :forget_conversation,
     :check_setup,
     :sync_now,
+    :sync_merged_pull,
     :update_board,
     :restart_board
   ]
@@ -307,6 +308,9 @@ defmodule AgentBoard.Actions do
 
   defp spec(:check_setup),
     do: %{risk: :green, does: "verifica o setup com leituras gratuitas e guarda o resultado"}
+
+  defp spec(:sync_merged_pull),
+    do: %{risk: :green, does: "confere no GitHub o merge do PR do ticket"}
 
   defp spec(:sync_now), do: %{risk: :green, does: "pede uma sincronização (lê o GitHub)"}
 
@@ -718,6 +722,12 @@ defmodule AgentBoard.Actions do
 
   def phrase(:check_setup, _params, "en-US"), do: "Check the board setup?"
   def phrase(:check_setup, _params, _lang), do: "Verificar o setup do board?"
+
+  def phrase(:sync_merged_pull, %{repository: repo, number: n}, "en-US"),
+    do: "Check the merge of #{repo.owner}/#{repo.name}##{n} on GitHub?"
+
+  def phrase(:sync_merged_pull, %{repository: repo, number: n}, _lang),
+    do: "Conferir o merge de #{repo.owner}/#{repo.name}##{n} no GitHub?"
 
   def phrase(:sync_now, _params, _lang), do: "Sincronizar agora com o GitHub?"
 
@@ -1247,6 +1257,10 @@ defmodule AgentBoard.Actions do
     end
   end
 
+  defp execute(:sync_merged_pull, %{repository: %Repository{id: id}, number: n})
+       when is_integer(n) and n > 0,
+       do: Oban.insert(MergedPull.new(%{repo_id: id, number: n}))
+
   defp execute(:sync_now, _params), do: Oban.insert(Worker.new(%{}))
   defp execute(:update_board, _params), do: updater().pull()
 
@@ -1625,6 +1639,9 @@ defmodule AgentBoard.Actions do
 
   defp subject(_name, %{ticket_id: id} = params),
     do: "ticket #{id}" <> if(params[:number], do: " ##{params.number}", else: "")
+
+  defp subject(:sync_merged_pull, %{repository: repo, number: n}),
+    do: "#{repo.owner}/#{repo.name}##{n}"
 
   defp subject(:set_max_workers, %{max: max}), do: "maxWorkers=#{max}"
   defp subject(:set_project_stages, %{repository: repo}), do: "#{repo.owner}/#{repo.name}"

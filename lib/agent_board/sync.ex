@@ -401,6 +401,24 @@ defmodule AgentBoard.Sync do
 
   # -- the pull requests ------------------------------------------------------
 
+  @doc "Mirror only a GitHub-confirmed merged PR. Never change the issue or the sync cursor."
+  def sync_merged_pull(client, repo, number) do
+    with %{
+           "number" => ^number,
+           "state" => "closed",
+           "merged_at" => at,
+           "base" => %{"repo" => %{"full_name" => slug}}
+         } = pull
+         when is_binary(at) and is_binary(slug) <-
+           GitHub.pull(client, repo.owner, repo.name, number),
+         %DateTime{} <- to_dt(at),
+         true <- String.downcase(slug) == String.downcase("#{repo.owner}/#{repo.name}") do
+      with {:ok, _} <- upsert_pull(client, repo, pull), do: Board.broadcast(repo.id)
+    else
+      _ -> :ok
+    end
+  end
+
   defp upsert_pull(client, repository, pull) do
     merged = pull["merged_at"] != nil
 

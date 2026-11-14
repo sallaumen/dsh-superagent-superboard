@@ -145,8 +145,10 @@ pipeline contract.
 ## The limits
 
 - The board is **eventually consistent**: the poller reads the runner every 10 s
-  and the GitHub sync runs every 5 min — a merged PR can take that long to
-  appear.
+  and the GitHub sync runs every 5 min. When a ticket reports that its own
+  PR merged, the board queues a read of that PR instead of waiting for the
+  full sync. It appears in **Merged** after GitHub confirms it. Other PRs
+  and missed notifications still arrive through the regular sync.
 - **The poller is one shot per tick**: `handle_info(:poll)` reschedules before
   polling, so a slow poll delays the next one instead of stacking them (the
   interval is a floor, not a guarantee).

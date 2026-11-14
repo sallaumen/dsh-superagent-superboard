@@ -247,6 +247,7 @@ and is recorded as `automatic`.
 | `dismiss_summary` | yellow | takes the day's summary off the screen (the row stays) | UI: one click on the summary card |
 | `forget_conversation` | red | deletes the voice conversation's memory | UI: "Esquecer conversa" asks the sentence in the browser. Voice: proposal and yes |
 | `check_setup` | green | runs free setup reads and records only the validation timestamp and outcome counts | UI: one click in AI and setup |
+| `sync_merged_pull` | green | queues verification of one ticket PR in its named repository | system: ticket poller |
 | `sync_now` | green | queues a sync (a read of GitHub) | UI: one click |
 | `update_board` | yellow | fast-forwards this checkout to `origin/main` | UI: "Atualizar", shown only when behind |
 | `restart_board` | yellow | restarts the board's server | UI: "Reiniciar", and after an update |
@@ -348,6 +349,13 @@ that already worked).
   (`ticket_poller_test.exs`). The interval is the `:ticket_poll_interval` knob; the test
   environment stretches it to an hour so the supervised poller never ticks
   into the sandboxed database mid-suite.
+- A recent Harness ticket with a named repository and an owned PR whose merge
+  ended the ticket may enqueue one read keyed by repository ID and PR number.
+  The serial sync queue confirms GitHub's base repository, number and merge
+  time, mirrors that pull using the normal CI/review rules, and broadcasts to
+  the board. It never writes issue state or advances the full sync cursor.
+  Duplicate signals and restarts coalesce; the five-minute sync covers missing
+  or stale signals (`merged_pull_test.exs`).
 - **The sync's GitHub budget.** The account's 5000 REST calls an hour are shared
   by every repository and every tool using the token. A pull stored as merged or
   closed at the same commit is not read again (reviews, checks) unless its checks

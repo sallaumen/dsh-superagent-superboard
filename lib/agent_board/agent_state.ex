@@ -215,6 +215,7 @@ defmodule AgentBoard.AgentState do
       "channel_urls" => channel_urls,
       "repository" => repository_from(channel_urls),
       "own_threads" => own_threads(ticket, numbers),
+      "merged_threads" => merged_threads(ticket, numbers, ended),
       "reports" => reports(ticket),
       "assignments" => assignments(ticket)
     }
@@ -270,6 +271,19 @@ defmodule AgentBoard.AgentState do
     |> Enum.reject(&(is_nil(&1) or &1 in numbers))
     |> Enum.uniq()
   end
+
+  # An older owned PR can also be closed. Only take the merge that ended
+  # this ticket, never the latest number or a PR mentioned in the report.
+  defp merged_threads(ticket, numbers, %{"outcome" => "merged", "at" => at}) do
+    for %{"own" => true, "thread" => ref, "closed" => %{"outcome" => "merged", "at" => ^at}} <-
+          list(ticket["follows"]),
+        number = thread_number(ref),
+        number not in numbers,
+        uniq: true,
+        do: number
+  end
+
+  defp merged_threads(_, _, _), do: []
 
   defp thread_number("github:" <> rest), do: GitHub.number(rest)
   defp thread_number(_other), do: nil
