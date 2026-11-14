@@ -11,6 +11,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   alias AgentBoard.Intake.IssueBody
   alias AgentBoardWeb.BoardComponents.AgentAction
   alias AgentBoardWeb.Time
+  alias Phoenix.LiveView.JS
 
   attr :task, :any, required: true
   attr :comments, :list, required: true
@@ -92,116 +93,12 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
         <h2 id="conversation-title">{@task.title}</h2>
 
-        <div class="ab-insp__facts">
-          <span class="ab-meta">
-            {gettext("opened %{age}", age: Time.ago(Time.age_seconds(@task.inserted_at, @now)))}
-          </span>
-          <span class="ab-meta">{gettext("updated %{age}",
-            age: Time.ago(Time.age_seconds(@task.updated_at, @now))
-          )}</span>
-          <span :if={@task.started_at} class="ab-meta">
-            {gettext("started at %{time}", time: Time.local_time(@task.started_at, @tz_offset))}
-          </span>
-          <.work_tag work_type={@task.work_type} size={@task.size} />
-          <span :if={@task.executor} class="ab-meta">
-            {gettext("for %{executor}", executor: AgentBoard.Executors.name(@task.executor))}
-          </span>
-          <span :if={@pr} class="ab-meta">PR #{@pr.number}</span>
-          <button
-            :if={@calls != []}
-            type="button"
-            class="ab-meta ab-insp__cost"
-            phx-click="inspector_tab"
-            phx-value-tab="chamadas"
-            title={gettext("The board's own model calls for this task")}
-          >
-            {calls_count(@calls, @calls_total)} · {total_cost(@totals)}
-          </button>
-          <button
-            :if={match?(%{status: :measured}, @usage)}
-            type="button"
-            class="ab-meta ab-insp__cost"
-            phx-click="inspector_tab"
-            phx-value-tab="chamadas"
-            title={
-              gettext(
-                "Estimated from the executor's local transcripts; ≥ is a minimum, — has no price"
-              )
-            }
-          >
-            {gettext("executor %{cost}", cost: usage_cost(@usage.cost))}
-          </button>
-          <a
-            :if={@task.url}
-            href={@task.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="ab-meta"
-          >
-            {gettext("GitHub issue")}
-          </a>
-        </div>
-
-        <AgentBoardWeb.BoardComponents.Preflight.progress snapshot={@preflight} />
+        <AgentBoardWeb.BoardComponents.Preflight.progress
+          snapshot={@preflight}
+          disclosure_id={"preflight-#{@task.id}"}
+        />
 
         <.failure_block :if={@failure} failure={@failure} task={@task} offset={@tz_offset} />
-
-        <div :if={dispatchable?(@task)} class="ab-insp__dispatch" id="task-dispatch">
-          <div class="ab-insp__dispatch-head">
-            <span class="ab-label">{gettext("Local dispatch")}</span>
-            <span :if={@dispatch_active} class="ab-tag ab-tag--agent">{gettext("In progress")}</span>
-            <span :if={@dispatch_paused} class="ab-tag ab-tag--stale">{gettext("paused dispatch")}</span>
-          </div>
-
-          <.live_component
-            :if={
-              not @dispatch_active and not @dispatch_paused and
-                fallback_kind(@dispatch_fallback) not in [:none, :budget]
-            }
-            module={AgentAction}
-            id={"dispatch-#{@task.id}"}
-            mode={:dispatch}
-            tone={:primary}
-            task={@task}
-            executor={dispatch_executor(@task, @dispatch_fallback)}
-            ceiling_usd={@dispatch_ceiling}
-            fallback={fallback_kind(@dispatch_fallback) == :switch}
-            retry={fallback_kind(@dispatch_fallback) == :retry}
-            reason={fallback_reason(@dispatch_fallback)}
-            label={dispatch_label(@task, @dispatch_fallback)}
-            confirm_label={gettext("Dispatch")}
-            busy_label={gettext("Starting runner…")}
-          />
-
-          <p :if={fallback_reason(@dispatch_fallback)} class="ab-meta">
-            {fallback_reason(@dispatch_fallback)}
-          </p>
-          <p :if={@dispatch_fallback == :none} class="ab-meta ab-fail__system">
-            {gettext(
-              "The last execution failed due to content (test, block, or question): the board does not switch executors automatically. Check the result in Executions."
-            )}
-          </p>
-          <p :if={fallback_kind(@dispatch_fallback) == :budget} class="ab-meta ab-fail__system">
-            {gettext(
-              "Adjust the per-task cap in Settings before trying again; the board won't start another run on its own."
-            )}
-          </p>
-
-          <p class="ab-meta">
-            {gettext(
-              "Claude Code or Codex runs in a worktree outside the board, with a %{ceiling} per-task cap. The session and result appear in Executions; nothing starts before confirmation.",
-              ceiling: money(@dispatch_ceiling)
-            )}
-          </p>
-
-          <button
-            type="button"
-            class="ab-btn ab-btn--sm ab-btn--quiet"
-            phx-click="toggle_dispatch"
-          >
-            {if @dispatch_paused, do: gettext("Resume dispatch"), else: gettext("Pause dispatch")}
-          </button>
-        </div>
 
         <div :if={@agent_refused and @task.state == "queued"} class="ab-insp__refused" role="status">
           <span>{gettext("The agent ignored this issue: its author is not allowed on this project.")}</span>
@@ -214,89 +111,203 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           >{gettext("Review access")}</button>
         </div>
 
-        <div class="ab-insp__actions">
-          <button
-            :if={not (@task.stopped or @task.archived)}
-            type="button"
-            class="ab-btn ab-btn--sm"
-            phx-click="inspector_tab"
-            phx-value-tab="conversa"
-          >{gettext("Ask")}</button>
+        <details
+          id={"task-details-#{@task.id}"}
+          class="ab-insp__details"
+          phx-mounted={JS.ignore_attributes("open")}
+        >
+          <summary>{gettext("Details and actions")}</summary>
+          <div class="ab-insp__facts">
+            <span class="ab-meta">
+              {gettext("opened %{age}", age: Time.ago(Time.age_seconds(@task.inserted_at, @now)))}
+            </span>
+            <span class="ab-meta">{gettext("updated %{age}",
+              age: Time.ago(Time.age_seconds(@task.updated_at, @now))
+            )}</span>
+            <span :if={@task.started_at} class="ab-meta">
+              {gettext("started at %{time}", time: Time.local_time(@task.started_at, @tz_offset))}
+            </span>
+            <.work_tag work_type={@task.work_type} size={@task.size} />
+            <span :if={@task.executor} class="ab-meta">
+              {gettext("for %{executor}", executor: AgentBoard.Executors.name(@task.executor))}
+            </span>
+            <span :if={@pr} class="ab-meta">PR #{@pr.number}</span>
+            <button
+              :if={@calls != []}
+              type="button"
+              class="ab-meta ab-insp__cost"
+              phx-click="inspector_tab"
+              phx-value-tab="chamadas"
+              title={gettext("The board's own model calls for this task")}
+            >
+              {calls_count(@calls, @calls_total)} · {total_cost(@totals)}
+            </button>
+            <button
+              :if={match?(%{status: :measured}, @usage)}
+              type="button"
+              class="ab-meta ab-insp__cost"
+              phx-click="inspector_tab"
+              phx-value-tab="chamadas"
+              title={
+                gettext(
+                  "Estimated from the executor's local transcripts; ≥ is a minimum, — has no price"
+                )
+              }
+            >
+              {gettext("executor %{cost}", cost: usage_cost(@usage.cost))}
+            </button>
+            <a
+              :if={@task.url}
+              href={@task.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="ab-meta"
+            >
+              {gettext("GitHub issue")}
+            </a>
+          </div>
 
-          <.live_component
-            :if={@failure && @failure.retry && @failure.ticket_id}
-            module={AgentAction}
-            id={"retry-#{@task.id}"}
-            mode={:retry}
-            tone={if @failure.state == :scheduled, do: :quiet, else: :primary}
-            ticket_id={@failure.ticket_id}
-            task_id={@task.id}
-            repository_id={@task.repository_id}
-            number={@task.number}
-            label={@failure.retry}
-            confirm_label={gettext("Request another attempt")}
-            busy_label={gettext("Asking the agent…")}
-          />
+          <div :if={dispatchable?(@task)} class="ab-insp__dispatch" id="task-dispatch">
+            <div class="ab-insp__dispatch-head">
+              <span class="ab-label">{gettext("Local dispatch")}</span>
+              <span :if={@dispatch_active} class="ab-tag ab-tag--agent">{gettext("In progress")}</span>
+              <span :if={@dispatch_paused} class="ab-tag ab-tag--stale">{gettext("paused dispatch")}</span>
+            </div>
 
-          <.live_component
-            :if={@dispatch_active and active_execution(@runner_executions)}
-            module={AgentAction}
-            id={"stop-execution-#{@task.id}"}
-            mode={:stop_execution}
-            tone={:halt}
-            task={@task}
-            execution={active_execution(@runner_executions)}
-            label={gettext("Stop execution")}
-            confirm_label={gettext("Stop execution")}
-            cancel_label={gettext("Keep running")}
-            busy_label={gettext("Stopping…")}
-          />
-          <button
-            :if={@task.stopped or @task.archived}
-            type="button"
-            class="ab-btn ab-btn--sm ab-btn--quiet"
-            phx-click="act"
-            phx-value-id={@task.id}
-            phx-value-action="resume"
-          >{gettext("Resume")}</button>
-          <%!-- A merged task's issue is already closed: there is nothing to stop. --%>
-          <.live_component
-            :if={not (@task.stopped or @task.archived) and @task.state != "done"}
-            module={AgentAction}
-            id={"stop-#{@task.id}"}
-            mode={:stop}
-            tone={:halt}
-            task_id={@task.id}
-            task={@task}
-            label={gettext("Stop")}
-            confirm_label={gettext("Stop task")}
-            busy_label={gettext("Stopping…")}
-          />
-          <button
-            :if={not (@task.stopped or @task.archived)}
-            type="button"
-            class="ab-btn ab-btn--sm ab-insp__archive"
-            phx-click="act"
-            phx-value-id={@task.id}
-            phx-value-action="archive"
-          >{gettext("Archive")}</button>
-        </div>
+            <.live_component
+              :if={
+                not @dispatch_active and not @dispatch_paused and
+                  fallback_kind(@dispatch_fallback) not in [:none, :budget]
+              }
+              module={AgentAction}
+              id={"dispatch-#{@task.id}"}
+              mode={:dispatch}
+              tone={:primary}
+              task={@task}
+              executor={dispatch_executor(@task, @dispatch_fallback)}
+              ceiling_usd={@dispatch_ceiling}
+              fallback={fallback_kind(@dispatch_fallback) == :switch}
+              retry={fallback_kind(@dispatch_fallback) == :retry}
+              reason={fallback_reason(@dispatch_fallback)}
+              label={dispatch_label(@task, @dispatch_fallback)}
+              confirm_label={gettext("Dispatch")}
+              busy_label={gettext("Starting runner…")}
+            />
 
-        <div class="ab-tabs" role="tablist" aria-label={gettext("Task details")}>
-          <button
-            :for={{key, label, count} <- @tabs}
-            type="button"
-            class="ab-tab"
-            id={"inspector-tab-#{key}"}
-            role="tab"
-            aria-selected={to_string(@tab == key)}
-            aria-controls={"inspector-panel-#{key}"}
-            phx-click="inspector_tab"
-            phx-value-tab={key}
-          >
-            {label}<span :if={count} class="ab-num">{count}</span>
-          </button>
-        </div>
+            <p :if={fallback_reason(@dispatch_fallback)} class="ab-meta">
+              {fallback_reason(@dispatch_fallback)}
+            </p>
+            <p :if={@dispatch_fallback == :none} class="ab-meta ab-fail__system">
+              {gettext(
+                "The last execution failed due to content (test, block, or question): the board does not switch executors automatically. Check the result in Executions."
+              )}
+            </p>
+            <p :if={fallback_kind(@dispatch_fallback) == :budget} class="ab-meta ab-fail__system">
+              {gettext(
+                "Adjust the per-task cap in Settings before trying again; the board won't start another run on its own."
+              )}
+            </p>
+
+            <p class="ab-meta">
+              {gettext(
+                "Claude Code or Codex runs in a worktree outside the board, with a %{ceiling} per-task cap. The session and result appear in Executions; nothing starts before confirmation.",
+                ceiling: money(@dispatch_ceiling)
+              )}
+            </p>
+
+            <button
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="toggle_dispatch"
+            >
+              {if @dispatch_paused, do: gettext("Resume dispatch"), else: gettext("Pause dispatch")}
+            </button>
+          </div>
+
+          <div class="ab-insp__actions">
+            <button
+              :if={not (@task.stopped or @task.archived)}
+              type="button"
+              class="ab-btn ab-btn--sm"
+              phx-click="inspector_tab"
+              phx-value-tab="conversa"
+            >{gettext("Ask")}</button>
+
+            <.live_component
+              :if={@failure && @failure.retry && @failure.ticket_id}
+              module={AgentAction}
+              id={"retry-#{@task.id}"}
+              mode={:retry}
+              tone={if @failure.state == :scheduled, do: :quiet, else: :primary}
+              ticket_id={@failure.ticket_id}
+              task_id={@task.id}
+              repository_id={@task.repository_id}
+              number={@task.number}
+              label={@failure.retry}
+              confirm_label={gettext("Request another attempt")}
+              busy_label={gettext("Asking the agent…")}
+            />
+
+            <.live_component
+              :if={@dispatch_active and active_execution(@runner_executions)}
+              module={AgentAction}
+              id={"stop-execution-#{@task.id}"}
+              mode={:stop_execution}
+              tone={:halt}
+              task={@task}
+              execution={active_execution(@runner_executions)}
+              label={gettext("Stop execution")}
+              confirm_label={gettext("Stop execution")}
+              cancel_label={gettext("Keep running")}
+              busy_label={gettext("Stopping…")}
+            />
+            <button
+              :if={@task.stopped or @task.archived}
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="act"
+              phx-value-id={@task.id}
+              phx-value-action="resume"
+            >{gettext("Resume")}</button>
+            <%!-- A merged task's issue is already closed: there is nothing to stop. --%>
+            <.live_component
+              :if={not (@task.stopped or @task.archived) and @task.state != "done"}
+              module={AgentAction}
+              id={"stop-#{@task.id}"}
+              mode={:stop}
+              tone={:halt}
+              task_id={@task.id}
+              task={@task}
+              label={gettext("Stop")}
+              confirm_label={gettext("Stop task")}
+              busy_label={gettext("Stopping…")}
+            />
+            <button
+              :if={not (@task.stopped or @task.archived)}
+              type="button"
+              class="ab-btn ab-btn--sm ab-insp__archive"
+              phx-click="act"
+              phx-value-id={@task.id}
+              phx-value-action="archive"
+            >{gettext("Archive")}</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="ab-tabs" role="tablist" aria-label={gettext("Task details")}>
+        <button
+          :for={{key, label, count} <- @tabs}
+          type="button"
+          class="ab-tab"
+          id={"inspector-tab-#{key}"}
+          role="tab"
+          aria-selected={to_string(@tab == key)}
+          aria-controls={"inspector-panel-#{key}"}
+          phx-click="inspector_tab"
+          phx-value-tab={key}
+        >
+          {label}<span :if={count} class="ab-num">{count}</span>
+        </button>
       </div>
 
       <div
@@ -337,6 +348,23 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
               tz_offset={@tz_offset}
             />
           <% _ -> %>
+            <.unblock_block
+              :if={
+                (@unblock || @inspector_blockers != []) &&
+                  !(@ask_sending && @ask_sending.task_id == @task.id)
+              }
+              task={@task}
+              unblock={@unblock}
+              inspector_blockers={@inspector_blockers}
+              unblock_ai={@unblock_ai}
+              unblock_suggestions={@unblock_suggestions}
+              ai_status={@ai_status}
+              blocker_open={@blocker_open}
+              blocker_title={@blocker_title}
+              blocker_body={@blocker_body}
+              blocker_pending={@blocker_pending}
+            />
+
             <.conversation_tab
               task={@task}
               comments={@comments}
@@ -348,23 +376,6 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
       <div :if={@tab == "conversa"} class="ab-insp__foot">
         <%!-- The typed text and submit authorize the inline GitHub comment. --%>
-        <.unblock_block
-          :if={
-            (@unblock || @inspector_blockers != []) &&
-              !(@ask_sending && @ask_sending.task_id == @task.id)
-          }
-          task={@task}
-          unblock={@unblock}
-          inspector_blockers={@inspector_blockers}
-          unblock_ai={@unblock_ai}
-          unblock_suggestions={@unblock_suggestions}
-          ai_status={@ai_status}
-          blocker_open={@blocker_open}
-          blocker_title={@blocker_title}
-          blocker_body={@blocker_body}
-          blocker_pending={@blocker_pending}
-        />
-
         <.ask_form
           task={@task}
           ask_draft={@ask_draft}
@@ -396,18 +407,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
       class="ab-unblock"
       aria-label={gettext("Unlock task")}
     >
-      <div class="ab-unblock__head">
-        <strong>{gettext("Unlock")}</strong>
-        <span class="ab-meta">{gettext("The agent stopped and asked for your decision.")}</span>
-      </div>
-
       <div :if={@unblock && @unblock.question} class="ab-unblock__quote">
-        <span class="ab-meta">{gettext("Question")}</span>
+        <strong>{gettext("Question")}</strong>
         <p>{@unblock.question}</p>
       </div>
 
       <div :if={@unblock && @unblock.blockage} class="ab-unblock__quote">
-        <span class="ab-meta">{gettext("Block")}</span>
+        <strong>{gettext("Block")}</strong>
         <p>{@unblock.blockage}</p>
       </div>
 

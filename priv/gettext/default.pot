@@ -10204,3 +10204,6 @@ msgid "%{count} stage on related changes"
 msgid_plural "%{count} stages on related changes"
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "Details and actions"
+msgstr ""

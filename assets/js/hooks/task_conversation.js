@@ -36,7 +36,7 @@ export const TaskConversation = {
     })
     this.syncBody()
     this.lastMessages = this.messages()
-    this.scrollToEnd()
+    this.openConversation()
   },
 
   updated() {
@@ -46,7 +46,11 @@ export const TaskConversation = {
       this.pinned = true
       this.submitted = false
     }
+    const previousBody = this.body
     this.syncBody()
+    const hasBlock = !!this.body?.querySelector("#unblock-panel")
+    const newBlock = hasBlock && !this.hadBlock
+    this.hadBlock = hasBlock
     const messages = this.messages()
     const changed = messages.map(message => `${message.id}:${message.sending}`).join("|") !==
       this.lastMessages.map(message => `${message.id}:${message.sending}`).join("|")
@@ -62,7 +66,18 @@ export const TaskConversation = {
       }
     }
     this.lastMessages = messages
-    if (taskChanged || (changed && this.pinned)) this.scrollToEnd()
+    if (taskChanged || previousBody !== this.body || (newBlock && this.pinned)) this.openConversation()
+    else if (changed && this.pinned) this.scrollToEnd()
+  },
+
+  openConversation() {
+    this.hadBlock = !!this.body?.querySelector("#unblock-panel")
+    if (this.hadBlock) {
+      this.body.scrollTop = 0
+      this.onScroll()
+    } else {
+      this.scrollToEnd()
+    }
   },
 
   messages() {
