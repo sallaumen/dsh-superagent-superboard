@@ -66,6 +66,34 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     assert render(view) =~ "Ignorado: agente pausado"
   end
 
+  test "saved profile edits have a specific result; older receipts keep their original meaning",
+       %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "edited-profile")
+
+    {:ok, agent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "edited",
+        port: 3314,
+        state_dir: "/tmp/test-edited"
+      })
+
+    for {status, message} <- [
+          {"profile_changed",
+           "O perfil mudou durante a sincronização. A alteração foi preservada."},
+          {"changed", "Ignorado: o estado do agente mudou"}
+        ] do
+      Superagents.get(agent.id)
+      |> Ecto.Changeset.change(
+        runtime_sync: %{"status" => status, "status_at" => "2026-11-14T17:00:00Z"}
+      )
+      |> AgentBoard.Repo.update!()
+
+      {:ok, view, _} = live(conn, @projects)
+      assert has_element?(view, "#project-sync-#{agent.id}[data-status=#{status}]", message)
+    end
+  end
+
   test "the manager checks load, identity, handoff and duplicate protection" do
     {output, status} =
       System.cmd("python3", ["-B", "-m", "unittest", "discover", "-s", "test/runtime_sync"],

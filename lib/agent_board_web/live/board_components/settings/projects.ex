@@ -1036,6 +1036,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   defp sync_result("pending"),
     do: gettext("Update pending — waiting for work and queue to finish")
 
+  defp sync_result("profile_changed"),
+    do: gettext("The profile changed during sync. The edit was preserved.")
+
   defp sync_result("changed"), do: gettext("Skipped: agent state changed")
   defp sync_result("identity"), do: gettext("Skipped: project identity changed")
   defp sync_result("unavailable"), do: gettext("Skipped: agent unavailable")

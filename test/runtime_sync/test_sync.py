@@ -108,7 +108,7 @@ class Synchronization(unittest.TestCase):
     def test_current_package_changed_on_disk_is_not_selected(self):
         self.agent.cli = self.target
         self.binding.unchanged.return_value = False
-        self.assertEqual(runtime.sync(self.agent), "changed")
+        self.assertEqual(runtime.sync(self.agent), "profile_changed")
         self.assertIsNone(self.agent.selected)
         self.assertEqual(self.agent.restarts, [])
 
@@ -117,7 +117,7 @@ class Synchronization(unittest.TestCase):
         self.binding.source = Path("/old/package")
         self.binding.switch.side_effect = runtime.extension.ProfileChanged("profile changed")
         with patch.object(self.agent, "recover", create=True) as recover:
-            self.assertEqual(runtime.sync(self.agent), "changed")
+            self.assertEqual(runtime.sync(self.agent), "profile_changed")
             recover.assert_not_called()
         self.binding.restore.assert_not_called()
         self.assertFalse(self.agent.paused)

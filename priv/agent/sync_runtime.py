@@ -186,7 +186,7 @@ def sync(p, expected_lock=None):
             return "changed"
         if current:
             if not binding.unchanged():
-                return "changed"
+                return "profile_changed"
             p.select(cli)
             return "current"
         try:
@@ -200,7 +200,7 @@ def sync(p, expected_lock=None):
                 try:
                     binding.switch(target)
                 except extension.ProfileChanged:
-                    return "changed"
+                    return "profile_changed"
             # Binding.switch handles its own rollback. Recover a process only
             # once a restart has actually been attempted.
             try:

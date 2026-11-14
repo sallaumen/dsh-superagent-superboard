@@ -9649,6 +9649,9 @@ msgstr ""
 msgid "Update pending — waiting for work and queue to finish"
 msgstr ""
 
+msgid "The profile changed during sync. The edit was preserved."
+msgstr ""
+
 msgid "Skipped: agent state changed"
 msgstr ""
 
