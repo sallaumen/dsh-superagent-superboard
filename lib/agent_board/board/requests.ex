@@ -31,99 +31,6 @@ defmodule AgentBoard.Board.Requests do
   @abandoned_after_seconds 300
 
   @doc """
-  Create a task by opening its issue.
-
-  With `executor:` the board records who the task is for, labels the issue
-  `executor:<name>` and writes the body for that executor: the DeepSeek
-  runner's issue mentions the bot, anyone else's mentions nobody
-  (`AgentBoard.Executors.issue_body/2`). Without it the body is opened as
-  given and no executor is recorded.
-  """
-  def create_task(repository, title, body, client, opts \\ []) do
-    title = clip_title(title)
-    executor = Keyword.get(opts, :executor)
-    claim = Keyword.get(opts, :claim)
-    held = Keyword.get(opts, :held, false)
-
-    body =
-      case {executor, held} do
-        {_any, true} -> body
-        {nil, false} -> body
-        {executor, false} -> Executors.issue_body(body, executor)
-      end
-
-    labels = if executor, do: [Executors.label(executor)], else: []
-
-    with issue <-
-           AgentBoard.GitHub.create_issue(
-             client,
-             repository.owner,
-             repository.name,
-             title,
-             body,
-             labels
-           ) do
-      attrs = %{
-        repository_id: repository.id,
-        kind: "issue",
-        number: issue["number"],
-        title: title,
-        body: body,
-        state: "queued",
-        state_changed_at: DateTime.utc_now(),
-        url: issue["html_url"],
-        author: "board",
-        request_key: Keyword.get(opts, :request_key),
-        origin_task_id: Keyword.get(opts, :origin_task_id),
-        blocker_for_task_id: Keyword.get(opts, :blocker_for_task_id),
-        work_type: Keyword.get(opts, :work_type),
-        size: Keyword.get(opts, :size),
-        executor: executor,
-        held: Keyword.get(opts, :held, false)
-      }
-
-      target = claim || %Task{}
-
-      result =
-        if claim,
-          do: target |> Task.changeset(attrs) |> Repo.update(),
-          else: target |> Task.changeset(attrs) |> Repo.insert(on_conflict: :nothing)
-
-      result
-      |> tap(&record_routing(&1, repository, executor, Keyword.get(opts, :routing)))
-      |> tap(fn
-        {:ok, %Task{id: id}} when is_integer(id) -> Board.broadcast(repository.id)
-        _ -> :ok
-      end)
-    end
-  rescue
-    exception ->
-      Board.log_event(repository.id, "create_error", title, %{
-        "reason" => Exception.message(exception)
-      })
-
-      {:error, exception}
-  end
-
-  # The router's line for the task (AgentBoard.Routing.Decision). The issue
-  # already exists, so a decision that fails is an event, never a reason to
-  # drop the task row: a retry without the row would open a second issue.
-  defp record_routing({:ok, %Task{id: id} = task}, repository, executor, routing)
-       when is_integer(id) and is_binary(executor) and is_map(routing) do
-    case Routing.record(task, executor, routing) do
-      {:ok, _decision} ->
-        :ok
-
-      {:error, changeset} ->
-        Board.log_event(repository.id, "routing_error", "##{task.number}", %{
-          "reason" => inspect(changeset.errors)
-        })
-    end
-  end
-
-  defp record_routing(_result, _repository, _executor, _routing), do: :ok
-
-  @doc """
   Creates the task for a board request once.
 
   A task that already carries this `key`, or a queued task with the same
@@ -293,8 +200,9 @@ defmodule AgentBoard.Board.Requests do
 
       {:error, _changeset} ->
         case Repo.one(
-               from t in Task,
+               from(t in Task,
                  where: t.repository_id == ^repository.id and t.request_key == ^key
+               )
              ) do
           %Task{} = existing -> {:existing, existing}
           nil -> {:error, :conflict}
@@ -302,31 +210,8 @@ defmodule AgentBoard.Board.Requests do
     end
   end
 
-  defp create_new_request(
-         repository,
-         %{title: title, body: body, key: key} = request,
-         client,
-         claim
-       ) do
-    created =
-      create_task(repository, title, body, client,
-        request_key: key,
-        origin_task_id: Map.get(request, :origin_task_id),
-        blocker_for_task_id: Map.get(request, :blocker_for_task_id),
-        work_type: Map.get(request, :work_type),
-        size: Map.get(request, :size),
-        executor: Map.get(request, :executor),
-        routing: Map.get(request, :routing),
-        held: Map.get(request, :held, false),
-        claim: claim
-      )
-
-    case created do
-      # The unique key (or the issue number) raced with another write: the
-      # first one won, and it is the receipt if it carries these words.
-      {:ok, %Task{id: nil}} ->
-        raced_request(repository, key, title, body)
-
+  defp create_new_request(repository, request, client, claim) do
+    case open_claimed_issue(repository, request, client, claim) do
       {:ok, task} ->
         {:ok, task, :created}
 
@@ -336,28 +221,77 @@ defmodule AgentBoard.Board.Requests do
     end
   end
 
+  defp open_claimed_issue(repository, request, client, claim) do
+    executor = claim.executor
+    labels = if executor, do: [Executors.label(executor)], else: []
+
+    issue =
+      AgentBoard.GitHub.create_issue(
+        client,
+        repository.owner,
+        repository.name,
+        request.title,
+        request.body,
+        labels
+      )
+
+    claim
+    |> Task.changeset(%{
+      number: issue["number"],
+      url: issue["html_url"],
+      state: "queued",
+      state_changed_at: DateTime.utc_now(),
+      author: "board"
+    })
+    |> Repo.update()
+    |> tap(&record_routing(&1, repository, executor, Map.get(request, :routing)))
+    |> tap(fn
+      {:ok, _task} -> Board.broadcast(repository.id)
+      _ -> :ok
+    end)
+  rescue
+    exception ->
+      Board.log_event(repository.id, "create_error", request.title, %{
+        "reason" => Exception.message(exception)
+      })
+
+      {:error, exception}
+  end
+
+  # The router's line for the task (AgentBoard.Routing.Decision). The issue
+  # already exists, so a decision that fails is an event, never a reason to
+  # drop the task row: a retry without the row would open a second issue.
+  defp record_routing({:ok, %Task{id: id} = task}, repository, executor, routing)
+       when is_integer(id) and is_binary(executor) and is_map(routing) do
+    case Routing.record(task, executor, routing) do
+      {:ok, _decision} ->
+        :ok
+
+      {:error, changeset} ->
+        Board.log_event(repository.id, "routing_error", "##{task.number}", %{
+          "reason" => inspect(changeset.errors)
+        })
+    end
+  end
+
+  defp record_routing(_result, _repository, _executor, _routing), do: :ok
+
   defp delete_claim(%Task{id: id, state: "draft"}) when is_integer(id) do
-    Repo.delete_all(from t in Task, where: t.id == ^id and t.state == "draft")
+    Repo.delete_all(from(t in Task, where: t.id == ^id and t.state == "draft"))
   end
 
   defp delete_claim(_claim), do: :ok
 
-  defp raced_request(repository, key, title, body) do
-    case existing_request(repository, key, title, body) do
-      %Task{} = task -> {:ok, task, :existing}
-      nil -> {:error, :conflict}
-    end
-  end
-
   defp existing_request(repository, key, title, body) do
     Repo.one(
-      from t in Task,
+      from(t in Task,
         where:
           t.repository_id == ^repository.id and
             (t.request_key == ^key or
                (t.state == "queued" and t.title == ^title and t.body == ^body)),
         order_by: [asc: t.id],
         limit: 1
+      )
     )
   end
 end

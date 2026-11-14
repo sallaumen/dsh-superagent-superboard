@@ -21,17 +21,34 @@ defmodule AgentBoard.CreateTaskTest do
       Req.Test.json(conn, %{"number" => 12, "html_url" => "https://github.com/x/y/issues/12"})
     end)
 
-    assert {:ok, task} = Board.Requests.create_task(repo, "Add a boss", "Details", client())
+    request = %{key: "boss", title: "Add a boss", body: "Details"}
+    assert {:ok, task, :created} = Board.Requests.create_request(repo, request, client())
     assert task.number == 12
     assert task.state == "queued"
     assert task.title == "Add a boss"
+  end
+
+  test "an empty body stays a string in the issue even when the draft stores nil", %{repo: repo} do
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, raw, conn} = Plug.Conn.read_body(conn)
+      assert %{"body" => ""} = Jason.decode!(raw)
+      Req.Test.json(conn, %{"number" => 12, "html_url" => "https://github.com/x/y/issues/12"})
+    end)
+
+    request = %{key: "empty-body", title: "Title alone", body: ""}
+    assert {:ok, task, :created} = Board.Requests.create_request(repo, request, client())
+    assert is_nil(task.body)
   end
 
   test "a GitHub failure is an error, not a crash", %{repo: repo} do
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 500, "boom") end)
 
     assert {:error, %AgentBoard.GitHub.HTTPError{status: 500}} =
-             Board.Requests.create_task(repo, "T", "body", client())
+             Board.Requests.create_request(
+               repo,
+               %{key: "fail", title: "T", body: "body"},
+               client()
+             )
 
     assert Enum.any?(Board.events(repo), &(&1.kind == "create_error"))
   end
