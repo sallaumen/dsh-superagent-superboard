@@ -2,7 +2,8 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
   @moduledoc "Native dialog shell; region content remains mounted for draft preservation."
   use AgentBoardWeb, :html
 
-  alias AgentBoardWeb.BoardComponents.{Controls, VoicePresence}
+  alias AgentBoardWeb.BoardComponents.Controls
+  alias AgentBoardWeb.BoardComponents.Voice.Presence
   alias AgentBoardWeb.BoardNotice
 
   attr :icon, :string, default: nil
@@ -34,7 +35,7 @@ defmodule AgentBoardWeb.BoardComponents.Panel do
       </p>
       <BoardNotice.notices :if={@active} flash={@flash} prefix={"panel-#{@name}"} />
       <div class="panel-scroll">{render_slot(@inner_block)}</div>
-      <VoicePresence.stage :if={@active} id={"voice-presence-#{@name}"} />
+      <Presence.stage :if={@active} id={"voice-presence-#{@name}"} />
     </dialog>
     """
   end

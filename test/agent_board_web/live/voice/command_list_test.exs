@@ -1,16 +1,16 @@
-defmodule AgentBoardWeb.BoardComponents.VoiceCommandListTest do
+defmodule AgentBoardWeb.BoardComponents.Voice.CommandListTest do
   use AgentBoardWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
 
   alias AgentBoard.Voice.Commands
-  alias AgentBoardWeb.BoardComponents.VoiceCommandList
+  alias AgentBoardWeb.BoardComponents.Voice.CommandList
 
   # The tab's one language: the Gettext locale words the list, and the voice
   # language derived from it (`@voice.language`) picks what to say.
   defp list(locale, language) do
     Gettext.with_locale(AgentBoardWeb.Gettext, locale, fn ->
-      render_component(&VoiceCommandList.list/1, open: true, language: language)
+      render_component(&CommandList.list/1, open: true, language: language)
     end)
   end
 

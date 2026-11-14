@@ -1,4 +1,4 @@
-defmodule AgentBoardWeb.BoardComponents.VoicePresence do
+defmodule AgentBoardWeb.BoardComponents.Voice.Presence do
   @moduledoc "Browser media activity, presented without changing the board or taking focus."
   use Phoenix.Component
   use Gettext, backend: AgentBoardWeb.Gettext

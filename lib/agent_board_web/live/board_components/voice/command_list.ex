@@ -1,4 +1,4 @@
-defmodule AgentBoardWeb.BoardComponents.VoiceCommandList do
+defmodule AgentBoardWeb.BoardComponents.Voice.CommandList do
   @moduledoc """
   SuperBoard Skills. Featured reads send a real conversation turn. The
   expandable catalog keeps task-specific examples and their effects explicit.

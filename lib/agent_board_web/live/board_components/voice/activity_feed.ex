@@ -1,4 +1,4 @@
-defmodule AgentBoardWeb.BoardComponents.VoiceActivityFeed do
+defmodule AgentBoardWeb.BoardComponents.Voice.ActivityFeed do
   @moduledoc """
   The voice pipeline as it happens: each stage of a turn with its time,
   every retry and every failure (server or browser), newest first. Fed live
