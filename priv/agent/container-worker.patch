@@ -1,0 +1,99 @@
+diff --git a/src/app/runtime.ts b/src/app/runtime.ts
+index a8cfe52..2f16609 100644
+--- a/src/app/runtime.ts
++++ b/src/app/runtime.ts
+@@ -119,7 +119,7 @@ export class Runtime extends Service implements SourceHost {
+         promptVersion: id => this.sessions.promptVersion(id), mayRead: (id, revision) => this.sessions.mayRead(id, revision),
+         feishuPageSize: () => feishuSettings(sources).readPageSize, sourceLink: link }
+       const sessions = this.sessions = new Sessions({ context: ctx, store, prompts, effects, health: board.claim('models'), masterId,
+-        lifetime: this.lifetime,
++        stateDir: machine.stateDir, lifetime: this.lifetime,
+         closing: () => this.closing(), environment,
+         tools: (agent, ticket) => ticket ? executorTools(this.toolHost, ticket) : mainTools(this.toolHost, agent) })
+       const policyChanged: EngineForSettings['policyChanged'] = (from, to, effects) => { this.engine.policyChanged(from, to, effects) }
+diff --git a/src/app/sessions.ts b/src/app/sessions.ts
+index a84ae15..6ed84d7 100644
+--- a/src/app/sessions.ts
++++ b/src/app/sessions.ts
+@@ -5,7 +5,9 @@ import type { MessageId } from '@deepseek-ai/dsh-llm'
+ import { scopeParentOf } from '@deepseek-ai/dsh-scope'
+ import type { SessionId } from '@deepseek-ai/dsh-session'
+ import { dirname, join, resolve } from 'node:path'
+-import { readFileSync, statSync } from 'node:fs'
++import { existsSync, readFileSync, statSync } from 'node:fs'
++import { spawn } from 'node:child_process'
++import { packagePath } from '../infra/paths.ts'
+ import { z } from 'zod'
+ import { key, liveTicket, type Ticket } from '../core/index.ts'
+ import { mandateInstructions, ticketOfSession } from '../executor/dsh.ts'
+@@ -38,5 +40,6 @@ function publicationStopped(ticket: Ticket): boolean {
+ /** Host dependencies used by `Sessions`. */
+ export interface SessionsHost {
++  readonly stateDir?: string
+   /** DSH Cordis context: sessions, agents, persistence, and their events. */
+   readonly context: Context
+   readonly store: Pick<Store, 'tickets' | 'settings' | 'get' | 'set' | 'keys'>
+@@ -255,6 +258,16 @@ export class Sessions {
+     this.retryHealth.restore(agent.id, agent.session.snapshotEvents())
+     if (agent.status === 'idle') this.retryHealth.clear(agent.id)
+     this.updateModelHealth()
++    // A profile opts into isolation outside the repository. Refuse every native
++    // host tool, including session-local and preset tools, before registering
++    // any work capability. The router also has no shell or settings writer.
++    if (this.isolated()) {
++      const permitted = new Set(master ? ['orchestrator_read', 'orchestrator_route', 'orchestrator_eval', 'orchestrator_eval_read',
++        'orchestrator_eval_decide', 'orchestrator_reply', 'orchestrator_ticket_note', 'orchestrator_ticket_request_status']
++        : ['orchestrator_read', 'orchestrator_ack', 'orchestrator_report', 'container_work', 'managed_publish'])
++      binding.disposers.push(agent.ctx.tools.restrict({ allow: [] }), agent.ctx.tools.guard(({ name }) =>
++        permitted.has(name) ? undefined : 'Host tools are unavailable in this isolated profile. Use container_work or managed_publish.'))
++    }
+     // Disable variable interpolation so literal ${{ ... }} expressions in team prompts are preserved.
+     binding.disposers.push(agent.ctx.systemPrompt.section({ name: 'dsh-superagent-policy', order: 9999, interpolate: false, text: context => {
+       const version = this.promptFor(agent, context.signal !== undefined)
+@@ -274,6 +287,16 @@ export class Sessions {
+     if (this.bindings.get(agent) !== binding) return
+     const register = this.registerTool(agent, binding)
+     for (const tool of host.tools(agent, ticket)) register(tool.name, tool.description, tool.schema, tool.execute)
++    if (this.isolated()) {
++      if (ticket) {
++        binding.disposers.push(agent.ctx.systemPrompt.section({ name: 'container-delivery', order: 11000,
++          text: 'This isolated worker has only container_work for editing and shell in /workspace. No host shell, credentials or network. Do not push or open a PR yourself. Call managed_publish with title and body; it snapshots all changes, commits and checks them in a separate container and publishes as the configured bot. A check failure ends this assignment. Report the result using orchestrator_report. A publication may take several minutes.' }))
++        const invoke = (op: string, input: unknown, signal: AbortSignal) => this.container(ticket, op, input, signal)
++        register('container_work', 'Execute a shell command in the disposable credential-free ticket container. Start in /workspace. Output is bounded. Use only for work on the current ticket.', z.object({command:z.string().min(1).max(32768)}).strict(), (args, signal) => invoke('work', args, signal))
++        register('managed_publish', 'Submit current changes to the external publisher. It runs all configured checks on a clean snapshot, then opens or returns the single bot PR. On failure report blocked and stop.', z.object({title:z.string().min(1).max(180), body:z.string().min(1).max(16000)}).strict(), (args, signal) => invoke('publish', args, signal))
++      }
++      return
++    }
+     if (master) {
+       binding.disposers.push(agent.ctx.tools.restrict({ allow: ['skill', 'bash', 'read', 'read_image', 'job_output', 'job_list', 'job_kill'] }),
+         agent.ctx.tools.guard(execution => noWait(execution, () => this.routed(agent))))
+@@ -301,7 +324,29 @@ export class Sessions {
+    * (see the executor). Read inherited tools through the parent scope, which includes the preset's tools. The global view
+    * misses preset tools; the agent's own view also includes local tools such as subagent, which restrict refuses to name.
+    */
++  private isolated(): boolean {
++    return !!this.host.stateDir && existsSync(join(this.host.stateDir, 'container-worker.json'))
++  }
++  private async container(ticket: Ticket, op: string, input: unknown, signal: AbortSignal): Promise<unknown> {
++    const current = this.host.store.tickets.get(ticket.id)
++    const assignment = current?.assignments.at(-1)?.id
++    if (!current || !liveTicket(current) || !current.execution || !assignment || !this.isolated()) throw new Error('No active isolated assignment')
++    const env = Object.fromEntries(this.host.environment(current).map(x => [x.key, x.value]))
++    const argv = [packagePath('scripts','container_worker.py'), '--state', this.host.stateDir!, '--repo', env.DSH_SUPERAGENT_GITHUB_REPOSITORY,
++      '--actor',env.DSH_SUPERAGENT_GITHUB_ACCOUNT,'--assignment',assignment,'--issue',env.DSH_SUPERAGENT_GITHUB_NUMBER,op]
++    return new Promise((resolve, reject) => {
++      const proc = spawn('python3', argv, {cwd:current.execution!.directory, stdio:['pipe','pipe','pipe'], signal})
++      let out = '', err = ''
++      proc.stdout.on('data', d => {out = (out + String(d)).slice(-18000)})
++      proc.stderr.on('data', d => {err = (err + String(d)).slice(-1600)})
++      proc.on('error', reject)
++      proc.stdin.on('error', () => {})
++      proc.on('close', code => code === 0 ? resolve({output:out.trim()}) : reject(new Error(err || 'Container operation failed')))
++      proc.stdin.end(JSON.stringify(input))
++    })
++  }
+   private workOnly(agent: Agent, ticketId: string): (() => void)[] {
++    if (this.isolated()) return [agent.ctx.tools.restrict({allow:[]}), agent.ctx.tools.guard(() => 'No subagent tools in an isolated profile')]
+     const store = this.host.store
+     const parent = scopeParentOf(agent)
+     const allow = WORK_TOOLS.filter(name => agent.ctx.tools.get(name, parent))

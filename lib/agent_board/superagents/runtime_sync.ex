@@ -17,6 +17,12 @@ defmodule AgentBoard.Superagents.RuntimeSync do
   @notice_patch Path.expand("../../../priv/agent/duplicate-issue-notice.patch", __DIR__)
   @branch_patch Path.expand("../../../priv/agent/assignment-branch.patch", __DIR__)
   @publication_patch Path.expand("../../../priv/agent/managed-publication.patch", __DIR__)
+  @container_patch Path.expand("../../../priv/agent/container-worker.patch", __DIR__)
+  @cleanup_patch Path.expand("../../../priv/agent/container-report-cleanup.patch", __DIR__)
+  @external_resource @cleanup_patch
+  @container_helper Path.expand("../../../priv/agent/container_worker.py", __DIR__)
+  @external_resource @container_patch
+  @external_resource @container_helper
   @external_resource @publication_patch
   @helper Path.expand("../../../priv/agent/superboard-branch.py", __DIR__)
   @external_resource @branch_patch
@@ -29,6 +35,9 @@ defmodule AgentBoard.Superagents.RuntimeSync do
                    File.read!(@notice_patch),
                    File.read!(@branch_patch),
                    File.read!(@publication_patch),
+                   File.read!(@container_patch),
+                   File.read!(@cleanup_patch),
+                   File.read!(@container_helper),
                    File.read!(@helper)
                  ]),
                  case: :lower

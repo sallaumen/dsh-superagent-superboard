@@ -1,0 +1,22 @@
+diff --git a/src/app/sessions.ts b/src/app/sessions.ts
+index 6ed84d7..bcd31c0 100644
+--- a/src/app/sessions.ts
++++ b/src/app/sessions.ts
+@@ -286,7 +286,16 @@ export class Sessions {
+     // Bail out if the agent was disposed while awaiting the skill scope.
+     if (this.bindings.get(agent) !== binding) return
+     const register = this.registerTool(agent, binding)
+-    for (const tool of host.tools(agent, ticket)) register(tool.name, tool.description, tool.schema, tool.execute)
++    for (const tool of host.tools(agent, ticket)) {
++      if (ticket && this.isolated() && tool.name === 'orchestrator_report') {
++        register(tool.name, tool.description, tool.schema, async (args, signal) => {
++          if (['blocked', 'failed', 'dropped', 'ready'].includes((args as {state: string}).state)) {
++            await this.container(ticket, 'cleanup', {}, signal)
++          }
++          return tool.execute(args, signal)
++        })
++      } else register(tool.name, tool.description, tool.schema, tool.execute)
++    }
+     if (this.isolated()) {
+       if (ticket) {
+         binding.disposers.push(agent.ctx.systemPrompt.section({ name: 'container-delivery', order: 11000,

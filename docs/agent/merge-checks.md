@@ -115,3 +115,7 @@ access as the operator is not a credential boundary. For exclusive publication,
 keep write credentials in a publisher outside the executor's security context;
 neither the worker nor its test processes should have the operator's or the
 publisher's credentials.
+
+For the board worker, follow [isolated publication](isolated-publication.md)
+to keep GitHub credentials on the publisher and run edits and checks in
+disposable containers.

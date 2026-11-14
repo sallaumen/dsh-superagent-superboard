@@ -9,11 +9,14 @@ import tempfile
 PATCH = Path(__file__).with_name("duplicate-issue-notice.patch")
 BRANCH_PATCH = PATCH.with_name("assignment-branch.patch")
 PUBLICATION_PATCH = PATCH.with_name("managed-publication.patch")
+CONTAINER_PATCH = PATCH.with_name("container-worker.patch")
+CLEANUP_PATCH = PATCH.with_name("container-report-cleanup.patch")
+CONTAINER_HELPER = PATCH.with_name("container_worker.py")
 BRANCH_HELPER = PATCH.with_name("superboard-branch.py")
 
 
 def payload():
-    return PATCH.read_bytes() + BRANCH_PATCH.read_bytes() + PUBLICATION_PATCH.read_bytes() + BRANCH_HELPER.read_bytes()
+    return PATCH.read_bytes() + BRANCH_PATCH.read_bytes() + PUBLICATION_PATCH.read_bytes() + CONTAINER_PATCH.read_bytes() + CLEANUP_PATCH.read_bytes() + CONTAINER_HELPER.read_bytes() + BRANCH_HELPER.read_bytes()
 
 
 UPSTREAM = "8c32a9dc5d72c033816c6a8110b37f40cf94fba4"
@@ -22,7 +25,9 @@ PACKAGE = "dsh-superagent"
 
 def compiled(path):
     bundle = path / "lib/index.js"
-    return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py", b"Publication is in progress or blocked"))
+    return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py", b"Publication is in progress or blocked", b"managed_publish"))
+            and (path / "scripts/container_worker.py").is_file()
+            and (path / "scripts/container_worker.py").read_bytes() == CONTAINER_HELPER.read_bytes()
             and (path / "scripts/superboard-branch.py").read_bytes() == BRANCH_HELPER.read_bytes())
 
 
@@ -101,7 +106,9 @@ def prepare(binding, root, manager, run, lock):
         return run("git", "-C", str(source), *args)
     if git("rev-parse", "HEAD").strip() != UPSTREAM:
         raise ValueError("unsupported prototype revision")
-    allowed = {receipt, "scripts/superboard-branch.py"} if source.parent == root else {"scripts/superboard-branch.py"}
+    allowed = {"scripts/superboard-branch.py", "scripts/container_worker.py"}
+    if source.parent == root:
+        allowed.add(receipt)
     if set(git("ls-files", "--others", "--exclude-standard").splitlines()) - allowed:
         raise ValueError("untracked prototype files")
     # Preserve tracked local source fixes; never execute locally altered install/build scripts.
@@ -124,15 +131,23 @@ def prepare(binding, root, manager, run, lock):
                 # A newer patch modifies lines introduced by BRANCH_PATCH. If
                 # already present, reversing the older patch alone cannot match.
                 try:
-                    run("git", "apply", "--reverse", "--check", str(PUBLICATION_PATCH), cwd=stage)
+                    try:
+                        run("git", "apply", "--reverse", "--check", str(CLEANUP_PATCH), cwd=stage)
+                    except subprocess.CalledProcessError:
+                        run("git", "apply", "--reverse", "--check", str(CONTAINER_PATCH), cwd=stage)
                     components = (PATCH,)
                 except subprocess.CalledProcessError:
-                    components = (PATCH, BRANCH_PATCH, PUBLICATION_PATCH)
-                for component in components:
+                    try:
+                        run("git", "apply", "--reverse", "--check", str(PUBLICATION_PATCH), cwd=stage)
+                        components = (PATCH, CONTAINER_PATCH)
+                    except subprocess.CalledProcessError:
+                        components = (PATCH, BRANCH_PATCH, PUBLICATION_PATCH, CONTAINER_PATCH)
+                for component in (*components, CLEANUP_PATCH):
                     try:
                         run("git", "apply", "--reverse", "--check", str(component), cwd=stage)
                     except subprocess.CalledProcessError:
                         run("git", "apply", str(component), cwd=stage)
+                (stage / "scripts/container_worker.py").write_bytes(CONTAINER_HELPER.read_bytes())
                 (stage / "scripts/superboard-branch.py").write_bytes(BRANCH_HELPER.read_bytes())
                 env = {k: v for k, v in os.environ.items() if k in ("HOME", "PATH", "TMPDIR", "USER", "LOGNAME")}
                 # Do not inherit a service working directory or GitHub credentials.
