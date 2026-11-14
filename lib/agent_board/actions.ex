@@ -71,7 +71,16 @@ defmodule AgentBoard.Actions do
     Voice
   }
 
-  alias AgentBoard.Board.{Attachments, PrivateContext, Repository, RequestBatch, SplitGraph, Task}
+  alias AgentBoard.Board.{
+    Attachments,
+    PrivateContext,
+    Repository,
+    RequestBatch,
+    RequestDependencies,
+    SplitGraph,
+    Task
+  }
+
   alias AgentBoard.Intake.IssueBody
   alias AgentBoard.Release
   alias AgentBoard.Superagents.{Leftovers, Policy, RuntimeSync}
@@ -1732,7 +1741,8 @@ defmodule AgentBoard.Actions do
   defp held_note(requests, lang) do
     held? =
       Enum.any?(requests, fn request ->
-        Map.get(request, :depends_on, []) != [] and Map.get(request, :executor) in [nil, "dsh"]
+        Map.get(request, :depends_on, []) != [] and
+          RequestDependencies.holds_for_dependencies?(Map.get(request, :executor))
       end)
 
     case {held?, lang} do
