@@ -122,7 +122,15 @@ defmodule AgentBoard.Board.SplitGraph do
     :ok
   end
 
-  defp edges(results) do
+  @doc """
+  Returns `{task, blocker}` pairs from split results, resolving `depends_on` by request key.
+
+  Newly created tasks and existing receipts both count. A missing or failed
+  blocker contributes no edge, nor do two keys that resolve to the same task ID.
+  """
+  @spec edges([{map(), {:ok, Task.t(), :created | :existing} | {:error, term()}}]) ::
+          [{Task.t(), Task.t()}]
+  def edges(results) do
     tasks =
       for {request, {:ok, %Task{} = task, _outcome}} <- results,
           into: %{},
