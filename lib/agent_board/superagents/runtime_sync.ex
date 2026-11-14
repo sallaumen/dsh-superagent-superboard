@@ -11,7 +11,7 @@ defmodule AgentBoard.Superagents.RuntimeSync do
   alias AgentBoard.Superagents.{DshManager, RuntimePackage, Superagent}
 
   @pending ~w(waiting pending)
-  @statuses ~w(updated current paused busy changed identity unavailable in_progress failed)
+  @statuses ~w(updated current paused busy changed profile_changed identity unavailable in_progress failed)
   @interval :timer.seconds(15)
 
   def start_link(opts),

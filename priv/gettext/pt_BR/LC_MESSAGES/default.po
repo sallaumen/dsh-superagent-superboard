@@ -9649,6 +9649,9 @@ msgstr "Ignorado: agente pausado"
 msgid "Update pending — waiting for work and queue to finish"
 msgstr "Atualização pendente — aguardando o fim das tarefas e da fila"
 
+msgid "The profile changed during sync. The edit was preserved."
+msgstr "O perfil mudou durante a sincronização. A alteração foi preservada."
+
 msgid "Skipped: agent state changed"
 msgstr "Ignorado: o estado do agente mudou"
 
