@@ -29,6 +29,19 @@ defmodule AgentBoard.Board.Objective do
     end
   end
 
+  @doc "Counts merged tasks. An objective is done only when it has tasks and all are done."
+  @spec progress([AgentBoard.Board.Task.t()]) :: %{
+          total: non_neg_integer(),
+          merged: non_neg_integer(),
+          done?: boolean()
+        }
+  def progress(tasks) do
+    total = length(tasks)
+    merged = Enum.count(tasks, &(&1.state == "done"))
+
+    %{total: total, merged: merged, done?: total > 0 and merged == total}
+  end
+
   @doc false
   def changeset(objective, attrs) do
     objective

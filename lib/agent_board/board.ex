@@ -983,16 +983,10 @@ defmodule AgentBoard.Board do
     )
     |> with_edges()
     |> Enum.map(fn {objective, edges} ->
-      total = length(objective.tasks)
-      merged = Enum.count(objective.tasks, &(&1.state == "done"))
-
       %{
         id: objective.id,
         title: objective.title,
         done_criterion: objective.done_criterion,
-        total: total,
-        merged: merged,
-        done?: total > 0 and merged == total,
         issue_url: objective.issue_url,
         tasks:
           Enum.map(
@@ -1001,6 +995,7 @@ defmodule AgentBoard.Board do
           ),
         edges: edges
       }
+      |> Map.merge(Objective.progress(objective.tasks))
     end)
   end
 
