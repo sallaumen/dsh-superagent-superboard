@@ -815,7 +815,7 @@ browser), a state and the fix for the next step.
 ## What each agent has installed
 
 Configurações → IAs e setup ends with the skills, plugins and MCP servers of
-each executor on this machine (`AgentBoard.AgentTools.inventory/1`, shown by
+each executor on this machine (`AgentBoard.Executors.ToolInventory.inventory/1`, shown by
 `Settings.Setup`), read when the section comes into view and never stored.
 
 | Executor | Skills | Plugins | MCP servers |
@@ -826,7 +826,7 @@ each executor on this machine (`AgentBoard.AgentTools.inventory/1`, shown by
 
 - **Names only.** A server's `args`, `env` and `headers` can hold keys and
   never enter the result; a command is its file name, a URL its host
-  (`agent_tools_test.exs` plants keys in all four and finds none).
+  (`tool_inventory_test.exs` plants keys in all four and finds none).
 - A folder with a `SKILL.md` is a skill; one without is a container and is
   looked into two levels down (Claude Code's `synced` folder); a link that
   points nowhere is a skill "com defeito". An absent file is "none installed";

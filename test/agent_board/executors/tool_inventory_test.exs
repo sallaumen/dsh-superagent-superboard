@@ -1,8 +1,8 @@
-defmodule AgentBoard.AgentToolsTest do
+defmodule AgentBoard.Executors.ToolInventoryTest do
   @moduledoc "What each executor has installed, by name, without the values that can hold keys."
   use ExUnit.Case, async: true
 
-  alias AgentBoard.AgentTools
+  alias AgentBoard.Executors.ToolInventory
 
   setup do
     home = Path.join(System.tmp_dir!(), "agent-tools-#{System.unique_integer([:positive])}")
@@ -21,7 +21,7 @@ defmodule AgentBoard.AgentToolsTest do
   test "a home with nothing installed is empty lists, and the DeepSeek MCP is unread", %{
     home: home
   } do
-    inventory = AgentTools.inventory(home)
+    inventory = ToolInventory.inventory(home)
 
     assert %{skills: [], plugins: [], mcp: []} = agent(inventory, "claude_code")
     assert %{skills: [], plugins: [], mcp: []} = agent(inventory, "codex")
@@ -52,7 +52,7 @@ defmodule AgentBoard.AgentToolsTest do
              %{name: "docx", ok?: true, description: "Word."},
              %{name: "folded", ok?: true, description: "Reviews a change for bugs."},
              %{name: "plain", ok?: true, description: "One line."}
-           ] = agent(AgentTools.inventory(home), "claude_code").skills
+           ] = agent(ToolInventory.inventory(home), "claude_code").skills
   end
 
   test "Claude Code's servers and plugins are names; keys in env, args and URLs never leave",
@@ -69,7 +69,7 @@ defmodule AgentBoard.AgentToolsTest do
     write(home, ".claude/plugins/installed_plugins.json", ~s({"plugins": {"a@m": [], "b@m": []}}))
     write(home, ".claude/settings.json", ~s({"enabledPlugins": {"a@m": true}}))
 
-    claude = agent(AgentTools.inventory(home), "claude_code")
+    claude = agent(ToolInventory.inventory(home), "claude_code")
 
     assert claude.mcp == [
              %{name: "memory", transport: "stdio", target: "memory"},
@@ -104,7 +104,7 @@ defmodule AgentBoard.AgentToolsTest do
     command = "not a server"
     """)
 
-    codex = agent(AgentTools.inventory(home), "codex")
+    codex = agent(ToolInventory.inventory(home), "codex")
 
     assert codex.mcp == [
              %{name: "docs", transport: "http", target: "developers.example.com"},
@@ -121,6 +121,6 @@ defmodule AgentBoard.AgentToolsTest do
 
   test "a config that is not what it should be is unread, not empty", %{home: home} do
     write(home, ".claude.json", "{ not json")
-    assert agent(AgentTools.inventory(home), "claude_code").mcp == :unread
+    assert agent(ToolInventory.inventory(home), "claude_code").mcp == :unread
   end
 end
