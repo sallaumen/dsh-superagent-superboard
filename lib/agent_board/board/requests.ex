@@ -17,8 +17,7 @@ defmodule AgentBoard.Board.Requests do
   import Ecto.Query, warn: false
 
   alias AgentBoard.{Board, Executors, Repo, Routing}
-  alias AgentBoard.Board.{Repository, RequestOrder, Task}
-  alias AgentBoard.Intake.IssueBody
+  alias AgentBoard.Board.{Repository, RequestDependencies, RequestOrder, Task}
 
   # The column holds 255; past that Postgres raises instead of refusing, and
   # GitHub stops at 256. A title comes from a person or a model.
@@ -91,35 +90,15 @@ defmodule AgentBoard.Board.Requests do
   end
 
   defp create_after_blockers(repository, request, numbers, client) do
-    blockers = request |> depends_on() |> Enum.flat_map(&List.wrap(numbers[&1]))
-
-    if :failed in blockers do
-      {:error, :dependency_failed}
-    else
-      language = Map.get(request, :language)
-      body = IssueBody.with_dependencies(request.body, blockers, language)
-
-      repository
-      |> create_request(%{request | body: body} |> hold(blockers), client)
+    with {:ok, prepared} <- RequestDependencies.prepare(request, numbers) do
+      create_request(repository, prepared, client)
     end
-  end
-
-  # The mention starts the runner at once, so what waits opens without it. Only
-  # the runner: another executor's issue never calls anybody.
-  defp hold(request, []), do: request
-
-  defp hold(request, _blockers) do
-    if Map.get(request, :executor) in [nil, "dsh"],
-      do: Map.put(request, :held, true),
-      else: request
   end
 
   defp remember(numbers, key, {:ok, %Task{number: number}, _outcome}),
     do: Map.put(numbers, key, number)
 
   defp remember(numbers, key, _failure), do: Map.put(numbers, key, :failed)
-
-  defp depends_on(request), do: Map.get(request, :depends_on, [])
 
   defp do_create_request(repository, %{title: title, body: body, key: key} = request, client) do
     title = clip_title(title)
