@@ -1,0 +1,75 @@
+diff --git a/src/sources/github.ts b/src/sources/github.ts
+index f9b80b6..1d7413e 100644
+--- a/src/sources/github.ts
++++ b/src/sources/github.ts
+@@ -452,8 +452,23 @@ async function pollThread(ctx: SourceContext, round: Round, thread: Thread): Pro
+   const checkpoint = KV.github.cursor(number)
+   const since = ctx.state.get(checkpoint) ?? thread.createdAt
+   if (thread.meta.isPr === true) {
+-    const pr = await pull(ctx, round, number)
+-    await intakeComments(ctx, { number, isPr: true, url: pr.html_url, prAuthor: pr.user.login }, since, round)
++    // A merged PR cannot reopen. Keep reading its discussion, but refresh
++    // mutable metadata (e.g. renamed accounts) only once per hour.
++    const repo = ctx.deployment.repository
++    const checked = thread.meta.mergedDetailAt
++    const age = Date.now() - (typeof checked === 'number' ? checked : NaN)
++    let ref: PullRef
++    if (thread.meta.mergedDetailRepo === repo && age >= 0 && age < 3_600_000
++        && typeof thread.meta.url === 'string' && typeof thread.meta.prAuthor === 'string') {
++      ref = { number, isPr: true, url: thread.meta.url, prAuthor: thread.meta.prAuthor }
++    } else {
++      const pr = await pull(ctx, round, number)
++      ref = { number, isPr: true, url: pr.html_url, prAuthor: pr.user.login }
++      if (pr.merged === true) ctx.threads.patch(thread.key, {
++        mergedDetailAt: Date.now(), mergedDetailRepo: repo, url: pr.html_url, prAuthor: pr.user.login,
++      })
++    }
++    await intakeComments(ctx, ref, since, round)
+   } else await intakeComments(ctx, { number, isPr: false }, since, round)
+   ctx.state.set(checkpoint, cursorAt(round.started))
+ }
+diff --git a/tests/sources.spec.ts b/tests/sources.spec.ts
+index f4d0332..3431a69 100644
+--- a/tests/sources.spec.ts
++++ b/tests/sources.spec.ts
+@@ -531,6 +531,40 @@ describe('github source', () => {
+     expect(bare(reads)).toEqual(['issues/7/comments', 'issues/7/comments'])
+     h.store.close()
+   })
++  it('keeps polling merged discussions, refreshing PR details on expiry or a repo change', async () => {
++    const h = host()
++    const key = 'github:7'
++    subscribed(h, { source: 'github', id: '7' }, { isPr: true, title: 'Fix' })
++    const routes: Record<string, unknown> = { 'pulls/7': endedPull(7, new Date().toISOString()) }
++    const reads = github(h, routes)
++    await pollGithubThreads(h)
++    const comments = ['issues/7/comments', 'pulls/7/comments', 'pulls/7/reviews']
++    expect(bare(reads.splice(0))).toEqual(['pulls/7', ...comments])
++    routes['issues/7/comments'] = [{ id: 99, user: { login: 'alice' }, body: 'Follow up',
++      created_at: new Date().toISOString() }]
++    await pollGithubThreads(h)
++    expect(bare(reads.splice(0))).toEqual(comments)
++    expect(h.receive).toHaveBeenCalledWith(expect.objectContaining({ text: 'Follow up',
++      meta: expect.objectContaining({ prAuthor: 'carol', commentId: 99 }) }))
++    for (const change of [{ mergedDetailAt: Date.now() - 3_600_000 }, { mergedDetailRepo: 'another/project' }]) {
++      h.threads.patch(key, change)
++      await pollGithubThreads(h)
++      expect(bare(reads.splice(0))).toEqual(['pulls/7', ...comments])
++    }
++    h.store.close()
++  })
++  it('continues reading the state of closed but unmerged PRs', async () => {
++    const h = host()
++    subscribed(h, { source: 'github', id: '7' }, { isPr: true, title: 'Fix' })
++    const routes = { 'pulls/7': endedPull(7, new Date().toISOString(), false) }
++    const reads = github(h, routes)
++    await pollGithubThreads(h)
++    routes['pulls/7'] = openPull(7)
++    await pollGithubThreads(h)
++    expect(reads.filter(path => path === 'pulls/7')).toHaveLength(2)
++    expect(h.threads.get('github:7')?.meta.mergedDetailAt).toBeUndefined()
++    h.store.close()
++  })
+   it('takes in a review decision without a body and skips a plain review comment without one', async () => {
+     const h = host()
+     h.store.threads.save({ key: 'github:7', ref: { source: 'github', id: '7' }, createdAt: '2026-09-01T00:00:00Z',

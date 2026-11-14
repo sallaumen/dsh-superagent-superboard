@@ -1,0 +1,27 @@
+--- a/src/app/sessions.ts
++++ b/src/app/sessions.ts
+@@ -341,8 +341,12 @@
+     const assignment = current?.assignments.at(-1)?.id
+     if (!current || !liveTicket(current) || !current.execution || !assignment || !this.isolated()) throw new Error('No active isolated assignment')
+     const env = Object.fromEntries(this.host.environment(current).map(x => [x.key, x.value]))
+-    const argv = [packagePath('scripts','container_worker.py'), '--state', this.host.stateDir!, '--repo', env.DSH_SUPERAGENT_GITHUB_REPOSITORY,
+-      '--actor',env.DSH_SUPERAGENT_GITHUB_ACCOUNT,'--assignment',assignment,'--issue',env.DSH_SUPERAGENT_GITHUB_NUMBER,op]
++    const repo = env.DSH_SUPERAGENT_GITHUB_REPOSITORY
++    const actor = env.DSH_SUPERAGENT_GITHUB_ACCOUNT
++    const issue = env.DSH_SUPERAGENT_GITHUB_NUMBER
++    if (!repo || !actor || !issue) throw new Error('Isolated assignment requires a GitHub repository, bot account and issue number')
++    const argv = [packagePath('scripts','container_worker.py'), '--state', this.host.stateDir!, '--repo', repo,
++      '--actor', actor, '--assignment', assignment, '--issue', issue, op]
+     return new Promise((resolve, reject) => {
+       const proc = spawn('python3', argv, {cwd:current.execution!.directory, stdio:['pipe','pipe','pipe'], signal})
+       let out = '', err = ''
+@@ -359,7 +363,8 @@
+     const store = this.host.store
+     const parent = scopeParentOf(agent)
+     const allow = WORK_TOOLS.filter(name => agent.ctx.tools.get(name, parent))
+-    return [agent.ctx.tools.restrict({ allow }), agent.ctx.tools.guard(({ name }) => {
++    return [agent.ctx.tools.restrict({ allow }), agent.ctx.tools.guard(execution => {
++      const name = execution?.name ?? ''
+       const current = store.tickets.get(ticketId)
+       if (current && !['orchestrator_report', 'orchestrator_read', 'job_output', 'job_list'].includes(name)
+           && publicationStopped(current)) return 'Publication is in progress or blocked. Read the existing job result; if it failed, report blocked and end the turn. Do not retry by another route.'
