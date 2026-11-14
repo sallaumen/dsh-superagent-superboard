@@ -9637,6 +9637,9 @@ msgstr "Aguardando verificação"
 msgid "Harness updated"
 msgstr "Harness atualizado"
 
+msgid "Last sync:"
+msgstr "Última sincronização:"
+
 msgid "Harness already current"
 msgstr "Harness já atualizado"
 

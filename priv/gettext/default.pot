@@ -9637,6 +9637,9 @@ msgstr ""
 msgid "Harness updated"
 msgstr ""
 
+msgid "Last sync:"
+msgstr ""
+
 msgid "Harness already current"
 msgstr ""
 
