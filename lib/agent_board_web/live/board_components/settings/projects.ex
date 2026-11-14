@@ -663,11 +663,16 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             <.icon name="hero-chevron-down" class="size-4 ab-project__chevron" />
           </button>
           <p
-            :if={runtime_status(superagent) not in [nil, "current", "updated"]}
+            :if={result = runtime_status(superagent)}
+            id={"project-sync-#{superagent.id}"}
+            data-status={result}
             class="ab-project__notice"
             role="status"
           >
-            {sync_result(runtime_status(superagent))}
+            {gettext("Last sync:")} {sync_result(result)}
+            <time :if={at = status_time(superagent.runtime_sync)} datetime={DateTime.to_iso8601(at)}>
+              · {Time.local_date(at, @tz_offset)} {Time.local_time(at, @tz_offset)}
+            </time>
           </p>
           <p
             :if={waiting_count(access_project(@access_projects, superagent)) > 0}
@@ -833,7 +838,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                 </div>
               </div>
               <p :if={desired_line(superagent)} class="ab-meta">{desired_line(superagent)}</p>
-              <p :if={result = runtime_status(superagent)} class="ab-meta">{sync_result(result)}</p>
               <.live_component
                 module={ProjectLeftovers}
                 id={"project-#{superagent.id}-leftovers-panel"}
@@ -1014,6 +1018,15 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   defp runtime_status(%{runtime_sync: %{"status" => status}}), do: status
   defp runtime_status(_), do: nil
+
+  defp status_time(%{"status_at" => value}) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, at, _offset} -> at
+      _ -> nil
+    end
+  end
+
+  defp status_time(_receipt), do: nil
 
   defp sync_result("waiting"), do: gettext("Waiting to check")
   defp sync_result("updated"), do: gettext("Harness updated")

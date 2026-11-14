@@ -360,7 +360,9 @@ Run the host-specific tests with the same Node runtime as DSH:
 
 Open the board on **localhost → Settings → Projects → Agent maintenance → Sync agent runtimes**.
 The list above the button is the scope you are approving. Progress and the
-last result appear beside each project; you can leave Settings while it runs.
+last result appear beside each project. The date and time are when the status last
+changed, in your local time. You can close and reopen Settings without losing the result;
+older results recorded before timestamps were available show only the status.
 
 First install and synchronization use the same [list of extension fixes](../../priv/agent/extension-files.json).
 The board uses the Harness dependency lock shipped with **this board version**.

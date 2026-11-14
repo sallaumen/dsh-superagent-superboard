@@ -131,7 +131,7 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     assert_receive {:attempt, task}, 3_000
     send(task, {:load, "busy"})
     wait_for_result(agent.id, "pending")
-    request = Superagents.get(agent.id).runtime_sync["request"]
+    pending = Superagents.get(agent.id).runtime_sync
     assert render(view) =~ "Atualização pendente"
 
     stop_supervised!(RuntimeSync)
@@ -140,12 +140,30 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     send(worker, :tick)
     assert_receive {:attempt, next}, 3_000
     for _ <- 1..5, do: RuntimeSync.start(targets, worker)
-    assert Superagents.get(agent.id).runtime_sync["request"] == request
+    assert Superagents.get(agent.id).runtime_sync == pending
     send(next, {:load, "updated"})
     wait_for_result(agent.id, "updated")
-    assert render(view) =~ "Harness atualizado"
+    receipt = Superagents.get(agent.id).runtime_sync
+    assert has_element?(view, "#project-sync-#{agent.id}", "Harness atualizado")
+    assert {:ok, _, 0} = DateTime.from_iso8601(receipt["status_at"])
+    {:ok, reopened, _} = live(conn, @projects)
+
+    assert has_element?(
+             reopened,
+             "#project-sync-#{agent.id} time[datetime='#{receipt["status_at"]}']"
+           )
+
+    assert has_element?(reopened, "#project-sync-#{agent.id}", "Harness atualizado")
     send(worker, :tick)
     refute_receive {:attempt, _}
+
+    assert :ok = RuntimeSync.start(targets, worker)
+    assert_receive {:attempt, check}, 3_000
+    send(check, {:load, "current"})
+    wait_for_result(agent.id, "current")
+    {:ok, reopened, _} = live(conn, @projects)
+    assert has_element?(reopened, "#project-sync-#{agent.id}[data-status=current] time")
+    refute has_element?(reopened, "#project-sync-#{agent.id}[data-status=updated]")
   end
 
   defp wait_for_result(id, expected) do

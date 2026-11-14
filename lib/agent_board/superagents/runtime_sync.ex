@@ -45,6 +45,7 @@ defmodule AgentBoard.Superagents.RuntimeSync do
         if slug(agent) == repo do
           receipt = %{
             "status" => "waiting",
+            "status_at" => timestamp(),
             "owner" => owner,
             "repo" => repo,
             "identity" => identity(agent),
@@ -165,7 +166,7 @@ defmodule AgentBoard.Superagents.RuntimeSync do
   defp save_result(_id, %{"status" => result}, result), do: :ok
 
   defp save_result(id, receipt, result) do
-    next = Map.put(receipt, "status", result)
+    next = Map.merge(receipt, %{"status" => result, "status_at" => timestamp()})
 
     {count, _} =
       Repo.update_all(from(s in Superagent, where: s.id == ^id and s.runtime_sync == ^receipt),
@@ -174,6 +175,8 @@ defmodule AgentBoard.Superagents.RuntimeSync do
 
     if count > 0, do: announce()
   end
+
+  defp timestamp, do: DateTime.utc_now(:second) |> DateTime.to_iso8601()
 
   defp check(agent, receipt, lock, runner) do
     cond do
