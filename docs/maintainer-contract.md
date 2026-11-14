@@ -1832,8 +1832,11 @@ rows (the split) and the tasks with their `request_key` (the enqueue).
   `phx-disable-with`.
 - **A request is created once.** `Board.request_key/3` hashes the repository,
   the kind of submit and the words; `Board.Requests.create_request/3` answers
-  `{:ok, task, :existing}` for a task with that key or a queued task with the
-  same title and body, and opens no second issue. The row is **claimed
+  `{:ok, task, :existing}` for the exact key first. Only an unclaimed queued
+  issue with the same title and body can be recovered by text. Recovery assigns
+  it that key; a different key cannot reuse it. A mirror newer than a live
+  reservation waits for its sender to record the GitHub number before it can
+  be recovered by text, even if the issue was edited. The row is **claimed
   before the GitHub call** (state `draft`, the unique key): two doors that
   submit the same words both reach the database, one opens the issue, the
   other answers `{:error, :in_progress}`. A failed issue call deletes the

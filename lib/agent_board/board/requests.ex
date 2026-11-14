@@ -33,7 +33,7 @@ defmodule AgentBoard.Board.Requests do
   @doc """
   Creates the task for a board request once.
 
-  A task that already carries this `key`, or a queued task with the same
+  A task that already carries this `key`, or an unclaimed queued issue with the same
   title and body (one the sync stored from an issue the board opened before
   it could record the key), is the receipt of an earlier submit: it answers
   `{:ok, task, :existing}` and no second issue is opened. Otherwise the issue
@@ -156,14 +156,18 @@ defmodule AgentBoard.Board.Requests do
   # If the process died after GitHub answered, retaking opens a second issue;
   # refusing would hold this request and everything that depends on it forever.
   defp retake_or_wait(claim, repository, request, client) do
-    age = DateTime.diff(DateTime.utc_now(), claim.inserted_at, :second)
-
-    if age > @abandoned_after_seconds do
+    if DateTime.before?(claim.inserted_at, live_claim_cutoff()) do
       delete_claim(claim)
       claim_and_create(repository, request, client)
     else
       {:error, :in_progress}
     end
+  end
+
+  defp live_claim_cutoff do
+    DateTime.utc_now()
+    |> DateTime.truncate(:second)
+    |> DateTime.add(-@abandoned_after_seconds, :second)
   end
 
   # The claim is the unique key row, inserted before the GitHub call: two
@@ -338,15 +342,49 @@ defmodule AgentBoard.Board.Requests do
   defp delete_claim(_claim), do: :ok
 
   defp existing_request(repository, key, title, body) do
-    Repo.one(
-      from(t in Task,
-        where:
-          t.repository_id == ^repository.id and
-            (t.request_key == ^key or
-               (t.state == "queued" and t.title == ^title and t.body == ^body)),
-        order_by: [asc: t.id],
-        limit: 1
-      )
-    )
+    exact = [repository_id: repository.id, request_key: key]
+
+    case Repo.get_by(Task, exact) do
+      %Task{} = task -> task
+      nil -> adopt_mirrored_issue(repository, key, title, body)
+    end
+  end
+
+  # The lock makes a text match a one-time recovery. Never adopt a mirror
+  # while an earlier reservation could own it: GitHub may have edited the text.
+  defp adopt_mirrored_issue(repository, key, title, body) do
+    Repo.transact(fn ->
+      case Repo.one(unclaimed_mirror(repository, title, body)) do
+        nil -> {:ok, nil}
+        mirror -> mirror |> Task.changeset(%{request_key: key}) |> Repo.update()
+      end
+    end)
+    |> case do
+      {:ok, task} -> task
+      {:error, _changeset} -> Repo.get_by(Task, repository_id: repository.id, request_key: key)
+    end
+  end
+
+  defp unclaimed_mirror(repository, title, body) do
+    matching =
+      from t in Task,
+        where: [repository_id: ^repository.id, kind: "issue", title: ^title],
+        where: coalesce(t.body, "") == ^body
+
+    in_flight =
+      from t in Task,
+        where: [repository_id: ^repository.id, kind: "issue", state: "draft"],
+        where: t.inserted_at >= ^live_claim_cutoff(),
+        where: t.id < parent_as(:mirror).id and not is_nil(t.request_key) and is_nil(t.number),
+        select: 1
+
+    from t in matching,
+      as: :mirror,
+      where: [state: "queued", archived: false, stopped: false],
+      where: is_nil(t.request_key) and not is_nil(t.number),
+      where: not exists(in_flight),
+      order_by: [asc: t.id],
+      limit: 1,
+      lock: "FOR UPDATE"
   end
 end

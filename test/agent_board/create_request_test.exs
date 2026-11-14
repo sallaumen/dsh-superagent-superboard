@@ -640,6 +640,99 @@ defmodule AgentBoard.CreateRequestTest do
     refute_received {:mirrored, _}
   end
 
+  test "the exact receipt wins over an older queued issue with identical text", %{repo: repo} do
+    Req.Test.stub(@stub, fn _ -> flunk("an exact receipt must not open an issue") end)
+
+    for {number, key} <- [{31, nil}, {32, "intended"}] do
+      Repo.insert!(%Task{
+        repository_id: repo.id,
+        kind: "issue",
+        number: number,
+        title: "Same",
+        body: "Body",
+        request_key: key
+      })
+    end
+
+    request = %{title: "Same", body: "Body", key: "intended"}
+
+    assert {:ok, %Task{number: 32}, :existing} =
+             Board.Requests.create_request(repo, request, client())
+
+    assert is_nil(Repo.get_by!(Task, repository_id: repo.id, number: 31).request_key)
+  end
+
+  test "two split keys with identical words cannot both adopt one synced issue", %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 50 end)
+    count_issues(counter)
+
+    Repo.insert!(%Task{
+      repository_id: repo.id,
+      kind: "issue",
+      number: 50,
+      title: "Same",
+      body: "Body"
+    })
+
+    a = %{title: "Same", body: "Body", key: "part-one"}
+    b = %{a | key: "part-two"}
+
+    assert [{_, {:ok, %Task{number: 50}, :existing}}, {_, {:ok, %Task{number: 51}, :created}}] =
+             Board.Requests.create_requests(repo, [a, b], client())
+
+    assert [{_, {:ok, %Task{number: 50}, :existing}}, {_, {:ok, %Task{number: 51}, :existing}}] =
+             Board.Requests.create_requests(repo, [a, b], client())
+
+    assert Agent.get(counter, & &1) == 51
+  end
+
+  test "another request cannot take an edited mirror before the original sender gets its number",
+       %{repo: repo} do
+    {:ok, counter} = Agent.start_link(fn -> 50 end)
+    count_issues(counter)
+
+    for {number, state, key, title} <- [
+          {nil, "draft", "sending", "Before the edit"},
+          {50, "queued", nil, "Edited upstream"}
+        ] do
+      Repo.insert!(%Task{
+        repository_id: repo.id,
+        number: number,
+        state: state,
+        request_key: key,
+        title: title,
+        body: "Body"
+      })
+    end
+
+    request = %{title: "Edited upstream", body: "Body", key: "other"}
+
+    assert {:ok, %Task{number: 51}, :created} =
+             Board.Requests.create_request(repo, request, client())
+
+    assert is_nil(Repo.get_by!(Task, repository_id: repo.id, number: 50).request_key)
+  end
+
+  test "an abandoned reservation does not prevent recovery of later mirrors", %{repo: repo} do
+    Req.Test.stub(@stub, fn _ -> flunk("the synced issue is already the receipt") end)
+    old = DateTime.utc_now() |> DateTime.add(-600, :second) |> DateTime.truncate(:second)
+
+    Repo.insert!(%Task{
+      repository_id: repo.id,
+      state: "draft",
+      request_key: "abandoned",
+      title: "Other",
+      inserted_at: old
+    })
+
+    Repo.insert!(%Task{repository_id: repo.id, number: 50, title: "Found", body: "Body"})
+
+    request = %{title: "Found", body: "Body", key: "recover"}
+
+    assert {:ok, %Task{number: 50, request_key: "recover"}, :existing} =
+             Board.Requests.create_request(repo, request, client())
+  end
+
   test "a GitHub failure is an error and leaves no task", %{repo: repo} do
     Req.Test.stub(@stub, fn conn -> Plug.Conn.send_resp(conn, 500, "boom") end)
 
