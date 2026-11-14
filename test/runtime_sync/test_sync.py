@@ -86,6 +86,43 @@ class Synchronization(unittest.TestCase):
         self.prepare.assert_not_called()
         self.assertEqual(self.agent.restarts, [])
 
+    def test_work_queued_while_checking_a_current_package_remains_pending(self):
+        self.agent.cli = self.target
+
+        def check_dispatch(_):
+            self.agent.load["queued"] = 1
+            return True
+
+        self.dispatch.side_effect = check_dispatch
+        self.assertEqual(runtime.sync(self.agent), "busy")
+        self.assertIsNone(self.agent.selected)
+        self.assertFalse(self.agent.paused)
+        self.assertEqual(self.agent.restarts, [])
+
+    def test_current_result_is_not_recorded_for_a_replaced_process(self):
+        self.agent.cli = self.target
+        with patch.object(self.agent, "pid", side_effect=[1, 2]):
+            self.assertEqual(runtime.sync(self.agent), "changed")
+        self.assertIsNone(self.agent.selected)
+
+    def test_current_package_changed_on_disk_is_not_selected(self):
+        self.agent.cli = self.target
+        self.binding.unchanged.return_value = False
+        self.assertEqual(runtime.sync(self.agent), "changed")
+        self.assertIsNone(self.agent.selected)
+        self.assertEqual(self.agent.restarts, [])
+
+    def test_binding_conflict_before_restart_leaves_the_running_agent_alone(self):
+        self.agent.cli = self.target
+        self.binding.source = Path("/old/package")
+        self.binding.switch.side_effect = runtime.extension.ProfileChanged("profile changed")
+        with patch.object(self.agent, "recover", create=True) as recover:
+            self.assertEqual(runtime.sync(self.agent), "changed")
+            recover.assert_not_called()
+        self.binding.restore.assert_not_called()
+        self.assertFalse(self.agent.paused)
+        self.assertEqual(self.agent.restarts, [])
+
     def test_work_arriving_during_pause_prevents_restart(self):
         def change_pause(_, body):
             self.agent.paused = body["paused"]

@@ -53,6 +53,10 @@ def replace(path, value):
         new.replace(path)
 
 
+class ProfileChanged(ValueError):
+    pass
+
+
 class Binding:
     def __init__(self, directory):
         self.directory = directory.resolve(strict=True)
@@ -70,9 +74,12 @@ class Binding:
             raise ValueError("manifest differs from installed package")
         self.spec = spec
 
+    def unchanged(self):
+        return os.readlink(self.link) == self.original and all(p.read_bytes() == b for p, b in self.before.items())
+
     def switch(self, target):
-        if os.readlink(self.link) != self.original or any(p.read_bytes() != b for p, b in self.before.items()):
-            raise ValueError("profile changed")
+        if not self.unchanged():
+            raise ProfileChanged("profile changed")
         # Change only this importer's package entry, preserving other dependencies.
         old = self.before[self.lockfile].decode()
         block = ("      dsh-superagent:\n        specifier: " + self.spec +
