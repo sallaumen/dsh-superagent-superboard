@@ -934,14 +934,10 @@ defmodule AgentBoard.Board do
   @spec create_objective(Repository.t(), map(), [integer()]) ::
           {:ok, Objective.t()} | {:error, term()}
   def create_objective(repository, %{title: _title, done_criterion: _criterion} = attrs, task_ids) do
-    task_ids = Enum.uniq(task_ids)
-
-    if length(task_ids) < 2 do
-      {:error, :not_a_group}
-    else
-      result = insert_group(repository, attrs, task_ids)
-      if match?({:ok, _}, result), do: broadcast(repository.id)
-      result
+    with {:ok, group_ids} <- Objective.group_task_ids(task_ids),
+         {:ok, objective} <- insert_group(repository, attrs, group_ids) do
+      broadcast(repository.id)
+      {:ok, objective}
     end
   end
 

@@ -20,6 +20,15 @@ defmodule AgentBoard.Board.Objective do
     timestamps(type: :utc_datetime)
   end
 
+  @doc "Returns distinct task IDs in first-seen order when at least two tasks form a group."
+  @spec group_task_ids([integer()]) :: {:ok, [integer()]} | {:error, :not_a_group}
+  def group_task_ids(task_ids) do
+    case Enum.uniq(task_ids) do
+      [_, _ | _] = ids -> {:ok, ids}
+      _ -> {:error, :not_a_group}
+    end
+  end
+
   @doc false
   def changeset(objective, attrs) do
     objective
