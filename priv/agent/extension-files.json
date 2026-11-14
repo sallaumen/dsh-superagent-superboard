@@ -8,7 +8,8 @@
     "review-midpoint.patch",
     "merged-detail.patch",
     "delayed-merged-notification.patch",
-    "isolated-context.patch"
+    "isolated-context.patch",
+    "notification-replay-window.patch"
   ],
   "helpers": ["container_worker.py", "superboard-branch.py"]
 }
