@@ -367,7 +367,10 @@ that already worked).
   and author in routine discussion polls for up to one hour, scoped to the
   repository. It still reads conversation comments, inline comments and reviews
   every round. Open and closed-but-unmerged PRs keep their lifecycle checks;
-  notifications and open tickets still consult GitHub directly.
+  open tickets still consult GitHub directly. A delayed notification uses the
+  same confirmed metadata and replays all three discussion feeds. The same
+  comment ID is delivered once across both paths. Unknown or stale metadata,
+  or a human PR whose description could be new, still requires a PR read.
 - **The sync's GitHub budget.** The account's 5000 REST calls an hour are shared
   by every repository and every tool using the token. A pull stored as merged or
   closed at the same commit is not read again (reviews, checks) unless its checks
