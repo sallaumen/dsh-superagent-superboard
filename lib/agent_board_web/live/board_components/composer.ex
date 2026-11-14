@@ -111,238 +111,242 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
         phx-change="composer_change"
         phx-submit="composer_submit"
       >
-        <p :if={@error} id="composer-error" class="ab-compose__error" role="alert">
-          {@error}
-          <button
-            :if={@retry}
-            type="button"
-            class="ab-btn ab-btn--sm ab-btn--quiet"
-            phx-click="composer_retry"
-            disabled={@busy}
-          >
-            {gettext("Try again")}
-          </button>
-          <span :if={@retry && @retry_confirm} class="ab-compose__retry-confirm">{@retry_confirm}</span>
-        </p>
-
-        <textarea
-          id="composer-text"
-          name="text"
-          aria-label={gettext("Describe the request")}
-          aria-describedby={@error && "composer-error"}
-          placeholder={
-            gettext("Describe what the agent should do. You can paste an issue, an error, or speak.")
-          }
-          phx-hook="Composer"
-          autofocus
-        >{@text}</textarea>
-
-        <div :if={!@split and String.trim(@text) != ""} class="ab-compose__title">
-          <label for="composer-issue-title" class="ab-label">{gettext("Issue title")}</label>
-          <input
-            id="composer-issue-title"
-            name="title"
-            type="text"
-            maxlength="120"
-            value={@title || @derived_title}
-            aria-describedby="composer-title-hint"
-          />
-          <span id="composer-title-hint" class="ab-meta">
-            {if @title,
-              do: gettext("Edited by you."),
-              else: gettext("From the request's first sentence; edit if you like.")}
-          </span>
-        </div>
-
-        <p
-          :if={@busy}
-          id="composer-progress"
-          class="ab-compose__progress"
-          role="status"
-          aria-live="polite"
-        >
-          <span class="ab-dot ab-dot--agent" aria-hidden="true"></span>
-          {job_label(@job)}
-          <button
-            :if={@job.kind == :split}
-            type="button"
-            class="ab-btn ab-btn--sm ab-btn--quiet"
-            phx-click="composer_cancel"
-          >
-            {gettext("Cancel")}
-          </button>
-        </p>
-
-        <div :if={@split && !is_nil(@intake) && !@busy} class="ab-sec__head ab-compose__split-head">
-          <span class="ab-label">{split_head(@status, @tasks)}</span>
-        </div>
-
-        <div :if={@split && @status == :needs_clarification && !@busy} class="ab-split-note">
-          <p :if={@questions != []} class="ab-meta">
-            {gettext("The AI still has questions before splitting:")}
-          </p>
-          <ul :if={@questions != []}>
-            <li :for={question <- @questions}>{question}</li>
-          </ul>
-          <p :if={@questions == [] and @risks != []} class="ab-meta">
-            {gettext("The AI found the request ambiguous and highlighted these risks:")}
-          </p>
-          <ul :if={@questions == [] and @risks != []}>
-            <li :for={risk <- @risks}>{risk}</li>
-          </ul>
-          <label for="composer-answers" class="ab-label">{gettext("Respond here")}</label>
-          <textarea
-            id="composer-answers"
-            name="answers"
-            rows="3"
-            placeholder={
-              gettext("Your answers are added to the request before the AI splits it again.")
-            }
-          >{@answers}</textarea>
-          <p class="ab-meta">{gettext("Or edit the request above and split again.")}</p>
-        </div>
-
-        <div :if={@split && @status == :no_tasks && !@busy} class="ab-split-note">
-          <p class="ab-meta">
-            {gettext(
-              "The AI did not propose any usable task for this request. Try again or submit as a single request."
-            )}
-          </p>
-          <button type="button" class="ab-btn ab-btn--sm" phx-click="composer_single">
-            {gettext("Send as a single request")}
-          </button>
-        </div>
-
-        <.executor_picker
-          :if={@executor && String.trim(@text) != ""}
-          chosen={@executor}
-          suggestion={@suggestion}
-          disabled={@busy}
-        />
-
-        <.understood :if={@split && @status == :ready && !@busy} spec={@spec} />
-
-        <div :if={@split && @tasks != [] && !@busy} class="ab-split">
-          <input type="hidden" name="tasks[]" value="" />
-          <div :for={{task, index} <- Enum.with_index(@tasks)} class="ab-split__task">
-            <label for={"composer-task-#{index}"} class="ab-split__item">
-              <input
-                type="checkbox"
-                id={"composer-task-#{index}"}
-                name="tasks[]"
-                value={index}
-                checked={index in @selected}
-                class="ab-sr"
-              />
-              <span
-                class={"ab-check" <> if(index in @selected, do: " is-on", else: "")}
-                aria-hidden="true"
-              ></span>
-              <span class="ab-row__pos">{index + 1}</span>
-              <span>{task.title}</span>
-              <.work_tag work_type={task.kind} size={task.size} />
-            </label>
-            <p id={"composer-task-deps-#{index}"} class="ab-meta ab-split__deps">
-              {dependency_label(Intake.dependencies_within(@tasks, index, @selected))}
-            </p>
-            <details
-              id={"composer-task-detail-#{index}"}
-              class="ab-split__detail"
-              phx-mounted={JS.ignore_attributes(["open"])}
-            >
-              <summary>{gettext("Edit title, description and acceptance")}</summary>
-              <label for={"composer-task-title-#{index}"} class="ab-label">{gettext("Title")}</label>
-              <input
-                id={"composer-task-title-#{index}"}
-                name={"task_edits[#{index}][title]"}
-                type="text"
-                maxlength="255"
-                value={task.title}
-              />
-              <label for={"composer-task-body-#{index}"} class="ab-label">
-                {gettext("Description")}
-              </label>
-              <textarea
-                id={"composer-task-body-#{index}"}
-                name={"task_edits[#{index}][body]"}
-                rows="6"
-              >{task.body}</textarea>
-              <label for={"composer-task-acceptance-#{index}"} class="ab-label">
-                {gettext("Acceptance criteria, one per line")}
-              </label>
-              <textarea
-                id={"composer-task-acceptance-#{index}"}
-                name={"task_edits[#{index}][acceptance]"}
-                rows="4"
-              >{Enum.join(task.acceptance, "\n")}</textarea>
-            </details>
-          </div>
-        </div>
-
-        <p
-          :if={@incomplete && !@busy}
-          id="composer-incomplete"
-          class="ab-compose__confirm"
-          role="status"
-        >
-          {gettext("Every chosen task needs a title, a description and a criterion.")}
-        </p>
-
-        <section
-          :if={@attachment_entries != [] or @attachments_ready > 0}
-          id="composer-attachments"
-          class="ab-attach"
-          aria-label={gettext("Attached files")}
-        >
-          <p :if={@attachments_ready > 0} class="ab-meta">
-            {gettext("%{count} files ready to send", count: @attachments_ready)}
-          </p>
-          <div :for={entry <- @attachment_entries} class="ab-attach__item">
-            <.live_img_preview :if={image?(entry)} entry={entry} class="ab-attach__thumb" alt="" />
-            <span class="ab-attach__name">{entry.client_name}</span>
-            <span class="ab-meta">{entry_status(entry, @uploads)}</span>
-            <label class="ab-attach__opt">
-              <span class="ab-sr">{gettext("Role of %{name}", name: entry.client_name)}</span>
-              <select name={"attachment_meta[#{entry.ref}][role]"}>
-                <option
-                  :for={{value, label} <- roles()}
-                  value={value}
-                  selected={meta(@private, entry.ref).role == value}
-                >
-                  {label}
-                </option>
-              </select>
-            </label>
-            <label class="ab-attach__opt">
-              <input type="hidden" name={"attachment_meta[#{entry.ref}][private]"} value="false" />
-              <input
-                type="checkbox"
-                name={"attachment_meta[#{entry.ref}][private]"}
-                value="true"
-                checked={meta(@private, entry.ref).private}
-              />
-              {gettext("Only on this machine")}
-            </label>
+        <div class="ab-compose__fields">
+          <p :if={@error} id="composer-error" class="ab-compose__error" role="alert">
+            {@error}
             <button
+              :if={@retry}
               type="button"
-              class="ab-btn ab-btn--icon ab-btn--sm ab-btn--quiet"
-              phx-click="composer_remove_attachment"
-              phx-value-ref={entry.ref}
-              aria-label={gettext("Remove %{name}", name: entry.client_name)}
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="composer_retry"
+              disabled={@busy}
             >
-              <.ico name="close" />
+              {gettext("Try again")}
+            </button>
+            <span :if={@retry && @retry_confirm} class="ab-compose__retry-confirm">{@retry_confirm}</span>
+          </p>
+
+          <textarea
+            id="composer-text"
+            name="text"
+            aria-label={gettext("Describe the request")}
+            aria-describedby={@error && "composer-error"}
+            placeholder={
+              gettext(
+                "Describe what the agent should do. You can paste an issue, an error, or speak."
+              )
+            }
+            phx-hook="Composer"
+            autofocus
+          >{@text}</textarea>
+
+          <div :if={!@split and String.trim(@text) != ""} class="ab-compose__title">
+            <label for="composer-issue-title" class="ab-label">{gettext("Issue title")}</label>
+            <input
+              id="composer-issue-title"
+              name="title"
+              type="text"
+              maxlength="120"
+              value={@title || @derived_title}
+              aria-describedby="composer-title-hint"
+            />
+            <span id="composer-title-hint" class="ab-meta">
+              {if @title,
+                do: gettext("Edited by you."),
+                else: gettext("From the request's first sentence; edit if you like.")}
+            </span>
+          </div>
+
+          <p
+            :if={@busy}
+            id="composer-progress"
+            class="ab-compose__progress"
+            role="status"
+            aria-live="polite"
+          >
+            <span class="ab-dot ab-dot--agent" aria-hidden="true"></span>
+            {job_label(@job)}
+            <button
+              :if={@job.kind == :split}
+              type="button"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+              phx-click="composer_cancel"
+            >
+              {gettext("Cancel")}
+            </button>
+          </p>
+
+          <div :if={@split && !is_nil(@intake) && !@busy} class="ab-sec__head ab-compose__split-head">
+            <span class="ab-label">{split_head(@status, @tasks)}</span>
+          </div>
+
+          <div :if={@split && @status == :needs_clarification && !@busy} class="ab-split-note">
+            <p :if={@questions != []} class="ab-meta">
+              {gettext("The AI still has questions before splitting:")}
+            </p>
+            <ul :if={@questions != []}>
+              <li :for={question <- @questions}>{question}</li>
+            </ul>
+            <p :if={@questions == [] and @risks != []} class="ab-meta">
+              {gettext("The AI found the request ambiguous and highlighted these risks:")}
+            </p>
+            <ul :if={@questions == [] and @risks != []}>
+              <li :for={risk <- @risks}>{risk}</li>
+            </ul>
+            <label for="composer-answers" class="ab-label">{gettext("Respond here")}</label>
+            <textarea
+              id="composer-answers"
+              name="answers"
+              rows="3"
+              placeholder={
+                gettext("Your answers are added to the request before the AI splits it again.")
+              }
+            >{@answers}</textarea>
+            <p class="ab-meta">{gettext("Or edit the request above and split again.")}</p>
+          </div>
+
+          <div :if={@split && @status == :no_tasks && !@busy} class="ab-split-note">
+            <p class="ab-meta">
+              {gettext(
+                "The AI did not propose any usable task for this request. Try again or submit as a single request."
+              )}
+            </p>
+            <button type="button" class="ab-btn ab-btn--sm" phx-click="composer_single">
+              {gettext("Send as a single request")}
             </button>
           </div>
-          <p :for={error <- upload_level_errors(@uploads)} class="ab-compose__error" role="alert">
-            {error}
+
+          <.executor_picker
+            :if={@executor && String.trim(@text) != ""}
+            chosen={@executor}
+            suggestion={@suggestion}
+            disabled={@busy}
+          />
+
+          <.understood :if={@split && @status == :ready && !@busy} spec={@spec} />
+
+          <div :if={@split && @tasks != [] && !@busy} class="ab-split">
+            <input type="hidden" name="tasks[]" value="" />
+            <div :for={{task, index} <- Enum.with_index(@tasks)} class="ab-split__task">
+              <label for={"composer-task-#{index}"} class="ab-split__item">
+                <input
+                  type="checkbox"
+                  id={"composer-task-#{index}"}
+                  name="tasks[]"
+                  value={index}
+                  checked={index in @selected}
+                  class="ab-sr"
+                />
+                <span
+                  class={"ab-check" <> if(index in @selected, do: " is-on", else: "")}
+                  aria-hidden="true"
+                ></span>
+                <span class="ab-row__pos">{index + 1}</span>
+                <span>{task.title}</span>
+                <.work_tag work_type={task.kind} size={task.size} />
+              </label>
+              <p id={"composer-task-deps-#{index}"} class="ab-meta ab-split__deps">
+                {dependency_label(Intake.dependencies_within(@tasks, index, @selected))}
+              </p>
+              <details
+                id={"composer-task-detail-#{index}"}
+                class="ab-split__detail"
+                phx-mounted={JS.ignore_attributes(["open"])}
+              >
+                <summary>{gettext("Edit title, description and acceptance")}</summary>
+                <label for={"composer-task-title-#{index}"} class="ab-label">{gettext("Title")}</label>
+                <input
+                  id={"composer-task-title-#{index}"}
+                  name={"task_edits[#{index}][title]"}
+                  type="text"
+                  maxlength="255"
+                  value={task.title}
+                />
+                <label for={"composer-task-body-#{index}"} class="ab-label">
+                  {gettext("Description")}
+                </label>
+                <textarea
+                  id={"composer-task-body-#{index}"}
+                  name={"task_edits[#{index}][body]"}
+                  rows="6"
+                >{task.body}</textarea>
+                <label for={"composer-task-acceptance-#{index}"} class="ab-label">
+                  {gettext("Acceptance criteria, one per line")}
+                </label>
+                <textarea
+                  id={"composer-task-acceptance-#{index}"}
+                  name={"task_edits[#{index}][acceptance]"}
+                  rows="4"
+                >{Enum.join(task.acceptance, "\n")}</textarea>
+              </details>
+            </div>
+          </div>
+
+          <p
+            :if={@incomplete && !@busy}
+            id="composer-incomplete"
+            class="ab-compose__confirm"
+            role="status"
+          >
+            {gettext("Every chosen task needs a title, a description and a criterion.")}
           </p>
-        </section>
 
-        <.private_context private={@private} />
+          <section
+            :if={@attachment_entries != [] or @attachments_ready > 0}
+            id="composer-attachments"
+            class="ab-attach"
+            aria-label={gettext("Attached files")}
+          >
+            <p :if={@attachments_ready > 0} class="ab-meta">
+              {gettext("%{count} files ready to send", count: @attachments_ready)}
+            </p>
+            <div :for={entry <- @attachment_entries} class="ab-attach__item">
+              <.live_img_preview :if={image?(entry)} entry={entry} class="ab-attach__thumb" alt="" />
+              <span class="ab-attach__name">{entry.client_name}</span>
+              <span class="ab-meta">{entry_status(entry, @uploads)}</span>
+              <label class="ab-attach__opt">
+                <span class="ab-sr">{gettext("Role of %{name}", name: entry.client_name)}</span>
+                <select name={"attachment_meta[#{entry.ref}][role]"}>
+                  <option
+                    :for={{value, label} <- roles()}
+                    value={value}
+                    selected={meta(@private, entry.ref).role == value}
+                  >
+                    {label}
+                  </option>
+                </select>
+              </label>
+              <label class="ab-attach__opt">
+                <input type="hidden" name={"attachment_meta[#{entry.ref}][private]"} value="false" />
+                <input
+                  type="checkbox"
+                  name={"attachment_meta[#{entry.ref}][private]"}
+                  value="true"
+                  checked={meta(@private, entry.ref).private}
+                />
+                {gettext("Only on this machine")}
+              </label>
+              <button
+                type="button"
+                class="ab-btn ab-btn--icon ab-btn--sm ab-btn--quiet"
+                phx-click="composer_remove_attachment"
+                phx-value-ref={entry.ref}
+                aria-label={gettext("Remove %{name}", name: entry.client_name)}
+              >
+                <.ico name="close" />
+              </button>
+            </div>
+            <p :for={error <- upload_level_errors(@uploads)} class="ab-compose__error" role="alert">
+              {error}
+            </p>
+          </section>
 
-        <p :if={@confirm && !@busy} id="composer-confirm" class="ab-compose__confirm">
-          {@confirm}
-        </p>
+          <.private_context private={@private} />
+
+          <p :if={@confirm && !@busy} id="composer-confirm" class="ab-compose__confirm">
+            {@confirm}
+          </p>
+        </div>
 
         <div class="ab-compose__bar">
           <label :if={@uploads} class="ab-btn ab-btn--sm ab-attach__pick">

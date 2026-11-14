@@ -803,8 +803,19 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 /* A scrim darkens the page in both themes; --ink is light in dark. */
 .ab-composer-dialog.board-dialog::backdrop { background: color-mix(in oklab, var(--scrim-ink) 18%, transparent); }
 .ab-composer-dialog .ab-compose { width: 100%; max-height: calc(100dvh - var(--space-6)); display: flex; flex-direction: column; }
-.ab-composer-dialog .ab-compose > form, .ab-composer-dialog .ab-receipt { min-height: 0; overflow-y: auto; }
-.ab-composer-dialog .ab-compose__bar { position: sticky; bottom: 0; z-index: 1; }
+.ab-composer-dialog .ab-compose > form { display: flex; flex-direction: column; min-height: 0; }
+.ab-composer-dialog .ab-compose__fields, .ab-composer-dialog .ab-receipt { min-height: 0; overflow-y: auto; }
+.ab-composer-dialog .ab-compose__bar { flex: none; }
+@media (max-width: 480px) {
+  .ab-composer-dialog .ab-compose__bar .ab-top__spacer, .ab-composer-dialog .ab-compose__bar .ab-kbd { display: none; }
+  .ab-composer-dialog .ab-compose__bar .ab-btn--primary { margin-inline-start: auto; }
+}
+/* When the keyboard or landscape leaves little height, let even a wrapped
+   action bar scroll with the fields instead of taking over the editor. */
+@media (max-height: 480px) {
+  .ab-composer-dialog .ab-compose > form { display: block; overflow-y: auto; }
+  .ab-composer-dialog .ab-compose__fields { overflow: visible; }
+}
 .ab-compose__error {
   margin: 0;
   padding: var(--space-3) var(--space-5);
