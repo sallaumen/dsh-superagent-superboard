@@ -99,3 +99,19 @@ Newly provisioned agents and new Codex/Claude runs receive the guard automatical
 python3 priv/merge_gate/guard.py install "$HOME/.dsh/profiles/PROFILE/merge-bin" OWNER/REPO /absolute/path/to/gh-agent
 ```
 Set that printed absolute path as the profile's GitHub source CLI, verify its bot identity, then apply the updated Delivery instructions in the board. Keep the sign-in wrapper. Repeat per profile; rollback restores its previous CLI and prompt revision. A repository adopting this policy for the first time needs a human to merge the policy itself.
+
+### When a managed PR cannot be published
+
+The worker command checks the authenticated GitHub login against the account
+configured for the profile. Before reusing a PR it checks its author and head
+on GitHub, including when the assignment already has a saved URL. A mismatch,
+failed check, or unconfirmed creation blocks this assignment. Report the
+failure on the ticket. Do not switch accounts, replace the PR, or retry from a
+different CLI. After a maintainer resolves the problem, a new assignment can
+check the branch history again.
+
+This protection belongs to the managed command. A Harness running with full
+access as the operator is not a credential boundary. For exclusive publication,
+keep write credentials in a publisher outside the executor's security context;
+neither the worker nor its test processes should have the operator's or the
+publisher's credentials.

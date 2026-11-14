@@ -1,0 +1,83 @@
+diff --git a/src/app/sessions.ts b/src/app/sessions.ts
+index 1a22388..a84ae15 100644
+--- a/src/app/sessions.ts
++++ b/src/app/sessions.ts
+@@ -4,7 +4,8 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
+ import type { MessageId } from '@deepseek-ai/dsh-llm'
+ import { scopeParentOf } from '@deepseek-ai/dsh-scope'
+ import type { SessionId } from '@deepseek-ai/dsh-session'
+-import { dirname } from 'node:path'
++import { dirname, join, resolve } from 'node:path'
++import { readFileSync, statSync } from 'node:fs'
+ import { z } from 'zod'
+ import { key, liveTicket, type Ticket } from '../core/index.ts'
+ import { mandateInstructions, ticketOfSession } from '../executor/dsh.ts'
+@@ -20,6 +21,20 @@ import type { Store } from './store.ts'
+ import { KV } from '../kv.ts'
+ import type { RegisterTool, Tool } from './tools/tool.ts'
+ 
++/** Once a managed delivery starts, do not let another tool race its checks or change the worker identity. */
++function publicationStopped(ticket: Ticket): boolean {
++  const cwd = ticket.execution?.directory
++  if (!cwd) return false
++  const dot = join(cwd, '.git')
++  try {
++    const dir = statSync(dot).isDirectory() ? dot : resolve(cwd, readFileSync(dot, 'utf8').trim().replace(/^gitdir: /, ''))
++    const receipt = JSON.parse(readFileSync(join(dir, 'superboard-assignment.json'), 'utf8'))
++    return receipt.assignment === ticket.assignments.at(-1)?.id && receipt.blocked === true
++  } catch (error) {
++    return (error as NodeJS.ErrnoException).code !== 'ENOENT'
++  }
++}
++
+ /** Host dependencies used by `Sessions`. */
+ export interface SessionsHost {
+   /** DSH Cordis context: sessions, agents, persistence, and their events. */
+@@ -290,8 +305,10 @@ export class Sessions {
+     const store = this.host.store
+     const parent = scopeParentOf(agent)
+     const allow = WORK_TOOLS.filter(name => agent.ctx.tools.get(name, parent))
+-    return [agent.ctx.tools.restrict({ allow }), agent.ctx.tools.guard(() => {
++    return [agent.ctx.tools.restrict({ allow }), agent.ctx.tools.guard(({ name }) => {
+       const current = store.tickets.get(ticketId)
++      if (current && !['orchestrator_report', 'orchestrator_read', 'job_output', 'job_list'].includes(name)
++          && publicationStopped(current)) return 'Publication is in progress or blocked. Read the existing job result; if it failed, report blocked and end the turn. Do not retry by another route.'
+       return !current || !liveTicket(current) ? 'Ticket ended; new work needs a new authorized ticket' : undefined
+     })]
+   }
+diff --git a/src/executor/dsh.ts b/src/executor/dsh.ts
+index 3794f2d..e004d56 100644
+--- a/src/executor/dsh.ts
++++ b/src/executor/dsh.ts
+@@ -478,7 +478,7 @@ export class DshExecutor implements Executor {
+         ...(read ? { assignment_chars: chars, assignment_read: read } : {}), ...(card ? { trigger: card } : {}),
+         ...(batch.length ? { batch } : {}), ...retried })
+     const delivery = branch ? JSON.stringify({ ...JSON.parse(text), branch,
+-      delivery: 'This assignment is already on its delivery branch. Stay on it, push this exact head, then use gh pr create once; reuse the returned PR for later updates. Do not rename the branch or replace the PR.' }) : text
++      delivery: 'This assignment is already on its delivery branch. Stay on it, push this exact head, then use gh pr create once; reuse the returned PR for later updates. If managed publication fails, stop immediately, report blocked with the reason and end the turn. Never change PATH, credentials, account or CLI to publish; never close or replace a PR to recover.' }) : text
+     const requestId = later ? `assignment:${ticket.id}:${assignment.id}` : first
+     await this.host.sessions.prompt(sessionId, requestId, delivery, 'queue',
+       () => { if (!current()) throw new Error('Launch authorization changed before worker delivery') },
+diff --git a/src/infra/environment.ts b/src/infra/environment.ts
+index 94bc9cc..28943e3 100644
+--- a/src/infra/environment.ts
++++ b/src/infra/environment.ts
+@@ -45,7 +45,8 @@ export const GIT_LOCATION: readonly string[] = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT
+  */
+ export function agentVariables(stateDir: string): Record<string, string | undefined> {
+   return {
+-    GH_TOKEN: undefined, GITHUB_TOKEN: undefined,
++    GH_TOKEN: undefined, GITHUB_TOKEN: undefined, GH_ENTERPRISE_TOKEN: undefined, GITHUB_ENTERPRISE_TOKEN: undefined,
++    GH_CONFIG_DIR: join(stateDir, "unauthenticated-gh"), GH_PROMPT_DISABLED: "1", GH_HOST: "github.com",
+     // A worker's git finds the repository from its directory, never from the host's environment.
+     ...Object.fromEntries(GIT_LOCATION.map(name => [name, undefined])),
+     GIT_CONFIG_GLOBAL: workerGitConfig(stateDir), GIT_CONFIG_NOSYSTEM: '1',
+@@ -100,7 +101,7 @@ export async function writeEnvironment(deployment: Pick<Deployment, 'stateDir' |
+   const fail = (message: string): string => `echo ${shellQuote(message)} >&2\nexit 1`
+   const prGuard = packagePath('scripts', 'superboard-branch.py')
+   await shim('gh', `${withoutShims}
+-if [ "$1" = pr ] && [ "$2" = create ]; then exec python3 ${shellQuote(prGuard)} create ${shellQuote(github.cli)} "$@"; fi
++if [ "$1" = pr ] && [ "$2" = create ]; then exec python3 ${shellQuote(prGuard)} create ${shellQuote(github.cli)} ${shellQuote(github.login)} "$@"; fi
+ exec ${shellQuote(github.cli)} "$@"`)
+   await shim('lark-cli', feishu ? run(feishu.cli) : fail('lark-cli is unavailable: this installation has no Feishu bot.'))
+   for (const name of new Set(blockedCommands.filter(name => !WORKER_COMMANDS.includes(name)))) {

@@ -8,11 +8,12 @@ import tempfile
 
 PATCH = Path(__file__).with_name("duplicate-issue-notice.patch")
 BRANCH_PATCH = PATCH.with_name("assignment-branch.patch")
+PUBLICATION_PATCH = PATCH.with_name("managed-publication.patch")
 BRANCH_HELPER = PATCH.with_name("superboard-branch.py")
 
 
 def payload():
-    return PATCH.read_bytes() + BRANCH_PATCH.read_bytes() + BRANCH_HELPER.read_bytes()
+    return PATCH.read_bytes() + BRANCH_PATCH.read_bytes() + PUBLICATION_PATCH.read_bytes() + BRANCH_HELPER.read_bytes()
 
 
 UPSTREAM = "8c32a9dc5d72c033816c6a8110b37f40cf94fba4"
@@ -21,7 +22,7 @@ PACKAGE = "dsh-superagent"
 
 def compiled(path):
     bundle = path / "lib/index.js"
-    return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py"))
+    return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py", b"Publication is in progress or blocked"))
             and (path / "scripts/superboard-branch.py").read_bytes() == BRANCH_HELPER.read_bytes())
 
 
@@ -120,7 +121,14 @@ def prepare(binding, root, manager, run, lock):
                     local = Path(tmp) / "local.patch"
                     local.write_bytes(diff)
                     run("git", "apply", str(local), cwd=stage)
-                for component in (PATCH, BRANCH_PATCH):
+                # A newer patch modifies lines introduced by BRANCH_PATCH. If
+                # already present, reversing the older patch alone cannot match.
+                try:
+                    run("git", "apply", "--reverse", "--check", str(PUBLICATION_PATCH), cwd=stage)
+                    components = (PATCH,)
+                except subprocess.CalledProcessError:
+                    components = (PATCH, BRANCH_PATCH, PUBLICATION_PATCH)
+                for component in components:
                     try:
                         run("git", "apply", "--reverse", "--check", str(component), cwd=stage)
                     except subprocess.CalledProcessError:

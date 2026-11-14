@@ -23,10 +23,17 @@ class AssignmentBranch(unittest.TestCase):
         self.run_cmd("git", "switch", "-c", "agent/" + self.name)
         self.cli = root / "gh"
         self.cli.write_text("""#!/bin/sh
-if [ "$2" = list ]; then echo '[]'; exit; fi
-echo "Local checks passed"
-echo create >> publishes
-echo https://github.com/org/demo/pull/7
+case "$1 $2" in
+"api --hostname") echo "${TEST_ACTOR:-board-bot}";;
+"pr list") if [ -f rows ]; then cat rows; else echo '[]'; fi;;
+"pr create")
+  [ -z "$TEST_FAIL_CHECK" ] || exit 42
+  echo create >> publishes
+  echo '[{"url":"https://github.com/org/demo/pull/7","author":{"login":"board-bot"},"isCrossRepository":false}]' > rows
+  echo "Local checks passed"
+  echo https://github.com/org/demo/pull/7;;
+*) exit 99;;
+esac
 """)
         self.cli.chmod(0o755)
 
@@ -48,10 +55,35 @@ echo https://github.com/org/demo/pull/7
         expected = "agent/run-" + "b"*32 + "/" + self.name
         self.assertEqual(self.helper("prepare", "org/demo", self.name, "b"*32, "new"), expected)
         self.assertEqual(self.run_cmd("git", "branch", "--show-current"), expected)
-        self.helper("create", str(self.cli), "pr", "create", "--head", "wrong", ok=False)
+        self.helper("create", str(self.cli), "board-bot", "pr", "create", "--head", "wrong", ok=False)
         self.assertFalse((self.w / "publishes").exists())
         self.assertEqual(self.helper("prepare", "org/demo", self.name, "b"*32, "new"), expected)
-        url = self.helper("create", str(self.cli), "pr", "create")
+        url = self.helper("create", str(self.cli), "board-bot", "pr", "create")
         self.assertEqual(url, "https://github.com/org/demo/pull/7")
-        self.assertEqual(self.helper("create", str(self.cli), "pr", "create"), url)
+        self.assertEqual(self.helper("create", str(self.cli), "board-bot", "pr", "create"), url)
         self.assertEqual((self.w / "publishes").read_text(), "create\n")
+
+    def publish(self, ok=True):
+        return self.helper("create", str(self.cli), "board-bot", "pr", "create", ok=ok)
+
+    def test_no_assignment_never_delegates(self):
+        self.publish(ok=False)
+        self.assertFalse((self.w / "publishes").exists())
+
+    def test_failed_checks_latch_even_if_later_checks_would_pass(self):
+        self.helper("prepare", "org/demo", self.name, "a"*32, "keep")
+        self.env["TEST_FAIL_CHECK"] = "yes"
+        self.publish(ok=False)
+        del self.env["TEST_FAIL_CHECK"]
+        self.publish(ok=False)
+        self.assertFalse((self.w / "publishes").exists())
+
+    def test_wrong_identity_or_existing_foreign_pr_does_not_publish(self):
+        self.helper("prepare", "org/demo", self.name, "a"*32, "keep")
+        self.env["TEST_ACTOR"] = "owner"
+        self.publish(ok=False)
+        del self.env["TEST_ACTOR"]
+        self.helper("prepare", "org/demo", self.name, "b"*32, "keep")
+        (self.w / "rows").write_text('[{"url":"https://github.com/org/demo/pull/7","author":{"login":"owner"},"isCrossRepository":false}]')
+        self.publish(ok=False)
+        self.assertFalse((self.w / "publishes").exists())
