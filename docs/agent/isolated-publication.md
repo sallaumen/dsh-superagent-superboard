@@ -63,4 +63,6 @@ The containers are removed after publication or a terminal report. Keep the
 pinned image for future tickets. After a machine crash, inspect containers by
 their exact `superboard.assignment` label and remove only those of a confirmed
 ended assignment. The profile's `container-publications` directory holds the
-receipts; do not delete it to unblock an assignment.
+receipts; do not delete it to unblock an assignment. The receipt identifies
+the publication; to know whether it was integrated and which issue it
+closed, check the GitHub PR.
