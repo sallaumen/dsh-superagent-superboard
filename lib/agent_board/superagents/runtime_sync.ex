@@ -16,6 +16,8 @@ defmodule AgentBoard.Superagents.RuntimeSync do
   @cli_lock Path.expand("../../../priv/agent/harness/package-lock.json", __DIR__)
   @notice_patch Path.expand("../../../priv/agent/duplicate-issue-notice.patch", __DIR__)
   @branch_patch Path.expand("../../../priv/agent/assignment-branch.patch", __DIR__)
+  @publication_patch Path.expand("../../../priv/agent/managed-publication.patch", __DIR__)
+  @external_resource @publication_patch
   @helper Path.expand("../../../priv/agent/superboard-branch.py", __DIR__)
   @external_resource @branch_patch
   @external_resource @helper
@@ -26,6 +28,7 @@ defmodule AgentBoard.Superagents.RuntimeSync do
                    File.read!(@cli_lock),
                    File.read!(@notice_patch),
                    File.read!(@branch_patch),
+                   File.read!(@publication_patch),
                    File.read!(@helper)
                  ]),
                  case: :lower

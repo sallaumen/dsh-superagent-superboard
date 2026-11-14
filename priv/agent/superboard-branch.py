@@ -82,35 +82,46 @@ def head_repo(branch, repo, args):
     return ([] if heads else ["--head", branch]) + ([] if repos else ["--repo", repo])
 
 
-def create(cli, args):
-    try:
-        path = metadata()
-    except subprocess.CalledProcessError:
-        path = None
-    if path is None or not path.is_file():
-        os.execvpe(cli, [cli, *args], os.environ)
+def create(cli, actor, args):
+    # The expected account is supplied by the generated profile launcher, not by
+    # the issue, model or ambient shell. Never fall through to an ordinary CLI.
+    path = metadata()
+    check(path.is_file(), "Publication requires a prepared assignment")
     with locked(path):
         data = json.loads(path.read_text())
         branch, repo = data["branch"], data["repo"]
+        check(not data.get("blocked"), "Publication blocked; report the failure and await a new assignment")
         check(output("git", "symbolic-ref", "--short", "HEAD") == branch, "Use the assigned branch: " + branch)
         fixed = head_repo(branch, repo, args)
+        check(not any(a in ("--web", "-w", "--dry-run", "--recover") for a in args), "Use noninteractive PR creation")
+        # Latch before the network call. A crash or an uncertain remote response
+        # must not allow a second create; a new assignment can reconcile GitHub.
+        data["blocked"] = True
+        store(path, data)
+        check(actor and output(cli, "api", "--hostname", "github.com", "user", "--jq", ".login").casefold() == actor.casefold(),
+              "Wrong GitHub account; publication stopped")
+
+        def lookup():
+            rows = json.loads(output(cli, "pr", "list", "-R", repo, "--state", "all", "--head", branch,
+                                     "--json", "url,isCrossRepository,author"))
+            rows = [p for p in rows if not p["isCrossRepository"]]
+            check(len(rows) <= 1, "Multiple PRs already exist; publication stopped")
+            if not rows:
+                return None
+            check((rows[0]["author"] or {}).get("login", "").casefold() == actor.casefold(), "Foreign PR; publication stopped")
+            return rows[0]["url"]
+
+        url = lookup()
         if data.get("url"):
-            return data["url"]
-        rows = json.loads(output(cli, "pr", "list", "-R", repo, "--state", "all", "--head", branch,
-                                 "--json", "url,isCrossRepository"))
-        existing = [p["url"] for p in rows if not p["isCrossRepository"]]
-        check(len(existing) <= 1, "Ambiguous PR history; inspect before publishing")
-        if existing:
-            url = existing[0]
-        else:
-            check(not any(a in ("--web", "--dry-run") for a in args), "Use noninteractive PR creation")
-            # The board-managed gh may print its local checks before the URL.
+            check(url == data["url"], "Recorded PR differs from GitHub; publication stopped")
+        if not url:
             lines = output(cli, *args, *fixed).splitlines()
             if lines[:-1]:
                 print("\n".join(lines[:-1]), file=sys.stderr)
             url = lines[-1] if lines else ""
-        check(re.fullmatch(r"https://github\.com/" + re.escape(repo) + r"/pull/[0-9]+", url, re.I), "Verify PR on GitHub before retrying")
-        data["url"] = url
+            check(url and lookup() == url, "Could not confirm created PR and author")
+        check(re.fullmatch(r"https://github\.com/" + re.escape(repo) + r"/pull/[0-9]+", url, re.I), "Unexpected PR URL")
+        data.update(url=url, blocked=False)
         store(path, data)
         return url
 
@@ -120,7 +131,7 @@ if __name__ == "__main__":
         if sys.argv[1] == "prepare":
             print(prepare(*sys.argv[2:]))
         elif sys.argv[1] == "create":
-            print(create(sys.argv[2], sys.argv[3:]))
+            print(create(sys.argv[2], sys.argv[3], sys.argv[4:]))
         else:
             sys.exit(2)
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as e:

@@ -75,6 +75,7 @@ defmodule AgentBoard.Superagents.Prototype do
     patch = Application.app_dir(:agent_board, "priv/agent/duplicate-issue-notice.patch")
 
     branch_patch = Path.join(Path.dirname(patch), "assignment-branch.patch")
+    publication_patch = Path.join(Path.dirname(patch), "managed-publication.patch")
     helper = Path.join(Path.dirname(patch), "superboard-branch.py")
 
     # Git creates its destination. Leave an interrupted checkout for inspection.
@@ -83,6 +84,7 @@ defmodule AgentBoard.Superagents.Prototype do
          :ok <- step(run, "git", ["checkout", "--detach", @revision], cd: stage),
          :ok <- step(run, "git", ["apply", patch], cd: stage),
          :ok <- step(run, "git", ["apply", branch_patch], cd: stage),
+         :ok <- step(run, "git", ["apply", publication_patch], cd: stage),
          :ok <- step(run, "cp", [helper, "scripts/superboard-branch.py"], cd: stage),
          :ok <- step(run, "pnpm", ["install", "--frozen-lockfile"], cd: stage),
          :ok <- step(run, "pnpm", ["build"], cd: stage),

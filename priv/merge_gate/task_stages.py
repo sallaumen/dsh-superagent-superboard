@@ -129,7 +129,17 @@ def save(repo, ids, expected):
 def stage_process(argv):
     import signal
     # Make cancellation of the managed runner stop both the tool and its children.
-    proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, start_new_session=True)
+    # Tests are not GitHub workers. Keep the worker's non-interactive defaults
+    # but do not rewrite its offline git fixtures or boot the board service.
+    env = os.environ.copy()
+    if argv[:2] == ["mix", "test"]:
+        for key in ("PHX_SERVER", "PORT", "MIX_ENV"):
+            env.pop(key, None)
+        env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+        # The tests use a temporary HOME. Version-manager shims need the
+        # original HOME to locate Python; use this interpreter for child tools.
+        env["PATH"] = str(Path(sys.executable).resolve().parent) + os.pathsep + env.get("PATH", "")
+    proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, start_new_session=True, env=env)
     def cancel(signum, _frame):
         raise InterruptedError(f"Interrupted by signal {signum}")
     handlers = {sig: signal.signal(sig, cancel) for sig in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)}
