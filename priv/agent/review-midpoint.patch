@@ -1,0 +1,103 @@
+diff --git a/src/sources/github.ts b/src/sources/github.ts
+index f9b80b6..d6f17da 100644
+--- a/src/sources/github.ts
++++ b/src/sources/github.ts
+@@ -127,6 +127,7 @@ export function pollFailure(failures: number, threshold: number, error: unknown)
+ async function watch(ctx: SourceContext, signal: AbortSignal): Promise<void> {
+   let interval = 60
+   let failures = 0
++  let lastReview = 0
+   await ctx.ready
+   // Setup restarts dsh-superagent once it resolves the accounts; until then nothing is polled.
+   if (!ctx.configured()) { ctx.report('github', health('paused', 'setupPending')); return }
+@@ -141,9 +142,46 @@ async function watch(ctx: SourceContext, signal: AbortSignal): Promise<void> {
+       const failed = pollFailure(failures, config?.failuresBeforeError ?? 1, error)
+       if (!signal.aborted && failed) ctx.report('github', failed)
+     }
+-    await pause(Math.max(interval, ctx.config<GithubConfig>(SOURCE)?.pollSeconds ?? 60) * 1000, signal)
++    const delay = Math.max(interval, ctx.config<GithubConfig>(SOURCE)?.pollSeconds ?? 60) * 1000
++    if (!config || failures || delay !== 60_000) {
++      await pause(delay, signal)
++      continue
++    }
++    const next = Date.now() + delay
++    await pause(delay / 2, signal)
++    if (!signal.aborted && ctx.config<GithubConfig>(SOURCE)?.pollSeconds === 60) {
++      lastReview = await checkOneReview(ctx, signal, lastReview)
++    }
++    await pause(Math.max(0, next - Date.now()), signal)
+   }
+ }
++/** At most one extra PR detail per normal minute, only in the first 15 minutes of review. */
++export async function checkOneReview(ctx: SourceContext, signal: AbortSignal, previous: number): Promise<number> {
++  if (signal.aborted) return previous
++  const now = Date.now()
++  const numbers = new Set<number>()
++  for (const ticket of ctx.tickets.open()) {
++    const report = ticket.assignments.at(-1)?.report
++    if (report?.state !== 'ready') continue
++    const age = now - Date.parse(report.at)
++    if (!(age >= 0 && age < 15 * 60_000)) continue
++    for (const follow of ticket.follows ?? []) {
++      const match = !follow.closed && follow.own && /^github:([1-9][0-9]*)$/.exec(follow.thread)
++      if (match && Number.isSafeInteger(Number(match[1]))) numbers.add(Number(match[1]))
++    }
++  }
++  const ordered = [...numbers].sort((a, b) => a - b)
++  const n = ordered.find(n => n > previous) ?? ordered[0]
++  if (n === undefined) return previous
++  try {
++    const pr = await readPull(ctx, n, AbortSignal.any([signal, AbortSignal.timeout(5000)]))
++    if (!signal.aborted && (pr.merged || pr.state === 'closed')) {
++      await observePull(ctx, pr)
++      ctx.report('github', { state: 'ready', detail: 'Review midpoint: PR #' + n + (pr.merged ? ' merged' : ' closed'), at: new Date().toISOString() })
++    }
++  } catch { /* Rotate even after a failed read; never retry in this window. */ }
++  return n
++}
+ interface Round {
+   started: string; signal?: AbortSignal | undefined
+   pulls: Map<number, Promise<Pull>>; read: Set<number>; failures: string[]; dropped: number[]; abandoned: number[]
+diff --git a/tests/sources.spec.ts b/tests/sources.spec.ts
+index f4d0332..8289c16 100644
+--- a/tests/sources.spec.ts
++++ b/tests/sources.spec.ts
+@@ -8,7 +8,7 @@ import { runFeishu } from '../src/sources/feishu-loops.ts'
+ import { commentTrigger, githubAddress, githubChannel, issueTrigger, type GithubComment, type GithubIssue } from '../src/sources/github-trigger.ts'
+ import { claimPull, observePull, pullEndNotices, pullOf, ticketBranch, type Pull } from '../src/sources/github-pull.ts'
+ import { ciCounts, ciFact, ciSummary } from '../src/sources/github-read.ts'
+-import { apply as applyGithub, githubKind, pollFailure, pollRound } from '../src/sources/github.ts'
++import { apply as applyGithub, githubKind, pollFailure, pollRound, checkOneReview } from '../src/sources/github.ts'
+ import { pollThreads as pollGithubThreads } from '../src/sources/github.ts'
+ import { SourceRegistry } from '../src/sources/registry.ts'
+ import { cursorAt, POLL_HORIZON_MS } from '../src/sources/poll.ts'
+@@ -433,6 +433,29 @@ describe('github source', () => {
+     expect(pullEndNotices(h.store.tickets.get('t1')!, request.text, 'acme/widgets').map(notice => notice.id)).toEqual(notices.map(notice => notice.id))
+     h.store.close()
+   })
++  it('spends at most one midpoint read on a recent ready owned PR and rotates across them', async () => {
++    const h = host()
++    const signal = new AbortController().signal
++    vi.spyOn(h.commands, 'withSignal').mockReturnValue(h.commands)
++    const reads = github(h, { 'pulls/21': openPull(21), 'pulls/22': endedPull(22, new Date().toISOString()) })
++    expect(await checkOneReview(h, signal, 0)).toBe(0)
++    h.store.tickets.save({ id: 't3', title: 'three', decisionId: 'd3', mandate: { strength: 'explicit', policyVersion: '', basis: { via: 'listed' }, actor: { source: 'feishu', id: MEMBER }, scope: '' }, channels: [], assignments: [{ id: 'a1', state: 'running', createdAt: '2026-09-01T00:00:00Z' }], inputs: [], undelivered: [], execution: execution('fix-3'), origin: { triggerId: 'x', triggerIds: [] }, createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z' })
++    expect(claimPull(h, 't3', agentsPull(21, 'agent/fix-3'))).toBeUndefined()
++    expect(claimPull(h, 't3', agentsPull(22, 'agent/fix-3'))).toBeUndefined()
++    const t = h.store.tickets.get('t3')!
++    const ready = (at: string) => h.store.tickets.save({ ...t, assignments: [{ ...t.assignments[0]!,
++      report: { state: 'ready', summary: 'review', at } }], follows: [...t.follows!, { thread: 'github:1', own: false }] })
++    expect(await checkOneReview(h, signal, 0)).toBe(0)
++    ready(new Date(Date.now() - 16 * 60_000).toISOString())
++    expect(await checkOneReview(h, signal, 0)).toBe(0)
++    ready(new Date().toISOString())
++    expect(await checkOneReview(h, signal, 0)).toBe(21)
++    expect(await checkOneReview(h, signal, 21)).toBe(22)
++    expect(h.store.tickets.get('t3')?.follows?.find(f => f.thread === 'github:22')?.closed?.outcome).toBe('merged')
++    expect(await checkOneReview(h, AbortSignal.abort(), 22)).toBe(22)
++    expect(reads).toEqual(['pulls/21', 'pulls/22'])
++    h.store.close()
++  })
+   it('keeps a ticket working on its other open PR when one of its PRs merges', async () => {
+     const h = host()
+     h.store.tickets.save({ id: 't3', title: 'three', decisionId: 'd3', mandate: { strength: 'explicit', policyVersion: '', basis: { via: 'listed' }, actor: { source: 'feishu', id: MEMBER }, scope: '' }, channels: [], assignments: [{ id: 'a1', state: 'running', createdAt: '2026-09-01T00:00:00Z' }], inputs: [], undelivered: [], execution: execution('fix-3'), origin: { triggerId: 'x', triggerIds: [] }, createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z' })
