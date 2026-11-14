@@ -10,12 +10,12 @@ defmodule AgentBoardWeb.PrivateFileController do
   """
   use AgentBoardWeb, :controller
 
-  alias AgentBoard.{Board, GitHub}
+  alias AgentBoard.Board
   alias AgentBoard.Board.PrivateContext
 
   def show(conn, %{"repo_id" => repo_id, "dir" => dir, "path" => [_ | _] = segments}) do
-    with number when is_integer(number) <- GitHub.number(repo_id),
-         %{} = repository <- Board.repository(number),
+    with id when is_integer(id) <- Board.parse_id(repo_id),
+         %{} = repository <- Board.repository(id),
          {:ok, content, kind} <- PrivateContext.image(repository, dir, Path.join(segments)) do
       conn
       |> put_resp_header("x-content-type-options", "nosniff")
