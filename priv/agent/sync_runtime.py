@@ -178,14 +178,17 @@ def sync(p, expected_lock=None):
         binding = extension.Binding(p.directory)
         target = extension.prepare(binding, ROOT.parent / "extensions", p.manager, run, lock)
         rebind = binding.source != target
-        if not rebind and old.resolve() == cli.resolve() and extension.has_dispatch(p):
-            p.select(cli)
-            return "current"
+        current = not rebind and old.resolve() == cli.resolve() and extension.has_dispatch(p)
         load = workload(p.snapshot(), False)
         if load != "idle":
             return load
         if p.pid() != pid or p.launcher() != old:
             return "changed"
+        if current:
+            if not binding.unchanged():
+                return "changed"
+            p.select(cli)
+            return "current"
         try:
             p.api("executor/pause", {"paused": True})
             load = workload(p.snapshot(), True)
@@ -193,11 +196,14 @@ def sync(p, expected_lock=None):
                 return load
             if p.pid() != pid or p.launcher() != old:
                 return "changed"
-            switched = False
-            try:
-                if rebind:
+            if rebind:
+                try:
                     binding.switch(target)
-                    switched = True
+                except extension.ProfileChanged:
+                    return "changed"
+            # Binding.switch handles its own rollback. Recover a process only
+            # once a restart has actually been attempted.
+            try:
                 # The manager holds its operation lock across stop and start.
                 p.change("restart", cli)
                 if p.launcher().resolve() != cli.resolve():
@@ -211,7 +217,7 @@ def sync(p, expected_lock=None):
                 # The manager enforces uniqueness; a normal start cannot replace
                 # a live, failed process.
                 try:
-                    if switched:
+                    if rebind:
                         binding.restore()
                     p.recover(old, cli)
                 finally:

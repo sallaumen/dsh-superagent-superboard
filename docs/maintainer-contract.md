@@ -2140,7 +2140,10 @@ board checks unfinished requests every 15 seconds, independently of the browser.
 Repeated clicks reuse a pending request. The helper checks both running and
 queued work and checks again under pause before handing off the process. A changed
 identity or dependency lock, a stopped/paused agent, or unreadable load never
-authorizes a reload. Remaining current is a successful outcome with no restart.
+authorizes a reload. Remaining current is a successful outcome with no restart. Before reporting it,
+the helper rechecks the queue, running process and package binding after package
+preparation. If a profile edit prevents the package switch before restart, it
+leaves the process alone; process recovery is for an attempted handoff.
 
 ### Local preflight evidence
 
