@@ -24,7 +24,7 @@ defmodule AgentBoard.Lanes do
   }
 
   alias AgentBoard.Board.{PullRequest, Task, TaskDependency}
-  alias AgentBoard.Lanes.{CallStatus, RunTiming}
+  alias AgentBoard.Lanes.{CallStatus, Queue, RunTiming}
   alias AgentBoard.Usage.TaskCosts
   # The locale-aware times: these sentences are read on the screen.
   alias AgentBoardWeb.{Locale, Time}
@@ -531,12 +531,15 @@ defmodule AgentBoard.Lanes do
   defp queue_item(row, merged, origins, blockers, now, last_visit) do
     duplicate = Titles.duplicate(row.title, merged)
 
+    relationship =
+      Queue.relationship(blockers[row.blocker_for_task_id], origins[row.origin_task_id])
+
     sub =
-      case {Map.get(blockers, row.blocker_for_task_id), Map.get(origins, row.origin_task_id)} do
-        {number, _origin} when is_integer(number) ->
+      case relationship do
+        {:unblocks, number} ->
           gettext("unblocks #%{number}", number: number)
 
-        {nil, number} when is_integer(number) ->
+        {:split_from, number} ->
           gettext("split from #%{number}", number: number)
 
         _ ->
@@ -551,7 +554,7 @@ defmodule AgentBoard.Lanes do
       age_seconds: Time.age_seconds(row.inserted_at, now),
       is_new: new?(row.inserted_at, last_visit),
       sub: sub,
-      split: not is_nil(sub),
+      split: not is_nil(relationship),
       note:
         duplicate &&
           gettext("Looks like a repeat of #%{number}, already merged", number: duplicate.number)
