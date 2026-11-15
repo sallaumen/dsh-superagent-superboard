@@ -75,6 +75,36 @@ defmodule AgentBoard.TicketPollerTest do
     assert Repo.get(Task, t.id).state == "running"
   end
 
+  test "a dropped ticket leaves running for ended history without stopping the open issue",
+       %{db: db} do
+    repo = isolated_repo()
+    t = task(repo)
+    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{@running}')")
+    state = AgentBoard.TicketPoller.poll(%{})
+    assert Repo.get!(Task, t.id).state == "running"
+
+    dropped =
+      Jason.encode!(%{
+        mandate: %{basis: %{scope: %{number: 42}}},
+        assignments: [%{state: "ended", report: %{state: "dropped"}}],
+        ended: %{at: "2026-11-15T06:17:13.996Z", outcome: "dropped", by: "executor"}
+      })
+
+    Board.subscribe(repo.id)
+    :ok = Exqlite.Sqlite3.execute(db, "update ticket set value = '#{dropped}'")
+    state = AgentBoard.TicketPoller.poll(state)
+    assert_receive :board_updated
+    assert %Task{state: "stopped", stopped: false, archived: false} = Repo.get!(Task, t.id)
+    assert [%{number: 42, outcome: :stopped}] = Board.ended_page(repo.id)
+
+    AgentBoard.TicketPoller.poll(state)
+    refute_receive :board_updated
+
+    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{@running}')")
+    AgentBoard.TicketPoller.poll(state)
+    assert Repo.get!(Task, t.id).state == "running"
+  end
+
   test "a second poll with the same tickets does not broadcast again", %{db: db} do
     repo = isolated_repo()
 

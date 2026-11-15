@@ -1070,8 +1070,16 @@ defmodule AgentBoard.SyncRepoTest do
     assert %Task{state: "done", archived: true} = Repo.one(Task)
   end
 
-  test "a merged ticket remains done without a newer reopen, but a confirmed reopen survives sync and poll",
+  test "a merged ticket remains done unless GitHub confirms a later reopen", %{repo: repo} do
+    assert_ended_ticket_reopen(repo, "merged", "done")
+  end
+
+  test "an open issue with a dropped ticket stays stopped unless GitHub confirms a later reopen",
        %{repo: repo} do
+    assert_ended_ticket_reopen(repo, "dropped", "stopped")
+  end
+
+  defp assert_ended_ticket_reopen(repo, outcome, expected_state) do
     path = Path.join(System.tmp_dir!(), "sync-reopen-#{System.unique_integer([:positive])}.db")
     {:ok, db} = Exqlite.Sqlite3.open(path)
     previous = Application.get_env(:agent_board, :state_db)
@@ -1082,20 +1090,20 @@ defmodule AgentBoard.SyncRepoTest do
       Application.put_env(:agent_board, :state_db, previous)
     end)
 
-    merged =
-      ~s({"channels":[{"address":{"url":"https://github.com/sallaumen/arena-rogue/issues/26"}}],"mandate":{"basis":{"scope":{"number":26}}},"assignments":[{"state":"ended"}],"ended":{"at":"2026-11-07T00:01:15.000Z","by":"executor","outcome":"merged"}})
+    ticket =
+      ~s({"channels":[{"address":{"url":"https://github.com/sallaumen/arena-rogue/issues/26"}}],"mandate":{"basis":{"scope":{"number":26}}},"assignments":[{"state":"ended"}],"ended":{"at":"2026-11-07T00:01:15.000Z","by":"executor","outcome":"#{outcome}"}})
 
     :ok = Exqlite.Sqlite3.execute(db, "create table ticket (value text)")
-    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{merged}')")
+    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{ticket}')")
     Application.put_env(:agent_board, :state_db, path)
 
     sync_issue_states(repo, 26, ["closed"])
     Repo.update_all(Task, set: [state_changed_at: @long_ago])
 
-    # The reopen puts it back in the queue and the merged ticket makes it done.
+    # The reopen puts it back in the queue and the ended ticket supplies its final state.
     sync_issue_states(repo, 26, ["open"])
     decided = Repo.one(Task)
-    assert decided.state == "done"
+    assert decided.state == expected_state
     assert DateTime.compare(decided.state_changed_at, @long_ago) == :gt
 
     # The same issue again is no new reopen: the decision, stamped after the
@@ -1103,7 +1111,7 @@ defmodule AgentBoard.SyncRepoTest do
     decided_at = ~U[2026-11-05 00:00:00Z]
     Repo.update_all(Task, set: [state_changed_at: decided_at])
     sync_issue_states(repo, 26, ["open"])
-    assert %Task{state: "done", state_changed_at: ^decided_at} = Repo.one(Task)
+    assert %Task{state: ^expected_state, state_changed_at: ^decided_at} = Repo.one(Task)
 
     reopened = ~U[2026-11-07 01:00:00Z]
     updated = Map.put(issue(26, "open"), "updated_at", DateTime.to_iso8601(reopened))

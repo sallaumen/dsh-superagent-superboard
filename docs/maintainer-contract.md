@@ -115,7 +115,12 @@ differ. Change a general rule upstream, not here.
   `retrying`, `ready`, `blocked`) while the issue is open. `retrying` is a
   failure `AgentBoard.AutoRetry` will retry by itself, or a retry waiting
   for a worker ("Automatic retry" below). A ticket that ended `merged` is
-  `done` whatever its last report said. An issue keeps every ticket it ever
+  `done` whatever its last report said. A ticket with a recorded end time and
+  final outcome `dropped` moves its open issue to **Stopped** in ended history.
+  This mirrors an ended execution: it neither sets the owner’s stop flag nor
+  closes, retries or queues the issue. A dropped assignment report alone does
+  not end the ticket; a still-active or later local execution keeps its state.
+  An issue keeps every ticket it ever
   had, and one speaks for it: the open one, else the most recently updated
   (`Tickets.by_number/1`, used by the sync, the ticket poll, the board and
   the voice lookups, each over its own repository's tickets). A stopped or
@@ -127,8 +132,8 @@ differ. Change a general rule upstream, not here.
   after it entered the board stayed in Fila (the queue) while the runner had
   nothing to do (`sync_repo_test.exs`). A **reopened issue** moves its `done`
   task back to `queued`, unless it is stopped or archived
-  (`Sync.reopen_task/3`). If an open issue still has a merged ticket, only
-  GitHub's latest native `ReopenedEvent` at or after that merge supersedes it.
+  (`Sync.reopen_task/3`). If an open issue still has a merged or dropped ticket,
+  only GitHub's latest native `ReopenedEvent` at or after that ending supersedes it.
   The board persists the reopen time on the task and both the full sync and
   the ticket poll ignore older work. Later assignments and closes still count.
   Comments and edits to an open issue are not proof of reopening.

@@ -1,8 +1,7 @@
 defmodule AgentBoard.Sync.ReopenedTickets do
   @moduledoc """
-  An open issue with an ended, merged ticket may be rework, or simply an
-  issue mentioned by a merged PR. Only a native reopen establishes the
-  boundary. Never infer one from a comment or from the board's local clock.
+  An open issue with a merged or dropped ticket may have been reopened. Only a native
+  reopen establishes the boundary. Never infer one from a comment or from the board's local clock.
   """
   import Ecto.Query
   require Logger
@@ -10,11 +9,12 @@ defmodule AgentBoard.Sync.ReopenedTickets do
   alias AgentBoard.{GitHub, Repo}
 
   def reconcile(client, repo, issues, tickets) do
-    # Legacy number-only tickets cannot establish which repository was merged.
+    # Legacy number-only tickets cannot establish which repository the ended work belongs to.
     candidates =
       for {n,
-           %{"ended_outcome" => "merged", "ended_at" => %DateTime{} = ended, "repository" => slug}} <-
+           %{"ended_outcome" => outcome, "ended_at" => %DateTime{} = ended, "repository" => slug}} <-
             tickets,
+          outcome in ["merged", "dropped"],
           is_binary(slug),
           %{"state" => "open"} <- [issues[n]],
           into: %{},
