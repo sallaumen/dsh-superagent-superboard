@@ -24,7 +24,7 @@ defmodule AgentBoard.Lanes do
   }
 
   alias AgentBoard.Board.{PullRequest, Task, TaskDependency}
-  alias AgentBoard.Lanes.{CallStatus, Queue, RunTiming}
+  alias AgentBoard.Lanes.{CallStatus, MergeHistory, Queue, RunTiming}
   alias AgentBoard.Usage.TaskCosts
   # The locale-aware times: these sentences are read on the screen.
   alias AgentBoardWeb.{Locale, Time}
@@ -33,7 +33,6 @@ defmodule AgentBoard.Lanes do
   @day_limit 3
   # A wide window shows this many per day; the rows past @day_limit are `extra`.
   @day_reach 8
-  @log_days 7
 
   @doc """
   The attention list: blocked work, silent runs, PRs for review and
@@ -660,16 +659,14 @@ defmodule AgentBoard.Lanes do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     offset = Keyword.get(opts, :tz_offset, 0)
     local_ci = Keyword.get(opts, :local_ci, %{})
-    today = Time.local_date(now, offset)
-    start = Date.add(today, -(@log_days - 1))
-    start_utc = DateTime.new!(start, ~T[00:00:00Z]) |> DateTime.add(offset * 60, :second)
+    %{today: today, dates: dates, since: since} = MergeHistory.window(now, offset)
 
     pulls =
       Repo.all(
         from p in PullRequest,
           where:
             p.repository_id == ^repository.id and p.state == "merged" and
-              p.merged_at >= ^start_utc,
+              p.merged_at >= ^since,
           order_by: [desc: p.merged_at, desc: p.id]
       )
 
@@ -681,8 +678,7 @@ defmodule AgentBoard.Lanes do
       |> TaskCosts.for_pulls()
 
     days =
-      Enum.map(0..(@log_days - 1), fn index ->
-        date = Date.add(start, index)
+      Enum.map(dates, fn date ->
         day_pulls = Map.get(by_day, date, [])
 
         %{
