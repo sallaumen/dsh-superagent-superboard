@@ -1010,8 +1010,7 @@ defmodule AgentBoard.Board do
       )
 
     Enum.map(objectives, fn objective ->
-      own = MapSet.new(objective.tasks, & &1.id)
-      {objective, Enum.filter(edges, fn {task, _blocker} -> task in own end)}
+      {objective, Objective.dependency_edges(objective.tasks, edges)}
     end)
   end
 
