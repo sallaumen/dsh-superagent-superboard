@@ -42,4 +42,23 @@ defmodule AgentBoard.Lanes.MergeHistoryTest do
     tuesday = [%{closes_issues: [8, 12]}]
     assert MergeHistory.delivered(monday ++ tuesday) == 3
   end
+
+  test "compact and wide preserve the supplied merge order and count their own overflow" do
+    rows = [42, 11, 9, 31, 18, 7, 28, 66, 72, 13]
+
+    assert MergeHistory.day_page(rows) == %{
+             items: [42, 11, 9],
+             extra: [31, 18, 7, 28, 66],
+             more: 7,
+             more_wide: 2
+           }
+  end
+
+  test "the last slot in either view fits without overflow" do
+    assert MergeHistory.day_page([]) == %{items: [], extra: [], more: 0, more_wide: 0}
+    assert %{items: [1, 2, 3], extra: [], more: 0} = MergeHistory.day_page([1, 2, 3])
+
+    assert %{extra: [4, 5, 6, 7, 8], more: 5, more_wide: 0} =
+             MergeHistory.day_page(Enum.to_list(1..8))
+  end
 end

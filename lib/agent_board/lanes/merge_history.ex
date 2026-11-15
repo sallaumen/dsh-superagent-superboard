@@ -4,6 +4,8 @@ defmodule AgentBoard.Lanes.MergeHistory do
   alias AgentBoard.Time
 
   @days 7
+  @compact 3
+  @wide 8
 
   @doc "The seven local dates shown in the log and the UTC instant that starts the first date."
   @spec window(DateTime.t(), integer()) :: %{
@@ -40,5 +42,14 @@ defmodule AgentBoard.Lanes.MergeHistory do
       ok: Map.get(results, :pass, 0),
       fail: Map.get(results, :fail, 0)
     }
+  end
+
+  @doc "Keep the first three merges in the compact view and up to eight in the wide view, in input order."
+  @spec day_page([term()]) :: map()
+  def day_page(pulls) do
+    {items, rest} = Enum.split(pulls, @compact)
+    {extra, hidden} = Enum.split(rest, @wide - @compact)
+    more_wide = length(hidden)
+    %{items: items, extra: extra, more: length(extra) + more_wide, more_wide: more_wide}
   end
 end
