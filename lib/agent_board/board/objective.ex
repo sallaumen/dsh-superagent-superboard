@@ -53,6 +53,24 @@ defmodule AgentBoard.Board.Objective do
     Enum.filter(edges, fn {blocked_id, _blocker_id} -> blocked_id in task_ids end)
   end
 
+  @doc "Builds the board summary from the objective's loaded tasks and its selected edges."
+  @spec summary(t(), [{integer(), integer()}]) :: map()
+  def summary(objective, edges) do
+    %{
+      id: objective.id,
+      title: objective.title,
+      done_criterion: objective.done_criterion,
+      issue_url: objective.issue_url,
+      tasks:
+        Enum.map(
+          objective.tasks,
+          &Map.take(&1, [:id, :number, :title, :state, :held, :released_at])
+        ),
+      edges: edges
+    }
+    |> Map.merge(progress(objective.tasks))
+  end
+
   @doc false
   def changeset(objective, attrs) do
     objective

@@ -982,21 +982,7 @@ defmodule AgentBoard.Board do
         preload: [:tasks]
     )
     |> with_edges()
-    |> Enum.map(fn {objective, edges} ->
-      %{
-        id: objective.id,
-        title: objective.title,
-        done_criterion: objective.done_criterion,
-        issue_url: objective.issue_url,
-        tasks:
-          Enum.map(
-            objective.tasks,
-            &Map.take(&1, [:id, :number, :title, :state, :held, :released_at])
-          ),
-        edges: edges
-      }
-      |> Map.merge(Objective.progress(objective.tasks))
-    end)
+    |> Enum.map(fn {objective, edges} -> Objective.summary(objective, edges) end)
   end
 
   defp with_edges(objectives) do

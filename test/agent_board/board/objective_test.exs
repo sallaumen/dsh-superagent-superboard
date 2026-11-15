@@ -42,4 +42,48 @@ defmodule AgentBoard.Board.ObjectiveTest do
 
     assert Objective.dependency_edges(tasks, [{12, 7}, {7, 12}]) == [{12, 7}]
   end
+
+  test "the board summary contains task details, progress and the objective's edges" do
+    released_at = ~U[2026-01-08 12:00:00Z]
+
+    objective = %Objective{
+      id: 3,
+      title: "Release",
+      done_criterion: "Both tasks merged",
+      issue_url: "https://example.org/issues/30",
+      tasks: [
+        %Task{id: 12, number: 42, title: "Ship", state: "queued", held: true},
+        %Task{id: 15, number: 45, title: "Build", state: "done", released_at: released_at}
+      ]
+    }
+
+    assert Objective.summary(objective, [{12, 7}]) == %{
+             id: 3,
+             title: "Release",
+             done_criterion: "Both tasks merged",
+             issue_url: "https://example.org/issues/30",
+             total: 2,
+             merged: 1,
+             done?: false,
+             tasks: [
+               %{
+                 id: 12,
+                 number: 42,
+                 title: "Ship",
+                 state: "queued",
+                 held: true,
+                 released_at: nil
+               },
+               %{
+                 id: 15,
+                 number: 45,
+                 title: "Build",
+                 state: "done",
+                 held: false,
+                 released_at: released_at
+               }
+             ],
+             edges: [{12, 7}]
+           }
+  end
 end
