@@ -648,37 +648,20 @@ defmodule AgentBoard.Lanes do
   # nobody answered says so in `stuck/2`; a ticket that started or ended is
   # the overlay's to place (`AgentBoard.Tickets.state/2`).
   defp call_sub(row, calls) do
-    called = Release.called_at(row)
-    ticket = Map.get(calls.tickets, row.number)
-
-    cond do
-      is_nil(called) or CallStatus.unanswered?(row, calls) ->
-        nil
-
-      is_nil(ticket) ->
+    case CallStatus.queue_stage(row, calls) do
+      {:awaiting_ticket, at} ->
         gettext("called %{ago}, waiting for the agent",
-          ago: Time.ago(DateTime.diff(calls.now, called))
+          ago: Time.ago(DateTime.diff(calls.now, at))
         )
 
-      ticket["stopped"] || ticket["archived"] ->
-        nil
-
-      is_nil(ticket["started_at"]) and is_nil(ticket["ended_at"]) ->
-        agent_queue(ticket, calls.now)
-
-      true ->
-        nil
-    end
-  end
-
-  # The runner took the call and has no free worker yet.
-  defp agent_queue(ticket, now) do
-    case List.last(ticket["assignments"] || []) do
-      %{"created_at" => %DateTime{} = at} ->
-        gettext("entered the agent's queue %{ago}", ago: Time.ago(DateTime.diff(now, at)))
-
-      _no_assignment ->
+      {:in_runner_queue, nil} ->
         gettext("in the agent's queue")
+
+      {:in_runner_queue, at} ->
+        gettext("entered the agent's queue %{ago}", ago: Time.ago(DateTime.diff(calls.now, at)))
+
+      nil ->
+        nil
     end
   end
 

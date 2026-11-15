@@ -32,4 +32,36 @@ defmodule AgentBoard.Lanes.CallStatus do
         false
     end
   end
+
+  @doc "Queue evidence to display before the runner starts, or nil when another lane explains the task."
+  @spec queue_stage(map(), map()) ::
+          {:awaiting_ticket, DateTime.t()} | {:in_runner_queue, DateTime.t() | nil} | nil
+  def queue_stage(task, calls) do
+    called = Release.called_at(task)
+    ticket = Map.get(calls.tickets, task.number)
+
+    cond do
+      is_nil(called) or unanswered?(task, calls) ->
+        nil
+
+      is_nil(ticket) ->
+        {:awaiting_ticket, called}
+
+      ticket["stopped"] || ticket["archived"] ->
+        nil
+
+      is_nil(ticket["started_at"]) and is_nil(ticket["ended_at"]) ->
+        {:in_runner_queue, last_assignment_at(ticket)}
+
+      true ->
+        nil
+    end
+  end
+
+  defp last_assignment_at(ticket) do
+    case List.last(ticket["assignments"] || []) do
+      %{"created_at" => %DateTime{} = at} -> at
+      _ -> nil
+    end
+  end
 end
