@@ -6,7 +6,8 @@ defmodule AgentBoard.Board.Inbox do
   alias AgentBoard.AI.{Budget, Call, Providers}
   alias AgentBoard.Board.{Comment, Task, TaskPullLinks}
   alias AgentBoard.ElevenLabs.Account
-  alias AgentBoard.{Lanes, Repo, Workpad}
+  alias AgentBoard.Lanes.RunTiming
+  alias AgentBoard.{Repo, Workpad}
   alias AgentBoard.Superagents.Policy
 
   @message_limit 30
@@ -160,13 +161,13 @@ defmodule AgentBoard.Board.Inbox do
   end
 
   defp needs_attention?(%Task{state: "running"} = task, _resolved, now),
-    do: Lanes.slow?(task, now)
+    do: RunTiming.slow?(task, now)
 
   defp needs_attention?(task, resolved, _now), do: not MapSet.member?(resolved, task.id)
 
   # A running task is here only past the time its size allows.
   defp alert(%Task{state: "running"} = task),
-    do: alert_item(task, "slow", Lanes.slow_at(task))
+    do: alert_item(task, "slow", RunTiming.slow_at(task))
 
   defp alert(task), do: alert_item(task, task.state, task.state_changed_at || task.updated_at)
 
