@@ -658,7 +658,7 @@ defmodule AgentBoard.Lanes do
         from(d in TaskDependency,
           join: b in Task,
           on: b.id == d.blocked_by_task_id,
-          where: d.task_id in ^ids and b.state not in ["done", "closed"],
+          where: d.task_id in ^ids and b.state not in ^TaskDependency.resolved_blocker_states(),
           order_by: b.number,
           select: {d.task_id, b.number}
         )

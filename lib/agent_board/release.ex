@@ -25,8 +25,6 @@ defmodule AgentBoard.Release do
   alias AgentBoard.Board.{Repository, Task, TaskDependency}
   alias AgentBoard.Intake.IssueBody
 
-  @finished ~w(done closed)
-
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts, name: __MODULE__)
 
   @impl true
@@ -82,7 +80,9 @@ defmodule AgentBoard.Release do
     from d in TaskDependency,
       join: b in Task,
       on: b.id == d.blocked_by_task_id,
-      where: d.task_id == parent_as(:task).id and b.state not in @finished,
+      where:
+        d.task_id == parent_as(:task).id and
+          b.state not in ^TaskDependency.resolved_blocker_states(),
       select: 1
   end
 
