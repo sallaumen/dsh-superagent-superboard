@@ -8,4 +8,8 @@ defmodule AgentBoard.Board.TaskDependency do
 
     timestamps(type: :utc_datetime)
   end
+
+  @doc "States in which a task no longer blocks its dependents, whether merged or just closed."
+  @spec resolved_blocker_states() :: [String.t()]
+  def resolved_blocker_states, do: ~w(done closed)
 end

@@ -1,6 +1,8 @@
 defmodule AgentBoardWeb.BoardComponents.ObjectiveTree.DependencyStatus do
   @moduledoc "The dependency status to describe for a node in the objective tree."
 
+  alias AgentBoard.Board.TaskDependency
+
   @type t ::
           :call_failed
           | :no_dependency
@@ -17,7 +19,8 @@ defmodule AgentBoardWeb.BoardComponents.ObjectiveTree.DependencyStatus do
   def classify(%{state: state}) when state in ~w(done closed), do: :finished
 
   def classify(%{waiting: waiting} = node) do
-    open = for blocker <- waiting, blocker.state not in ~w(done closed), do: blocker.number
+    resolved = TaskDependency.resolved_blocker_states()
+    open = for blocker <- waiting, blocker.state not in resolved, do: blocker.number
 
     case {open, node} do
       {[], %{held: true}} -> :starting_soon
