@@ -1249,7 +1249,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp local_ci_pass?(%{state: :pass}), do: true
   defp local_ci_pass?(_ci), do: false
 
-  defp pr_review("approved"), do: gettext("reviewed")
+  defp pr_review("approved"), do: gettext("approved")
   defp pr_review("changes_requested"), do: gettext("changes requested")
   defp pr_review("pending"), do: gettext("pending review")
   defp pr_review(_state), do: gettext("no review")

@@ -239,12 +239,12 @@ defmodule AgentBoard.GitHub do
     client |> Req.get!(url: "/repos/#{owner}/#{repo}/pulls/#{number}") |> body!()
   end
 
-  defp pages(client, url, params, more?, page \\ 1) do
+  defp pages(client, url, params, more?, max_pages \\ @max_pages, page \\ 1) do
     response = Req.get!(client, url: url, params: [{:page, page} | params])
     items = body!(response)
 
-    if page < @max_pages and next_page?(response) and more?.(items),
-      do: items ++ pages(client, url, params, more?, page + 1),
+    if (max_pages == :all or page < max_pages) and next_page?(response) and more?.(items),
+      do: items ++ pages(client, url, params, more?, max_pages, page + 1),
       else: items
   end
 
@@ -260,9 +260,13 @@ defmodule AgentBoard.GitHub do
 
   @doc "The reviews of a pull request."
   def reviews(client, owner, repo, number) do
-    client
-    |> Req.get!(url: "/repos/#{owner}/#{repo}/pulls/#{number}/reviews", params: [per_page: 100])
-    |> body!()
+    pages(
+      client,
+      "/repos/#{owner}/#{repo}/pulls/#{number}/reviews",
+      [per_page: 100],
+      fn _ -> true end,
+      :all
+    )
   end
 
   @doc "The check runs of a commit."

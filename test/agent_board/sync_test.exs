@@ -117,6 +117,21 @@ defmodule AgentBoard.SyncTest do
              "changes_requested"
   end
 
+  test "a reviewer's final decision supersedes only their own earlier decisions" do
+    review = fn id, state -> %{"user" => %{"id" => id}, "state" => state} end
+    block = review.(41, "CHANGES_REQUESTED")
+    approve = review.(41, "APPROVED")
+    comment = review.(41, "COMMENTED")
+
+    assert Sync.review_rollup([block, block, approve, comment]) == "approved"
+
+    assert Sync.review_rollup([review.(52, "CHANGES_REQUESTED"), block, approve]) ==
+             "changes_requested"
+
+    assert Sync.review_rollup([approve, block, comment]) == "changes_requested"
+    assert Sync.review_rollup([block, approve, review.(41, "DISMISSED")]) == "pending"
+  end
+
   test "comments alone are pending" do
     assert Sync.review_rollup([%{"state" => "COMMENTED"}]) == "pending"
   end
