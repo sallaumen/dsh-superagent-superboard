@@ -1,0 +1,61 @@
+diff --git a/src/sources/github.ts b/src/sources/github.ts
+index 1799ad2..e371f5f 100644
+--- a/src/sources/github.ts
++++ b/src/sources/github.ts
+@@ -452,6 +452,7 @@ async function intakeComments(ctx: SourceContext, ref: PullRef, since: string, r
+     const suffix = `&since=${encodeURIComponent(since)}`
+     const path = kind === 'conversation' ? `issues/${ref.number}/comments?per_page=100${suffix}` : kind === 'inline' ? `pulls/${ref.number}/comments?per_page=100${suffix}` : `pulls/${ref.number}/reviews?per_page=100`
+     const comments = await commands.pages(CommentSchema, path, round.tally)
++    let checkedForApproval = false
+     for (const comment of comments) {
+       // Stopping mid-read throws so the thread's cursor stays where it was.
+       if (stopped(ctx, round)) throw new Error('The GitHub Source stopped during the poll')
+@@ -460,9 +461,16 @@ async function intakeComments(ctx: SourceContext, ref: PullRef, since: string, r
+       if (sameName(comment.user.login, login)) continue
+       // A review decision without a body still reaches the ticket: a worker may be waiting for that approval.
+       const trigger = commentTrigger(comment, ref, kind, login)
+-      // A formal approval of our merged PR is history, not a new assignment.
+-      if (ref.merged && kind === 'review' && comment.state === 'APPROVED' && ref.prAuthor && sameName(ref.prAuthor, login))
+-        trigger.meta.mergedApproval = true
++      if (kind === 'review' && comment.state === 'APPROVED' && ref.prAuthor && sameName(ref.prAuthor, login)) {
++        // The round may have observed an open PR before this review existed. Recheck
++        // after reading new approvals, once per batch. A failed read retries the cursor.
++        if (!ref.merged && !checkedForApproval && !ctx.triggers.get(trigger.id)) {
++          round.pulls.delete(ref.number)
++          ref = discussionRef(await pull(ctx, round, ref.number))
++          checkedForApproval = true
++        }
++        if (ref.merged) trigger.meta.mergedApproval = true
++      }
+       if (trigger.text) await ctx.receive(trigger)
+     }
+   }
+diff --git a/tests/sources.spec.ts b/tests/sources.spec.ts
+index 31a62c9..d82e7cd 100644
+--- a/tests/sources.spec.ts
++++ b/tests/sources.spec.ts
+@@ -663,6 +663,24 @@ describe('github source', () => {
+     expect(h.threads.get('github:7')?.pending).toEqual([])
+     h.store.close()
+   })
++  it('does not dispatch approval text when the PR merged after the round read it as open', async () => {
++    const h = host(), now = new Date().toISOString()
++    subscribed(h, { source: 'github', id: '7' }, { isPr: true, title: 'Fix' })
++    h.store.tickets.save({ ...openTicket('ticket'), ...pulled(7) })
++    let merged = false
++    const pr = agentsPull(7, 'agent/fix')
++    const routes = { 'pulls/7': () => merged ? { ...pr, state: 'closed', merged: true, merged_at: now } : pr,
++      'pulls/7/reviews': () => {
++        merged = true
++        return [42, 43].map(id => ({ id, state: 'APPROVED', body: 'Optional: rename this.', user: { login: 'alice' }, submitted_at: now }))
++      } }
++    const reads = github(h, routes)
++    await pollGithubThreads(h)
++    expect(h.store.tickets.get('ticket')).toMatchObject({ ended: { outcome: 'merged' }, inputs: [], assignments: [] })
++    expect(await Promise.all(h.receive.mock.results.map(r => r.value))).toEqual(['filtered', 'filtered'])
++    expect(bare(reads).filter(r => r === 'pulls/7')).toHaveLength(2)
++    h.store.close()
++  })
+   it.each(['APPROVED', 'CHANGES_REQUESTED'])('still delivers %s reviews on an open agent PR', async state => {
+     const h = host()
+     const now = new Date().toISOString()

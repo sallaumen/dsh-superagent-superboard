@@ -64,7 +64,7 @@ defmodule AgentBoard.Superagents.PrototypeTest do
 
     # First install includes the same notification and isolation fixes as upgrades.
     for name <-
-          ~w(review-midpoint.patch merged-detail.patch delayed-merged-notification.patch isolated-context.patch) do
+          ~w(review-midpoint.patch merged-detail.patch delayed-merged-notification.patch isolated-context.patch merged-approval.patch approval-state-refresh.patch) do
       path = Application.app_dir(:agent_board, "priv/agent/" <> name)
       assert File.regular?(path)
       assert_received {:ran, "git", ["apply", ^path], ^stage}

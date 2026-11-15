@@ -16,6 +16,8 @@ PUBLICATION_PATCH = HERE / "managed-publication.patch"
 CONTAINER_PATCH = HERE / "container-worker.patch"
 CLEANUP_PATCH = HERE / "container-report-cleanup.patch"
 DELAYED_PATCH = HERE / "delayed-merged-notification.patch"
+APPROVAL_PATCH = HERE / "merged-approval.patch"
+REFRESH_PATCH = HERE / "approval-state-refresh.patch"
 
 
 def payload():
@@ -31,7 +33,7 @@ def compiled(path):
     watcher = path / "lib/github-watch.js"
     github = watcher.read_bytes() if watcher.is_file() else b""
     return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py", b"Publication is in progress or blocked", b"managed_publish", b"Isolated assignment requires a GitHub repository"))
-            and all(tag in github for tag in (b"Review midpoint: PR #", b"mergedDetailRepo", b"mergedDetailCreatedAt"))
+            and all(tag in github for tag in (b"Review midpoint: PR #", b"mergedDetailRepo", b"mergedDetailCreatedAt", b"merged_pr_approval"))
             and all((path / "scripts" / helper.name).is_file() and
                     (path / "scripts" / helper.name).read_bytes() == helper.read_bytes() for helper in HELPERS))
 
@@ -154,15 +156,14 @@ def prepare(binding, root, manager, run, lock):
                         covered = {BRANCH_PATCH, PUBLICATION_PATCH}
                     except subprocess.CalledProcessError:
                         covered = set()
-                # The notification patch edits lines from the merged-detail patch.
-                # Unstack it in this disposable build only, so the older patch
-                # can be recognized when rebuilding an already upgraded profile.
-                try:
-                    run("git", "apply", "--reverse", "--check", str(DELAYED_PATCH), cwd=stage)
-                except subprocess.CalledProcessError:
-                    pass
-                else:
-                    run("git", "apply", "--reverse", str(DELAYED_PATCH), cwd=stage)
+                # Unstack overlapping GitHub patches newest-first in the disposable
+                # checkout, so an upgrade can recognize and reapply each predecessor.
+                for component in (REFRESH_PATCH, APPROVAL_PATCH, DELAYED_PATCH):
+                    try:
+                        run("git", "apply", "--reverse", "--check", str(component), cwd=stage)
+                    except subprocess.CalledProcessError:
+                        continue
+                    run("git", "apply", "--reverse", str(component), cwd=stage)
                 for component in PATCHES:
                     if component in covered:
                         continue
