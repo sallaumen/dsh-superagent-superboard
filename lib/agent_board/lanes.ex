@@ -176,29 +176,7 @@ defmodule AgentBoard.Lanes do
   defdelegate slow_at(task), to: RunTiming
   defdelegate slow?(task, now), to: RunTiming
 
-  @doc """
-  Milliseconds until the next running task becomes a long run or goes silent, nil
-  when none will. Nothing broadcasts a task that goes quiet, so the open board
-  sets one timer for this moment instead of waiting for the next sync.
-  """
-  @spec next_attention_in([map()], map(), pos_integer(), DateTime.t()) :: pos_integer() | nil
-  def next_attention_in(running, silences, stall_after, now) do
-    long_runs = Enum.map(running, &slow_at/1)
-
-    quiet =
-      Enum.map(running, fn task ->
-        case silences[task.number] do
-          %{at: at} -> DateTime.add(at, stall_after, :second)
-          nil -> nil
-        end
-      end)
-
-    (long_runs ++ quiet)
-    |> Enum.reject(&is_nil/1)
-    |> Enum.map(&DateTime.diff(&1, now, :millisecond))
-    |> Enum.filter(&(&1 > 0))
-    |> Enum.min(fn -> nil end)
-  end
+  defdelegate next_attention_in(running, silences, stall_after, now), to: RunTiming
 
   defp slow_lane(board, context) do
     board
@@ -242,7 +220,7 @@ defmodule AgentBoard.Lanes do
   # A silence is news from the moment it crossed the threshold, not from the
   # last signal: that is when the item appeared, and what "novo" refers to.
   defp need_at(task, :stalled, context) do
-    DateTime.add(context.silences[task.number].at, context.stall_after, :second)
+    RunTiming.silence_at(context.silences[task.number], context.stall_after)
   end
 
   # The same for a long run: it is news from the minute it passed its limit.
