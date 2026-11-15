@@ -34,4 +34,26 @@ defmodule AgentBoard.Lanes.RunTiming do
       nil -> false
     end
   end
+
+  @doc "When a known signal goes quiet, or nil without a signal."
+  @spec silence_at(%{at: DateTime.t()} | nil, integer()) :: DateTime.t() | nil
+  def silence_at(nil, _stall_after), do: nil
+  def silence_at(%{at: at}, stall_after), do: DateTime.add(at, stall_after, :second)
+
+  @doc """
+  Milliseconds until the next running task becomes a long run or goes silent, nil
+  when none will. Nothing broadcasts a task that goes quiet, so the open board
+  sets one timer for this moment instead of waiting for the next sync.
+  """
+  @spec next_attention_in([map()], map(), pos_integer(), DateTime.t()) :: pos_integer() | nil
+  def next_attention_in(running, silences, stall_after, now) do
+    running
+    |> Enum.flat_map(fn task ->
+      [slow_at(task), silence_at(silences[task.number], stall_after)]
+    end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&DateTime.diff(&1, now, :millisecond))
+    |> Enum.filter(&(&1 > 0))
+    |> Enum.min(fn -> nil end)
+  end
 end
