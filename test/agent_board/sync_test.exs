@@ -167,6 +167,33 @@ defmodule AgentBoard.SyncTest do
     assert Sync.checks_rollup(checks) == {"pending", ""}
   end
 
+  test "only a known acceptable completed verdict can turn CI green" do
+    for status <- ~w(waiting requested pending),
+        do: assert(Sync.checks_rollup([%{"status" => status}]) == {"pending", ""})
+
+    for verdict <- [nil, "unknown"],
+        do:
+          assert(
+            Sync.checks_rollup([%{"status" => "completed", "conclusion" => verdict}]) ==
+              {"pending", ""}
+          )
+
+    for verdict <- ~w(skipped neutral),
+        do:
+          assert(
+            Sync.checks_rollup([%{"status" => "completed", "conclusion" => verdict}]) ==
+              {"success", ""}
+          )
+
+    for verdict <- ~w(action_required stale startup_failure) do
+      assert Sync.checks_rollup([
+               %{"status" => "waiting"},
+               %{"name" => "deploy", "status" => "completed", "conclusion" => verdict}
+             ]) ==
+               {"failure", "deploy"}
+    end
+  end
+
   test "no checks is none" do
     assert Sync.checks_rollup([]) == {"none", ""}
   end

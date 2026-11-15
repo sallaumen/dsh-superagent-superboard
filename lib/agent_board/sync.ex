@@ -642,22 +642,29 @@ defmodule AgentBoard.Sync do
   defdelegate review_rollup(reviews), to: PullReviews, as: :rollup
 
   @doc "The CI result and the failing check names."
+  def checks_rollup([]), do: {"none", ""}
+
   def checks_rollup(checks) do
-    case checks_failed(checks) do
-      "" ->
-        if Enum.any?(checks, &(&1["status"] in ["queued", "in_progress"])),
-          do: {"pending", ""},
-          else: {if(checks == [], do: "none", else: "success"), ""}
+    failed =
+      checks
+      |> Enum.filter(
+        &(&1["conclusion"] in ~w(failure timed_out cancelled action_required stale startup_failure))
+      )
+      |> Enum.map(&(&1["name"] || "check"))
 
-      failed ->
-        {"failure", failed}
+    cond do
+      failed != [] ->
+        {"failure", Enum.join(failed, ", ")}
+
+      Enum.all?(
+        checks,
+        &(&1["status"] == "completed" and &1["conclusion"] in ~w(success neutral skipped))
+      ) ->
+        {"success", ""}
+
+      true ->
+        {"pending", ""}
     end
-  end
-
-  defp checks_failed(checks) do
-    checks
-    |> Enum.filter(&(&1["conclusion"] in ["failure", "timed_out", "cancelled"]))
-    |> Enum.map_join(", ", &(&1["name"] || "check"))
   end
 
   defp to_dt(nil), do: nil
