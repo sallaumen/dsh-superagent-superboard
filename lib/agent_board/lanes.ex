@@ -717,12 +717,17 @@ defmodule AgentBoard.Lanes do
           order_by: [desc: p.merged_at, desc: p.id]
       )
 
-    costs = TaskCosts.for_pulls(pulls)
+    by_day = Enum.group_by(pulls, &Time.local_date(&1.merged_at, offset))
+
+    costs =
+      by_day
+      |> Enum.flat_map(fn {_date, rows} -> Enum.take(rows, @day_reach) end)
+      |> TaskCosts.for_pulls()
 
     days =
       Enum.map(0..(@log_days - 1), fn index ->
         date = Date.add(start, index)
-        day_pulls = Enum.filter(pulls, &(Time.local_date(&1.merged_at, offset) == date))
+        day_pulls = Map.get(by_day, date, [])
 
         %{
           date: date,
@@ -740,10 +745,8 @@ defmodule AgentBoard.Lanes do
       |> Enum.reverse()
       |> Enum.reject(&(&1.n == 0))
       |> Enum.map(fn day ->
-        day_pulls =
-          pulls
-          |> Enum.filter(&(Time.local_date(&1.merged_at, offset) == day.date))
-          |> Enum.sort_by(& &1.merged_at, :desc)
+        # group_by preserves the database's chronological order (including the id tie-break).
+        day_pulls = Map.fetch!(by_day, day.date)
 
         shown = Enum.take(day_pulls, @day_limit)
 

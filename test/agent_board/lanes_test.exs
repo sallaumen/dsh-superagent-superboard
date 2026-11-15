@@ -777,6 +777,22 @@ defmodule AgentBoard.LanesTest do
     end
   end
 
+  test "a busy local day keeps UTC chronology across a month boundary and counts hidden PRs" do
+    {:ok, repo} = Board.add_repository("fixture", "busy-history")
+    midnight = ~U[2026-11-01 00:00:00Z]
+
+    for n <- 1..100 do
+      merged(repo, n, "PR #{n}", "success", DateTime.add(midnight, n - 95, :minute))
+      |> Ecto.Changeset.change(closes_issues: [n])
+      |> Repo.update!()
+    end
+
+    log = Lanes.merge_log(repo, now: ~U[2026-11-01 00:10:00Z], tz_offset: 180)
+    assert [%{date: ~D[2026-10-31], n: 100, more_wide: 92} = day] = log.groups
+    assert Enum.map(day.items ++ day.extra, & &1.number) == Enum.to_list(100..93//-1)
+    assert log.issues == 100
+  end
+
   test "the merge log groups the last seven days and counts every PR" do
     {:ok, repo} = Board.add_repository("fixture", "log")
     today = ~U[2026-11-06 15:00:00Z]
