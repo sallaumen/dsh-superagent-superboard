@@ -54,7 +54,7 @@ defmodule AgentBoard.Lanes do
   answer) the blocks and silences collapse into one `:agent_down` item:
   they all wait for the same thing.
 
-  A call nobody answered is derived too (`unanswered?/2`): the mention is
+  A call nobody answered is derived too (`CallStatus.unanswered?/2`): the mention is
   what starts the runner, and a comment that landed is not a start. The
   runner may have been down, or have routed the call to another ticket; the
   board only knows that no ticket names the issue, and says that.
@@ -240,20 +240,8 @@ defmodule AgentBoard.Lanes do
   defp unanswered_lane(board, context) do
     board
     |> Map.get(:queued, [])
-    |> Enum.filter(&(unanswered?(&1, context) or CallStatus.failed?(&1, context.now)))
+    |> Enum.filter(&(CallStatus.unanswered?(&1, context) or CallStatus.failed?(&1, context.now)))
     |> Enum.map(&task_need(&1, :unanswered, context))
-  end
-
-  # Called by the board longer ago than a silence takes, and no ticket of the
-  # runner names the issue: one waiting for a worker has a ticket already.
-  defp unanswered?(task, %{tickets: tickets, stall_after: stall_after, now: now}) do
-    case Release.called_at(task) do
-      %DateTime{} = at ->
-        not Map.has_key?(tickets, task.number) and DateTime.diff(now, at) >= stall_after
-
-      nil ->
-        false
-    end
   end
 
   # Every item says what to do, where and why: the kind is the what, the
@@ -293,7 +281,7 @@ defmodule AgentBoard.Lanes do
   defp need_at(%{held: true, released_at: at}, :unanswered, _context), do: at
 
   defp need_at(task, :unanswered, context),
-    do: DateTime.add(Release.called_at(task), context.stall_after, :second)
+    do: CallStatus.unanswered_at(task, context.stall_after)
 
   defp need_at(task, _kind, _context),
     do: task.state_changed_at || task.updated_at || task.inserted_at
@@ -664,7 +652,7 @@ defmodule AgentBoard.Lanes do
     ticket = Map.get(calls.tickets, row.number)
 
     cond do
-      is_nil(called) or unanswered?(row, calls) ->
+      is_nil(called) or CallStatus.unanswered?(row, calls) ->
         nil
 
       is_nil(ticket) ->
@@ -694,13 +682,13 @@ defmodule AgentBoard.Lanes do
     end
   end
 
-  # The same derivation as the item in Precisa de você (`unanswered?/2`).
+  # The same derivation as the item in Precisa de você (`CallStatus.unanswered?/2`).
   defp stuck(row, calls) do
     cond do
       CallStatus.failed?(row, calls.now) ->
         gettext("the call to the agent did not complete")
 
-      unanswered?(row, calls) ->
+      CallStatus.unanswered?(row, calls) ->
         called = Time.ago(DateTime.diff(calls.now, Release.called_at(row)))
         gettext("called %{ago}, the agent did not start", ago: called)
 
