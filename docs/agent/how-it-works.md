@@ -105,6 +105,8 @@ bind the PR. An open PR stays on its existing branch. The worker's
 including after a lost response. Dirty work is never reset to prepare a new
 branch. Installed profiles receive this behavior via runtime synchronization.
 
+A formal GitHub approval read after the agent’s PR has merged is recorded in the Harness history, including its review text. It does not resume the ticket or start a follow-up PR. If the poll previously saw the PR open, the Harness rechecks it once for the new approval batch. Open PR reviews and new conversation comments keep their usual delivery path.
+
 ## What the board adds
 
 - **Visibility**: the five columns, the conversation, the AI panel.

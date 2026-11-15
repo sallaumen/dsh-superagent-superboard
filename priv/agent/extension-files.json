@@ -9,7 +9,9 @@
     "merged-detail.patch",
     "delayed-merged-notification.patch",
     "isolated-context.patch",
-    "notification-replay-window.patch"
+    "notification-replay-window.patch",
+    "merged-approval.patch",
+    "approval-state-refresh.patch"
   ],
   "helpers": ["container_worker.py", "superboard-branch.py"]
 }
