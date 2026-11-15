@@ -16,4 +16,25 @@ defmodule AgentBoard.Lanes.CallStatusTest do
     refute CallStatus.failed?(%{held: false, released_at: @at}, now)
     refute CallStatus.failed?(%{held: true, released_at: nil}, now)
   end
+
+  test "a call with no ticket needs attention at its deadline, not before" do
+    task = %{number: 12, held: false, released_at: @at}
+    deadline = DateTime.add(@at, 90)
+    assert CallStatus.unanswered_at(task, 90) == deadline
+    calls = %{tickets: %{}, stall_after: 90, now: deadline}
+    refute CallStatus.unanswered?(task, %{calls | now: DateTime.add(deadline, -1)})
+    assert CallStatus.unanswered?(task, calls)
+    refute CallStatus.unanswered?(task, %{calls | tickets: %{12 => nil}})
+  end
+
+  test "a task still held has no unanswered-call deadline" do
+    task = %{number: 12, held: true, released_at: @at}
+    assert CallStatus.unanswered_at(task, 90) == nil
+
+    refute CallStatus.unanswered?(task, %{
+             tickets: %{},
+             stall_after: 90,
+             now: DateTime.add(@at, 300)
+           })
+  end
 end
