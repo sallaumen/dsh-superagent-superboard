@@ -30,9 +30,6 @@ defmodule AgentBoard.Lanes do
   alias AgentBoardWeb.{Locale, Time}
 
   @queue_limit 8
-  @day_limit 3
-  # A wide window shows this many per day; the rows past @day_limit are `extra`.
-  @day_reach 8
 
   @doc """
   The attention list: blocked work, silent runs, PRs for review and
@@ -672,9 +669,11 @@ defmodule AgentBoard.Lanes do
 
     by_day = Enum.group_by(pulls, &Time.local_date(&1.merged_at, offset))
 
+    pages = Map.new(by_day, fn {date, rows} -> {date, MergeHistory.day_page(rows)} end)
+
     costs =
-      by_day
-      |> Enum.flat_map(fn {_date, rows} -> Enum.take(rows, @day_reach) end)
+      pages
+      |> Enum.flat_map(fn {_date, page} -> page.items ++ page.extra end)
       |> TaskCosts.for_pulls()
 
     days =
@@ -691,22 +690,16 @@ defmodule AgentBoard.Lanes do
       |> Enum.reverse()
       |> Enum.reject(&(&1.n == 0))
       |> Enum.map(fn day ->
-        # group_by preserves the database's chronological order (including the id tie-break).
-        day_pulls = Map.fetch!(by_day, day.date)
-
-        shown = Enum.take(day_pulls, @day_limit)
+        page = Map.fetch!(pages, day.date)
 
         %{
           date: day.date,
-          label: Time.day_label(day.date, today),
-          n: length(day_pulls),
-          more: max(length(day_pulls) - @day_limit, 0),
-          more_wide: max(length(day_pulls) - @day_reach, 0),
-          items: Enum.map(shown, &merged_pr(&1, offset, local_ci, costs)),
-          extra:
-            day_pulls
-            |> Enum.slice(@day_limit, @day_reach - @day_limit)
-            |> Enum.map(&merged_pr(&1, offset, local_ci, costs))
+          label: day.label,
+          n: day.n,
+          more: page.more,
+          more_wide: page.more_wide,
+          items: Enum.map(page.items, &merged_pr(&1, offset, local_ci, costs)),
+          extra: Enum.map(page.extra, &merged_pr(&1, offset, local_ci, costs))
         }
       end)
 
