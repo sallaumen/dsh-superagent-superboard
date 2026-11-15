@@ -513,19 +513,8 @@ defmodule AgentBoard.Lanes do
         })
       end)
 
-    counts = queue_counts(items)
-
-    filtered = filter_items(items, filter)
-
-    %{
-      items: Enum.take(filtered, limit),
-      total: length(filtered),
-      hidden: max(length(filtered) - limit, 0),
-      limit: limit,
-      counts: counts,
-      filters: filters(counts),
-      filter: filter
-    }
+    page = Queue.page(items, filter, limit)
+    Map.put(page, :filters, filters(page.counts))
   end
 
   defp queue_item(row, merged, origins, blockers, now, last_visit) do
@@ -655,15 +644,6 @@ defmodule AgentBoard.Lanes do
     end
   end
 
-  defp queue_counts(items) do
-    %{
-      all: length(items),
-      new: Enum.count(items, & &1.is_new),
-      split: Enum.count(items, & &1.split),
-      dupes: Enum.count(items, &(!is_nil(&1.note)))
-    }
-  end
-
   defp filters(%{all: all}) when all <= @queue_limit, do: []
 
   defp filters(counts) do
@@ -674,11 +654,6 @@ defmodule AgentBoard.Lanes do
       {gettext("Possible repeats"), counts.dupes}
     ]
   end
-
-  defp filter_items(items, :new), do: Enum.filter(items, & &1.is_new)
-  defp filter_items(items, :split), do: Enum.filter(items, & &1.split)
-  defp filter_items(items, :dupes), do: Enum.filter(items, &(!is_nil(&1.note)))
-  defp filter_items(items, _all), do: items
 
   @doc "Seven days of merges: the dots, the day counts and the per-day record."
   def merge_log(repository, opts \\ []) do
