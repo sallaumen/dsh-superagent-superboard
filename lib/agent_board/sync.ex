@@ -26,7 +26,7 @@ defmodule AgentBoard.Sync do
 
   alias AgentBoard.Board.{Commit, PullRequest, Repository, SplitGraph, Task}
 
-  alias AgentBoard.Sync.ReopenedTickets
+  alias AgentBoard.Sync.{PullReviews, ReopenedTickets}
 
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()), do: client |> run() |> length()
@@ -138,6 +138,7 @@ defmodule AgentBoard.Sync do
       end
     end)
 
+    PullReviews.repair_one(client, repository)
     commits = sync_commits(client, repository)
 
     apply_tickets(repository, issues, client)
@@ -637,21 +638,8 @@ defmodule AgentBoard.Sync do
 
   defp checks_changed_at(_existing, _checks_state, now), do: now
 
-  @doc "The strongest review state."
-  def review_rollup(reviews) do
-    states =
-      reviews
-      |> Enum.map(&String.downcase(&1["state"] || ""))
-      |> Enum.reject(&(&1 == ""))
-      |> MapSet.new()
-
-    cond do
-      MapSet.member?(states, "changes_requested") -> "changes_requested"
-      MapSet.member?(states, "approved") -> "approved"
-      MapSet.size(states) > 0 -> "pending"
-      true -> "none"
-    end
-  end
+  @doc "The effective decision across reviewers."
+  defdelegate review_rollup(reviews), to: PullReviews, as: :rollup
 
   @doc "The CI result and the failing check names."
   def checks_rollup(checks) do

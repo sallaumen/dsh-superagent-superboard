@@ -143,8 +143,14 @@ differ. Change a general rule upstream, not here.
   puts it ahead of ordinary queued work and the board shows "desbloqueia #N".
   The blocked task stays blocked until a person answers or the agent retries;
   the blocker task is a separate issue, not a state change on the original.
-- A review rollup is the strongest review (`changes_requested` beats `approved`);
-  a check rollup names the failing check.
+- The board reads all review pages in GitHub's chronological order. Each reviewer’s
+  latest approval or change request replaces their earlier vote; comments do not
+  vote and a dismissed decision is no longer active. Any outstanding change
+  request takes precedence over approvals from other reviewers.
+- The regular sync rechecks at most one legacy merged verdict per repository
+  per run. It fetches only reviews, preserves CI and the visible verdict on a
+  failed read, and stops rechecking after a successful read, even if the
+  verdict really is `changes_requested`. A check rollup names the failing check.
 
 ## Board actions (the action registry)
 

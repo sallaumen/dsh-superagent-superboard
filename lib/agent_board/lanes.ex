@@ -945,7 +945,7 @@ defmodule AgentBoard.Lanes do
     end
   end
 
-  defp review_label("approved"), do: gettext("reviewed")
+  defp review_label("approved"), do: gettext("approved")
   defp review_label("changes_requested"), do: gettext("changes requested")
   defp review_label("pending"), do: gettext("review pending")
   defp review_label(_state), do: gettext("no review")

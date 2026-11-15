@@ -634,6 +634,89 @@ defmodule AgentBoard.SyncRepoTest do
     assert stored.checks_state == "success"
   end
 
+  test "regular sync repairs a cached merged review once even outside the pull list", %{
+    repo: repo
+  } do
+    alias AgentBoard.Board.PullRequest
+    due = DateTime.utc_now(:second)
+
+    row =
+      Repo.insert!(%PullRequest{
+        repository_id: repo.id,
+        number: 415,
+        title: "Review history",
+        state: "merged",
+        merged_at: due,
+        review_refresh_at: due,
+        review_state: "changes_requested",
+        checks_state: "failure",
+        checks_failed: "gates"
+      })
+
+    owner = self()
+
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/pulls/415/reviews" ->
+          send(owner, :review_page)
+
+          if Plug.Conn.fetch_query_params(conn).query_params["page"] == "1" do
+            conn
+            |> Plug.Conn.put_resp_header(
+              "link",
+              ~s(<https://api.github.com/reviews?page=2>; rel="next")
+            )
+            |> Req.Test.json([%{"user" => %{"id" => 42}, "state" => "CHANGES_REQUESTED"}])
+          else
+            Req.Test.json(conn, [%{"user" => %{"id" => 42}, "state" => "APPROVED"}])
+          end
+
+        path ->
+          refute String.contains?(path, "check-runs")
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert_receive :review_page
+    assert_receive :review_page
+
+    assert %{
+             review_refresh_at: nil,
+             review_state: "approved",
+             checks_state: "failure",
+             checks_failed: "gates"
+           } = Repo.reload!(row)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    refute_received :review_page
+  end
+
+  test "a failed historical review read retains the verdict and defers its retry", %{repo: repo} do
+    alias AgentBoard.Board.PullRequest
+    due = DateTime.utc_now(:second)
+
+    row =
+      Repo.insert!(%PullRequest{
+        repository_id: repo.id,
+        number: 415,
+        title: "Retain verdict",
+        state: "merged",
+        review_refresh_at: due,
+        review_state: "changes_requested"
+      })
+
+    stub_github(fn conn ->
+      if String.ends_with?(conn.request_path, "/reviews"),
+        do: Plug.Conn.send_resp(conn, 503, "unavailable"),
+        else: Req.Test.json(conn, [])
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert %{review_refresh_at: retry_at, review_state: "changes_requested"} = Repo.reload!(row)
+    assert DateTime.after?(retry_at, due)
+  end
+
   test "changes_requested wins over approved through the sync", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
