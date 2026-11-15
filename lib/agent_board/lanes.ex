@@ -24,6 +24,7 @@ defmodule AgentBoard.Lanes do
   }
 
   alias AgentBoard.Board.{PullRequest, Task, TaskDependency}
+  alias AgentBoard.Lanes.CallStatus
   alias AgentBoard.Usage.TaskCosts
   # The locale-aware times: these sentences are read on the screen.
   alias AgentBoardWeb.{Locale, Time}
@@ -239,19 +240,9 @@ defmodule AgentBoard.Lanes do
   defp unanswered_lane(board, context) do
     board
     |> Map.get(:queued, [])
-    |> Enum.filter(&(unanswered?(&1, context) or call_failed?(&1, context.now)))
+    |> Enum.filter(&(unanswered?(&1, context) or CallStatus.failed?(&1, context.now)))
     |> Enum.map(&task_need(&1, :unanswered, context))
   end
-
-  # The board claimed the call and the comment did not land: the task is
-  # still held, and the release tick never calls a claimed task again
-  # (`AgentBoard.Release`). A minute covers a comment still on its way.
-  @call_grace 60
-
-  defp call_failed?(%{held: true, released_at: %DateTime{} = at}, now),
-    do: DateTime.diff(now, at) >= @call_grace
-
-  defp call_failed?(_task, _now), do: false
 
   # Called by the board longer ago than a silence takes, and no ticket of the
   # runner names the issue: one waiting for a worker has a ticket already.
@@ -706,7 +697,7 @@ defmodule AgentBoard.Lanes do
   # The same derivation as the item in Precisa de você (`unanswered?/2`).
   defp stuck(row, calls) do
     cond do
-      call_failed?(row, calls.now) ->
+      CallStatus.failed?(row, calls.now) ->
         gettext("the call to the agent did not complete")
 
       unanswered?(row, calls) ->
