@@ -2,7 +2,7 @@ defmodule AgentBoard.ReleaseTest do
   @moduledoc "A task waits for what it depends on, and the agent is called once."
   use AgentBoard.DataCase, async: false
 
-  alias AgentBoard.{Actions, Board, Release, Repo}
+  alias AgentBoard.{Actions, Board, Lanes, Release, Repo}
   alias AgentBoard.Board.{Task, TaskDependency}
 
   @stub AgentBoard.ReleaseTest.Stub
@@ -77,6 +77,19 @@ defmodule AgentBoard.ReleaseTest do
 
     assert [] = Release.tick(client())
     refute_received {:comment, _, _}
+  end
+
+  test "the queue lists only the blocker that keeps a held task from release", %{repo: repo} do
+    held = task(repo, 12, "queued", %{held: true})
+    waits(held, task(repo, 7, "closed"))
+    running = task(repo, 9, "running")
+    waits(held, running)
+
+    assert [%{number: 12, sub: "espera #9"}] = Lanes.queue(repo).items
+    refute Enum.any?(Release.due(), &(&1.id == held.id))
+
+    running |> Task.changeset(%{state: "done"}) |> Repo.update!()
+    assert Enum.any?(Release.due(), &(&1.id == held.id))
   end
 
   test "every dependency must finish", %{repo: repo} do
