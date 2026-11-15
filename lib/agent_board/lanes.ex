@@ -919,11 +919,11 @@ defmodule AgentBoard.Lanes do
   end
 
   defp first_phrases(_repository, board) do
-    running = length(Map.get(board, :running, []))
-    waiting = length(Map.get(board, :ready, [])) + length(Map.get(board, :question, []))
-    blocked = length(Map.get(board, :blocked, []))
-    retrying = length(Map.get(board, :retrying, []))
-    queued = Map.get(board, :task_counts, %{}) |> Map.get(:queued, 0)
+    running = Board.lane_count(board, :running)
+    waiting = Board.lane_count(board, :ready) + Board.lane_count(board, :question)
+    blocked = Board.lane_count(board, :blocked)
+    retrying = Board.lane_count(board, :retrying)
+    queued = Board.lane_count(board, :queued)
 
     [
       running > 0 && [%{text: gettext("%{count} running", count: running), role: :agent}],
@@ -1033,8 +1033,8 @@ defmodule AgentBoard.Lanes do
   end
 
   defp since_phrases(repository, board, last_visit, counts, _offset) do
-    running = Map.get(board, :running, [])
-    blocked = Map.get(board, :blocked, [])
+    running = Board.lane_count(board, :running)
+    blocked = Board.lane_count(board, :blocked)
     first_review = first_review(repository, last_visit)
 
     [
@@ -1052,8 +1052,8 @@ defmodule AgentBoard.Lanes do
             role: :you
           }
         ],
-      running != [] && [running_phrase(running)],
-      blocked != [] && [blocked_phrase(blocked)],
+      running > 0 && [running_phrase(running, Map.get(board, :running, []))],
+      blocked > 0 && [blocked_phrase(blocked, Map.get(board, :blocked, []))],
       counts.queue_new > 0 && [queue_phrase(counts.queue_new)]
     ]
     |> Enum.reject(&(&1 == false))
@@ -1095,7 +1095,7 @@ defmodule AgentBoard.Lanes do
     }
   end
 
-  defp running_phrase([task]) do
+  defp running_phrase(1, [task]) do
     %{
       text: gettext("it is working on #%{number}", number: task.number),
       role: :agent,
@@ -1103,11 +1103,11 @@ defmodule AgentBoard.Lanes do
     }
   end
 
-  defp running_phrase(tasks) do
-    %{text: gettext("it is working on %{count} tasks", count: length(tasks)), role: :agent}
+  defp running_phrase(n, _tasks) do
+    %{text: gettext("it is working on %{count} tasks", count: n), role: :agent}
   end
 
-  defp blocked_phrase([task]) do
+  defp blocked_phrase(1, [task]) do
     %{
       text: gettext("#%{number} is still blocked", number: task.number),
       role: :halt,
@@ -1115,8 +1115,8 @@ defmodule AgentBoard.Lanes do
     }
   end
 
-  defp blocked_phrase(tasks) do
-    %{text: gettext("%{count} are still blocked", count: length(tasks)), role: :halt}
+  defp blocked_phrase(n, _tasks) do
+    %{text: gettext("%{count} are still blocked", count: n), role: :halt}
   end
 
   defp first_review(repository, last_visit) do

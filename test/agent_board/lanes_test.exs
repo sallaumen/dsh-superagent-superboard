@@ -902,6 +902,34 @@ defmodule AgentBoard.LanesTest do
     refute text =~ "2 novas"
   end
 
+  test "the digest counts whole lanes even when just one card is loaded" do
+    {:ok, repo} = Board.add_repository("fixture", "many-tasks")
+    now = ~U[2026-11-06 15:00:00Z]
+    one = [%{number: 7, id: 10}]
+
+    board = %{
+      running: one,
+      blocked: one,
+      ready: one,
+      question: one,
+      task_counts: %{running: 51, blocked: 63, ready: 26, question: 12, retrying: 11, queued: 101}
+    }
+
+    for visit <- [nil, DateTime.add(now, -60, :second)] do
+      summary = Lanes.digest(repo, board, now: now, last_visit: visit)
+      text = Enum.map_join(summary.segments, " ", & &1.text)
+      assert text =~ "51"
+      assert text =~ "63"
+      refute text =~ "#7"
+
+      if is_nil(visit) do
+        assert text =~ "38"
+        assert text =~ "11"
+        assert text =~ "101"
+      end
+    end
+  end
+
   test "a first visit never claims a change time it does not have" do
     {:ok, repo} = Board.add_repository("fixture", "first")
     now = ~U[2026-11-06 15:00:00Z]

@@ -89,6 +89,14 @@ defmodule AgentBoard.Board do
     Phoenix.PubSub.broadcast(AgentBoard.PubSub, @today_topic, :repos_changed)
   end
 
+  @doc "The full lane total, or the number of supplied tasks in an unpaged snapshot."
+  def lane_count(board, key) do
+    case board |> Map.get(:task_counts, %{}) |> Kernel.||(%{}) |> Map.get(key) do
+      n when is_integer(n) -> n
+      _ -> length(Map.get(board, key) || [])
+    end
+  end
+
   @doc "The board for a repository (the slug) or the first one."
   def board(slug, merged_limit \\ @merged_page_size, task_limits \\ %{})
 
