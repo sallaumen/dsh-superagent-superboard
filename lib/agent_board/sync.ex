@@ -37,7 +37,23 @@ defmodule AgentBoard.Sync do
   """
   @spec run(Req.Request.t()) :: [term()]
   def run(client \\ GitHub.client()) do
-    Repo.all(from r in Repository, where: r.active)
+    # With a shared quota a run can end before the last repository. Start
+    # the next run with the least recently attempted, even across restarts.
+    last_attempt =
+      from e in AgentBoard.Board.Event,
+        where: e.repository_id == parent_as(:repository).id and e.kind in ["sync", "sync_error"],
+        order_by: [desc: e.inserted_at, desc: e.id],
+        limit: 1,
+        select: %{at: e.inserted_at, id: e.id}
+
+    from(r in Repository,
+      as: :repository,
+      where: r.active,
+      left_lateral_join: a in subquery(last_attempt),
+      on: true,
+      order_by: [asc_nulls_first: a.at, asc_nulls_first: a.id, asc: r.id]
+    )
+    |> Repo.all()
     |> Enum.reduce_while([], fn repository, results ->
       case sync_repo(client, repository) do
         {:error, %GitHub.RateLimited{}} = limited -> {:halt, [limited | results]}

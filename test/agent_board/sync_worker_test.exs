@@ -117,6 +117,24 @@ defmodule AgentBoard.Sync.WorkerTest do
       assert Worker.perform(%Oban.Job{args: %{}}) == {:snooze, 120}
     end
 
+    test "successive exhausted windows give each active repository a turn" do
+      {:ok, _} = Board.add_repository("sallaumen", "second")
+      {:ok, _} = Board.add_repository("sallaumen", "third")
+      owner = self()
+
+      Req.Test.stub(@stub, fn conn ->
+        send(owner, {:read, conn.request_path})
+        Plug.Conn.send_resp(conn, 429, "slow down")
+      end)
+
+      for name <- ["arena-rogue", "second", "third", "arena-rogue"] do
+        assert {:snooze, 60} = Worker.perform(%Oban.Job{args: %{}})
+        assert_received {:read, path}
+        assert path == "/repos/sallaumen/#{name}/issues"
+        refute_received {:read, _}
+      end
+    end
+
     test "stops at the first rate limit instead of asking for each remaining repository", %{
       repo: _repo
     } do
