@@ -36,4 +36,10 @@ defmodule AgentBoard.Board.ObjectiveTest do
       assert Objective.progress(tasks) == %{total: 2, merged: 2, done?: true}
     end
   end
+
+  test "a dependency belongs to the objective of the blocked task" do
+    tasks = [%Task{id: 12}]
+
+    assert Objective.dependency_edges(tasks, [{12, 7}, {7, 12}]) == [{12, 7}]
+  end
 end

@@ -42,6 +42,17 @@ defmodule AgentBoard.Board.Objective do
     %{total: total, merged: merged, done?: total > 0 and merged == total}
   end
 
+  @doc """
+  Keeps each `{blocked_id, blocker_id}` edge whose blocked task belongs to the
+  objective, even if the blocker belongs to another objective.
+  """
+  @spec dependency_edges([AgentBoard.Board.Task.t()], [{integer(), integer()}]) ::
+          [{integer(), integer()}]
+  def dependency_edges(tasks, edges) do
+    task_ids = MapSet.new(tasks, & &1.id)
+    Enum.filter(edges, fn {blocked_id, _blocker_id} -> blocked_id in task_ids end)
+  end
+
   @doc false
   def changeset(objective, attrs) do
     objective
