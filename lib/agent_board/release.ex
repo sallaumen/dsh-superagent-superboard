@@ -77,12 +77,8 @@ defmodule AgentBoard.Release do
   end
 
   defp open_edges do
-    from d in TaskDependency,
-      join: b in Task,
-      on: b.id == d.blocked_by_task_id,
-      where:
-        d.task_id == parent_as(:task).id and
-          b.state not in ^TaskDependency.resolved_blocker_states(),
+    from d in TaskDependency.with_open_blocker(),
+      where: d.task_id == parent_as(:task).id,
       select: 1
   end
 
