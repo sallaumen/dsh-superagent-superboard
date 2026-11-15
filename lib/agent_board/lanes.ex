@@ -681,15 +681,9 @@ defmodule AgentBoard.Lanes do
       Enum.map(dates, fn date ->
         day_pulls = Map.get(by_day, date, [])
 
-        %{
-          date: date,
-          label: Time.day_label(date, today),
-          n: length(day_pulls),
-          issues: delivered(day_pulls),
-          fail: Enum.count(day_pulls, &(local_state(&1, local_ci) == :fail)),
-          ok: Enum.count(day_pulls, &(local_state(&1, local_ci) == :pass)),
-          today: date == today
-        }
+        day_pulls
+        |> MergeHistory.day_totals(local_ci)
+        |> Map.merge(%{date: date, label: Time.day_label(date, today), today: date == today})
       end)
 
     groups =
@@ -728,8 +722,7 @@ defmodule AgentBoard.Lanes do
   The issues the PRs delivered: each issue a merged PR closes (`Closes #n`),
   once however many PRs closed it. A PR that closes nothing delivers no issue.
   """
-  def delivered(pulls),
-    do: pulls |> Enum.flat_map(&(&1.closes_issues || [])) |> Enum.uniq() |> length()
+  defdelegate delivered(pulls), to: MergeHistory
 
   @doc """
   How a pull's CI reads, the local gate first: `{state, note, title}`. One
@@ -782,13 +775,6 @@ defmodule AgentBoard.Lanes do
 
   defp ci_status(_pull, nil),
     do: {"unknown", gettext("no CI"), gettext("No remote check configured.")}
-
-  defp local_state(pull, local_ci) when is_map(local_ci) do
-    case Map.get(local_ci, pull.number, %{}) do
-      %{state: state} -> state
-      _ -> nil
-    end
-  end
 
   defp local_title(local, pull) do
     prefix =
