@@ -10,7 +10,7 @@ defmodule AgentBoardWeb.BoardComponents.ObjectiveTree do
   use AgentBoardWeb, :html
 
   alias AgentBoard.Actions
-  alias AgentBoardWeb.BoardComponents.ObjectiveTree.Layout
+  alias AgentBoardWeb.BoardComponents.ObjectiveTree.{DependencyStatus, Layout}
 
   attr :objective, :map, required: true
   attr :repo, :map, required: true
@@ -100,31 +100,35 @@ defmodule AgentBoardWeb.BoardComponents.ObjectiveTree do
         AgentBoardWeb.Locale.language()
       )
 
-  defp why(%{held: true, released_at: %DateTime{}}), do: gettext("Could not call the agent")
+  defp why(node) do
+    case DependencyStatus.classify(node) do
+      :call_failed ->
+        gettext("Could not call the agent")
 
-  defp why(%{waiting: []}), do: gettext("No dependency")
+      :no_dependency ->
+        gettext("No dependency")
 
-  defp why(%{state: state}) when state in ~w(done closed), do: gettext("Finished")
+      :finished ->
+        gettext("Finished")
 
-  defp why(%{waiting: waiting} = node) do
-    case Enum.reject(waiting, &finished?/1) do
-      [] -> finished_label(node)
-      open -> open_label(node, links(open))
+      :starting_soon ->
+        gettext("Starting soon")
+
+      :ready_to_start ->
+        gettext("Ready to start")
+
+      :dependencies_finished ->
+        gettext("Dependencies finished")
+
+      {:waiting_for, numbers} ->
+        gettext("Waits for %{tasks}", tasks: links(numbers))
+
+      {:depends_on_open, numbers} ->
+        gettext("Depends on %{tasks}, still open", tasks: links(numbers))
     end
   end
 
-  defp finished_label(%{held: true}), do: gettext("Starting soon")
-  defp finished_label(%{state: "queued"}), do: gettext("Ready to start")
-  defp finished_label(_node), do: gettext("Dependencies finished")
-
-  defp open_label(%{held: true}, tasks), do: gettext("Waits for %{tasks}", tasks: tasks)
-
-  defp open_label(_node, tasks),
-    do: gettext("Depends on %{tasks}, still open", tasks: tasks)
-
-  defp finished?(%{state: state}), do: state in ~w(done closed)
-
-  defp links(tasks), do: Enum.map_join(tasks, ", ", &"##{&1.number}")
+  defp links(numbers), do: Enum.map_join(numbers, ", ", &"##{&1}")
 
   defp state_word("done"), do: gettext("merged")
   defp state_word("closed"), do: gettext("closed issue")
