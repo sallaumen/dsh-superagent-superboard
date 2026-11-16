@@ -370,41 +370,11 @@ defmodule AgentBoard.Lanes do
     frozen? = Keyword.get(opts, :frozen, not is_nil(frozen_at))
 
     if is_nil(last_visit) do
-      first_digest(board, now, offset, frozen_at, frozen?)
+      Digest.FirstVisit.build(Digest.first_visit(board), now, offset, frozen_at, frozen?)
     else
       since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?)
     end
   end
-
-  defp first_digest(board, now, offset, frozen_at, frozen?) do
-    case Digest.first_visit(board) do
-      [] ->
-        nil
-
-      facts ->
-        %{
-          prefix: first_prefix(frozen?, frozen_at, offset),
-          segments: facts |> Enum.map(&first_phrase/1) |> Digest.Sentence.join(gettext("and")),
-          suffix: (frozen? && " " <> gettext("After that, we do not know.")) || ".",
-          now: now
-        }
-    end
-  end
-
-  defp first_phrase({:running, n}),
-    do: %{text: gettext("%{count} running", count: n), role: :agent}
-
-  defp first_phrase({:retrying, n}),
-    do: %{text: gettext("%{count} in automatic retry", count: n), role: :agent}
-
-  defp first_phrase({:waiting, n}),
-    do: %{text: ngettext("%{count} waiting for you", "%{count} waiting for you", n), role: :you}
-
-  defp first_phrase({:blocked, n}),
-    do: %{text: pngettext("digest", "%{count} blocked", "%{count} blocked", n), role: :halt}
-
-  defp first_phrase({:queued, n}),
-    do: %{text: gettext("%{count} in the queue", count: n), role: :agent}
 
   defp since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?) do
     %{counts: counts, latest_review: review} = Digest.Observations.since(repository, last_visit)
@@ -436,12 +406,6 @@ defmodule AgentBoard.Lanes do
       now: now
     }
   end
-
-  defp first_prefix(true, %DateTime{} = frozen_at, offset),
-    do: gettext("Until %{time}:", time: Time.local_time(frozen_at, offset)) <> " "
-
-  defp first_prefix(true, nil, _offset), do: gettext("Without a completed sync:") <> " "
-  defp first_prefix(false, _frozen_at, _offset), do: gettext("First visit:") <> " "
 
   defp since_prefix(_last_visit, offset, %DateTime{} = frozen_at, true, _now),
     do: gettext("Until %{time},", time: Time.local_time(frozen_at, offset)) <> " "
