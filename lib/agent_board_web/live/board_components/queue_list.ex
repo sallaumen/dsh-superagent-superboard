@@ -33,14 +33,14 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
         aria-label={gettext("Filter queue")}
       >
         <button
-          :for={{label, filter, n} <- filter_buttons(@queue.filters)}
+          :for={{filter, n} <- @queue.filters}
           type="button"
           class="ab-chip"
           aria-pressed={to_string(@queue.filter == filter)}
           phx-click="filter_queue"
           phx-value-filter={filter}
         >
-          {label} <span class="ab-num">{n}</span>
+          {filter_label(filter)} <span class="ab-num">{n}</span>
         </button>
       </div>
 
@@ -95,11 +95,8 @@ defmodule AgentBoardWeb.BoardComponents.QueueList do
     """
   end
 
-  defp filter_buttons(filters) do
-    filters
-    |> Enum.with_index()
-    |> Enum.map(fn {{label, n}, index} ->
-      {label, Enum.at(~w(all new split dupes), index), n}
-    end)
-  end
+  defp filter_label(:all), do: gettext("All")
+  defp filter_label(:new), do: pgettext("queue filter", "New")
+  defp filter_label(:split), do: pgettext("queue filter", "Split")
+  defp filter_label(:dupes), do: gettext("Possible repeats")
 end
