@@ -6,6 +6,14 @@ defmodule AgentBoard.TimeTest do
 
   @now ~U[2026-11-10 23:00:00Z]
 
+  test "new since the visit requires two known timestamps and excludes the boundary" do
+    refute Time.new_since?(nil, @now)
+    refute Time.new_since?(@now, nil)
+    refute Time.new_since?(DateTime.add(@now, -1), @now)
+    refute Time.new_since?(@now, @now)
+    assert Time.new_since?(DateTime.add(@now, 1), @now)
+  end
+
   describe "in Portuguese" do
     setup do
       Gettext.put_locale(AgentBoardWeb.Gettext, "pt_BR")

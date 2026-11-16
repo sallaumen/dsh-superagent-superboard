@@ -19,6 +19,7 @@ defmodule AgentBoard.Lanes do
     Release,
     Repo,
     Superagents,
+    Time,
     Titles
   }
 
@@ -36,8 +37,7 @@ defmodule AgentBoard.Lanes do
   }
 
   alias AgentBoard.Usage.TaskCosts
-  # The locale-aware times: these sentences are read on the screen.
-  alias AgentBoardWeb.{Locale, Time}
+  alias AgentBoardWeb.Locale
 
   @queue_limit 8
 
@@ -214,7 +214,7 @@ defmodule AgentBoard.Lanes do
       ci: ci,
       pull_number: pull && pull.number,
       age_seconds: Time.age_seconds(at, context.now),
-      is_new: new?(at, context.last_visit),
+      is_new: Time.new_since?(at, context.last_visit),
       actions: need_actions(task, kind, pull, context)
     }
   end
@@ -485,7 +485,7 @@ defmodule AgentBoard.Lanes do
       number: row.number,
       title: row.title,
       age_seconds: Time.age_seconds(row.inserted_at, now),
-      is_new: new?(row.inserted_at, last_visit),
+      is_new: Time.new_since?(row.inserted_at, last_visit),
       sub: sub,
       split: not is_nil(relationship),
       note:
@@ -838,8 +838,4 @@ defmodule AgentBoard.Lanes do
   defp change_phrase({:blocked, n}, _pr) do
     %{text: gettext("%{count} are still blocked", count: n), role: :halt}
   end
-
-  defp new?(nil, _last_visit), do: false
-  defp new?(_at, nil), do: false
-  defp new?(at, %DateTime{} = last_visit), do: DateTime.compare(at, last_visit) == :gt
 end

@@ -14,6 +14,12 @@ defmodule AgentBoard.Time do
     max(DateTime.diff(now, at, :second), 0)
   end
 
+  @doc "A board item is new only when its timestamp is strictly later than a known last visit."
+  @spec new_since?(DateTime.t() | nil, DateTime.t() | nil) :: boolean()
+  def new_since?(nil, _last_visit), do: false
+  def new_since?(_at, nil), do: false
+  def new_since?(at, last_visit), do: DateTime.compare(at, last_visit) == :gt
+
   @doc "A relative phrase in the board's voice."
   def ago(nil), do: gettext("unknown")
   def ago(sec) when sec < 60, do: gettext("%{count} s ago", count: sec)
