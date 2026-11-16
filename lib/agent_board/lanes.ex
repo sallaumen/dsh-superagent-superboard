@@ -23,7 +23,17 @@ defmodule AgentBoard.Lanes do
   }
 
   alias AgentBoard.Board.{PullRequest, Task, TaskDependency}
-  alias AgentBoard.Lanes.{Attention, CallStatus, MergeHistory, Queue, ReportQuote, RunTiming}
+
+  alias AgentBoard.Lanes.{
+    Attention,
+    CallStatus,
+    Digest,
+    MergeHistory,
+    Queue,
+    ReportQuote,
+    RunTiming
+  }
+
   alias AgentBoard.Usage.TaskCosts
   # The locale-aware times: these sentences are read on the screen.
   alias AgentBoardWeb.{Locale, Time}
@@ -786,56 +796,41 @@ defmodule AgentBoard.Lanes do
     frozen? = Keyword.get(opts, :frozen, not is_nil(frozen_at))
 
     if is_nil(last_visit) do
-      first_digest(repository, board, now, offset, frozen_at, frozen?)
+      first_digest(board, now, offset, frozen_at, frozen?)
     else
       since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?)
     end
   end
 
-  defp first_digest(repository, board, now, offset, frozen_at, frozen?) do
-    case first_phrases(repository, board) do
+  defp first_digest(board, now, offset, frozen_at, frozen?) do
+    case Digest.first_visit(board) do
       [] ->
         nil
 
-      phrases ->
+      facts ->
         %{
           prefix: first_prefix(frozen?, frozen_at, offset),
-          segments: join_phrases(phrases),
+          segments: facts |> Enum.map(&first_phrase/1) |> join_phrases(),
           suffix: (frozen? && " " <> gettext("After that, we do not know.")) || ".",
           now: now
         }
     end
   end
 
-  defp first_phrases(_repository, board) do
-    running = Board.lane_count(board, :running)
-    waiting = Board.lane_count(board, :ready) + Board.lane_count(board, :question)
-    blocked = Board.lane_count(board, :blocked)
-    retrying = Board.lane_count(board, :retrying)
-    queued = Board.lane_count(board, :queued)
+  defp first_phrase({:running, n}),
+    do: [%{text: gettext("%{count} running", count: n), role: :agent}]
 
-    [
-      running > 0 && [%{text: gettext("%{count} running", count: running), role: :agent}],
-      retrying > 0 &&
-        [%{text: gettext("%{count} in automatic retry", count: retrying), role: :agent}],
-      waiting > 0 &&
-        [
-          %{
-            text: ngettext("%{count} waiting for you", "%{count} waiting for you", waiting),
-            role: :you
-          }
-        ],
-      blocked > 0 &&
-        [
-          %{
-            text: pngettext("digest", "%{count} blocked", "%{count} blocked", blocked),
-            role: :halt
-          }
-        ],
-      queued > 0 && [%{text: gettext("%{count} in the queue", count: queued), role: :agent}]
-    ]
-    |> Enum.reject(&(&1 == false))
-  end
+  defp first_phrase({:retrying, n}),
+    do: [%{text: gettext("%{count} in automatic retry", count: n), role: :agent}]
+
+  defp first_phrase({:waiting, n}),
+    do: [%{text: ngettext("%{count} waiting for you", "%{count} waiting for you", n), role: :you}]
+
+  defp first_phrase({:blocked, n}),
+    do: [%{text: pngettext("digest", "%{count} blocked", "%{count} blocked", n), role: :halt}]
+
+  defp first_phrase({:queued, n}),
+    do: [%{text: gettext("%{count} in the queue", count: n), role: :agent}]
 
   defp since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?) do
     counts = since_counts(repository, last_visit)
