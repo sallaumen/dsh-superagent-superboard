@@ -204,7 +204,8 @@ defmodule AgentBoard.Lanes do
     observed = Queue.Observations.load(repository)
 
     page = Queue.select(observed, last_visit, filter, limit)
-    %{page | items: Enum.map(page.items, &Queue.Item.build(&1, observed.waits, calls))}
+    waits = page |> Queue.held_ids() |> Queue.Observations.open_dependencies()
+    %{page | items: Enum.map(page.items, &Queue.Item.build(&1, waits, calls))}
   end
 
   @doc "Seven days of merges: the dots, the day counts and the per-day record."
