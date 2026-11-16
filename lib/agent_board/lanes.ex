@@ -19,8 +19,7 @@ defmodule AgentBoard.Lanes do
     Release,
     Repo,
     Superagents,
-    Time,
-    Titles
+    Time
   }
 
   alias AgentBoard.Board.PullRequest
@@ -413,39 +412,10 @@ defmodule AgentBoard.Lanes do
 
     observed = Queue.Observations.load(repository)
 
-    items =
-      Enum.map(observed.rows, fn row ->
-        relationship =
-          Queue.relationship(
-            observed.blockers[row.blocker_for_task_id],
-            observed.origins[row.origin_task_id]
-          )
-
-        detail =
-          Queue.Detail.describe(row, relationship, Map.get(observed.waits, row.id, []), calls)
-
-        row |> queue_item(observed.merged, relationship, now, last_visit) |> Map.merge(detail)
-      end)
+    items = Enum.map(observed.rows, &Queue.Item.build(&1, observed, calls, last_visit))
 
     page = Queue.page(items, filter, limit)
     Map.put(page, :filters, filters(page.counts))
-  end
-
-  defp queue_item(row, merged, relationship, now, last_visit) do
-    duplicate = Titles.duplicate(row.title, merged)
-
-    %{
-      key: "task-#{row.id}",
-      id: row.id,
-      number: row.number,
-      title: row.title,
-      age_seconds: Time.age_seconds(row.inserted_at, now),
-      is_new: Time.new_since?(row.inserted_at, last_visit),
-      split: not is_nil(relationship),
-      note:
-        duplicate &&
-          gettext("Looks like a repeat of #%{number}, already merged", number: duplicate.number)
-    }
   end
 
   defp filters(%{all: all}) when all <= @queue_limit, do: []
