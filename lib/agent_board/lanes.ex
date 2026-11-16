@@ -200,6 +200,7 @@ defmodule AgentBoard.Lanes do
     ticket = Map.get(context.tickets, task.number)
     pull = Map.get(context.pulls, task.id)
     ci = pull && CI.Badge.describe(pull, Map.get(context.local_ci, pull.number))
+    {why, actions} = need_content(task, kind, ticket, pull, context)
 
     %{
       key: "task-#{task.id}",
@@ -207,13 +208,23 @@ defmodule AgentBoard.Lanes do
       number: task.number,
       kind: kind,
       title: task.title,
-      why: task_why(task, kind, ticket, pull, context),
+      why: why,
       ci: ci,
       pull_number: pull && pull.number,
       age_seconds: Time.age_seconds(at, context.now),
       is_new: Time.new_since?(at, context.last_visit),
-      actions: need_actions(task, kind, pull, context)
+      actions: actions
     }
+  end
+
+  defp need_content(task, :blocked, ticket, _pull, context) do
+    block = AgentBlock.explain(ticket, block_opts(context))
+    why = if block, do: block.line, else: blockage_why(task, ticket)
+    {why, blocked_actions(task, block)}
+  end
+
+  defp need_content(task, kind, ticket, pull, context) do
+    {task_why(task, kind, ticket, pull, context), need_actions(task, kind, pull, context)}
   end
 
   defp task_why(%{held: true, released_at: at}, :unanswered, _ticket, _pull, context) do
@@ -263,13 +274,6 @@ defmodule AgentBoard.Lanes do
     end
   end
 
-  defp task_why(task, :blocked, ticket, pull, context) do
-    case AgentBlock.explain(ticket, block_opts(context)) do
-      %{line: line} -> line
-      nil -> blockage_why(task, ticket, pull, context)
-    end
-  end
-
   # The item says what the board saw last and when; it never says the agent
   # died. A long model turn with no file change is a silence too.
   defp task_why(task, :stalled, _ticket, _pull, context) do
@@ -303,7 +307,7 @@ defmodule AgentBoard.Lanes do
 
   # A block the agent reported itself (a workpad Bloqueio, a `blocked`
   # report): its own words.
-  defp blockage_why(task, ticket, _pull, _context) do
+  defp blockage_why(task, ticket) do
     blockage = Board.agent_blockage(task.repository_id, task.number)
     summary = ticket && ticket["report_summary"]
 
@@ -355,12 +359,15 @@ defmodule AgentBoard.Lanes do
     ]
   end
 
+  defp need_actions(task, kind, _pull, _context),
+    do: [%{label: action_label(kind), task_id: task.id}]
+
   # A failure with an attempt left to ask for gets the button on the card,
   # the same one as the detail's (`AgentBoard.AgentBlock`).
-  defp need_actions(task, :blocked, _pull, context) do
+  defp blocked_actions(task, block) do
     detail = %{label: action_label(:blocked), task_id: task.id}
 
-    case AgentBlock.explain(Map.get(context.tickets, task.number), block_opts(context)) do
+    case block do
       %{retry: label, ticket_id: ticket_id} when is_binary(label) and is_binary(ticket_id) ->
         retry = %{ticket_id: ticket_id, repository_id: task.repository_id, number: task.number}
         [%{label: label, retry: retry}, detail]
@@ -369,9 +376,6 @@ defmodule AgentBoard.Lanes do
         [detail]
     end
   end
-
-  defp need_actions(task, kind, _pull, _context),
-    do: [%{label: action_label(kind), task_id: task.id}]
 
   defp action_label(:review), do: gettext("Review")
   defp action_label(:question), do: gettext("Respond")
