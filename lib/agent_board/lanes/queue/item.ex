@@ -4,11 +4,11 @@ defmodule AgentBoard.Lanes.Queue.Item do
   use Gettext, backend: AgentBoardWeb.Gettext
 
   alias AgentBoard.Lanes.Queue
-  alias AgentBoard.{Time, Titles}
+  alias AgentBoard.Time
 
   @doc "Describe one row, preserving the split and repeat flags even when the subtitle describes a wait."
-  @spec build(map(), map(), map(), DateTime.t() | nil) :: map()
-  def build(row, observed, calls, last_visit) do
+  @spec build(map(), map(), map(), DateTime.t() | nil, map() | nil) :: map()
+  def build(row, observed, calls, last_visit, duplicate) do
     relationship =
       Queue.relationship(
         observed.related_numbers[row.blocker_for_task_id],
@@ -16,7 +16,6 @@ defmodule AgentBoard.Lanes.Queue.Item do
       )
 
     detail = Queue.Detail.describe(row, relationship, Map.get(observed.waits, row.id, []), calls)
-    duplicate = Titles.duplicate(row.title, observed.merged)
 
     %{
       key: "task-#{row.id}",
