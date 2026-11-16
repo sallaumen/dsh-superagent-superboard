@@ -917,8 +917,8 @@ defmodule AgentBoard.Lanes do
   end
 
   defp since_phrases(repository, board, last_visit, counts, _offset) do
-    running = Board.lane_count(board, :running)
-    blocked = Board.lane_count(board, :blocked)
+    running = Digest.task_subject(board, :running)
+    blocked = Digest.task_subject(board, :blocked)
     first_review = first_review(repository, last_visit)
 
     [
@@ -936,8 +936,8 @@ defmodule AgentBoard.Lanes do
             role: :you
           }
         ],
-      running > 0 && [running_phrase(running, Map.get(board, :running, []))],
-      blocked > 0 && [blocked_phrase(blocked, Map.get(board, :blocked, []))],
+      not is_nil(running) && [running_phrase(running)],
+      not is_nil(blocked) && [blocked_phrase(blocked)],
       counts.queue_new > 0 && [queue_phrase(counts.queue_new)]
     ]
     |> Enum.reject(&(&1 == false))
@@ -979,27 +979,27 @@ defmodule AgentBoard.Lanes do
     }
   end
 
-  defp running_phrase(1, [task]) do
+  defp running_phrase({:task, id, number}) do
     %{
-      text: gettext("it is working on #%{number}", number: task.number),
+      text: gettext("it is working on #%{number}", number: number),
       role: :agent,
-      task_id: task.id
+      task_id: id
     }
   end
 
-  defp running_phrase(n, _tasks) do
+  defp running_phrase(n) do
     %{text: gettext("it is working on %{count} tasks", count: n), role: :agent}
   end
 
-  defp blocked_phrase(1, [task]) do
+  defp blocked_phrase({:task, id, number}) do
     %{
-      text: gettext("#%{number} is still blocked", number: task.number),
+      text: gettext("#%{number} is still blocked", number: number),
       role: :halt,
-      task_id: task.id
+      task_id: id
     }
   end
 
-  defp blocked_phrase(n, _tasks) do
+  defp blocked_phrase(n) do
     %{text: gettext("%{count} are still blocked", count: n), role: :halt}
   end
 
