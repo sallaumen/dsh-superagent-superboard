@@ -37,6 +37,12 @@ defmodule AgentBoard.SyncTest do
     assert Tickets.state(ticket) == "done"
   end
 
+  test "a dropped assignment report alone does not end a live or merged ticket" do
+    assert Tickets.state(ticket("running", "dropped", nil)) == "running"
+    assert Tickets.state(ticket("ended", "dropped", "merged")) == "done"
+    assert Tickets.state(ticket("ended", "dropped", "dropped")) == nil
+  end
+
   test "an ended ticket without an outcome has no overlay" do
     assert Tickets.state(ticket("ended", nil, nil)) == nil
   end
@@ -117,6 +123,21 @@ defmodule AgentBoard.SyncTest do
              "changes_requested"
   end
 
+  test "a reviewer's final decision supersedes only their own earlier decisions" do
+    review = fn id, state -> %{"user" => %{"id" => id}, "state" => state} end
+    block = review.(41, "CHANGES_REQUESTED")
+    approve = review.(41, "APPROVED")
+    comment = review.(41, "COMMENTED")
+
+    assert Sync.review_rollup([block, block, approve, comment]) == "approved"
+
+    assert Sync.review_rollup([review.(52, "CHANGES_REQUESTED"), block, approve]) ==
+             "changes_requested"
+
+    assert Sync.review_rollup([approve, block, comment]) == "changes_requested"
+    assert Sync.review_rollup([block, approve, review.(41, "DISMISSED")]) == "pending"
+  end
+
   test "comments alone are pending" do
     assert Sync.review_rollup([%{"state" => "COMMENTED"}]) == "pending"
   end
@@ -150,6 +171,33 @@ defmodule AgentBoard.SyncTest do
     ]
 
     assert Sync.checks_rollup(checks) == {"pending", ""}
+  end
+
+  test "only a known acceptable completed verdict can turn CI green" do
+    for status <- ~w(waiting requested pending),
+        do: assert(Sync.checks_rollup([%{"status" => status}]) == {"pending", ""})
+
+    for verdict <- [nil, "unknown"],
+        do:
+          assert(
+            Sync.checks_rollup([%{"status" => "completed", "conclusion" => verdict}]) ==
+              {"pending", ""}
+          )
+
+    for verdict <- ~w(skipped neutral),
+        do:
+          assert(
+            Sync.checks_rollup([%{"status" => "completed", "conclusion" => verdict}]) ==
+              {"success", ""}
+          )
+
+    for verdict <- ~w(action_required stale startup_failure) do
+      assert Sync.checks_rollup([
+               %{"status" => "waiting"},
+               %{"name" => "deploy", "status" => "completed", "conclusion" => verdict}
+             ]) ==
+               {"failure", "deploy"}
+    end
   end
 
   test "no checks is none" do

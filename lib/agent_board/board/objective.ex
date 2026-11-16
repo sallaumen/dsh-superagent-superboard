@@ -20,6 +20,57 @@ defmodule AgentBoard.Board.Objective do
     timestamps(type: :utc_datetime)
   end
 
+  @doc "Returns distinct task IDs in first-seen order when at least two tasks form a group."
+  @spec group_task_ids([integer()]) :: {:ok, [integer()]} | {:error, :not_a_group}
+  def group_task_ids(task_ids) do
+    case Enum.uniq(task_ids) do
+      [_, _ | _] = ids -> {:ok, ids}
+      _ -> {:error, :not_a_group}
+    end
+  end
+
+  @doc "Counts merged tasks. An objective is done only when it has tasks and all are done."
+  @spec progress([AgentBoard.Board.Task.t()]) :: %{
+          total: non_neg_integer(),
+          merged: non_neg_integer(),
+          done?: boolean()
+        }
+  def progress(tasks) do
+    total = length(tasks)
+    merged = Enum.count(tasks, &(&1.state == "done"))
+
+    %{total: total, merged: merged, done?: total > 0 and merged == total}
+  end
+
+  @doc """
+  Keeps each `{blocked_id, blocker_id}` edge whose blocked task belongs to the
+  objective, even if the blocker belongs to another objective.
+  """
+  @spec dependency_edges([AgentBoard.Board.Task.t()], [{integer(), integer()}]) ::
+          [{integer(), integer()}]
+  def dependency_edges(tasks, edges) do
+    task_ids = MapSet.new(tasks, & &1.id)
+    Enum.filter(edges, fn {blocked_id, _blocker_id} -> blocked_id in task_ids end)
+  end
+
+  @doc "Builds the board summary from the objective's loaded tasks and its selected edges."
+  @spec summary(t(), [{integer(), integer()}]) :: map()
+  def summary(objective, edges) do
+    %{
+      id: objective.id,
+      title: objective.title,
+      done_criterion: objective.done_criterion,
+      issue_url: objective.issue_url,
+      tasks:
+        Enum.map(
+          objective.tasks,
+          &Map.take(&1, [:id, :number, :title, :state, :held, :released_at])
+        ),
+      edges: edges
+    }
+    |> Map.merge(progress(objective.tasks))
+  end
+
   @doc false
   def changeset(objective, attrs) do
     objective

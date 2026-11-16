@@ -204,7 +204,9 @@ defmodule AgentBoard.Voice do
       local_hour(Keyword.get(opts, :now, DateTime.utc_now()), Keyword.get(opts, :tz_offset, 0))
 
     parts =
-      for key <- @summary_order, (n = count(board, key)) > 0, do: Phrases.count(lang, key, n)
+      for key <- @summary_order,
+          (n = AgentBoard.Board.lane_count(board, key)) > 0,
+          do: Phrases.count(lang, key, n)
 
     Phrases.summary(lang, Phrases.greeting(lang, hour), parts)
   end
@@ -212,12 +214,4 @@ defmodule AgentBoard.Voice do
   @doc "The hour on the owner's clock (`tz_offset` is minutes west of UTC)."
   def local_hour(%DateTime{} = now, tz_offset) when is_integer(tz_offset),
     do: DateTime.add(now, -tz_offset * 60, :second).hour
-
-  # The exact lane total when the board has one (a lane is a page of tasks).
-  defp count(board, key) do
-    case board |> Map.get(:task_counts, %{}) |> Kernel.||(%{}) |> Map.get(key) do
-      n when is_integer(n) -> n
-      _ -> length(Map.get(board, key) || [])
-    end
-  end
 end

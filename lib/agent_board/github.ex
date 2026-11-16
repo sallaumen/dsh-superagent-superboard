@@ -239,12 +239,20 @@ defmodule AgentBoard.GitHub do
     client |> Req.get!(url: "/repos/#{owner}/#{repo}/pulls/#{number}") |> body!()
   end
 
-  defp pages(client, url, params, more?, page \\ 1) do
+  defp pages(
+         client,
+         url,
+         params,
+         more?,
+         max_pages \\ @max_pages,
+         extract \\ &Function.identity/1,
+         page \\ 1
+       ) do
     response = Req.get!(client, url: url, params: [{:page, page} | params])
-    items = body!(response)
+    items = extract.(body!(response))
 
-    if page < @max_pages and next_page?(response) and more?.(items),
-      do: items ++ pages(client, url, params, more?, page + 1),
+    if (max_pages == :all or page < max_pages) and next_page?(response) and more?.(items),
+      do: items ++ pages(client, url, params, more?, max_pages, extract, page + 1),
       else: items
   end
 
@@ -260,17 +268,25 @@ defmodule AgentBoard.GitHub do
 
   @doc "The reviews of a pull request."
   def reviews(client, owner, repo, number) do
-    client
-    |> Req.get!(url: "/repos/#{owner}/#{repo}/pulls/#{number}/reviews", params: [per_page: 100])
-    |> body!()
+    pages(
+      client,
+      "/repos/#{owner}/#{repo}/pulls/#{number}/reviews",
+      [per_page: 100],
+      fn _ -> true end,
+      :all
+    )
   end
 
   @doc "The check runs of a commit."
   def check_runs(client, owner, repo, ref) do
-    client
-    |> Req.get!(url: "/repos/#{owner}/#{repo}/commits/#{ref}/check-runs", params: [per_page: 100])
-    |> body!()
-    |> Map.get("check_runs", [])
+    pages(
+      client,
+      "/repos/#{owner}/#{repo}/commits/#{ref}/check-runs",
+      [per_page: 100],
+      fn _ -> true end,
+      :all,
+      &Map.fetch!(&1, "check_runs")
+    )
   end
 
   @doc """

@@ -17,6 +17,7 @@ defmodule AgentBoard.Superagents.Prototype do
   """
 
   alias AgentBoard.{Settings, Superagents}
+  alias AgentBoard.Superagents.RuntimePackage
 
   @legacy "~/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype"
   @repository "https://github.com/deepseek-ai/dsh-superagent-prototype.git"
@@ -72,26 +73,11 @@ defmodule AgentBoard.Superagents.Prototype do
   defp install_new(run, target) do
     # Never let a failed build look like an installed manager on the next attempt.
     stage = target <> ".installing"
-    patch = Application.app_dir(:agent_board, "priv/agent/duplicate-issue-notice.patch")
-
-    branch_patch = Path.join(Path.dirname(patch), "assignment-branch.patch")
-    publication_patch = Path.join(Path.dirname(patch), "managed-publication.patch")
-    container_patch = Path.join(Path.dirname(patch), "container-worker.patch")
-    cleanup_patch = Path.join(Path.dirname(patch), "container-report-cleanup.patch")
-    container_helper = Path.join(Path.dirname(patch), "container_worker.py")
-    helper = Path.join(Path.dirname(patch), "superboard-branch.py")
-
     # Git creates its destination. Leave an interrupted checkout for inspection.
     with {:error, :enoent} <- File.lstat(stage),
          :ok <- step(run, "git", ["clone", "--no-checkout", @repository, stage], []),
          :ok <- step(run, "git", ["checkout", "--detach", @revision], cd: stage),
-         :ok <- step(run, "git", ["apply", patch], cd: stage),
-         :ok <- step(run, "git", ["apply", branch_patch], cd: stage),
-         :ok <- step(run, "git", ["apply", publication_patch], cd: stage),
-         :ok <- step(run, "git", ["apply", container_patch], cd: stage),
-         :ok <- step(run, "git", ["apply", cleanup_patch], cd: stage),
-         :ok <- step(run, "cp", [container_helper, "scripts/container_worker.py"], cd: stage),
-         :ok <- step(run, "cp", [helper, "scripts/superboard-branch.py"], cd: stage),
+         :ok <- install_extension(run, stage),
          :ok <- step(run, "pnpm", ["install", "--frozen-lockfile"], cd: stage),
          :ok <- step(run, "pnpm", ["build"], cd: stage),
          :ok <- File.rename(stage, target) do
@@ -100,6 +86,21 @@ defmodule AgentBoard.Superagents.Prototype do
       {:ok, %File.Stat{}} -> {:error, {:prototype_in_the_way, stage}}
       error -> error
     end
+  end
+
+  defp install_extension(run, stage) do
+    root = Application.app_dir(:agent_board, "priv/agent")
+
+    steps =
+      Enum.map(RuntimePackage.patches(), &["git", "apply", Path.join(root, &1)]) ++
+        Enum.map(RuntimePackage.helpers(), &["cp", Path.join(root, &1), Path.join("scripts", &1)])
+
+    Enum.reduce_while(steps, :ok, fn [tool | args], :ok ->
+      case step(run, tool, args, cd: stage) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
   end
 
   defp step(run, tool, args, opts) do

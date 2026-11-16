@@ -1,0 +1,123 @@
+diff --git a/src/sources/github-trigger.ts b/src/sources/github-trigger.ts
+index fffd86d..dad24d3 100644
+--- a/src/sources/github-trigger.ts
++++ b/src/sources/github-trigger.ts
+@@ -38,7 +38,7 @@ export const IssueSchema = CommentSchema.extend({
+ })
+ export type GithubIssue = z.infer<typeof IssueSchema>
+ type Opened = Pick<GithubIssue, 'number' | 'title' | 'body' | 'user' | 'created_at' | 'html_url'>
+-export interface PullRef { number: number; isPr: boolean; url?: string; prAuthor?: string }
++export interface PullRef { number: number; isPr: boolean; url?: string; prAuthor?: string; merged?: boolean }
+ /**
+  * True when GitHub reports the account as a regular user rather than a bot or GitHub App.
+  * Review bots running under ordinary user accounts count as human here; the prompts identify which accounts are automated.
+diff --git a/src/sources/github.ts b/src/sources/github.ts
+index 6a66f5e..1799ad2 100644
+--- a/src/sources/github.ts
++++ b/src/sources/github.ts
+@@ -57,6 +57,7 @@ export const githubKind: SourceKind<GithubConfig> = {
+       hint: { zh: '打开后，默认分支的 CI 失败和恢复会收到，由策略的接收表决定是否成为候选。', en: 'Failures of the default branch\'s CI, and its recovery, are received, and the Policy\'s admission table decides whether they become candidates.' } }],
+   // What the Source observes across the repository it receives in full; elsewhere, only what addresses the agent.
+   scope: ({ meta }, config) => {
++    if (meta.mergedApproval === true) return { listened: false, reason: 'merged_pr_approval' }
+     const row = scopeOf(meta)
+     return { listened: true, observed: row !== undefined && config[OBSERVED[row]], ...row ? { row } : {} }
+   },
+@@ -390,7 +391,7 @@ function cachedMergedDiscussion(ctx: SourceContext, thread: Thread | undefined,
+   const { mergedDetailAt, url, prAuthor } = thread.meta
+   const age = Date.now() - (typeof mergedDetailAt === 'number' ? mergedDetailAt : NaN)
+   if (age >= 0 && age < 3_600_000 && typeof url === 'string' && typeof prAuthor === 'string')
+-    return { number, isPr: true, url, prAuthor }
++    return { number, isPr: true, url, prAuthor, merged: true }
+ }
+ async function readNotified(ctx: SourceContext, round: Round, number: number, item: Retry): Promise<void> {
+   const { since } = item
+@@ -425,7 +426,7 @@ async function readNotified(ctx: SourceContext, round: Round, number: number, it
+       const opened = { number, title: pr.title ?? '', body: pr.body, user: pr.user, created_at: pr.created_at, html_url: pr.html_url }
+       await ctx.receive(pullTrigger(opened, login))
+     }
+-    await intakeComments(ctx, { number, isPr: true, url: pr.html_url, prAuthor: pr.user.login }, since, round)
++    await intakeComments(ctx, discussionRef(pr), since, round)
+     if (pr.title) nameThread(ctx, number, pr.title)
+   }
+   ctx.state.set(KV.github.cursor(number), cursorAt(round.started))
+@@ -440,6 +441,9 @@ function pull(ctx: SourceContext, round: Round, number: number): Promise<Pull> {
+   }
+   return read
+ }
++function discussionRef(pr: Pull): PullRef {
++  return { number: pr.number, isPr: true, url: pr.html_url, prAuthor: pr.user.login, merged: pr.merged === true }
++}
+ async function intakeComments(ctx: SourceContext, ref: PullRef, since: string, round: Round): Promise<void> {
+   const commands = ctx.commands.withSignal(round.signal)
+   const { login } = ctx.deployment.github
+@@ -456,6 +460,9 @@ async function intakeComments(ctx: SourceContext, ref: PullRef, since: string, r
+       if (sameName(comment.user.login, login)) continue
+       // A review decision without a body still reaches the ticket: a worker may be waiting for that approval.
+       const trigger = commentTrigger(comment, ref, kind, login)
++      // A formal approval of our merged PR is history, not a new assignment.
++      if (ref.merged && kind === 'review' && comment.state === 'APPROVED' && ref.prAuthor && sameName(ref.prAuthor, login))
++        trigger.meta.mergedApproval = true
+       if (trigger.text) await ctx.receive(trigger)
+     }
+   }
+@@ -514,7 +521,7 @@ async function pollThread(ctx: SourceContext, round: Round, thread: Thread): Pro
+     let ref = cachedMergedDiscussion(ctx, thread, number)
+     if (!ref) {
+       const pr = await pull(ctx, round, number)
+-      ref = { number, isPr: true, url: pr.html_url, prAuthor: pr.user.login }
++      ref = discussionRef(pr)
+       if (pr.merged === true) ctx.threads.patch(thread.key, {
+         mergedDetailAt: Date.now(), mergedDetailRepo: ctx.deployment.repository, mergedDetailCreatedAt: pr.created_at,
+         url: pr.html_url, prAuthor: pr.user.login,
+diff --git a/tests/sources.spec.ts b/tests/sources.spec.ts
+index bf0af32..31a62c9 100644
+--- a/tests/sources.spec.ts
++++ b/tests/sources.spec.ts
+@@ -637,6 +637,46 @@ describe('github source', () => {
+     expect(h.receive.mock.calls[0]![0]).toMatchObject({ actor: { id: 'carol' }, text: 'APPROVED review of commit abc123', meta: { kind: 'review' } })
+     h.store.close()
+   })
++  it('records an approval of an already merged agent PR without resuming or evaluating work', async () => {
++    const h = host()
++    const now = new Date().toISOString()
++    subscribed(h, { source: 'github', id: '7' }, { isPr: true, title: 'Fix' })
++    h.store.tickets.save({ ...openTicket('ticket'), ...pulled(7) })
++    const review = { id: 42, state: 'APPROVED', commit_id: 'abc', body: 'Optional: rename this heading.',
++      user: { login: 'alice' }, submitted_at: now }
++    const routes: Record<string, unknown> = { notifications: [], 'pulls/7': { ...endedPull(7, now), user: { login: 'agent-bot' } },
++      'pulls/7/reviews': [review] }
++    const reads = github(h, routes)
++    await pollGithubThreads(h)
++    const id = h.receive.mock.calls[0]![0].id
++    expect(h.store.triggers.disposition(id)).toMatchObject({ filtered: { code: 'merged_pr_approval' }, fanout: [] })
++    expect(h.store.triggers.get(id)?.text).toContain(review.body)
++    // A delayed notification can also be the first observation of an approval on this cached PR.
++    reads.length = 0
++    routes.notifications = [notification(7, 'pulls')]
++    routes['pulls/7/reviews'] = [review, { ...review, id: 43 }]
++    await pollRound(h)
++    expect(bare(reads)).not.toContain('pulls/7')
++    expect(await h.receive.mock.results.at(-2)!.value).toBe('duplicate')
++    expect(await h.receive.mock.results.at(-1)!.value).toBe('filtered')
++    expect(h.store.tickets.get('ticket')).toMatchObject({ ended: { outcome: 'merged' }, assignments: [], inputs: [] })
++    expect(h.threads.get('github:7')?.pending).toEqual([])
++    h.store.close()
++  })
++  it.each(['APPROVED', 'CHANGES_REQUESTED'])('still delivers %s reviews on an open agent PR', async state => {
++    const h = host()
++    const now = new Date().toISOString()
++    subscribed(h, { source: 'github', id: '7' }, { isPr: true, title: 'Fix' })
++    h.store.tickets.save({ ...openTicket('ticket'), ...pulled(7) })
++    github(h, { 'pulls/7': agentsPull(7, 'agent/fix'), 'pulls/7/reviews': [
++      { id: 42, state, body: 'Consider the heading.', user: { login: 'alice' }, submitted_at: now },
++    ] })
++    await pollGithubThreads(h)
++    const id = h.receive.mock.calls[0]![0].id
++    expect(h.store.triggers.disposition(id)).toMatchObject({ fanout: ['ticket'] })
++    expect(h.store.tickets.get('ticket')?.inputs.some(input => input.kind === 'trigger' && input.triggerId === id)).toBe(true)
++    h.store.close()
++  })
+   it('reads each PR once per round and takes its end, auto-merge and CI from that read', async () => {
+     const h = host()
+     h.store.tickets.save({ ...openTicket('t9'), ...pulled(9) })

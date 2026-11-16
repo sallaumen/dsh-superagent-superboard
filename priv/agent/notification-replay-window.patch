@@ -1,0 +1,68 @@
+--- a/src/sources/github.ts
++++ b/src/sources/github.ts
+@@ -332,6 +332,8 @@
+   ctx.report('github', { state: 'ready', detail: `${count} notifications; next poll ≥ ${interval}s${dropped}`, at: round.started })
+   return interval
+ }
++/** How far before the cursor a notified thread is read: GitHub notified a mention 24 s after its comment on 2026-11-09. */
++const NOTIFICATION_LAG_MS = 10 * 60_000
+ /** Reads notifications since the cursor and each Issue or PR they name, advancing the cursor atomically with the retry map for failed reads; deleted (410) Issues are dropped once their error is recorded. */
+ async function pollNotifications(ctx: SourceContext, round: Round): Promise<{ count: number; interval: number }> {
+   const { state } = ctx
+@@ -358,7 +360,10 @@
+     const address = githubAddress(notification.subject.url ?? '', repository)
+     if (!address || address.discussion || items.has(address.number)) continue
+     const { number, pr } = address
+-    items.set(number, { since: [state.get(KV.github.cursor(number)) ?? since, since].sort().at(-1)!, pr })
++    // GitHub creates a notification some seconds after the comment it is about, so the comment can be older than the
++    // cursor. The thread is read from a margin before the cursor; deterministic trigger IDs drop what was already taken.
++    const from = new Date(Date.parse(since) - NOTIFICATION_LAG_MS).toISOString()
++    items.set(number, { since: [state.get(KV.github.cursor(number)) ?? from, from].sort().at(-1)!, pr })
+   }
+   for (const [number, item] of items) {
+     if (stopped(ctx, round)) return { count: notifications.length, interval }
+--- a/tests/sources.spec.ts
++++ b/tests/sources.spec.ts
+@@ -681,7 +681,8 @@
+     expect(h.receive.mock.calls.map(([trigger]) => trigger.meta.number)).toEqual([13])
+     // The cursor moved together with the Issue it does not cover yet.
+     expect(Date.parse(h.store.get<string>('github-since')!)).toBeGreaterThan(Date.parse('2026-09-08T00:00:00.000Z'))
+-    expect(h.store.get('github-retry')).toEqual({ 12: { since: '2026-09-08T00:00:00.000Z', pr: false, attempts: 1, failedAt: expect.any(String) } })
++    // A notified thread is read from a margin before the cursor, for notifications GitHub creates late.
++    expect(h.store.get('github-retry')).toEqual({ 12: { since: '2026-09-07T23:50:00.000Z', pr: false, attempts: 1, failedAt: expect.any(String) } })
+     expect(h.store.threads.get('github:12')!.meta.pollError).toContain('Bad Gateway')
+     Object.assign(routes, { notifications: [], 'issues/12': issue(12, { created_at: '2026-08-01T00:00:00Z' }),
+       'issues/12/comments': [mention(2, 12, '2026-09-08T02:00:00Z')] })
+@@ -689,6 +690,21 @@
+     expect(h.receive.mock.calls.map(([trigger]) => trigger.meta.number)).toEqual([13, 12])
+     expect(h.store.get('github-retry')).toEqual({})
+     expect(h.store.threads.get('github:12')!.meta).not.toHaveProperty('pollError')
++    h.store.close()
++  })
++  it('reads a mention whose notification GitHub created after the cursor passed the comment', async () => {
++    const h = host()
++    // The last round started after the comment and before GitHub created the notification about it.
++    h.store.set('github-since', '2026-09-08T00:00:30.000Z')
++    h.store.set('github-cursor:20', '2026-09-07T23:50:00.000Z')
++    const comment = (id: number, at: string): GithubComment => ({ id, body: '@agent-bot pode começar',
++      user: { login: 'alice', type: 'User' }, html_url: `https://github.com/acme/widgets/issues/20#issuecomment-${id}`,
++      created_at: at, updated_at: at })
++    github(h, { notifications: [notification(20)], 'issues/20': issue(20, { created_at: '2026-08-01T00:00:00Z' }),
++      'issues/20/comments': [comment(7, '2026-09-08T00:00:05Z'), comment(6, '2026-09-07T22:00:00Z')] })
++    await pollRound(h)
++    // The late mention is read; a comment older than the thread's own read position is not taken again.
++    expect(h.receive.mock.calls.map(([trigger]) => trigger.meta.number)).toEqual([20])
+     h.store.close()
+   })
+   it('drops an Issue GitHub reports as deleted after recording it, and reads one it answers 404 for again', async () => {
+@@ -950,8 +966,8 @@
+     await pollRound(h)
+     const expected = commentTrigger(comment, { number: 12, isPr: false, url }, 'conversation', 'agent-bot')
+     expect(h.receive.mock.calls.map(([trigger]) => trigger)).toEqual([expected])
+-    // An Issue has only its conversation; the comments are read since the notification cursor.
+-    const since = encodeURIComponent('2026-09-08T00:00:00.000Z')
++    // An Issue has only its conversation; the comments are read from ten minutes before the notification cursor.
++    const since = encodeURIComponent('2026-09-07T23:50:00.000Z')
+     expect(reads.filter(path => path.includes('/comments'))).toEqual([`issues/12/comments?per_page=100&since=${since}`])
+     h.store.close()
+   })

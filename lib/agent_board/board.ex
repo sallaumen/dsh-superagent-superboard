@@ -89,6 +89,14 @@ defmodule AgentBoard.Board do
     Phoenix.PubSub.broadcast(AgentBoard.PubSub, @today_topic, :repos_changed)
   end
 
+  @doc "The full lane total, or the number of supplied tasks in an unpaged snapshot."
+  def lane_count(board, key) do
+    case board |> Map.get(:task_counts, %{}) |> Kernel.||(%{}) |> Map.get(key) do
+      n when is_integer(n) -> n
+      _ -> length(Map.get(board, key) || [])
+    end
+  end
+
   @doc "The board for a repository (the slug) or the first one."
   def board(slug, merged_limit \\ @merged_page_size, task_limits \\ %{})
 
@@ -934,14 +942,10 @@ defmodule AgentBoard.Board do
   @spec create_objective(Repository.t(), map(), [integer()]) ::
           {:ok, Objective.t()} | {:error, term()}
   def create_objective(repository, %{title: _title, done_criterion: _criterion} = attrs, task_ids) do
-    task_ids = Enum.uniq(task_ids)
-
-    if length(task_ids) < 2 do
-      {:error, :not_a_group}
-    else
-      result = insert_group(repository, attrs, task_ids)
-      if match?({:ok, _}, result), do: broadcast(repository.id)
-      result
+    with {:ok, group_ids} <- Objective.group_task_ids(task_ids),
+         {:ok, objective} <- insert_group(repository, attrs, group_ids) do
+      broadcast(repository.id)
+      {:ok, objective}
     end
   end
 
@@ -986,26 +990,7 @@ defmodule AgentBoard.Board do
         preload: [:tasks]
     )
     |> with_edges()
-    |> Enum.map(fn {objective, edges} ->
-      total = length(objective.tasks)
-      merged = Enum.count(objective.tasks, &(&1.state == "done"))
-
-      %{
-        id: objective.id,
-        title: objective.title,
-        done_criterion: objective.done_criterion,
-        total: total,
-        merged: merged,
-        done?: total > 0 and merged == total,
-        issue_url: objective.issue_url,
-        tasks:
-          Enum.map(
-            objective.tasks,
-            &Map.take(&1, [:id, :number, :title, :state, :held, :released_at])
-          ),
-        edges: edges
-      }
-    end)
+    |> Enum.map(fn {objective, edges} -> Objective.summary(objective, edges) end)
   end
 
   defp with_edges(objectives) do
@@ -1019,8 +1004,7 @@ defmodule AgentBoard.Board do
       )
 
     Enum.map(objectives, fn objective ->
-      own = MapSet.new(objective.tasks, & &1.id)
-      {objective, Enum.filter(edges, fn {task, _blocker} -> task in own end)}
+      {objective, Objective.dependency_edges(objective.tasks, edges)}
     end)
   end
 

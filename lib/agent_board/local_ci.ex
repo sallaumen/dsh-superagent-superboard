@@ -19,9 +19,9 @@ defmodule AgentBoard.LocalCI do
 
   use Gettext, backend: AgentBoardWeb.Gettext
 
+  alias AgentBoard.LocalCI.{Report, Validation}
+
   @pr ~r/(?:PR\s*#|pull\/)(\d+)/i
-  @pass ~r/\b(passed|passes|passou|passaram|green|verde|0 failures|0 falhas|0 issues)\b/i
-  @fail ~r/\bn[ãa]o\s+pass(?:ou|aram)\b|\bdid(?:\s+not|n['’]t)\s+pass\b|\b(failed|failing|falhou|falharam)\b|[1-9]\d*\s+(failures|falhas|issues)/iu
   @billing ~r/(billing|spending limit)/i
   @actions ~r/GitHub Actions|CI did not run|CI could not (start|run)/i
   @report_limit 220
@@ -94,7 +94,7 @@ defmodule AgentBoard.LocalCI do
   end
 
   defp workpad_status(validation, head) do
-    state = workpad_state(validation, head)
+    state = Validation.state(validation, head)
 
     %{
       state: state,
@@ -106,20 +106,6 @@ defmodule AgentBoard.LocalCI do
       sha: validation.sha,
       head_sha: head
     }
-  end
-
-  defp workpad_state(%{sha: sha, passed?: passed?}, head) do
-    cond do
-      is_binary(sha) and is_binary(head) and not same_commit?(sha, head) -> :stale
-      passed? -> :pass
-      true -> :fail
-    end
-  end
-
-  defp same_commit?(sha, head) do
-    sha = String.downcase(sha)
-    head = String.downcase(head)
-    String.starts_with?(head, sha) or String.starts_with?(sha, head)
   end
 
   defp workpad_detail(:stale, validation, head) do
@@ -141,18 +127,18 @@ defmodule AgentBoard.LocalCI do
     local =
       reports
       |> Enum.flat_map(fn report ->
-        case local_state(report["summary"] || "") do
+        case Report.gate(report["summary"] || "") do
           nil -> []
-          state -> [{report, state}]
+          gate -> [{report, gate}]
         end
       end)
 
     direct =
       local
-      |> Enum.flat_map(fn {report, state} ->
+      |> Enum.flat_map(fn {report, gate} ->
         report
         |> pr_numbers()
-        |> Enum.map(&{&1, status(report, state, :pr, nil)})
+        |> Enum.map(&{&1, status(report, gate, :pr, nil)})
       end)
       |> Map.new()
 
@@ -160,13 +146,13 @@ defmodule AgentBoard.LocalCI do
       nil ->
         direct
 
-      {report, state} ->
+      {report, gate} ->
         # A ticket is one unit of work: a later PR it names is covered by the
         # ticket's local gate even when that PR has no line of its own. The
         # tooltip names the evidence PR so the scope is explicit.
         evidence = report |> pr_numbers() |> List.first()
 
-        ticket_status = status(report, state, :ticket, evidence)
+        ticket_status = status(report, gate, :ticket, evidence)
 
         reports
         |> Enum.flat_map(&pr_numbers/1)
@@ -176,10 +162,10 @@ defmodule AgentBoard.LocalCI do
     end
   end
 
-  defp status(report, state, scope, evidence) do
+  defp status(report, gate, scope, evidence) do
     %{
-      state: state,
-      detail: detail(report["summary"] || ""),
+      state: gate.state,
+      detail: String.slice(gate.detail, 0, @report_limit),
       remote_blocked: remote_blocked?(report["summary"] || ""),
       at: report["at"],
       scope: scope,
@@ -201,30 +187,6 @@ defmodule AgentBoard.LocalCI do
     |> Regex.scan(report["summary"] || "")
     |> Enum.map(fn [_, number] -> AgentBoard.GitHub.number(number) end)
     |> Enum.reject(&is_nil/1)
-  end
-
-  defp local_state(summary) do
-    precommit =
-      summary
-      |> String.split(~r/(?<=[.!?])\s+|\n+/)
-      |> Enum.filter(&(&1 =~ ~r/mix precommit/i))
-
-    cond do
-      Enum.any?(precommit, &(AgentBoard.Workpad.without_negated_failures(&1) =~ @fail)) -> :fail
-      Enum.any?(precommit, &(&1 =~ @pass)) -> :pass
-      true -> nil
-    end
-  end
-
-  defp detail(summary) do
-    summary
-    |> String.split(~r/(?<=[.!?])\s+|\n+/)
-    |> Enum.find(&(&1 =~ ~r/mix precommit/i))
-    |> case do
-      nil -> "mix precommit"
-      text -> text |> String.replace(~r/\s+/, " ") |> String.trim()
-    end
-    |> String.slice(0, @report_limit)
   end
 
   defp remote_blocked?(summary), do: summary =~ @actions and summary =~ @billing

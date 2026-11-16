@@ -115,7 +115,12 @@ differ. Change a general rule upstream, not here.
   `retrying`, `ready`, `blocked`) while the issue is open. `retrying` is a
   failure `AgentBoard.AutoRetry` will retry by itself, or a retry waiting
   for a worker ("Automatic retry" below). A ticket that ended `merged` is
-  `done` whatever its last report said. An issue keeps every ticket it ever
+  `done` whatever its last report said. A ticket with a recorded end time and
+  final outcome `dropped` moves its open issue to **Stopped** in ended history.
+  This mirrors an ended execution: it neither sets the owner’s stop flag nor
+  closes, retries or queues the issue. A dropped assignment report alone does
+  not end the ticket; a still-active or later local execution keeps its state.
+  An issue keeps every ticket it ever
   had, and one speaks for it: the open one, else the most recently updated
   (`Tickets.by_number/1`, used by the sync, the ticket poll, the board and
   the voice lookups, each over its own repository's tickets). A stopped or
@@ -127,8 +132,8 @@ differ. Change a general rule upstream, not here.
   after it entered the board stayed in Fila (the queue) while the runner had
   nothing to do (`sync_repo_test.exs`). A **reopened issue** moves its `done`
   task back to `queued`, unless it is stopped or archived
-  (`Sync.reopen_task/3`). If an open issue still has a merged ticket, only
-  GitHub's latest native `ReopenedEvent` at or after that merge supersedes it.
+  (`Sync.reopen_task/3`). If an open issue still has a merged or dropped ticket,
+  only GitHub's latest native `ReopenedEvent` at or after that ending supersedes it.
   The board persists the reopen time on the task and both the full sync and
   the ticket poll ignore older work. Later assignments and closes still count.
   Comments and edits to an open issue are not proof of reopening.
@@ -141,10 +146,21 @@ differ. Change a general rule upstream, not here.
   `tasks.blocker_for_task_id`. It is created through the same `create_tasks`
   action as any request, with the agent's mention and the link; the queue
   puts it ahead of ordinary queued work and the board shows "desbloqueia #N".
-  The blocked task stays blocked until a person answers or the agent retries;
-  the blocker task is a separate issue, not a state change on the original.
-- A review rollup is the strongest review (`changes_requested` beats `approved`);
-  a check rollup names the failing check.
+  **Completed blockers:** the board may deliver one fact to the existing blocked,
+  idle assignment when all its linked blockers are done and have matching successful
+  Harness endings. At least one ending must postdate the block. The receiver checks
+  the repo, origin, assignment, mandate and child tickets, and persists a single
+  input per set of child ticket IDs. No comment grants authorization, and stopped
+  parents, incomplete children and old installations receive no wake-up. This
+  reconciliation shares the automatic retry scheduler and its off switch.
+- The board reads all review pages in GitHub's chronological order. Each reviewer’s
+  latest approval or change request replaces their earlier vote; comments do not
+  vote and a dismissed decision is no longer active. Any outstanding change
+  request takes precedence over approvals from other reviewers.
+- The regular sync rechecks at most one legacy merged verdict per repository
+  per run. It fetches only reviews, preserves CI and the visible verdict on a
+  failed read, and stops rechecking after a successful read, even if the
+  verdict really is `changes_requested`. A check rollup names the failing check.
 
 ## Board actions (the action registry)
 
@@ -167,7 +183,12 @@ in a prompt, and it is the prerequisite of any dispatch that spends money.
   "desfaz" for its undo), checked by `Actions.direct_order?/2` and never
   taken from the model's flag alone. In the task conversation, the owner
   confirms `ask_task` by writing the message in the open task and pressing
-  **Enviar** beside the visible GitHub destination note. The UI builds the
+  **Enviar** beside the visible GitHub destination note. **Review this decision**
+  applies the same write contract to a published agent comment: preserve its
+  GitHub permalink and the excerpt shown when the review was opened, ask for
+  the reason, and post only on explicit submit. Keep the ordinary reply draft
+  separate. The review asks for an assessment; it does not authorize a code
+  change or a replacement PR. The UI builds the
   phrase from that exact task and message for the gate in the same submit;
   there is no second confirmation card.
 - **The one exception is a standing authorization written here**: the
@@ -220,6 +241,7 @@ and is recorded as `automatic`.
 | `archive_task` | yellow | takes the task off the board (Retomar undoes it) | UI: one click. Voice: proposal (kept). API: direct |
 | `resume_task` | yellow | puts the task back in the board's queue (does not reopen the issue) | UI: one click. API: direct |
 | `retry_ticket` | red | `POST tickets/<id>/retry` asked by the owner; the executor spends tokens | UI: `AgentAction` "Tentar de novo" / "Tentar agora" |
+| `deliver_dependencies` | Red | Deliver the completed linked prerequisites to the original assignment | System: `dependency_delivery` only (Completed blockers) |
 | `auto_retry_ticket` | red | the same request, asked by the board after a transient failure | System: the standing authorization ("Automatic retry"), `auto_retry` only |
 | `release_task` | red | comments the mention that starts a task that was waiting, or again on a called task still in the queue; standing authorization for `release` (ADR 0005) | System: the standing authorization ("Release in order"), `release` only. UI: "Chamar o agente" in the tree and "Chamar de novo" in Precisa de você ask the sentence in the browser (`data-confirm`) |
 | `dispatch_task` | red | starts Claude Code or Codex in a worktree; spends the owner's subscription | UI: `AgentAction` "Despachar" in two steps, with the sentence, executor, task, repository and ceiling; voice/API: `428` then `confirm` |
@@ -367,7 +389,10 @@ that already worked).
   and author in routine discussion polls for up to one hour, scoped to the
   repository. It still reads conversation comments, inline comments and reviews
   every round. Open and closed-but-unmerged PRs keep their lifecycle checks;
-  notifications and open tickets still consult GitHub directly.
+  open tickets still consult GitHub directly. A delayed notification uses the
+  same confirmed metadata and replays all three discussion feeds. The same
+  comment ID is delivered once across both paths. Unknown or stale metadata,
+  or a human PR whose description could be new, still requires a PR read.
 - **The sync's GitHub budget.** The account's 5000 REST calls an hour are shared
   by every repository and every tool using the token. A pull stored as merged or
   closed at the same commit is not read again (reviews, checks) unless its checks
@@ -487,7 +512,8 @@ other), authorized by the owner on
 (ADR-0003, "Retentativa automática"). `AgentBoard.AutoRetry` asks
 `POST tickets/<id>/retry` (`Orchestrator.retry/2`) and nothing else; the
 board still never writes the runner's sqlite. The request is the registry's
-red action `auto_retry_ticket`; this, `release_task` (ADR 0005) and
+red action `auto_retry_ticket`; this, `deliver_dependencies` (Completed blockers),
+`release_task` (ADR 0005) and
 `sweep_agent_folders` ("Ended tickets' folders") are the only standing
 authorizations the gate knows ("Board actions" above): it covers the actor
 `auto_retry`, each request is an `automatic` decision with the evidence
@@ -1847,8 +1873,14 @@ rows (the split) and the tasks with their `request_key` (the enqueue).
   other answers `{:error, :in_progress}`. A failed issue call deletes the
   claim; the sync never sees a draft in a lane. A retry after a partial
   split creates only what is missing. A claim older than five minutes lost its
-  process and is taken over, at the risk of a second issue if GitHub had
-  already answered.
+  process and is taken over only for legacy drafts without a send marker.
+  New sends mark the draft first. After GitHub acknowledges the POST, its number
+  and URL are saved independently of the local linking transaction. A retry
+  finishes that receipt by number, even if sync already imported the issue.
+  An explicit receipt retry never creates or reopens an issue. If the board
+  lost the acknowledgment, an expired send marker alone cannot authorize a POST.
+  A blocking task draft includes the current issue’s unsubmitted reply as an
+  editable owner decision. Opening or editing the draft posts nothing.
 - **The receipt names what happened**: number and link for each task that
   entered, "já estava na fila" ("already in the queue") for a repeat, the
   reason for each failure, and a retry for the failures only. Closing a
@@ -2137,7 +2169,10 @@ board checks unfinished requests every 15 seconds, independently of the browser.
 Repeated clicks reuse a pending request. The helper checks both running and
 queued work and checks again under pause before handing off the process. A changed
 identity or dependency lock, a stopped/paused agent, or unreadable load never
-authorizes a reload. Remaining current is a successful outcome with no restart.
+authorizes a reload. Remaining current is a successful outcome with no restart. Before reporting it,
+the helper rechecks the queue, running process and package binding after package
+preparation. If a profile edit prevents the package switch before restart, it
+leaves the process alone; process recovery is for an attempted handoff.
 
 ### Local preflight evidence
 

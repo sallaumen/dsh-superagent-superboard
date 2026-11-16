@@ -9637,6 +9637,9 @@ msgstr "Aguardando verificação"
 msgid "Harness updated"
 msgstr "Harness atualizado"
 
+msgid "Last sync:"
+msgstr "Última sincronização:"
+
 msgid "Harness already current"
 msgstr "Harness já atualizado"
 
@@ -9645,6 +9648,9 @@ msgstr "Ignorado: agente pausado"
 
 msgid "Update pending — waiting for work and queue to finish"
 msgstr "Atualização pendente — aguardando o fim das tarefas e da fila"
+
+msgid "The profile changed during sync. The edit was preserved."
+msgstr "O perfil mudou durante a sincronização. A alteração foi preservada."
 
 msgid "Skipped: agent state changed"
 msgstr "Ignorado: o estado do agente mudou"
@@ -10207,3 +10213,74 @@ msgstr[1] "%{count} etapas por alteração"
 
 msgid "Details and actions"
 msgstr "Detalhes e ações"
+
+#, elixir-autogen, elixir-format
+msgid "Finish linking"
+msgstr "Concluir vínculo"
+
+#, elixir-autogen, elixir-format
+msgid "Issue #%{number} is linked to this task."
+msgstr "A issue #%{number} está vinculada a esta tarefa."
+
+#, elixir-autogen, elixir-format
+msgid "GitHub created issue #%{number}. Its board link is still pending."
+msgstr "O GitHub criou a issue #%{number}. Falta vinculá-la no board."
+
+#, elixir-autogen, elixir-format
+msgid "The issue number is unknown. Check GitHub before starting another request."
+msgstr "O número da issue é desconhecido. Confira o GitHub antes de iniciar outro pedido."
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:102
+#, elixir-autogen, elixir-format
+msgid "Could not confirm publication. Check the issue before sending again."
+msgstr "Não foi possível confirmar a publicação. Confira a issue antes de enviar de novo."
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:64
+#, elixir-autogen, elixir-format
+msgid "Decision review"
+msgstr "Revisão de decisão"
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:87
+#, elixir-autogen, elixir-format
+msgid "Enter a reason (up to 2,000 characters)."
+msgstr "Escreva o motivo (até 2.000 caracteres)."
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:123
+#, elixir-autogen, elixir-format
+msgid "Original comment"
+msgstr "Comentário original"
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:136
+#, elixir-autogen, elixir-format
+msgid "Posts a review request on issue #%{number}. Code changes require a separate request."
+msgstr "Publica o pedido de revisão na issue #%{number}. Mudanças no código exigem outro pedido."
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:67
+#, elixir-autogen, elixir-format
+msgid "Reason for review:"
+msgstr "Motivo da revisão:"
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:69
+#, elixir-autogen, elixir-format
+msgid "Reassess the original decision against the evidence then and now. Reply here with what you would keep or change and why. This requests a review only; do not change code or open a PR."
+msgstr "Reavalie a decisão com base nas evidências da época e de agora. Responda aqui o que manteria ou mudaria e por quê. Este pedido é apenas de revisão: não altere o código nem abra PR."
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:146
+#, elixir-autogen, elixir-format
+msgid "Request review"
+msgstr "Pedir revisão"
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:156
+#, elixir-autogen, elixir-format
+msgid "Review requested on issue #%{number}."
+msgstr "Revisão solicitada na issue #%{number}."
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:115
+#, elixir-autogen, elixir-format
+msgid "Review this decision"
+msgstr "Rever esta decisão"
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:125
+#, elixir-autogen, elixir-format
+msgid "What should the agent reconsider?"
+msgstr "O que o agente deve reconsiderar?"

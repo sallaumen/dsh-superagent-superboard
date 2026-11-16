@@ -634,6 +634,89 @@ defmodule AgentBoard.SyncRepoTest do
     assert stored.checks_state == "success"
   end
 
+  test "regular sync repairs a cached merged review once even outside the pull list", %{
+    repo: repo
+  } do
+    alias AgentBoard.Board.PullRequest
+    due = DateTime.utc_now(:second)
+
+    row =
+      Repo.insert!(%PullRequest{
+        repository_id: repo.id,
+        number: 415,
+        title: "Review history",
+        state: "merged",
+        merged_at: due,
+        review_refresh_at: due,
+        review_state: "changes_requested",
+        checks_state: "failure",
+        checks_failed: "gates"
+      })
+
+    owner = self()
+
+    stub_github(fn conn ->
+      case conn.request_path do
+        "/repos/sallaumen/arena-rogue/pulls/415/reviews" ->
+          send(owner, :review_page)
+
+          if Plug.Conn.fetch_query_params(conn).query_params["page"] == "1" do
+            conn
+            |> Plug.Conn.put_resp_header(
+              "link",
+              ~s(<https://api.github.com/reviews?page=2>; rel="next")
+            )
+            |> Req.Test.json([%{"user" => %{"id" => 42}, "state" => "CHANGES_REQUESTED"}])
+          else
+            Req.Test.json(conn, [%{"user" => %{"id" => 42}, "state" => "APPROVED"}])
+          end
+
+        path ->
+          refute String.contains?(path, "check-runs")
+          Req.Test.json(conn, [])
+      end
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert_receive :review_page
+    assert_receive :review_page
+
+    assert %{
+             review_refresh_at: nil,
+             review_state: "approved",
+             checks_state: "failure",
+             checks_failed: "gates"
+           } = Repo.reload!(row)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    refute_received :review_page
+  end
+
+  test "a failed historical review read retains the verdict and defers its retry", %{repo: repo} do
+    alias AgentBoard.Board.PullRequest
+    due = DateTime.utc_now(:second)
+
+    row =
+      Repo.insert!(%PullRequest{
+        repository_id: repo.id,
+        number: 415,
+        title: "Retain verdict",
+        state: "merged",
+        review_refresh_at: due,
+        review_state: "changes_requested"
+      })
+
+    stub_github(fn conn ->
+      if String.ends_with?(conn.request_path, "/reviews"),
+        do: Plug.Conn.send_resp(conn, 503, "unavailable"),
+        else: Req.Test.json(conn, [])
+    end)
+
+    assert Sync.sync_repo(client(), repo) == :ok
+    assert %{review_refresh_at: retry_at, review_state: "changes_requested"} = Repo.reload!(row)
+    assert DateTime.after?(retry_at, due)
+  end
+
   test "changes_requested wins over approved through the sync", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
@@ -987,8 +1070,16 @@ defmodule AgentBoard.SyncRepoTest do
     assert %Task{state: "done", archived: true} = Repo.one(Task)
   end
 
-  test "a merged ticket remains done without a newer reopen, but a confirmed reopen survives sync and poll",
+  test "a merged ticket remains done unless GitHub confirms a later reopen", %{repo: repo} do
+    assert_ended_ticket_reopen(repo, "merged", "done")
+  end
+
+  test "an open issue with a dropped ticket stays stopped unless GitHub confirms a later reopen",
        %{repo: repo} do
+    assert_ended_ticket_reopen(repo, "dropped", "stopped")
+  end
+
+  defp assert_ended_ticket_reopen(repo, outcome, expected_state) do
     path = Path.join(System.tmp_dir!(), "sync-reopen-#{System.unique_integer([:positive])}.db")
     {:ok, db} = Exqlite.Sqlite3.open(path)
     previous = Application.get_env(:agent_board, :state_db)
@@ -999,20 +1090,20 @@ defmodule AgentBoard.SyncRepoTest do
       Application.put_env(:agent_board, :state_db, previous)
     end)
 
-    merged =
-      ~s({"channels":[{"address":{"url":"https://github.com/sallaumen/arena-rogue/issues/26"}}],"mandate":{"basis":{"scope":{"number":26}}},"assignments":[{"state":"ended"}],"ended":{"at":"2026-11-07T00:01:15.000Z","by":"executor","outcome":"merged"}})
+    ticket =
+      ~s({"channels":[{"address":{"url":"https://github.com/sallaumen/arena-rogue/issues/26"}}],"mandate":{"basis":{"scope":{"number":26}}},"assignments":[{"state":"ended"}],"ended":{"at":"2026-11-07T00:01:15.000Z","by":"executor","outcome":"#{outcome}"}})
 
     :ok = Exqlite.Sqlite3.execute(db, "create table ticket (value text)")
-    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{merged}')")
+    :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{ticket}')")
     Application.put_env(:agent_board, :state_db, path)
 
     sync_issue_states(repo, 26, ["closed"])
     Repo.update_all(Task, set: [state_changed_at: @long_ago])
 
-    # The reopen puts it back in the queue and the merged ticket makes it done.
+    # The reopen puts it back in the queue and the ended ticket supplies its final state.
     sync_issue_states(repo, 26, ["open"])
     decided = Repo.one(Task)
-    assert decided.state == "done"
+    assert decided.state == expected_state
     assert DateTime.compare(decided.state_changed_at, @long_ago) == :gt
 
     # The same issue again is no new reopen: the decision, stamped after the
@@ -1020,7 +1111,7 @@ defmodule AgentBoard.SyncRepoTest do
     decided_at = ~U[2026-11-05 00:00:00Z]
     Repo.update_all(Task, set: [state_changed_at: decided_at])
     sync_issue_states(repo, 26, ["open"])
-    assert %Task{state: "done", state_changed_at: ^decided_at} = Repo.one(Task)
+    assert %Task{state: ^expected_state, state_changed_at: ^decided_at} = Repo.one(Task)
 
     reopened = ~U[2026-11-07 01:00:00Z]
     updated = Map.put(issue(26, "open"), "updated_at", DateTime.to_iso8601(reopened))

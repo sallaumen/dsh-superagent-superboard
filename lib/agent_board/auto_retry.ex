@@ -94,6 +94,7 @@ defmodule AgentBoard.AutoRetry do
     if Application.get_env(:agent_board, :auto_retry, true) do
       opts
       |> Keyword.get_lazy(:tickets, &AgentState.tickets/0)
+      |> tap(&AgentBoard.DependencyDelivery.reconcile(&1, opts))
       |> due_plans(opts, now)
       |> retry_due(opts, now)
     else

@@ -2,7 +2,7 @@ defmodule AgentBoard.ReleaseTest do
   @moduledoc "A task waits for what it depends on, and the agent is called once."
   use AgentBoard.DataCase, async: false
 
-  alias AgentBoard.{Actions, Board, Release, Repo}
+  alias AgentBoard.{Actions, Board, Lanes, Release, Repo}
   alias AgentBoard.Board.{Task, TaskDependency}
 
   @stub AgentBoard.ReleaseTest.Stub
@@ -77,6 +77,19 @@ defmodule AgentBoard.ReleaseTest do
 
     assert [] = Release.tick(client())
     refute_received {:comment, _, _}
+  end
+
+  test "the queue lists only the blocker that keeps a held task from release", %{repo: repo} do
+    held = task(repo, 12, "queued", %{held: true})
+    waits(held, task(repo, 7, "closed"))
+    running = task(repo, 9, "running")
+    waits(held, running)
+
+    assert [%{number: 12, sub: "espera #9"}] = Lanes.queue(repo).items
+    refute Enum.any?(Release.due(), &(&1.id == held.id))
+
+    running |> Task.changeset(%{state: "done"}) |> Repo.update!()
+    assert Enum.any?(Release.due(), &(&1.id == held.id))
   end
 
   test "every dependency must finish", %{repo: repo} do
@@ -214,6 +227,17 @@ defmodule AgentBoard.ReleaseTest do
       assert waiting =~ "**Depende de:** #1"
       assert %Task{held: true} = Repo.get_by!(Task, title: "Tela")
       assert %Task{held: false} = Repo.get_by!(Task, title: "Dados")
+    end
+
+    test "a Codex dependency does not add a wait notice to the confirmation", %{repo: repo} do
+      requests = [
+        request(repo, "Dados", [], %{executor: "codex"}),
+        request(repo, "Tela", ["Dados"], %{executor: "codex"})
+      ]
+
+      phrase = Actions.phrase(:create_tasks, %{repository: repo, requests: requests})
+      assert phrase =~ "Codex"
+      refute phrase =~ "o board chama o agente"
     end
 
     test "the sentence the owner confirms says the tree is released in order", %{repo: repo} do

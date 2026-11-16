@@ -1,0 +1,18 @@
+{
+  "patches": [
+    "duplicate-issue-notice.patch",
+    "assignment-branch.patch",
+    "managed-publication.patch",
+    "container-worker.patch",
+    "container-report-cleanup.patch",
+    "review-midpoint.patch",
+    "merged-detail.patch",
+    "delayed-merged-notification.patch",
+    "isolated-context.patch",
+    "notification-replay-window.patch",
+    "merged-approval.patch",
+    "approval-state-refresh.patch",
+    "dependency-completion.patch"
+  ],
+  "helpers": ["container_worker.py", "superboard-branch.py"]
+}

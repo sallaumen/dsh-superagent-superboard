@@ -5,6 +5,7 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
   alias AgentBoard.Superagents.RuntimeSync
 
   @projects "/?panel=settings&section=projects"
+  @maintenance @projects <> "&path=maintenance"
 
   test "management is local even if the browser knows the confirmation", %{conn: conn} do
     conn =
@@ -38,17 +39,66 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     assert has_element?(view, "#runtime-targets", phrase)
     assert has_element?(view, "form[action='/superagents/synchronize'] button", "Sincronizar")
 
-    assert post(conn, ~p"/superagents/synchronize", confirm: "old scope") |> redirected_to(303) ==
-             @projects
+    refute has_element?(view, "#project-runtime-maintenance[open]")
+
+    stale = post(conn, ~p"/superagents/synchronize", confirm: "old scope")
+    assert redirected_to(stale, 303) == @maintenance
+    {:ok, retry_view, _} = live(recycle(stale), @maintenance)
+    assert has_element?(retry_view, "#project-runtime-maintenance[open] button")
 
     assert [%{decision: "refused"}] = Actions.recent()
     Superagents.subscribe()
 
-    assert post(conn, ~p"/superagents/synchronize", confirm: phrase) |> redirected_to(303) ==
-             @projects
+    accepted = post(conn, ~p"/superagents/synchronize", confirm: phrase)
+    assert redirected_to(accepted, 303) == @maintenance
+    {:ok, result_view, _} = live(recycle(accepted), @maintenance)
 
     wait_for_result(agent.id, "paused")
-    assert render(view) =~ "Ignorado: agente pausado"
+    # Compare the receipt from the real controller with the installer's inputs.
+    dir = Application.app_dir(:agent_board, "priv/agent")
+
+    {digest, 0} =
+      System.cmd(
+        "python3",
+        [
+          "-B",
+          "-c",
+          "import sync_runtime; print(sync_runtime.package_digest())"
+        ],
+        cd: dir
+      )
+
+    assert Superagents.get(agent.id).runtime_sync["lock"] == String.trim(digest)
+    assert has_element?(result_view, "#project-runtime-maintenance[open] button:not([disabled])")
+    assert has_element?(result_view, "#project-sync-#{agent.id}", "Ignorado: agente pausado")
+  end
+
+  test "saved profile edits have a specific result; older receipts keep their original meaning",
+       %{conn: conn} do
+    {:ok, repo} = Board.add_repository("fixture", "edited-profile")
+
+    {:ok, agent} =
+      Superagents.create(%{
+        repository_id: repo.id,
+        profile: "edited",
+        port: 3314,
+        state_dir: "/tmp/test-edited"
+      })
+
+    for {status, message} <- [
+          {"profile_changed",
+           "O perfil mudou durante a sincronização. A alteração foi preservada."},
+          {"changed", "Ignorado: o estado do agente mudou"}
+        ] do
+      Superagents.get(agent.id)
+      |> Ecto.Changeset.change(
+        runtime_sync: %{"status" => status, "status_at" => "2026-11-14T17:00:00Z"}
+      )
+      |> AgentBoard.Repo.update!()
+
+      {:ok, view, _} = live(conn, @projects)
+      assert has_element?(view, "#project-sync-#{agent.id}[data-status=#{status}]", message)
+    end
   end
 
   test "the manager checks load, identity, handoff and duplicate protection" do
@@ -116,7 +166,7 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     assert_receive {:attempt, task}, 3_000
     send(task, {:load, "busy"})
     wait_for_result(agent.id, "pending")
-    request = Superagents.get(agent.id).runtime_sync["request"]
+    pending = Superagents.get(agent.id).runtime_sync
     assert render(view) =~ "Atualização pendente"
 
     stop_supervised!(RuntimeSync)
@@ -125,12 +175,30 @@ defmodule AgentBoardWeb.RuntimeSyncControllerTest do
     send(worker, :tick)
     assert_receive {:attempt, next}, 3_000
     for _ <- 1..5, do: RuntimeSync.start(targets, worker)
-    assert Superagents.get(agent.id).runtime_sync["request"] == request
+    assert Superagents.get(agent.id).runtime_sync == pending
     send(next, {:load, "updated"})
     wait_for_result(agent.id, "updated")
-    assert render(view) =~ "Harness atualizado"
+    receipt = Superagents.get(agent.id).runtime_sync
+    assert has_element?(view, "#project-sync-#{agent.id}", "Harness atualizado")
+    assert {:ok, _, 0} = DateTime.from_iso8601(receipt["status_at"])
+    {:ok, reopened, _} = live(conn, @projects)
+
+    assert has_element?(
+             reopened,
+             "#project-sync-#{agent.id} time[datetime='#{receipt["status_at"]}']"
+           )
+
+    assert has_element?(reopened, "#project-sync-#{agent.id}", "Harness atualizado")
     send(worker, :tick)
     refute_receive {:attempt, _}
+
+    assert :ok = RuntimeSync.start(targets, worker)
+    assert_receive {:attempt, check}, 3_000
+    send(check, {:load, "current"})
+    wait_for_result(agent.id, "current")
+    {:ok, reopened, _} = live(conn, @projects)
+    assert has_element?(reopened, "#project-sync-#{agent.id}[data-status=current] time")
+    refute has_element?(reopened, "#project-sync-#{agent.id}[data-status=updated]")
   end
 
   defp wait_for_result(id, expected) do

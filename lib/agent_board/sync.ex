@@ -26,7 +26,7 @@ defmodule AgentBoard.Sync do
 
   alias AgentBoard.Board.{Commit, PullRequest, Repository, SplitGraph, Task}
 
-  alias AgentBoard.Sync.ReopenedTickets
+  alias AgentBoard.Sync.{PullReviews, ReopenedTickets}
 
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()), do: client |> run() |> length()
@@ -37,7 +37,23 @@ defmodule AgentBoard.Sync do
   """
   @spec run(Req.Request.t()) :: [term()]
   def run(client \\ GitHub.client()) do
-    Repo.all(from r in Repository, where: r.active)
+    # With a shared quota a run can end before the last repository. Start
+    # the next run with the least recently attempted, even across restarts.
+    last_attempt =
+      from e in AgentBoard.Board.Event,
+        where: e.repository_id == parent_as(:repository).id and e.kind in ["sync", "sync_error"],
+        order_by: [desc: e.inserted_at, desc: e.id],
+        limit: 1,
+        select: %{at: e.inserted_at, id: e.id}
+
+    from(r in Repository,
+      as: :repository,
+      where: r.active,
+      left_lateral_join: a in subquery(last_attempt),
+      on: true,
+      order_by: [asc_nulls_first: a.at, asc_nulls_first: a.id, asc: r.id]
+    )
+    |> Repo.all()
     |> Enum.reduce_while([], fn repository, results ->
       case sync_repo(client, repository) do
         {:error, %GitHub.RateLimited{}} = limited -> {:halt, [limited | results]}
@@ -138,6 +154,7 @@ defmodule AgentBoard.Sync do
       end
     end)
 
+    PullReviews.repair_one(client, repository)
     commits = sync_commits(client, repository)
 
     apply_tickets(repository, issues, client)
@@ -637,39 +654,33 @@ defmodule AgentBoard.Sync do
 
   defp checks_changed_at(_existing, _checks_state, now), do: now
 
-  @doc "The strongest review state."
-  def review_rollup(reviews) do
-    states =
-      reviews
-      |> Enum.map(&String.downcase(&1["state"] || ""))
-      |> Enum.reject(&(&1 == ""))
-      |> MapSet.new()
-
-    cond do
-      MapSet.member?(states, "changes_requested") -> "changes_requested"
-      MapSet.member?(states, "approved") -> "approved"
-      MapSet.size(states) > 0 -> "pending"
-      true -> "none"
-    end
-  end
+  @doc "The effective decision across reviewers."
+  defdelegate review_rollup(reviews), to: PullReviews, as: :rollup
 
   @doc "The CI result and the failing check names."
+  def checks_rollup([]), do: {"none", ""}
+
   def checks_rollup(checks) do
-    case checks_failed(checks) do
-      "" ->
-        if Enum.any?(checks, &(&1["status"] in ["queued", "in_progress"])),
-          do: {"pending", ""},
-          else: {if(checks == [], do: "none", else: "success"), ""}
+    failed =
+      checks
+      |> Enum.filter(
+        &(&1["conclusion"] in ~w(failure timed_out cancelled action_required stale startup_failure))
+      )
+      |> Enum.map(&(&1["name"] || "check"))
 
-      failed ->
-        {"failure", failed}
+    cond do
+      failed != [] ->
+        {"failure", Enum.join(failed, ", ")}
+
+      Enum.all?(
+        checks,
+        &(&1["status"] == "completed" and &1["conclusion"] in ~w(success neutral skipped))
+      ) ->
+        {"success", ""}
+
+      true ->
+        {"pending", ""}
     end
-  end
-
-  defp checks_failed(checks) do
-    checks
-    |> Enum.filter(&(&1["conclusion"] in ["failure", "timed_out", "cancelled"]))
-    |> Enum.map_join(", ", &(&1["name"] || "check"))
   end
 
   defp to_dt(nil), do: nil

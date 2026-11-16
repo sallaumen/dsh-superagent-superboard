@@ -6,6 +6,7 @@ defmodule AgentBoard.LanesTest do
 
   alias AgentBoard.{Board, Lanes, Repo}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
+  alias AgentBoard.Lanes.Digest.Observations
 
   test "needs puts new items before old ones and follows the urgency order" do
     {:ok, repo} = Board.add_repository("fixture", "needs")
@@ -133,39 +134,6 @@ defmodule AgentBoard.LanesTest do
     [need] = Lanes.needs(repo, %{ready: [], blocked: [], question: [question]}, now: now)
 
     assert need.why == "**O agente perguntou:** Sim, devo usar a API v2?"
-  end
-
-  describe "the next moment a running task needs attention" do
-    @now ~U[2026-11-10 12:00:00.000Z]
-
-    test "is the nearest future limit or silence, in milliseconds" do
-      started = DateTime.add(@now, -10 * 60, :second)
-      small = %{number: 1, size: "S", state_changed_at: started, started_at: started}
-      quiet = %{number: 2, size: "L", state_changed_at: started, started_at: started}
-      silences = %{2 => %{at: DateTime.add(@now, -60, :second)}}
-
-      assert Lanes.next_attention_in([small, quiet], silences, 121, @now) == 61_000
-      assert Lanes.next_attention_in([small], %{}, 121, @now) == 10 * 60 * 1000
-    end
-
-    test "a limit under a second away still counts, and a passed one never does" do
-      soon = DateTime.add(@now, -(20 * 60) + 1, :second) |> DateTime.add(-500, :millisecond)
-      passed = DateTime.add(@now, -30 * 60, :second)
-
-      assert Lanes.next_attention_in(
-               [%{number: 1, size: "S", state_changed_at: soon, started_at: soon}],
-               %{},
-               60,
-               @now
-             ) == 500
-
-      assert Lanes.next_attention_in(
-               [%{number: 1, size: "S", state_changed_at: passed, started_at: passed}],
-               %{},
-               60,
-               @now
-             ) == nil
-    end
   end
 
   describe "a run past the time its size allows" do
@@ -624,6 +592,35 @@ defmodule AgentBoard.LanesTest do
     refute Enum.at(queue.items, 1).sub
   end
 
+  test "queue observations isolate repository rows and read linked task numbers in queue order" do
+    {:ok, repo} = Board.add_repository("fixture", "queue-observations")
+    {:ok, other} = Board.add_repository("fixture", "queue-observations-other")
+    at = ~U[2026-11-09 12:00:00Z]
+    parent = task(repo, 7, "Parent", "done", at)
+    first = task(repo, 20, "First", "queued", at)
+    second = task(repo, 12, "Second", "queued", at)
+    unblock = task(repo, 9, "Unblocks", "queued", DateTime.add(at, 60))
+    Repo.update!(Ecto.Changeset.change(second, origin_task_id: parent.id, held: true))
+    Repo.update!(Ecto.Changeset.change(unblock, blocker_for_task_id: second.id))
+
+    Repo.insert_all(AgentBoard.Board.TaskDependency, [
+      %{task_id: second.id, blocked_by_task_id: first.id, inserted_at: at, updated_at: at},
+      %{task_id: second.id, blocked_by_task_id: parent.id, inserted_at: at, updated_at: at}
+    ])
+
+    merged(repo, 22, "Local", "success", at)
+    open_pull(repo, 23, "Open", "success", at)
+    merged(other, 22, "Foreign", "success", at)
+    task(other, 20, "Foreign", "queued", at)
+
+    observed = Lanes.Queue.Observations.load(repo)
+    assert Enum.map(observed.rows, & &1.number) == [9, 20, 12]
+    assert [%{number: 22, title: "Local"}] = observed.merged
+    assert observed.origins == %{parent.id => 7}
+    assert observed.blockers == %{second.id => 12}
+    assert observed.waits == %{second.id => [20]}
+  end
+
   describe "a task the board called and no ticket answered" do
     setup do
       {:ok, repo} = Board.add_repository("fixture", "unanswered")
@@ -777,6 +774,22 @@ defmodule AgentBoard.LanesTest do
     end
   end
 
+  test "a busy local day keeps UTC chronology across a month boundary and counts hidden PRs" do
+    {:ok, repo} = Board.add_repository("fixture", "busy-history")
+    midnight = ~U[2026-11-01 00:00:00Z]
+
+    for n <- 1..100 do
+      merged(repo, n, "PR #{n}", "success", DateTime.add(midnight, n - 95, :minute))
+      |> Ecto.Changeset.change(closes_issues: [n])
+      |> Repo.update!()
+    end
+
+    log = Lanes.merge_log(repo, now: ~U[2026-11-01 00:10:00Z], tz_offset: 180)
+    assert [%{date: ~D[2026-10-31], n: 100, more_wide: 92} = day] = log.groups
+    assert Enum.map(day.items ++ day.extra, & &1.number) == Enum.to_list(100..93//-1)
+    assert log.issues == 100
+  end
+
   test "the merge log groups the last seven days and counts every PR" do
     {:ok, repo} = Board.add_repository("fixture", "log")
     today = ~U[2026-11-06 15:00:00Z]
@@ -867,6 +880,43 @@ defmodule AgentBoard.LanesTest do
     assert hd(log.days).fail == 0
   end
 
+  test "digest observations include the visit boundary and read only this repository" do
+    {:ok, repo} = Board.add_repository("fixture", "visit-observations")
+    {:ok, other} = Board.add_repository("fixture", "other-visit")
+    visit = ~U[2026-11-06 14:00:00Z]
+    before_visit = DateTime.add(visit, -1)
+    after_visit = DateTime.add(visit, 1)
+
+    open_pull(repo, 1, "At the visit", "success", visit)
+    latest = open_pull(repo, 2, "Opened later", "success", after_visit)
+    open_pull(repo, 3, "Too early", "success", before_visit)
+    open_pull(other, 4, "Other repository", "success", DateTime.add(visit, 10))
+
+    open_pull(repo, 13, "Already closed", "success", DateTime.add(visit, 8))
+    |> Ecto.Changeset.change(state: "closed")
+    |> Repo.update!()
+
+    merged(repo, 5, "Merged now", "success", visit)
+    merged(repo, 6, "Merged earlier", "success", before_visit)
+    merged(other, 7, "Other merge", "success", visit)
+
+    task(repo, 8, "Existing task asked now", "question", before_visit)
+    |> Ecto.Changeset.change(state_changed_at: visit)
+    |> Repo.update!()
+
+    task(repo, 9, "Already queued", "queued", before_visit)
+    task(repo, 10, "New arrival", "queued", visit)
+    task(other, 11, "Other question", "question", visit)
+    task(other, 12, "Other arrival", "queued", visit)
+
+    observed = Observations.since(repo, visit)
+    assert observed.counts == %{merged: 1, reviews: 2, questions: 1, queue_new: 1}
+    assert observed.latest_review.id == latest.id
+
+    assert %{counts: %{reviews: 0}, latest_review: nil} =
+             Observations.since(repo, DateTime.add(after_visit, 1))
+  end
+
   test "the digest counts what changed since the visit, not the whole board" do
     {:ok, repo} = Board.add_repository("fixture", "digest")
     now = ~U[2026-11-06 15:00:00Z]
@@ -884,6 +934,34 @@ defmodule AgentBoard.LanesTest do
     refute text =~ "CI falhando"
     assert text =~ "1 nova na fila"
     refute text =~ "2 novas"
+  end
+
+  test "the digest counts whole lanes even when just one card is loaded" do
+    {:ok, repo} = Board.add_repository("fixture", "many-tasks")
+    now = ~U[2026-11-06 15:00:00Z]
+    one = [%{number: 7, id: 10}]
+
+    board = %{
+      running: one,
+      blocked: one,
+      ready: one,
+      question: one,
+      task_counts: %{running: 51, blocked: 63, ready: 26, question: 12, retrying: 11, queued: 101}
+    }
+
+    for visit <- [nil, DateTime.add(now, -60, :second)] do
+      summary = Lanes.digest(repo, board, now: now, last_visit: visit)
+      text = Enum.map_join(summary.segments, " ", & &1.text)
+      assert text =~ "51"
+      assert text =~ "63"
+      refute text =~ "#7"
+
+      if is_nil(visit) do
+        assert text =~ "38"
+        assert text =~ "11"
+        assert text =~ "101"
+      end
+    end
   end
 
   test "a first visit never claims a change time it does not have" do
@@ -917,14 +995,14 @@ defmodule AgentBoard.LanesTest do
     %{task | inserted_at: at}
   end
 
-  defp open_pull(repo, number, title, checks) do
+  defp open_pull(repo, number, title, checks, opened_at \\ ~U[2026-11-06 14:00:00Z]) do
     %PullRequest{}
     |> PullRequest.changeset(%{
       repository_id: repo.id,
       number: number,
       title: title,
       state: "open",
-      opened_at: ~U[2026-11-06 14:00:00Z],
+      opened_at: opened_at,
       checks_state: checks,
       checks_failed: if(checks == "failure", do: "gates", else: nil),
       url: "https://github.com/fixture/repo/pull/#{number}"

@@ -1,0 +1,111 @@
+diff --git a/src/sources/github.ts b/src/sources/github.ts
+index 29703e7..6a66f5e 100644
+--- a/src/sources/github.ts
++++ b/src/sources/github.ts
+@@ -384,9 +384,23 @@ async function pollNotifications(ctx: SourceContext, round: Round): Promise<{ co
+   ctx.atomic(() => { state.set(KV.github.since, cursorAt(round.started)); state.set(KV.github.retries, retries) })
+   return { count: notifications.length, interval }
+ }
++// Only GitHub-confirmed, repository-local metadata may stand in for a PR read.
++function cachedMergedDiscussion(ctx: SourceContext, thread: Thread | undefined, number: number): PullRef | undefined {
++  if (!thread || thread.meta.isPr !== true || thread.meta.mergedDetailRepo !== ctx.deployment.repository) return
++  const { mergedDetailAt, url, prAuthor } = thread.meta
++  const age = Date.now() - (typeof mergedDetailAt === 'number' ? mergedDetailAt : NaN)
++  if (age >= 0 && age < 3_600_000 && typeof url === 'string' && typeof prAuthor === 'string')
++    return { number, isPr: true, url, prAuthor }
++}
+ async function readNotified(ctx: SourceContext, round: Round, number: number, item: Retry): Promise<void> {
+   const { since } = item
+-  let isPr = item.pr
++  const thread = ctx.threads.get(`github:${number}`)
++  const ref = cachedMergedDiscussion(ctx, thread, number)
++  // Preserve the PR-body trigger if a human could have opened it in the replay window.
++  const created = thread?.meta.mergedDetailCreatedAt
++  const cached = ref && (sameName(ref.prAuthor!, ctx.deployment.github.login)
++    || (typeof created === 'string' && Date.parse(created) < Date.parse(since))) ? ref : undefined
++  let isPr = item.pr || !!cached
+   if (!isPr) {
+     const issue = await ctx.commands.withSignal(round.signal).api(IssueSchema, `issues/${number}`)
+     // `issues/<n>` also returns PRs with `pull_request` set; handle them in the PR branch below.
+@@ -401,7 +415,9 @@ async function readNotified(ctx: SourceContext, round: Round, number: number, it
+       nameThread(ctx, number, issue.title)
+     }
+   }
+-  if (isPr) {
++  if (cached) {
++    await intakeComments(ctx, cached, since, round)
++  } else if (isPr) {
+     const pr = await pull(ctx, round, number)
+     // Emit a PR description trigger for PRs opened since the cursor; its ID is the same as the one produced by the repository PR stream.
+     const { login } = ctx.deployment.github
+@@ -495,20 +511,13 @@ async function pollThread(ctx: SourceContext, round: Round, thread: Thread): Pro
+   const checkpoint = KV.github.cursor(number)
+   const since = ctx.state.get(checkpoint) ?? thread.createdAt
+   if (thread.meta.isPr === true) {
+-    // A merged PR cannot reopen. Keep reading its discussion, but refresh
+-    // mutable metadata (e.g. renamed accounts) only once per hour.
+-    const repo = ctx.deployment.repository
+-    const checked = thread.meta.mergedDetailAt
+-    const age = Date.now() - (typeof checked === 'number' ? checked : NaN)
+-    let ref: PullRef
+-    if (thread.meta.mergedDetailRepo === repo && age >= 0 && age < 3_600_000
+-        && typeof thread.meta.url === 'string' && typeof thread.meta.prAuthor === 'string') {
+-      ref = { number, isPr: true, url: thread.meta.url, prAuthor: thread.meta.prAuthor }
+-    } else {
++    let ref = cachedMergedDiscussion(ctx, thread, number)
++    if (!ref) {
+       const pr = await pull(ctx, round, number)
+       ref = { number, isPr: true, url: pr.html_url, prAuthor: pr.user.login }
+       if (pr.merged === true) ctx.threads.patch(thread.key, {
+-        mergedDetailAt: Date.now(), mergedDetailRepo: repo, url: pr.html_url, prAuthor: pr.user.login,
++        mergedDetailAt: Date.now(), mergedDetailRepo: ctx.deployment.repository, mergedDetailCreatedAt: pr.created_at,
++        url: pr.html_url, prAuthor: pr.user.login,
+       })
+     }
+     await intakeComments(ctx, ref, since, round)
+diff --git a/tests/sources.spec.ts b/tests/sources.spec.ts
+index ca5cbb7..c76b02d 100644
+--- a/tests/sources.spec.ts
++++ b/tests/sources.spec.ts
+@@ -576,6 +576,41 @@ describe('github source', () => {
+     }
+     h.store.close()
+   })
++  it('replays delayed notifications from merged PR metadata without losing new comments or delivering twice', async () => {
++    const h = host()
++    const now = new Date().toISOString()
++    subscribed(h, { source: 'github', id: '7' }, { isPr: true, title: 'Fix' })
++    const comment = { id: 42, body: 'received before the notice', user: { login: 'alice' }, created_at: now, updated_at: now }
++    const routes: Record<string, unknown> = { notifications: [], 'pulls/7': { ...endedPull(7, now), user: { login: 'agent-bot' } },
++      'issues/7/comments': [comment] }
++    const reads = github(h, routes)
++    await pollGithubThreads(h)
++    expect(h.receive.mock.calls.map(([t]) => t.meta.commentId)).toEqual([42])
++    reads.length = 0
++    h.receive.mockClear()
++    routes.notifications = [notification(7, 'pulls')]
++    routes['issues/7/comments'] = [comment, { ...comment, id: 43, body: 'first seen via the notification' }]
++    await pollRound(h)
++    expect(bare(reads)).toEqual(['notifications', 'issues/7/comments', 'pulls/7/comments', 'pulls/7/reviews'])
++    expect(h.receive.mock.results.map(r => r.value)).toHaveLength(2)
++    expect(await h.receive.mock.results[0]!.value).toBe('duplicate')
++    expect(await h.receive.mock.results[1]!.value).not.toBe('duplicate')
++    expect(h.receive.mock.calls[1]![0].meta).toMatchObject({ commentId: 43, prAuthor: 'agent-bot' })
++    h.store.close()
++  })
++  it('still checks a recently opened human PR body even with warm merged metadata', async () => {
++    const h = host()
++    const now = new Date().toISOString()
++    subscribed(h, { source: 'github', id: '7' }, { isPr: true, title: 'Fix' })
++    const routes = { notifications: [notification(7,'pulls')], 'pulls/7': { ...endedPull(7, now), created_at: now, body: '@agent-bot review' } }
++    const reads = github(h, routes)
++    await pollGithubThreads(h)
++    reads.length = 0
++    await pollRound(h)
++    expect(bare(reads)).toContain('pulls/7')
++    expect(h.receive.mock.calls.some(([t]) => t.meta.kind === 'pull')).toBe(true)
++    h.store.close()
++  })
+   it('continues reading the state of closed but unmerged PRs', async () => {
+     const h = host()
+     subscribed(h, { source: 'github', id: '7' }, { isPr: true, title: 'Fix' })

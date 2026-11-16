@@ -14,11 +14,11 @@ defmodule AgentBoard.Board.Requests do
   with `AgentBoard.Board`.
   """
 
+  require Logger
   import Ecto.Query, warn: false
 
   alias AgentBoard.{Board, Executors, Repo, Routing}
-  alias AgentBoard.Board.{Repository, RequestOrder, Task}
-  alias AgentBoard.Intake.IssueBody
+  alias AgentBoard.Board.{Repository, RequestDependencies, RequestOrder, Task}
 
   # The column holds 255; past that Postgres raises instead of refusing, and
   # GitHub stops at 256. A title comes from a person or a model.
@@ -91,27 +91,9 @@ defmodule AgentBoard.Board.Requests do
   end
 
   defp create_after_blockers(repository, request, numbers, client) do
-    blockers = request |> depends_on() |> Enum.flat_map(&List.wrap(numbers[&1]))
-
-    if :failed in blockers do
-      {:error, :dependency_failed}
-    else
-      language = Map.get(request, :language)
-      body = IssueBody.with_dependencies(request.body, blockers, language)
-
-      repository
-      |> create_request(%{request | body: body} |> hold(blockers), client)
+    with {:ok, prepared} <- RequestDependencies.prepare(request, numbers) do
+      create_request(repository, prepared, client)
     end
-  end
-
-  # The mention starts the runner at once, so what waits opens without it. Only
-  # the runner: another executor's issue never calls anybody.
-  defp hold(request, []), do: request
-
-  defp hold(request, _blockers) do
-    if Map.get(request, :executor) in [nil, "dsh"],
-      do: Map.put(request, :held, true),
-      else: request
   end
 
   defp remember(numbers, key, {:ok, %Task{number: number}, _outcome}),
@@ -119,9 +101,7 @@ defmodule AgentBoard.Board.Requests do
 
   defp remember(numbers, key, _failure), do: Map.put(numbers, key, :failed)
 
-  defp depends_on(request), do: Map.get(request, :depends_on, [])
-
-  defp do_create_request(repository, %{title: title, body: body, key: key} = request, client) do
+  defp do_create_request(repository, %{title: title, body: body} = request, client) do
     title = clip_title(title)
     # The body the issue will carry, so a repeat matches the stored task.
     body =
@@ -132,6 +112,93 @@ defmodule AgentBoard.Board.Requests do
 
     body = if Map.get(request, :held), do: Executors.held_body(body), else: body
     request = %{request | title: title, body: body}
+
+    case request[:receipt_number] do
+      nil -> submit(repository, request, client)
+      number when is_integer(number) and number > 0 -> recover_number(repository, request, number)
+    end
+  end
+
+  # Explicit recovery never opens an issue, even if the original task has
+  # since ended. An older board may have lost its reservation entirely: only
+  # a verified, unclaimed mirror with this exact number AND payload may stand in.
+  defp recover_number(repo, request, n) do
+    case Repo.get_by(Task, repository_id: repo.id, request_key: request.key) do
+      %Task{number: ^n} = task ->
+        {:ok, task, :existing}
+
+      %Task{number: nil, issue_receipt: %{"number" => ^n}} = claim ->
+        finalize_receipt(repo, request, claim, n)
+
+      %Task{number: nil, issue_receipt: %{"sending" => true}} = claim ->
+        # The provider answered but even saving its receipt failed. The
+        # mirror must confirm the number and exact content before we use it.
+        case Repo.get_by(Task,
+               repository_id: repo.id,
+               kind: "issue",
+               number: n,
+               title: request.title,
+               body: request.body,
+               request_key: nil
+             ) do
+          %Task{url: url} ->
+            acknowledge_issue(repo, request, claim, n, %{"number" => n, "html_url" => url})
+
+          nil ->
+            {:error, {:receipt_pending, n}}
+        end
+
+      nil ->
+        recover_mirror(repo, request, n)
+
+      _ ->
+        {:error, {:receipt_pending, n}}
+    end
+  end
+
+  defp recover_mirror(repo, request, n) do
+    result =
+      Repo.transact(fn ->
+        mirror =
+          Repo.one(
+            from t in Task,
+              where: [
+                repository_id: ^repo.id,
+                kind: "issue",
+                number: ^n,
+                title: ^request.title,
+                body: ^request.body
+              ],
+              where: is_nil(t.request_key),
+              where: is_nil(t.origin_task_id) and is_nil(t.blocker_for_task_id),
+              lock: "FOR UPDATE"
+          )
+
+        case mirror do
+          %Task{} ->
+            attrs =
+              request
+              |> Map.take([:origin_task_id, :blocker_for_task_id, :executor])
+              |> Map.put(:request_key, request.key)
+
+            mirror |> Task.changeset(attrs) |> Repo.update()
+
+          nil ->
+            {:error, :not_found}
+        end
+      end)
+
+    case result do
+      {:ok, task} ->
+        Board.broadcast(repo.id)
+        {:ok, task, :existing}
+
+      _ ->
+        {:error, {:receipt_pending, n}}
+    end
+  end
+
+  defp submit(repository, %{key: key, title: title, body: body} = request, client) do
     release_ended_key(repository, key)
 
     case existing_request(repository, key, title, body) do
@@ -155,6 +222,23 @@ defmodule AgentBoard.Board.Requests do
 
   # If the process died after GitHub answered, retaking opens a second issue;
   # refusing would hold this request and everything that depends on it forever.
+  defp retake_or_wait(
+         %Task{issue_receipt: %{"number" => n}} = claim,
+         repository,
+         request,
+         _client
+       ) do
+    finalize_receipt(repository, request, claim, n)
+  end
+
+  # A new sender that died before storing the response may already have opened
+  # an issue. Its age alone cannot make a second POST safe.
+  defp retake_or_wait(%Task{issue_receipt: %{}} = claim, _repository, _request, _client) do
+    if DateTime.before?(claim.inserted_at, live_claim_cutoff()),
+      do: {:error, :issue_send_uncertain},
+      else: {:error, :in_progress}
+  end
+
   defp retake_or_wait(claim, repository, request, client) do
     if DateTime.before?(claim.inserted_at, live_claim_cutoff()) do
       delete_claim(claim)
@@ -198,7 +282,7 @@ defmodule AgentBoard.Board.Requests do
       held: Map.get(request, :held, false)
     }
 
-    case %Task{} |> Task.changeset(attrs) |> Repo.insert() do
+    case %Task{issue_receipt: %{"sending" => true}} |> Task.changeset(attrs) |> Repo.insert() do
       {:ok, claim} ->
         {:ok, claim}
 
@@ -215,9 +299,20 @@ defmodule AgentBoard.Board.Requests do
   end
 
   defp create_new_request(repository, request, client, claim) do
-    case open_claimed_issue(repository, request, client, claim) do
-      {:ok, task} ->
-        {:ok, task, :created}
+    labels = if claim.executor, do: [Executors.label(claim.executor)], else: []
+
+    case post_issue(repository, request, client, labels) do
+      {:ok, %{"number" => n} = issue} when is_integer(n) and n > 0 ->
+        # Commit the acknowledgement independently. A failure in the local
+        # merge must never roll this number back or delete this reservation.
+        acknowledge_issue(repository, request, claim, n, issue)
+
+      {:ok, _unknown_response} ->
+        {:error, :in_progress}
+
+      {:error, %Req.TransportError{reason: cause}}
+      when cause not in [:nxdomain, :econnrefused, :enetunreach, :ehostunreach] ->
+        {:error, :issue_send_uncertain}
 
       {:error, reason} ->
         delete_claim(claim)
@@ -225,27 +320,29 @@ defmodule AgentBoard.Board.Requests do
     end
   end
 
-  defp open_claimed_issue(repository, request, client, claim) do
-    executor = claim.executor
-    labels = if executor, do: [Executors.label(executor)], else: []
-
-    issue =
-      AgentBoard.GitHub.create_issue(
-        client,
-        repository.owner,
-        repository.name,
-        request.title,
-        request.body,
-        labels
+  defp acknowledge_issue(repository, request, claim, number, issue) do
+    receipt = Map.take(issue, ["number", "html_url"])
+    claim = claim |> Ecto.Changeset.change(issue_receipt: receipt) |> Repo.update!()
+    finalize_receipt(repository, request, claim, number)
+  rescue
+    e in [DBConnection.ConnectionError, Postgrex.Error, Ecto.StaleEntryError] ->
+      Logger.warning(
+        "Issue ##{number} was created; saving its receipt failed: #{inspect(e.__struct__)}"
       )
 
-    claim
-    |> finish_claim(issue)
-    |> tap(&record_routing(&1, repository, executor, Map.get(request, :routing)))
-    |> tap(fn
-      {:ok, _task} -> Board.broadcast(repository.id)
-      _ -> :ok
-    end)
+      {:error, {:receipt_pending, number}}
+  end
+
+  defp post_issue(repository, request, client, labels) do
+    {:ok,
+     AgentBoard.GitHub.create_issue(
+       client,
+       repository.owner,
+       repository.name,
+       request.title,
+       request.body,
+       labels
+     )}
   rescue
     exception ->
       Board.log_event(repository.id, "create_error", request.title, %{
@@ -253,6 +350,44 @@ defmodule AgentBoard.Board.Requests do
       })
 
       {:error, exception}
+  end
+
+  defp finalize_receipt(repository, request, claim, number) do
+    # Concurrent confirms serialize on the reservation. If a sync beat us to
+    # the issue, finish_claim transfers the key and links to that exact row.
+    result =
+      Repo.transact(fn ->
+        finish_locked(repository, request, claim, number)
+      end)
+
+    case result do
+      {:ok, {task, outcome}} ->
+        if outcome == :created, do: Board.broadcast(repository.id)
+        {:ok, task, outcome}
+
+      {:error, _reason} ->
+        {:error, {:receipt_pending, number}}
+    end
+  end
+
+  defp finish_locked(repository, request, claim, number) do
+    case Repo.one(from t in Task, where: t.id == ^claim.id, lock: "FOR UPDATE") do
+      %Task{number: nil, issue_receipt: %{"number" => ^number} = issue} = locked ->
+        with {:ok, task} <- finish_claim(locked, issue) do
+          record_routing({:ok, task}, repository, claim.executor, Map.get(request, :routing))
+          {:ok, {task, :created}}
+        end
+
+      _already_finished ->
+        case Repo.get_by(Task,
+               repository_id: repository.id,
+               request_key: claim.request_key,
+               number: number
+             ) do
+          nil -> {:error, :conflict}
+          task -> {:ok, {task, :existing}}
+        end
+    end
   end
 
   defp finish_claim(claim, issue) do
@@ -374,7 +509,9 @@ defmodule AgentBoard.Board.Requests do
     in_flight =
       from t in Task,
         where: [repository_id: ^repository.id, kind: "issue", state: "draft"],
-        where: t.inserted_at >= ^live_claim_cutoff(),
+        where:
+          t.inserted_at >= ^live_claim_cutoff() or
+            fragment("?->>'number' = ?::text", t.issue_receipt, parent_as(:mirror).number),
         where: t.id < parent_as(:mirror).id and not is_nil(t.request_key) and is_nil(t.number),
         select: 1
 

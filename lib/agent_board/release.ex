@@ -25,8 +25,6 @@ defmodule AgentBoard.Release do
   alias AgentBoard.Board.{Repository, Task, TaskDependency}
   alias AgentBoard.Intake.IssueBody
 
-  @finished ~w(done closed)
-
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts, name: __MODULE__)
 
   @impl true
@@ -79,10 +77,8 @@ defmodule AgentBoard.Release do
   end
 
   defp open_edges do
-    from d in TaskDependency,
-      join: b in Task,
-      on: b.id == d.blocked_by_task_id,
-      where: d.task_id == parent_as(:task).id and b.state not in @finished,
+    from d in TaskDependency.with_open_blocker(),
+      where: d.task_id == parent_as(:task).id,
       select: 1
   end
 
@@ -116,13 +112,19 @@ defmodule AgentBoard.Release do
   def called_at(%{executor: "dsh", inserted_at: at}), do: at
   def called_at(_task), do: nil
 
+  @doc "Whether the agent can be called on a held task or called again on one still in the queue."
+  @spec callable?(Task.t()) :: boolean()
+  def callable?(%Task{} = task) do
+    task.held or (task.state == "queued" and not is_nil(called_at(task)))
+  end
+
   @doc """
   The effect of `release_task`: the comment that calls the agent, on a held
   task or again on a called one that is still in the queue.
   """
   @spec call_agent(Task.t(), Repository.t(), term()) :: :ok | {:error, term()}
   def call_agent(%Task{} = task, repository, client) do
-    if task.held or (task.state == "queued" and called_at(task)),
+    if callable?(task),
       do: comment(task, repository, client),
       else: {:error, :not_waiting}
   end

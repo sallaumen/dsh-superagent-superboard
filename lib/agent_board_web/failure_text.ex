@@ -22,6 +22,14 @@ defmodule AgentBoardWeb.FailureText do
   def text(:usage_limit), do: gettext("The service's usage limit was reached.")
   def text(:quota_exceeded), do: gettext("The service's credits are spent.")
   def text(:budget_exhausted), do: gettext("The board's AI budget is exhausted.")
+
+  def text({:receipt_pending, number}),
+    do:
+      gettext("GitHub created issue #%{number}. Its board link is still pending.", number: number)
+
+  def text(:issue_send_uncertain),
+    do: gettext("The issue number is unknown. Check GitHub before starting another request.")
+
   def text(:timeout), do: gettext("The service did not respond in time.")
   def text(:unreachable), do: gettext("The service did not respond.")
 

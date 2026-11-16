@@ -28,6 +28,7 @@ defmodule AgentBoard.Board.PullRequest do
     field :opened_at, :utc_datetime
     field :merged_at, :utc_datetime
     field :review_state, :string
+    field :review_refresh_at, :utc_datetime
     field :checks_state, :string
     field :checks_failed, :string
     field :checks_changed_at, :utc_datetime

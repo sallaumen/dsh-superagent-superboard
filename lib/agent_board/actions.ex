@@ -71,7 +71,16 @@ defmodule AgentBoard.Actions do
     Voice
   }
 
-  alias AgentBoard.Board.{Attachments, PrivateContext, Repository, RequestBatch, SplitGraph, Task}
+  alias AgentBoard.Board.{
+    Attachments,
+    PrivateContext,
+    Repository,
+    RequestBatch,
+    RequestDependencies,
+    SplitGraph,
+    Task
+  }
+
   alias AgentBoard.Intake.IssueBody
   alias AgentBoard.Release
   alias AgentBoard.Superagents.{Leftovers, Policy, RuntimeSync}
@@ -94,6 +103,7 @@ defmodule AgentBoard.Actions do
     :resume_task,
     :retry_ticket,
     :auto_retry_ticket,
+    :deliver_dependencies,
     :release_task,
     :dispatch_task,
     :stop_execution,
@@ -171,6 +181,17 @@ defmodule AgentBoard.Actions do
 
   defp spec(:retry_ticket),
     do: %{risk: :red, does: "pede ao runner uma rodada nova do ticket; gasta tokens do executor"}
+
+  defp spec(:deliver_dependencies),
+    do: %{
+      risk: :red,
+      does: "retoma a atribuição original quando os bloqueios vinculados terminam",
+      standing: %{
+        by: "dependency_delivery",
+        granted: "2026-11-16",
+        where: "docs/maintainer-contract.md, Completed blockers"
+      }
+    }
 
   defp spec(:auto_retry_ticket),
     do: %{
@@ -620,6 +641,9 @@ defmodule AgentBoard.Actions do
       "Ele abre uma rodada nova no ticket e gasta tokens do executor."
   end
 
+  def phrase(:deliver_dependencies, %{task: task}, _lang),
+    do: "Entregar a conclusão dos pré-requisitos ao ticket da ##{task.number}."
+
   def phrase(:auto_retry_ticket, %{ticket_id: id} = params, _lang),
     do:
       "Nova tentativa automática do ticket #{id} (#{params[:attempt] || "?"} de #{AutoRetry.max_retries()}) " <>
@@ -947,6 +971,9 @@ defmodule AgentBoard.Actions do
     opts = if params[:client], do: Keyword.put(opts, :client, params.client), else: opts
     AgentControl.retry(ticket_id, opts)
   end
+
+  defp execute(:deliver_dependencies, %{client: client, ticket_id: id, payload: payload}),
+    do: Orchestrator.deliver_dependencies(client, id, payload)
 
   defp execute(:auto_retry_ticket, %{ticket_id: ticket_id} = params),
     do: Orchestrator.retry(orchestrator(params), ticket_id)
@@ -1732,7 +1759,8 @@ defmodule AgentBoard.Actions do
   defp held_note(requests, lang) do
     held? =
       Enum.any?(requests, fn request ->
-        Map.get(request, :depends_on, []) != [] and Map.get(request, :executor) in [nil, "dsh"]
+        Map.get(request, :depends_on, []) != [] and
+          RequestDependencies.holds_for_dependencies?(Map.get(request, :executor))
       end)
 
     case {held?, lang} do

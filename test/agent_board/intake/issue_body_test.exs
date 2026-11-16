@@ -52,6 +52,21 @@ defmodule AgentBoard.Intake.IssueBodyTest do
     refute body =~ "## Contexto do pedido"
   end
 
+  test "the objective names the agent without calling it from the request or a subtask title" do
+    login = AgentBoard.AgentAccess.bot_login()
+
+    tasks = [
+      %{number: 12, title: "Revisar com @#{login}"},
+      %{number: 11, title: "Publicar"}
+    ]
+
+    body = IssueBody.parent("Consultar @#{login} e @ana.", @spec_pt, tasks)
+
+    assert body =~ "Consultar #{login} e @ana."
+    assert body =~ "- #12 Revisar com #{login}\n- #11 Publicar"
+    refute body =~ "@#{login}"
+  end
+
   test "the dependencies open the issue, as links GitHub resolves" do
     body = IssueBody.with_dependencies("Trocar o menu.", [12, 13], "pt")
 
