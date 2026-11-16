@@ -22,6 +22,17 @@ defmodule AgentBoard.WorkpadTest do
   ### Bloqueio
   """
 
+  test "a structured comment asks only through the question section, even without punctuation" do
+    assert Workpad.question_text(@full) == "Devo manter o boss na arena ou tirar"
+    assert Workpad.question_text("## Relatório do agente\n### Plano\nConfirmar o plano?") == nil
+  end
+
+  test "a plain question omits hidden markup; a hidden question alone is no question" do
+    assert Workpad.question_text(" <!-- dsh-superagent:x --> Ship today? ") == "Ship today?"
+    assert Workpad.question_text("Finished <!-- dsh-superagent:why? -->") == nil
+    assert Workpad.question_text(nil) == nil
+  end
+
   test "a full workpad is read by section" do
     assert %{
              plan: plan,

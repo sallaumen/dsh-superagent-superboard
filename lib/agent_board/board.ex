@@ -27,8 +27,6 @@ defmodule AgentBoard.Board do
   @task_page_size 50
   @task_states [:running, :retrying, :question, :ready, :blocked, :queued]
   @today_topic "board_today"
-  # The runner's hidden `<!-- dsh-superagent:... -->` line is not part of the message.
-  @runner_marker ~r/<!--.*?-->/s
 
   def merged_page_size, do: @merged_page_size
   def task_page_size, do: @task_page_size
@@ -655,21 +653,7 @@ defmodule AgentBoard.Board do
   """
   @spec agent_question(integer(), integer()) :: String.t() | nil
   def agent_question(repository_id, number) do
-    case newest_agent_comment(repository_id, number) do
-      nil -> nil
-      body -> asked_text(body)
-    end
-  end
-
-  defp asked_text(body) do
-    case Workpad.parse(body) do
-      %{question: question} ->
-        question
-
-      nil ->
-        text = body |> String.replace(@runner_marker, "") |> String.trim()
-        if Workpad.question?(text), do: text
-    end
+    repository_id |> newest_agent_comment(number) |> Workpad.question_text()
   end
 
   @doc "The Bloqueio of the newest agent comment's workpad, or nil."
