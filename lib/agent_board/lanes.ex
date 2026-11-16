@@ -67,11 +67,10 @@ defmodule AgentBoard.Lanes do
 
     [
       lane(board, :blocked, :blocked, context),
-      silent_lane(board, context),
+      running_lane(board, context),
       unanswered_lane(board, context),
       lane(board, :ready, :review, context),
-      lane(board, :question, :question, context),
-      slow_lane(board, context)
+      lane(board, :question, :question, context)
     ]
     |> List.flatten()
     |> collapse_agent_down(board, context)
@@ -169,11 +168,10 @@ defmodule AgentBoard.Lanes do
   defp lane(board, key, kind, context),
     do: board |> Map.get(key, []) |> Enum.map(&task_need(&1, kind, context))
 
-  defp silent_lane(board, context) do
-    board
-    |> Map.get(:running, [])
-    |> Enum.filter(&AgentSignal.stalled?(context.silences[&1.number], context.stall_after))
-    |> Enum.map(&task_need(&1, :stalled, context))
+  defp running_lane(board, %{silences: silences, stall_after: stall_after, now: now} = context) do
+    for task <- Map.get(board, :running, []),
+        kind = Attention.running_kind(task, silences[task.number], stall_after, now),
+        do: task_need(task, kind, context)
   end
 
   defdelegate slow_after(size), to: RunTiming
@@ -182,14 +180,6 @@ defmodule AgentBoard.Lanes do
   defdelegate slow?(task, now), to: RunTiming
 
   defdelegate next_attention_in(running, silences, stall_after, now), to: RunTiming
-
-  defp slow_lane(board, context) do
-    board
-    |> Map.get(:running, [])
-    |> Enum.reject(&AgentSignal.stalled?(context.silences[&1.number], context.stall_after))
-    |> Enum.filter(&slow?(&1, context.now))
-    |> Enum.map(&task_need(&1, :slow, context))
-  end
 
   defp unanswered_lane(board, context) do
     board
