@@ -156,25 +156,10 @@ defmodule AgentBoard.Lanes do
   # actions are the where, and `why` is the evidence the board has. A fact
   # the board cannot see is said to be missing, never filled in.
   defp task_need(task, kind, context) do
-    at = Attention.started_at(task, kind, context)
     ticket = Map.get(context.tickets, task.number)
     pull = Map.get(context.pulls, task.id)
-    ci = pull && CI.Badge.describe(pull, Map.get(context.local_ci, pull.number))
-    {why, actions} = need_content(task, kind, ticket, pull, context)
-
-    %{
-      key: "task-#{task.id}",
-      id: task.id,
-      number: task.number,
-      kind: kind,
-      title: task.title,
-      why: why,
-      ci: ci,
-      pull_number: pull && pull.number,
-      age_seconds: Time.age_seconds(at, context.now),
-      is_new: Time.new_since?(at, context.last_visit),
-      actions: actions
-    }
+    content = need_content(task, kind, ticket, pull, context)
+    Attention.Item.build(task, kind, pull, content, context)
   end
 
   defp need_content(task, :blocked, ticket, _pull, context) do
