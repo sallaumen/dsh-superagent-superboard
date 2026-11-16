@@ -358,6 +358,10 @@ defmodule AgentBoard.Lanes do
         })
       end)
 
+    entry = fn pull ->
+      MergeHistory.Item.build(pull, offset, local_ci[pull.number], costs[pull.number])
+    end
+
     groups =
       days
       |> Enum.reverse()
@@ -371,8 +375,8 @@ defmodule AgentBoard.Lanes do
           n: day.n,
           more: page.more,
           more_wide: page.more_wide,
-          items: Enum.map(page.items, &merged_pr(&1, offset, local_ci, costs)),
-          extra: Enum.map(page.extra, &merged_pr(&1, offset, local_ci, costs))
+          items: Enum.map(page.items, entry),
+          extra: Enum.map(page.extra, entry)
         }
       end)
 
@@ -398,30 +402,6 @@ defmodule AgentBoard.Lanes do
     badge = CI.Badge.describe(pull, Map.get(local_ci, pull.number))
     {badge.state, badge.note, badge.title}
   end
-
-  defp merged_pr(pull, offset, local_ci, costs) do
-    badge = CI.Badge.describe(pull, Map.get(local_ci, pull.number))
-
-    %{
-      id: pull.id,
-      number: pull.number,
-      title: pull.title,
-      url: pull.url,
-      closes: pull.closes_issues || [],
-      ci: badge.state,
-      ciNote: badge.note,
-      ciTitle: badge.title,
-      ciLocal: badge.local,
-      review: review_label(pull.review_state),
-      at: Time.local_time(pull.merged_at, offset),
-      cost: Map.get(costs, pull.number)
-    }
-  end
-
-  defp review_label("approved"), do: gettext("approved")
-  defp review_label("changes_requested"), do: gettext("changes requested")
-  defp review_label("pending"), do: gettext("review pending")
-  defp review_label(_state), do: gettext("no review")
 
   @doc """
   The one-sentence digest. Since the previous visit when there is one; the
