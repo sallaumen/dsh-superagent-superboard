@@ -834,7 +834,8 @@ defmodule AgentBoard.Lanes do
 
   defp since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?) do
     counts = since_counts(repository, last_visit)
-    phrases = since_phrases(repository, board, last_visit, counts, offset)
+    review = first_review(repository, last_visit)
+    phrases = board |> Digest.since_visit(counts) |> Enum.map(&[change_phrase(&1, review)])
 
     segments =
       if phrases == [] do
@@ -916,34 +917,6 @@ defmodule AgentBoard.Lanes do
     )
   end
 
-  defp since_phrases(repository, board, last_visit, counts, _offset) do
-    running = Digest.task_subject(board, :running)
-    blocked = Digest.task_subject(board, :blocked)
-    first_review = first_review(repository, last_visit)
-
-    [
-      counts.merged > 0 && merged_phrase(counts.merged),
-      counts.reviews > 0 && [review_phrase(counts.reviews, first_review)],
-      counts.questions > 0 &&
-        [
-          %{
-            text:
-              ngettext(
-                "it asked %{count} question",
-                "it asked %{count} questions",
-                counts.questions
-              ),
-            role: :you
-          }
-        ],
-      not is_nil(running) && [running_phrase(running)],
-      not is_nil(blocked) && [blocked_phrase(blocked)],
-      counts.queue_new > 0 && [queue_phrase(counts.queue_new)]
-    ]
-    |> Enum.reject(&(&1 == false))
-    |> Enum.map(&List.wrap/1)
-  end
-
   defp first_prefix(true, %DateTime{} = frozen_at, offset),
     do: gettext("Until %{time}:", time: Time.local_time(frozen_at, offset)) <> " "
 
@@ -962,16 +935,20 @@ defmodule AgentBoard.Lanes do
   defp since_suffix(_phrases, true), do: ". " <> gettext("After that, we do not know.")
   defp since_suffix(_phrases, false), do: "."
 
-  defp queue_phrase(n) do
+  defp change_phrase({:questions, n}, _pr) do
+    %{text: ngettext("it asked %{count} question", "it asked %{count} questions", n), role: :you}
+  end
+
+  defp change_phrase({:queue_new, n}, _pr) do
     %{text: ngettext("%{count} new in the queue", "%{count} new in the queue", n), role: :agent}
   end
 
-  defp merged_phrase(merged) do
+  defp change_phrase({:merged, merged}, _pr) do
     text = ngettext("the agent merged %{count} PR", "the agent merged %{count} PRs", merged)
-    [%{text: text, role: :agent}]
+    %{text: text, role: :agent}
   end
 
-  defp review_phrase(n, pr) do
+  defp change_phrase({:reviews, n}, pr) do
     %{
       text: ngettext("it opened %{count} PR for review", "it opened %{count} PRs for review", n),
       role: :you,
@@ -979,7 +956,7 @@ defmodule AgentBoard.Lanes do
     }
   end
 
-  defp running_phrase({:task, id, number}) do
+  defp change_phrase({:running, {:task, id, number}}, _pr) do
     %{
       text: gettext("it is working on #%{number}", number: number),
       role: :agent,
@@ -987,11 +964,11 @@ defmodule AgentBoard.Lanes do
     }
   end
 
-  defp running_phrase(n) do
+  defp change_phrase({:running, n}, _pr) do
     %{text: gettext("it is working on %{count} tasks", count: n), role: :agent}
   end
 
-  defp blocked_phrase({:task, id, number}) do
+  defp change_phrase({:blocked, {:task, id, number}}, _pr) do
     %{
       text: gettext("#%{number} is still blocked", number: number),
       role: :halt,
@@ -999,7 +976,7 @@ defmodule AgentBoard.Lanes do
     }
   end
 
-  defp blocked_phrase(n) do
+  defp change_phrase({:blocked, n}, _pr) do
     %{text: gettext("%{count} are still blocked", count: n), role: :halt}
   end
 

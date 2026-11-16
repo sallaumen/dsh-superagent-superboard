@@ -34,4 +34,27 @@ defmodule AgentBoard.Lanes.DigestTest do
     assert Digest.task_subject(%{running: [%{}, %{}], task_counts: %{running: 1}}, :running) == 1
     assert Digest.task_subject(%{}, :running) == nil
   end
+
+  test "a return visit combines events with ongoing work; the queue reports arrivals only" do
+    board = %{
+      running: [%{id: 71, number: 12}],
+      task_counts: %{blocked: 4, queued: 80, ready: 9, question: 8}
+    }
+
+    changes = %{merged: 2, reviews: 1, questions: 3, queue_new: 5}
+
+    assert Digest.since_visit(board, changes) == [
+             merged: 2,
+             reviews: 1,
+             questions: 3,
+             running: {:task, 71, 12},
+             blocked: 4,
+             queue_new: 5
+           ]
+  end
+
+  test "existing queued work, questions and reviews do not imply a change since the visit" do
+    board = %{task_counts: %{queued: 4, question: 3, ready: 1}}
+    assert Digest.since_visit(board, %{merged: 0, reviews: 0, questions: 0, queue_new: 0}) == []
+  end
 end
