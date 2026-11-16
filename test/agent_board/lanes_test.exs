@@ -774,6 +774,38 @@ defmodule AgentBoard.LanesTest do
     end
   end
 
+  test "the merge log counts issues only from merges within the seven local dates" do
+    {:ok, repo} = Board.add_repository("fixture", "bounded-history")
+    {:ok, other} = Board.add_repository("fixture", "bounded-other")
+    first = ~U[2025-12-25 03:00:00Z]
+    next_day = ~U[2026-01-01 03:00:00Z]
+    last = DateTime.add(next_day, -1)
+
+    for {r, n, at} <- [
+          {repo, 4, first},
+          {repo, 8, last},
+          {repo, 2, last},
+          {repo, 3, DateTime.add(first, -1)},
+          {repo, 5, next_day},
+          {other, 6, last}
+        ] do
+      merged(r, n, "PR #{n}", "success", at)
+      |> Ecto.Changeset.change(closes_issues: [n])
+      |> Repo.update!()
+    end
+
+    merged(repo, 7, "Not merged", "success", last)
+    |> Ecto.Changeset.change(state: "closed", closes_issues: [7])
+    |> Repo.update!()
+
+    log = Lanes.merge_log(repo, now: last, tz_offset: 180)
+    assert log.total == 3
+    assert log.issues == 3
+
+    assert Enum.map(log.groups, fn day -> {day.date, Enum.map(day.items, & &1.number)} end) ==
+             [{~D[2025-12-31], [2, 8]}, {~D[2025-12-25], [4]}]
+  end
+
   test "a busy local day keeps UTC chronology across a month boundary and counts hidden PRs" do
     {:ok, repo} = Board.add_repository("fixture", "busy-history")
     midnight = ~U[2026-11-01 00:00:00Z]

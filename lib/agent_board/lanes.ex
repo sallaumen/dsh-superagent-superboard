@@ -9,8 +9,6 @@ defmodule AgentBoard.Lanes do
 
   use Gettext, backend: AgentBoardWeb.Gettext
 
-  import Ecto.Query, warn: false
-
   alias AgentBoard.{
     Actions,
     AgentBlock,
@@ -335,16 +333,8 @@ defmodule AgentBoard.Lanes do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     offset = Keyword.get(opts, :tz_offset, 0)
     local_ci = Keyword.get(opts, :local_ci, %{})
-    %{today: today, dates: dates, since: since} = MergeHistory.window(now, offset)
-
-    pulls =
-      Repo.all(
-        from p in PullRequest,
-          where:
-            p.repository_id == ^repository.id and p.state == "merged" and
-              p.merged_at >= ^since,
-          order_by: [desc: p.merged_at, desc: p.id]
-      )
+    window = MergeHistory.window(now, offset)
+    pulls = MergeHistory.Observations.in_window(repository, window)
 
     by_day = Enum.group_by(pulls, &Time.local_date(&1.merged_at, offset))
 
@@ -356,12 +346,16 @@ defmodule AgentBoard.Lanes do
       |> TaskCosts.for_pulls()
 
     days =
-      Enum.map(dates, fn date ->
+      Enum.map(window.dates, fn date ->
         day_pulls = Map.get(by_day, date, [])
 
         day_pulls
         |> MergeHistory.day_totals(local_ci)
-        |> Map.merge(%{date: date, label: Time.day_label(date, today), today: date == today})
+        |> Map.merge(%{
+          date: date,
+          label: Time.day_label(date, window.today),
+          today: date == window.today
+        })
       end)
 
     groups =
