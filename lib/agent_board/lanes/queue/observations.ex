@@ -16,7 +16,7 @@ defmodule AgentBoard.Lanes.Queue.Observations do
         }
   def load(repository) do
     rows = queued_rows(repository)
-    merged = merged_pulls(repository)
+    merged = if rows == [], do: [], else: merged_pulls(repository)
     origins = related_numbers(rows, :origin_task_id)
     blockers = related_numbers(rows, :blocker_for_task_id)
     waits = open_dependencies(rows)
