@@ -2,20 +2,20 @@ defmodule AgentBoard.Lanes.Digest.FirstVisit do
   @moduledoc "Present the board facts known on a visitor's first visit."
   use Gettext, backend: AgentBoardWeb.Gettext
 
-  alias AgentBoard.Lanes.Digest.Sentence
+  alias AgentBoard.Lanes.Digest.{Sentence, Visit}
   alias AgentBoard.Time
 
   @doc "An empty board has no first-visit digest, even if sync is interrupted."
-  @spec build([{atom(), pos_integer()}], DateTime.t(), integer(), DateTime.t() | nil, boolean()) ::
-          map() | nil
-  def build([], _now, _offset, _frozen_at, _frozen?), do: nil
+  @spec build([{atom(), pos_integer()}], Visit.t()) :: map() | nil
+  def build([], _visit), do: nil
 
-  def build(facts, now, offset, frozen_at, frozen?) do
+  def build(facts, visit) do
     %{
-      prefix: prefix(frozen?, frozen_at, offset),
+      prefix: prefix(visit.sync, visit.offset),
       segments: facts |> Enum.map(&phrase/1) |> Sentence.join(gettext("and")),
-      suffix: if(frozen?, do: " " <> gettext("After that, we do not know."), else: "."),
-      now: now
+      suffix:
+        if(visit.sync != :live, do: " " <> gettext("After that, we do not know."), else: "."),
+      now: visit.now
     }
   end
 
@@ -34,9 +34,9 @@ defmodule AgentBoard.Lanes.Digest.FirstVisit do
   defp phrase({:queued, n}),
     do: %{text: gettext("%{count} in the queue", count: n), role: :agent}
 
-  defp prefix(true, %DateTime{} = frozen_at, offset),
+  defp prefix({:through, frozen_at}, offset),
     do: gettext("Until %{time}:", time: Time.local_time(frozen_at, offset)) <> " "
 
-  defp prefix(true, nil, _offset), do: gettext("Without a completed sync:") <> " "
-  defp prefix(false, _frozen_at, _offset), do: gettext("First visit:") <> " "
+  defp prefix(:unconfirmed, _offset), do: gettext("Without a completed sync:") <> " "
+  defp prefix(:live, _offset), do: gettext("First visit:") <> " "
 end
