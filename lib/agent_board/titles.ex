@@ -11,18 +11,35 @@ defmodule AgentBoard.Titles do
 
   @doc "The merged pull request a queued title most likely repeats, if any."
   @spec duplicate(String.t() | nil, [map()]) :: map() | nil
-  def duplicate(title, merged) when is_binary(title) do
-    merged
-    |> Enum.map(&{&1, score(title, &1.title)})
-    |> Enum.filter(fn {_pull, score} -> score >= @threshold end)
-    |> Enum.max_by(fn {_pull, score} -> score end, fn -> nil end)
-    |> case do
-      nil -> nil
-      {pull, _score} -> pull
-    end
-  end
+  def duplicate(title, merged) when is_binary(title),
+    do: Map.get(duplicates([title], merged), title)
 
   def duplicate(_title, _merged), do: nil
+
+  @doc "Best repeat for each matching queue title; normalize the merged history once for the batch."
+  @spec duplicates([String.t() | nil], [map()]) :: %{optional(String.t()) => map()}
+  def duplicates([], _merged), do: %{}
+  def duplicates(_titles, []), do: %{}
+
+  def duplicates(titles, merged) do
+    candidates = Enum.map(merged, &{&1, tokens(&1.title)})
+
+    for title <- Enum.uniq(titles),
+        is_binary(title),
+        pull = best_match(tokens(title), candidates),
+        into: %{},
+        do: {title, pull}
+  end
+
+  defp best_match(words, candidates) do
+    {pull, _score} =
+      Enum.reduce(candidates, {nil, 0.0}, fn {pull, other_words}, {_, best_score} = best ->
+        score = token_score(words, other_words)
+        if score >= @threshold and score > best_score, do: {pull, score}, else: best
+      end)
+
+    pull
+  end
 
   @title_max 72
   @title_min_cut 24
@@ -70,10 +87,9 @@ defmodule AgentBoard.Titles do
 
   @doc "A 0..1 score; exact after normalization is 1.0."
   @spec score(String.t() | nil, String.t() | nil) :: float()
-  def score(a, b) do
-    left = tokens(a)
-    right = tokens(b)
+  def score(a, b), do: token_score(tokens(a), tokens(b))
 
+  defp token_score(left, right) do
     cond do
       MapSet.size(left) == 0 or MapSet.size(right) == 0 -> 0.0
       left == right -> 1.0
