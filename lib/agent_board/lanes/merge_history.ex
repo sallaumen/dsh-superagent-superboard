@@ -1,6 +1,7 @@
 defmodule AgentBoard.Lanes.MergeHistory do
   @moduledoc "Calendar and counting rules for the board’s merge history."
 
+  alias AgentBoard.Lanes.CI
   alias AgentBoard.Time
 
   @days 7
@@ -28,13 +29,7 @@ defmodule AgentBoard.Lanes.MergeHistory do
   @doc "Count all merges and issues, but only local pass/fail evidence for the daily CI dots."
   @spec day_totals([map()], map()) :: map()
   def day_totals(pulls, local_ci) do
-    results =
-      Enum.frequencies_by(pulls, fn pull ->
-        case local_ci[pull.number] do
-          %{state: state} -> state
-          _ -> nil
-        end
-      end)
+    results = Enum.frequencies_by(pulls, &CI.local_result(local_ci[&1.number]))
 
     %{
       n: length(pulls),
