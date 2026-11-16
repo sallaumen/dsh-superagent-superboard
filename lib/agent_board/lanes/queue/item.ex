@@ -11,8 +11,8 @@ defmodule AgentBoard.Lanes.Queue.Item do
   def build(row, observed, calls, last_visit) do
     relationship =
       Queue.relationship(
-        observed.blockers[row.blocker_for_task_id],
-        observed.origins[row.origin_task_id]
+        observed.related_numbers[row.blocker_for_task_id],
+        observed.related_numbers[row.origin_task_id]
       )
 
     detail = Queue.Detail.describe(row, relationship, Map.get(observed.waits, row.id, []), calls)

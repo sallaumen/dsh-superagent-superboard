@@ -616,8 +616,7 @@ defmodule AgentBoard.LanesTest do
     observed = Lanes.Queue.Observations.load(repo)
     assert Enum.map(observed.rows, & &1.number) == [9, 20, 12]
     assert [%{number: 22, title: "Local"}] = observed.merged
-    assert observed.origins == %{parent.id => 7}
-    assert observed.blockers == %{second.id => 12}
+    assert observed.related_numbers == %{parent.id => 7, second.id => 12}
     assert observed.waits == %{second.id => [20]}
   end
 
