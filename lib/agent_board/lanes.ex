@@ -376,22 +376,20 @@ defmodule AgentBoard.Lanes do
     %{counts: counts, latest_review: review} =
       Digest.Observations.since(repository, visit.last_visit)
 
-    phrases = board |> Digest.since_visit(counts) |> Enum.map(&change_phrase(&1, review))
+    facts = Digest.since_visit(board, counts)
 
     segments =
-      if phrases == [] do
-        [
-          %{
-            text:
-              if(visit.sync == :unconfirmed,
-                do: gettext("we do not know what changed"),
-                else: gettext("nothing changed")
-              ),
-            role: :plain
-          }
-        ]
-      else
-        Digest.Sentence.join(phrases, gettext("and"))
+      case Digest.ChangePhrases.segments(facts, review) do
+        [] ->
+          text =
+            if visit.sync == :unconfirmed,
+              do: gettext("we do not know what changed"),
+              else: gettext("nothing changed")
+
+          [%{text: text, role: :plain}]
+
+        segments ->
+          segments
       end
 
     %{
@@ -416,49 +414,4 @@ defmodule AgentBoard.Lanes do
 
   defp since_suffix({:through, _at}), do: ". " <> gettext("After that, we do not know.")
   defp since_suffix(_sync), do: "."
-
-  defp change_phrase({:questions, n}, _pr) do
-    %{text: ngettext("it asked %{count} question", "it asked %{count} questions", n), role: :you}
-  end
-
-  defp change_phrase({:queue_new, n}, _pr) do
-    %{text: ngettext("%{count} new in the queue", "%{count} new in the queue", n), role: :agent}
-  end
-
-  defp change_phrase({:merged, merged}, _pr) do
-    text = ngettext("the agent merged %{count} PR", "the agent merged %{count} PRs", merged)
-    %{text: text, role: :agent}
-  end
-
-  defp change_phrase({:reviews, n}, pr) do
-    %{
-      text: ngettext("it opened %{count} PR for review", "it opened %{count} PRs for review", n),
-      role: :you,
-      url: pr && pr.url
-    }
-  end
-
-  defp change_phrase({:running, {:task, id, number}}, _pr) do
-    %{
-      text: gettext("it is working on #%{number}", number: number),
-      role: :agent,
-      task_id: id
-    }
-  end
-
-  defp change_phrase({:running, n}, _pr) do
-    %{text: gettext("it is working on %{count} tasks", count: n), role: :agent}
-  end
-
-  defp change_phrase({:blocked, {:task, id, number}}, _pr) do
-    %{
-      text: gettext("#%{number} is still blocked", number: number),
-      role: :halt,
-      task_id: id
-    }
-  end
-
-  defp change_phrase({:blocked, n}, _pr) do
-    %{text: gettext("%{count} are still blocked", count: n), role: :halt}
-  end
 end
