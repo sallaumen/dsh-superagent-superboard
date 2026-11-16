@@ -54,9 +54,10 @@ defmodule AgentBoard.Workpad do
   Portuguese and English, without case.
   """
   @spec parse(term()) :: t() | nil
-  def parse(body) when is_binary(body) do
-    text = String.replace(body, @hidden, "")
+  def parse(body) when is_binary(body), do: body |> String.replace(@hidden, "") |> parse_visible()
+  def parse(_other), do: nil
 
+  defp parse_visible(text) do
     case Regex.split(@heading, text, parts: 2) do
       [_before, rest] ->
         sections = sections(rest)
@@ -75,7 +76,21 @@ defmodule AgentBoard.Workpad do
     end
   end
 
-  def parse(_other), do: nil
+  @doc "The question in a workpad section or a plain agent message, excluding hidden markup."
+  @spec question_text(String.t() | nil) :: String.t() | nil
+  def question_text(nil), do: nil
+
+  def question_text(body) do
+    text = String.replace(body, @hidden, "")
+
+    case parse_visible(text) do
+      %{question: question} ->
+        question
+
+      nil ->
+        if question?(text), do: String.trim(text)
+    end
+  end
 
   @doc """
   Whether a text asks the person something: a real question mark, not a mood.
