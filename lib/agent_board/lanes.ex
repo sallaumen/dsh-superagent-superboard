@@ -446,38 +446,19 @@ defmodule AgentBoard.Lanes do
 
     items =
       Enum.map(rows, fn row ->
-        item = queue_item(row, merged, origins, blockers, now, last_visit)
+        relationship =
+          Queue.relationship(blockers[row.blocker_for_task_id], origins[row.origin_task_id])
 
-        stuck = stuck(row, calls)
-        held = if is_nil(stuck), do: held_sub(row, waits)
-
-        Map.merge(item, %{
-          sub: held || join_sub([item.sub, call_sub(row, calls)]),
-          stuck: stuck
-        })
+        detail = Queue.Detail.describe(row, relationship, Map.get(waits, row.id, []), calls)
+        row |> queue_item(merged, relationship, now, last_visit) |> Map.merge(detail)
       end)
 
     page = Queue.page(items, filter, limit)
     Map.put(page, :filters, filters(page.counts))
   end
 
-  defp queue_item(row, merged, origins, blockers, now, last_visit) do
+  defp queue_item(row, merged, relationship, now, last_visit) do
     duplicate = Titles.duplicate(row.title, merged)
-
-    relationship =
-      Queue.relationship(blockers[row.blocker_for_task_id], origins[row.origin_task_id])
-
-    sub =
-      case relationship do
-        {:unblocks, number} ->
-          gettext("unblocks #%{number}", number: number)
-
-        {:split_from, number} ->
-          gettext("split from #%{number}", number: number)
-
-        _ ->
-          nil
-      end
 
     %{
       key: "task-#{row.id}",
@@ -486,30 +467,11 @@ defmodule AgentBoard.Lanes do
       title: row.title,
       age_seconds: Time.age_seconds(row.inserted_at, now),
       is_new: Time.new_since?(row.inserted_at, last_visit),
-      sub: sub,
       split: not is_nil(relationship),
       note:
         duplicate &&
           gettext("Looks like a repeat of #%{number}, already merged", number: duplicate.number)
     }
-  end
-
-  defp join_sub(parts) do
-    case Enum.reject(parts, &is_nil/1) do
-      [] -> nil
-      said -> Enum.join(said, " · ")
-    end
-  end
-
-  # A held task names what it still waits for; one with every dependency
-  # finished is about to be called (`AgentBoard.Release`, within a minute).
-  defp held_sub(%{held: false}, _waits), do: nil
-
-  defp held_sub(row, waits) do
-    case Map.get(waits, row.id, []) do
-      [] -> gettext("waiting for its dependencies")
-      numbers -> gettext("waiting for %{tasks}", tasks: Enum.map_join(numbers, ", ", &"##{&1}"))
-    end
   end
 
   defp open_dependencies(rows) do
@@ -525,41 +487,6 @@ defmodule AgentBoard.Lanes do
         )
         |> Repo.all()
         |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    end
-  end
-
-  # A called task between the call and the start: who holds it now. One
-  # nobody answered says so in `stuck/2`; a ticket that started or ended is
-  # the overlay's to place (`AgentBoard.Tickets.state/2`).
-  defp call_sub(row, calls) do
-    case CallStatus.queue_stage(row, calls) do
-      {:awaiting_ticket, at} ->
-        gettext("called %{ago}, waiting for the agent",
-          ago: Time.ago(DateTime.diff(calls.now, at))
-        )
-
-      {:in_runner_queue, nil} ->
-        gettext("in the agent's queue")
-
-      {:in_runner_queue, at} ->
-        gettext("entered the agent's queue %{ago}", ago: Time.ago(DateTime.diff(calls.now, at)))
-
-      nil ->
-        nil
-    end
-  end
-
-  defp stuck(row, calls) do
-    case CallStatus.problem(row, calls) do
-      :failed ->
-        gettext("the call to the agent did not complete")
-
-      :unanswered ->
-        called = Time.ago(DateTime.diff(calls.now, Release.called_at(row)))
-        gettext("called %{ago}, the agent did not start", ago: called)
-
-      nil ->
-        nil
     end
   end
 
