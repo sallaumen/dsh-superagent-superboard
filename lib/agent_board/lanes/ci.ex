@@ -17,4 +17,9 @@ defmodule AgentBoard.Lanes.CI do
   def classify(%PullRequest{checks_state: "success"}, nil), do: {:pass, :remote_pass}
   def classify(%PullRequest{checks_state: "pending"}, nil), do: {:unknown, :pending}
   def classify(_pull, nil), do: {:unknown, :no_checks}
+
+  @doc "Only an observed pass or failure counts as a local result for a row or a day's totals."
+  @spec local_result(map() | nil) :: :pass | :fail | nil
+  def local_result(%{state: result}) when result in [:pass, :fail], do: result
+  def local_result(_), do: nil
 end

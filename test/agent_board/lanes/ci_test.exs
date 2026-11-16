@@ -4,6 +4,7 @@ defmodule AgentBoard.Lanes.CITest do
   alias AgentBoard.Board.PullRequest
   alias AgentBoard.Lanes
   alias AgentBoard.Lanes.CI
+  alias AgentBoard.Lanes.MergeHistory
   alias AgentBoard.LocalCI
 
   test "green remote checks cannot validate a local pass recorded for another commit" do
@@ -41,5 +42,16 @@ defmodule AgentBoard.Lanes.CITest do
     assert CI.classify(red, nil) == {:unknown, :remote_failure}
     assert CI.classify(%PullRequest{checks_state: "pending"}, nil) == {:unknown, :pending}
     assert CI.classify(%PullRequest{}, nil) == {:unknown, :no_checks}
+  end
+
+  test "stale and missing reports do not count as local outcomes" do
+    assert CI.local_result(%{state: :pass}) == :pass
+    assert CI.local_result(%{state: :fail}) == :fail
+    assert CI.local_result(%{state: :stale}) == nil
+    assert CI.local_result(nil) == nil
+
+    green = %PullRequest{number: 21, closes_issues: [], checks_state: "success"}
+    assert CI.classify(green, nil) == {:pass, :remote_pass}
+    assert %{n: 1, ok: 0, fail: 0} = MergeHistory.day_totals([green], %{})
   end
 end
