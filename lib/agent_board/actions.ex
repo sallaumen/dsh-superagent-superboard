@@ -104,6 +104,7 @@ defmodule AgentBoard.Actions do
     :retry_ticket,
     :auto_retry_ticket,
     :deliver_dependencies,
+    :resolve_blocker,
     :release_task,
     :dispatch_task,
     :stop_execution,
@@ -181,6 +182,9 @@ defmodule AgentBoard.Actions do
 
   defp spec(:retry_ticket),
     do: %{risk: :red, does: "pede ao runner uma rodada nova do ticket; gasta tokens do executor"}
+
+  defp spec(:resolve_blocker),
+    do: %{risk: :red, does: "resolve um requisito cancelado por decisão do dono"}
 
   defp spec(:deliver_dependencies),
     do: %{
@@ -364,6 +368,14 @@ defmodule AgentBoard.Actions do
   def phrase(:release_task, %{task: %{number: number}, repository: repo}, _lang) do
     "Chamar o agente na ##{number} do #{repo_name(repo)}? " <>
       "Ele começa agora, mesmo que alguma dependência siga aberta."
+  end
+
+  def phrase(:resolve_blocker, %{task: p, child: c, choice: choice, reason: why} = params, lang) do
+    target = if choice == "replace", do: " → ##{params[:replacement_number]}", else: ""
+
+    if lang == "en-US",
+      do: "Resolve prerequisite ##{c.number} of ##{p.number} (#{choice}#{target}): #{why}",
+      else: "Resolver o requisito ##{c.number} da ##{p.number} (#{choice}#{target}): #{why}"
   end
 
   def phrase(:ask_task, %{task: task, question: question}, "en-US"),
@@ -941,6 +953,12 @@ defmodule AgentBoard.Actions do
 
   defp execute(:release_task, %{task: task, repository: repo} = params),
     do: Release.call_agent(task, repo, github(params))
+
+  defp execute(:resolve_blocker, params),
+    do:
+      AgentBoard.BlockerDecisions.resolve(params, fn task, body ->
+        Board.ask(task, body, github(params))
+      end)
 
   defp execute(:ask_task, %{task: task, question: question} = params),
     do: Board.ask(task, question, github(params))

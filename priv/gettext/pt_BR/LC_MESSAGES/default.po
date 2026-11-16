@@ -10284,3 +10284,108 @@ msgstr "Rever esta decisão"
 #, elixir-autogen, elixir-format
 msgid "What should the agent reconsider?"
 msgstr "O que o agente deve reconsiderar?"
+
+#: lib/agent_board/blocker_decisions.ex:70
+#, elixir-autogen, elixir-format
+msgid "Owner waiver for prerequisite #%{child} of #%{parent}."
+msgstr "Dispensa do requisito da filha #%{child}, vinculada à #%{parent}, pelo responsável."
+
+#: lib/agent_board/blocker_decisions.ex:76
+#, elixir-autogen, elixir-format
+msgid "The evidence was not delivered. Waive only this requirement; any other unmet requirements remain blocking. Record the decision on the original ticket."
+msgstr "A evidência não foi entregue. Dispense apenas este requisito; os outros requisitos pendentes continuam bloqueando a tarefa. Registre a decisão no ticket original."
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:63
+#, elixir-autogen, elixir-format
+msgid "Select an available replacement and enter a reason, or enter a reason to waive."
+msgstr "Escolha uma filha disponível e informe o motivo da substituição, ou informe o motivo da dispensa."
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:80
+#, elixir-autogen, elixir-format
+msgid "Decision not confirmed. Check the issue and the current requirement."
+msgstr "Não foi possível confirmar a decisão. Confira a issue e o estado do requisito."
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:96
+#, elixir-autogen, elixir-format
+msgid "Evidence requirement"
+msgstr "Requisito de evidência"
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:104
+#, elixir-autogen, elixir-format
+msgid "Closed as duplicate. Evidence still missing."
+msgstr "Encerrada como duplicada. A evidência continua faltando."
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:105
+#, elixir-autogen, elixir-format
+msgid "Closed as not planned. Evidence still missing."
+msgstr "Encerrada como não planejada. A evidência continua faltando."
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:114
+#, elixir-autogen, elixir-format
+msgid "Replace child"
+msgstr "Substituir filha"
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:121
+#, elixir-autogen, elixir-format
+msgid "Waive requirement"
+msgstr "Dispensar requisito"
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:131
+#, elixir-autogen, elixir-format
+msgid "Open child that will provide the evidence"
+msgstr "Filha aberta que vai fornecer a evidência"
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:134
+#, elixir-autogen, elixir-format
+msgid "Choose a linked child"
+msgstr "Escolha uma filha vinculada"
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:140
+#, elixir-autogen, elixir-format
+msgid "Use Create blocking task below to link a new child, then select it here."
+msgstr "Use Criar tarefa bloqueadora abaixo para vincular outra filha. Depois, selecione-a aqui."
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:144
+#, elixir-autogen, elixir-format
+msgid "This posts your reason to the original issue. Other requirements remain in force."
+msgstr "O motivo será publicado na issue original. Os outros requisitos continuam valendo."
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:147
+#, elixir-autogen, elixir-format
+msgid "Reason for this decision"
+msgstr "Motivo da decisão"
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:154
+#, elixir-autogen, elixir-format
+msgid "Confirm waiver"
+msgstr "Confirmar dispensa"
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:154
+#, elixir-autogen, elixir-format
+msgid "Confirm replacement"
+msgstr "Confirmar substituição"
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:171
+#, elixir-autogen, elixir-format
+msgid "Replaced by #%{number}"
+msgstr "Substituída pela #%{number}"
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:174
+#, elixir-autogen, elixir-format
+msgid "Waived by the owner; no evidence delivered."
+msgstr "Requisito dispensado pelo responsável; evidência não entregue."
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:177
+#, elixir-autogen, elixir-format
+msgid "Waiver recorded; publication on the original issue is not confirmed."
+msgstr "Dispensa registrada; a publicação na issue original ainda não foi confirmada."
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:75
+#, elixir-autogen, elixir-format
+msgid "GitHub refused the comment. The requirement remains blocking. You can retry."
+msgstr "O GitHub recusou o comentário. O requisito continua pendente. Você pode tentar novamente."
+
+#: lib/agent_board_web/live/board_components/inspector.ex:431
+#, elixir-autogen, elixir-format
+msgid "waiting for GitHub to confirm the closing reason"
+msgstr "aguardando o GitHub confirmar o motivo do encerramento"

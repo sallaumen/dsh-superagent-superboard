@@ -1050,6 +1050,18 @@ defmodule AgentBoard.SyncRepoTest do
     assert Sync.sync_repo(client(), repo) == :ok
   end
 
+  test "a cancelled issue keeps GitHub's reason across refresh, and reopening clears it", %{
+    repo: repo
+  } do
+    closed = Map.put(issue(24, "closed"), "state_reason", "not_planned")
+    sync_issue(repo, closed)
+    sync_issue(repo, closed)
+    assert %Task{state: "closed", github_issue_status: "not_planned"} = Repo.one(Task)
+    Repo.update_all(Task, set: [state_changed_at: @long_ago])
+    sync_issue_states(repo, 24, ["open"])
+    assert %Task{state: "queued", github_issue_status: "open"} = Repo.one(Task)
+  end
+
   test "a reopened issue goes back to the queue", %{repo: repo} do
     sync_issue_states(repo, 24, ["closed"])
     Repo.update_all(Task, set: [state_changed_at: @long_ago])

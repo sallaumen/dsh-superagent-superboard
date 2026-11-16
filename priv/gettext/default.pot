@@ -10284,3 +10284,108 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "What should the agent reconsider?"
 msgstr ""
+
+#: lib/agent_board/blocker_decisions.ex:70
+#, elixir-autogen, elixir-format
+msgid "Owner waiver for prerequisite #%{child} of #%{parent}."
+msgstr ""
+
+#: lib/agent_board/blocker_decisions.ex:76
+#, elixir-autogen, elixir-format
+msgid "The evidence was not delivered. Waive only this requirement; any other unmet requirements remain blocking. Record the decision on the original ticket."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:63
+#, elixir-autogen, elixir-format
+msgid "Select an available replacement and enter a reason, or enter a reason to waive."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:80
+#, elixir-autogen, elixir-format
+msgid "Decision not confirmed. Check the issue and the current requirement."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:96
+#, elixir-autogen, elixir-format
+msgid "Evidence requirement"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:104
+#, elixir-autogen, elixir-format
+msgid "Closed as duplicate. Evidence still missing."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:105
+#, elixir-autogen, elixir-format
+msgid "Closed as not planned. Evidence still missing."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:114
+#, elixir-autogen, elixir-format
+msgid "Replace child"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:121
+#, elixir-autogen, elixir-format
+msgid "Waive requirement"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:131
+#, elixir-autogen, elixir-format
+msgid "Open child that will provide the evidence"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:134
+#, elixir-autogen, elixir-format
+msgid "Choose a linked child"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:140
+#, elixir-autogen, elixir-format
+msgid "Use Create blocking task below to link a new child, then select it here."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:144
+#, elixir-autogen, elixir-format
+msgid "This posts your reason to the original issue. Other requirements remain in force."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:147
+#, elixir-autogen, elixir-format
+msgid "Reason for this decision"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:154
+#, elixir-autogen, elixir-format
+msgid "Confirm waiver"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:154
+#, elixir-autogen, elixir-format
+msgid "Confirm replacement"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:171
+#, elixir-autogen, elixir-format
+msgid "Replaced by #%{number}"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:174
+#, elixir-autogen, elixir-format
+msgid "Waived by the owner; no evidence delivered."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:177
+#, elixir-autogen, elixir-format
+msgid "Waiver recorded; publication on the original issue is not confirmed."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/cancelled_blocker.ex:75
+#, elixir-autogen, elixir-format
+msgid "GitHub refused the comment. The requirement remains blocking. You can retry."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/inspector.ex:431
+#, elixir-autogen, elixir-format
+msgid "waiting for GitHub to confirm the closing reason"
+msgstr ""

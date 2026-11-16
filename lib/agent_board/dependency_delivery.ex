@@ -46,12 +46,18 @@ defmodule AgentBoard.DependencyDelivery do
     |> Enum.group_by(fn {r, p, _} -> {r, p} end, &elem(&1, 2))
   end
 
-  defp completed(children, indexed, slug, repo_id, report_at) do
+  defp completed(linked, indexed, slug, repo_id, report_at) do
+    # The waiver itself is an owner message. Do not also wake for evidence
+    # that already existed when that message was requested.
+    cutoff = Enum.reduce(linked, report_at, &waiver_cutoff/2)
+    children = Enum.reject(linked, &resolved?/1)
+
     refs =
       for %{
             repository_id: ^repo_id,
             kind: "issue",
             state: "done",
+            github_issue_status: "completed",
             stopped: false,
             held: false,
             number: n,
@@ -68,10 +74,25 @@ defmodule AgentBoard.DependencyDelivery do
       end
 
     if length(refs) == length(children) and
-         Enum.any?(refs, fn {at, _} -> DateTime.after?(at, report_at) end),
+         Enum.any?(refs, fn {at, _} -> DateTime.after?(at, cutoff) end),
        do: {:ok, Enum.sort_by(Enum.map(refs, &elem(&1, 1)), & &1.number)},
        else: :waiting
   end
+
+  defp resolved?(%Task{blocker_decision: %{"kind" => kind}}), do: kind in ["replaced", "waived"]
+  defp resolved?(_), do: false
+
+  defp waiver_cutoff(
+         %Task{blocker_decision: %{"kind" => "waived", "requested_at" => raw}},
+         cutoff
+       ) do
+    case DateTime.from_iso8601(raw) do
+      {:ok, at, _} -> if DateTime.after?(at, cutoff), do: at, else: cutoff
+      _ -> cutoff
+    end
+  end
+
+  defp waiver_cutoff(_, cutoff), do: cutoff
 
   defp send_input(repo, parent, p, children, opts) do
     client = Keyword.get_lazy(opts, :client, fn -> Orchestrator.client_for(repo) end)

@@ -99,6 +99,80 @@ defmodule AgentBoardWeb.BoardActionsTest do
     assert %Decision{action: "ask_task", decision: "confirmed", evidence: "phrase"} = last()
   end
 
+  test "a cancelled child stays visible until the owner selects a linked replacement or waives with a reason",
+       %{conn: conn, task: task} do
+    parent = task |> Ecto.Changeset.change(state: "blocked") |> Repo.update!()
+
+    child = fn n, state, status ->
+      Repo.insert!(%Task{
+        repository_id: parent.repository_id,
+        blocker_for_task_id: parent.id,
+        kind: "issue",
+        number: n,
+        title: "Evidence #{n}",
+        state: state,
+        github_issue_status: status
+      })
+    end
+
+    child.(11, "done", nil)
+    old = child.(8, "closed", "not_planned")
+    next = child.(9, "queued", "open")
+    waive = child.(10, "closed", "not_planned")
+    pid = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, json, conn} = Plug.Conn.read_body(conn)
+      send(pid, {:decision_comment, Jason.decode!(json)["body"]})
+      Req.Test.json(conn, %{"id" => 71, "user" => %{"login" => "me"}})
+    end)
+
+    {:ok, view, _} =
+      live(conn, ~p"/?repo=fixture/gate&panel=conversation&tab=conversa&task=#{parent.id}")
+
+    assert render(view) =~ "aguardando o GitHub confirmar o motivo do encerramento"
+    id = "#requirement-#{parent.id}-#{old.id}"
+    view |> element("#{id} [phx-value-mode=replace]") |> render_click()
+
+    view
+    |> form("#{id}-form", reason: "Same evidence, new device", replacement: to_string(next.id))
+    |> render_submit()
+
+    render_async(view)
+
+    assert Repo.reload!(old).blocker_decision == %{
+             "kind" => "replaced",
+             "replacement" => 9,
+             "reason" => "Same evidence, new device"
+           }
+
+    refute_received {:decision_comment, _}
+    id = "#requirement-#{parent.id}-#{waive.id}"
+    view |> element("#{id} [phx-value-mode=waive]") |> render_click()
+    view |> form("#{id}-form", reason: "   ") |> render_submit()
+    assert is_nil(Repo.reload!(waive).blocker_decision)
+    view |> form("#{id}-form", reason: "Only for the internal demo") |> render_submit()
+    render_async(view)
+    assert_receive {:decision_comment, body}
+    assert body =~ "Only for the internal demo"
+    assert body =~ "#10"
+    assert %{"kind" => "waived", "comment" => 71} = Repo.reload!(waive).blocker_decision
+
+    {:ok, reloaded, _} =
+      live(conn, ~p"/?repo=fixture/gate&panel=conversation&tab=conversa&task=#{parent.id}")
+
+    assert render(reloaded) =~ "Only for the internal demo"
+    refute has_element?(reloaded, "#{id} [phx-value-mode=waive]")
+    params = %{task: parent, child: waive, choice: "waive", reason: "second submit"}
+
+    assert {:error, :stale_blocker} =
+             Actions.run(:resolve_blocker, params, Actions.owner(:ui),
+               confirm: Actions.phrase(:resolve_blocker, params)
+             )
+
+    refute_received {:decision_comment, _}
+  end
+
   test "reviewing a historical agent decision preserves its snapshot and the ordinary draft", %{
     conn: conn,
     task: task

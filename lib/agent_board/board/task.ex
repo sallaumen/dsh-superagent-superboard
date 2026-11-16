@@ -33,6 +33,8 @@ defmodule AgentBoard.Board.Task do
     field :stopped, :boolean, default: false
     field :archived, :boolean, default: false
     field :started_at, :utc_datetime
+    field :github_issue_status, :string
+    field :blocker_decision, :map
     field :github_reopened_at, :utc_datetime
     field :state_changed_at, :utc_datetime
     field :issue_receipt, :map
