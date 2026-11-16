@@ -336,39 +336,24 @@ defmodule AgentBoard.Lanes do
     window = MergeHistory.window(now, offset)
     pulls = MergeHistory.Observations.in_window(repository, window)
 
-    by_day = Enum.group_by(pulls, &Time.local_date(&1.merged_at, offset))
-
-    pages = Map.new(by_day, fn {date, rows} -> {date, MergeHistory.day_page(rows)} end)
+    calendar = MergeHistory.Calendar.build(pulls, window, local_ci)
 
     costs =
-      pages
-      |> Enum.flat_map(fn {_date, page} -> page.items ++ page.extra end)
+      calendar.days
+      |> Enum.flat_map(fn %{page: page} -> page.items ++ page.extra end)
       |> TaskCosts.for_pulls()
 
-    days =
-      Enum.map(window.dates, fn date ->
-        day_pulls = Map.get(by_day, date, [])
-
-        day_pulls
-        |> MergeHistory.day_totals(local_ci)
-        |> Map.merge(%{
-          date: date,
-          label: Time.day_label(date, window.today),
-          today: date == window.today
-        })
-      end)
+    days = Enum.map(calendar.days, & &1.summary)
 
     entry = fn pull ->
       MergeHistory.Item.build(pull, offset, local_ci[pull.number], costs[pull.number])
     end
 
     groups =
-      days
+      calendar.days
       |> Enum.reverse()
-      |> Enum.reject(&(&1.n == 0))
-      |> Enum.map(fn day ->
-        page = Map.fetch!(pages, day.date)
-
+      |> Enum.reject(&(&1.summary.n == 0))
+      |> Enum.map(fn %{summary: day, page: page} ->
         %{
           date: day.date,
           label: day.label,
@@ -384,7 +369,7 @@ defmodule AgentBoard.Lanes do
       days: days,
       groups: groups,
       total: Enum.sum(Enum.map(days, & &1.n)),
-      issues: delivered(pulls)
+      issues: calendar.issues
     }
   end
 
