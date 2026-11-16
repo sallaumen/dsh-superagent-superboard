@@ -1,6 +1,19 @@
 defmodule AgentBoard.Lanes.Queue do
   @moduledoc "Rules for the queue, applied to the rows the board observed."
 
+  @compact_limit 8
+
+  @doc "Number of rows on the compact queue page."
+  @spec compact_limit() :: pos_integer()
+  def compact_limit, do: @compact_limit
+
+  @doc "Offer filters only when the full queue exceeds the compact page, in display order with full counts."
+  @spec filter_options(map()) :: [{:all | :new | :split | :dupes, non_neg_integer()}]
+  def filter_options(%{all: all}) when all <= @compact_limit, do: []
+
+  def filter_options(counts),
+    do: [all: counts.all, new: counts.new, split: counts.split, dupes: counts.dupes]
+
   @doc "A task names what it unblocks before the task it was split from."
   @spec relationship(integer() | nil, integer() | nil) ::
           {:unblocks | :split_from, integer()} | nil

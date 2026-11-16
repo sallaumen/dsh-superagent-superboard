@@ -38,8 +38,6 @@ defmodule AgentBoard.Lanes do
   alias AgentBoard.Usage.TaskCosts
   alias AgentBoardWeb.Locale
 
-  @queue_limit 8
-
   @doc """
   The attention list: blocked work, silent runs, PRs for review and
   questions, in that order. Merged work is done and its CI lives in
@@ -402,7 +400,7 @@ defmodule AgentBoard.Lanes do
     now = Keyword.get(opts, :now, DateTime.utc_now())
     last_visit = Keyword.get(opts, :last_visit)
     filter = Keyword.get(opts, :filter, :all)
-    limit = Keyword.get(opts, :limit, @queue_limit)
+    limit = Keyword.get(opts, :limit, Queue.compact_limit())
 
     calls = %{
       now: now,
@@ -415,18 +413,7 @@ defmodule AgentBoard.Lanes do
     items = Enum.map(observed.rows, &Queue.Item.build(&1, observed, calls, last_visit))
 
     page = Queue.page(items, filter, limit)
-    Map.put(page, :filters, filters(page.counts))
-  end
-
-  defp filters(%{all: all}) when all <= @queue_limit, do: []
-
-  defp filters(counts) do
-    [
-      {gettext("All"), counts.all},
-      {pgettext("queue filter", "New"), counts.new},
-      {pgettext("queue filter", "Split"), counts.split},
-      {gettext("Possible repeats"), counts.dupes}
-    ]
+    Map.put(page, :filters, Queue.filter_options(page.counts))
   end
 
   @doc "Seven days of merges: the dots, the day counts and the per-day record."

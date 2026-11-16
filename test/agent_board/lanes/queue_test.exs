@@ -13,6 +13,24 @@ defmodule AgentBoard.Lanes.QueueTest do
     assert Queue.relationship(nil, nil) == nil
   end
 
+  test "filter options depend on the whole queue, independent of the active filter and visible limit" do
+    item = %{is_new: false, split: false, note: nil}
+    compact = List.duplicate(item, 8)
+    assert Queue.compact_limit() == 8
+
+    for items <- [[], tl(compact), compact] do
+      assert Queue.filter_options(Queue.page(items, :all, 1).counts) == []
+    end
+
+    large = [%{item | is_new: true, split: true} | compact]
+
+    for limit <- [1, 8, 20] do
+      page = Queue.page(large, :dupes, limit)
+      assert page.items == []
+      assert Queue.filter_options(page.counts) == [all: 9, new: 1, split: 1, dupes: 0]
+    end
+  end
+
   describe "page/3" do
     @first %{id: 7, is_new: false, split: true, note: nil}
     @second %{id: 2, is_new: true, split: true, note: "repeat"}

@@ -98,7 +98,7 @@ defmodule AgentBoardWeb.BoardLive do
         digest: nil,
         daily_summary: nil,
         needs_expanded: false,
-        queue_limit: 8,
+        queue_limit: Lanes.Queue.compact_limit(),
         queue_filter: :all,
         history_list: "tasks",
         history_query: "",
@@ -477,7 +477,7 @@ defmodule AgentBoardWeb.BoardLive do
         items: [],
         total: 0,
         hidden: 0,
-        limit: 8,
+        limit: Lanes.Queue.compact_limit(),
         counts: %{all: 0, new: 0, split: 0, dupes: 0},
         filters: [],
         filter: :all
@@ -841,7 +841,7 @@ defmodule AgentBoardWeb.BoardLive do
             toast: nil,
             highlight_changes: false,
             needs_expanded: false,
-            queue_limit: 8,
+            queue_limit: Lanes.Queue.compact_limit(),
             queue_filter: :all
           ),
         else: socket
