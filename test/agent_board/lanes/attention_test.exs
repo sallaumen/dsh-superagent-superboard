@@ -30,4 +30,25 @@ defmodule AgentBoard.Lanes.AttentionTest do
     for pair <- [[stalled, unanswered], [unanswered, stalled]],
         do: assert(Attention.sort(pair) == pair)
   end
+
+  test "an outage groups dependent needs and retries, leaving owner actions in input order" do
+    question = %{kind: :question, id: 10}
+    review = %{kind: :review, id: 12}
+
+    needs = [
+      %{kind: :stalled},
+      question,
+      %{kind: :slow},
+      review,
+      %{kind: :unanswered},
+      %{kind: :blocked}
+    ]
+
+    assert Attention.outage_summary(needs, 2) == {6, [question, review]}
+  end
+
+  test "an outage can have nothing waiting or only retries" do
+    assert Attention.outage_summary([], 0) == {0, []}
+    assert Attention.outage_summary([], 2) == {2, []}
+  end
 end

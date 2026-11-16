@@ -9,6 +9,15 @@ defmodule AgentBoard.Lanes.Attention do
     end)
   end
 
+  @doc "Count items explained by the outage, including pending retries, and keep independent needs."
+  @spec outage_summary([map()], non_neg_integer()) :: {non_neg_integer(), [map()]}
+  def outage_summary(needs, retrying_count) do
+    {waiting, rest} =
+      Enum.split_with(needs, &(&1.kind in [:blocked, :stalled, :unanswered, :slow]))
+
+    {length(waiting) + retrying_count, rest}
+  end
+
   # A silent run blocks the whole queue while there is one worker: it comes
   # right after a block, before the work that only waits for the owner.
   # The agent being down explains every block and silence below it.
