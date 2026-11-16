@@ -25,4 +25,21 @@ defmodule AgentBoard.Lanes.Digest do
       _ -> nil
     end
   end
+
+  @doc "Changes since the visit, alongside work still running or blocked, in digest order."
+  @spec since_visit(map(), map()) :: [{atom(), pos_integer() | {:task, integer(), integer()}}]
+  def since_visit(board, changes) do
+    [
+      merged: positive(changes.merged),
+      reviews: positive(changes.reviews),
+      questions: positive(changes.questions),
+      running: task_subject(board, :running),
+      blocked: task_subject(board, :blocked),
+      queue_new: positive(changes.queue_new)
+    ]
+    |> Enum.reject(fn {_kind, subject} -> is_nil(subject) end)
+  end
+
+  defp positive(n) when n > 0, do: n
+  defp positive(_), do: nil
 end
