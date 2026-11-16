@@ -15,4 +15,14 @@ defmodule AgentBoard.Lanes.Digest do
     ]
     |> Enum.filter(fn {_kind, n} -> n > 0 end)
   end
+
+  @doc "Name a task only when the lane total is one and its single row is available."
+  @spec task_subject(map(), atom()) :: {:task, integer(), integer()} | pos_integer() | nil
+  def task_subject(board, lane) do
+    case {Board.lane_count(board, lane), Map.get(board, lane, [])} do
+      {1, [task]} -> {:task, task.id, task.number}
+      {n, _} when n > 0 -> n
+      _ -> nil
+    end
+  end
 end
