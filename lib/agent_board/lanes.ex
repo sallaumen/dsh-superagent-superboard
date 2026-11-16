@@ -63,7 +63,7 @@ defmodule AgentBoard.Lanes do
   board only knows that no ticket names the issue, and says that.
   """
   def needs(repository, board, opts \\ []) do
-    context = board |> context(opts) |> Map.put(:repository, repository)
+    context = needs_context(repository, board, opts)
 
     [
       lane(board, :blocked, :blocked, context),
@@ -127,7 +127,7 @@ defmodule AgentBoard.Lanes do
   when the next attempt goes out.
   """
   def retrying(board, opts \\ []) do
-    context = context(board, opts)
+    context = ticket_context(opts)
 
     for task <- Map.get(board, :retrying, []) do
       block = AgentBlock.explain(Map.get(context.tickets, task.number), block_opts(context))
@@ -144,20 +144,26 @@ defmodule AgentBoard.Lanes do
   defp block_opts(context),
     do: [now: context.now, tz_offset: context.tz_offset, agent: context.agent]
 
-  defp context(board, opts) do
-    tickets = Keyword.get(opts, :tickets_by_number, %{})
-
+  defp ticket_context(opts) do
     %{
-      now: Keyword.get(opts, :now, DateTime.utc_now()),
-      last_visit: Keyword.get(opts, :last_visit),
+      tickets: Keyword.get(opts, :tickets_by_number, %{}),
+      now: Keyword.get_lazy(opts, :now, &DateTime.utc_now/0),
       tz_offset: Keyword.get(opts, :tz_offset, 0),
-      tickets: tickets,
-      pulls: Board.linked_pull_requests(Map.get(board, :ready, []), tickets),
-      local_ci: Keyword.get(opts, :local_ci, %{}),
-      silences: Keyword.get(opts, :silences, %{}),
-      stall_after: Keyword.get(opts, :stall_after, AgentSignal.stall_after()),
       agent: Keyword.get(opts, :agent, :unknown)
     }
+  end
+
+  defp needs_context(repository, board, opts) do
+    context = ticket_context(opts)
+
+    Map.merge(context, %{
+      repository: repository,
+      last_visit: Keyword.get(opts, :last_visit),
+      pulls: Board.linked_pull_requests(Map.get(board, :ready, []), context.tickets),
+      local_ci: Keyword.get(opts, :local_ci, %{}),
+      silences: Keyword.get(opts, :silences, %{}),
+      stall_after: Keyword.get(opts, :stall_after, AgentSignal.stall_after())
+    })
   end
 
   defp lane(board, key, kind, context),
