@@ -70,4 +70,27 @@ defmodule AgentBoard.Lanes.CallStatusTest do
       end
     end
   end
+
+  describe "problem/2" do
+    test "an incomplete claim and a completed call without a ticket report distinct problems" do
+      calls = %{tickets: %{}, now: DateTime.add(@at, 120), stall_after: 90}
+      held = %{held: true, number: 12, released_at: @at}
+      assert CallStatus.problem(held, calls) == :failed
+      assert CallStatus.problem(%{held | held: false}, calls) == :unanswered
+    end
+
+    test "a claim still in flight, a call before its deadline or a matching ticket has no problem" do
+      held = %{held: true, number: 12, released_at: @at}
+      released = %{held | held: false}
+      calls = %{tickets: %{}, now: DateTime.add(@at, 59), stall_after: 90}
+      assert CallStatus.problem(held, calls) == nil
+      assert CallStatus.problem(released, calls) == nil
+
+      assert CallStatus.problem(released, %{
+               calls
+               | tickets: %{12 => %{}},
+                 now: DateTime.add(@at, 120)
+             }) == nil
+    end
+  end
 end

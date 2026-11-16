@@ -181,7 +181,7 @@ defmodule AgentBoard.Lanes do
   defp unanswered_lane(board, context) do
     board
     |> Map.get(:queued, [])
-    |> Enum.filter(&(CallStatus.unanswered?(&1, context) or CallStatus.failed?(&1, context.now)))
+    |> Enum.filter(&(not is_nil(CallStatus.problem(&1, context))))
     |> Enum.map(&task_need(&1, :unanswered, context))
   end
 
@@ -567,17 +567,16 @@ defmodule AgentBoard.Lanes do
     end
   end
 
-  # The same derivation as the item in Precisa de você (`CallStatus.unanswered?/2`).
   defp stuck(row, calls) do
-    cond do
-      CallStatus.failed?(row, calls.now) ->
+    case CallStatus.problem(row, calls) do
+      :failed ->
         gettext("the call to the agent did not complete")
 
-      CallStatus.unanswered?(row, calls) ->
+      :unanswered ->
         called = Time.ago(DateTime.diff(calls.now, Release.called_at(row)))
         gettext("called %{ago}, the agent did not start", ago: called)
 
-      true ->
+      nil ->
         nil
     end
   end

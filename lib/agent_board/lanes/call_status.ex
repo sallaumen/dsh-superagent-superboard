@@ -33,6 +33,16 @@ defmodule AgentBoard.Lanes.CallStatus do
     end
   end
 
+  @doc "The problem the queue and the attention list can report for this call, if any."
+  @spec problem(map(), map()) :: :failed | :unanswered | nil
+  def problem(task, calls) do
+    cond do
+      failed?(task, calls.now) -> :failed
+      unanswered?(task, calls) -> :unanswered
+      true -> nil
+    end
+  end
+
   @doc "Queue evidence to display before the runner starts, or nil when another lane explains the task."
   @spec queue_stage(map(), map()) ::
           {:awaiting_ticket, DateTime.t()} | {:in_runner_queue, DateTime.t() | nil} | nil
