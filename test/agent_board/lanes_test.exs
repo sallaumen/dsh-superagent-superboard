@@ -592,6 +592,35 @@ defmodule AgentBoard.LanesTest do
     refute Enum.at(queue.items, 1).sub
   end
 
+  test "queue observations isolate repository rows and read linked task numbers in queue order" do
+    {:ok, repo} = Board.add_repository("fixture", "queue-observations")
+    {:ok, other} = Board.add_repository("fixture", "queue-observations-other")
+    at = ~U[2026-11-09 12:00:00Z]
+    parent = task(repo, 7, "Parent", "done", at)
+    first = task(repo, 20, "First", "queued", at)
+    second = task(repo, 12, "Second", "queued", at)
+    unblock = task(repo, 9, "Unblocks", "queued", DateTime.add(at, 60))
+    Repo.update!(Ecto.Changeset.change(second, origin_task_id: parent.id, held: true))
+    Repo.update!(Ecto.Changeset.change(unblock, blocker_for_task_id: second.id))
+
+    Repo.insert_all(AgentBoard.Board.TaskDependency, [
+      %{task_id: second.id, blocked_by_task_id: first.id, inserted_at: at, updated_at: at},
+      %{task_id: second.id, blocked_by_task_id: parent.id, inserted_at: at, updated_at: at}
+    ])
+
+    merged(repo, 22, "Local", "success", at)
+    open_pull(repo, 23, "Open", "success", at)
+    merged(other, 22, "Foreign", "success", at)
+    task(other, 20, "Foreign", "queued", at)
+
+    observed = Lanes.Queue.Observations.load(repo)
+    assert Enum.map(observed.rows, & &1.number) == [9, 20, 12]
+    assert [%{number: 22, title: "Local"}] = observed.merged
+    assert observed.origins == %{parent.id => 7}
+    assert observed.blockers == %{second.id => 12}
+    assert observed.waits == %{second.id => [20]}
+  end
+
   describe "a task the board called and no ticket answered" do
     setup do
       {:ok, repo} = Board.add_repository("fixture", "unanswered")
