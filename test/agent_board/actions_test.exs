@@ -33,6 +33,7 @@ defmodule AgentBoard.ActionsTest do
     :retry_ticket,
     :auto_retry_ticket,
     :deliver_dependencies,
+    :resolve_blocker,
     :release_task,
     :dispatch_task,
     :stop_execution,
@@ -163,6 +164,9 @@ defmodule AgentBoard.ActionsTest do
     case name do
       :create_tasks ->
         %{repository: repo, requests: [request(repo, "Algo")], client: github}
+
+      :resolve_blocker ->
+        %{task: task, child: task, choice: "waive", reason: "owner reason", client: github}
 
       :ask_task ->
         %{task: task, question: "E aí?", client: github}
@@ -302,7 +306,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 25
+      assert length(reds) == 26
 
       for name <- reds do
         params = red_params(name, context)
@@ -473,6 +477,45 @@ defmodule AgentBoard.ActionsTest do
 
       assert %Decision{decision: "confirmed", evidence: "words", words: "cria direto: botão"} =
                last()
+    end
+
+    test "only an explicit GitHub refusal releases a waiver for retry", %{repo: repo} = c do
+      parent = task!(repo, 201) |> Ecto.Changeset.change(state: "blocked") |> Repo.update!()
+
+      child =
+        task!(repo, 202)
+        |> Ecto.Changeset.change(
+          state: "closed",
+          github_issue_status: "not_planned",
+          blocker_for_task_id: parent.id
+        )
+        |> Repo.update!()
+
+      params = %{
+        task: parent,
+        child: child,
+        choice: "waive",
+        reason: "out of scope",
+        client: c.github
+      }
+
+      run = fn ->
+        Actions.run(:resolve_blocker, params, c.owner,
+          confirm: Actions.phrase(:resolve_blocker, params)
+        )
+      end
+
+      Req.Test.stub(@github, &Plug.Conn.send_resp(&1, 429, "rate limit"))
+      assert {:error, :waiver_refused} = run.()
+      assert is_nil(Repo.reload!(child).blocker_decision)
+      Req.Test.stub(@github, &Plug.Conn.send_resp(&1, 502, "upstream unavailable"))
+      assert {:error, :waiver_unconfirmed} = run.()
+
+      assert %{"kind" => "waiver_pending", "reason" => "out of scope"} =
+               Repo.reload!(child).blocker_decision
+
+      Req.Test.stub(@github, fn _ -> flunk("never repost an ambiguous waiver") end)
+      assert {:error, :stale_blocker} = run.()
     end
 
     test "ask_task posts the comment after the confirmation", %{repo: repo} = c do

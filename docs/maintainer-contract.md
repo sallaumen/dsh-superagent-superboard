@@ -153,6 +153,13 @@ differ. Change a general rule upstream, not here.
   input per set of child ticket IDs. No comment grants authorization, and stopped
   parents, incomplete children and old installations receive no wake-up. This
   reconciliation shares the automatic retry scheduler and its off switch.
+  GitHub must explicitly report `completed` for each accepted child; a successful
+  worker run is not proof that its output was accepted. A child closed as
+  `not_planned` or `duplicate` remains visible as missing evidence. In the
+  original conversation the owner can replace it with another open child linked
+  to that parent, or waive it with a reason. Both preserve the old link and the
+  decision. A waiver sends the reason as an owner comment, not a completion
+  receipt; an uncertain publication is shown and is not blindly resent.
 - The board reads all review pages in GitHub's chronological order. Each reviewer’s
   latest approval or change request replaces their earlier vote; comments do not
   vote and a dismissed decision is no longer active. Any outstanding change
@@ -241,6 +248,7 @@ and is recorded as `automatic`.
 | `archive_task` | yellow | takes the task off the board (Retomar undoes it) | UI: one click. Voice: proposal (kept). API: direct |
 | `resume_task` | yellow | puts the task back in the board's queue (does not reopen the issue) | UI: one click. API: direct |
 | `retry_ticket` | red | `POST tickets/<id>/retry` asked by the owner; the executor spends tokens | UI: `AgentAction` "Tentar de novo" / "Tentar agora" |
+| `resolve_blocker` | Red | Replace a cancelled prerequisite or publish a reasoned waiver on its original issue | Owner: original issue conversation |
 | `deliver_dependencies` | Red | Deliver the completed linked prerequisites to the original assignment | System: `dependency_delivery` only (Completed blockers) |
 | `auto_retry_ticket` | red | the same request, asked by the board after a transient failure | System: the standing authorization ("Automatic retry"), `auto_retry` only |
 | `release_task` | red | comments the mention that starts a task that was waiting, or again on a called task still in the queue; standing authorization for `release` (ADR 0005) | System: the standing authorization ("Release in order"), `release` only. UI: "Chamar o agente" in the tree and "Chamar de novo" in Precisa de você ask the sentence in the browser (`data-confirm`) |

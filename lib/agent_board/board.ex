@@ -516,7 +516,11 @@ defmodule AgentBoard.Board do
   def blockers_for(%Task{id: id}) when is_integer(id) do
     Repo.all(
       from t in Task,
-        where: t.blocker_for_task_id == ^id and t.state not in ["done", "closed"],
+        where:
+          t.blocker_for_task_id == ^id and
+            (t.state not in ["done", "closed"] or
+               t.github_issue_status in ["not_planned", "duplicate", "closed_unknown"] or
+               not is_nil(t.blocker_decision)),
         order_by: [asc: t.inserted_at, asc: t.id]
     )
   end

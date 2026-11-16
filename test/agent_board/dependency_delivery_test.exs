@@ -68,6 +68,30 @@ defmodule AgentBoard.DependencyDeliveryTest do
 
     assert [] == run.([parent_ticket | Enum.map(children, &Map.put(&1, "ended_at", blocked))])
     refute_received {:wake, _, _}
+    # A successful worker inventory is not proof that GitHub accepted its output.
+    other |> Ecto.Changeset.change(github_issue_status: "not_planned") |> Repo.update!()
+    assert [] == run.([parent_ticket | children])
+    refute_received {:wake, _, _}
+
+    Repo.reload!(other)
+    |> Ecto.Changeset.change(github_issue_status: "completed")
+    |> Repo.update!()
+
+    # The cancelled predecessor stays in history; its selected successor supplies the receipt.
+    cancelled = task(repo, 474, "closed", parent.id)
+    cancelled |> Ecto.Changeset.change(github_issue_status: "not_planned") |> Repo.update!()
+    assert [] == run.([parent_ticket | children])
+
+    Repo.reload!(cancelled)
+    |> Ecto.Changeset.change(
+      blocker_decision: %{
+        "kind" => "replaced",
+        "replacement" => 473,
+        "reason" => "different source"
+      }
+    )
+    |> Repo.update!()
+
     assert [{:ok, "delivered"}] == run.([parent_ticket | children])
 
     assert_received {:wake, "/tickets/parent/dependencies-completed",
@@ -82,6 +106,15 @@ defmodule AgentBoard.DependencyDeliveryTest do
                | children
              ])
 
+    waived = task(repo, 475, "closed", parent.id)
+
+    waived
+    |> Ecto.Changeset.change(
+      blocker_decision: %{"kind" => "waived", "requested_at" => DateTime.to_iso8601(ended)}
+    )
+    |> Repo.update!()
+
+    assert [] == run.([parent_ticket | children])
     refute_received {:wake, _, _}
   end
 
@@ -91,6 +124,7 @@ defmodule AgentBoard.DependencyDeliveryTest do
       number: n,
       title: "task #{n}",
       state: state,
+      github_issue_status: "completed",
       blocker_for_task_id: parent
     })
   end

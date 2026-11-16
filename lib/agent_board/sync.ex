@@ -139,6 +139,8 @@ defmodule AgentBoard.Sync do
     |> Enum.reject(&SplitGraph.objective_issue?/1)
     |> Enum.each(&upsert_issue(repository, &1))
 
+    backfill_blocker_status(client, repository)
+
     # One broken PR (reviews, checks) must not kill the whole sync.
     Enum.each(pulls, fn pull ->
       try do
@@ -349,16 +351,16 @@ defmodule AgentBoard.Sync do
   # every sync. A closed issue is the exception: it is `done` whatever the
   # overlay said, unless the owner stopped or archived the task. Without
   # this, an issue closed after it entered the board stayed in the queue.
-  defp close_task(repository, number) do
+  defp close_task(repository, number, target) do
     now = DateTime.utc_now()
 
     Repo.update_all(
       from(t in Task,
         where:
           t.repository_id == ^repository.id and t.kind == "issue" and t.number == ^number and
-            not t.stopped and not t.archived and t.state not in ["done", "closed"]
+            not t.stopped and not t.archived and t.state != ^target
       ),
-      set: [state: "done", state_changed_at: now, updated_at: now]
+      set: [state: target, state_changed_at: now, updated_at: now]
     )
   end
 
@@ -376,21 +378,61 @@ defmodule AgentBoard.Sync do
       from(t in Task,
         where:
           t.repository_id == ^repository.id and t.kind == "issue" and t.number == ^number and
-            not t.stopped and not t.archived and t.state == "done" and
+            not t.stopped and not t.archived and t.state in ["done", "closed"] and
             (is_nil(t.state_changed_at) or t.state_changed_at < ^issue_updated_at)
       ),
       set: [state: "queued", state_changed_at: now, updated_at: now]
     )
   end
 
+  # A legacy completed child might be outside the incremental issue window.
+  # Repair at most one per project/cycle and only for an unresolved blocked parent.
+  defp backfill_blocker_status(client, repo) do
+    number =
+      Repo.one(
+        from c in Task,
+          join: p in Task,
+          on: p.id == c.blocker_for_task_id,
+          where:
+            c.repository_id == ^repo.id and p.state == "blocked" and
+              is_nil(c.github_issue_status) and c.state in ["closed", "done"],
+          order_by: c.id,
+          limit: 1,
+          select: c.number
+      )
+
+    if number do
+      case GitHub.issue(client, repo.owner, repo.name, number) do
+        %{"number" => ^number, "state" => state} = issue when state in ["open", "closed"] ->
+          upsert_issue(repo, issue)
+
+        _ ->
+          :ok
+      end
+    end
+  rescue
+    e in [GitHub.HTTPError, Req.TransportError, Req.HTTPError] ->
+      Board.log_event(repo.id, "issue_error", "blocker close reason", %{
+        "reason" => Exception.message(e)
+      })
+  end
+
   defp upsert_issue(repository, issue) do
     closed = issue["state"] == "closed"
 
-    %Task{repository_id: repository.id, kind: "issue", number: issue["number"]}
+    status = if closed, do: issue["state_reason"] || "closed_unknown", else: "open"
+    target = if status in ["not_planned", "duplicate"], do: "closed", else: "done"
+
+    %Task{
+      repository_id: repository.id,
+      kind: "issue",
+      number: issue["number"],
+      github_issue_status: status
+    }
     |> Task.changeset(%{
       title: title(issue["title"]),
       body: issue["body"] || "",
-      state: if(closed, do: "done", else: "queued"),
+      state: if(closed, do: target, else: "queued"),
       state_changed_at: DateTime.utc_now(),
       url: issue["html_url"],
       author: get_in(issue, ["user", "login"])
@@ -398,13 +440,13 @@ defmodule AgentBoard.Sync do
     # `updated_at` stays the board's: replacing it made every fetched task
     # look changed now on every sync.
     |> Repo.insert(
-      on_conflict: {:replace, [:title, :body, :url]},
+      on_conflict: {:replace, [:title, :body, :url, :github_issue_status]},
       conflict_target: [:repository_id, :kind, :number]
     )
     |> case do
       {:ok, _} ->
         if closed,
-          do: close_task(repository, issue["number"]),
+          do: close_task(repository, issue["number"], target),
           else: reopen_task(repository, issue["number"], to_dt(issue["updated_at"]))
 
         :ok
@@ -637,7 +679,8 @@ defmodule AgentBoard.Sync do
   end
 
   defp apply_overlay(repository, issue, number, overlay, ticket) do
-    if issue && not (issue["state"] == "closed" and overlay != "done") do
+    if issue && issue["state_reason"] not in ["not_planned", "duplicate"] &&
+         not (issue["state"] == "closed" and overlay != "done") do
       TicketOverlay.apply(repository, number, overlay, ticket["started_at"],
         include_finished: true,
         ended_at: ticket["ended_at"]

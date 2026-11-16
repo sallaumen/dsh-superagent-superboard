@@ -421,6 +421,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         <span class="ab-meta">{gettext("Unblocking task")}</span>
         <a
           :for={blocker <- @inspector_blockers}
+          :if={!AgentBoard.BlockerDecisions.cancelled?(blocker) && is_nil(blocker.blocker_decision)}
           href={blocker.url || "#"}
           target="_blank"
           rel="noopener"
@@ -428,6 +429,21 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           #{blocker.number} — {blocker.title} ({blocker.state})
         </a>
       </div>
+
+      <.live_component
+        :for={
+          blocker <-
+            Enum.filter(
+              @inspector_blockers,
+              &(AgentBoard.BlockerDecisions.cancelled?(&1) || &1.blocker_decision)
+            )
+        }
+        module={AgentBoardWeb.BoardComponents.CancelledBlocker}
+        id={"requirement-#{@task.id}-#{blocker.id}"}
+        task={@task}
+        child={blocker}
+        siblings={@inspector_blockers}
+      />
 
       <div :if={@unblock} class="ab-unblock__actions">
         <button
