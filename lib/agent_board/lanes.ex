@@ -10,14 +10,11 @@ defmodule AgentBoard.Lanes do
   use Gettext, backend: AgentBoardWeb.Gettext
 
   alias AgentBoard.{
-    Actions,
     AgentBlock,
     AgentSignal,
     Board,
-    Release,
     Repo,
-    Superagents,
-    Time
+    Superagents
   }
 
   alias AgentBoard.Lanes.{
@@ -31,7 +28,6 @@ defmodule AgentBoard.Lanes do
   }
 
   alias AgentBoard.Usage.TaskCosts
-  alias AgentBoardWeb.Locale
 
   @doc """
   The attention list: blocked work, silent runs, PRs for review and
@@ -146,10 +142,11 @@ defmodule AgentBoard.Lanes do
   defdelegate next_attention_in(running, silences, stall_after, now), to: RunTiming
 
   defp unanswered_lane(board, context) do
-    board
-    |> Map.get(:queued, [])
-    |> Enum.filter(&(not is_nil(CallStatus.problem(&1, context))))
-    |> Enum.map(&task_need(&1, :unanswered, context))
+    for task <- Map.get(board, :queued, []),
+        problem = CallStatus.problem(task, context) do
+      content = Attention.CallNotice.content(problem, task, context)
+      Attention.Item.build(task, :unanswered, context.pulls[task.id], content, context)
+    end
   end
 
   # Every item says what to do, where and why: the kind is the what, the
@@ -171,38 +168,19 @@ defmodule AgentBoard.Lanes do
   defp need_content(task, :review, ticket, pull, _context),
     do: Attention.Review.content(task.id, pull, ticket && ticket["report_summary"])
 
-  defp need_content(task, kind, ticket, pull, context) do
-    {task_why(task, kind, ticket, pull, context), need_actions(task, kind, pull, context)}
+  defp need_content(task, kind, ticket, _pull, context) do
+    {task_why(task, kind, ticket, context), detail_actions(task, kind)}
   end
 
-  defp task_why(%{held: true, released_at: at}, :unanswered, _ticket, _pull, context) do
-    gettext(
-      "**The call to the agent did not complete.** The board tried %{since} and does not try again on its own.",
-      since: Time.since_label(at, context.tz_offset, context.now)
-    )
-  end
-
-  # What the board knows: it called, and no ticket names the issue. Why the
-  # runner did not start is in the runner, so the item does not guess.
-  defp task_why(task, :unanswered, _ticket, _pull, context) do
-    at = Release.called_at(task)
-
-    gettext(
-      "**Called %{ago} and the agent did not start.** The board posted the mention %{since} and no agent ticket names this issue.",
-      ago: Time.ago(DateTime.diff(context.now, at)),
-      since: Time.since_label(at, context.tz_offset, context.now)
-    )
-  end
-
-  defp task_why(task, :question, ticket, _pull, _context) do
+  defp task_why(task, :question, ticket, _context) do
     question = Board.agent_question(task.repository_id, task.number)
     Attention.ReportNotice.question(question, ticket && ticket["report_summary"])
   end
 
-  defp task_why(task, :stalled, _ticket, _pull, context),
+  defp task_why(task, :stalled, _ticket, context),
     do: Attention.RunNotice.stalled(Map.fetch!(context.silences, task.number), context.tz_offset)
 
-  defp task_why(task, :slow, _ticket, _pull, context) do
+  defp task_why(task, :slow, _ticket, context) do
     silence = context.silences[task.number]
     Attention.RunNotice.slow(task, silence, context.now, context.tz_offset)
   end
@@ -214,18 +192,7 @@ defmodule AgentBoard.Lanes do
     Attention.ReportNotice.blockage(blockage, ticket && ticket["report_summary"])
   end
 
-  # The same red action as the tree's "Chamar o agente", with its sentence.
-  defp need_actions(task, :unanswered, _pull, %{repository: repository}) do
-    phrase =
-      Actions.phrase(:release_task, %{task: task, repository: repository}, Locale.language())
-
-    [
-      %{label: gettext("Call again"), release: phrase},
-      %{label: action_label(:unanswered), task_id: task.id}
-    ]
-  end
-
-  defp need_actions(task, kind, _pull, _context),
+  defp detail_actions(task, kind),
     do: [%{label: action_label(kind), task_id: task.id}]
 
   # A failure with an attempt left to ask for gets the button on the card,
@@ -246,7 +213,6 @@ defmodule AgentBoard.Lanes do
   defp action_label(:question), do: gettext("Respond")
   defp action_label(:blocked), do: gettext("View details")
   defp action_label(:stalled), do: gettext("View details")
-  defp action_label(:unanswered), do: gettext("View details")
   defp action_label(:slow), do: gettext("View details")
 
   @doc """
