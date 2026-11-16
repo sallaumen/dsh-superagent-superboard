@@ -138,7 +138,7 @@ defmodule AgentBoard.Lanes do
   defp need_content(task, :blocked, ticket, _pull, context) do
     block = AgentBlock.explain(ticket, block_opts(context))
     why = if block, do: block.line, else: blockage_why(task, ticket)
-    {why, blocked_actions(task, block)}
+    {why, Attention.Blocked.actions(task, block)}
   end
 
   defp need_content(task, :review, ticket, pull, _context),
@@ -171,23 +171,7 @@ defmodule AgentBoard.Lanes do
   defp detail_actions(task, kind),
     do: [%{label: action_label(kind), task_id: task.id}]
 
-  # A failure with an attempt left to ask for gets the button on the card,
-  # the same one as the detail's (`AgentBoard.AgentBlock`).
-  defp blocked_actions(task, block) do
-    detail = %{label: action_label(:blocked), task_id: task.id}
-
-    case block do
-      %{retry: label, ticket_id: ticket_id} when is_binary(label) and is_binary(ticket_id) ->
-        retry = %{ticket_id: ticket_id, repository_id: task.repository_id, number: task.number}
-        [%{label: label, retry: retry}, detail]
-
-      _no_retry ->
-        [detail]
-    end
-  end
-
   defp action_label(:question), do: gettext("Respond")
-  defp action_label(:blocked), do: gettext("View details")
   defp action_label(:stalled), do: gettext("View details")
   defp action_label(:slow), do: gettext("View details")
 

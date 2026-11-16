@@ -3,6 +3,7 @@ defmodule AgentBoard.Lanes.Attention.BlockedTest do
 
   alias AgentBoard.Board.Task
   alias AgentBoard.Lanes
+  alias AgentBoard.Lanes.Attention.Blocked
 
   @at ~U[2026-11-07 17:10:00Z]
   @task %Task{id: 17, repository_id: 3, number: 61, title: "Blocked task", inserted_at: @at}
@@ -54,5 +55,11 @@ defmodule AgentBoard.Lanes.Attention.BlockedTest do
 
     assert card.why == "**Retry queued.** Waiting for a free worker (1 of 3)."
     assert card.actions == [%{label: "View details", task_id: 17}]
+  end
+
+  test "an unexplained block, a missing label or a missing ticket only offers details" do
+    for block <- [nil, %{retry: nil, ticket_id: "t7"}, %{retry: "Try again", ticket_id: nil}] do
+      assert Blocked.actions(@task, block) == [%{label: "View details", task_id: 17}]
+    end
   end
 end
