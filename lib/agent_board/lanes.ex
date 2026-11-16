@@ -368,50 +368,10 @@ defmodule AgentBoard.Lanes do
     if is_nil(visit.last_visit) do
       Digest.FirstVisit.build(Digest.first_visit(board), visit)
     else
-      since_digest(repository, board, visit)
+      %{counts: counts, latest_review: review} =
+        Digest.Observations.since(repository, visit.last_visit)
+
+      Digest.ReturnVisit.build(Digest.since_visit(board, counts), review, visit)
     end
   end
-
-  defp since_digest(repository, board, visit) do
-    %{counts: counts, latest_review: review} =
-      Digest.Observations.since(repository, visit.last_visit)
-
-    facts = Digest.since_visit(board, counts)
-
-    segments =
-      case Digest.ChangePhrases.segments(facts, review) do
-        [] ->
-          text =
-            if visit.sync == :unconfirmed,
-              do: gettext("we do not know what changed"),
-              else: gettext("nothing changed")
-
-          [%{text: text, role: :plain}]
-
-        segments ->
-          segments
-      end
-
-    %{
-      prefix: since_prefix(visit),
-      segments: segments,
-      suffix: since_suffix(visit.sync),
-      now: visit.now
-    }
-  end
-
-  defp since_prefix(%{sync: {:through, at}, offset: offset}),
-    do: gettext("Until %{time},", time: Time.local_time(at, offset)) <> " "
-
-  defp since_prefix(%{sync: :unconfirmed}),
-    do: gettext("Without a completed sync,") <> " "
-
-  defp since_prefix(%{sync: :live} = visit),
-    do:
-      gettext("Since %{since}",
-        since: Time.since_label(visit.last_visit, visit.offset, visit.now)
-      ) <> " "
-
-  defp since_suffix({:through, _at}), do: ". " <> gettext("After that, we do not know.")
-  defp since_suffix(_sync), do: "."
 end
