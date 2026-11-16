@@ -340,34 +340,7 @@ defmodule AgentBoard.Lanes do
 
     costs = calendar |> MergeHistory.Calendar.visible_pulls() |> TaskCosts.for_pulls()
 
-    days = Enum.map(calendar.days, & &1.summary)
-
-    entry = fn pull ->
-      MergeHistory.Item.build(pull, offset, local_ci[pull.number], costs[pull.number])
-    end
-
-    groups =
-      calendar.days
-      |> Enum.reverse()
-      |> Enum.reject(&(&1.summary.n == 0))
-      |> Enum.map(fn %{summary: day, page: page} ->
-        %{
-          date: day.date,
-          label: day.label,
-          n: day.n,
-          more: page.more,
-          more_wide: page.more_wide,
-          items: Enum.map(page.items, entry),
-          extra: Enum.map(page.extra, entry)
-        }
-      end)
-
-    %{
-      days: days,
-      groups: groups,
-      total: Enum.sum(Enum.map(days, & &1.n)),
-      issues: calendar.issues
-    }
+    MergeHistory.Report.build(calendar, local_ci, costs)
   end
 
   @doc """
