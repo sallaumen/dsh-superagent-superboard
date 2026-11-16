@@ -32,6 +32,7 @@ defmodule AgentBoard.ActionsTest do
     :resume_task,
     :retry_ticket,
     :auto_retry_ticket,
+    :deliver_dependencies,
     :release_task,
     :dispatch_task,
     :stop_execution,
@@ -178,6 +179,9 @@ defmodule AgentBoard.ActionsTest do
       :retry_ticket ->
         %{ticket_id: "t1", number: 1, client: orchestrator}
 
+      :deliver_dependencies ->
+        %{task: task, ticket_id: "ticket"}
+
       :auto_retry_ticket ->
         %{ticket_id: "t1", attempt: 1, client: orchestrator}
 
@@ -259,9 +263,10 @@ defmodule AgentBoard.ActionsTest do
       end
     end
 
-    test "only the automatic retry, the release and the folder retention hold a standing authorization, all red" do
+    test "only the documented system actors hold a standing authorization, all red" do
       assert [
                %{name: :auto_retry_ticket, risk: :red, standing: %{by: "auto_retry"}},
+               %{name: :deliver_dependencies, risk: :red, standing: %{by: "dependency_delivery"}},
                %{name: :release_task, risk: :red, standing: %{by: "release"}},
                %{name: :sweep_agent_folders, risk: :red, standing: %{by: "folder_retention"}}
              ] = Enum.filter(Actions.catalog(), &Map.has_key?(&1, :standing))
@@ -297,7 +302,7 @@ defmodule AgentBoard.ActionsTest do
          context do
       no_network()
       reds = for %{name: name, risk: :red} <- Actions.catalog(), do: name
-      assert length(reds) == 24
+      assert length(reds) == 25
 
       for name <- reds do
         params = red_params(name, context)

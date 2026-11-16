@@ -1,0 +1,155 @@
+diff --git a/src/core/tickets.ts b/src/core/tickets.ts
+--- a/src/core/tickets.ts
++++ b/src/core/tickets.ts
+@@ -153,6 +153,33 @@
+     this.addInput(ticket, { id: `status:${ticketId}:${ticket.updatedAt}`, kind: 'text', text: STATUS_REQUEST, at: this.now() })
+     return true
+   }
++  /** Accept a board-owned relation as a fact, never as a new mandate or as a human trigger. */
++  completeDependencies(ticketId: string, repository: string, number: number, assignmentId: string,
++    children: { number: number; ticket: string }[]): 'delivered' | 'already_delivered' | 'ineligible' {
++    const parent = this.require(ticketId)
++    const owns = (t: Ticket, n: number) => t.mandate.basis.source === 'github' && t.mandate.basis.scope?.number === n
++      && t.mandate.basis.scope?.kind === 'issue' && t.channels.some(c => c.source === 'github'
++        && c.thread === `github:${n}` && c.address.url?.toLowerCase() === `https://github.com/${repository.toLowerCase()}/issues/${n}`)
++    if (!owns(parent, number) || !children.length || new Set(children.map(c => c.number)).size !== children.length) return 'ineligible'
++    const id = 'dependency:' + children.map(c => c.ticket).sort().join(':')
++    if (parent.inputs.some(input => input.id === id)) return 'already_delivered'
++    const worker = runningAssignment(parent)
++    if (!liveTicket(parent) || parent.mandate.strength !== 'explicit' || !this.policy().revalidate(parent.mandate)
++        || !worker || worker.id !== assignmentId || !worker.idleAt || !worker.report || worker.report.state !== 'blocked'
++        || parent.undelivered.length || (worker.deliveredAt && worker.deliveredAt > worker.report.at)) return 'ineligible'
++    const ends: string[] = []
++    for (const child of children) {
++      const t = this.repo.tickets.get(child.ticket)
++      if (!t || t.id === parent.id || !owns(t, child.number) || !t.ended || !['completed','merged'].includes(t.ended.outcome)
++          || t.ended.by === 'human') return 'ineligible'
++      ends.push(t.ended.at)
++    }
++    if (!ends.some(at => at > worker.report!.at)) return 'ineligible'
++    const links = children.map(c => `https://github.com/${repository}/issues/${c.number}`).join(', ')
++    this.addInput(parent, { id, kind: 'text', at: this.now(),
++      text: `The board verified completion of the linked prerequisite(s): ${links}. Read their results and the latest comments on your original issue #${number}. Resume the same assignment within its existing mandate. If another prerequisite still blocks it, report that instead. Do not open a replacement ticket.` })
++    return 'delivered'
++  }
+   /**
+    * Stops a ticket on behalf of a human, ending any active assignments.
+    * @throws UserError when the ticket is unknown.
+diff --git a/src/core/engine.ts b/src/core/engine.ts
+--- a/src/core/engine.ts
++++ b/src/core/engine.ts
+@@ -165,6 +165,10 @@
+    */
+   retryTicket(ticketId: string): Ticket { return this.repo.atomic(() => this.tickets.retry(ticketId)) }
+
++  completeDependencies(id: string, repo: string, number: number, assignment: string, children: { number: number; ticket: string }[]) {
++    return this.repo.atomic(() => this.tickets.completeDependencies(id, repo, number, assignment, children))
++  }
++
+   // The Executor
+
+   /**
+@@ -262,7 +266,7 @@
+ /** What the main Session asks of the Engine. */
+ export type EngineForMainSession = Pick<Engine, 'candidate' | 'candidateDelivered' | 'decide' | 'attach' | 'reply' | 'requestStatus' | 'note'>
+ /** What people ask of the Engine, through the panel or the main Session. */
+-export type EngineForPeople = Pick<Engine, 'stopTicket' | 'retryTicket' | 'reevaluate' | 'unsubscribe' | 'dismiss'>
++export type EngineForPeople = Pick<Engine, 'stopTicket' | 'retryTicket' | 'completeDependencies' | 'reevaluate' | 'unsubscribe' | 'dismiss'>
+ /** What Settings tells the Engine. */
+ export type EngineForSettings = Pick<Engine, 'policyChanged'>
+ /** What the Executor tells the Engine, and what its workers ask of it. */
+diff --git a/src/app/api.ts b/src/app/api.ts
+--- a/src/app/api.ts
++++ b/src/app/api.ts
+@@ -32,6 +32,7 @@
+   'POST decisions/:id/dismiss': { response: { dismissed: true } }
+   'GET tickets': { query?: Paged & { state?: TicketFilter }; response: TicketListView }
+   'GET tickets/:id': { response: TicketPageView }
++  'POST tickets/:id/dependencies-completed': { body: { repository: string; number: number; assignment: string; children: { number: number; ticket: string }[] }; response: { outcome: string } }
+   'POST tickets/:id/retry': { response: { retried: true } }
+   'POST tickets/:id/stop': { response: { stopped: true } }
+   'POST executor/pause': { body: { paused: boolean }; response: { paused: boolean } }
+diff --git a/src/app/http.ts b/src/app/http.ts
+--- a/src/app/http.ts
++++ b/src/app/http.ts
+@@ -104,7 +104,7 @@
+ /** Build the `/orchestrator/api/state` response consumed by the management panel and `scripts/dsh-superagent status` (`docs/006-deployment.md`). */
+ export function stateView(runtime: HttpHost) {
+   const settings = runtime.store.settings()
+-  return { setup: setupView(runtime), load: { ...executorLoad(runtime.store, runtime.executor.activeCount()),
++  return { completedDependencyInput: true, setup: setupView(runtime), load: { ...executorLoad(runtime.store, runtime.executor.activeCount()),
+     maxWorkers: settings.executor.maxWorkers },
+     masterId: runtime.masterId, paused: settings.paused, health: runtime.health }
+ }
+@@ -190,6 +190,13 @@
+       return ticketList(views(runtime), state, offset, limit)
+     },
+     'GET tickets/:id': ({ params }) => ticketPage(runtime, params.id),
++    'POST tickets/:id/dependencies-completed': async ({ params, body }) => {
++      const p = z.object({ repository: z.string(), number: z.number().int().positive(), assignment: z.string().min(1),
++        children: z.array(z.object({ number: z.number().int().positive(), ticket: z.string().regex(/^[0-9a-f]{32}$/) })).min(1) }).parse(await body())
++      if (!runtime.configured() || runtime.store.settings().paused || runtime.deployment.repository.toLowerCase() !== p.repository.toLowerCase())
++        return { outcome: 'ineligible' }
++      return { outcome: runtime.engine.completeDependencies(ticket(params.id), p.repository, p.number, p.assignment, p.children) }
++    },
+     'POST tickets/:id/retry': ({ params }) => { const id = ticket(params.id); runtime.engine.retryTicket(id); return { retried: true } },
+     'POST tickets/:id/stop': ({ params }) => { const id = ticket(params.id); runtime.engine.stopTicket(id); return { stopped: true } },
+     'POST executor/pause': async ({ body }) => runtime.settings.pause(z.object({ paused: z.boolean() }).parse(await body()).paused, 'panel'),
+diff --git a/tests/fixtures/panel-server.ts b/tests/fixtures/panel-server.ts
+--- a/tests/fixtures/panel-server.ts
++++ b/tests/fixtures/panel-server.ts
+@@ -158,7 +158,7 @@
+   })
+ }
+ const stateView = (): StateView => ({
+-  setup: server.setup, load: { running: server.setup.problem ? 0 : 2, queued: 0, maxWorkers: server.settings.executor.maxWorkers },
++  completedDependencyInput: true, setup: server.setup, load: { running: server.setup.problem ? 0 : 2, queued: 0, maxWorkers: server.settings.executor.maxWorkers },
+   masterId: 'master', paused: server.settings.paused,
+   // The panel does not read health; the service script does.
+   health: {},
+@@ -327,6 +327,7 @@
+   'GET tickets': { query: ['state', 'offset', 'limit'], answer: ({ query }) => page(server.tickets[query.state === 'ended' ? 'ended'
+     : 'open']) },
+   'GET tickets/:id': { answer: ({ params }) => server.ticketDetails[params.id] ?? refuse(404, 'Ticket not found') },
++  'POST tickets/:id/dependencies-completed': { body: true, answer: () => ({ outcome: 'ineligible' }) },
+   'POST tickets/:id/retry': { answer: ({ params }) => {
+     const ticket = ticketOf(params.id)
+     if (!ticket) return refuse(404, 'Ticket not found')
+diff --git a/tests/core-engine.spec.ts b/tests/core-engine.spec.ts
+--- a/tests/core-engine.spec.ts
++++ b/tests/core-engine.spec.ts
+@@ -1649,3 +1649,34 @@
+     expect(() => h.engine.decide('5', { kind: 'accept', title: 'Fix', scope: 'small', reason: 'chat' })).toThrow(new UserError('notExplicit'))
+   })
+ })
++
++describe('completed board dependencies', () => {
++  it('targets the idle assignment once even after delivery, and rejects stale or unfinished evidence', () => {
++    const h = harness()
++    const make = (id: string, n: number) => {
++      const ticketId = accepted(h, id, 't'+id).ticketId!
++      const ticket = h.repo.tickets.get(ticketId)!
++      ticket.mandate.basis = {via:'listed', scope:{kind:'issue',number:n},source:'github'}
++      ticket.channels = [{source:'github',thread:'github:'+n,address:{url:'https://github.com/o/r/issues/'+n}}]
++      h.repo.tickets.save(ticket)
++      return ticketId
++    }
++    const parent = make('1', 471), child = make('2', 472)
++    h.engine.report(parent, {state:'blocked',summary:'only the receipt is missing'})
++    const p = h.repo.tickets.get(parent)!, a = runningAssignment(p)!
++    a.idleAt = a.report!.at; h.repo.tickets.save(p)
++    const args = [{number:472,ticket:child}]
++    const deliver = () => h.engine.completeDependencies(parent,'o/r',471,a.id,args)
++    expect(deliver()).toBe('ineligible')
++    h.tick(1000); h.engine.report(child, {state:'ready',summary:'receipt delivered'})
++    expect(h.engine.completeDependencies(parent,'o/other',471,a.id,args)).toBe('ineligible')
++    expect(h.engine.completeDependencies(parent,'o/r',471,'old-assignment',args)).toBe('ineligible')
++    expect(deliver()).toBe('delivered')
++    h.settle()
++    expect(deliver()).toBe('already_delivered')
++    const after = h.repo.tickets.get(parent)!
++    expect(after.assignments.map(v=>v.id)).toEqual([a.id])
++    expect(after.inputs.filter(v=>v.id.startsWith('dependency:'))).toHaveLength(1)
++    expect(h.delivered.filter(([id,input])=>id===parent && input.startsWith('dependency:'))).toHaveLength(1)
++  })
++})

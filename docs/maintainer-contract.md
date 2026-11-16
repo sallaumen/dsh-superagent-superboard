@@ -146,8 +146,13 @@ differ. Change a general rule upstream, not here.
   `tasks.blocker_for_task_id`. It is created through the same `create_tasks`
   action as any request, with the agent's mention and the link; the queue
   puts it ahead of ordinary queued work and the board shows "desbloqueia #N".
-  The blocked task stays blocked until a person answers or the agent retries;
-  the blocker task is a separate issue, not a state change on the original.
+  **Completed blockers:** the board may deliver one fact to the existing blocked,
+  idle assignment when all its linked blockers are done and have matching successful
+  Harness endings. At least one ending must postdate the block. The receiver checks
+  the repo, origin, assignment, mandate and child tickets, and persists a single
+  input per set of child ticket IDs. No comment grants authorization, and stopped
+  parents, incomplete children and old installations receive no wake-up. This
+  reconciliation shares the automatic retry scheduler and its off switch.
 - The board reads all review pages in GitHub's chronological order. Each reviewer’s
   latest approval or change request replaces their earlier vote; comments do not
   vote and a dismissed decision is no longer active. Any outstanding change
@@ -231,6 +236,7 @@ and is recorded as `automatic`.
 | `archive_task` | yellow | takes the task off the board (Retomar undoes it) | UI: one click. Voice: proposal (kept). API: direct |
 | `resume_task` | yellow | puts the task back in the board's queue (does not reopen the issue) | UI: one click. API: direct |
 | `retry_ticket` | red | `POST tickets/<id>/retry` asked by the owner; the executor spends tokens | UI: `AgentAction` "Tentar de novo" / "Tentar agora" |
+| `deliver_dependencies` | Red | Deliver the completed linked prerequisites to the original assignment | System: `dependency_delivery` only (Completed blockers) |
 | `auto_retry_ticket` | red | the same request, asked by the board after a transient failure | System: the standing authorization ("Automatic retry"), `auto_retry` only |
 | `release_task` | red | comments the mention that starts a task that was waiting, or again on a called task still in the queue; standing authorization for `release` (ADR 0005) | System: the standing authorization ("Release in order"), `release` only. UI: "Chamar o agente" in the tree and "Chamar de novo" in Precisa de você ask the sentence in the browser (`data-confirm`) |
 | `dispatch_task` | red | starts Claude Code or Codex in a worktree; spends the owner's subscription | UI: `AgentAction` "Despachar" in two steps, with the sentence, executor, task, repository and ceiling; voice/API: `428` then `confirm` |
@@ -501,7 +507,8 @@ other), authorized by the owner on
 (ADR-0003, "Retentativa automática"). `AgentBoard.AutoRetry` asks
 `POST tickets/<id>/retry` (`Orchestrator.retry/2`) and nothing else; the
 board still never writes the runner's sqlite. The request is the registry's
-red action `auto_retry_ticket`; this, `release_task` (ADR 0005) and
+red action `auto_retry_ticket`; this, `deliver_dependencies` (Completed blockers),
+`release_task` (ADR 0005) and
 `sweep_agent_folders` ("Ended tickets' folders") are the only standing
 authorizations the gate knows ("Board actions" above): it covers the actor
 `auto_retry`, each request is an `automatic` decision with the evidence

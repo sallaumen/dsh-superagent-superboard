@@ -144,6 +144,15 @@ defmodule AgentBoard.AgentState do
     |> Enum.max(DateTime, fn -> nil end)
   end
 
+  defp origin_issue(%{
+         "mandate" => %{
+           "basis" => %{"source" => "github", "scope" => %{"kind" => "issue", "number" => n}}
+         }
+       })
+       when is_integer(n), do: n
+
+  defp origin_issue(_ticket), do: nil
+
   defp repository_from(urls) do
     Enum.find_value(urls, fn url ->
       case Regex.run(~r{^https://github\.com/([^/]+)/([^/]+)/(?:issues|pull|discussions)/}, url) do
@@ -199,6 +208,12 @@ defmodule AgentBoard.AgentState do
       "numbers" => Enum.uniq(numbers),
       "assignment" => last["state"],
       "assignment_id" => last["id"],
+      "origin_issue" => origin_issue(ticket),
+      "dependency_inputs" =>
+        for(
+          %{"kind" => "text", "id" => "dependency:" <> _ = id} <- list(ticket["inputs"]),
+          do: id
+        ),
       "report" => report["state"],
       "report_summary" => text(report["summary"]),
       "report_at" => parse(report["at"]),
