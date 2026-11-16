@@ -920,7 +920,8 @@ defmodule AgentBoard.LanesTest do
     after_visit = DateTime.add(visit, 1)
 
     open_pull(repo, 1, "At the visit", "success", visit)
-    latest = open_pull(repo, 2, "Opened later", "success", after_visit)
+    open_pull(repo, 20, "Opened later", "success", after_visit)
+    latest = open_pull(repo, 2, "Same opening time, higher id", "success", after_visit)
     open_pull(repo, 3, "Too early", "success", before_visit)
     open_pull(other, 4, "Other repository", "success", DateTime.add(visit, 10))
 
@@ -942,7 +943,7 @@ defmodule AgentBoard.LanesTest do
     task(other, 12, "Other arrival", "queued", visit)
 
     observed = Observations.since(repo, visit)
-    assert observed.counts == %{merged: 1, reviews: 2, questions: 1, queue_new: 1}
+    assert observed.counts == %{merged: 1, reviews: 3, questions: 1, queue_new: 1}
     assert observed.latest_review.id == latest.id
 
     assert %{counts: %{reviews: 0}, latest_review: nil} =
