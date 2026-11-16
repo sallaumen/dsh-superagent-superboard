@@ -19,12 +19,11 @@ defmodule AgentBoard.Lanes do
     Release,
     Repo,
     Superagents,
-    Titles,
-    Workpad
+    Titles
   }
 
   alias AgentBoard.Board.{PullRequest, Task, TaskDependency}
-  alias AgentBoard.Lanes.{Attention, CallStatus, MergeHistory, Queue, RunTiming}
+  alias AgentBoard.Lanes.{Attention, CallStatus, MergeHistory, Queue, ReportQuote, RunTiming}
   alias AgentBoard.Usage.TaskCosts
   # The locale-aware times: these sentences are read on the screen.
   alias AgentBoardWeb.{Locale, Time}
@@ -232,10 +231,10 @@ defmodule AgentBoard.Lanes do
     do: gettext("**PR #%{number} ready for review**", number: number)
 
   defp task_why(_task, :review, ticket, nil, _context) do
-    case ticket && ticket["report_summary"] do
-      summary when is_binary(summary) and summary != "" ->
+    case ReportQuote.summary(ticket && ticket["report_summary"]) do
+      summary when is_binary(summary) ->
         gettext("**Ready for review**, PR not identified. The agent said: %{summary}",
-          summary: excerpt(summary)
+          summary: summary
         )
 
       _ ->
@@ -247,15 +246,12 @@ defmodule AgentBoard.Lanes do
     question = Board.agent_question(task.repository_id, task.number)
     summary = ticket && ticket["report_summary"]
 
-    cond do
-      question ->
-        gettext("**The agent asked:** %{question}", question: excerpt(question))
-
-      is_binary(summary) and Workpad.question?(summary) ->
-        gettext("**The agent asked:** %{question}", question: excerpt(summary))
-
-      true ->
+    case ReportQuote.question(question, summary) do
+      nil ->
         gettext("**The agent is waiting for your answer.** Open the conversation and reply.")
+
+      quote ->
+        gettext("**The agent asked:** %{question}", question: quote)
     end
   end
 
@@ -303,15 +299,12 @@ defmodule AgentBoard.Lanes do
     blockage = Board.agent_blockage(task.repository_id, task.number)
     summary = ticket && ticket["report_summary"]
 
-    cond do
-      blockage ->
-        gettext("**Blocked:** %{reason}", reason: excerpt(blockage))
-
-      is_binary(summary) and summary != "" ->
-        gettext("**Blocked:** %{reason}", reason: excerpt(summary))
-
-      true ->
+    case ReportQuote.blockage(blockage, summary) do
+      nil ->
         gettext("**Blocked**, with no reason in the agent's report. Open the details.")
+
+      quote ->
+        gettext("**Blocked:** %{reason}", reason: quote)
     end
   end
 
@@ -1043,14 +1036,4 @@ defmodule AgentBoard.Lanes do
   defp new?(nil, _last_visit), do: false
   defp new?(_at, nil), do: false
   defp new?(at, %DateTime{} = last_visit), do: DateTime.compare(at, last_visit) == :gt
-
-  defp excerpt(nil), do: ""
-
-  defp excerpt(text) do
-    text
-    |> String.split("\n", parts: 2)
-    |> hd()
-    |> String.trim()
-    |> String.slice(0, 160)
-  end
 end
