@@ -31,6 +31,36 @@ defmodule AgentBoard.Lanes.QueueTest do
     end
   end
 
+  test "selection counts hidden repeats and relationships without needing card details" do
+    at = ~U[2026-11-16 12:00:00Z]
+    # No held/release/ticket evidence: selection needs none of the subtitle inputs.
+    old = %{id: 1, title: "old", inserted_at: at, origin_task_id: 7, blocker_for_task_id: nil}
+
+    new = %{
+      old
+      | id: 2,
+        title: "repeat",
+        inserted_at: DateTime.add(at, 1),
+        blocker_for_task_id: 9
+    }
+
+    observed = %{
+      rows: [old, new],
+      related_numbers: %{7 => 17, 9 => 19},
+      merged: [%{number: 4, title: "repeat"}]
+    }
+
+    page = Queue.select(observed, at, :all, 1)
+
+    assert [%{row: ^old, is_new: false, relationship: {:split_from, 17}, repeat: nil}] =
+             page.items
+
+    assert %{counts: %{all: 2, split: 2, new: 1, dupes: 1}, total: 2, hidden: 1} = page
+
+    assert [%{row: ^new, relationship: {:unblocks, 19}, repeat: %{number: 4}}] =
+             Queue.select(observed, at, :dupes, 1).items
+  end
+
   describe "page/3" do
     @first %{id: 7, is_new: false, split: true, note: nil}
     @second %{id: 2, is_new: true, split: true, note: "repeat"}

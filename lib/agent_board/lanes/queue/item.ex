@@ -7,15 +7,10 @@ defmodule AgentBoard.Lanes.Queue.Item do
   alias AgentBoard.Time
 
   @doc "Describe one row, preserving the split and repeat flags even when the subtitle describes a wait."
-  @spec build(map(), map(), map(), DateTime.t() | nil, map() | nil) :: map()
-  def build(row, observed, calls, last_visit, duplicate) do
-    relationship =
-      Queue.relationship(
-        observed.related_numbers[row.blocker_for_task_id],
-        observed.related_numbers[row.origin_task_id]
-      )
-
-    detail = Queue.Detail.describe(row, relationship, Map.get(observed.waits, row.id, []), calls)
+  @spec build(map(), map(), map()) :: map()
+  def build(candidate, waits, calls) do
+    row = candidate.row
+    detail = Queue.Detail.describe(row, candidate.relationship, Map.get(waits, row.id, []), calls)
 
     %{
       key: "task-#{row.id}",
@@ -23,13 +18,15 @@ defmodule AgentBoard.Lanes.Queue.Item do
       number: row.number,
       title: row.title,
       age_seconds: Time.age_seconds(row.inserted_at, calls.now),
-      is_new: Time.new_since?(row.inserted_at, last_visit),
+      is_new: candidate.is_new,
       sub: detail.sub,
       stuck: detail.stuck,
-      split: not is_nil(relationship),
+      split: not is_nil(candidate.relationship),
       note:
-        duplicate &&
-          gettext("Looks like a repeat of #%{number}, already merged", number: duplicate.number)
+        candidate.repeat &&
+          gettext("Looks like a repeat of #%{number}, already merged",
+            number: candidate.repeat.number
+          )
     }
   end
 end

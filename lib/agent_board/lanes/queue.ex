@@ -1,6 +1,8 @@
 defmodule AgentBoard.Lanes.Queue do
   @moduledoc "Rules for the queue, applied to the rows the board observed."
 
+  alias AgentBoard.{Time, Titles}
+
   @compact_limit 8
 
   @doc "Number of rows on the compact queue page."
@@ -23,7 +25,30 @@ defmodule AgentBoard.Lanes.Queue do
   def relationship(nil, origin) when is_integer(origin), do: {:split_from, origin}
   def relationship(_blocked_number, _origin), do: nil
 
-  @doc "Count the full queue, then filter in the supplied order before limiting the visible rows."
+  @doc "Select visible rows using only the facts needed to count, filter and order the queue."
+  @spec select(map(), DateTime.t() | nil, atom(), integer()) :: map()
+  def select(observed, last_visit, filter, limit) do
+    repeats = Titles.duplicates(Enum.map(observed.rows, & &1.title), observed.merged)
+
+    candidates =
+      Enum.map(observed.rows, fn row ->
+        %{
+          row: row,
+          relationship:
+            relationship(
+              observed.related_numbers[row.blocker_for_task_id],
+              observed.related_numbers[row.origin_task_id]
+            ),
+          repeat: repeats[row.title],
+          is_new: Time.new_since?(row.inserted_at, last_visit)
+        }
+      end)
+
+    page = page(candidates, filter, limit)
+    Map.put(page, :filters, filter_options(page.counts))
+  end
+
+  @doc "Page queue candidates or built cards: count the full queue, then filter in order before limiting."
   @spec page([map()], atom(), integer()) :: map()
   def page(items, filter, limit) do
     counts = %{
@@ -47,7 +72,9 @@ defmodule AgentBoard.Lanes.Queue do
   end
 
   defp matches?(item, :new), do: item.is_new
-  defp matches?(item, :split), do: item.split
-  defp matches?(item, :dupes), do: not is_nil(item.note)
+  defp matches?(%{relationship: link}, :split), do: not is_nil(link)
+  defp matches?(card, :split), do: card.split
+  defp matches?(%{repeat: repeat}, :dupes), do: not is_nil(repeat)
+  defp matches?(card, :dupes), do: not is_nil(card.note)
   defp matches?(_item, _all), do: true
 end

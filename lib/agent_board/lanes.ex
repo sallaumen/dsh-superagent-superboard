@@ -14,8 +14,7 @@ defmodule AgentBoard.Lanes do
     AgentSignal,
     Board,
     Repo,
-    Superagents,
-    Titles
+    Superagents
   }
 
   alias AgentBoard.Lanes.{
@@ -204,16 +203,8 @@ defmodule AgentBoard.Lanes do
 
     observed = Queue.Observations.load(repository)
 
-    repeats = Titles.duplicates(Enum.map(observed.rows, & &1.title), observed.merged)
-
-    items =
-      Enum.map(
-        observed.rows,
-        &Queue.Item.build(&1, observed, calls, last_visit, repeats[&1.title])
-      )
-
-    page = Queue.page(items, filter, limit)
-    Map.put(page, :filters, Queue.filter_options(page.counts))
+    page = Queue.select(observed, last_visit, filter, limit)
+    %{page | items: Enum.map(page.items, &Queue.Item.build(&1, observed.waits, calls))}
   end
 
   @doc "Seven days of merges: the dots, the day counts and the per-day record."
