@@ -22,12 +22,9 @@ defmodule AgentBoard.Lanes.Queue.ItemTest do
   end
 
   test "a held subtitle keeps the split and possible repeat independently filterable" do
-    evidence = %{
-      related_numbers: %{1 => 7},
-      waits: %{42 => [9]}
-    }
+    candidate = %{row: @row, relationship: {:split_from, 7}, is_new: true, repeat: %{number: 30}}
 
-    assert Item.build(@row, evidence, @calls, DateTime.add(@at, -1), %{number: 30}) == %{
+    assert Item.build(candidate, %{42 => [9]}, @calls) == %{
              key: "task-42",
              id: 42,
              number: 21,
@@ -42,10 +39,9 @@ defmodule AgentBoard.Lanes.Queue.ItemTest do
   end
 
   test "an unresolved origin, no merged match and no last visit add no claims" do
-    evidence = %{related_numbers: %{}, waits: %{}}
-    row = %{@row | held: false}
+    candidate = %{row: %{@row | held: false}, relationship: nil, is_new: false, repeat: nil}
 
     assert %{is_new: false, split: false, note: nil, sub: nil, stuck: nil} =
-             Item.build(row, evidence, @calls, nil, nil)
+             Item.build(candidate, %{}, @calls)
   end
 end
