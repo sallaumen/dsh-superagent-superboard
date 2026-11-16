@@ -79,46 +79,15 @@ defmodule AgentBoard.Lanes do
 
   defp collapse_agent_down(needs, board, %{agent: :down} = context) do
     {waiting_count, rest} = Attention.outage_summary(needs, length(Map.get(board, :retrying, [])))
-    [agent_down_need(waiting_count, context) | rest]
-  end
 
-  defp collapse_agent_down(needs, _board, _context), do: needs
-
-  defp agent_down_need(waiting, context) do
-    # The board read this repository's own superagent when it has one: that
-    # is the agent the button starts, not the primary.
+    # The restart button targets this repository's agent when it has one.
     superagent =
       context.repository |> Superagents.get_by_repository() |> Repo.preload(:repository)
 
-    tail =
-      case waiting do
-        0 ->
-          gettext("Nothing moves until it is back.")
-
-        n ->
-          ngettext(
-            "%{count} task waits for it to come back; network failures are retried on their own.",
-            "%{count} tasks wait for it to come back; network failures are retried on their own.",
-            n
-          )
-      end
-
-    %{
-      key: "agent-down",
-      id: nil,
-      number: nil,
-      kind: :agent_down,
-      title: gettext("No new task starts until it is back"),
-      why: gettext("**The orchestrator is not responding.**") <> " " <> tail,
-      ci: nil,
-      age_seconds: nil,
-      is_new: false,
-      waiting: waiting,
-      actions: [
-        %{label: gettext("Restart the agent"), restart_agent: true, superagent: superagent}
-      ]
-    }
+    [Attention.Outage.card(waiting_count, superagent) | rest]
   end
+
+  defp collapse_agent_down(needs, _board, _context), do: needs
 
   @doc """
   The failed tasks the board retries by itself, for Agora: nobody has to
