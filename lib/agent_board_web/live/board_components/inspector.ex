@@ -507,17 +507,24 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         role="group"
         aria-labelledby="blocker-confirm-q"
       >
-        <p id="blocker-confirm-q" class="ab-act__question">{@blocker_pending.phrase}</p>
+        <p id="blocker-confirm-q" class="ab-act__question">
+          {if n = @blocker_pending.request[:receipt_number],
+            do: AgentBoardWeb.FailureText.text({:receipt_pending, n}),
+            else: @blocker_pending.phrase}
+        </p>
         <div class="ab-act__buttons">
           <button
             type="button"
             class="ab-btn ab-btn--sm ab-btn--primary"
             phx-click="blocker_confirm"
-            phx-disable-with={gettext("Creating…")}
+            phx-disable-with={gettext("Working…")}
           >
-            {gettext("Create task")}
+            {if @blocker_pending.request[:receipt_number],
+              do: gettext("Finish linking"),
+              else: gettext("Create task")}
           </button>
           <button
+            :if={is_nil(@blocker_pending.request[:receipt_number])}
             type="button"
             class="ab-btn ab-btn--sm ab-btn--quiet"
             phx-click="blocker_cancel"
@@ -544,7 +551,6 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           id="ask-body"
           name="body"
           rows="2"
-          phx-debounce="300"
           aria-label={gettext("Message to the agent")}
           placeholder={gettext("Respond to agent...")}
           disabled={@ask_sending && @ask_sending.task_id == @task.id}

@@ -1913,7 +1913,7 @@ defmodule AgentBoardWeb.BoardLive do
            blocker_open: true,
            blocker_pending: nil,
            blocker_title: Unblock.blocker_title(task, unblock),
-           blocker_body: Unblock.blocker_body(task, unblock)
+           blocker_body: Unblock.blocker_body(task, unblock, socket.assigns.ask_draft[task.id])
          )}
 
       _ ->
@@ -1965,17 +1965,19 @@ defmodule AgentBoardWeb.BoardLive do
         case Actions.run(:create_tasks, %{repository: repo, requests: [request]}, ui(),
                confirm: phrase
              ) do
-          {:ok, [{_request, {:ok, created, _outcome}}]} when is_map(created) ->
+          {:ok, [{_request, {:ok, created, outcome}}]} when is_map(created) ->
             {:noreply,
              socket
              |> assign(blocker_pending: nil, blocker_open: false)
              |> put_flash(
                :info,
-               gettext("Unblocking task #%{number} created and put first.",
-                 number: created.number
-               )
+               blocker_receipt_message(outcome, created.number)
              )
              |> load_inspector()}
+
+          {:ok, [{_request, {:error, {:receipt_pending, number}}}]} ->
+            pending = %{request: Map.put(request, :receipt_number, number), phrase: phrase}
+            {:noreply, assign(socket, blocker_pending: pending)}
 
           {:ok, [{_request, {:error, reason}}]} ->
             {:noreply,
@@ -3489,6 +3491,12 @@ defmodule AgentBoardWeb.BoardLive do
 
   defp progress(%{total: total}) when total in [0, nil], do: 0
   defp progress(%{merged: merged, total: total}), do: round(merged * 100 / total)
+
+  defp blocker_receipt_message(:existing, number),
+    do: gettext("Issue #%{number} is linked to this task.", number: number)
+
+  defp blocker_receipt_message(:created, number),
+    do: gettext("Unblocking task #%{number} created and put first.", number: number)
 
   defp refused_text,
     do:

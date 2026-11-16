@@ -10213,3 +10213,19 @@ msgstr[1] ""
 
 msgid "Details and actions"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Finish linking"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Issue #%{number} is linked to this task."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "GitHub created issue #%{number}. Its board link is still pending."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The issue number is unknown. Check GitHub before starting another request."
+msgstr ""

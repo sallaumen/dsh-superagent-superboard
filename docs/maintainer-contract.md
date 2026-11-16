@@ -1861,8 +1861,14 @@ rows (the split) and the tasks with their `request_key` (the enqueue).
   other answers `{:error, :in_progress}`. A failed issue call deletes the
   claim; the sync never sees a draft in a lane. A retry after a partial
   split creates only what is missing. A claim older than five minutes lost its
-  process and is taken over, at the risk of a second issue if GitHub had
-  already answered.
+  process and is taken over only for legacy drafts without a send marker.
+  New sends mark the draft first. After GitHub acknowledges the POST, its number
+  and URL are saved independently of the local linking transaction. A retry
+  finishes that receipt by number, even if sync already imported the issue.
+  An explicit receipt retry never creates or reopens an issue. If the board
+  lost the acknowledgment, an expired send marker alone cannot authorize a POST.
+  A blocking task draft includes the current issue’s unsubmitted reply as an
+  editable owner decision. Opening or editing the draft posts nothing.
 - **The receipt names what happened**: number and link for each task that
   entered, "já estava na fila" ("already in the queue") for a repeat, the
   reason for each failure, and a retry for the failures only. Closing a
