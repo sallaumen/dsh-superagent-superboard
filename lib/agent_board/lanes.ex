@@ -72,10 +72,8 @@ defmodule AgentBoard.Lanes do
   end
 
   defp collapse_agent_down(needs, board, %{agent: :down} = context) do
-    {waiting, rest} =
-      Enum.split_with(needs, &(&1.kind in [:blocked, :stalled, :unanswered, :slow]))
-
-    [agent_down_need(length(waiting) + length(Map.get(board, :retrying, [])), context) | rest]
+    {waiting_count, rest} = Attention.outage_summary(needs, length(Map.get(board, :retrying, [])))
+    [agent_down_need(waiting_count, context) | rest]
   end
 
   defp collapse_agent_down(needs, _board, _context), do: needs
