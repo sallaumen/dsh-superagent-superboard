@@ -32,7 +32,7 @@ def compiled(path):
     bundle = path / "lib/index.js"
     watcher = path / "lib/github-watch.js"
     github = watcher.read_bytes() if watcher.is_file() else b""
-    return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"duplicate-issue-notice", b"superboard-branch.py", b"Publication is in progress or blocked", b"managed_publish", b"Isolated assignment requires a GitHub repository"))
+    return (bundle.is_file() and all(tag in bundle.read_bytes() for tag in (b"dependencies-completed", b"duplicate-issue-notice", b"superboard-branch.py", b"Publication is in progress or blocked", b"managed_publish", b"Isolated assignment requires a GitHub repository"))
             and all(tag in github for tag in (b"Review midpoint: PR #", b"mergedDetailRepo", b"mergedDetailCreatedAt", b"merged_pr_approval"))
             and all((path / "scripts" / helper.name).is_file() and
                     (path / "scripts" / helper.name).read_bytes() == helper.read_bytes() for helper in HELPERS))

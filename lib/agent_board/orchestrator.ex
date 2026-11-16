@@ -138,6 +138,50 @@ defmodule AgentBoard.Orchestrator do
     _exception -> {:error, :unreachable}
   end
 
+  @doc false
+  def dependency_capable?(nil, _slug), do: false
+
+  def dependency_capable?(client, slug) do
+    case Req.get(client, url: "/state", retry: false, receive_timeout: 5_000) do
+      {:ok,
+       %{
+         status: 200,
+         body: %{
+           "completedDependencyInput" => true,
+           "paused" => false,
+           "setup" => %{"accounts" => %{"repository" => repo}}
+         }
+       }}
+      when is_binary(repo) ->
+        String.downcase(slug) == String.downcase(repo)
+
+      _ ->
+        false
+    end
+  end
+
+  def deliver_dependencies(client, ticket, payload) do
+    case Req.post(client,
+           url: "/tickets/#{URI.encode(ticket)}/dependencies-completed",
+           json: payload,
+           retry: false,
+           receive_timeout: 5_000
+         ) do
+      {:ok, %{status: 200, body: %{"outcome" => outcome}}}
+      when outcome in ["delivered", "already_delivered"] ->
+        {:ok, outcome}
+
+      {:ok, %{status: 200}} ->
+        {:error, :ineligible}
+
+      {:ok, %{status: status}} ->
+        {:error, {:http, status}}
+
+      {:error, _} ->
+        {:error, :unreachable}
+    end
+  end
+
   @doc "The runner's range for the ceiling (`dsh: src/limits.ts`)."
   @spec worker_range() :: Range.t()
   def worker_range, do: @min_workers..@max_workers

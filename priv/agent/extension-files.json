@@ -11,7 +11,8 @@
     "isolated-context.patch",
     "notification-replay-window.patch",
     "merged-approval.patch",
-    "approval-state-refresh.patch"
+    "approval-state-refresh.patch",
+    "dependency-completion.patch"
   ],
   "helpers": ["container_worker.py", "superboard-branch.py"]
 }
