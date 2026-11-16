@@ -21,4 +21,17 @@ defmodule AgentBoard.Lanes.ReportQuoteTest do
     assert ReportQuote.summary(String.duplicate("á", 161)) == String.duplicate("á", 160)
     assert ReportQuote.summary(nil) == nil
   end
+
+  test "blank excerpts yield no evidence and allow a usable fallback" do
+    assert ReportQuote.summary(" \nnot for display") == nil
+    assert ReportQuote.blockage(" ", "Missing key") == "Missing key"
+    assert ReportQuote.question(" ", "Which key?") == "Which key?"
+    assert ReportQuote.blockage(nil, "  ") == nil
+  end
+
+  test "a later question cannot turn the displayed statement into a question" do
+    assert ReportQuote.question(nil, "Deploy finished.\nWhich tag?") == nil
+    long = String.duplicate("a", 160)
+    assert ReportQuote.question(nil, long <> "?") == long
+  end
 end
