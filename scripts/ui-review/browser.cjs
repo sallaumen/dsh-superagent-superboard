@@ -75,6 +75,16 @@ async function review(browser, url, blockedId) {
       const panel = await body.boundingBox();
       assert.ok(quote.y >= panel.y && quote.y + quote.height <= panel.y + panel.height, "Decision not visible on open");
       await capture("blocked-inspector");
+      const revision = body.locator(".ab-decision-review").first();
+      await revision.getByRole("button", {name:"Rever esta decisão"}).press("Enter");
+      const reason = revision.getByRole("textbox", {name:"O que o agente deve reconsiderar?"});
+      await reason.fill("Pesar o custo do segundo controle.");
+      assert.match(await revision.getByRole("link").getAttribute("href"), /#issuecomment-1$/);
+      await revision.getByRole("button", {name:"Pedir revisão"}).scrollIntoViewIfNeeded();
+      assert.ok(await reachable(revision.getByRole("button", {name:"Pedir revisão"})));
+      await capture("decision-review");
+      await revision.getByRole("button", {name:"Cancelar"}).press("Enter");
+      await revision.getByRole("button", {name:"Rever esta decisão"}).waitFor();
       const [shortWidth, shortHeight] = width === 375 ? [443, 828] : [1280, 720];
       await page.setViewportSize({width: shortWidth, height: shortHeight});
       await readingArea(shortHeight);

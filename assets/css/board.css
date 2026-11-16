@@ -3100,3 +3100,10 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
   .ab-quality__rule { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.35fr); gap: 8px; }
   .settings-pane .ab-quality__rule .voice-select { width: 100%; min-height: 44px; }
 }
+
+.ab-decision-review { margin-top: 6px; }
+.ab-decision-review form { display: grid; gap: 6px; margin-top: 8px; }
+.ab-decision-review blockquote { margin: 0; padding-inline-start: 8px; border-inline-start: 2px solid var(--ink-faint); color: var(--ink-muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ab-decision-review textarea { width: 100%; min-width: 0; }
+.ab-decision-review small { color: var(--ink-muted); }
+.ab-decision-review form > div { display: flex; flex-wrap: wrap; gap: 6px; }

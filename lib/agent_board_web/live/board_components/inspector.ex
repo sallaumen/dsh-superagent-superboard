@@ -9,7 +9,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
   alias AgentBoard.Board.Attachments
   alias AgentBoard.Intake.IssueBody
-  alias AgentBoardWeb.BoardComponents.AgentAction
+  alias AgentBoardWeb.BoardComponents.{AgentAction, DecisionReview}
   alias AgentBoardWeb.Time
   alias Phoenix.LiveView.JS
 
@@ -737,6 +737,14 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           id={"comment-attachments-#{comment.id}"}
           repository_id={@task.repository_id}
           files={Attachments.in_body(comment.body)}
+        />
+        <.live_component
+          :if={DecisionReview.available?(@task, comment)}
+          module={DecisionReview}
+          id={"review-#{@task.id}-#{comment.id}"}
+          task={@task}
+          comment={comment}
+          text={clean_body(comment.body)}
         />
         <span
           :if={sending_comment?(comment, @ask_sending, @task.id)}
