@@ -6,6 +6,7 @@ defmodule AgentBoard.LanesTest do
 
   alias AgentBoard.{Board, Lanes, Repo}
   alias AgentBoard.Board.{Comment, PullRequest, Task}
+  alias AgentBoard.Lanes.Digest.Observations
 
   test "needs puts new items before old ones and follows the urgency order" do
     {:ok, repo} = Board.add_repository("fixture", "needs")
@@ -850,6 +851,43 @@ defmodule AgentBoard.LanesTest do
     assert hd(log.days).fail == 0
   end
 
+  test "digest observations include the visit boundary and read only this repository" do
+    {:ok, repo} = Board.add_repository("fixture", "visit-observations")
+    {:ok, other} = Board.add_repository("fixture", "other-visit")
+    visit = ~U[2026-11-06 14:00:00Z]
+    before_visit = DateTime.add(visit, -1)
+    after_visit = DateTime.add(visit, 1)
+
+    open_pull(repo, 1, "At the visit", "success", visit)
+    latest = open_pull(repo, 2, "Opened later", "success", after_visit)
+    open_pull(repo, 3, "Too early", "success", before_visit)
+    open_pull(other, 4, "Other repository", "success", DateTime.add(visit, 10))
+
+    open_pull(repo, 13, "Already closed", "success", DateTime.add(visit, 8))
+    |> Ecto.Changeset.change(state: "closed")
+    |> Repo.update!()
+
+    merged(repo, 5, "Merged now", "success", visit)
+    merged(repo, 6, "Merged earlier", "success", before_visit)
+    merged(other, 7, "Other merge", "success", visit)
+
+    task(repo, 8, "Existing task asked now", "question", before_visit)
+    |> Ecto.Changeset.change(state_changed_at: visit)
+    |> Repo.update!()
+
+    task(repo, 9, "Already queued", "queued", before_visit)
+    task(repo, 10, "New arrival", "queued", visit)
+    task(other, 11, "Other question", "question", visit)
+    task(other, 12, "Other arrival", "queued", visit)
+
+    observed = Observations.since(repo, visit)
+    assert observed.counts == %{merged: 1, reviews: 2, questions: 1, queue_new: 1}
+    assert observed.latest_review.id == latest.id
+
+    assert %{counts: %{reviews: 0}, latest_review: nil} =
+             Observations.since(repo, DateTime.add(after_visit, 1))
+  end
+
   test "the digest counts what changed since the visit, not the whole board" do
     {:ok, repo} = Board.add_repository("fixture", "digest")
     now = ~U[2026-11-06 15:00:00Z]
@@ -928,14 +966,14 @@ defmodule AgentBoard.LanesTest do
     %{task | inserted_at: at}
   end
 
-  defp open_pull(repo, number, title, checks) do
+  defp open_pull(repo, number, title, checks, opened_at \\ ~U[2026-11-06 14:00:00Z]) do
     %PullRequest{}
     |> PullRequest.changeset(%{
       repository_id: repo.id,
       number: number,
       title: title,
       state: "open",
-      opened_at: ~U[2026-11-06 14:00:00Z],
+      opened_at: opened_at,
       checks_state: checks,
       checks_failed: if(checks == "failure", do: "gates", else: nil),
       url: "https://github.com/fixture/repo/pull/#{number}"

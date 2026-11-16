@@ -833,8 +833,7 @@ defmodule AgentBoard.Lanes do
     do: %{text: gettext("%{count} in the queue", count: n), role: :agent}
 
   defp since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?) do
-    counts = since_counts(repository, last_visit)
-    review = first_review(repository, last_visit)
+    %{counts: counts, latest_review: review} = Digest.Observations.since(repository, last_visit)
     phrases = board |> Digest.since_visit(counts) |> Enum.map(&change_phrase(&1, review))
 
     segments =
@@ -862,59 +861,6 @@ defmodule AgentBoard.Lanes do
       suffix: suffix,
       now: now
     }
-  end
-
-  defp since_counts(repository, last_visit) do
-    %{
-      merged: merged_count(repository, last_visit),
-      reviews: review_count(repository, last_visit),
-      questions: question_count(repository, last_visit),
-      queue_new: queue_new_count(repository, last_visit)
-    }
-  end
-
-  defp merged_count(repository, last_visit) do
-    Repo.aggregate(
-      from(p in PullRequest,
-        where:
-          p.repository_id == ^repository.id and p.state == "merged" and
-            p.merged_at >= ^last_visit
-      ),
-      :count
-    )
-  end
-
-  defp review_count(repository, last_visit) do
-    Repo.aggregate(
-      from(p in PullRequest,
-        where:
-          p.repository_id == ^repository.id and p.state == "open" and
-            p.opened_at >= ^last_visit
-      ),
-      :count
-    )
-  end
-
-  defp question_count(repository, last_visit) do
-    Repo.aggregate(
-      from(t in Task,
-        where:
-          t.repository_id == ^repository.id and t.state == "question" and
-            t.state_changed_at >= ^last_visit
-      ),
-      :count
-    )
-  end
-
-  defp queue_new_count(repository, last_visit) do
-    Repo.aggregate(
-      from(t in Task,
-        where:
-          t.repository_id == ^repository.id and t.state == "queued" and
-            t.inserted_at >= ^last_visit
-      ),
-      :count
-    )
   end
 
   defp first_prefix(true, %DateTime{} = frozen_at, offset),
@@ -978,17 +924,6 @@ defmodule AgentBoard.Lanes do
 
   defp change_phrase({:blocked, n}, _pr) do
     %{text: gettext("%{count} are still blocked", count: n), role: :halt}
-  end
-
-  defp first_review(repository, last_visit) do
-    Repo.one(
-      from p in PullRequest,
-        where:
-          p.repository_id == ^repository.id and p.state == "open" and
-            p.opened_at >= ^last_visit,
-        order_by: [desc: p.opened_at],
-        limit: 1
-    )
   end
 
   defp new?(nil, _last_visit), do: false
