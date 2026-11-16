@@ -338,10 +338,7 @@ defmodule AgentBoard.Lanes do
 
     calendar = MergeHistory.Calendar.build(pulls, window, local_ci)
 
-    costs =
-      calendar.days
-      |> Enum.flat_map(fn %{page: page} -> page.items ++ page.extra end)
-      |> TaskCosts.for_pulls()
+    costs = calendar |> MergeHistory.Calendar.visible_pulls() |> TaskCosts.for_pulls()
 
     days = Enum.map(calendar.days, & &1.summary)
 

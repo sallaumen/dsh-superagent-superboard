@@ -33,4 +33,9 @@ defmodule AgentBoard.Lanes.MergeHistory.Calendar do
     issues = buckets |> Enum.flat_map(fn {_date, rows} -> rows end) |> MergeHistory.delivered()
     %{days: days, issues: issues, offset: window.offset}
   end
+
+  @doc "The merges shown in either page size, in calendar and page order."
+  @spec visible_pulls(t()) :: [map()]
+  def visible_pulls(calendar),
+    do: Enum.flat_map(calendar.days, fn %{page: page} -> page.items ++ page.extra end)
 end

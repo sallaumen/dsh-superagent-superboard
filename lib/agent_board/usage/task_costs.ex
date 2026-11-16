@@ -66,8 +66,13 @@ defmodule AgentBoard.Usage.TaskCosts do
   def for_pulls([]), do: %{}
 
   def for_pulls([%{repository_id: repository_id} | _] = pulls) do
-    numbers = Enum.flat_map(pulls, &(&1.closes_issues || []))
+    case Enum.flat_map(pulls, &(&1.closes_issues || [])) do
+      [] -> %{}
+      numbers -> costs_for_issues(pulls, repository_id, numbers)
+    end
+  end
 
+  defp costs_for_issues(pulls, repository_id, numbers) do
     task_ids =
       Map.new(
         Repo.all(
