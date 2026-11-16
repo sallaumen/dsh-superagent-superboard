@@ -656,6 +656,23 @@ defmodule AgentBoard.Board do
     repository_id |> newest_agent_comment(number) |> Workpad.question_text()
   end
 
+  @doc "Questions from the newest agent comment per requested issue in one repository. No query for an empty list."
+  @spec agent_questions(integer(), [integer()]) :: %{optional(integer()) => String.t()}
+  def agent_questions(_repository_id, []), do: %{}
+
+  def agent_questions(repository_id, numbers) do
+    rows =
+      repository_id
+      |> latest_agent_bodies()
+      |> where([_c, t], t.number in ^numbers)
+      |> Repo.all()
+
+    for {number, body} <- rows,
+        question = Workpad.question_text(body),
+        into: %{},
+        do: {number, question}
+  end
+
   @doc "The Bloqueio of the newest agent comment's workpad, or nil."
   @spec agent_blockage(integer(), integer()) :: String.t() | nil
   def agent_blockage(repository_id, number) do
@@ -700,15 +717,9 @@ defmodule AgentBoard.Board do
   """
   @spec agent_workpads(integer()) :: %{optional(integer()) => Workpad.t()}
   def agent_workpads(repository_id) do
-    Repo.all(
-      from c in Comment,
-        join: t in Task,
-        on: t.id == c.task_id,
-        where: t.repository_id == ^repository_id and c.kind == "agent",
-        distinct: t.number,
-        order_by: [asc: t.number, desc: c.inserted_at, desc: c.id],
-        select: {t.number, c.body}
-    )
+    repository_id
+    |> latest_agent_bodies()
+    |> Repo.all()
     |> Enum.flat_map(fn {number, body} ->
       case Workpad.parse(body) do
         nil -> []
@@ -716,6 +727,16 @@ defmodule AgentBoard.Board do
       end
     end)
     |> Map.new()
+  end
+
+  defp latest_agent_bodies(repository_id) do
+    from c in Comment,
+      join: t in Task,
+      on: t.id == c.task_id,
+      where: t.repository_id == ^repository_id and c.kind == "agent",
+      distinct: t.number,
+      order_by: [asc: t.number, desc: c.inserted_at, desc: c.id],
+      select: {t.number, c.body}
   end
 
   @doc """

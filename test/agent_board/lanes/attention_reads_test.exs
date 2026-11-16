@@ -45,6 +45,38 @@ defmodule AgentBoard.Lanes.AttentionReadsTest do
     assert observed == baseline
   end
 
+  test "visible questions share one repository-scoped read and use only the newest agent comment" do
+    {:ok, repo} = Board.add_repository("fixture", "visible-questions")
+    {:ok, other} = Board.add_repository("fixture", "other-questions")
+    one = task(repo, 71, "question")
+    two = task(repo, 72, "question")
+    elsewhere = task(other, 71, "question")
+    comment(one, "agent", "Old question?")
+    comment(one, "agent", "## Relatório do agente\n### Pergunta\nChoose a release")
+    comment(one, "user", "User question?")
+    comment(two, "agent", "Previously asked?")
+    comment(two, "agent", "All settled.")
+    comment(elsewhere, "agent", "Other repository?")
+    comment(task(repo, 73, "question"), "agent", "Not requested?")
+    # The higher comment id breaks an exact timestamp tie.
+    Repo.update_all(from(c in Comment, where: c.task_id in ^[one.id, two.id]),
+      set: [inserted_at: @now]
+    )
+
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+    {cards, queries} = reads(fn -> Lanes.needs(repo, %{question: [one, two]}, now: @now) end)
+
+    assert [
+             %{number: 71, why: "**The agent asked:** Choose a release"},
+             %{number: 72, why: neutral}
+           ] = cards
+
+    assert neutral =~ "waiting for your answer"
+    assert length(queries) == 1
+    assert Board.agent_questions(repo.id, [71, 72]) == %{71 => "Choose a release"}
+    assert {%{}, []} = reads(fn -> Board.agent_questions(repo.id, []) end)
+  end
+
   defp task(repo, number, state) do
     Repo.insert!(%Task{
       repository_id: repo.id,
