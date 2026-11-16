@@ -17,6 +17,7 @@ defmodule AgentBoard.TicketOverlay do
 
   alias AgentBoard.Board.{Repository, Task}
   alias AgentBoard.Repo
+  alias AgentBoard.Runners.Execution
 
   @doc """
   Applies one ticket state to the tasks of `repository` with `number`.
@@ -41,8 +42,8 @@ defmodule AgentBoard.TicketOverlay do
 
     # A confirmed GitHub reopen starts a new round of work. Apply this guard
     # in the write itself: the poller can hold a ticket read before the sync.
-    at = if overlay == "done", do: opts[:ended_at], else: started_at
-    base = after_reopen(base, at)
+    at = if overlay in ["done", "stopped"], do: opts[:ended_at], else: started_at
+    base = base |> after_reopen(at) |> respect_local_execution(overlay, opts[:ended_at])
 
     now = DateTime.utc_now()
 
@@ -59,6 +60,23 @@ defmodule AgentBoard.TicketOverlay do
 
     :ok
   end
+
+  # An ended Harness ticket says nothing about a different executor on the
+  # same issue, or about a pull request listed among the ticket's channels.
+  defp respect_local_execution(base, "stopped", %DateTime{} = ended_at) do
+    from t in base,
+      as: :task,
+      where: t.kind == "issue",
+      where:
+        not exists(
+          from e in Execution,
+            where: e.task_id == parent_as(:task).id,
+            where: e.status in ["starting", "running"] or e.finished_at >= ^ended_at,
+            select: 1
+        )
+  end
+
+  defp respect_local_execution(base, _overlay, _ended_at), do: base
 
   defp after_reopen(base, nil), do: from(t in base, where: is_nil(t.github_reopened_at))
 

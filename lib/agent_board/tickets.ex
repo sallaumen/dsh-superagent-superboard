@@ -16,8 +16,9 @@ defmodule AgentBoard.Tickets do
 
   A ticket whose PR merged is done, whatever its last report said: the
   runner keeps the `ready` or `waiting` report it ended on, and the merge
-  is the newer fact. No other ending imposes a state: an ended ticket's last
-  report still decides, and only when no open ticket speaks for the issue
+  is the newer fact. A ticket that ended dropped has stopped working; this
+  is a board state, not an owner's stop or a closed issue. For other endings
+  the last report still decides, and only when no open ticket speaks for the issue
   (`by_number/1`).
 
   A `waiting` report means the executor needs input, not that it asked a
@@ -39,6 +40,7 @@ defmodule AgentBoard.Tickets do
     cond do
       stopped?(ticket) -> nil
       ticket["ended_outcome"] == "merged" -> "done"
+      ticket["ended_outcome"] == "dropped" and not is_nil(ticket["ended_at"]) -> "stopped"
       answered_at(ticket) -> "running"
       true -> reported_state(ticket, opts)
     end

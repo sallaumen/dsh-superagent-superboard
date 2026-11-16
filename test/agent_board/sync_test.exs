@@ -37,6 +37,12 @@ defmodule AgentBoard.SyncTest do
     assert Tickets.state(ticket) == "done"
   end
 
+  test "a dropped assignment report alone does not end a live or merged ticket" do
+    assert Tickets.state(ticket("running", "dropped", nil)) == "running"
+    assert Tickets.state(ticket("ended", "dropped", "merged")) == "done"
+    assert Tickets.state(ticket("ended", "dropped", "dropped")) == nil
+  end
+
   test "an ended ticket without an outcome has no overlay" do
     assert Tickets.state(ticket("ended", nil, nil)) == nil
   end

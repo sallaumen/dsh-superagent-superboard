@@ -7,6 +7,7 @@ defmodule AgentBoard.TicketOverlayTest do
 
   alias AgentBoard.Board.{Repository, Task}
   alias AgentBoard.{Repo, TicketOverlay}
+  alias AgentBoard.Runners.Execution
 
   @now ~U[2026-11-08 12:00:00Z]
 
@@ -71,6 +72,44 @@ defmodule AgentBoard.TicketOverlayTest do
 
     assert Repo.get!(Task, stopped.id).state == "queued"
     assert Repo.get!(Task, archived.id).state == "queued"
+  end
+
+  test "a dropped Harness ticket cannot stop a local executor or overwrite its later result",
+       %{repo: repo} do
+    task = task!(repo, %{state: "running"})
+
+    execution =
+      %Execution{}
+      |> Execution.changeset(%{
+        task_id: task.id,
+        repository_id: repo.id,
+        executor: "codex",
+        status: "running",
+        run_dir: "/tmp/local-run"
+      })
+      |> Repo.insert!()
+
+    assert :ok = TicketOverlay.apply(repo, 42, "stopped", nil, ended_at: @now)
+    assert Repo.get!(Task, task.id).state == "running"
+
+    execution
+    |> Ecto.Changeset.change(status: "done", finished_at: ~U[2026-11-08 12:01:00.000000Z])
+    |> Repo.update!()
+
+    task |> Task.changeset(%{state: "ready"}) |> Repo.update!()
+    assert :ok = TicketOverlay.apply(repo, 42, "stopped", nil, ended_at: @now)
+    assert Repo.get!(Task, task.id).state == "ready"
+  end
+
+  test "only a drop after the recorded reopen ends this round of work", %{repo: repo} do
+    task = task!(repo) |> Ecto.Changeset.change(github_reopened_at: @now) |> Repo.update!()
+    start = DateTime.add(@now, -60)
+
+    TicketOverlay.apply(repo, 42, "stopped", start, ended_at: @now)
+    assert Repo.get!(Task, task.id).state == "queued"
+
+    TicketOverlay.apply(repo, 42, "stopped", start, ended_at: DateTime.add(@now, 60))
+    assert Repo.get!(Task, task.id).state == "stopped"
   end
 
   test "the poll path leaves finished work alone", %{repo: repo} do
