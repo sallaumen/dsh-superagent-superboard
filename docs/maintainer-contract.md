@@ -183,7 +183,12 @@ in a prompt, and it is the prerequisite of any dispatch that spends money.
   "desfaz" for its undo), checked by `Actions.direct_order?/2` and never
   taken from the model's flag alone. In the task conversation, the owner
   confirms `ask_task` by writing the message in the open task and pressing
-  **Enviar** beside the visible GitHub destination note. The UI builds the
+  **Enviar** beside the visible GitHub destination note. **Review this decision**
+  applies the same write contract to a published agent comment: preserve its
+  GitHub permalink and the excerpt shown when the review was opened, ask for
+  the reason, and post only on explicit submit. Keep the ordinary reply draft
+  separate. The review asks for an assessment; it does not authorize a code
+  change or a replacement PR. The UI builds the
   phrase from that exact task and message for the gate in the same submit;
   there is no second confirmation card.
 - **The one exception is a standing authorization written here**: the

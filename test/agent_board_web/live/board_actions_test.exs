@@ -99,6 +99,70 @@ defmodule AgentBoardWeb.BoardActionsTest do
     assert %Decision{action: "ask_task", decision: "confirmed", evidence: "phrase"} = last()
   end
 
+  test "reviewing a historical agent decision preserves its snapshot and the ordinary draft", %{
+    conn: conn,
+    task: task
+  } do
+    task = task |> Ecto.Changeset.change(state: "done") |> Repo.update!()
+
+    source =
+      Repo.insert!(%Comment{
+        task_id: task.id,
+        github_id: 801,
+        author: "agent",
+        kind: "agent",
+        body: "Use control A. <!-- routing-marker -->"
+      })
+
+    ordinary =
+      Repo.insert!(%Comment{
+        task_id: task.id,
+        github_id: 802,
+        author: "owner",
+        kind: "user",
+        body: "Thanks"
+      })
+
+    me = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      {:ok, raw, conn} = Plug.Conn.read_body(conn)
+      send(me, {:review_post, conn.request_path, Jason.decode!(raw)["body"]})
+      Req.Test.json(conn, %{"id" => 803, "user" => %{"login" => "owner"}})
+    end)
+
+    {:ok, view, _} =
+      live(conn, ~p"/?repo=fixture/gate&panel=conversation&tab=conversa&task=#{task.id}")
+
+    id = "#review-#{task.id}-#{source.id}"
+    refute has_element?(view, "#review-#{task.id}-#{ordinary.id}")
+    form(view, "#ask-agent", body: "Separate draft") |> render_change()
+    view |> element("#{id} button", "Rever esta decisão") |> render_click()
+
+    assert has_element?(
+             view,
+             "#{id} a[href='https://github.com/fixture/gate/issues/7#issuecomment-801']"
+           )
+
+    assert has_element?(view, "#{id} blockquote", "Use control A.")
+    view |> element("#{id} form") |> render_submit(%{"reason" => "  "})
+    refute_received {:review_post, _, _}
+    assert has_element?(view, "#{id} [role=alert]")
+    reason = "O controle B cobre o risco de dano."
+    view |> form("#{id} form", reason: reason) |> render_submit()
+    render_async(view, 2_000)
+    assert_receive {:review_post, "/repos/fixture/gate/issues/7/comments", body}
+    assert body =~ "#issuecomment-801"
+    assert body =~ "> Use control A."
+    assert body =~ reason
+    assert body =~ "não altere o código"
+    refute body =~ "routing-marker"
+    assert has_element?(view, "#{id} [role=status]", "Revisão solicitada")
+    assert has_element?(view, "#ask-body", "Separate draft")
+    assert %Decision{action: "ask_task", decision: "confirmed", via: "ui"} = last()
+    refute_received {:review_post, _, _}
+  end
+
   test "the ask shows the model's answer", %{conn: conn} = c do
     Req.Test.stub(@stub, &Req.Test.json(&1, %{"id" => 6, "user" => %{"login" => "me"}}))
 

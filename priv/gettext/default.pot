@@ -10229,3 +10229,58 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "The issue number is unknown. Check GitHub before starting another request."
 msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:102
+#, elixir-autogen, elixir-format
+msgid "Could not confirm publication. Check the issue before sending again."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:64
+#, elixir-autogen, elixir-format
+msgid "Decision review"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:87
+#, elixir-autogen, elixir-format
+msgid "Enter a reason (up to 2,000 characters)."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:123
+#, elixir-autogen, elixir-format
+msgid "Original comment"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:136
+#, elixir-autogen, elixir-format
+msgid "Posts a review request on issue #%{number}. Code changes require a separate request."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:67
+#, elixir-autogen, elixir-format
+msgid "Reason for review:"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:69
+#, elixir-autogen, elixir-format
+msgid "Reassess the original decision against the evidence then and now. Reply here with what you would keep or change and why. This requests a review only; do not change code or open a PR."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:146
+#, elixir-autogen, elixir-format
+msgid "Request review"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:156
+#, elixir-autogen, elixir-format
+msgid "Review requested on issue #%{number}."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:115
+#, elixir-autogen, elixir-format
+msgid "Review this decision"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/decision_review.ex:125
+#, elixir-autogen, elixir-format
+msgid "What should the agent reconsider?"
+msgstr ""
