@@ -19,7 +19,6 @@ defmodule AgentBoard.Lanes do
 
   alias AgentBoard.Lanes.{
     Attention,
-    CallStatus,
     CI,
     Digest,
     MergeHistory,
@@ -56,24 +55,11 @@ defmodule AgentBoard.Lanes do
   def needs(repository, board, opts \\ []) do
     context = needs_context(repository, board, opts)
 
-    candidates = candidates(board, context)
-    {waiting, visible} = visible_candidates(candidates, board, context.agent)
+    %{waiting: waiting, visible: visible} = Attention.Selection.plan(board, context)
     cards = Enum.map(visible, &task_card(&1, context))
 
     cards |> add_outage(waiting, repository) |> Attention.sort()
   end
-
-  defp candidates(board, context) do
-    lane(board, :blocked, :blocked) ++
-      running_lane(board, context) ++
-      unanswered_lane(board, context) ++
-      lane(board, :ready, :review) ++ lane(board, :question, :question)
-  end
-
-  defp visible_candidates(candidates, board, :down),
-    do: Attention.outage_summary(candidates, length(Map.get(board, :retrying, [])))
-
-  defp visible_candidates(candidates, _board, _agent), do: {nil, candidates}
 
   defp add_outage(cards, nil, _repository), do: cards
 
@@ -127,27 +113,12 @@ defmodule AgentBoard.Lanes do
     })
   end
 
-  defp lane(board, key, kind),
-    do: for(task <- Map.get(board, key, []), do: %{task: task, kind: kind})
-
-  defp running_lane(board, %{silences: silences, stall_after: stall_after, now: now}) do
-    for task <- Map.get(board, :running, []),
-        kind = Attention.running_kind(task, silences[task.number], stall_after, now),
-        do: %{task: task, kind: kind}
-  end
-
   defdelegate slow_after(size), to: RunTiming
   defdelegate working_since(task), to: RunTiming
   defdelegate slow_at(task), to: RunTiming
   defdelegate slow?(task, now), to: RunTiming
 
   defdelegate next_attention_in(running, silences, stall_after, now), to: RunTiming
-
-  defp unanswered_lane(board, context) do
-    for task <- Map.get(board, :queued, []),
-        problem = CallStatus.problem(task, context),
-        do: %{kind: :unanswered, task: task, problem: problem}
-  end
 
   defp task_card(%{kind: :unanswered, task: task, problem: problem}, context) do
     content = Attention.CallNotice.content(problem, task, context)
