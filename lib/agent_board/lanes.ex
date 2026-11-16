@@ -226,15 +226,7 @@ defmodule AgentBoard.Lanes do
 
   defp task_why(task, :question, ticket, _pull, _context) do
     question = Board.agent_question(task.repository_id, task.number)
-    summary = ticket && ticket["report_summary"]
-
-    case ReportQuote.question(question, summary) do
-      nil ->
-        gettext("**The agent is waiting for your answer.** Open the conversation and reply.")
-
-      quote ->
-        gettext("**The agent asked:** %{question}", question: quote)
-    end
+    Attention.ReportNotice.question(question, ticket && ticket["report_summary"])
   end
 
   defp task_why(task, :stalled, _ticket, _pull, context),
@@ -249,15 +241,7 @@ defmodule AgentBoard.Lanes do
   # report): its own words.
   defp blockage_why(task, ticket) do
     blockage = Board.agent_blockage(task.repository_id, task.number)
-    summary = ticket && ticket["report_summary"]
-
-    case ReportQuote.blockage(blockage, summary) do
-      nil ->
-        gettext("**Blocked**, with no reason in the agent's report. Open the details.")
-
-      quote ->
-        gettext("**Blocked:** %{reason}", reason: quote)
-    end
+    Attention.ReportNotice.blockage(blockage, ticket && ticket["report_summary"])
   end
 
   defp need_actions(task, :review, %PullRequest{url: url, number: number}, _context)
