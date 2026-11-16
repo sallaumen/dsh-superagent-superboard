@@ -949,6 +949,19 @@ defmodule AgentBoard.LanesTest do
              Observations.since(repo, DateTime.add(after_visit, 1))
   end
 
+  test "an explicit live return visit uses the visit time even with a saved sync timestamp" do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+    {:ok, repo} = Board.add_repository("fixture", "resumed-visit")
+    now = ~U[2026-11-16 12:00:00Z]
+    last_visit = DateTime.add(now, -3600)
+
+    digest =
+      Lanes.digest(repo, %{}, now: now, last_visit: last_visit, frozen: false, frozen_at: now)
+
+    assert digest.prefix == "Since today at 11:00 "
+    assert digest.suffix == "."
+  end
+
   test "the digest counts what changed since the visit, not the whole board" do
     {:ok, repo} = Board.add_repository("fixture", "digest")
     now = ~U[2026-11-06 15:00:00Z]

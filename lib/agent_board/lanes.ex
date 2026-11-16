@@ -363,21 +363,19 @@ defmodule AgentBoard.Lanes do
   current state on a first visit; the saved state when the board is frozen.
   """
   def digest(repository, board, opts \\ []) do
-    now = Keyword.get(opts, :now, DateTime.utc_now())
-    last_visit = Keyword.get(opts, :last_visit)
-    offset = Keyword.get(opts, :tz_offset, 0)
-    frozen_at = Keyword.get(opts, :frozen_at)
-    frozen? = Keyword.get(opts, :frozen, not is_nil(frozen_at))
+    visit = Digest.Visit.from_options(opts)
 
-    if is_nil(last_visit) do
-      Digest.FirstVisit.build(Digest.first_visit(board), now, offset, frozen_at, frozen?)
+    if is_nil(visit.last_visit) do
+      Digest.FirstVisit.build(Digest.first_visit(board), visit)
     else
-      since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?)
+      since_digest(repository, board, visit)
     end
   end
 
-  defp since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?) do
-    %{counts: counts, latest_review: review} = Digest.Observations.since(repository, last_visit)
+  defp since_digest(repository, board, visit) do
+    %{counts: counts, latest_review: review} =
+      Digest.Observations.since(repository, visit.last_visit)
+
     phrases = board |> Digest.since_visit(counts) |> Enum.map(&change_phrase(&1, review))
 
     segments =
@@ -385,7 +383,7 @@ defmodule AgentBoard.Lanes do
         [
           %{
             text:
-              if(frozen? and is_nil(frozen_at),
+              if(visit.sync == :unconfirmed,
                 do: gettext("we do not know what changed"),
                 else: gettext("nothing changed")
               ),
@@ -396,28 +394,28 @@ defmodule AgentBoard.Lanes do
         Digest.Sentence.join(phrases, gettext("and"))
       end
 
-    suffix =
-      if frozen? and is_nil(frozen_at), do: ".", else: since_suffix(phrases, frozen?)
-
     %{
-      prefix: since_prefix(last_visit, offset, frozen_at, frozen?, now),
+      prefix: since_prefix(visit),
       segments: segments,
-      suffix: suffix,
-      now: now
+      suffix: since_suffix(visit.sync),
+      now: visit.now
     }
   end
 
-  defp since_prefix(_last_visit, offset, %DateTime{} = frozen_at, true, _now),
-    do: gettext("Until %{time},", time: Time.local_time(frozen_at, offset)) <> " "
+  defp since_prefix(%{sync: {:through, at}, offset: offset}),
+    do: gettext("Until %{time},", time: Time.local_time(at, offset)) <> " "
 
-  defp since_prefix(_last_visit, _offset, nil, true, _now),
+  defp since_prefix(%{sync: :unconfirmed}),
     do: gettext("Without a completed sync,") <> " "
 
-  defp since_prefix(last_visit, offset, nil, false, now),
-    do: gettext("Since %{since}", since: Time.since_label(last_visit, offset, now)) <> " "
+  defp since_prefix(%{sync: :live} = visit),
+    do:
+      gettext("Since %{since}",
+        since: Time.since_label(visit.last_visit, visit.offset, visit.now)
+      ) <> " "
 
-  defp since_suffix(_phrases, true), do: ". " <> gettext("After that, we do not know.")
-  defp since_suffix(_phrases, false), do: "."
+  defp since_suffix({:through, _at}), do: ". " <> gettext("After that, we do not know.")
+  defp since_suffix(_sync), do: "."
 
   defp change_phrase({:questions, n}, _pr) do
     %{text: ngettext("it asked %{count} question", "it asked %{count} questions", n), role: :you}
