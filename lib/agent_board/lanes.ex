@@ -202,7 +202,7 @@ defmodule AgentBoard.Lanes do
     at = Attention.started_at(task, kind, context)
     ticket = Map.get(context.tickets, task.number)
     pull = Map.get(context.pulls, task.id)
-    ci = pull && need_ci(pull, Map.get(context.local_ci, pull.number))
+    ci = pull && CI.Badge.describe(pull, Map.get(context.local_ci, pull.number))
 
     %{
       key: "task-#{task.id}",
@@ -375,25 +375,6 @@ defmodule AgentBoard.Lanes do
 
   defp need_actions(task, kind, _pull, _context),
     do: [%{label: action_label(kind), task_id: task.id}]
-
-  # The same reading as Mesclados: the local gate is the evidence, the red
-  # remote check is quiet, and no local report is a `?`, not a pass.
-  defp need_ci(pull, local) do
-    {state, note, title} = ci_status(pull, local)
-    %{state: state, note: note, title: title, local: CI.local_result(local) == :pass}
-  end
-
-  defp checks_label(%PullRequest{checks_failed: failed}) when is_binary(failed) do
-    failed
-    |> String.split(",", trim: true)
-    |> Enum.map(&String.trim/1)
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.uniq()
-    |> Enum.join(" #{gettext("and")} ")
-    |> String.slice(0, 80)
-  end
-
-  defp checks_label(_pull), do: ""
 
   defp action_label(:review), do: gettext("Review")
   defp action_label(:question), do: gettext("Respond")
@@ -687,11 +668,13 @@ defmodule AgentBoard.Lanes do
   How a pull's CI reads, the local gate first: `{state, note, title}`. One
   wording for every list of merged pulls (the merge log and History).
   """
-  def ci(pull, local_ci), do: ci_status(pull, Map.get(local_ci, pull.number))
+  def ci(pull, local_ci) do
+    badge = CI.Badge.describe(pull, Map.get(local_ci, pull.number))
+    {badge.state, badge.note, badge.title}
+  end
 
   defp merged_pr(pull, offset, local_ci, costs) do
-    local = Map.get(local_ci, pull.number)
-    {ci, ci_note, ci_title} = ci_status(pull, local)
+    badge = CI.Badge.describe(pull, Map.get(local_ci, pull.number))
 
     %{
       id: pull.id,
@@ -699,82 +682,14 @@ defmodule AgentBoard.Lanes do
       title: pull.title,
       url: pull.url,
       closes: pull.closes_issues || [],
-      ci: ci,
-      ciNote: ci_note,
-      ciTitle: ci_title,
-      ciLocal: CI.local_result(local) == :pass,
+      ci: badge.state,
+      ciNote: badge.note,
+      ciTitle: badge.title,
+      ciLocal: badge.local,
       review: review_label(pull.review_state),
       at: Time.local_time(pull.merged_at, offset),
       cost: Map.get(costs, pull.number)
     }
-  end
-
-  defp ci_status(pull, local) do
-    {state, reason} = CI.classify(pull, local)
-    {note, title} = ci_words(reason, pull, local)
-    {Atom.to_string(state), note, title}
-  end
-
-  defp ci_words(:local_pass, pull, local),
-    do: {gettext("Local CI passed"), local_title(local, pull)}
-
-  defp ci_words(:local_fail, _pull, local),
-    do: {gettext("Local CI failed"), gettext("Local CI failed: %{detail}", detail: local.detail)}
-
-  defp ci_words(:stale, _pull, local), do: {gettext("Local CI unknown"), local.detail}
-
-  defp ci_words(:remote_failure, pull, _local),
-    do: {gettext("Local CI unknown"), remote_failure_title(pull)}
-
-  defp ci_words(:remote_pass, _pull, _local),
-    do: {gettext("CI passed"), gettext("GitHub Actions passed.")}
-
-  defp ci_words(:pending, _pull, _local),
-    do: {gettext("CI running"), gettext("GitHub Actions is still running.")}
-
-  defp ci_words(:no_checks, _pull, _local),
-    do: {gettext("no CI"), gettext("No remote check configured.")}
-
-  defp local_title(local, pull) do
-    prefix =
-      if local.remote_blocked do
-        gettext("%{remote} (billing/no credit on GitHub).", remote: remote_label(pull))
-      else
-        "#{remote_label(pull)}."
-      end
-
-    gettext("%{prefix} Local CI passed%{scope}: %{detail}",
-      prefix: prefix,
-      scope: local_scope(local),
-      detail: local.detail
-    )
-  end
-
-  defp remote_label(%{checks_state: "failure"}), do: gettext("GitHub Actions failed")
-  defp remote_label(%{checks_state: "success"}), do: gettext("GitHub Actions passed")
-  defp remote_label(%{checks_state: "pending"}), do: gettext("GitHub Actions is still running")
-  defp remote_label(_pull), do: gettext("GitHub Actions has no checks")
-
-  defp local_scope(%{scope: :ticket, evidence_pr: number}),
-    do:
-      " " <>
-        gettext("on the ticket (report cites #%{number}; this PR is from the same work)",
-          number: number
-        )
-
-  defp local_scope(_local), do: ""
-
-  defp remote_failure_title(pull) do
-    case checks_label(pull) do
-      "" ->
-        gettext("GitHub Actions failed; no evidence of local CI.")
-
-      checks ->
-        gettext(
-          "GitHub Actions failed on %{checks}; no evidence of local CI.",
-          checks: checks
-        )
-    end
   end
 
   defp review_label("approved"), do: gettext("approved")
