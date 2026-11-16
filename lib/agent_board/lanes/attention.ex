@@ -1,6 +1,7 @@
 defmodule AgentBoard.Lanes.Attention do
   @moduledoc "Rules for the board's attention list."
 
+  alias AgentBoard.AgentSignal
   alias AgentBoard.Lanes.{CallStatus, RunTiming}
 
   @doc "Sort by priority, then new before seen, then oldest first. Exact ties retain input order."
@@ -18,6 +19,17 @@ defmodule AgentBoard.Lanes.Attention do
       Enum.split_with(needs, &(&1.kind in [:blocked, :stalled, :unanswered, :slow]))
 
     {length(waiting) + retrying_count, rest}
+  end
+
+  @doc "A quiet run needs attention before its duration matters; otherwise only an overdue run is shown."
+  @spec running_kind(map(), AgentSignal.silence() | nil, pos_integer(), DateTime.t()) ::
+          :stalled | :slow | nil
+  def running_kind(task, signal, stall_after, now) do
+    cond do
+      AgentSignal.stalled?(signal, stall_after) -> :stalled
+      RunTiming.slow?(task, now) -> :slow
+      true -> nil
+    end
   end
 
   @doc "The instant a task began needing attention, used for its age and new-since-visit flag."
