@@ -23,7 +23,7 @@ defmodule AgentBoard.Lanes do
     Titles
   }
 
-  alias AgentBoard.Board.{PullRequest, Task, TaskDependency}
+  alias AgentBoard.Board.PullRequest
 
   alias AgentBoard.Lanes.{
     Attention,
@@ -411,46 +411,20 @@ defmodule AgentBoard.Lanes do
       stall_after: Keyword.get(opts, :stall_after, AgentSignal.stall_after())
     }
 
-    rows =
-      Repo.all(
-        from t in Task,
-          where: t.repository_id == ^repository.id and t.state == "queued",
-          order_by: [
-            desc: fragment("? IS NOT NULL", t.blocker_for_task_id),
-            asc: t.inserted_at,
-            asc: t.id
-          ],
-          select: %{
-            id: t.id,
-            number: t.number,
-            title: t.title,
-            inserted_at: t.inserted_at,
-            origin_task_id: t.origin_task_id,
-            blocker_for_task_id: t.blocker_for_task_id,
-            held: t.held,
-            released_at: t.released_at,
-            executor: t.executor
-          }
-      )
-
-    merged =
-      Repo.all(
-        from p in PullRequest,
-          where: p.repository_id == ^repository.id and p.state == "merged",
-          select: %{id: p.id, number: p.number, title: p.title}
-      )
-
-    origins = origin_numbers(rows)
-    blockers = blocker_numbers(rows)
-    waits = open_dependencies(rows)
+    observed = Queue.Observations.load(repository)
 
     items =
-      Enum.map(rows, fn row ->
+      Enum.map(observed.rows, fn row ->
         relationship =
-          Queue.relationship(blockers[row.blocker_for_task_id], origins[row.origin_task_id])
+          Queue.relationship(
+            observed.blockers[row.blocker_for_task_id],
+            observed.origins[row.origin_task_id]
+          )
 
-        detail = Queue.Detail.describe(row, relationship, Map.get(waits, row.id, []), calls)
-        row |> queue_item(merged, relationship, now, last_visit) |> Map.merge(detail)
+        detail =
+          Queue.Detail.describe(row, relationship, Map.get(observed.waits, row.id, []), calls)
+
+        row |> queue_item(observed.merged, relationship, now, last_visit) |> Map.merge(detail)
       end)
 
     page = Queue.page(items, filter, limit)
@@ -472,46 +446,6 @@ defmodule AgentBoard.Lanes do
         duplicate &&
           gettext("Looks like a repeat of #%{number}, already merged", number: duplicate.number)
     }
-  end
-
-  defp open_dependencies(rows) do
-    case for(%{held: true, id: id} <- rows, do: id) do
-      [] ->
-        %{}
-
-      ids ->
-        from([d, blocker: b] in TaskDependency.with_open_blocker(),
-          where: d.task_id in ^ids,
-          order_by: b.number,
-          select: {d.task_id, b.number}
-        )
-        |> Repo.all()
-        |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    end
-  end
-
-  defp blocker_numbers(rows) do
-    ids =
-      rows
-      |> Enum.map(& &1.blocker_for_task_id)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
-
-    if ids == [] do
-      %{}
-    else
-      Repo.all(from t in Task, where: t.id in ^ids, select: {t.id, t.number}) |> Map.new()
-    end
-  end
-
-  defp origin_numbers(rows) do
-    ids = rows |> Enum.map(& &1.origin_task_id) |> Enum.reject(&is_nil/1) |> Enum.uniq()
-
-    if ids == [] do
-      %{}
-    else
-      Repo.all(from t in Task, where: t.id in ^ids, select: {t.id, t.number}) |> Map.new()
-    end
   end
 
   defp filters(%{all: all}) when all <= @queue_limit, do: []
