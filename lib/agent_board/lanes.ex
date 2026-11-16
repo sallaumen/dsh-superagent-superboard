@@ -270,35 +270,12 @@ defmodule AgentBoard.Lanes do
     end
   end
 
-  # The item says what the board saw last and when; it never says the agent
-  # died. A long model turn with no file change is a silence too.
-  defp task_why(task, :stalled, _ticket, _pull, context) do
-    silence = Map.fetch!(context.silences, task.number)
-    since = Time.local_time(silence.at, context.tz_offset)
+  defp task_why(task, :stalled, _ticket, _pull, context),
+    do: Attention.RunNotice.stalled(Map.fetch!(context.silences, task.number), context.tz_offset)
 
-    gettext("**Last signal %{ago}.**", ago: Time.ago(silence.seconds)) <>
-      " " <> silence_source(silence.source, since)
-  end
-
-  # A heads-up, not a verdict: how long, the limit that made it one, and the
-  # last signal when the board has one. It never says the agent is stuck.
   defp task_why(task, :slow, _ticket, _pull, context) do
-    since = working_since(task)
-    limit = div(slow_after(task.size), 60)
-
-    [
-      gettext("**Working since %{time} (%{ago}).**",
-        time: Time.local_time(since, context.tz_offset),
-        ago: Time.ago(Time.age_seconds(since, context.now))
-      ),
-      slow_limit(task.size, limit),
-      case context.silences[task.number] do
-        %{seconds: seconds} -> gettext("Last signal %{ago}.", ago: Time.ago(seconds))
-        nil -> nil
-      end
-    ]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.join(" ")
+    silence = context.silences[task.number]
+    Attention.RunNotice.slow(task, silence, context.now, context.tz_offset)
   end
 
   # A block the agent reported itself (a workpad Bloqueio, a `blocked`
@@ -315,26 +292,6 @@ defmodule AgentBoard.Lanes do
         gettext("**Blocked:** %{reason}", reason: quote)
     end
   end
-
-  defp silence_source(:report, since),
-    do:
-      gettext("The agent's last report was at %{time}; no signal in the worktree since then.",
-        time: since
-      )
-
-  defp silence_source(:answer, since),
-    do: gettext("The agent read your answer at %{time}; no signal since then.", time: since)
-
-  defp silence_source(:worktree, since),
-    do:
-      gettext("The last change in the worktree was at %{time}; no report after it.", time: since)
-
-  defp silence_source(:start, since),
-    do:
-      gettext(
-        "It started at %{time} and has given no signal since: no report and no change in the worktree.",
-        time: since
-      )
 
   defp need_actions(task, :review, %PullRequest{url: url, number: number}, _context)
        when is_binary(url) do
@@ -379,18 +336,6 @@ defmodule AgentBoard.Lanes do
   defp action_label(:stalled), do: gettext("View details")
   defp action_label(:unanswered), do: gettext("View details")
   defp action_label(:slow), do: gettext("View details")
-
-  defp slow_limit("S", limit),
-    do: gettext("A small task is flagged after %{count} min.", count: limit)
-
-  defp slow_limit("M", limit),
-    do: gettext("A medium task is flagged after %{count} min.", count: limit)
-
-  defp slow_limit("L", limit),
-    do: gettext("A large task is flagged after %{count} min.", count: limit)
-
-  defp slow_limit(_size, limit),
-    do: gettext("A task without a size is flagged after %{count} min.", count: limit)
 
   @doc """
   The queue, numbered in arrival order. A title that repeats a merged PR gets
