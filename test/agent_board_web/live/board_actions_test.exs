@@ -115,6 +115,7 @@ defmodule AgentBoardWeb.BoardActionsTest do
       })
     end
 
+    child.(11, "done", nil)
     old = child.(8, "closed", "not_planned")
     next = child.(9, "queued", "open")
     waive = child.(10, "closed", "not_planned")
@@ -129,6 +130,7 @@ defmodule AgentBoardWeb.BoardActionsTest do
     {:ok, view, _} =
       live(conn, ~p"/?repo=fixture/gate&panel=conversation&tab=conversa&task=#{parent.id}")
 
+    assert render(view) =~ "aguardando o GitHub confirmar o motivo do encerramento"
     id = "#requirement-#{parent.id}-#{old.id}"
     view |> element("#{id} [phx-value-mode=replace]") |> render_click()
 

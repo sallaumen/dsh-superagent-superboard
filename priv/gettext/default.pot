@@ -10384,3 +10384,8 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "GitHub refused the comment. The requirement remains blocking. You can retry."
 msgstr ""
+
+#: lib/agent_board_web/live/board_components/inspector.ex:431
+#, elixir-autogen, elixir-format
+msgid "waiting for GitHub to confirm the closing reason"
+msgstr ""

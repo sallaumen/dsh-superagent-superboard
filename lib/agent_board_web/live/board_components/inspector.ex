@@ -426,7 +426,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           target="_blank"
           rel="noopener"
         >
-          #{blocker.number} — {blocker.title} ({blocker.state})
+          #{blocker.number} — {blocker.title} ({if blocker.state in ["done", "closed"] and
+                                                     blocker.github_issue_status != "completed",
+                                                   do:
+                                                     gettext(
+                                                       "waiting for GitHub to confirm the closing reason"
+                                                     ),
+                                                   else: blocker.state})
         </a>
       </div>
 
