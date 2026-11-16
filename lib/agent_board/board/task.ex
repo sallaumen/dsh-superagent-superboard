@@ -35,6 +35,7 @@ defmodule AgentBoard.Board.Task do
     field :started_at, :utc_datetime
     field :github_reopened_at, :utc_datetime
     field :state_changed_at, :utc_datetime
+    field :issue_receipt, :map
     field :request_key, :string
     field :work_type, :string
     field :size, :string

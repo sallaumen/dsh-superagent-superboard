@@ -96,12 +96,18 @@ defmodule AgentBoard.Unblock do
   end
 
   @doc "The issue body: what blocked the agent, the decision it needs and the link back."
-  @spec blocker_body(Task.t(), context(), DateTime.t() | nil) :: String.t()
-  def blocker_body(task, context, _now \\ nil) do
+  @spec blocker_body(Task.t(), context(), String.t() | nil) :: String.t()
+  def blocker_body(task, context, reply \\ nil) do
     original =
       if task.url,
         do: "[##{task.number} — #{task.title}](#{task.url})",
         else: "##{task.number} — #{task.title}"
+
+    decision =
+      case String.trim(reply || "") do
+        "" -> ""
+        text -> "### Decisão do dono\n#{text}\n\n"
+      end
 
     """
     ## Desbloquear #{original}
@@ -115,7 +121,7 @@ defmodule AgentBoard.Unblock do
     ### Bloqueio registrado
     #{context.blockage || "—"}
 
-    ## O que fazer
+    #{decision}## O que fazer
     - Resolva o pré-requisito acima com a menor mudança que destrave a original.
     - Registre a decisão, o caminho e a evidência (arquivo, teste, link ou print).
     - Ao terminar, comente na ##{task.number} com o que mudou e como o agente

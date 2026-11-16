@@ -583,6 +583,85 @@ defmodule AgentBoard.CreateRequestTest do
     assert Agent.get(counter, & &1) == 1
   end
 
+  test "a local conflict after GitHub success keeps its numbered receipt through a retry", %{
+    repo: repo
+  } do
+    conflict =
+      Repo.insert!(%Task{
+        repository_id: repo.id,
+        number: 73,
+        title: "already mirrored",
+        state: "running",
+        request_key: "other"
+      })
+
+    parent = Repo.insert!(%Task{repository_id: repo.id, number: 72, title: "origin"})
+
+    request = %{
+      title: "Unblock",
+      body: "Keep the original open",
+      key: "new-request",
+      blocker_for_task_id: parent.id
+    }
+
+    Req.Test.stub(@stub, fn conn ->
+      send(self(), :created_upstream)
+      Req.Test.json(conn, %{number: 73, html_url: "https://example.org/issues/73"})
+    end)
+
+    assert {:error, {:receipt_pending, 73}} =
+             Board.Requests.create_request(repo, request, client())
+
+    assert_received :created_upstream
+    assert %{issue_receipt: %{"number" => 73}} = Repo.get_by!(Task, request_key: request.key)
+
+    conflict |> Ecto.Changeset.change(request_key: nil) |> Repo.update!()
+
+    assert {:ok, task, _} =
+             Board.Requests.create_request(repo, Map.put(request, :receipt_number, 73), client())
+
+    assert task.id == conflict.id and task.state == "running" and
+             task.blocker_for_task_id == parent.id
+
+    assert {:ok, _, :existing} = Board.Requests.create_request(repo, request, client())
+    refute_received :created_upstream
+  end
+
+  test "legacy numbered recovery matches the issue content and cannot create a missing issue", %{
+    repo: repo
+  } do
+    Req.Test.stub(@stub, fn _ -> flunk("numbered recovery must never POST") end)
+    parent = Repo.insert!(%Task{repository_id: repo.id, number: 388, title: "origin"})
+
+    task =
+      Repo.insert!(%Task{
+        repository_id: repo.id,
+        number: 469,
+        title: "Fixture",
+        body: "Decision",
+        state: "ready"
+      })
+
+    request = %{
+      key: "fixture",
+      title: "Fixture",
+      body: "Decision",
+      receipt_number: 469,
+      blocker_for_task_id: parent.id
+    }
+
+    assert {:error, {:receipt_pending, 470}} =
+             Board.Requests.create_request(repo, %{request | receipt_number: 470}, client())
+
+    assert {:error, {:receipt_pending, 469}} =
+             Board.Requests.create_request(repo, %{request | body: "wrong"}, client())
+
+    assert {:ok, result, :existing} = Board.Requests.create_request(repo, request, client())
+
+    assert result.id == task.id and result.state == "ready" and
+             result.blocker_for_task_id == parent.id
+  end
+
   test "a synced issue wins the row while the board keeps its request metadata", %{repo: repo} do
     origin =
       Repo.insert!(%Task{repository_id: repo.id, kind: "issue", number: 18, title: "Origin"})

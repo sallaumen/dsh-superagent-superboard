@@ -431,7 +431,9 @@ defmodule AgentBoardWeb.InspectorTest do
     assert has_element?(view, "#suggest-unblock", "Sugerir resposta")
     assert has_element?(view, "#open-blocker", "Criar tarefa bloqueadora")
 
+    form(view, "#ask-agent", body: "Use only the operator profile.") |> render_change()
     view |> element("#open-blocker") |> render_click()
+    assert has_element?(view, "#blocker-body", "Use only the operator profile.")
     assert has_element?(view, "#blocker-form")
     assert has_element?(view, "#blocker-title")
 
