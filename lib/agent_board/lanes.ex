@@ -810,7 +810,7 @@ defmodule AgentBoard.Lanes do
       facts ->
         %{
           prefix: first_prefix(frozen?, frozen_at, offset),
-          segments: facts |> Enum.map(&first_phrase/1) |> join_phrases(),
+          segments: facts |> Enum.map(&first_phrase/1) |> Digest.Sentence.join(gettext("and")),
           suffix: (frozen? && " " <> gettext("After that, we do not know.")) || ".",
           now: now
         }
@@ -818,24 +818,24 @@ defmodule AgentBoard.Lanes do
   end
 
   defp first_phrase({:running, n}),
-    do: [%{text: gettext("%{count} running", count: n), role: :agent}]
+    do: %{text: gettext("%{count} running", count: n), role: :agent}
 
   defp first_phrase({:retrying, n}),
-    do: [%{text: gettext("%{count} in automatic retry", count: n), role: :agent}]
+    do: %{text: gettext("%{count} in automatic retry", count: n), role: :agent}
 
   defp first_phrase({:waiting, n}),
-    do: [%{text: ngettext("%{count} waiting for you", "%{count} waiting for you", n), role: :you}]
+    do: %{text: ngettext("%{count} waiting for you", "%{count} waiting for you", n), role: :you}
 
   defp first_phrase({:blocked, n}),
-    do: [%{text: pngettext("digest", "%{count} blocked", "%{count} blocked", n), role: :halt}]
+    do: %{text: pngettext("digest", "%{count} blocked", "%{count} blocked", n), role: :halt}
 
   defp first_phrase({:queued, n}),
-    do: [%{text: gettext("%{count} in the queue", count: n), role: :agent}]
+    do: %{text: gettext("%{count} in the queue", count: n), role: :agent}
 
   defp since_digest(repository, board, last_visit, now, offset, frozen_at, frozen?) do
     counts = since_counts(repository, last_visit)
     review = first_review(repository, last_visit)
-    phrases = board |> Digest.since_visit(counts) |> Enum.map(&[change_phrase(&1, review)])
+    phrases = board |> Digest.since_visit(counts) |> Enum.map(&change_phrase(&1, review))
 
     segments =
       if phrases == [] do
@@ -850,7 +850,7 @@ defmodule AgentBoard.Lanes do
           }
         ]
       else
-        join_phrases(phrases)
+        Digest.Sentence.join(phrases, gettext("and"))
       end
 
     suffix =
@@ -989,20 +989,6 @@ defmodule AgentBoard.Lanes do
         order_by: [desc: p.opened_at],
         limit: 1
     )
-  end
-
-  defp join_phrases([]), do: []
-
-  defp join_phrases([only]), do: only
-
-  defp join_phrases(phrases) do
-    {init, [last]} = Enum.split(phrases, -1)
-
-    init
-    |> Enum.intersperse([%{text: ", ", role: :plain}])
-    |> List.flatten()
-    |> Kernel.++([%{text: " #{gettext("and")} ", role: :plain}])
-    |> Kernel.++(last)
   end
 
   defp new?(nil, _last_visit), do: false
