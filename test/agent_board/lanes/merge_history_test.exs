@@ -8,6 +8,7 @@ defmodule AgentBoard.Lanes.MergeHistoryTest do
     assert window.today == ~D[2025-12-31]
     assert Enum.to_list(window.dates) == Enum.to_list(Date.range(~D[2025-12-25], ~D[2025-12-31]))
     assert window.since == ~U[2025-12-25 03:00:00Z]
+    assert window.until == ~U[2026-01-01 03:00:00Z]
   end
 
   test "east of UTC local midnight may fall on the preceding UTC date" do
@@ -15,6 +16,7 @@ defmodule AgentBoard.Lanes.MergeHistoryTest do
     assert window.today == ~D[2026-01-01]
     assert Enum.to_list(window.dates) == Enum.to_list(Date.range(~D[2025-12-26], ~D[2026-01-01]))
     assert window.since == ~U[2025-12-25 18:30:00Z]
+    assert window.until == ~U[2026-01-01 18:30:00Z]
   end
 
   test "daily totals count issues once and distinguish local evidence from remote checks" do

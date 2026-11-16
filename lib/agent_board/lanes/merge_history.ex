@@ -8,17 +8,28 @@ defmodule AgentBoard.Lanes.MergeHistory do
   @compact 3
   @wide 8
 
-  @doc "The seven local dates shown in the log and the UTC instant that starts the first date."
-  @spec window(DateTime.t(), integer()) :: %{
+  @type window :: %{
           today: Date.t(),
           dates: Date.Range.t(),
-          since: DateTime.t()
+          since: DateTime.t(),
+          until: DateTime.t(),
+          offset: integer()
         }
+
+  @doc "The seven local dates and their UTC interval, from the first midnight up to (but not including) tomorrow."
+  @spec window(DateTime.t(), integer()) :: window()
   def window(now, offset) do
     today = Time.local_date(now, offset)
     first = Date.add(today, 1 - @days)
     since = DateTime.new!(first, ~T[00:00:00Z]) |> DateTime.add(offset * 60, :second)
-    %{today: today, dates: Date.range(first, today), since: since}
+
+    %{
+      today: today,
+      dates: Date.range(first, today),
+      since: since,
+      until: DateTime.add(since, @days, :day),
+      offset: offset
+    }
   end
 
   @doc "Count distinct issues closed by the supplied merges, across one day or the whole window."
