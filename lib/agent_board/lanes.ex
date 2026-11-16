@@ -20,8 +20,6 @@ defmodule AgentBoard.Lanes do
     Time
   }
 
-  alias AgentBoard.Board.PullRequest
-
   alias AgentBoard.Lanes.{
     Attention,
     CallStatus,
@@ -29,7 +27,6 @@ defmodule AgentBoard.Lanes do
     Digest,
     MergeHistory,
     Queue,
-    ReportQuote,
     RunTiming
   }
 
@@ -186,6 +183,9 @@ defmodule AgentBoard.Lanes do
     {why, blocked_actions(task, block)}
   end
 
+  defp need_content(task, :review, ticket, pull, _context),
+    do: Attention.Review.content(task.id, pull, ticket && ticket["report_summary"])
+
   defp need_content(task, kind, ticket, pull, context) do
     {task_why(task, kind, ticket, pull, context), need_actions(task, kind, pull, context)}
   end
@@ -209,21 +209,6 @@ defmodule AgentBoard.Lanes do
     )
   end
 
-  defp task_why(_task, :review, _ticket, %PullRequest{number: number}, _context),
-    do: gettext("**PR #%{number} ready for review**", number: number)
-
-  defp task_why(_task, :review, ticket, nil, _context) do
-    case ReportQuote.summary(ticket && ticket["report_summary"]) do
-      summary when is_binary(summary) ->
-        gettext("**Ready for review**, PR not identified. The agent said: %{summary}",
-          summary: summary
-        )
-
-      _ ->
-        gettext("**Ready for review**, PR not identified by the board. Open the conversation.")
-    end
-  end
-
   defp task_why(task, :question, ticket, _pull, _context) do
     question = Board.agent_question(task.repository_id, task.number)
     Attention.ReportNotice.question(question, ticket && ticket["report_summary"])
@@ -242,14 +227,6 @@ defmodule AgentBoard.Lanes do
   defp blockage_why(task, ticket) do
     blockage = Board.agent_blockage(task.repository_id, task.number)
     Attention.ReportNotice.blockage(blockage, ticket && ticket["report_summary"])
-  end
-
-  defp need_actions(task, :review, %PullRequest{url: url, number: number}, _context)
-       when is_binary(url) do
-    [
-      %{label: action_label(:review), task_id: task.id},
-      %{label: gettext("Open PR #%{number}", number: number), url: url}
-    ]
   end
 
   # The same red action as the tree's "Chamar o agente", with its sentence.
@@ -281,7 +258,6 @@ defmodule AgentBoard.Lanes do
     end
   end
 
-  defp action_label(:review), do: gettext("Review")
   defp action_label(:question), do: gettext("Respond")
   defp action_label(:blocked), do: gettext("View details")
   defp action_label(:stalled), do: gettext("View details")
