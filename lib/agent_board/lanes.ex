@@ -56,9 +56,17 @@ defmodule AgentBoard.Lanes do
     context = needs_context(repository, board, opts)
 
     %{waiting: waiting, visible: visible} = Attention.Selection.plan(board, context)
+    context = Map.put(context, :questions, visible_questions(visible, repository))
     cards = Enum.map(visible, &task_card(&1, context))
 
     cards |> add_outage(waiting, repository) |> Attention.sort()
+  end
+
+  defp visible_questions(visible, repository) do
+    numbers =
+      for %{kind: :question, task: %{number: number}} <- visible, is_integer(number), do: number
+
+    if numbers == [], do: %{}, else: Board.agent_questions(repository.id, numbers)
   end
 
   defp add_outage(cards, nil, _repository), do: cards
@@ -148,9 +156,11 @@ defmodule AgentBoard.Lanes do
     {task_why(task, kind, ticket, context), detail_actions(task, kind)}
   end
 
-  defp task_why(task, :question, ticket, _context) do
-    question = Board.agent_question(task.repository_id, task.number)
-    Attention.ReportNotice.question(question, ticket && ticket["report_summary"])
+  defp task_why(task, :question, ticket, context) do
+    Attention.ReportNotice.question(
+      context.questions[task.number],
+      ticket && ticket["report_summary"]
+    )
   end
 
   defp task_why(task, :stalled, _ticket, context),
