@@ -51,4 +51,39 @@ defmodule AgentBoard.Lanes.AttentionTest do
     assert Attention.outage_summary([], 0) == {0, []}
     assert Attention.outage_summary([], 2) == {2, []}
   end
+
+  describe "started_at/3" do
+    @at ~U[2026-11-10 12:00:00Z]
+
+    test "silence and long runs date from their thresholds, not the last signal or start" do
+      task = %{number: 12, size: "S", state_changed_at: @at}
+      context = %{silences: %{12 => %{at: @at}}, stall_after: 90}
+      assert Attention.started_at(task, :stalled, context) == DateTime.add(@at, 90)
+      assert Attention.started_at(task, :slow, context) == DateTime.add(@at, 20 * 60)
+    end
+
+    test "an incomplete call dates from the claim, an unanswered call from its deadline" do
+      task = %{held: true, released_at: @at}
+      assert Attention.started_at(task, :unanswered, %{stall_after: 90}) == @at
+
+      assert Attention.started_at(%{task | held: false}, :unanswered, %{stall_after: 90}) ==
+               DateTime.add(@at, 90)
+    end
+
+    test "ordinary needs prefer a state transition, then update, then insertion" do
+      task = %{
+        state_changed_at: DateTime.add(@at, 10),
+        updated_at: DateTime.add(@at, 20),
+        inserted_at: @at
+      }
+
+      assert Attention.started_at(task, :review, %{}) == task.state_changed_at
+
+      assert Attention.started_at(%{task | state_changed_at: nil}, :question, %{}) ==
+               task.updated_at
+
+      assert Attention.started_at(%{task | state_changed_at: nil, updated_at: nil}, :blocked, %{}) ==
+               @at
+    end
+  end
 end

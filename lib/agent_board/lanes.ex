@@ -189,7 +189,7 @@ defmodule AgentBoard.Lanes do
   # actions are the where, and `why` is the evidence the board has. A fact
   # the board cannot see is said to be missing, never filled in.
   defp task_need(task, kind, context) do
-    at = need_at(task, kind, context)
+    at = Attention.started_at(task, kind, context)
     ticket = Map.get(context.tickets, task.number)
     pull = Map.get(context.pulls, task.id)
     ci = pull && need_ci(pull, Map.get(context.local_ci, pull.number))
@@ -208,23 +208,6 @@ defmodule AgentBoard.Lanes do
       actions: need_actions(task, kind, pull, context)
     }
   end
-
-  # A silence is news from the moment it crossed the threshold, not from the
-  # last signal: that is when the item appeared, and what "novo" refers to.
-  defp need_at(task, :stalled, context) do
-    RunTiming.silence_at(context.silences[task.number], context.stall_after)
-  end
-
-  # The same for a long run: it is news from the minute it passed its limit.
-  defp need_at(task, :slow, _context), do: RunTiming.slow_at(task)
-
-  defp need_at(%{held: true, released_at: at}, :unanswered, _context), do: at
-
-  defp need_at(task, :unanswered, context),
-    do: CallStatus.unanswered_at(task, context.stall_after)
-
-  defp need_at(task, _kind, _context),
-    do: task.state_changed_at || task.updated_at || task.inserted_at
 
   defp task_why(%{held: true, released_at: at}, :unanswered, _ticket, _pull, context) do
     gettext(
