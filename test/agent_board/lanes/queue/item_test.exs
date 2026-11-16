@@ -23,8 +23,7 @@ defmodule AgentBoard.Lanes.Queue.ItemTest do
 
   test "a held subtitle keeps the split and possible repeat independently filterable" do
     evidence = %{
-      blockers: %{},
-      origins: %{1 => 7},
+      related_numbers: %{1 => 7},
       waits: %{42 => [9]},
       merged: [%{number: 30, title: "Queue review"}]
     }
@@ -44,7 +43,7 @@ defmodule AgentBoard.Lanes.Queue.ItemTest do
   end
 
   test "an unresolved origin, no merged match and no last visit add no claims" do
-    evidence = %{blockers: %{}, origins: %{}, waits: %{}, merged: []}
+    evidence = %{related_numbers: %{}, waits: %{}, merged: []}
     row = %{@row | held: false}
 
     assert %{is_new: false, split: false, note: nil, sub: nil, stuck: nil} =

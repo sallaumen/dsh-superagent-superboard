@@ -10,17 +10,15 @@ defmodule AgentBoard.Lanes.Queue.Observations do
   @spec load(map()) :: %{
           rows: [map()],
           merged: [map()],
-          origins: map(),
-          blockers: map(),
+          related_numbers: map(),
           waits: map()
         }
   def load(repository) do
     rows = queued_rows(repository)
     merged = if rows == [], do: [], else: merged_pulls(repository)
-    origins = related_numbers(rows, :origin_task_id)
-    blockers = related_numbers(rows, :blocker_for_task_id)
+    related_numbers = related_numbers(rows)
     waits = open_dependencies(rows)
-    %{rows: rows, merged: merged, origins: origins, blockers: blockers, waits: waits}
+    %{rows: rows, merged: merged, related_numbers: related_numbers, waits: waits}
   end
 
   defp queued_rows(repository) do
@@ -54,8 +52,12 @@ defmodule AgentBoard.Lanes.Queue.Observations do
     )
   end
 
-  defp related_numbers(rows, field) do
-    ids = rows |> Enum.map(&Map.fetch!(&1, field)) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+  defp related_numbers(rows) do
+    ids =
+      rows
+      |> Enum.flat_map(&[&1.origin_task_id, &1.blocker_for_task_id])
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
 
     if ids == [] do
       %{}
