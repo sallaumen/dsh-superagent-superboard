@@ -56,29 +56,31 @@ defmodule AgentBoard.Lanes do
   def needs(repository, board, opts \\ []) do
     context = needs_context(repository, board, opts)
 
-    [
-      lane(board, :blocked, :blocked, context),
-      running_lane(board, context),
-      unanswered_lane(board, context),
-      lane(board, :ready, :review, context),
-      lane(board, :question, :question, context)
-    ]
-    |> List.flatten()
-    |> collapse_agent_down(board, context)
-    |> Attention.sort()
+    candidates = candidates(board, context)
+    {waiting, visible} = visible_candidates(candidates, board, context.agent)
+    cards = Enum.map(visible, &task_card(&1, context))
+
+    cards |> add_outage(waiting, repository) |> Attention.sort()
   end
 
-  defp collapse_agent_down(needs, board, %{agent: :down} = context) do
-    {waiting_count, rest} = Attention.outage_summary(needs, length(Map.get(board, :retrying, [])))
-
-    # The restart button targets this repository's agent when it has one.
-    superagent =
-      context.repository |> Superagents.get_by_repository() |> Repo.preload(:repository)
-
-    [Attention.Outage.card(waiting_count, superagent) | rest]
+  defp candidates(board, context) do
+    lane(board, :blocked, :blocked) ++
+      running_lane(board, context) ++
+      unanswered_lane(board, context) ++
+      lane(board, :ready, :review) ++ lane(board, :question, :question)
   end
 
-  defp collapse_agent_down(needs, _board, _context), do: needs
+  defp visible_candidates(candidates, board, :down),
+    do: Attention.outage_summary(candidates, length(Map.get(board, :retrying, [])))
+
+  defp visible_candidates(candidates, _board, _agent), do: {nil, candidates}
+
+  defp add_outage(cards, nil, _repository), do: cards
+
+  defp add_outage(cards, waiting, repository) do
+    superagent = repository |> Superagents.get_by_repository() |> Repo.preload(:repository)
+    [Attention.Outage.card(waiting, superagent) | cards]
+  end
 
   @doc """
   The failed tasks the board retries by itself, for Agora: nobody has to
@@ -125,13 +127,13 @@ defmodule AgentBoard.Lanes do
     })
   end
 
-  defp lane(board, key, kind, context),
-    do: board |> Map.get(key, []) |> Enum.map(&task_need(&1, kind, context))
+  defp lane(board, key, kind),
+    do: for(task <- Map.get(board, key, []), do: %{task: task, kind: kind})
 
-  defp running_lane(board, %{silences: silences, stall_after: stall_after, now: now} = context) do
+  defp running_lane(board, %{silences: silences, stall_after: stall_after, now: now}) do
     for task <- Map.get(board, :running, []),
         kind = Attention.running_kind(task, silences[task.number], stall_after, now),
-        do: task_need(task, kind, context)
+        do: %{task: task, kind: kind}
   end
 
   defdelegate slow_after(size), to: RunTiming
@@ -143,16 +145,19 @@ defmodule AgentBoard.Lanes do
 
   defp unanswered_lane(board, context) do
     for task <- Map.get(board, :queued, []),
-        problem = CallStatus.problem(task, context) do
-      content = Attention.CallNotice.content(problem, task, context)
-      Attention.Item.build(task, :unanswered, context.pulls[task.id], content, context)
-    end
+        problem = CallStatus.problem(task, context),
+        do: %{kind: :unanswered, task: task, problem: problem}
+  end
+
+  defp task_card(%{kind: :unanswered, task: task, problem: problem}, context) do
+    content = Attention.CallNotice.content(problem, task, context)
+    Attention.Item.build(task, :unanswered, context.pulls[task.id], content, context)
   end
 
   # Every item says what to do, where and why: the kind is the what, the
   # actions are the where, and `why` is the evidence the board has. A fact
   # the board cannot see is said to be missing, never filled in.
-  defp task_need(task, kind, context) do
+  defp task_card(%{task: task, kind: kind}, context) do
     ticket = Map.get(context.tickets, task.number)
     pull = Map.get(context.pulls, task.id)
     content = need_content(task, kind, ticket, pull, context)
