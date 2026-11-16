@@ -19,6 +19,8 @@ defmodule AgentBoard.LocalCI do
 
   use Gettext, backend: AgentBoardWeb.Gettext
 
+  alias AgentBoard.LocalCI.Validation
+
   @pr ~r/(?:PR\s*#|pull\/)(\d+)/i
   @pass ~r/\b(passed|passes|passou|passaram|green|verde|0 failures|0 falhas|0 issues)\b/i
   @fail ~r/\bn[ãa]o\s+pass(?:ou|aram)\b|\bdid(?:\s+not|n['’]t)\s+pass\b|\b(failed|failing|falhou|falharam)\b|[1-9]\d*\s+(failures|falhas|issues)/iu
@@ -94,7 +96,7 @@ defmodule AgentBoard.LocalCI do
   end
 
   defp workpad_status(validation, head) do
-    state = workpad_state(validation, head)
+    state = Validation.state(validation, head)
 
     %{
       state: state,
@@ -106,20 +108,6 @@ defmodule AgentBoard.LocalCI do
       sha: validation.sha,
       head_sha: head
     }
-  end
-
-  defp workpad_state(%{sha: sha, passed?: passed?}, head) do
-    cond do
-      is_binary(sha) and is_binary(head) and not same_commit?(sha, head) -> :stale
-      passed? -> :pass
-      true -> :fail
-    end
-  end
-
-  defp same_commit?(sha, head) do
-    sha = String.downcase(sha)
-    head = String.downcase(head)
-    String.starts_with?(head, sha) or String.starts_with?(sha, head)
   end
 
   defp workpad_detail(:stale, validation, head) do
