@@ -26,8 +26,12 @@ defmodule AgentBoard.Lanes.Digest do
     end
   end
 
+  @type change ::
+          {:merged | :reviews | :questions | :queue_new, pos_integer()}
+          | {:running | :blocked, pos_integer() | {:task, integer(), integer()}}
+
   @doc "Changes since the visit, alongside work still running or blocked, in digest order."
-  @spec since_visit(map(), map()) :: [{atom(), pos_integer() | {:task, integer(), integer()}}]
+  @spec since_visit(map(), map()) :: [change()]
   def since_visit(board, changes) do
     [
       merged: positive(changes.merged),
