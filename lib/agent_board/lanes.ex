@@ -27,6 +27,7 @@ defmodule AgentBoard.Lanes do
   alias AgentBoard.Lanes.{
     Attention,
     CallStatus,
+    CI,
     Digest,
     MergeHistory,
     Queue,
@@ -711,31 +712,31 @@ defmodule AgentBoard.Lanes do
     }
   end
 
-  defp ci_status(pull, %{state: :pass} = local) do
-    {"pass", gettext("Local CI passed"), local_title(local, pull)}
+  defp ci_status(pull, local) do
+    {state, reason} = CI.classify(pull, local)
+    {note, title} = ci_words(reason, pull, local)
+    {Atom.to_string(state), note, title}
   end
 
-  defp ci_status(_pull, %{state: :fail, detail: detail}) do
-    {"fail", gettext("Local CI failed"), gettext("Local CI failed: %{detail}", detail: detail)}
-  end
+  defp ci_words(:local_pass, pull, local),
+    do: {gettext("Local CI passed"), local_title(local, pull)}
 
-  # The workpad names a gate on another commit than the PR's head: the
-  # evidence exists but does not cover what would merge.
-  defp ci_status(_pull, %{state: :stale, detail: detail}),
-    do: {"unknown", gettext("Local CI unknown"), detail}
+  defp ci_words(:local_fail, _pull, local),
+    do: {gettext("Local CI failed"), gettext("Local CI failed: %{detail}", detail: local.detail)}
 
-  defp ci_status(%PullRequest{checks_state: "failure"} = pull, nil) do
-    {"unknown", gettext("Local CI unknown"), remote_failure_title(pull)}
-  end
+  defp ci_words(:stale, _pull, local), do: {gettext("Local CI unknown"), local.detail}
 
-  defp ci_status(%PullRequest{checks_state: "success"}, nil),
-    do: {"pass", gettext("CI passed"), gettext("GitHub Actions passed.")}
+  defp ci_words(:remote_failure, pull, _local),
+    do: {gettext("Local CI unknown"), remote_failure_title(pull)}
 
-  defp ci_status(%PullRequest{checks_state: "pending"}, nil),
-    do: {"unknown", gettext("CI running"), gettext("GitHub Actions is still running.")}
+  defp ci_words(:remote_pass, _pull, _local),
+    do: {gettext("CI passed"), gettext("GitHub Actions passed.")}
 
-  defp ci_status(_pull, nil),
-    do: {"unknown", gettext("no CI"), gettext("No remote check configured.")}
+  defp ci_words(:pending, _pull, _local),
+    do: {gettext("CI running"), gettext("GitHub Actions is still running.")}
+
+  defp ci_words(:no_checks, _pull, _local),
+    do: {gettext("no CI"), gettext("No remote check configured.")}
 
   defp local_title(local, pull) do
     prefix =
