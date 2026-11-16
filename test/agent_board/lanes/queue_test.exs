@@ -61,6 +61,18 @@ defmodule AgentBoard.Lanes.QueueTest do
              Queue.select(observed, at, :dupes, 1).items
   end
 
+  test "only held rows on the selected page need blocker numbers" do
+    assert Queue.held_ids(%{items: []}) == []
+
+    assert Queue.held_ids(%{
+             items: [
+               %{row: %{id: 12, held: true}},
+               %{row: %{id: 7, held: false}},
+               %{row: %{id: 9, held: true}}
+             ]
+           }) == [12, 9]
+  end
+
   describe "page/3" do
     @first %{id: 7, is_new: false, split: true, note: nil}
     @second %{id: 2, is_new: true, split: true, note: "repeat"}

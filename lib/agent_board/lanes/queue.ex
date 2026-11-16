@@ -48,6 +48,10 @@ defmodule AgentBoard.Lanes.Queue do
     Map.put(page, :filters, filter_options(page.counts))
   end
 
+  @doc "Visible held tasks whose cards can name unresolved blockers."
+  @spec held_ids(map()) :: [integer()]
+  def held_ids(page), do: for(%{row: %{held: true, id: id}} <- page.items, do: id)
+
   @doc "Page queue candidates or built cards: count the full queue, then filter in order before limiting."
   @spec page([map()], atom(), integer()) :: map()
   def page(items, filter, limit) do

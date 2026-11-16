@@ -617,7 +617,7 @@ defmodule AgentBoard.LanesTest do
     assert Enum.map(observed.rows, & &1.number) == [9, 20, 12]
     assert [%{number: 22, title: "Local"}] = observed.merged
     assert observed.related_numbers == %{parent.id => 7, second.id => 12}
-    assert observed.waits == %{second.id => [20]}
+    assert Lanes.Queue.Observations.open_dependencies([second.id]) == %{second.id => [20]}
   end
 
   describe "a task the board called and no ticket answered" do

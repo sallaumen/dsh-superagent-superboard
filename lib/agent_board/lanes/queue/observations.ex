@@ -6,19 +6,17 @@ defmodule AgentBoard.Lanes.Queue.Observations do
   alias AgentBoard.Board.{PullRequest, Task, TaskDependency}
   alias AgentBoard.Repo
 
-  @doc "Read the ordered queue, merged titles, linked task numbers and unresolved dependencies."
+  @doc "Read the ordered queue, merged titles, and linked task numbers."
   @spec load(map()) :: %{
           rows: [map()],
           merged: [map()],
-          related_numbers: map(),
-          waits: map()
+          related_numbers: map()
         }
   def load(repository) do
     rows = queued_rows(repository)
     merged = if rows == [], do: [], else: merged_pulls(repository)
     related_numbers = related_numbers(rows)
-    waits = open_dependencies(rows)
-    %{rows: rows, merged: merged, related_numbers: related_numbers, waits: waits}
+    %{rows: rows, merged: merged, related_numbers: related_numbers}
   end
 
   defp queued_rows(repository) do
@@ -66,19 +64,17 @@ defmodule AgentBoard.Lanes.Queue.Observations do
     end
   end
 
-  defp open_dependencies(rows) do
-    case for(%{held: true, id: id} <- rows, do: id) do
-      [] ->
-        %{}
+  @doc "Read unresolved blocker numbers only for the supplied held tasks."
+  @spec open_dependencies([integer()]) :: %{optional(integer()) => [integer()]}
+  def open_dependencies([]), do: %{}
 
-      ids ->
-        from([d, blocker: b] in TaskDependency.with_open_blocker(),
-          where: d.task_id in ^ids,
-          order_by: b.number,
-          select: {d.task_id, b.number}
-        )
-        |> Repo.all()
-        |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    end
+  def open_dependencies(ids) do
+    from([d, blocker: b] in TaskDependency.with_open_blocker(),
+      where: d.task_id in ^ids,
+      order_by: b.number,
+      select: {d.task_id, b.number}
+    )
+    |> Repo.all()
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
   end
 end
