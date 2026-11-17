@@ -47,6 +47,16 @@ defmodule AgentBoard.Lanes.CallStatus do
   @spec dependency_wait?(boolean(), :failed | :unanswered | nil) :: boolean()
   def dependency_wait?(held, problem), do: held and is_nil(problem)
 
+  @doc "An active ticket can wait in the runner queue only while no start or end was observed."
+  @spec pending_ticket?(map()) :: boolean()
+  def pending_ticket?(ticket) do
+    if ticket["stopped"] || ticket["archived"] do
+      false
+    else
+      is_nil(ticket["started_at"]) and is_nil(ticket["ended_at"])
+    end
+  end
+
   @doc "Queue evidence to display before the runner starts, or nil when another lane explains the task."
   @spec queue_stage(map(), map()) ::
           {:awaiting_ticket, DateTime.t()} | {:in_runner_queue, DateTime.t() | nil} | nil
@@ -61,10 +71,7 @@ defmodule AgentBoard.Lanes.CallStatus do
       is_nil(ticket) ->
         {:awaiting_ticket, called}
 
-      ticket["stopped"] || ticket["archived"] ->
-        nil
-
-      is_nil(ticket["started_at"]) and is_nil(ticket["ended_at"]) ->
+      pending_ticket?(ticket) ->
         {:in_runner_queue, last_assignment_at(ticket)}
 
       true ->
