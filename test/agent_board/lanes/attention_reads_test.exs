@@ -77,6 +77,33 @@ defmodule AgentBoard.Lanes.AttentionReadsTest do
     assert {%{}, []} = reads(fn -> Board.agent_questions(repo.id, []) end)
   end
 
+  test "batched blockages read only current agent evidence for the requested repository and issues" do
+    {:ok, repo} = Board.add_repository("fixture", "batched-blockages")
+    {:ok, other} = Board.add_repository("fixture", "foreign-blockages")
+    one = task(repo, 10, "blocked")
+    two = task(repo, 20, "blocked")
+    report = "## Relatório do agente\n### Bloqueio\n"
+
+    comment(one, "agent", report <> "Old reason")
+    comment(one, "agent", report <> "Missing key")
+    comment(one, "user", report <> "User note")
+    comment(two, "agent", report <> "Old reason")
+    comment(two, "agent", "Now investigating")
+    comment(task(other, 10, "blocked"), "agent", report <> "Foreign reason")
+    comment(task(repo, 30, "blocked"), "agent", report <> "Not requested")
+
+    Repo.update_all(from(c in Comment, where: c.task_id in ^[one.id, two.id]),
+      set: [inserted_at: @now]
+    )
+
+    {sections, queries} = reads(fn -> Board.agent_blockages(repo.id, [10, 20, 10, 99]) end)
+    assert sections == %{10 => "Missing key"}
+    assert length(queries) == 1
+    assert Board.agent_blockage(repo.id, 10) == "Missing key"
+    assert {%{}, []} = reads(fn -> Board.agent_blockages(repo.id, []) end)
+    assert {nil, []} = reads(fn -> Board.agent_blockage(repo.id, nil) end)
+  end
+
   defp task(repo, number, state) do
     Repo.insert!(%Task{
       repository_id: repo.id,
