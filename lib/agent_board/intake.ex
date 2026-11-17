@@ -89,7 +89,7 @@ defmodule AgentBoard.Intake do
 
   defp edit_task(task, _no_edit), do: task
 
-  @doc "Applies the reviewed constraints and assumptions without changing the rest of the split."
+  @doc "Applies the reviewed shared context and answers to this proposal."
   @spec edit_shared_context(spec(), map()) :: spec()
   def edit_shared_context(spec, edits) do
     Enum.reduce(~w(constraints assumptions), spec, fn key, acc ->
@@ -98,7 +98,46 @@ defmodule AgentBoard.Intake do
         _ -> acc
       end
     end)
+    |> with_answers(edits["answers"])
   end
+
+  @doc "Stable form key so an answer cannot move to a different question on a later proposal."
+  @spec question_key(String.t()) :: String.t()
+  def question_key(question), do: :sha256 |> :crypto.hash(question) |> Base.encode16(case: :lower)
+
+  defp with_answers(spec, edits) when is_map(edits) do
+    answers =
+      Enum.reduce(spec["open_questions"] || [], spec["answers"] || %{}, fn question, acc ->
+        key = question_key(question)
+
+        case edits[key] do
+          answer when is_binary(answer) -> Map.put(acc, key, answer)
+          _ -> acc
+        end
+      end)
+
+    Map.put(spec, "answers", answers)
+  end
+
+  defp with_answers(spec, _edits), do: spec
+
+  @doc "Freeze the reviewed proposal for publication, retaining only unanswered questions as open."
+  @spec reviewed_spec(spec()) :: spec()
+  def reviewed_spec(%{"answers" => answers} = spec) do
+    {decided, open} =
+      Enum.split_with(spec["open_questions"] || [], fn q ->
+        String.trim(Map.get(answers, question_key(q), "")) != ""
+      end)
+
+    decisions = Enum.map(decided, fn q -> q <> " — " <> String.trim(answers[question_key(q)]) end)
+
+    spec
+    |> Map.delete("answers")
+    |> Map.put("open_questions", open)
+    |> Map.put("decisions", decisions)
+  end
+
+  def reviewed_spec(spec), do: spec
 
   defp edited_lines(text) do
     text |> String.split("\n") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))

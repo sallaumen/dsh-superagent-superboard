@@ -817,6 +817,48 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert objective.spec["assumptions"] == []
   end
 
+  test "answers from final submit go to children and objective as decisions, blank questions stay open",
+       %{conn: conn} do
+    github(capture: self())
+    questions = ["Qual o teto?", "A fase?", "Qual o custo?"]
+
+    script(fn
+      %{name: :refine_request} -> Scripted.answer(%{@refined | "open_questions" => questions})
+      %{name: :propose_tasks} -> Scripted.answer(@tasks)
+    end)
+
+    view = open_composer(conn)
+    request = "Variar o enxame"
+    type(view, request)
+    split(view)
+    [cap, phase, cost] = Enum.map(questions, &AgentBoard.Intake.question_key/1)
+
+    form(view, "#composer-form", %{
+      "shared_context" => %{"answers" => %{cap => "três", phase => "segunda"}}
+    })
+    |> render_change()
+
+    form(view, "#composer-form", %{
+      "shared_context" => %{"answers" => %{cap => "oito", phase => " ", cost => ""}}
+    })
+    |> render_submit()
+
+    render_async(view, 2000)
+
+    for title <- ["Medir o carregamento", "Corrigir o gargalo", request] do
+      assert_received {:github_issue, ^title, body}
+      assert body =~ "### Decisões\n- Qual o teto? — oito"
+      assert body =~ "### Perguntas em aberto\n- A fase?\n- Qual o custo?"
+      refute body =~ "três"
+      refute body =~ "segunda"
+    end
+
+    objective = Repo.get_by!(AgentBoard.Board.Objective, title: request)
+    assert objective.spec["open_questions"] == ["A fase?", "Qual o custo?"]
+    assert objective.spec["decisions"] == ["Qual o teto? — oito"]
+    refute Map.has_key?(objective.spec, "answers")
+  end
+
   test "what the owner edits is what opens, and a retry does not duplicate it", %{conn: conn} do
     github(refuse: ["Corrigir de verdade"])
     happy_model()

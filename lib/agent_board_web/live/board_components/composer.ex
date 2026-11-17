@@ -590,12 +590,18 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       <div :if={@open != []} id="composer-open-questions">
         <p class="ab-meta">
           {gettext(
-            "Still open. These go in each issue; if one changes the work, edit the request and split again."
+            "Answer what you can. Answers become decisions in every issue; blank questions stay open."
           )}
         </p>
-        <ul>
-          <li :for={question <- @open}>{question}</li>
-        </ul>
+        <div :for={question <- Enum.uniq(@open)}>
+          <% key = Intake.question_key(question) %>
+          <label class="ab-label" for={"composer-answer-#{key}"}>{question}</label>
+          <textarea
+            id={"composer-answer-#{key}"}
+            name={"shared_context[answers][#{key}]"}
+            rows="1"
+          >{get_in(@spec, ["answers", key])}</textarea>
+        </div>
       </div>
       <details
         id="composer-understood"
