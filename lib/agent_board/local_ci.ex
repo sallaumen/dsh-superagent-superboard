@@ -57,10 +57,42 @@ defmodule AgentBoard.LocalCI do
         Map.merge(acc, own_statuses(ticket, workpads, heads))
       end)
 
-    workpads
-    |> Enum.reject(fn {number, _workpad} -> MapSet.member?(covered, number) end)
-    |> Enum.reduce(from_tickets, fn {_number, workpad}, acc ->
-      Map.merge(workpad_statuses(%{}, workpad, heads), acc)
+    explicit =
+      workpads
+      |> Enum.reject(fn {number, _workpad} -> MapSet.member?(covered, number) end)
+      |> Enum.reduce(from_tickets, fn {_number, workpad}, acc ->
+        Map.merge(workpad_statuses(%{}, workpad, heads), acc)
+      end)
+
+    # A direct workpad or ticket/report link always takes precedence.
+    Map.merge(unlinked_statuses(own, workpads, heads), explicit)
+  end
+
+  defp unlinked_statuses(tickets, workpads, heads) do
+    linked =
+      tickets
+      |> Enum.filter(&(ticket_prs(&1) != []))
+      |> Enum.flat_map(&(&1["numbers"] || []))
+      |> MapSet.new()
+
+    by_head = Enum.group_by(heads, fn {_pr, sha} -> String.downcase(sha) end, &elem(&1, 0))
+
+    candidates =
+      for {issue, %{pull_requests: [], validation: %{passed?: verdict, sha: sha} = gate}} <-
+            workpads,
+          is_boolean(verdict) and is_binary(sha),
+          not MapSet.member?(linked, issue),
+          String.match?(sha, ~r/\A[0-9a-f]{40}\z/i),
+          [pr] <- [Map.get(by_head, String.downcase(sha))],
+          do: {pr, gate}
+
+    candidates
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.reduce(%{}, fn {pr, gates}, acc ->
+      case Enum.uniq_by(gates, & &1.passed?) do
+        [gate] -> Map.put(acc, pr, workpad_status(gate, Map.fetch!(heads, pr)))
+        _conflicting -> acc
+      end
     end)
   end
 
@@ -85,10 +117,7 @@ defmodule AgentBoard.LocalCI do
   # The workpad's gate covers every PR the ticket names and every PR the
   # workpad names, each checked against its own head.
   defp workpad_statuses(ticket, workpad, heads) do
-    reports = Map.get(ticket, "reports", [])
-
-    (Enum.flat_map(reports, &pr_numbers/1) ++
-       Map.get(ticket, "own_threads", []) ++ workpad.pull_requests)
+    (ticket_prs(ticket) ++ workpad.pull_requests)
     |> Enum.uniq()
     |> Map.new(&{&1, workpad_status(workpad.validation, Map.get(heads, &1))})
   end
@@ -117,6 +146,11 @@ defmodule AgentBoard.LocalCI do
 
   defp workpad_detail(_state, validation, _head),
     do: String.slice(validation.detail, 0, @report_limit)
+
+  defp ticket_prs(ticket) do
+    Enum.flat_map(Map.get(ticket, "reports", []), &pr_numbers/1) ++
+      Map.get(ticket, "own_threads", [])
+  end
 
   defp report_statuses(ticket) do
     reports =

@@ -325,10 +325,29 @@ defmodule AgentBoard.Board.ConversationTest do
 
     assert Board.agent_asked?(repo.id, 77)
     assert Board.agent_workpad(repo.id, 77) == nil
-    assert Board.agent_workpads(repo.id) == %{}
+    # The historical gate survives the ACK even though live decisions do not.
+    assert Board.agent_workpads(repo.id)[77].validation.sha == "44653e8"
 
     agent_comment(t, 3, "Done, PR #28 opened.")
     refute Board.agent_asked?(repo.id, 77)
+  end
+
+  test "historical CI trusts executor comments only and a new empty workpad supersedes a receipt" do
+    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    t = task(repo)
+
+    Board.upsert_comment(
+      t,
+      %{"id" => 1, "user" => %{"login" => "reader"}, "body" => @workpad},
+      "sallaumen-agent"
+    )
+
+    assert Board.agent_workpads(repo.id) == %{}
+
+    agent_comment(t, 2, @workpad)
+    agent_comment(t, 3, "## Relatório do agente\n### Validação\n")
+    agent_comment(t, 4, "Finished.")
+    assert %{77 => %{validation: nil}} = Board.agent_workpads(repo.id)
   end
 
   test "the PR heads come from the sync, absent until it wrote one" do
