@@ -43,6 +43,10 @@ defmodule AgentBoard.Lanes.CallStatus do
     end
   end
 
+  @doc "A held task names its dependencies only while no call problem takes precedence."
+  @spec dependency_wait?(boolean(), :failed | :unanswered | nil) :: boolean()
+  def dependency_wait?(held, problem), do: held and is_nil(problem)
+
   @doc "Queue evidence to display before the runner starts, or nil when another lane explains the task."
   @spec queue_stage(map(), map()) ::
           {:awaiting_ticket, DateTime.t()} | {:in_runner_queue, DateTime.t() | nil} | nil

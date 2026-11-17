@@ -61,16 +61,22 @@ defmodule AgentBoard.Lanes.QueueTest do
              Queue.select(observed, at, :dupes, 1).items
   end
 
-  test "only held rows on the selected page need blocker numbers" do
-    assert Queue.held_ids(%{items: []}) == []
+  test "only visible holds without a call problem need blocker numbers" do
+    now = ~U[2026-11-17 12:00:00Z]
+    calls = %{now: now, tickets: %{}, stall_after: 900}
+    row = %{id: 12, number: 12, held: true, released_at: nil}
 
-    assert Queue.held_ids(%{
-             items: [
-               %{row: %{id: 12, held: true}},
-               %{row: %{id: 7, held: false}},
-               %{row: %{id: 9, held: true}}
-             ]
-           }) == [12, 9]
+    page = %{
+      items: [
+        %{row: row},
+        %{row: %{row | id: 7, held: false}},
+        %{row: %{row | id: 9, released_at: DateTime.add(now, -60)}},
+        %{row: %{row | id: 8, released_at: DateTime.add(now, -59)}}
+      ]
+    }
+
+    assert Queue.waiting_ids(page, calls) == [12, 8]
+    assert Queue.waiting_ids(%{items: []}, calls) == []
   end
 
   describe "page/3" do

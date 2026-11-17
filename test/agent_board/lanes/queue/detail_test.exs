@@ -1,6 +1,7 @@
 defmodule AgentBoard.Lanes.Queue.DetailTest do
   use ExUnit.Case, async: true
 
+  alias AgentBoard.Lanes.CallStatus
   alias AgentBoard.Lanes.Queue.Detail
 
   @now ~U[2026-11-09 12:00:00Z]
@@ -9,6 +10,19 @@ defmodule AgentBoard.Lanes.Queue.DetailTest do
   setup do
     Gettext.put_locale(AgentBoardWeb.Gettext, "en")
     :ok
+  end
+
+  test "the shared verdict names dependencies only for a hold without a call problem" do
+    for {held, problem, waiting} <- [
+          {true, nil, true},
+          {false, nil, false},
+          {true, :failed, false},
+          {true, :unanswered, false},
+          {false, :failed, false},
+          {false, :unanswered, false}
+        ] do
+      assert CallStatus.dependency_wait?(held, problem) == waiting
+    end
   end
 
   test "a held row shows open dependencies instead of its relationship until a call fails" do
