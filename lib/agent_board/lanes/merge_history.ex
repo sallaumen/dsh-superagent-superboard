@@ -32,6 +32,13 @@ defmodule AgentBoard.Lanes.MergeHistory do
     }
   end
 
+  @doc "Group merges into every local date in the window, preserving input order within each day."
+  @spec day_buckets([map()], window()) :: [{Date.t(), [map()]}]
+  def day_buckets(pulls, window) do
+    by_date = Enum.group_by(pulls, &Time.local_date(&1.merged_at, window.offset))
+    Enum.map(window.dates, &{&1, Map.get(by_date, &1, [])})
+  end
+
   @doc "Count distinct issues closed by the supplied merges, across one day or the whole window."
   @spec delivered([map()]) :: non_neg_integer()
   def delivered(pulls),

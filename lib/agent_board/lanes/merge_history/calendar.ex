@@ -13,8 +13,7 @@ defmodule AgentBoard.Lanes.MergeHistory.Calendar do
   @doc "Keep empty dates and count every in-window issue once, preserving the supplied PR order within each day."
   @spec build([map()], MergeHistory.window(), map()) :: t()
   def build(pulls, window, local_ci) do
-    by_date = Enum.group_by(pulls, &Time.local_date(&1.merged_at, window.offset))
-    buckets = Enum.map(window.dates, &{&1, Map.get(by_date, &1, [])})
+    buckets = MergeHistory.day_buckets(pulls, window)
 
     days =
       for {date, rows} <- buckets do
