@@ -1,6 +1,15 @@
 defmodule AgentBoard.Lanes.Attention.Blocked do
-  @moduledoc "The actions available on a blocked task's attention card."
+  @moduledoc "Evidence and actions for a blocked task's attention card."
   use Gettext, backend: AgentBoardWeb.Gettext
+
+  alias AgentBoard.Lanes.Attention.ReportNotice
+
+  @doc "Use the explained failure for both text and actions, otherwise quote the recorded blockage or ticket summary."
+  @spec content(map(), map() | nil, String.t() | nil, String.t() | nil) :: {String.t(), [map()]}
+  def content(task, nil, recorded, summary),
+    do: {ReportNotice.blockage(recorded, summary), actions(task, nil)}
+
+  def content(task, block, _recorded, _summary), do: {block.line, actions(task, block)}
 
   @doc "Offer a retry before the task details only when both its label and ticket target were observed."
   @spec actions(map(), map() | nil) :: [map()]

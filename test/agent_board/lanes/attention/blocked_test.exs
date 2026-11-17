@@ -57,6 +57,23 @@ defmodule AgentBoard.Lanes.Attention.BlockedTest do
     assert card.actions == [%{label: "View details", task_id: 17}]
   end
 
+  test "a ticket explanation wins over the workpad, then the workpad wins over the summary" do
+    block = %{line: "Explained failure", retry: "Try now", ticket_id: "t61"}
+
+    assert {"Explained failure", [%{retry: %{ticket_id: "t61"}}, %{task_id: 17}]} =
+             Blocked.content(@task, block, "Workpad", "Summary")
+
+    assert {"**Blocked:** Workpad", [%{task_id: 17}]} =
+             Blocked.content(@task, nil, "Workpad", "Summary")
+
+    assert {"**Blocked:** Summary", [%{task_id: 17}]} =
+             Blocked.content(@task, nil, nil, "Summary")
+
+    assert {"**Blocked**, with no reason in the agent's report. Open the details.",
+            [%{task_id: 17}]} =
+             Blocked.content(@task, nil, nil, nil)
+  end
+
   test "an unexplained block, a missing label or a missing ticket only offers details" do
     for block <- [nil, %{retry: nil, ticket_id: "t7"}, %{retry: "Try again", ticket_id: nil}] do
       assert Blocked.actions(@task, block) == [%{label: "View details", task_id: 17}]
