@@ -34,6 +34,39 @@ defmodule AgentBoard.Lanes.Attention.ItemTest do
              Item.build(task, :review, pull, {"Ready", actions}, ctx)
   end
 
+  test "recorded questions and blockages use the same task identity but different actions" do
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+    task = %{id: 71, repository_id: 3, number: 12, title: "Check build", state_changed_at: @now}
+
+    ctx = %{
+      now: @now,
+      last_visit: DateTime.add(@now, -1),
+      pulls: %{},
+      tickets: %{12 => %{"report_summary" => "Fallback?"}},
+      questions: %{12 => "Which build?"},
+      blockages: %{3 => %{12 => "Missing key"}, 4 => %{12 => "Other reason"}}
+    }
+
+    assert %{
+             key: "task-71",
+             number: 12,
+             kind: :question,
+             why: "**The agent asked:** Which build?",
+             actions: [%{label: "Respond", task_id: 71}],
+             is_new: true
+           } =
+             Item.build(%{kind: :question, task: task}, ctx)
+
+    assert %{
+             key: "task-71",
+             kind: :blocked,
+             why: "**Blocked:** Missing key",
+             actions: [%{label: "View details", task_id: 71}],
+             pull_number: nil
+           } =
+             Item.build(%{kind: :blocked, task: task, block: nil}, ctx)
+  end
+
   test "a silent run becomes new at the threshold, with no guessed pull or CI" do
     task = %{id: 71, number: 12, title: "Run"}
 
