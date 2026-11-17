@@ -705,7 +705,10 @@ defmodule AgentBoardWeb.ComposerLifecycle do
     limit = socket.assigns.composer_max_tasks
 
     if Intake.over_limit?(length(requests), limit) do
-      composer_error(socket, gettext("Choose at most %{limit} tasks before sending.", limit: limit))
+      composer_error(
+        socket,
+        gettext("Choose at most %{limit} tasks before sending.", limit: limit)
+      )
     else
       enqueue(socket, requests, shown)
     end
