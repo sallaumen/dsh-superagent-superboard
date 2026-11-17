@@ -59,7 +59,7 @@ defmodule AgentBoard.Lanes do
     pulls =
       visible |> Attention.Selection.review_tasks() |> Board.linked_pull_requests(context.tickets)
 
-    visible = explain_blocks(visible, context)
+    visible = Attention.Blocked.explain(visible, context.tickets, block_opts(context))
 
     context =
       Map.merge(context, %{
@@ -71,19 +71,6 @@ defmodule AgentBoard.Lanes do
     cards = Enum.map(visible, &Attention.Item.build(&1, context))
 
     cards |> add_outage(waiting, repository) |> Attention.sort()
-  end
-
-  defp explain_blocks(visible, context) do
-    opts = block_opts(context)
-
-    Enum.map(visible, fn
-      %{kind: :blocked, task: task} = card ->
-        block = AgentBlock.explain(context.tickets[task.number], opts)
-        Map.put(card, :block, block)
-
-      card ->
-        card
-    end)
   end
 
   defp visible_blockages(visible) do
