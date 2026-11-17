@@ -317,6 +317,79 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "#composer-receipt .ab-work", "bug")
   end
 
+  test "a split ceiling reaches the AI and an oversized answer stays reviewable without publishing",
+       %{conn: conn} do
+    owner = self()
+    counter = github()
+
+    script(fn
+      %{name: :refine_request} ->
+        Scripted.answer(@refined)
+
+      %{name: :propose_tasks, prompt: prompt} ->
+        send(owner, {:prompt, prompt})
+        Scripted.answer(@tasks)
+    end)
+
+    view = open_composer(conn)
+    words = "Medir e corrigir o contador"
+    type(view, words)
+    view |> element("#composer-form") |> render_change(%{"max_tasks" => "1"})
+    split(view)
+    assert_receive {:prompt, prompt}
+    assert prompt =~ "Maximum tasks: 1."
+    assert has_element?(view, "#composer-split-limit-note")
+
+    for n <- 0..1 do
+      assert has_element?(view, "#composer-task-#{n}")
+      refute has_element?(view, "#composer-task-#{n}[checked]")
+    end
+
+    refute has_element?(view, "#composer-confirm")
+    assert has_element?(view, "#composer-form button[type=submit][disabled]")
+
+    # A stale/forged submit cannot relax the ceiling or enqueue both tasks.
+    for limit <- ["", "1", "999"] do
+      submit(view, %{"text" => words, "max_tasks" => limit, "tasks" => ["0", "1"]})
+      assert Repo.aggregate(Task, :count) == 0
+      assert Agent.get(counter, & &1) == 100
+    end
+
+    view |> element("#composer-form") |> render_change(%{"tasks" => ["1"], "max_tasks" => "1"})
+    submit(view, %{"text" => words, "tasks" => ["1"], "max_tasks" => "1"})
+    assert [task] = Repo.all(Task)
+    assert task.title == "Corrigir o gargalo"
+    assert Agent.get(counter, & &1) == 101
+  end
+
+  test "editing a draft during an AI split cannot restore stale tasks", %{conn: conn} do
+    owner = self()
+
+    script(fn
+      %{name: :refine_request} ->
+        Scripted.answer(@refined)
+
+      %{name: :propose_tasks} ->
+        send(owner, {:proposing, self()})
+
+        receive do
+          :answer -> Scripted.answer(@tasks)
+        end
+    end)
+
+    view = open_composer(conn)
+    type(view, "Pedido original")
+    view |> element("#composer-split") |> render_click()
+    assert_receive {:proposing, worker}
+    form = element(view, "#composer-form")
+    render_change(form, %{"text" => "Pedido corrigido", "max_tasks" => "3"})
+    send(worker, :answer)
+    render_async(view, 2000)
+    assert has_element?(view, "#composer-text", "Pedido corrigido")
+    refute has_element?(view, "#composer-task-0")
+    assert has_element?(view, "#composer-max-tasks option[value='3'][selected]")
+  end
+
   test "split issues carry the request's context and link what they depend on", %{conn: conn} do
     github()
 

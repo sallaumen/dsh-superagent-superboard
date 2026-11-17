@@ -3312,6 +3312,7 @@ defmodule AgentBoardWeb.BoardLive do
             text={@composer_text}
             title={@composer_title}
             split={@composer_split}
+            max_tasks={@composer_max_tasks}
             intake={@intake}
             uploads={@uploads}
             attachments_ready={length(@composer_attachments)}

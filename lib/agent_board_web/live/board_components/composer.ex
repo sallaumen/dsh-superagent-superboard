@@ -27,6 +27,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   attr :text, :string, default: ""
   attr :title, :string, default: nil
   attr :split, :boolean, default: false
+  attr :max_tasks, :integer, default: nil
   attr :intake, :any, default: nil
   attr :uploads, :map, default: nil
   attr :attachments_ready, :integer, default: 0
@@ -140,6 +141,19 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             autofocus
           >{@text}</textarea>
 
+          <div
+            :if={@ai_status != :not_configured && String.trim(@text) != ""}
+            class="ab-compose__limit"
+          >
+            <label for="composer-max-tasks">{gettext("Maximum tasks per split")}</label>
+            <select id="composer-max-tasks" name="max_tasks" disabled={@busy}>
+              <option value="" selected={is_nil(@max_tasks)}>{gettext("Automatic")}</option>
+              <option :for={limit <- Intake.limits()} value={limit} selected={limit == @max_tasks}>
+                {limit}
+              </option>
+            </select>
+          </div>
+
           <div :if={!@split and String.trim(@text) != ""} class="ab-compose__title">
             <label for="composer-issue-title" class="ab-label">{gettext("Issue title")}</label>
             <input
@@ -222,6 +236,18 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             suggestion={@suggestion}
             disabled={@busy}
           />
+
+          <p
+            :if={@split && !@busy && Intake.over_limit?(length(@tasks), @max_tasks)}
+            id="composer-split-limit-note"
+            class="ab-split-note"
+            role="status"
+          >
+            {gettext("AI proposed %{total} tasks. Select up to %{limit}, or split again.",
+              total: length(@tasks),
+              limit: @max_tasks
+            )}
+          </p>
 
           <.understood :if={@split && @status == :ready && !@busy} spec={@spec} />
 
@@ -343,7 +369,11 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
 
           <.private_context private={@private} />
 
-          <p :if={@confirm && !@busy} id="composer-confirm" class="ab-compose__confirm">
+          <p
+            :if={@confirm && !@busy && !Intake.over_limit?(@selected_count, @max_tasks)}
+            id="composer-confirm"
+            class="ab-compose__confirm"
+          >
             {@confirm}
           </p>
         </div>
@@ -415,10 +445,13 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           <span class="ab-top__spacer"></span>
 
           <button
+            id="composer-submit"
+            type="submit"
             class="ab-btn ab-btn--primary"
             phx-disable-with={disable_label(@split, @status)}
             disabled={
-              submit_disabled?(@text, @split, @status, @selected_count, @busy) or @incomplete or
+              submit_disabled?(@text, @split, @status, @selected_count, @busy) or
+                Intake.over_limit?(@selected_count, @max_tasks) or @incomplete or
                 @attachments_pending
             }
           >

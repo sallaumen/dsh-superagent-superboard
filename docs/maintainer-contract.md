@@ -810,6 +810,10 @@ Agora and the detail):
   `:auth_expired`, `:usage_limit`, `{:http, status}`.
 - **`Budget.check/1` runs before the network.** Over the cap answers
   `:budget_exhausted` and records nothing.
+- **The composer’s split ceiling is optional.** When set, the proposal prompt
+  includes it. If the model exceeds it, keep the entire reviewable proposal and
+  start with no selections. The send gate refuses more than the chosen limit;
+  retrying the split requires a new click.
 - **A task that cannot close on its own is dropped**, not created
   half-written (see `AgentBoard.Intake`).
 
