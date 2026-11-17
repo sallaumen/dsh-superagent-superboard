@@ -658,25 +658,29 @@ defmodule AgentBoard.Board do
 
   @doc "Questions from the newest agent comment per requested issue in one repository. No query for an empty list."
   @spec agent_questions(integer(), [integer()]) :: %{optional(integer()) => String.t()}
-  def agent_questions(_repository_id, []), do: %{}
+  def agent_questions(repository_id, numbers),
+    do: newest_agent_texts(repository_id, numbers, &Workpad.question_text/1)
 
-  def agent_questions(repository_id, numbers) do
+  @doc "Reported blockage sections from the newest agent comment per requested issue. No query for an empty list."
+  @spec agent_blockages(integer(), [integer()]) :: %{optional(integer()) => String.t()}
+  def agent_blockages(repository_id, numbers),
+    do: newest_agent_texts(repository_id, numbers, &Workpad.blockage_text/1)
+
+  @doc "The Bloqueio of the newest agent comment's workpad, or nil."
+  @spec agent_blockage(integer(), integer() | nil) :: String.t() | nil
+  def agent_blockage(_repository_id, nil), do: nil
+  def agent_blockage(repository_id, number), do: agent_blockages(repository_id, [number])[number]
+
+  defp newest_agent_texts(_repository_id, [], _extract), do: %{}
+
+  defp newest_agent_texts(repository_id, numbers, extract) do
     rows =
       repository_id
       |> latest_agent_bodies()
       |> where([_c, t], t.number in ^numbers)
       |> Repo.all()
 
-    for {number, body} <- rows,
-        question = Workpad.question_text(body),
-        into: %{},
-        do: {number, question}
-  end
-
-  @doc "The Bloqueio of the newest agent comment's workpad, or nil."
-  @spec agent_blockage(integer(), integer()) :: String.t() | nil
-  def agent_blockage(repository_id, number) do
-    repository_id |> newest_agent_comment(number) |> Workpad.blockage_text()
+    for {number, body} <- rows, text = extract.(body), into: %{}, do: {number, text}
   end
 
   @doc """
