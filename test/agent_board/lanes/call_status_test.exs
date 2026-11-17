@@ -38,6 +38,37 @@ defmodule AgentBoard.Lanes.CallStatusTest do
            })
   end
 
+  test "an active ticket with no observed start or end remains pending" do
+    assert CallStatus.pending_ticket?(%{})
+
+    assert CallStatus.pending_ticket?(%{
+             "stopped" => false,
+             "archived" => false,
+             "started_at" => nil,
+             "ended_at" => nil
+           })
+  end
+
+  test "stopped and archived tickets are not pending even without work timestamps" do
+    for ticket <- [
+          %{"stopped" => true},
+          %{"archived" => true},
+          %{"stopped" => true, "archived" => true}
+        ] do
+      refute CallStatus.pending_ticket?(ticket)
+    end
+  end
+
+  test "a start or an end removes a ticket from the pending queue" do
+    for ticket <- [
+          %{"started_at" => @at},
+          %{"ended_at" => @at},
+          %{"started_at" => @at, "ended_at" => DateTime.add(@at, 60)}
+        ] do
+      refute CallStatus.pending_ticket?(ticket)
+    end
+  end
+
   describe "queue_stage/2" do
     @task %{number: 12, held: false, released_at: @at}
     @calls %{now: @at, tickets: %{}, stall_after: 90}
