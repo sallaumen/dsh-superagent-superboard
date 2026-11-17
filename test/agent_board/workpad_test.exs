@@ -33,6 +33,21 @@ defmodule AgentBoard.WorkpadTest do
     assert Workpad.question_text(nil) == nil
   end
 
+  test "blockage text requires a visible, populated section in a structured report" do
+    assert Workpad.blockage_text(@full <> "Missing credentials <!-- internal -->") ==
+             "Missing credentials"
+
+    for body <- [
+          nil,
+          "Blocked: missing credentials",
+          @full,
+          @full <> "none",
+          "## Relatório do agente\n### Plano\nInvestigate blockage"
+        ] do
+      assert Workpad.blockage_text(body) == nil
+    end
+  end
+
   test "a full workpad is read by section" do
     assert %{
              plan: plan,

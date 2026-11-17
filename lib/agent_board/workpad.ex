@@ -76,6 +76,10 @@ defmodule AgentBoard.Workpad do
     end
   end
 
+  @doc "The reported blockage section, or nil for plain messages and missing or empty sections."
+  @spec blockage_text(String.t() | nil) :: String.t() | nil
+  def blockage_text(body), do: parse(body)[:blockage]
+
   @doc "The question in a workpad section or a plain agent message, excluding hidden markup."
   @spec question_text(String.t() | nil) :: String.t() | nil
   def question_text(nil), do: nil
