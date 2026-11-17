@@ -3,6 +3,22 @@ defmodule AgentBoard.Lanes.QueueTest do
 
   alias AgentBoard.Lanes.Queue
 
+  test "related IDs preserve origin then blocker order and deduplicate across roles" do
+    assert Queue.related_ids([
+             %{origin_task_id: 12, blocker_for_task_id: 7},
+             %{origin_task_id: 7, blocker_for_task_id: 9},
+             %{origin_task_id: nil, blocker_for_task_id: 12},
+             %{origin_task_id: 3, blocker_for_task_id: 3}
+           ]) == [12, 7, 9, 3]
+  end
+
+  test "missing relationships need no lookup" do
+    assert Queue.related_ids([]) == []
+    assert Queue.related_ids([%{origin_task_id: nil, blocker_for_task_id: nil}]) == []
+    assert Queue.related_ids([%{origin_task_id: nil, blocker_for_task_id: 7}]) == [7]
+    assert Queue.related_ids([%{origin_task_id: 12, blocker_for_task_id: nil}]) == [12]
+  end
+
   test "what a task unblocks takes precedence over its split origin" do
     assert Queue.relationship(12, 7) == {:unblocks, 12}
     assert Queue.relationship(12, nil) == {:unblocks, 12}

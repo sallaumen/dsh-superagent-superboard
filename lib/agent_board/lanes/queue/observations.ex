@@ -4,6 +4,7 @@ defmodule AgentBoard.Lanes.Queue.Observations do
   import Ecto.Query
 
   alias AgentBoard.Board.{PullRequest, Task, TaskDependency}
+  alias AgentBoard.Lanes.Queue
   alias AgentBoard.Repo
 
   @doc "Read the ordered queue, merged titles, and linked task numbers."
@@ -51,11 +52,7 @@ defmodule AgentBoard.Lanes.Queue.Observations do
   end
 
   defp related_numbers(rows) do
-    ids =
-      rows
-      |> Enum.flat_map(&[&1.origin_task_id, &1.blocker_for_task_id])
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
+    ids = Queue.related_ids(rows)
 
     if ids == [] do
       %{}
