@@ -57,12 +57,17 @@ defmodule AgentBoard.Board.TaskPullLinks do
   defp pulls_by_ref([]), do: %{}
 
   defp pulls_by_ref(refs) do
-    repository_ids = Enum.map(refs, &elem(&1, 0)) |> Enum.uniq()
-    numbers = Enum.map(refs, &elem(&1, 1)) |> Enum.uniq()
+    # An independent IN for each column would also load other repositories' PRs
+    # with the same numbers. Keep each number attached to its own repository.
+    scope =
+      refs
+      |> Enum.uniq()
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+      |> Enum.reduce(dynamic(false), fn {repo, numbers}, scope ->
+        dynamic([p], ^scope or (p.repository_id == ^repo and p.number in ^numbers))
+      end)
 
-    Repo.all(
-      from p in PullRequest, where: p.repository_id in ^repository_ids and p.number in ^numbers
-    )
+    Repo.all(from p in PullRequest, where: ^scope)
     |> Map.new(&{{&1.repository_id, &1.number}, &1})
   end
 
