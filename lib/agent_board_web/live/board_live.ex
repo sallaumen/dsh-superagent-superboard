@@ -2132,6 +2132,10 @@ defmodule AgentBoardWeb.BoardLive do
     do: {:noreply, ComposerLifecycle.unsplit(socket)}
 
   @impl true
+  def handle_event("composer_answer", params, socket),
+    do: {:noreply, ComposerLifecycle.answer(socket, params)}
+
+  @impl true
   def handle_event("composer_submit", params, socket),
     do: {:noreply, ComposerLifecycle.submit(socket, params)}
 
@@ -2145,7 +2149,7 @@ defmodule AgentBoardWeb.BoardLive do
 
   @impl true
   def handle_event("composer_single", _params, socket),
-    do: {:noreply, ComposerLifecycle.single(socket)}
+    do: {:noreply, ComposerLifecycle.unsplit(socket)}
 
   @impl true
   def handle_event("composer_reset", _params, socket),

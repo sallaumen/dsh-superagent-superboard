@@ -1925,12 +1925,15 @@ rows (the split) and the tasks with their `request_key` (the enqueue).
   code paths and `AGENTS.md`, `CLAUDE.md` and `README.md` of the default
   branch, bounded, go to the refine and the split as data. It is help, never
   a gate: a repository the board cannot read splits on the words alone.
-- **One door, one click to split.** The board's header has only "Novo
-  pedido"; inside the composer "Dividir automaticamente" runs the whole
-  split (repository digest, refine, proposal) on the words already typed,
-  and "Dividir de novo" reruns it. "Manter como um pedido só" drops the
-  proposal and sends a single issue. The split never reads the private
-  context.
+- **Draft, AI and publication are separate intents.** “Planejar com IA” reads the
+  repository and the request; it never writes GitHub. Required questions use
+  stable question IDs per proposal round. “Enviar respostas à IA” sends the
+  original and the matching pairs (including prior rounds), never an anonymous
+  answer blob. A stale answer submit cannot publish, even if the next proposal
+  is ready. Optional decisions on a ready proposal edit the draft without AI.
+  Failed regeneration preserves the previous selection and edits. “Revisar
+  como issue única” only changes the draft; only the explicit GitHub submit or
+  an approved creation retry can publish. Private context never enters a split.
 - **The private context stays on this machine** (`AgentBoard.Board.PrivateContext`):
   the composer's "Contexto privado" (a note, files marked "Só nesta
   máquina", local folders) and the inspector's Privado tab write to

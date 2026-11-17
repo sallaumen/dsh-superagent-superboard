@@ -54,15 +54,15 @@ defmodule AgentBoardWeb.ComposerTest do
     view |> element("#composer-split") |> render_click()
     render_async(view, 2000)
 
-    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
-    assert has_element?(view, "#composer-form button", "Pôr 2 na fila")
+    assert has_element?(view, "#composer-form", "2 tarefas prontas para revisão")
+    assert has_element?(view, "#composer-form button", "Publicar 2 tarefas no GitHub")
     assert Repo.aggregate(Task, :count) == 0
 
     view
     |> element("#composer-form")
     |> render_change(%{"text" => "Quero respostas rápidas", "tasks" => ["0"]})
 
-    assert has_element?(view, "#composer-form button", "Pôr 1 na fila")
+    assert has_element?(view, "#composer-form button", "Publicar 1 tarefa no GitHub")
 
     view
     |> element("#composer-form")
@@ -88,14 +88,14 @@ defmodule AgentBoardWeb.ComposerTest do
     view |> element("#composer-split") |> render_click()
     render_async(view, 2000)
 
-    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
-    assert has_element?(view, "#composer-split", "Dividir de novo")
+    assert has_element?(view, "#composer-form", "2 tarefas prontas para revisão")
+    assert has_element?(view, "#composer-split", "Refazer proposta com IA")
 
     # Back to one request: the proposal goes and the send is a single issue.
     view |> element("#composer-unsplit") |> render_click()
-    refute has_element?(view, "#composer-form", "Vai virar 2 tarefas")
+    refute has_element?(view, "#composer-form", "2 tarefas prontas para revisão")
     refute has_element?(view, "#composer-unsplit")
-    assert has_element?(view, "#composer-form button.ab-btn--primary", "Pôr na fila")
+    assert has_element?(view, "#composer-form button.ab-btn--primary", "Criar issue no GitHub")
   end
 
   test "the old Split link opens the composer", %{conn: conn} do
@@ -183,6 +183,10 @@ defmodule AgentBoardWeb.ComposerTest do
     |> element("#composer-form")
     |> render_change(%{"text" => "Quero respostas rápidas", "tasks" => [""]})
 
-    assert has_element?(view, "#composer-form button[disabled]", "Pôr 0 na fila")
+    assert has_element?(
+             view,
+             "#composer-form button[disabled]",
+             "Selecione tarefas para publicar"
+           )
   end
 end

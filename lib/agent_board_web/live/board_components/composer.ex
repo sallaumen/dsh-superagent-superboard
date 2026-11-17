@@ -21,6 +21,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   import AgentBoardWeb.BoardComponents.ExecutorPicker, only: [executor_picker: 1]
 
   alias AgentBoard.{Executors, Intake, Titles}
+  alias AgentBoard.Intake.Clarifications
   alias AgentBoardWeb.BoardComponents.PrivatePanel
 
   attr :repo, :string, required: true
@@ -39,7 +40,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   attr :job, :any, default: nil
   attr :receipt, :any, default: nil
   attr :maintenance_path, :string, default: nil
-  attr :answers, :string, default: ""
+  attr :answers, :map, default: %{}
   attr :ai_status, :any, default: :logged_in
   attr :voice_configured, :boolean, default: false
   attr :error, :string, default: nil
@@ -50,10 +51,11 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   attr :suggestion, :map, default: nil
 
   def composer(assigns) do
-    tasks = (assigns.intake && assigns.intake.tasks) || []
-    status = assigns.intake && Map.get(assigns.intake, :status)
-    spec = (assigns.intake && assigns.intake.spec) || %{}
-    questions = clarifying_questions(spec)
+    intake = assigns.intake || %{}
+    tasks = Map.get(intake, :tasks, [])
+    status = intake[:status]
+    spec = Map.get(intake, :spec, %{})
+    questions = Clarifications.questions(spec)
     risks = spec["risks"] || []
     selected = assigns.selected || MapSet.new(Enum.to_list(0..max(length(tasks) - 1, 0)))
 
@@ -61,6 +63,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       assigns
       |> assign(:tasks, tasks)
       |> assign(:status, status)
+      |> assign(:clarifications, Map.get(intake, :history, []))
       |> assign(:questions, questions)
       |> assign(:spec, spec)
       |> assign(:incomplete, incomplete?(tasks, selected))
@@ -116,23 +119,34 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
         :if={is_nil(@receipt)}
         id="composer-form"
         phx-change="composer_change"
-        phx-submit="composer_submit"
+        phx-submit={
+          if @status == :needs_clarification, do: "composer_answer", else: "composer_submit"
+        }
       >
         <div class="ab-compose__fields">
           <p :if={@error} id="composer-error" class="ab-compose__error" role="alert">
             {@error}
+            <span :if={@status == :ready && match?({:split, _}, @retry)}>{gettext(
+              "Your previous proposal and edits are still available."
+            )}</span>
             <button
-              :if={@retry}
+              :if={@retry && @status != :needs_clarification}
               type="button"
               class="ab-btn ab-btn--sm ab-btn--quiet"
               phx-click="composer_retry"
               disabled={@busy}
             >
-              {gettext("Try again")}
+              {if match?({:split, _}, @retry),
+                do: gettext("Retry with AI"),
+                else: gettext("Try again")}
             </button>
             <span :if={@retry && @retry_confirm} class="ab-compose__retry-confirm">{@retry_confirm}</span>
           </p>
 
+          <p :if={!@busy} id="composer-draft-state" class="ab-compose__draft">
+            <strong>{gettext("Draft")}</strong>
+            {gettext("Editing this draft does not change GitHub.")}
+          </p>
           <textarea
             id="composer-text"
             name="text"
@@ -148,7 +162,10 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           >{@text}</textarea>
 
           <div
-            :if={@ai_status != :not_configured && String.trim(@text) != ""}
+            :if={
+              @ai_status != :not_configured && String.trim(@text) != "" &&
+                @status != :needs_clarification
+            }
             class="ab-compose__limit"
           >
             <label for="composer-max-tasks">{gettext("Maximum tasks per split")}</label>
@@ -196,52 +213,69 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             </button>
           </p>
 
-          <div :if={@split && !is_nil(@intake) && !@busy} class="ab-sec__head ab-compose__split-head">
+          <div
+            :if={@split && !is_nil(@intake) && @status != :needs_clarification && !@busy}
+            id="composer-proposal-status"
+            tabindex="-1"
+            phx-mounted={JS.focus()}
+            class="ab-sec__head ab-compose__split-head"
+            role="status"
+          >
             <span class="ab-label">{split_head(@status, @tasks)}</span>
           </div>
 
-          <div :if={@split && @status == :needs_clarification && !@busy} class="ab-split-note">
-            <p :if={@questions != []} class="ab-meta">
-              {gettext("The AI still has questions before splitting:")}
+          <section
+            :if={@split && @status == :needs_clarification && !@busy}
+            class="ab-questions"
+            aria-labelledby={"composer-required-title-#{@intake.round}"}
+          >
+            <input type="hidden" name="round" value={@intake.round} />
+            <h3 id={"composer-required-title-#{@intake.round}"} tabindex="-1" phx-mounted={JS.focus()}>
+              {gettext("Clarify the request")}
+            </h3>
+            <p id="composer-answer-help" class="ab-meta">
+              {if @spec["blocking_questions"] in [nil, []],
+                do:
+                  gettext(
+                    "Answer at least one question. AI will use the question and answer together to prepare a draft."
+                  ),
+                else: gettext("Answer each question. AI will use these pairs to prepare a draft.")}
             </p>
-            <ul :if={@questions != []}>
-              <li :for={question <- @questions}>{question}</li>
-            </ul>
-            <p :if={@questions == [] and @risks != []} class="ab-meta">
-              {gettext("The AI found the request ambiguous and highlighted these risks:")}
-            </p>
-            <ul :if={@questions == [] and @risks != []}>
-              <li :for={risk <- @risks}>{risk}</li>
-            </ul>
-            <label for="composer-answers" class="ab-label">{gettext("Respond here")}</label>
-            <textarea
-              id="composer-answers"
-              name="answers"
-              rows="3"
-              placeholder={
-                gettext("Your answers are added to the request before the AI splits it again.")
+            <p
+              :if={
+                @spec["blocking_questions"] in [nil, []] and @spec["open_questions"] in [nil, []] and
+                  @risks != []
               }
-            >{@answers}</textarea>
-            <p class="ab-meta">{gettext("Or edit the request above and split again.")}</p>
-          </div>
-
-          <div :if={@split && @status == :no_tasks && !@busy} class="ab-split-note">
-            <p class="ab-meta">
-              {gettext(
-                "The AI did not propose any usable task for this request. Try again or submit as a single request."
-              )}
+              class="ab-meta"
+            >
+              {Enum.join(@risks, " · ")}
             </p>
-            <button type="button" class="ab-btn ab-btn--sm" phx-click="composer_single">
-              {gettext("Send as a single request")}
-            </button>
-          </div>
+            <.question_fields
+              questions={@questions}
+              answers={@answers}
+              group="clarify"
+              prefix="clarify"
+              help="composer-answer-help"
+            />
+          </section>
 
-          <.executor_picker
-            :if={@executor && String.trim(@text) != ""}
-            chosen={@executor}
-            suggestion={@suggestion}
-            disabled={@busy}
-          />
+          <details
+            :if={@clarifications != [] && @status == :ready && !@busy}
+            id="composer-applied"
+            phx-mounted={JS.ignore_attributes(["open"])}
+            class="ab-questions ab-questions--applied"
+          >
+            <summary>{gettext("Answers used in this proposal")} · {length(@clarifications)}</summary>
+            <dl>
+              <div :for={{q, a} <- @clarifications}>
+                <dt>{q}</dt><dd>{a}</dd>
+              </div>
+            </dl>
+          </details>
+
+          <p :if={@split && @status == :no_tasks && !@busy} class="ab-split-note">
+            {gettext("No tasks to review. Ask AI again or return to a single issue draft.")}
+          </p>
 
           <p
             :if={@split && !@busy && Intake.over_limit?(length(@tasks), @max_tasks)}
@@ -395,6 +429,47 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             </p>
           </section>
 
+          <.executor_picker
+            :if={@executor && String.trim(@text) != "" && @status != :needs_clarification && !@busy}
+            chosen={@executor}
+            suggestion={@suggestion}
+            disabled={@busy}
+          />
+
+          <details
+            :if={@split && @status == :ready && !@busy}
+            id="composer-plan-options"
+            class="ab-questions ab-questions--options"
+            phx-mounted={JS.ignore_attributes(["open"])}
+          >
+            <summary>{gettext("Change the plan")}</summary>
+            <p class="ab-meta">
+              {gettext(
+                "A new AI proposal replaces the task edits. Returning to one issue keeps your request and answers in a draft."
+              )}
+            </p>
+            <button
+              id="composer-split"
+              type="button"
+              phx-click="composer_split"
+              class="ab-btn ab-btn--sm"
+            >{gettext("Regenerate with AI")}</button>
+            <button
+              id="composer-unsplit"
+              type="button"
+              phx-click="composer_unsplit"
+              class="ab-btn ab-btn--sm ab-btn--quiet"
+            >{gettext("Review as one issue")}</button>
+          </details>
+          <button
+            :if={@split && @status != :ready && !@busy}
+            id="composer-unsplit"
+            type="button"
+            class="ab-btn ab-btn--sm ab-btn--quiet"
+            phx-click="composer_unsplit"
+          >
+            {gettext("Review as one issue")}
+          </button>
           <.private_context private={@private} />
 
           <p
@@ -403,6 +478,9 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
             class="ab-compose__confirm"
           >
             {@confirm}
+            <span :if={@split && @selected_count > 1}>{gettext(
+              "A separate GitHub issue will group these tasks."
+            )}</span>
           </p>
         </div>
 
@@ -441,6 +519,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
           </span>
 
           <button
+            :if={@status not in [:needs_clarification, :ready] && !@busy}
             id="composer-split"
             type="button"
             class="ab-btn ab-btn--sm"
@@ -451,34 +530,30 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
                 do: gettext("AI is not configured"),
                 else:
                   gettext(
-                    "The AI reads the repository, refines the request and proposes tasks for you to review"
+                    "Ask AI for a new proposal. This replaces the proposed tasks without publishing them."
                   )
             }
           >
             <.ico name="split" />{if @split and not is_nil(@intake),
-              do: gettext("Split again"),
-              else: gettext("Split automatically")}
-          </button>
-
-          <button
-            :if={@split and not @busy}
-            id="composer-unsplit"
-            type="button"
-            class="ab-btn ab-btn--sm ab-btn--quiet"
-            phx-click="composer_unsplit"
-          >
-            {gettext("Keep as one request")}
+              do: gettext("Regenerate with AI"),
+              else: gettext("Plan with AI")}
           </button>
 
           <span class="ab-top__spacer"></span>
 
           <button
-            id="composer-submit"
+            :if={!@split or @status in [:ready, :needs_clarification]}
+            id={
+              if @status == :needs_clarification,
+                do: "composer-answer-submit",
+                else: "composer-submit"
+            }
             type="submit"
             class="ab-btn ab-btn--primary"
             phx-disable-with={disable_label(@split, @status)}
             disabled={
               submit_disabled?(@text, @split, @status, @selected_count, @busy) or
+                (@status == :needs_clarification && !Clarifications.sufficient?(@spec, @answers)) or
                 Intake.over_limit?(@selected_count, @max_tasks) or @incomplete or
                 @attachments_pending
             }
@@ -615,22 +690,26 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
 
     ~H"""
     <div class="ab-split-note">
-      <div :if={@open != []} id="composer-open-questions">
-        <p class="ab-meta">
+      <section
+        :if={@open != []}
+        id="composer-open-questions"
+        class="ab-questions"
+        aria-labelledby="composer-optional-title"
+      >
+        <h3 id="composer-optional-title">{gettext("Optional decisions")}</h3>
+        <p id="composer-optional-help" class="ab-meta">
           {gettext(
-            "Answer what you can. Answers become decisions in every issue; blank questions stay open."
+            "Your answers go into each selected issue when published. Editing here does not call AI. Leave a question blank to keep it open."
           )}
         </p>
-        <div :for={question <- Enum.uniq(@open)}>
-          <% key = Intake.question_key(question) %>
-          <label class="ab-label" for={"composer-answer-#{key}"}>{question}</label>
-          <textarea
-            id={"composer-answer-#{key}"}
-            name={"shared_context[answers][#{key}]"}
-            rows="1"
-          >{get_in(@spec, ["answers", key])}</textarea>
-        </div>
-      </div>
+        <.question_fields
+          questions={Enum.uniq(@open)}
+          answers={@spec["answers"] || %{}}
+          group="shared_context[answers]"
+          prefix="answer"
+          help="composer-optional-help"
+        />
+      </section>
       <details
         id="composer-understood"
         class="ab-split__detail"
@@ -700,11 +779,25 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   defp upload_error(:not_accepted), do: gettext("Type not accepted")
   defp upload_error(_other), do: gettext("Could not read this file")
 
-  defp clarifying_questions(spec) do
-    case spec["blocking_questions"] do
-      [_ | _] = questions -> questions
-      _none -> spec["open_questions"] || []
-    end
+  attr :questions, :list, required: true
+  attr :answers, :map, required: true
+  attr :group, :string, required: true
+  attr :prefix, :string, required: true
+  attr :help, :string, required: true
+
+  defp question_fields(assigns) do
+    ~H"""
+    <div :for={{question, index} <- Enum.with_index(@questions, 1)} class="ab-question">
+      <% key = Intake.question_key(question) %>
+      <label for={"composer-#{@prefix}-#{key}"}><span aria-hidden="true">{index}</span>{question}</label>
+      <textarea
+        id={"composer-#{@prefix}-#{key}"}
+        name={"#{@group}[#{key}]"}
+        rows="2"
+        aria-describedby={@help}
+      >{@answers[key]}</textarea>
+    </div>
+    """
   end
 
   defp incomplete?(tasks, selected) do
@@ -870,9 +963,9 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   defp job_label(_job), do: gettext("Working…")
 
   defp split_head(:ready, tasks),
-    do: gettext("This will become %{count} tasks", count: length(tasks))
+    do: ngettext("1 task ready for review", "%{count} tasks ready for review", length(tasks))
 
-  defp split_head(:needs_clarification, _tasks), do: gettext("AI needs answers before splitting")
+  defp split_head(:needs_clarification, _tasks), do: gettext("Clarify the request")
   defp split_head(:no_tasks, _tasks), do: gettext("AI did not propose tasks")
   defp split_head(_status, _tasks), do: ""
 
@@ -882,9 +975,14 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   defp submit_disabled?(_text, true, :ready, count, _busy), do: count == 0
   defp submit_disabled?(_text, true, _status, _count, _busy), do: false
 
-  defp button_label(false, _status, _count), do: gettext("Add to queue")
-  defp button_label(true, :ready, count), do: gettext("Queue %{count}", count: count)
-  defp button_label(true, :needs_clarification, _count), do: gettext("Split with answers")
+  defp button_label(false, _status, _count), do: gettext("Create issue on GitHub")
+
+  defp button_label(true, :ready, 0), do: gettext("Select tasks to publish")
+
+  defp button_label(true, :ready, count),
+    do: ngettext("Publish 1 task on GitHub", "Publish %{count} tasks on GitHub", count)
+
+  defp button_label(true, :needs_clarification, _count), do: gettext("Send answers to AI")
   defp button_label(true, _status, _count), do: gettext("Split request")
 
   defp disable_label(false, _status), do: gettext("Sending…")

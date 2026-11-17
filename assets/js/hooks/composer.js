@@ -12,9 +12,16 @@ export const Composer = {
     }
     this.form?.addEventListener("keydown", this.onFieldEnter)
     this.onKey = event => {
-      if (!(event.metaKey || event.ctrlKey) || event.key !== "Enter") return
+      if (event.key !== "Enter" || event.isComposing || event.defaultPrevented) return
+      if (!(event.metaKey || event.ctrlKey)) {
+        // Committing a title edit with Enter is not consent to publish an issue.
+        if (event.target.matches('input[type="text"]')) event.preventDefault()
+        return
+      }
+      if (event.target !== this.el && !event.target.matches('textarea[name^="clarify["]')) return
       event.preventDefault()
-      this.el.closest("form")?.requestSubmit()
+      const submit = this.form?.querySelector('button[type="submit"]')
+      if (submit && !submit.disabled && !event.repeat) this.form.requestSubmit(submit)
     }
     this.onPaste = event => {
       const files = Array.from(event.clipboardData?.files || [])
@@ -22,12 +29,12 @@ export const Composer = {
       event.preventDefault()
       this.upload("attachments", files)
     }
-    this.el.addEventListener("keydown", this.onKey)
+    this.form?.addEventListener("keydown", this.onKey)
     this.el.addEventListener("paste", this.onPaste)
   },
   destroyed() {
     this.form?.removeEventListener("keydown", this.onFieldEnter)
-    this.el.removeEventListener("keydown", this.onKey)
+    this.form?.removeEventListener("keydown", this.onKey)
     this.el.removeEventListener("paste", this.onPaste)
   },
 }

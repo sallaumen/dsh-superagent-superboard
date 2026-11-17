@@ -3112,3 +3112,22 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 .ab-decision-review textarea { width: 100%; min-width: 0; }
 .ab-decision-review small { color: var(--ink-muted); }
 .ab-decision-review form > div { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Request clarification keeps the question and its answer in one reading column. */
+.ab-compose__draft { display: flex; flex-wrap: wrap; gap: .45em; align-items: baseline; margin: var(--space-3) var(--space-5) 0; color: var(--ink-muted); font-size: 13px; }
+.ab-compose__draft strong { color: var(--ink); }
+.ab-questions { margin: var(--space-2) var(--space-5) var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--line); color: var(--ink); }
+.ab-split-note .ab-questions { margin-inline: 0; }
+.ab-questions h3, .ab-questions summary { margin: 0; font-size: 15px; font-weight: 600; }
+.ab-questions .ab-meta { margin: var(--space-1) 0 var(--space-3); }
+.ab-question + .ab-question { margin-top: var(--space-3); }
+.ab-question label { display: flex; align-items: baseline; gap: var(--space-2); font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.ab-question label span { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.ab-questions .ab-question textarea { display: block; width: 100%; margin-top: var(--space-1); padding: var(--space-2); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: inherit; resize: vertical; }
+.ab-questions--applied summary { cursor: pointer; min-height: 32px; }
+.ab-questions--applied dt { font-weight: 500; }
+.ab-questions--applied dd { margin: 0 0 var(--space-2); white-space: pre-wrap; }
+.ab-compose:is([data-composer-state="needs_clarification"], [data-composer-state="ready"]) #composer-text { min-height: 3.5rem; }
+.ab-questions .ab-question textarea { min-height: 3.5rem; }
+.ab-questions--options summary { cursor: pointer; }
+.ab-questions--options .ab-meta { margin-top: var(--space-2); }

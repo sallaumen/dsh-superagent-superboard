@@ -1,11 +1,18 @@
 # From a request to reviewable issues
 
-In **New request → Split automatically**, review **How to verify** for each
+In **New request → Plan with AI**, review **How to verify** for each
 selected issue. Edit the scenario or clear it. Under **Include guides in this
 issue**, choose which references the executor should see. Sending the proposal
 publishes the reviewed text; retrying a partial submission reuses it.
 
 The splitting call also receives the original wording alongside the refined spec. A condition for a diagnostic recording (such as hiding damage numbers) should not become a change to the game. The model proposes a scenario; the owner still reviews it.
+
+There are two kinds of questions:
+
+- **Clarify the request:** answer under each question, then **Send answers to AI**. This runs refinement again with the original request and confirmed question/answer pairs; it creates no GitHub issue. When a proposal is ready, open **Answers used in this proposal** to check exactly what went in.
+- **Optional decisions:** the proposal is already ready. Typing these answers updates the draft without contacting AI. Publishing carries them into the selected issues; unanswered questions stay open.
+
+**Change the plan** lets you explicitly regenerate with AI or review a single issue draft. Neither publishes. If regeneration fails, the prior proposal, selection and edits remain available. **Publish … on GitHub** (or **Create issue on GitHub** for a single draft) is the external write. Multiple tasks also get a grouping issue. The receipt links to each task.
 
 Acceptance describes **what should be true**. Verification describes **how a
 reviewer could tell**. Neither is a receipt. A suggested guide is optional and

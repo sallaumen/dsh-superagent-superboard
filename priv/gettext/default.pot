@@ -10434,3 +10434,79 @@ msgstr ""
 
 msgid "On this computer"
 msgstr ""
+
+msgid "Draft"
+msgstr ""
+
+msgid "Editing this draft does not change GitHub."
+msgstr ""
+
+msgid "Clarify the request"
+msgstr ""
+
+msgid "Answer at least one question. AI will use the question and answer together to prepare a draft."
+msgstr ""
+
+msgid "Answer each question. AI will use these pairs to prepare a draft."
+msgstr ""
+
+msgid "Answers used in this proposal"
+msgstr ""
+
+msgid "No tasks to review. Ask AI again or return to a single issue draft."
+msgstr ""
+
+msgid "Optional decisions"
+msgstr ""
+
+msgid "Your answers go into each selected issue when published. Editing here does not call AI. Leave a question blank to keep it open."
+msgstr ""
+
+msgid "Regenerate with AI"
+msgstr ""
+
+msgid "Plan with AI"
+msgstr ""
+
+msgid "Review as one issue"
+msgstr ""
+
+msgid "Create issue on GitHub"
+msgstr ""
+
+msgid "Send answers to AI"
+msgstr ""
+
+msgid "Retry with AI"
+msgstr ""
+
+msgid "A separate GitHub issue will group these tasks."
+msgstr ""
+
+msgid "Answer the required questions before asking AI to continue."
+msgstr ""
+
+msgid "Ask AI for a new proposal. This replaces the proposed tasks without publishing them."
+msgstr ""
+
+msgid "Publish 1 task on GitHub"
+msgid_plural "Publish %{count} tasks on GitHub"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "1 task ready for review"
+msgid_plural "%{count} tasks ready for review"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Select tasks to publish"
+msgstr ""
+
+msgid "Change the plan"
+msgstr ""
+
+msgid "A new AI proposal replaces the task edits. Returning to one issue keeps your request and answers in a draft."
+msgstr ""
+
+msgid "Your previous proposal and edits are still available."
+msgstr ""
