@@ -145,8 +145,8 @@ defmodule AgentBoard.Lanes do
 
   defp need_content(task, :blocked, ticket, _pull, context) do
     block = AgentBlock.explain(ticket, block_opts(context))
-    why = if block, do: block.line, else: blockage_why(task, ticket)
-    {why, Attention.Blocked.actions(task, block)}
+    recorded = if is_nil(block), do: Board.agent_blockage(task.repository_id, task.number)
+    Attention.Blocked.content(task, block, recorded, ticket && ticket["report_summary"])
   end
 
   defp need_content(task, :review, ticket, pull, _context),
@@ -169,13 +169,6 @@ defmodule AgentBoard.Lanes do
   defp task_why(task, :slow, _ticket, context) do
     silence = context.silences[task.number]
     Attention.RunNotice.slow(task, silence, context.now, context.tz_offset)
-  end
-
-  # A block the agent reported itself (a workpad Bloqueio, a `blocked`
-  # report): its own words.
-  defp blockage_why(task, ticket) do
-    blockage = Board.agent_blockage(task.repository_id, task.number)
-    Attention.ReportNotice.blockage(blockage, ticket && ticket["report_summary"])
   end
 
   defp detail_actions(task, kind),
