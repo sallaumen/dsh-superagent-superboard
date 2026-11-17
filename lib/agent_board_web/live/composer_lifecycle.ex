@@ -237,16 +237,8 @@ defmodule AgentBoardWeb.ComposerLifecycle do
       text == "" ->
         composer_error(socket, gettext("Write the request before sending."))
 
-      socket.assigns.composer_split and
-          read_limit(params, socket.assigns.composer_max_tasks) !=
-            socket.assigns.composer_max_tasks ->
-        composer_error(
-          socket,
-          gettext("The split limit changed. Review the selection before sending.")
-        )
-
       socket.assigns.composer_split ->
-        submit_split(socket, text, params, shown)
+        submit_review(socket, text, params, shown)
 
       # The title the screen confirmed (`composer_title`, kept by the
       # change events), never the field as the send carried it.
@@ -416,6 +408,19 @@ defmodule AgentBoardWeb.ComposerLifecycle do
   end
 
   defp edited_title(_params, _text, current), do: current
+
+  defp submit_review(socket, text, params, shown) do
+    limit = socket.assigns.composer_max_tasks
+
+    if read_limit(params, limit) == limit do
+      submit_split(socket, text, params, shown)
+    else
+      composer_error(
+        socket,
+        gettext("The split limit changed. Review the selection before sending.")
+      )
+    end
+  end
 
   defp submit_split(socket, text, params, shown) do
     case socket.assigns.intake do
