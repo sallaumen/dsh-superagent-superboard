@@ -34,6 +34,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
         "body" => "Instrumentar o load.",
         "kind" => "bug",
         "acceptance" => ["p95 medido"],
+        "project_guide" => "",
+        "review_method" => "performance",
+        "verification" => "Comparar o p95 com a mesma carga antes e depois.",
         "depends_on" => [],
         "size" => "S"
       },
@@ -42,6 +45,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
         "body" => "Atacar a causa.",
         "kind" => "bug",
         "acceptance" => ["p95 abaixo do alvo"],
+        "project_guide" => "",
+        "review_method" => "performance",
+        "verification" => "Comparar o p95 com a mesma carga antes e depois.",
         "depends_on" => [0],
         "size" => "M"
       }
@@ -99,6 +105,11 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     refuse = Keyword.get(opts, :refuse, [])
 
     Req.Test.stub(@stub, fn
+      %{method: "GET", request_path: "/repos/fixture/lifecycle/git/trees/HEAD"} = conn ->
+        Req.Test.json(conn, %{
+          "tree" => for(path <- opts[:paths] || [], do: %{"path" => path, "type" => "blob"})
+        })
+
       %{method: "GET"} = conn ->
         Req.Test.json(conn, [])
 
@@ -763,6 +774,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
         "body" => body,
         "kind" => "bug",
         "acceptance" => ["ok"],
+        "project_guide" => "",
+        "review_method" => "performance",
+        "verification" => "Comparar o p95 com a mesma carga antes e depois.",
         "depends_on" => depends_on,
         "size" => "S"
       }
@@ -911,6 +925,61 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     refute Map.has_key?(objective.spec, "answers")
   end
 
+  test "reviewing one child's proof doesn't change its sibling or publish an invented guide", %{
+    conn: conn
+  } do
+    guide = ".agents/skills/swarm-art/SKILL.md"
+    github(capture: self(), paths: [guide])
+    [first, second] = @tasks["tasks"]
+
+    first = %{
+      first
+      | "review_method" => "motion",
+        "project_guide" => guide,
+        "verification" => "Compare seed 7"
+    }
+
+    second = %{second | "project_guide" => ".agents/skills/imaginary/SKILL.md"}
+
+    script(fn
+      %{name: :refine_request} ->
+        Scripted.answer(@refined)
+
+      %{name: :propose_tasks, prompt: prompt} ->
+        true =
+          String.contains?(prompt, guide) and
+            String.contains?(prompt, "Original request:\nRevisar o impacto")
+
+        Scripted.answer(%{"tasks" => [first, second]})
+    end)
+
+    view = open_composer(conn)
+    type(view, "Revisar o impacto")
+    split(view)
+    assert has_element?(view, "#composer-proof-0", "Compare seed 7")
+    assert has_element?(view, ~s(input[value="#{guide}"][checked]))
+
+    edits = %{
+      "0" => %{
+        "title" => first["title"],
+        "body" => first["body"],
+        "acceptance" => "Só o alvo cede",
+        "verification" => "Repetir a cena sem números",
+        "guides" => [guide, "forged"]
+      }
+    }
+
+    submit(view, %{"text" => "Revisar o impacto", "task_edits" => edits, "tasks" => ["0", "1"]})
+    assert_received {:github_issue, "Medir o carregamento", one}
+    assert one =~ "## Como verificar\nRepetir a cena sem números"
+    assert one =~ "https://github.com/fixture/lifecycle/blob/HEAD/#{guide}"
+    refute one =~ "forged"
+    assert_received {:github_issue, "Corrigir o gargalo", two}
+    assert two =~ second["verification"]
+    refute two =~ "imaginary"
+    refute two =~ guide
+  end
+
   test "what the owner edits is what opens, and a retry does not duplicate it", %{conn: conn} do
     github(refuse: ["Corrigir de verdade"])
     happy_model()
@@ -972,6 +1041,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
               "body" => "Conferir.",
               "kind" => "bug",
               "acceptance" => ["ok"],
+              "project_guide" => "",
+              "review_method" => "performance",
+              "verification" => "Comparar o p95 com a mesma carga antes e depois.",
               "depends_on" => [1],
               "size" => "S"
             }

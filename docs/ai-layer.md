@@ -113,7 +113,7 @@ does not depend on itself. The architecture around them remains historical.
 Prompt rule: do not invent a requirement. Whatever is missing goes in
 `open_questions`, not in an assumption.
 
-**`:propose_tasks`** — receives the refined spec and returns a list:
+**`:propose_tasks`** — receives the refined spec and returns a list. Each child proposes a scenario to verify, one primary method and at most one repository guide. The [split quality guide](agent/split-quality.md) explains what is discovered locally, what the owner can edit and what reaches the issue:
 
 ```json
 {
@@ -123,6 +123,9 @@ Prompt rule: do not invent a requirement. Whatever is missing goes in
       "body": "Check the link targets under docs/ and fix the broken paths, preserving the technical content.",
       "kind": "docs",
       "acceptance": ["Every local link under docs/ resolves to an existing target"],
+      "verification": "Open a formerly broken link from the rendered guide and check its destination.",
+      "review_method": "inspection",
+      "project_guide": "",
       "depends_on": [],
       "size": "S"
     }

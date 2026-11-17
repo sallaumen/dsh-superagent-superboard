@@ -30,6 +30,9 @@ defmodule AgentBoard.AI.Engines.Rehearsal do
           "body" => "Instrumentar o load e o broadcast e registrar p95 antes de mexer.",
           "kind" => "bug",
           "acceptance" => ["p95 medido e registrado", "nenhum dado inventado"],
+          "project_guide" => "",
+          "review_method" => "performance",
+          "verification" => "Comparar o p95 com a mesma carga antes e depois.",
           "depends_on" => [],
           "size" => "S"
         },
@@ -38,6 +41,9 @@ defmodule AgentBoard.AI.Engines.Rehearsal do
           "body" => "Atacar a causa do p95 acima do alvo; uma mudança por PR.",
           "kind" => "bug",
           "acceptance" => ["p95 abaixo do alvo", "teste de regressão"],
+          "project_guide" => "",
+          "review_method" => "performance",
+          "verification" => "Comparar o p95 com a mesma carga antes e depois.",
           "depends_on" => [0],
           "size" => "M"
         }

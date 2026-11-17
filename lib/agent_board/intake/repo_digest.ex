@@ -9,6 +9,7 @@ defmodule AgentBoard.Intake.RepoDigest do
   """
 
   alias AgentBoard.GitHub
+  alias AgentBoard.Intake.ReviewGuides
 
   require Logger
 
@@ -20,11 +21,26 @@ defmodule AgentBoard.Intake.RepoDigest do
 
   @doc "The digest as text for a prompt, or nil when the repository cannot be read."
   @spec read(map(), term()) :: String.t() | nil
-  def read(%{owner: owner, name: name}, client) do
-    paths = client |> GitHub.tree(owner, name) |> code_paths()
+  def read(repository, client) do
+    if context = snapshot(repository, client), do: context.text
+  end
+
+  @doc "Read the prompt digest and independently confirmed guide paths from the same tree."
+  @spec snapshot(map(), term()) :: map() | nil
+  def snapshot(%{owner: owner, name: name}, client) do
+    tree = GitHub.tree(client, owner, name)
+    paths = code_paths(tree)
+    guides = ReviewGuides.from_tree(tree)
     documents = Enum.flat_map(@documents, &document(client, owner, name, &1))
 
-    Enum.join(["Files:\n" <> Enum.join(paths, "\n") | documents], "\n\n")
+    text = Enum.join(["Files:\n" <> Enum.join(paths, "\n") | documents], "\n\n")
+
+    text =
+      if guides == [],
+        do: text,
+        else: text <> "\n\nProject review guides:\n" <> Enum.join(guides, "\n")
+
+    %{text: text, paths: guides, url: "https://github.com/#{owner}/#{name}"}
   rescue
     exception ->
       Logger.info("repository digest unavailable: #{Exception.message(exception)}")

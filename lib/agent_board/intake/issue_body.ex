@@ -10,6 +10,9 @@ defmodule AgentBoard.Intake.IssueBody do
 
   @labels %{
     "pt" => %{
+      verification: "Como verificar",
+      guides: "Guias sugeridos",
+      local: "se disponível no executor",
       acceptance: "Critérios de aceite",
       request: "Pedido original",
       release: "Pode começar: as dependências foram concluídas ou liberadas.",
@@ -35,6 +38,9 @@ defmodule AgentBoard.Intake.IssueBody do
       read_first: "Leia essas issues antes de começar e confira o que já foi entregue."
     },
     "en" => %{
+      verification: "How to verify",
+      guides: "Suggested guides",
+      local: "if available on the executor",
       acceptance: "Acceptance criteria",
       request: "Original request",
       release: "You can start: the dependencies were finished or released.",
@@ -78,6 +84,8 @@ defmodule AgentBoard.Intake.IssueBody do
     [
       task.body,
       "## #{labels.acceptance}\n#{bullets(task.acceptance)}",
+      verification(task, labels),
+      guides(task, labels),
       context(spec, labels)
     ]
     |> Enum.reject(&is_nil/1)
@@ -179,6 +187,23 @@ defmodule AgentBoard.Intake.IssueBody do
 
     "**#{labels.depends_on}:** #{links}\n#{labels.read_first}\n\n#{body}"
   end
+
+  defp verification(%{verification: text}, labels) when is_binary(text) and text != "",
+    do: "## #{labels.verification}\n#{text}"
+
+  defp verification(_task, _labels), do: nil
+
+  defp guides(task, labels) do
+    selected = Map.get(task, :selected_guides, [])
+
+    rows =
+      for guide <- Map.get(task, :guides, []), guide.id in selected, do: guide_line(guide, labels)
+
+    if rows != [], do: "## #{labels.guides}\n#{bullets(rows)}"
+  end
+
+  defp guide_line(%{scope: :project, id: path, url: url}, _labels), do: "[`#{path}`](#{url})"
+  defp guide_line(%{scope: :local, id: id}, labels), do: "`#{id}` (#{labels.local})"
 
   defp context(spec, labels) do
     goal = if spec["goal"] in [nil, ""], do: nil, else: "**#{labels.goal}:** #{spec["goal"]}"

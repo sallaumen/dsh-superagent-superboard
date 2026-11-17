@@ -10425,3 +10425,12 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Open agent maintenance"
 msgstr ""
+
+msgid "How to verify"
+msgstr ""
+
+msgid "Include guides in this issue"
+msgstr ""
+
+msgid "On this computer"
+msgstr ""
