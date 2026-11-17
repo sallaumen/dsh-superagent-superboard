@@ -1910,7 +1910,9 @@ rows (the split) and the tasks with their `request_key` (the enqueue).
 - **A split issue is whole** (`AgentBoard.Intake.IssueBody`): the task's body
   and acceptance, then the goal, constraints, non-goals, assumptions and open
   questions of the request, because the agent reads one issue and nothing
-  else. The headings follow the request's language.
+  else. Before sending, the owner can edit or remove shared constraints and
+  assumptions in “What the AI understood”. Both the objective and each selected
+  issue carry the reviewed version. The headings follow the request's language.
 - **In the composer's split, what the model says depends is kept**
   (`Board.Requests.create_requests/3`):
   tasks open blockers first and the body starts with "Depende de #N". A blocker

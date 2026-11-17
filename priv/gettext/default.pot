@@ -10409,3 +10409,8 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "The split limit changed. Review the selection before sending."
 msgstr ""
+
+#: lib/agent_board_web/live/board_components/composer.ex:608
+#, elixir-autogen, elixir-format
+msgid "One item per line. Your edits apply to the objective and every selected task."
+msgstr ""

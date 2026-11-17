@@ -10409,3 +10409,8 @@ msgstr "Escolha no máximo %{limit} tarefas antes de enviar."
 #, elixir-autogen, elixir-format
 msgid "The split limit changed. Review the selection before sending."
 msgstr "O limite da divisão mudou. Revise a seleção antes de enviar."
+
+#: lib/agent_board_web/live/board_components/composer.ex:608
+#, elixir-autogen, elixir-format
+msgid "One item per line. Your edits apply to the objective and every selected task."
+msgstr "Escreva um item por linha. As alterações valem para o objetivo e todas as tarefas selecionadas."

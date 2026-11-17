@@ -604,9 +604,24 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       >
         <summary>{gettext("What the AI understood")}</summary>
         <p :if={@spec["goal"] not in [nil, ""]}>{@spec["goal"]}</p>
-        <.spec_list title={gettext("Constraints")} items={@spec["constraints"]} />
+        <p id="composer-shared-help" class="ab-meta">
+          {gettext("One item per line. Your edits apply to the objective and every selected task.")}
+        </p>
+        <div :for={
+          {key, label} <- [
+            {"constraints", gettext("Constraints")},
+            {"assumptions", gettext("Assumptions")}
+          ]
+        }>
+          <label for={"composer-shared-#{key}"} class="ab-label">{label}</label>
+          <textarea
+            id={"composer-shared-#{key}"}
+            name={"shared_context[#{key}]"}
+            aria-describedby="composer-shared-help"
+            rows="2"
+          >{Enum.join(@spec[key] || [], "\n")}</textarea>
+        </div>
         <.spec_list title={gettext("Out of scope")} items={@spec["non_goals"]} />
-        <.spec_list title={gettext("Assumptions")} items={@spec["assumptions"]} />
       </details>
     </div>
     """

@@ -112,7 +112,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
         else: assign(socket, composer_selected: selected)
 
     socket
-    |> with_task_edits(params)
+    |> with_review_edits(params)
     |> with_private_fields(params)
     |> assign(
       composer_text: text,
@@ -212,7 +212,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
 
     socket =
       socket
-      |> with_task_edits(params)
+      |> with_review_edits(params)
       |> with_private_fields(params)
       |> choose_executor(params["executor"])
       |> ensure_routing()
@@ -475,6 +475,18 @@ defmodule AgentBoardWeb.ComposerLifecycle do
 
   # The owner's edits live with the proposal until the send. A proposal that
   # new words invalidated has no tasks to edit.
+  defp with_review_edits(socket, params) do
+    socket |> with_task_edits(params) |> with_spec_edits(params)
+  end
+
+  defp with_spec_edits(%{assigns: %{intake: %{status: :ready, spec: spec} = intake}} = socket, %{
+         "shared_context" => edits
+       })
+       when is_map(edits),
+       do: assign(socket, :intake, %{intake | spec: Intake.edit_shared_context(spec, edits)})
+
+  defp with_spec_edits(socket, _params), do: socket
+
   defp with_task_edits(%{assigns: %{intake: %{tasks: tasks} = intake}} = socket, %{
          "task_edits" => edits
        })

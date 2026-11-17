@@ -84,12 +84,23 @@ defmodule AgentBoard.Intake do
   end
 
   defp edit_task(task, %{"title" => title, "body" => body, "acceptance" => acceptance}) do
-    %{task | title: title, body: body, acceptance: acceptance_lines(acceptance)}
+    %{task | title: title, body: body, acceptance: edited_lines(acceptance)}
   end
 
   defp edit_task(task, _no_edit), do: task
 
-  defp acceptance_lines(text) do
+  @doc "Applies the reviewed constraints and assumptions without changing the rest of the split."
+  @spec edit_shared_context(spec(), map()) :: spec()
+  def edit_shared_context(spec, edits) do
+    Enum.reduce(~w(constraints assumptions), spec, fn key, acc ->
+      case edits[key] do
+        text when is_binary(text) -> Map.put(acc, key, edited_lines(text))
+        _ -> acc
+      end
+    end)
+  end
+
+  defp edited_lines(text) do
     text |> String.split("\n") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
   end
 
