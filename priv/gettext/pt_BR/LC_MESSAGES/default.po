@@ -10417,3 +10417,11 @@ msgstr "Escreva um item por linha. As alterações valem para o objetivo e todas
 
 msgid "Not yet confirmed by GitHub"
 msgstr "O GitHub ainda não confirmou"
+
+#, elixir-autogen, elixir-format
+msgid "DeepSeek is paused for this project."
+msgstr "O DeepSeek está pausado neste projeto."
+
+#, elixir-autogen, elixir-format
+msgid "Open agent maintenance"
+msgstr "Abrir manutenção do agente"

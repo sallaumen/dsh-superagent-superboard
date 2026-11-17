@@ -682,6 +682,28 @@ defmodule AgentBoardWeb.ComposerLifecycle do
         Actions.phrase(:create_tasks, %{repository: repo, requests: requests}, Locale.language())
   end
 
+  @doc "The queued issue is already on GitHub; offer the paused project's existing controls."
+  def paused_agent_path(%{id: id} = repo, agents, %{items: items}) do
+    waiting? =
+      Enum.any?(items, fn
+        %{outcome: outcome, task: %{repository_id: ^id, executor: "dsh", state: "queued"}}
+        when outcome in [:created, :existing] ->
+          true
+
+        _ ->
+          false
+      end)
+
+    if waiting? and Enum.any?(agents, &(&1.repository_id == id and &1.observed_state == "paused")) do
+      BoardNavigation.settings_path(repo, "projects", %{
+        "project" => "#{repo.owner}/#{repo.name}",
+        "area" => "maintenance"
+      })
+    end
+  end
+
+  def paused_agent_path(_repo, _agents, _receipt), do: nil
+
   @doc false
   def retry_phrase(%{} = repo, {:enqueue, [_ | _] = requests}),
     do: Actions.phrase(:create_tasks, %{repository: repo, requests: requests}, Locale.language())

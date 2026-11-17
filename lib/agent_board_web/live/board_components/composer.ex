@@ -38,6 +38,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   attr :selected, :any, default: nil
   attr :job, :any, default: nil
   attr :receipt, :any, default: nil
+  attr :maintenance_path, :string, default: nil
   attr :answers, :string, default: ""
   attr :ai_status, :any, default: :logged_in
   attr :voice_configured, :boolean, default: false
@@ -104,7 +105,12 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
         </button>
       </div>
 
-      <.receipt :if={@receipt} receipt={@receipt} retry_confirm={@retry_confirm} />
+      <.receipt
+        :if={@receipt}
+        receipt={@receipt}
+        retry_confirm={@retry_confirm}
+        maintenance_path={@maintenance_path}
+      />
 
       <form
         :if={is_nil(@receipt)}
@@ -699,6 +705,7 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
   defp step(_receipt, _status, _job), do: 1
 
   attr :receipt, :map, required: true
+  attr :maintenance_path, :string, default: nil
   attr :retry_confirm, :string, default: nil
 
   defp receipt(assigns) do
@@ -748,6 +755,12 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
       </ul>
       <p :if={@failed > 0 && @retry_confirm} id="composer-retry-confirm" class="ab-compose__confirm">
         {@retry_confirm}
+      </p>
+      <p :if={@maintenance_path} id="composer-paused-agent" class="ab-meta">
+        {gettext("DeepSeek is paused for this project.")}
+        <.link patch={@maintenance_path} class="ab-btn ab-btn--sm ab-btn--quiet">
+          {gettext("Open agent maintenance")}
+        </.link>
       </p>
       <div class="ab-receipt__actions">
         <button
