@@ -337,7 +337,7 @@ that already worked).
   (`sync_test.exs`, `ticket_poller_test.exs`, `board_stall_test.exs`).
 - Validação (validation) is the local CI of the PRs the ticket and the
   workpad name (`LocalCI.by_pr/3`, scope `:workpad`): the command, its result
-  and the sha it ran on. Without a `mix precommit` line, any failing gate is the result. The sha is checked against the PR's head
+  and the sha it ran on. Any reported failure takes precedence across commands, and an unfinished check is not a success. The sha is checked against the PR's head
   (`pull_requests.head_sha`, written by the sync): a gate on another commit
   is `:stale`, shown as `CI local ?` with both shas in the tooltip, never as
   a pass. A head the sync has not written yet cannot contradict the gate.
@@ -364,8 +364,8 @@ that already worked).
   (Configurações → Projetos, "The agent's policy" below); until then only
   local dispatches resume (`runners_test.exs`).
 - Without a workpad, or with the section empty, the text heuristics stay
-  exactly as before: a "?" in the summary or in the newest comment, "PR" with
-  "review" in the report, `mix precommit` sentences in the reports.
+  available: a "?" in the summary or in the newest comment, "PR" with
+  "review" in the report. Use ``Local CI: `command`: status`` or ``CI local: `command`: status`` for any toolchain; legacy `mix precommit` summaries are also understood.
 - The tests: `workpad_test.exs` (the parser), `sync_test.exs`,
   `board_test.exs`, `local_ci_test.exs` and `work_test.exs` (preference and
   fallback), `board_live_test.exs` and `board_workpad_test.exs` (the item
@@ -941,6 +941,12 @@ tree; `release_task` is the second standing authorization, for the actor
 
 ## Executor usage
 
+Settings → Costs → Agents controls the machine-wide transcript import. It is
+off until the owner explicitly enables it, even when session folders already
+exist. The collector must check that choice **before** enumerating files.
+Disabling stops future imports and preserves existing local ledger records.
+Execution receipts, GitHub synchronization and board-owned API calls are separate.
+
 - The board's own calls are rows in `ai_calls` (above). The **executor's**
   calls are not the board's: `AgentBoard.Usage.Harness` reads them from the
   harness transcripts, `~/.dsh/sessions/<ticket directory with / as ->/<session>/session.v4.jsonl.zstd`
@@ -1134,8 +1140,8 @@ the bot account configured on that installation. Claude Code and Codex are the o
 - **Ticket sources are scoped.** Read registered agent state directories, or the explicitly configured `:state_dbs`/`:state_db` override. A GitHub-only installation with neither must not read tickets from unrelated profiles on the machine.
 - **A retry, the load and the ceiling go to the repository's agent.**
   `Orchestrator.client_for/1` binds the client to the port of the repository's
-  superagent row, and a repository without a row uses the primary
-  (`Orchestrator.client/0`). The board drops an answer that is not about the
+  superagent row. Without one it uses only an explicitly configured
+  `SUPERAGENT_API`; otherwise no request is sent. The board drops an answer that is not about the
   repository it shows.
 - **A new project is provisioned from the panel.** The form picks an existing
   repository, a ready source profile, the local checkout and the initial

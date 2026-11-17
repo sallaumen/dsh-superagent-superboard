@@ -35,7 +35,7 @@ defmodule AgentBoard.Usage.Ledger do
   import Ecto.Query
 
   alias AgentBoard.Repo
-  alias AgentBoard.Usage.{ClaudeCode, Codex, Harness}
+  alias AgentBoard.Usage.{ClaudeCode, Codex, Harness, HistoryImport}
 
   require Logger
 
@@ -72,6 +72,10 @@ defmodule AgentBoard.Usage.Ledger do
   """
   @spec refresh() :: summary()
   def refresh do
+    if HistoryImport.enabled?(), do: import_files(), else: %{read: 0, failed: 0, rows: 0}
+  end
+
+  defp import_files do
     known = known_files()
     listed = listed_files()
     changed = Enum.filter(listed, &changed?(&1, known))

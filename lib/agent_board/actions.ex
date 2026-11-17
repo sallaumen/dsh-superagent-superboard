@@ -1270,6 +1270,10 @@ defmodule AgentBoard.Actions do
   defp execute(:add_repository, %{owner: owner, name: name}),
     do: Board.add_repository(owner, name)
 
+  defp execute(:change_setting, %{setting: "import_executor_history", value: value})
+       when value in ["false", "true"],
+       do: Settings.put("import_executor_history", value)
+
   defp execute(:change_setting, %{setting: "voice", value: {id, name}}),
     do: ElevenLabs.save_voice(id, name)
 

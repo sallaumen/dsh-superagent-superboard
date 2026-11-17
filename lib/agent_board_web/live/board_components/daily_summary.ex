@@ -218,6 +218,9 @@ defmodule AgentBoardWeb.BoardComponents.DailySummary do
   defp spend_title(%{"reason" => "no_quota"}),
     do: gettext("No Codex weekly quota reading")
 
+  defp spend_title(%{"reason" => "import_disabled"}),
+    do: gettext("Local executor history import is off")
+
   defp spend_title(%{"reason" => "zstd_missing"}),
     do: gettext("zstd not in PATH; transcripts cannot be read")
 

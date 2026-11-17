@@ -16,7 +16,7 @@ defmodule AgentBoard.AgentAccess do
   alias AgentBoard.AgentAccess.{Dismissal, Refusals}
   alias AgentBoard.Board.Task, as: BoardTask
   alias AgentBoard.{GitHub, Repo, Superagents}
-  alias AgentBoard.Superagents.{Manager, Superagent}
+  alias AgentBoard.Superagents.{Bot, Manager, Superagent}
 
   @login ~r/\A[a-z0-9](?:[a-z0-9-]{0,38})\z/i
   @finished_states ~w(done closed stopped archived)
@@ -29,7 +29,7 @@ defmodule AgentBoard.AgentAccess do
   @spec bot_login() :: String.t() | nil
   def bot_login do
     value =
-      Application.get_env(:agent_board, :agent_login) || AgentBoard.Superagents.Bot.local_login()
+      Application.get_env(:agent_board, :agent_login) || Bot.local_login()
 
     case normalize_login(value) do
       {:ok, login} -> login

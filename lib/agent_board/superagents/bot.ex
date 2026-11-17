@@ -22,28 +22,31 @@ defmodule AgentBoard.Superagents.Bot do
   def local_login do
     dir = config()
 
-    with {:ok, %{mtime: mtime, inode: inode, size: size}} <-
-           File.stat(Path.join(dir, "hosts.yml")) do
-      version = {dir, inode, mtime, size, System.monotonic_time(:second)}
-
-      case :persistent_term.get({__MODULE__, :local_login}, nil) do
-        {^version, login} ->
-          login
-
-        _ ->
-          login = configured_login(dir)
-          if login, do: :persistent_term.put({__MODULE__, :local_login}, {version, login})
-          login
-      end
-    else
+    case File.stat(Path.join(dir, "hosts.yml")) do
+      {:ok, stat} -> cached_login(dir, stat)
       _ -> nil
     end
   end
 
+  # One lookup serves a render or sync batch, without caching credentials
+  # or making a VM-wide write on a polling path.
+  defp cached_login(dir, %{mtime: mtime, inode: inode, size: size}) do
+    key = {dir, inode, mtime, size, System.monotonic_time(:second)}
+
+    case Process.get({__MODULE__, :local_login}) do
+      {^key, login} ->
+        login
+
+      _ ->
+        login = configured_login(dir)
+        Process.put({__MODULE__, :local_login}, {key, login})
+        login
+    end
+  end
+
   defp configured_login(dir) do
-    with gh when is_binary(gh) <- System.find_executable("gh"),
-         {output, 0} <-
-           System.cmd(gh, ["config", "get", "user", "--host", "github.com"],
+    with {output, 0} <-
+           System.cmd("gh", ["config", "get", "user", "--host", "github.com"],
              env: [{"GH_CONFIG_DIR", dir}],
              stderr_to_stdout: true
            ),

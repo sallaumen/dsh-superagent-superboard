@@ -10,8 +10,6 @@ defmodule AgentBoard.Orchestrator do
 
   alias AgentBoard.Superagents
 
-  @default_api "http://127.0.0.1:3082/orchestrator/api"
-
   @min_workers 1
   @max_workers 16
 
@@ -226,41 +224,43 @@ defmodule AgentBoard.Orchestrator do
   defp refusal(%{"error" => message}) when is_binary(message), do: message
   defp refusal(_body), do: nil
 
-  @doc "A client bound to the API, or nil when the API is switched off."
-  def client do
-    case Application.get_env(:agent_board, :orchestrator_client) do
-      builder when is_function(builder, 0) -> builder.()
-      _ -> build()
-    end
-  end
+  @doc "The operator's explicit API override; an unconfigured board has no client."
+  def client, do: scoped_client(nil)
 
-  @doc """
-  The client of the agent that serves a repository (a struct or its id): its
-  superagent's port, or the primary (`client/0`) when it has none.
-  """
+  @doc "Use the repository's registered port, or only an explicitly configured API."
   @spec client_for(integer() | %{required(:id) => integer(), optional(atom()) => term()} | nil) ::
           Req.Request.t() | nil
   def client_for(repository) do
-    case {client(), Superagents.get_by_repository(repository)} do
-      {%Req.Request{} = client, %{port: port}} ->
-        Req.merge(client, base_url: "http://127.0.0.1:#{port}/orchestrator/api")
-
-      {client, _no_superagent} ->
-        client
+    case Superagents.get_by_repository(repository) do
+      %{port: port} -> scoped_client("http://127.0.0.1:#{port}/orchestrator/api")
+      nil -> client()
     end
   end
 
+  defp scoped_client(url) do
+    case Application.get_env(:agent_board, :orchestrator_client) do
+      builder when is_function(builder, 0) -> rebase(builder.(), url)
+      _ -> configured_client(url)
+    end
+  end
+
+  defp rebase(%Req.Request{} = request, url) when is_binary(url),
+    do: Req.merge(request, base_url: url)
+
+  defp rebase(request, _url), do: request
+
   @doc false
-  def build do
-    case Application.get_env(:agent_board, :orchestrator_api, System.get_env("SUPERAGENT_API")) do
-      false ->
-        nil
+  def build, do: configured_client(nil)
 
-      url when is_binary(url) and url != "" ->
-        new(url)
+  defp configured_client(registered) do
+    explicit =
+      Application.get_env(:agent_board, :orchestrator_api, System.get_env("SUPERAGENT_API"))
 
-      _ ->
-        new(@default_api)
+    case {explicit, registered} do
+      {false, _} -> nil
+      {_, url} when is_binary(url) -> new(url)
+      {url, nil} when is_binary(url) and url != "" -> new(url)
+      _ -> nil
     end
   end
 

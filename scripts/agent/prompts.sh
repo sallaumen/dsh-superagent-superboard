@@ -13,11 +13,23 @@ set -eu
 # shellcheck disable=SC1091
 . "$(dirname "$0")/_common.sh"
 
-ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 DIR="${SUPERAGENT_PROMPTS_DIR:-$STATE_DIR/board-prompts}"
 # Resolve symlinks and non-existent parents before creating or writing anything.
-DIR=$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$DIR")
-case "$DIR/" in "$ROOT/"*) echo "Use a prompt directory outside the board checkout." >&2; exit 2;; esac
+DIR=$(python3 - "$DIR" <<'PYTHON'
+from pathlib import Path
+import sys
+directory = Path(sys.argv[1]).expanduser().resolve()
+if any((p / ".git").exists() for p in (directory, *directory.parents)):
+    sys.exit("Export prompts outside a Git checkout.")
+print(directory)
+PYTHON
+)
+for leaf in communication.md scope.md delivery.md revision; do
+  if [ -L "$DIR/$leaf" ] || [ -d "$DIR/$leaf" ]; then
+    echo "A policy file must be a regular file in the local export directory." >&2
+    exit 2
+  fi
+done
 umask 077
 SECTIONS="communication scope delivery"
 HEADER="x-orchestrator-request: 1"
@@ -92,7 +104,7 @@ put() {
   REV=$(cat "$DIR/revision" 2>/dev/null || echo none)
   if [ "$REV" != "$ACTIVE" ]; then
     echo "REFUSED: the files come from revision $REV; the active one is $ACTIVE"
-    echo "  the panel saved since: run get, review the change, commit it, then put again"
+    echo "  the panel saved since: run get, review the change, then put again"
     exit 1
   fi
   if compare > /dev/null; then
@@ -111,7 +123,7 @@ put() {
   fi
   NEW=$(jq -r '.revision' "$OUT")
   echo "$NEW" > "$DIR/revision"
-  echo "saved revision $NEW (was $ACTIVE); commit $DIR/revision"
+  echo "saved revision $NEW (was $ACTIVE)"
 }
 
 case "${1:-}" in

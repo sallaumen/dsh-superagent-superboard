@@ -7,6 +7,7 @@ defmodule AgentBoardWeb.ExecutorsTest do
 
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
+  alias AgentBoard.Usage.HistoryImport
 
   setup do
     {:ok, repo} = Board.add_repository("fixture", "executors")
@@ -101,6 +102,20 @@ defmodule AgentBoardWeb.ExecutorsTest do
   end
 
   @costs "/?repo=fixture/executors&panel=settings&section=costs"
+
+  test "local import requires an explicit choice and updates other tabs", %{conn: conn} do
+    {:ok, left, _html} = live(conn, @costs <> "&costs=agents")
+    {:ok, right, _html} = live(build_conn(), @costs <> "&costs=agents")
+
+    selector = "#costs-set-history-import"
+    assert has_element?(left, selector <> "[phx-value-enabled=true]")
+    left |> element(selector) |> render_click()
+    assert HistoryImport.enabled?()
+    assert has_element?(right, selector <> "[phx-value-enabled=false]")
+    right |> element(selector) |> render_click()
+    refute HistoryImport.enabled?()
+    assert has_element?(left, selector <> "[phx-value-enabled=true]")
+  end
 
   test "Costs shows each executor in its own currency and never sums them", %{conn: conn} do
     {:ok, view, _html} = live(conn, @costs)

@@ -10514,3 +10514,21 @@ msgstr ""
 #, elixir-autogen
 msgid "Connect your agent’s GitHub account to see how to request work."
 msgstr ""
+
+msgid "Local executor history"
+msgstr ""
+
+msgid "Import usage from all Claude Code, Codex and Harness sessions on this machine, including projects outside the board. Session paths and usage stay in the local database."
+msgstr ""
+
+msgid "Stop future imports"
+msgstr ""
+
+msgid "Enable local import"
+msgstr ""
+
+msgid "Import is enabled. Stopping it keeps previously imported records."
+msgstr ""
+
+msgid "Local executor history import is off"
+msgstr ""

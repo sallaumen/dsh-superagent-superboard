@@ -6,6 +6,7 @@ defmodule AgentBoard.Usage.LedgerTest do
   # An unreadable file logs a warning; the tests assert the row instead.
   @moduletag :capture_log
 
+  alias AgentBoard.Settings
   alias AgentBoard.Usage.{ClaudeCode, Harness, Ledger, Worker}
 
   @zstd System.find_executable("zstd")
@@ -13,6 +14,7 @@ defmodule AgentBoard.Usage.LedgerTest do
   @other "01a0ea97-2494-7850-9084-adbaa0d7af83"
 
   setup do
+    :ok = Settings.put("import_executor_history", "true")
     root = Path.join(System.tmp_dir!(), "usage-ledger-#{System.unique_integer([:positive])}")
 
     dirs = %{
@@ -44,6 +46,24 @@ defmodule AgentBoard.Usage.LedgerTest do
     end)
 
     Map.put(dirs, :root, root)
+  end
+
+  test "no executor histories are imported until enabled and stopping preserves existing rows",
+       %{claude: dir} do
+    :ok = Settings.put("import_executor_history", nil)
+    write(dir, "outside/private.jsonl", [assistant("m1", "private")])
+
+    assert :ok = Worker.perform(%Oban.Job{})
+    assert Repo.aggregate("usage_files", :count) == 0
+    assert ledger("claude_code") == []
+
+    :ok = Settings.put("import_executor_history", "true")
+    assert %{read: 1} = Ledger.refresh()
+    previous = snapshot()
+    :ok = Settings.put("import_executor_history", "false")
+    write(dir, "outside/other.jsonl", [assistant("m2", "other")])
+    assert :ok = Worker.perform(%Oban.Job{})
+    assert snapshot() == previous
   end
 
   describe "Claude Code" do

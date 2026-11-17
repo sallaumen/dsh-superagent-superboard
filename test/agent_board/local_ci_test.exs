@@ -141,13 +141,27 @@ defmodule AgentBoard.LocalCITest do
   test "a workpad whose Validação names no result leaves the reports in charge" do
     pass = {"PR #21: mix precommit green (89 tests, 0 failures).", ~U[2026-11-06 11:00:00Z]}
     ticket = ticket([pass]) |> Map.put("numbers", [1])
-    pending = gate("rodando ainda", nil, nil)
+    pending = %{command: nil, detail: "rodando ainda", passed?: nil, sha: nil}
 
     assert %{21 => %{state: :pass, scope: :pr}} =
              LocalCI.by_pr(@repo, [ticket], workpads: %{1 => workpad(pending)})
 
     assert %{21 => %{state: :pass, scope: :pr}} =
              LocalCI.by_pr(@repo, [ticket], workpads: %{1 => workpad(nil)})
+  end
+
+  test "an unfinished named check cannot turn an earlier report green or an unlinked PR red" do
+    body =
+      "## Relatório do agente\n### Validation\n- `bundle exec rake`: passed at c25e423\n- `eslint .`: pending (PR #21)"
+
+    parsed = AgentBoard.Workpad.parse(body)
+
+    ticket =
+      ticket([{"PR #21: mix precommit passed.", ~U[2026-11-06 12:00:00Z]}])
+      |> Map.put("numbers", [1])
+
+    assert LocalCI.by_pr(@repo, [], workpads: %{1 => parsed}) == %{}
+    assert LocalCI.by_pr(@repo, [ticket], workpads: %{1 => parsed}) == %{}
   end
 
   test "a workpad whose issue has no ticket still gates the PRs it names" do

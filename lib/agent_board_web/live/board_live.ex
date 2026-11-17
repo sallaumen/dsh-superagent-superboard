@@ -1073,6 +1073,17 @@ defmodule AgentBoardWeb.BoardLive do
     end
   end
 
+  def handle_info({:setting_changed, "import_executor_history"}, socket) do
+    if socket.assigns.panel == "settings" do
+      send_update(BoardComponents.Settings.Costs,
+        id: "settings-costs",
+        history_import_changed: true
+      )
+    end
+
+    {:noreply, socket}
+  end
+
   def handle_info({:setting_changed, "dispatch_paused"}, socket) do
     {:noreply,
      socket

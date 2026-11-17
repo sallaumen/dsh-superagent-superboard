@@ -10514,3 +10514,21 @@ msgstr "A proposta anterior e suas edições continuam disponíveis."
 #, elixir-autogen
 msgid "Connect your agent’s GitHub account to see how to request work."
 msgstr "Conecte a conta do agente no GitHub para ver como pedir trabalho."
+
+msgid "Local executor history"
+msgstr "Histórico local dos executores"
+
+msgid "Import usage from all Claude Code, Codex and Harness sessions on this machine, including projects outside the board. Session paths and usage stay in the local database."
+msgstr "Importa o uso de todas as sessões de Claude Code, Codex e Harness nesta máquina, inclusive de projetos fora do board. Os caminhos das sessões e os dados de uso ficam no banco local."
+
+msgid "Stop future imports"
+msgstr "Parar novas importações"
+
+msgid "Enable local import"
+msgstr "Ativar importação local"
+
+msgid "Import is enabled. Stopping it keeps previously imported records."
+msgstr "A importação está ativa. Se parar, os registros já importados serão mantidos."
+
+msgid "Local executor history import is off"
+msgstr "A importação do histórico local dos executores está desativada"

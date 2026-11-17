@@ -19,7 +19,7 @@ defmodule AgentBoard.Usage.Harness do
   """
 
   alias AgentBoard.AI.Providers
-  alias AgentBoard.Usage.Fields
+  alias AgentBoard.Usage.{Fields, HistoryImport}
 
   @transcript "session.v4.jsonl.zstd"
   @strings MapSet.new(~w(type id model cwd))
@@ -121,6 +121,12 @@ defmodule AgentBoard.Usage.Harness do
   """
   @spec window(DateTime.t(), DateTime.t()) :: t()
   def window(%DateTime{} = since, %DateTime{} = until) do
+    if HistoryImport.enabled?(),
+      do: read_window(since, until),
+      else: empty(:unavailable, :import_disabled, [])
+  end
+
+  defp read_window(since, until) do
     from = DateTime.to_unix(since)
 
     files =

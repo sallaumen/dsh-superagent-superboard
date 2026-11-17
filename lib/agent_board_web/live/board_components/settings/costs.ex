@@ -12,8 +12,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   """
   use AgentBoardWeb, :live_component
 
+  alias AgentBoard.Actions
   alias AgentBoard.ElevenLabs.{Account, Usage}
-  alias AgentBoard.Usage.Overview
+  alias AgentBoard.Usage.{HistoryImport, Overview}
   alias AgentBoardWeb.{BoardNavigation, FailureText, Numbers, Time}
 
   @pages ~w(summary agents calls voice)
@@ -44,9 +45,21 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
 
   @impl true
   def mount(socket),
-    do: {:ok, assign(socket, overview: nil, executions: nil, calls: nil, voice: nil, loaded: nil)}
+    do:
+      {:ok,
+       assign(socket,
+         history_import: HistoryImport.enabled?(),
+         overview: nil,
+         executions: nil,
+         calls: nil,
+         voice: nil,
+         loaded: nil
+       )}
 
   @impl true
+  def update(%{history_import_changed: true}, socket),
+    do: {:ok, assign(socket, history_import: HistoryImport.enabled?())}
+
   def update(assigns, socket) do
     socket = assign(socket, assigns)
     socket = assign(socket, view_params(socket.assigns.params))
@@ -105,6 +118,18 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   defp text_filter(_value), do: "all"
 
   @impl true
+  def handle_event("set_history_import", %{"enabled" => enabled}, socket)
+      when enabled in ["true", "false"] do
+    :ok =
+      Actions.run(
+        :change_setting,
+        %{setting: "import_executor_history", value: enabled},
+        Actions.owner(:ui)
+      )
+
+    {:noreply, assign(socket, history_import: enabled == "true")}
+  end
+
   def handle_event("costs_view", params, socket) do
     page = if params["page"] in @pages, do: params["page"], else: socket.assigns.page
 
@@ -184,6 +209,30 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
             phx-target={@myself}
           >{gettext("%{count} days", count: days)}</button>
         </div>
+      </div>
+
+      <div :if={@page == "agents"} class="settings-group" id="costs-history-import">
+        <h4>{gettext("Local executor history")}</h4>
+        <p class="settings-pane__intro">
+          {gettext(
+            "Import usage from all Claude Code, Codex and Harness sessions on this machine, including projects outside the board. Session paths and usage stay in the local database."
+          )}
+        </p>
+        <button
+          id="costs-set-history-import"
+          type="button"
+          class="ab-btn"
+          phx-click="set_history_import"
+          phx-target={@myself}
+          phx-value-enabled={to_string(not @history_import)}
+        >
+          {if @history_import,
+            do: gettext("Stop future imports"),
+            else: gettext("Enable local import")}
+        </button>
+        <p :if={@history_import} class="settings-pane__intro">
+          {gettext("Import is enabled. Stopping it keeps previously imported records.")}
+        </p>
       </div>
 
       <.summary :if={@page == "summary" and @overview} overview={@overview} tz_offset={@tz_offset} />

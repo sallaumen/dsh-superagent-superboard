@@ -191,47 +191,11 @@ When the Super Agent identifies a new issue as the same request as an already ac
 
 This is an extension of the upstream Super Agent, installed by the board when it builds a **new** prototype checkout. If a first build fails, inspect and move the partial `dsh-superagent.installing` directory aside before retrying. For an existing local installation, use **Settings → Projects → Sync agent runtimes**. This builds the tested extension separately, preserves tracked local source fixes, and switches only the linked profile once it is idle. An incompatible revision, custom build configuration or unsupported package link is left unchanged; inspect it before retrying.
 
-## 7. Shared practices in the executor's worktree
+## 7. Follow the target project's instructions
 
-The executor reads `AGENTS.md` in its own worktree under
-`~/.dsh/state/superagent/work/`. That worktree is a fresh checkout: the
-practice index `.elixir-agent-kit/START.md` links into `deps/`, which exists
-only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
+Each worker gets a fresh worktree. Read the target repository’s contributor instructions, tool versions and required checks there. Use its documented bootstrap and CI commands, and record what actually ran on the PR’s head. No Elixir, Node or other target stack is assumed. The board’s own runtime requirements are separate from the software it tracks.
 
-- Run `mix deps.get` in the worktree before the executor follows the index,
-  through the harness's per-worktree bootstrap when it has one, otherwise as
-  the first step of the assignment. Until then the index is a dead link and
-  the instruction block tells the agent to report the missing setup.
-- **When the kit tag moves** (the repository's `mix.exs` pins a newer
-  version), nothing manual is needed beyond `mix deps.get`: a fresh worktree
-  already fetches the new pin; an existing worktree fails its next
-  `mix gate`/`mix precommit` with the lock-mismatch error, whose message says
-  to run `mix deps.get` — run it and continue. `mix deps.get` only fetches
-  and checks out the pinned dependencies; **it never compiles the project**.
-  Compilation happens only in the gates the delivery prompt requires
-  (`mix precommit` on the head), so do not build or test code the assignment
-  does not touch. `mix agent_kit.check` (part of the gate) verifies that the
-  index matches the loaded dependency.
-- Treat a `ready` report as evidence only for what it names. A report that
-  names no practice file read means the kit was not loaded; a model name
-  establishes nothing. The kit's
-  [compatibility note](https://github.com/sallaumen/elixir-agent-kit/blob/v1.0.0/docs/compatibility.md)
-  describes the fresh-session check.
-- **Recommended: [Ponytail](https://github.com/DietrichGebert/ponytail) on
-  every executor.** It keeps the executor to the least new code that solves the
-  ticket, while the kit still decides the workflow, the checks and the
-  evidence; where they disagree, this repository's instructions and the kit
-  win. DeepSeek Harness has no Ponytail plugin, so install it
-  instruction-only, once per machine: clone Ponytail at a release tag, link its
-  `AGENTS.md` to `~/.dsh/AGENTS.md` and each folder in its `skills/` into
-  `~/.dsh/skills/`. Every dsh profile reads that home, so the `superagent`
-  executor and a second repository's profile both pick it up on their next
-  session; nothing in the profile changes. The default level is `full`
-  (`~/.config/ponytail/config.json`). Claude Code and Codex install it as a
-  plugin; see the kit's
-  [companion setup](https://github.com/sallaumen/elixir-agent-kit/blob/main/docs/compatibility.md#recommended-companion-ponytail).
-  For a kit evaluation round, record the Ponytail level with each run, or
-  rename `~/.dsh/AGENTS.md` for the round to run without it.
+For example, a repository that pins the [Elixir Agent Kit](https://github.com/sallaumen/elixir-agent-kit) may require `mix deps.get` before opening its practice index. A different repository may use entirely different tooling or have no skill pack. Optional skills belong in the target project or local executor configuration; no one needs to install a global skill for every profile.
 
 ## 8. Merge policy
 

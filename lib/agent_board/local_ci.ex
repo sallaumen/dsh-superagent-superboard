@@ -101,6 +101,10 @@ defmodule AgentBoard.LocalCI do
       %{validation: %{passed?: passed?}} = workpad when is_boolean(passed?) ->
         workpad_statuses(ticket, workpad, heads)
 
+      %{validation: %{command: command, passed?: nil}} when is_binary(command) ->
+        # A named check has no verdict yet. An older report cannot complete it.
+        %{}
+
       _no_gate ->
         report_statuses(ticket)
     end
@@ -113,6 +117,7 @@ defmodule AgentBoard.LocalCI do
   # An empty Validação is no gate: the workpad contributes no status, and
   # there is no report to fall back to when its issue has no ticket.
   defp workpad_statuses(_ticket, %{validation: nil}, _heads), do: %{}
+  defp workpad_statuses(_ticket, %{validation: %{passed?: nil}}, _heads), do: %{}
 
   # The workpad's gate covers every PR the ticket names and every PR the
   # workpad names, each checked against its own head.
