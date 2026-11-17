@@ -104,6 +104,44 @@ defmodule AgentBoard.Lanes.AttentionReadsTest do
     assert {nil, []} = reads(fn -> Board.agent_blockage(repo.id, nil) end)
   end
 
+  test "visible unexplained blocks share a read; a ticket-explained block needs no comment" do
+    {:ok, repo} = Board.add_repository("fixture", "visible-blocks")
+    one = task(repo, 11, "blocked")
+    two = task(repo, 12, "blocked")
+    explained = task(repo, 13, "blocked")
+    comment(one, "agent", "## Relatório do agente\n### Bloqueio\nMissing key")
+    comment(explained, "agent", "## Relatório do agente\n### Bloqueio\nUnused")
+
+    tickets = %{
+      12 => %{"report_summary" => "Need access"},
+      13 => %{
+        "id" => "t13",
+        "assignments" => [
+          %{"ended_reason" => "retried", "report" => "failed"},
+          %{"state" => "pending"}
+        ]
+      }
+    }
+
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+
+    {cards, reads} =
+      reads(fn ->
+        Lanes.needs(repo, %{blocked: [one, two, explained]},
+          now: @now,
+          tickets_by_number: tickets
+        )
+      end)
+
+    whys = Map.new(cards, &{&1.number, &1.why})
+    assert whys[11] == "**Blocked:** Missing key"
+    assert whys[12] == "**Blocked:** Need access"
+    assert whys[13] =~ "**Retry queued.**"
+    assert [{_sql, [repo_id, numbers]}] = reads
+    assert repo_id == repo.id
+    assert Enum.sort(numbers) == [11, 12]
+  end
+
   defp task(repo, number, state) do
     Repo.insert!(%Task{
       repository_id: repo.id,

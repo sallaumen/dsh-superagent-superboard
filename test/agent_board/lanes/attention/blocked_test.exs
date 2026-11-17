@@ -74,6 +74,22 @@ defmodule AgentBoard.Lanes.Attention.BlockedTest do
              Blocked.content(@task, nil, nil, nil)
   end
 
+  test "only unexplained visible issues request a report, scoped by repository" do
+    missing = %{kind: :blocked, block: nil, task: %{repository_id: 3, number: 61}}
+
+    visible = [
+      missing,
+      missing,
+      %{missing | task: %{repository_id: 4, number: 61}},
+      %{missing | block: %{line: "Explained"}, task: %{repository_id: 3, number: 62}},
+      %{missing | task: %{repository_id: 3, number: nil}},
+      %{kind: :review}
+    ]
+
+    assert Blocked.report_numbers(visible) == %{3 => [61], 4 => [61]}
+    assert Blocked.report_numbers([]) == %{}
+  end
+
   test "an unexplained block, a missing label or a missing ticket only offers details" do
     for block <- [nil, %{retry: nil, ticket_id: "t7"}, %{retry: "Try again", ticket_id: nil}] do
       assert Blocked.actions(@task, block) == [%{label: "View details", task_id: 17}]

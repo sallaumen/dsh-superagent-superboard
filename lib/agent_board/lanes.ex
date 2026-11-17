@@ -56,10 +56,36 @@ defmodule AgentBoard.Lanes do
     context = needs_context(repository, board, opts)
 
     %{waiting: waiting, visible: visible} = Attention.Selection.plan(board, context)
-    context = Map.put(context, :questions, visible_questions(visible, repository))
+    visible = explain_blocks(visible, context)
+
+    context =
+      Map.merge(context, %{
+        questions: visible_questions(visible, repository),
+        blockages: visible_blockages(visible)
+      })
+
     cards = Enum.map(visible, &task_card(&1, context))
 
     cards |> add_outage(waiting, repository) |> Attention.sort()
+  end
+
+  defp explain_blocks(visible, context) do
+    opts = block_opts(context)
+
+    Enum.map(visible, fn
+      %{kind: :blocked, task: task} = card ->
+        block = AgentBlock.explain(context.tickets[task.number], opts)
+        Map.put(card, :block, block)
+
+      card ->
+        card
+    end)
+  end
+
+  defp visible_blockages(visible) do
+    Map.new(Attention.Blocked.report_numbers(visible), fn {repo, numbers} ->
+      {repo, Board.agent_blockages(repo, numbers)}
+    end)
   end
 
   defp visible_questions(visible, repository) do
@@ -136,23 +162,22 @@ defmodule AgentBoard.Lanes do
   # Every item says what to do, where and why: the kind is the what, the
   # actions are the where, and `why` is the evidence the board has. A fact
   # the board cannot see is said to be missing, never filled in.
-  defp task_card(%{task: task, kind: kind}, context) do
+  defp task_card(%{task: task, kind: kind} = candidate, context) do
     ticket = Map.get(context.tickets, task.number)
     pull = Map.get(context.pulls, task.id)
-    content = need_content(task, kind, ticket, pull, context)
+    content = need_content(candidate, ticket, pull, context)
     Attention.Item.build(task, kind, pull, content, context)
   end
 
-  defp need_content(task, :blocked, ticket, _pull, context) do
-    block = AgentBlock.explain(ticket, block_opts(context))
-    recorded = if is_nil(block), do: Board.agent_blockage(task.repository_id, task.number)
+  defp need_content(%{task: task, kind: :blocked, block: block}, ticket, _pull, context) do
+    recorded = get_in(context.blockages, [task.repository_id, task.number])
     Attention.Blocked.content(task, block, recorded, ticket && ticket["report_summary"])
   end
 
-  defp need_content(task, :review, ticket, pull, _context),
+  defp need_content(%{task: task, kind: :review}, ticket, pull, _context),
     do: Attention.Review.content(task.id, pull, ticket && ticket["report_summary"])
 
-  defp need_content(task, kind, ticket, _pull, context) do
+  defp need_content(%{task: task, kind: kind}, ticket, _pull, context) do
     {task_why(task, kind, ticket, context), detail_actions(task, kind)}
   end
 
