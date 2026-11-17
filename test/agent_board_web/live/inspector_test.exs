@@ -506,7 +506,7 @@ defmodule AgentBoardWeb.InspectorTest do
     sending = %{task_id: task.id, body: "Pode entregar o menu.", ref: make_ref()}
 
     html = render_conversation(task, [], ask_sending: sending)
-    assert length(Regex.scan(~r/class="[^"]*ab-msg--sending/, html)) == 1
+    refute html =~ "ab-msg--sending"
     assert html =~ "Pode entregar o menu."
     assert html =~ "Enviando…"
     assert html =~ "issue ##{task.number} do GitHub"
@@ -527,6 +527,20 @@ defmodule AgentBoardWeb.InspectorTest do
     html = render_conversation(task, [comment], ask_sending: sending)
     assert length(Regex.scan(~r/class="[^"]*ab-msg--sending/, html)) == 1
     refute html =~ ~s(data-message-id="sending")
+    assert html =~ "O GitHub ainda não confirmou"
+    confirmed = %{comment | github_id: 6_945_214_247, author: "sallaumen"}
+    html = render_conversation(task, [confirmed], ask_sending: sending)
+    refute html =~ "ab-msg--sending"
+    refute html =~ ~s(data-message-id="sending")
+    assert html =~ "sallaumen"
+    other = task(repo, 1417, "Outra conversa", "queued")
+
+    html =
+      render_conversation(other, [], ask_sending: sending, ask_draft: "Rascunho da outra issue.")
+
+    assert html =~ "Rascunho da outra issue."
+    refute html =~ sending.body
+    refute html =~ ~r/<textarea[^>]*disabled/
   end
 
   test "a failed message restores the draft beside a recoverable error" do

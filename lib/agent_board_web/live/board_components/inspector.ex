@@ -577,7 +577,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           placeholder={gettext("Respond to agent...")}
           disabled={@ask_sending && @ask_sending.task_id == @task.id}
           required
-        >{@ask_draft}</textarea>
+        >{if @ask_sending && @ask_sending.task_id == @task.id, do: @ask_sending.body, else: @ask_draft}</textarea>
         <button
           class="ab-btn ab-btn--primary ab-btn--sm ab-compose__send"
           disabled={@ask_sending && @ask_sending.task_id == @task.id}
@@ -745,13 +745,13 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           "ab-msg",
           comment.kind == "agent" && "ab-msg--agent",
           comment.kind != "agent" && "ab-msg--you",
-          sending_comment?(comment, @ask_sending, @task.id) && "ab-msg--sending"
+          pending_comment?(comment) && "ab-msg--sending"
         ]}
         data-message-id={"comment-#{comment.id}"}
-        data-message-sending={sending_comment?(comment, @ask_sending, @task.id)}
+        data-message-sending={pending_comment?(comment)}
       >
         <div class="ab-msg__who">
-          {if comment.kind == "agent", do: comment.author || gettext("Agent"), else: gettext("You")}
+          {speaker(comment)}
           <span class="ab-data-sm">{Time.local_time(comment.inserted_at, @offset)}</span>
         </div>
         <p><.markup text={clean_body(comment.body)} links /></p>
@@ -769,27 +769,16 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           text={clean_body(comment.body)}
         />
         <span
-          :if={sending_comment?(comment, @ask_sending, @task.id)}
+          :if={pending_comment?(comment)}
           class="ab-msg__delivery"
           role="status"
-        >{gettext("Sending…")}</span>
-      </div>
-
-      <div
-        :if={sending_placeholder?(@ask_sending, @comments, @task.id)}
-        class="ab-msg ab-msg--you ab-msg--sending"
-        data-message-id="sending"
-        data-message-sending="true"
-      >
-        <div class="ab-msg__who">{gettext("You")}</div>
-        <p>{@ask_sending.body}</p>
-        <span class="ab-msg__delivery" role="status">{gettext("Sending…")}</span>
+        >{gettext("Not yet confirmed by GitHub")}</span>
       </div>
 
       <div
         :if={
           @comments == [] and @task.body in [nil, ""] and
-            !sending_placeholder?(@ask_sending, @comments, @task.id)
+            !(@ask_sending && @ask_sending.task_id == @task.id)
         }
         class="ab-sec__empty"
       >
@@ -803,15 +792,12 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
     """
   end
 
-  defp sending_comment?(comment, %{task_id: task_id, body: body}, task_id),
-    do: comment.github_id < 0 and clean_body(comment.body) == body
+  defp speaker(%{kind: "agent", author: author}), do: author || gettext("Agent")
+  defp speaker(%{author: author}) when author in [nil, "you"], do: gettext("You")
+  defp speaker(%{author: author}), do: author
 
-  defp sending_comment?(_comment, _sending, _task_id), do: false
-
-  defp sending_placeholder?(%{task_id: task_id} = sending, comments, task_id),
-    do: not Enum.any?(comments, &sending_comment?(&1, sending, task_id))
-
-  defp sending_placeholder?(_sending, _comments, _task_id), do: false
+  defp pending_comment?(comment),
+    do: comment.author == "you" and is_integer(comment.github_id) and comment.github_id < 0
 
   defp activity_tab(assigns) do
     ~H"""

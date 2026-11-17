@@ -12,6 +12,7 @@ defmodule AgentBoard.Board do
   alias AgentBoard.Board.{
     Activity,
     Comment,
+    CommentDelivery,
     Inbox,
     Objective,
     PullRequest,
@@ -550,19 +551,24 @@ defmodule AgentBoard.Board do
            task.repository.owner,
            task.repository.name,
            task.number,
-           text
+           CommentDelivery.mark(text, placeholder)
          ) do
-      %{"id" => github_id} = comment when is_integer(github_id) ->
-        placeholder
-        |> Comment.changeset(%{
-          github_id: github_id,
-          author: get_in(comment, ["user", "login"]) || "you"
-        })
-        |> Repo.update()
+      %{"id" => github_id} = comment when is_integer(github_id) and github_id > 0 ->
+        CommentDelivery.store(
+          %{
+            task_id: task.id,
+            github_id: github_id,
+            body: text,
+            author: get_in(comment, ["user", "login"]) || "you",
+            kind: "user"
+          },
+          placeholder.id,
+          :ack
+        )
         |> tap(fn _ -> broadcast(task.repository_id) end)
 
       _ ->
-        Repo.delete(placeholder)
+        CommentDelivery.discard(task.id, placeholder.id)
         broadcast(task.repository_id)
         {:error, :github}
     end
@@ -570,7 +576,7 @@ defmodule AgentBoard.Board do
     exception ->
       # The placeholder must never outlive a failed request; synced comments
       # also carry negative ids, so only this row goes.
-      Repo.delete(placeholder)
+      CommentDelivery.discard(task.id, placeholder.id)
       broadcast(task.repository_id)
       {:error, exception}
   end
@@ -593,12 +599,13 @@ defmodule AgentBoard.Board do
       |> Map.new(fn {id, author, body} -> {id, {author, body}} end)
 
     Enum.reduce(comments, false, fn comment, changed? ->
+      {comment, receipt} = CommentDelivery.unpack(task.id, comment)
       stored = Map.get(existing, comment_github_id(task, comment))
 
       if stored == {comment_author(comment), comment["body"] || ""} do
         changed?
       else
-        {:ok, _} = upsert_comment(task, comment, agent_login)
+        {:ok, _} = store_comment(task, comment, agent_login, receipt)
         true
       end
     end)
@@ -617,21 +624,32 @@ defmodule AgentBoard.Board do
 
   @doc "Upsert a comment pulled from GitHub."
   def upsert_comment(task, comment, agent_login) do
+    {comment, receipt} = CommentDelivery.unpack(task.id, comment)
+    store_comment(task, comment, agent_login, receipt)
+  end
+
+  defp store_comment(task, comment, agent_login, receipt) do
     author = comment_author(comment)
     kind = if author == agent_login, do: "agent", else: "user"
 
-    %Comment{}
-    |> Comment.changeset(%{
+    attrs = %{
       task_id: task.id,
       github_id: comment_github_id(task, comment),
       author: author,
       body: comment["body"] || "",
       kind: kind
-    })
-    |> Repo.insert(
-      on_conflict: {:replace, [:body, :author, :kind, :updated_at]},
-      conflict_target: [:task_id, :github_id]
-    )
+    }
+
+    if receipt && is_integer(comment["id"]) && comment["id"] > 0 do
+      CommentDelivery.store(attrs, receipt, :mirror)
+    else
+      %Comment{}
+      |> Comment.changeset(attrs)
+      |> Repo.insert(
+        on_conflict: {:replace, [:body, :author, :kind, :updated_at]},
+        conflict_target: [:task_id, :github_id]
+      )
+    end
   end
 
   @doc """

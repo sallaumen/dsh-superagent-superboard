@@ -10414,3 +10414,6 @@ msgstr "O limite da divisão mudou. Revise a seleção antes de enviar."
 #, elixir-autogen, elixir-format
 msgid "One item per line. Your edits apply to the objective and every selected task."
 msgstr "Escreva um item por linha. As alterações valem para o objetivo e todas as tarefas selecionadas."
+
+msgid "Not yet confirmed by GitHub"
+msgstr "O GitHub ainda não confirmou"

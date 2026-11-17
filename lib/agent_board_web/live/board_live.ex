@@ -2045,7 +2045,12 @@ defmodule AgentBoardWeb.BoardLive do
 
           {:noreply,
            start_async(socket, {:ask_task, task.id, ref}, fn ->
-             Actions.run(:ask_task, params, ui(), confirm: phrase)
+             # Closing the tab cancels the LiveView's waiter, not the accepted send.
+             AgentBoard.System.TaskSupervisor
+             |> Elixir.Task.Supervisor.async_nolink(fn ->
+               Actions.run(:ask_task, params, ui(), confirm: phrase)
+             end)
+             |> Elixir.Task.await(:infinity)
            end)}
         end
     end
