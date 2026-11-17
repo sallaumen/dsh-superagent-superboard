@@ -98,10 +98,7 @@ defmodule AgentBoard.Lanes.CI.Badge do
 
   defp checks_label(%PullRequest{checks_failed: failed}) when is_binary(failed) do
     failed
-    |> String.split(",", trim: true)
-    |> Enum.map(&String.trim/1)
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.uniq()
+    |> CI.failed_check_names()
     |> Enum.join(" #{gettext("and")} ")
     |> String.slice(0, 80)
   end
