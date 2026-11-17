@@ -10,6 +10,16 @@ defmodule AgentBoard.Board.TaskPullLinks.Evidence do
       pull_number(body, repository)
   end
 
+  @doc "Index each task's explicit link once, retaining the repository as part of the PR identity."
+  @spec named_refs([map()], map(), map()) :: %{optional(integer()) => {integer(), integer()}}
+  def named_refs(tasks, comments, repositories) do
+    for task <- tasks,
+        repo = repositories[task.repository_id],
+        number = named_number(task.body, Map.get(comments, task.id, []), repo),
+        into: %{},
+        do: {task.id, {task.repository_id, number}}
+  end
+
   # Only a link to the task's own repository counts: the number alone would
   # match this repository's PR of the same number.
   defp pull_number(nil, _repository), do: nil

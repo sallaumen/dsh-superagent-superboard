@@ -490,6 +490,21 @@ defmodule AgentBoard.BoardOverviewTest do
     assert Overview.repo_overview()[repo.id].you == 1
   end
 
+  test "a saved named PR wins; an unsaved named PR can fall back for display but does not resolve a task" do
+    {:ok, repo} = Board.add_repository("fixture", "named-and-ticket")
+    named = insert_merged(repo, 42, "success")
+    fallback = insert_merged(repo, 50, "success")
+    prefix = "https://github.com/fixture/named-and-ticket/pull/"
+    a = %{insert_task(repo, 1, "ready") | body: prefix <> "42"}
+    b = %{insert_task(repo, 2, "ready") | body: prefix <> "99"}
+    tickets = %{1 => %{"own_threads" => [50]}, 2 => %{"own_threads" => [50, 77]}}
+
+    assert Board.resolved_task_ids([a, b]) == MapSet.new([a.id])
+    links = Board.linked_pull_requests([a, b], tickets)
+    assert links[a.id].id == named.id
+    assert links[b.id].id == fallback.id
+  end
+
   # A link is evidence only for a task waiting on review: an issue that cites a
   # merged PR, or a rework whose newest link is the PR it replaces, is not done.
   test "only a ready task is reconciled to done by its linked PR" do

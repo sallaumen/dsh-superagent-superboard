@@ -6,6 +6,17 @@ defmodule AgentBoard.Board.TaskPullLinks.EvidenceTest do
   @repo %Repository{id: 2, owner: "Fixture", name: "Board"}
   @body "https://github.com/fixture/board/pull/3"
 
+  test "named refs keep task IDs distinct when pull numbers and even issue numbers coincide" do
+    other = %Repository{id: 7, owner: "Other", name: "Board"}
+    first = %{id: 10, repository_id: 2, number: 1, body: @body}
+    second = %{first | id: 20, repository_id: 7}
+    tasks = [first, second, %{first | id: 30, body: nil}, %{first | id: 40, repository_id: 99}]
+    comments = %{20 => [%{body: "https://github.com/Other/board/pull/3"}]}
+
+    assert Evidence.named_refs(tasks, comments, %{2 => @repo, 7 => other}) ==
+             %{10 => {2, 3}, 20 => {7, 3}}
+  end
+
   test "newest local comment wins; skip newer foreign links, invalid numbers and unlinked text" do
     comments = [
       %{body: "https://github.com/fixture/board/pull/4"},
