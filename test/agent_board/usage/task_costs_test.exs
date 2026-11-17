@@ -64,6 +64,33 @@ defmodule AgentBoard.Usage.TaskCostsTest do
     assert TaskCosts.for_tasks([task.id]) == %{}
   end
 
+  test "an empty cost snapshot does not read task IDs for merge history", %{task: task} do
+    ref = make_ref()
+
+    :ok =
+      :telemetry.attach(
+        ref,
+        [:agent_board, :repo, :query],
+        &__MODULE__.record_read/4,
+        {self(), ref}
+      )
+
+    try do
+      assert TaskCosts.for_pulls([
+               %{repository_id: task.repository_id, number: 3, closes_issues: [12]}
+             ]) == %{}
+
+      refute_received {^ref, _}
+    after
+      :telemetry.detach(ref)
+    end
+  end
+
+  def record_read(_event, _measurements, %{source: source}, {pid, ref}) when pid == self(),
+    do: send(pid, {ref, source})
+
+  def record_read(_event, _measurements, _metadata, _config), do: :ok
+
   test "a pull shows its task's cost; one with no task or no cost has none", %{task: task} do
     ledger("claude_code", "session-1", "claude-opus-5-5")
     :ok = TaskCosts.refresh(tickets: [])

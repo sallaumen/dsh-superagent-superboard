@@ -66,13 +66,19 @@ defmodule AgentBoard.Usage.TaskCosts do
   def for_pulls([]), do: %{}
 
   def for_pulls([%{repository_id: repository_id} | _] = pulls) do
-    case Enum.flat_map(pulls, &(&1.closes_issues || [])) do
-      [] -> %{}
-      numbers -> costs_for_issues(pulls, repository_id, numbers)
+    costs = stored().by_task
+
+    if map_size(costs) == 0 do
+      %{}
+    else
+      case Enum.flat_map(pulls, &(&1.closes_issues || [])) do
+        [] -> %{}
+        numbers -> costs_for_issues(pulls, repository_id, numbers, costs)
+      end
     end
   end
 
-  defp costs_for_issues(pulls, repository_id, numbers) do
+  defp costs_for_issues(pulls, repository_id, numbers, costs) do
     task_ids =
       Map.new(
         Repo.all(
@@ -83,7 +89,7 @@ defmodule AgentBoard.Usage.TaskCosts do
         )
       )
 
-    pull_entries(pulls, task_ids, stored().by_task)
+    pull_entries(pulls, task_ids, costs)
   end
 
   @doc "Attach the first tracked closing issue's cost to each pull; never substitute a later priced issue."
