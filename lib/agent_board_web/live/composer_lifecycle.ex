@@ -58,6 +58,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
       composer_text: "",
       composer_title: nil,
       composer_split: false,
+      composer_max_tasks: nil,
       composer_selected: MapSet.new(),
       composer_error: nil,
       composer_retry: nil,
@@ -90,6 +91,11 @@ defmodule AgentBoardWeb.ComposerLifecycle do
     text = params["text"] || socket.assigns.composer_text
     changed? = text != socket.assigns.composer_text
 
+    max_tasks = read_limit(params, socket.assigns.composer_max_tasks)
+
+    socket =
+      invalidate_split_job(socket, changed? or max_tasks != socket.assigns.composer_max_tasks)
+
     selected = selected_from(params, socket)
 
     # New words invalidate the proposal (it was for other words) and the
@@ -106,15 +112,32 @@ defmodule AgentBoardWeb.ComposerLifecycle do
         else: assign(socket, composer_selected: selected)
 
     socket
-    |> with_task_edits(params)
+    |> with_review_edits(params)
     |> with_private_fields(params)
     |> assign(
       composer_text: text,
+      composer_max_tasks: max_tasks,
       composer_title: edited_title(params, text, socket.assigns.composer_title),
       composer_answers: params["answers"] || socket.assigns.composer_answers
     )
     |> choose_executor(params["executor"])
   end
+
+  defp invalidate_split_job(%{assigns: %{composer_job: %{kind: :split}}} = socket, true),
+    do: cancel_job(socket)
+
+  defp invalidate_split_job(socket, _changed?), do: socket
+
+  defp read_limit(%{"max_tasks" => ""}, _current), do: nil
+
+  defp read_limit(%{"max_tasks" => value}, current) when is_binary(value) do
+    case Integer.parse(value) do
+      {n, ""} -> if n in Intake.limits(), do: n, else: current
+      _ -> current
+    end
+  end
+
+  defp read_limit(_params, current), do: current
 
   @doc "Add the folder being typed to the private context, or show why it cannot be."
   def add_folder(socket, params) do
@@ -189,7 +212,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
 
     socket =
       socket
-      |> with_task_edits(params)
+      |> with_review_edits(params)
       |> with_private_fields(params)
       |> choose_executor(params["executor"])
       |> ensure_routing()
@@ -215,7 +238,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
         composer_error(socket, gettext("Write the request before sending."))
 
       socket.assigns.composer_split ->
-        submit_split(socket, text, params, shown)
+        submit_review(socket, text, params, shown)
 
       # The title the screen confirmed (`composer_title`, kept by the
       # change events), never the field as the send carried it.
@@ -356,6 +379,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
       composer_text: "",
       composer_title: nil,
       composer_split: false,
+      composer_max_tasks: nil,
       composer_selected: MapSet.new(),
       composer_error: nil,
       composer_retry: nil,
@@ -385,23 +409,46 @@ defmodule AgentBoardWeb.ComposerLifecycle do
 
   defp edited_title(_params, _text, current), do: current
 
+  defp submit_review(socket, text, params, shown) do
+    limit = socket.assigns.composer_max_tasks
+
+    if read_limit(params, limit) == limit do
+      submit_split(socket, text, params, shown)
+    else
+      composer_error(
+        socket,
+        gettext("The split limit changed. Review the selection before sending.")
+      )
+    end
+  end
+
   defp submit_split(socket, text, params, shown) do
     case socket.assigns.intake do
       %{status: :ready, text: ^text, tasks: tasks, spec: spec} when tasks != [] ->
         selected = selected_from(params, socket)
 
-        if chosen_complete?(tasks, selected) do
-          requests =
-            socket.assigns.repo
-            |> split_requests(text, spec, tasks, selected)
-            |> for_executor(socket.assigns)
+        limit = socket.assigns.composer_max_tasks
 
-          start_enqueue(socket, requests, shown)
-        else
-          composer_error(
-            socket,
-            gettext("Every chosen task needs a title, a description and a criterion.")
-          )
+        cond do
+          Intake.over_limit?(MapSet.size(selected), limit) ->
+            composer_error(
+              socket,
+              gettext("Choose at most %{limit} tasks before sending.", limit: limit)
+            )
+
+          not chosen_complete?(tasks, selected) ->
+            composer_error(
+              socket,
+              gettext("Every chosen task needs a title, a description and a criterion.")
+            )
+
+          true ->
+            requests =
+              socket.assigns.repo
+              |> split_requests(text, spec, tasks, selected)
+              |> for_executor(socket.assigns)
+
+            start_enqueue(socket, requests, shown)
         end
 
       %{status: :needs_clarification, text: ^text} ->
@@ -433,6 +480,18 @@ defmodule AgentBoardWeb.ComposerLifecycle do
 
   # The owner's edits live with the proposal until the send. A proposal that
   # new words invalidated has no tasks to edit.
+  defp with_review_edits(socket, params) do
+    socket |> with_task_edits(params) |> with_spec_edits(params)
+  end
+
+  defp with_spec_edits(%{assigns: %{intake: %{status: :ready, spec: spec} = intake}} = socket, %{
+         "shared_context" => edits
+       })
+       when is_map(edits),
+       do: assign(socket, :intake, %{intake | spec: Intake.edit_shared_context(spec, edits)})
+
+  defp with_spec_edits(socket, _params), do: socket
+
   defp with_task_edits(%{assigns: %{intake: %{tasks: tasks} = intake}} = socket, %{
          "task_edits" => edits
        })
@@ -640,13 +699,14 @@ defmodule AgentBoardWeb.ComposerLifecycle do
         )
 
       true ->
+        max_tasks = socket.assigns.composer_max_tasks
         job = composer_job(:split, text, 1)
         repo = socket.assigns.repo
 
         socket
         |> assign(composer_job: job, composer_error: nil, composer_retry: nil, intake: nil)
         |> start_async({:composer, job.ref}, fn ->
-          {:split, text, Intake.run(text, repository_digest(repo))}
+          {:split, text, Intake.run(text, repository_digest(repo), max_tasks)}
         end)
     end
   end
@@ -659,6 +719,19 @@ defmodule AgentBoardWeb.ComposerLifecycle do
     do: composer_error(socket, gettext("Choose at least one task."))
 
   defp start_enqueue(socket, requests, shown) do
+    limit = socket.assigns.composer_max_tasks
+
+    if Intake.over_limit?(length(requests), limit) do
+      composer_error(
+        socket,
+        gettext("Choose at most %{limit} tasks before sending.", limit: limit)
+      )
+    else
+      enqueue(socket, requests, shown)
+    end
+  end
+
+  defp enqueue(socket, requests, shown) do
     socket = take_attachments(socket)
     repo = socket.assigns.repo
     client = GitHub.client()
@@ -840,7 +913,9 @@ defmodule AgentBoardWeb.ComposerLifecycle do
     socket
     |> assign(composer_job: nil)
     |> show_intake_result(socket.assigns.repo, text, result)
-    |> assign(composer_selected: all_indices(result.tasks))
+    |> assign(
+      composer_selected: initial_selection(result.tasks, socket.assigns.composer_max_tasks)
+    )
   end
 
   defp finish_job(socket, _job, {:ok, {:split, text, {:error, reason}}}, _load) do
@@ -964,6 +1039,11 @@ defmodule AgentBoardWeb.ComposerLifecycle do
 
   defp split_failure(reason),
     do: gettext("AI did not respond: ") <> FailureText.text(reason)
+
+  # Never preselect an arbitrary subset of an oversized proposal.
+  defp initial_selection(tasks, limit) do
+    if Intake.over_limit?(length(tasks), limit), do: MapSet.new(), else: all_indices(tasks)
+  end
 
   defp all_indices([]), do: MapSet.new()
   defp all_indices(tasks), do: MapSet.new(0..(length(tasks) - 1))

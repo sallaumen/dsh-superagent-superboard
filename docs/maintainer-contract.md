@@ -810,6 +810,10 @@ Agora and the detail):
   `:auth_expired`, `:usage_limit`, `{:http, status}`.
 - **`Budget.check/1` runs before the network.** Over the cap answers
   `:budget_exhausted` and records nothing.
+- **The composer’s split ceiling is optional.** When set, the proposal prompt
+  includes it. If the model exceeds it, keep the entire reviewable proposal and
+  start with no selections. The send gate refuses more than the chosen limit;
+  retrying the split requires a new click.
 - **A task that cannot close on its own is dropped**, not created
   half-written (see `AgentBoard.Intake`).
 
@@ -1906,7 +1910,9 @@ rows (the split) and the tasks with their `request_key` (the enqueue).
 - **A split issue is whole** (`AgentBoard.Intake.IssueBody`): the task's body
   and acceptance, then the goal, constraints, non-goals, assumptions and open
   questions of the request, because the agent reads one issue and nothing
-  else. The headings follow the request's language.
+  else. Before sending, the owner can edit or remove shared constraints and
+  assumptions in “What the AI understood”. Both the objective and each selected
+  issue carry the reviewed version. The headings follow the request's language.
 - **In the composer's split, what the model says depends is kept**
   (`Board.Requests.create_requests/3`):
   tasks open blockers first and the body starts with "Depende de #N". A blocker

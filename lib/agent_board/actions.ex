@@ -1794,16 +1794,16 @@ defmodule AgentBoard.Actions do
   end
 
   defp after_create(nil, 1, "en-US"),
-    do: "The board opens the GitHub issue and the agent starts on its own."
+    do: "The board opens the GitHub issue for the agent to pick up when running."
 
   defp after_create(nil, _n, "en-US"),
-    do: "The board opens the GitHub issues and the agent starts on its own."
+    do: "The board opens the GitHub issues for the agent to pick up when running."
 
   defp after_create(nil, 1, _lang),
-    do: "O board abre a issue no GitHub e o agente começa sozinho."
+    do: "O board abre a issue no GitHub para o agente pegar quando estiver em execução."
 
   defp after_create(nil, _n, _lang),
-    do: "O board abre as issues no GitHub e o agente começa sozinho."
+    do: "O board abre as issues no GitHub para o agente pegar quando estiver em execução."
 
   defp after_create(executor, _n, "en-US"),
     do: "The board opens it labelled #{Executors.label(executor)}; nothing starts on its own."

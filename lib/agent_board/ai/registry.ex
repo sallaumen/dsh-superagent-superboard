@@ -284,7 +284,9 @@ defmodule AgentBoard.AI.Registry do
       bug (a defect in behavior that exists), research (investigate, measure
       or decide; no code change expected), infra (CI, build, deploy, tooling).
       size is the effort: S up to half a day, M one or two days, L more.
-      A size L task is almost always two tasks.
+      A size L task is almost always two tasks. When Maximum tasks is given,
+      never exceed it. Group related work into deliverables; put verification
+      in acceptance criteria unless it is explicitly a separate deliverable.
       Keep every constraint and non_goal; a task that violates one is wrong.
       When Repository is present, name the real files a task touches and never
       a path it does not show.

@@ -13,15 +13,28 @@ defmodule AgentBoard.Intake do
   @type spec :: map()
   @type task :: map()
 
+  # An unset ceiling preserves the original automatic split.
+  @doc "Explicit split ceilings offered in the composer."
+  @spec limits() :: Range.t()
+  def limits, do: 1..10
+
+  @doc "Whether a chosen batch exceeds the owner's optional ceiling."
+  @spec over_limit?(non_neg_integer(), nil | pos_integer()) :: boolean()
+  def over_limit?(count, limit), do: is_integer(limit) and count > limit
+
   @doc "Refines a rough request into a specification."
   @spec refine(String.t(), String.t() | nil) :: {:ok, spec()} | {:error, term()}
   def refine(text, digest \\ nil),
     do: call(:refine_request, with_digest(%{text: text}, digest), :refine_request)
 
   @doc "Splits a specification into tasks."
-  @spec propose(spec(), String.t() | nil) :: {:ok, [task()]} | {:error, term()}
-  def propose(spec, digest \\ nil),
-    do: call(:propose_tasks, with_digest(%{spec: spec}, digest), :propose_tasks)
+  @spec propose(spec(), String.t() | nil, pos_integer() | nil) ::
+          {:ok, [task()]} | {:error, term()}
+  def propose(spec, digest \\ nil, limit \\ nil) do
+    inputs = with_digest(%{spec: spec}, digest)
+    inputs = if is_integer(limit), do: Map.put(inputs, :max_tasks, limit), else: inputs
+    call(:propose_tasks, inputs, :propose_tasks)
+  end
 
   @doc """
   The whole intake: refine, then split -- unless the spec still has open
@@ -31,30 +44,30 @@ defmodule AgentBoard.Intake do
   turns an unclear request into confident, wrong work. When the model could
   not pin the request down, the result is the questions and no tasks.
   """
-  @spec run(String.t(), String.t() | nil) ::
+  @spec run(String.t(), String.t() | nil, pos_integer() | nil) ::
           {:ok,
            %{spec: spec(), tasks: [task()], status: :ready | :needs_clarification | :no_tasks}}
           | {:error, term()}
-  def run(text, digest \\ nil) do
+  def run(text, digest \\ nil, limit \\ nil) do
     with {:ok, spec} <- refine(text, digest) do
-      maybe_propose(spec, digest)
+      maybe_propose(spec, digest, limit)
     end
   end
 
   defp with_digest(inputs, nil), do: inputs
   defp with_digest(inputs, digest), do: Map.put(inputs, :repository, digest)
 
-  defp maybe_propose(%{"blocking_questions" => [_ | _]} = spec, _digest),
+  defp maybe_propose(%{"blocking_questions" => [_ | _]} = spec, _digest, _limit),
     do: needs_clarification(spec)
 
-  defp maybe_propose(%{"ready" => true} = spec, digest) do
-    with {:ok, tasks} <- propose(spec, digest) do
+  defp maybe_propose(%{"ready" => true} = spec, digest, limit) do
+    with {:ok, tasks} <- propose(spec, digest, limit) do
       status = if tasks == [], do: :no_tasks, else: :ready
       {:ok, %{spec: spec, tasks: tasks, status: status}}
     end
   end
 
-  defp maybe_propose(spec, _digest), do: needs_clarification(spec)
+  defp maybe_propose(spec, _digest, _limit), do: needs_clarification(spec)
 
   defp needs_clarification(spec),
     do: {:ok, %{spec: spec, tasks: [], status: :needs_clarification}}
@@ -71,12 +84,23 @@ defmodule AgentBoard.Intake do
   end
 
   defp edit_task(task, %{"title" => title, "body" => body, "acceptance" => acceptance}) do
-    %{task | title: title, body: body, acceptance: acceptance_lines(acceptance)}
+    %{task | title: title, body: body, acceptance: edited_lines(acceptance)}
   end
 
   defp edit_task(task, _no_edit), do: task
 
-  defp acceptance_lines(text) do
+  @doc "Applies the reviewed constraints and assumptions without changing the rest of the split."
+  @spec edit_shared_context(spec(), map()) :: spec()
+  def edit_shared_context(spec, edits) do
+    Enum.reduce(~w(constraints assumptions), spec, fn key, acc ->
+      case edits[key] do
+        text when is_binary(text) -> Map.put(acc, key, edited_lines(text))
+        _ -> acc
+      end
+    end)
+  end
+
+  defp edited_lines(text) do
     text |> String.split("\n") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
   end
 

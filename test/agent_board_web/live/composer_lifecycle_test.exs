@@ -100,7 +100,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
 
     Req.Test.stub(@stub, fn conn ->
       {:ok, body, conn} = Plug.Conn.read_body(conn)
-      title = body |> Jason.decode!() |> Map.get("title")
+      issue = Jason.decode!(body)
+      title = issue["title"]
+      if recipient = opts[:capture], do: send(recipient, {:github_issue, title, issue["body"]})
 
       if title in refuse do
         Plug.Conn.send_resp(conn, 500, "boom")
@@ -315,6 +317,79 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     # The classification is stored on the task and read back in the receipt.
     assert {task.work_type, task.size} == {"bug", "M"}
     assert has_element?(view, "#composer-receipt .ab-work", "bug")
+  end
+
+  test "a split ceiling reaches the AI and an oversized answer stays reviewable without publishing",
+       %{conn: conn} do
+    owner = self()
+    counter = github()
+
+    script(fn
+      %{name: :refine_request} ->
+        Scripted.answer(@refined)
+
+      %{name: :propose_tasks, prompt: prompt} ->
+        send(owner, {:prompt, prompt})
+        Scripted.answer(@tasks)
+    end)
+
+    view = open_composer(conn)
+    words = "Medir e corrigir o contador"
+    type(view, words)
+    view |> element("#composer-form") |> render_change(%{"max_tasks" => "1"})
+    split(view)
+    assert_receive {:prompt, prompt}
+    assert prompt =~ "Maximum tasks: 1."
+    assert has_element?(view, "#composer-split-limit-note")
+
+    for n <- 0..1 do
+      assert has_element?(view, "#composer-task-#{n}")
+      refute has_element?(view, "#composer-task-#{n}[checked]")
+    end
+
+    refute has_element?(view, "#composer-confirm")
+    assert has_element?(view, "#composer-form button[type=submit][disabled]")
+
+    # A stale/forged submit cannot relax the ceiling or enqueue both tasks.
+    for limit <- ["", "1", "999"] do
+      submit(view, %{"text" => words, "max_tasks" => limit, "tasks" => ["0", "1"]})
+      assert Repo.aggregate(Task, :count) == 0
+      assert Agent.get(counter, & &1) == 100
+    end
+
+    view |> element("#composer-form") |> render_change(%{"tasks" => ["1"], "max_tasks" => "1"})
+    submit(view, %{"text" => words, "tasks" => ["1"], "max_tasks" => "1"})
+    assert [task] = Repo.all(Task)
+    assert task.title == "Corrigir o gargalo"
+    assert Agent.get(counter, & &1) == 101
+  end
+
+  test "editing a draft during an AI split cannot restore stale tasks", %{conn: conn} do
+    owner = self()
+
+    script(fn
+      %{name: :refine_request} ->
+        Scripted.answer(@refined)
+
+      %{name: :propose_tasks} ->
+        send(owner, {:proposing, self()})
+
+        receive do
+          :answer -> Scripted.answer(@tasks)
+        end
+    end)
+
+    view = open_composer(conn)
+    type(view, "Pedido original")
+    view |> element("#composer-split") |> render_click()
+    assert_receive {:proposing, worker}
+    form = element(view, "#composer-form")
+    render_change(form, %{"text" => "Pedido corrigido", "max_tasks" => "3"})
+    send(worker, :answer)
+    render_async(view, 2000)
+    assert has_element?(view, "#composer-text", "Pedido corrigido")
+    refute has_element?(view, "#composer-task-0")
+    assert has_element?(view, "#composer-max-tasks option[value='3'][selected]")
   end
 
   test "split issues carry the request's context and link what they depend on", %{conn: conn} do
@@ -688,6 +763,58 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "textarea[name='task_edits[1][acceptance]']", "p95 abaixo do alvo")
     assert has_element?(view, "#composer-task-deps-0", "Sem dependência")
     assert has_element?(view, "#composer-task-deps-1", "Depende de 1")
+  end
+
+  test "reviewed shared context reaches each GitHub issue and the objective", %{conn: conn} do
+    github(capture: self())
+    wrong = "Mesma branch e um único PR."
+    assumption = "O executor é sempre o mesmo."
+    corrected = "Uma branch e um PR por tarefa."
+    request = "Melhorar o tempo de resposta"
+
+    script(fn
+      %{name: :refine_request} ->
+        Scripted.answer(%{
+          @refined
+          | "constraints" => [wrong, "Manter os checks locais."],
+            "assumptions" => [assumption],
+            "open_questions" => ["Qual a meta de latência?"]
+        })
+
+      %{name: :propose_tasks} ->
+        Scripted.answer(@tasks)
+    end)
+
+    view = open_composer(conn)
+    type(view, request)
+    split(view)
+
+    assert has_element?(view, "textarea#composer-shared-constraints", wrong)
+    assert has_element?(view, "textarea#composer-shared-assumptions", assumption)
+
+    form(view, "#composer-form", %{"shared_context" => %{"assumptions" => ""}}) |> render_change()
+    refute has_element?(view, "#composer-shared-assumptions", assumption)
+
+    # The final constraint edit is submitted directly, without a preceding change event.
+    form(view, "#composer-form", %{
+      "shared_context" => %{"constraints" => "Manter os checks locais.\n#{corrected}"}
+    })
+    |> render_submit()
+
+    render_async(view, 2000)
+
+    for title <- ["Medir o carregamento", "Corrigir o gargalo", request] do
+      assert_received {:github_issue, ^title, body}
+      assert body =~ corrected
+      assert body =~ "Manter os checks locais."
+      assert body =~ "Qual a meta de latência?"
+      refute body =~ wrong
+      refute body =~ assumption
+    end
+
+    objective = Repo.get_by!(AgentBoard.Board.Objective, title: request)
+    assert objective.spec["constraints"] == ["Manter os checks locais.", corrected]
+    assert objective.spec["assumptions"] == []
   end
 
   test "what the owner edits is what opens, and a retry does not duplicate it", %{conn: conn} do

@@ -10389,3 +10389,28 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "waiting for GitHub to confirm the closing reason"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Maximum tasks per split"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Automatic"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "AI proposed %{total} tasks. Select up to %{limit}, or split again."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Choose at most %{limit} tasks before sending."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The split limit changed. Review the selection before sending."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/composer.ex:608
+#, elixir-autogen, elixir-format
+msgid "One item per line. Your edits apply to the objective and every selected task."
+msgstr ""

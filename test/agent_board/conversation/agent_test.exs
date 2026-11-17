@@ -368,7 +368,7 @@ defmodule AgentBoard.Conversation.AgentTest do
     # The proposal says the registry's sentence, the one the screen shows.
     assert proposed.reply ==
              "Criar no arena-rogue a tarefa “Mostrar o volume da voz no cabeçalho”? " <>
-               "O board abre a issue no GitHub e o agente começa sozinho."
+               "O board abre a issue no GitHub para o agente pegar quando estiver em execução."
 
     assert %Turn{proposal: %{"kind" => "create_task"}} = Conversation.pending_proposal()
     # One model call refines it: no second, slower refine call.

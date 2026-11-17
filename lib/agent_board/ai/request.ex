@@ -36,6 +36,10 @@ defmodule AgentBoard.AI.Request do
     }
   end
 
+  defp prompt(%{max_tasks: limit} = inputs) when is_integer(limit) do
+    "Maximum tasks: #{limit}.\n\n" <> prompt(Map.delete(inputs, :max_tasks))
+  end
+
   defp prompt(%{text: text, repository: digest}),
     do: "Request:\n#{text}\n\n#{repository(digest)}"
 

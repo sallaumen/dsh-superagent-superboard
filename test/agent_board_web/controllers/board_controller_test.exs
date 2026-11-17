@@ -70,7 +70,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
 
     assert phrase ==
              "Criar no arena-rogue a tarefa “From the API”? " <>
-               "O board abre a issue no GitHub e o agente começa sozinho."
+               "O board abre a issue no GitHub para o agente pegar quando estiver em execução."
 
     assert Repo.aggregate(Task, :count, :id) == 0
 
