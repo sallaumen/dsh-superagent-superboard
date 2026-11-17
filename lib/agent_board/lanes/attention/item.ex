@@ -52,8 +52,7 @@ defmodule AgentBoard.Lanes.Attention.Item do
     do: Attention.Review.content(task.id, pull, summary(task, context))
 
   defp content(%{kind: :question, task: task}, _pull, context) do
-    why = Attention.ReportNotice.question(context.questions[task.number], summary(task, context))
-    {why, [%{label: gettext("Respond"), task_id: task.id}]}
+    Attention.Question.content(task.id, context.questions[task.number], summary(task, context))
   end
 
   defp content(%{kind: :stalled, task: task}, _pull, context) do
