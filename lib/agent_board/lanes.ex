@@ -171,7 +171,7 @@ defmodule AgentBoard.Lanes do
     observed = Queue.Observations.load(repository)
 
     page = Queue.select(observed, last_visit, filter, limit)
-    waits = page |> Queue.held_ids() |> Queue.Observations.open_dependencies()
+    waits = page |> Queue.waiting_ids(calls) |> Queue.Observations.open_dependencies()
     %{page | items: Enum.map(page.items, &Queue.Item.build(&1, waits, calls))}
   end
 

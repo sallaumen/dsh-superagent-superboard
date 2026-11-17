@@ -60,6 +60,16 @@ defmodule AgentBoard.Lanes.Queue.ReadsTest do
     refute List.keymember?(queries, "task_dependencies", 0)
   end
 
+  test "a failed call keeps its warning and reads no dependency numbers" do
+    {:ok, repo} = Board.add_repository("fixture", "failed-call-no-waits")
+    now = ~U[2026-11-17 12:00:00Z]
+    task(repo, 12, "queued", %{held: true, released_at: DateTime.add(now, -60)})
+    Gettext.put_locale(AgentBoardWeb.Gettext, "en")
+    {page, queries} = reads(fn -> Lanes.queue(repo, now: now) end)
+    assert [%{number: 12, sub: nil, stuck: "the call to the agent did not complete"}] = page.items
+    refute List.keymember?(queries, "task_dependencies", 0)
+  end
+
   defp task(repo, n, state, attrs \\ %{}) do
     %AgentBoard.Board.Task{
       repository_id: repo.id,

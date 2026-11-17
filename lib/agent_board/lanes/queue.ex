@@ -1,6 +1,7 @@
 defmodule AgentBoard.Lanes.Queue do
   @moduledoc "Rules for the queue, applied to the rows the board observed."
 
+  alias AgentBoard.Lanes.CallStatus
   alias AgentBoard.{Time, Titles}
 
   @compact_limit 8
@@ -48,9 +49,13 @@ defmodule AgentBoard.Lanes.Queue do
     Map.put(page, :filters, filter_options(page.counts))
   end
 
-  @doc "Visible held tasks whose cards can name unresolved blockers."
-  @spec held_ids(map()) :: [integer()]
-  def held_ids(page), do: for(%{row: %{held: true, id: id}} <- page.items, do: id)
+  @doc "Visible held tasks whose cards can name unresolved blockers; call problems take precedence."
+  @spec waiting_ids(map(), map()) :: [integer()]
+  def waiting_ids(page, calls) do
+    for %{row: row} <- page.items,
+        CallStatus.dependency_wait?(row.held, CallStatus.problem(row, calls)),
+        do: row.id
+  end
 
   @doc "Page queue candidates or built cards: count the full queue, then filter in order before limiting."
   @spec page([map()], atom(), integer()) :: map()

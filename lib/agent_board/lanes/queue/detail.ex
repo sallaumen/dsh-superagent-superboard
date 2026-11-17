@@ -12,10 +12,11 @@ defmodule AgentBoard.Lanes.Queue.Detail do
           stuck: String.t() | nil
         }
   def describe(row, relationship, open_numbers, calls) do
-    stuck = stuck(row, calls)
+    problem = CallStatus.problem(row, calls)
+    stuck = stuck(problem, row, calls)
 
     sub =
-      if row.held and is_nil(stuck) do
+      if CallStatus.dependency_wait?(row.held, problem) do
         waiting_for(open_numbers)
       else
         join(relationship_label(relationship), call_sub(row, calls))
@@ -61,8 +62,8 @@ defmodule AgentBoard.Lanes.Queue.Detail do
     end
   end
 
-  defp stuck(row, calls) do
-    case CallStatus.problem(row, calls) do
+  defp stuck(problem, row, calls) do
+    case problem do
       :failed ->
         gettext("the call to the agent did not complete")
 
