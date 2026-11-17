@@ -101,9 +101,9 @@ defmodule AgentBoard.Usage.TaskCosts do
 
   defp stored, do: :persistent_term.get(@key, %{at: nil, by_task: %{}})
 
-  # One entry per executor: the sum of the priced executions and how many
-  # had no price. Codex has none: its executions are all unpriced.
-  defp entries(executions) do
+  @doc "Group observed executions by executor, summing only priced entries and retaining unknown counts."
+  @spec entries([map()]) :: [entry()]
+  def entries(executions) do
     executions
     |> Enum.group_by(& &1.source)
     |> Enum.map(fn {source, mine} ->
