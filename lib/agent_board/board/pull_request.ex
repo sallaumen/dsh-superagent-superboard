@@ -34,6 +34,9 @@ defmodule AgentBoard.Board.PullRequest do
     field :checks_changed_at, :utc_datetime
     field :head_sha, :string
     field :head_ref, :string
+    field :reported_evidence, :map, default: %{}
+    field :evidence_source_updated_at, :utc_datetime
+    field :evidence_refresh_at, :utc_datetime
     field :closes_issues, {:array, :integer}, default: []
 
     belongs_to :repository, AgentBoard.Board.Repository
@@ -58,6 +61,8 @@ defmodule AgentBoard.Board.PullRequest do
       :checks_changed_at,
       :head_sha,
       :head_ref,
+      :evidence_source_updated_at,
+      :evidence_refresh_at,
       :closes_issues,
       :repository_id
     ])

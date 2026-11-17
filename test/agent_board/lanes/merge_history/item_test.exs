@@ -35,6 +35,7 @@ defmodule AgentBoard.Lanes.MergeHistory.ItemTest do
              ciTitle: "Local CI failed: 1 failure",
              ciLocal: false,
              review: "approved",
+             evidence_pull: @pull,
              at: "22:02",
              cost: cost
            }

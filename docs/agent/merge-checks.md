@@ -119,3 +119,31 @@ publisher's credentials.
 For the board worker, follow [isolated publication](isolated-publication.md)
 to keep GitHub credentials on the publisher and run edits and checks in
 disposable containers.
+
+### Reported validation in PR comments
+
+Merged and History distinguish native GitHub checks/reviews from explicit reports
+posted in the PR conversation by a repository owner, member or collaborator.
+A local report has a `### Validation` (or `### Validação`) section with one
+``- `command`: passed/failed on <full 40-character head SHA>`` line per check.
+All named checks need a result and the same full commit; incomplete or mixed
+commits never produce a passing indicator.
+
+An independent report starts with `## Independent agent review — final head`
+(or `## Independent review`), names `Reviewer: ...`, and states
+`Approved head <full SHA>` or `Changes requested on head <full SHA>`.
+An author self-review is not an independent review. The board shows this as a
+**reported** review, with its posting account, named reviewer, commit and source
+comment. It cannot verify the separate reviewer's execution or identity from
+that comment. Native GitHub change requests remain visible and authoritative.
+These reports never satisfy a merge-policy approval requirement.
+
+The normal sync reads at most one recent PR conversation per repository cycle
+(including its comment pages), without rereading native checks/reviews for
+settled PRs. Existing open and recently merged PRs are queued during migration;
+changed PR timestamps or heads queue another read. An unchanged successful
+read stays cached. A successful reread replaces the reports, including after
+removal; a network failure preserves the last evidence and retries after an
+hour. Rate limits retain the normal sync backoff. A report for a different
+head is outdated, never current approval. No Maintenance/Synchronize click or
+agent restart is involved.

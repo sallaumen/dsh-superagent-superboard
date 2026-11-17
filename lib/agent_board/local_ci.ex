@@ -27,11 +27,11 @@ defmodule AgentBoard.LocalCI do
   @report_limit 220
 
   @type status :: %{
-          state: :pass | :fail | :stale,
+          state: :pass | :fail | :stale | :unknown,
           detail: String.t(),
           remote_blocked: boolean(),
           at: DateTime.t() | nil,
-          scope: :pr | :ticket | :workpad,
+          scope: :pr | :ticket | :workpad | :pr_comment,
           evidence_pr: integer() | nil
         }
 
@@ -64,8 +64,47 @@ defmodule AgentBoard.LocalCI do
         Map.merge(workpad_statuses(%{}, workpad, heads), acc)
       end)
 
-    # A direct workpad or ticket/report link always takes precedence.
-    Map.merge(unlinked_statuses(own, workpads, heads), explicit)
+    # Direct links take precedence over inferred links; an explicit PR receipt
+    # is scoped to that PR and supersedes the ticket/workpad fallback.
+    legacy = Map.merge(unlinked_statuses(own, workpads, heads), explicit)
+
+    Enum.reduce(Keyword.get(opts, :pulls, []), legacy, fn pull, acc ->
+      case comment_status(pull) do
+        nil -> acc
+        status -> Map.put(acc, pull.number, status)
+      end
+    end)
+  end
+
+  defp comment_status(pull) do
+    if report = pull.reported_evidence["ci"] do
+      state =
+        case AgentBoard.PullEvidence.state(report, pull.head_sha) do
+          "pass" -> :pass
+          "fail" -> :fail
+          "stale" -> :stale
+          _ -> :unknown
+        end
+
+      %{
+        state: state,
+        scope: :pr_comment,
+        evidence_pr: pull.number,
+        remote_blocked: false,
+        at: nil,
+        sha: report["sha"],
+        head_sha: pull.head_sha,
+        source_url: report["url"],
+        author: report["author"],
+        detail:
+          gettext(
+            "Reported by %{author} in a PR comment for %{sha}. Commands: %{commands}. This is a reported result, not a GitHub check.",
+            author: report["author"] || "?",
+            sha: report["sha"] || "?",
+            commands: Enum.join(report["commands"] || [], "; ")
+          )
+      }
+    end
   end
 
   defp unlinked_statuses(tickets, workpads, heads) do

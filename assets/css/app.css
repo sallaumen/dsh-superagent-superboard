@@ -613,3 +613,14 @@ button.voice-command-say:focus-visible { outline: 2px solid var(--color-primary)
   text-transform: none !important;
   letter-spacing: normal !important;
 }
+
+.ab-validation-sources {
+  grid-column: 1 / -1;
+  font-size: .8125rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ab-validation-sources > summary { cursor: pointer; padding: .65rem .25rem; }
+.ab-validation-sources > ul { display: grid; gap: .75rem; margin: .5rem 0; }
+.ab-validation-sources code { font-size: .75rem; }
+.ab-validation-sources a { display: inline-block; padding: .65rem 0; text-decoration: underline; }

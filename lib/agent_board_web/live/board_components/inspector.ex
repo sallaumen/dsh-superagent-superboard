@@ -7,6 +7,9 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   import AgentBoardWeb.BoardComponents.StatusMark, only: [status_mark: 1]
   import AgentBoardWeb.BoardComponents.WorkTag, only: [work_tag: 1]
 
+  alias AgentBoard.Lanes.CI.Badge, as: CIBadge
+  alias AgentBoard.Lanes.Review
+
   alias AgentBoard.Board.Attachments
   alias AgentBoard.Intake.IssueBody
   alias AgentBoardWeb.BoardComponents.{AgentAction, DecisionReview}
@@ -1169,6 +1172,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         {gettext("This task has not opened a PR yet.")}
       </div>
 
+      <AgentBoardWeb.BoardComponents.ValidationSources.sources :if={@pr} pull={@pr} />
       <div :if={@pr} class="ab-pr-facts">
         <div class="ab-need__title">
           <span class="ab-need__id">#{@pr.number}</span>
@@ -1186,7 +1190,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
           >
             {pr_ci(@pr, @ci)}
           </span>
-          <span :if={!@gate} class="ab-meta">{pr_review(@pr.review_state)}</span>
+          <span :if={!@gate} class="ab-meta">{Review.label(@pr)}</span>
         </div>
         <a
           :if={@pr.url}
@@ -1233,6 +1237,7 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
   defp pr_badge(_, _, %{state: :fail}), do: {:cifail, gettext("Local CI failed")}
   defp pr_badge(_, _, _), do: {:review, pgettext("PR status", "Open")}
 
+  defp pr_ci(pr, %{scope: :pr_comment} = ci), do: CIBadge.describe(pr, ci).note
   defp pr_ci(_pr, %{state: :pass}), do: gettext("Local CI passed")
   defp pr_ci(_pr, %{state: :fail}), do: gettext("Local CI failed")
   defp pr_ci(_pr, %{state: :stale}), do: gettext("Local CI unknown")
@@ -1270,11 +1275,6 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
 
   defp local_ci_pass?(%{state: :pass}), do: true
   defp local_ci_pass?(_ci), do: false
-
-  defp pr_review("approved"), do: gettext("approved")
-  defp pr_review("changes_requested"), do: gettext("changes requested")
-  defp pr_review("pending"), do: gettext("pending review")
-  defp pr_review(_state), do: gettext("no review")
 
   # A task with more calls than the board loads says so: the sum beside this
   # count is the sum of the calls shown, never of all of them.
