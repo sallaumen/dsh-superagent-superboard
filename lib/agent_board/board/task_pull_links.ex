@@ -19,27 +19,18 @@ defmodule AgentBoard.Board.TaskPullLinks do
   def resolved_task_ids([]), do: MapSet.new()
 
   def resolved_task_ids(tasks) do
-    {comments_by_task, repositories} = link_sources(tasks)
-
-    # One read for every linked PR, not one per task: the overview filters
-    # all ready tasks at once and the query count stays bounded.
-    pulls = linked_pulls(tasks, comments_by_task, repositories)
-
     tasks
-    |> Enum.filter(fn task ->
-      number =
-        Evidence.named_number(
-          task.body,
-          Map.get(comments_by_task, task.id, []),
-          repositories[task.repository_id]
-        )
+    |> named_pulls()
+    |> Enum.filter(fn {_id, pull} -> pull.state in ["merged", "closed"] end)
+    |> MapSet.new(&elem(&1, 0))
+  end
 
-      case Map.get(pulls, {task.repository_id, number}) do
-        %PullRequest{state: state} when state in ["merged", "closed"] -> true
-        _ -> false
-      end
-    end)
-    |> MapSet.new(& &1.id)
+  defp named_pulls(tasks) do
+    {comments, repositories} = link_sources(tasks)
+    refs = Evidence.named_refs(tasks, comments, repositories)
+    pulls = refs |> Map.values() |> pulls_by_ref()
+
+    for {id, ref} <- refs, pull = pulls[ref], into: %{}, do: {id, pull}
   end
 
   # What a task's PR link is read from, in two reads for the whole list:
@@ -63,32 +54,16 @@ defmodule AgentBoard.Board.TaskPullLinks do
     {comments_by_task, repositories}
   end
 
-  defp linked_pulls(tasks, comments_by_task, repositories) do
-    candidates =
-      tasks
-      |> Enum.map(fn task ->
-        {task.repository_id,
-         Evidence.named_number(
-           task.body,
-           Map.get(comments_by_task, task.id, []),
-           repositories[task.repository_id]
-         )}
-      end)
-      |> Enum.filter(fn {_repository_id, number} -> is_integer(number) end)
-      |> Enum.uniq()
+  defp pulls_by_ref([]), do: %{}
 
-    if candidates == [] do
-      %{}
-    else
-      repository_ids = Enum.map(candidates, &elem(&1, 0)) |> Enum.uniq()
-      numbers = Enum.map(candidates, &elem(&1, 1)) |> Enum.uniq()
+  defp pulls_by_ref(refs) do
+    repository_ids = Enum.map(refs, &elem(&1, 0)) |> Enum.uniq()
+    numbers = Enum.map(refs, &elem(&1, 1)) |> Enum.uniq()
 
-      Repo.all(
-        from p in PullRequest,
-          where: p.repository_id in ^repository_ids and p.number in ^numbers
-      )
-      |> Map.new(&{{&1.repository_id, &1.number}, &1})
-    end
+    Repo.all(
+      from p in PullRequest, where: p.repository_id in ^repository_ids and p.number in ^numbers
+    )
+    |> Map.new(&{{&1.repository_id, &1.number}, &1})
   end
 
   @doc """
@@ -105,23 +80,7 @@ defmodule AgentBoard.Board.TaskPullLinks do
   def linked_pull_requests([], _tickets), do: %{}
 
   def linked_pull_requests(tasks, tickets) do
-    {comments_by_task, repositories} = link_sources(tasks)
-    pulls = linked_pulls(tasks, comments_by_task, repositories)
-
-    named =
-      Enum.reduce(tasks, %{}, fn task, acc ->
-        number =
-          Evidence.named_number(
-            task.body,
-            Map.get(comments_by_task, task.id, []),
-            repositories[task.repository_id]
-          )
-
-        case Map.get(pulls, {task.repository_id, number}) do
-          nil -> acc
-          pull -> Map.put(acc, task.id, pull)
-        end
-      end)
+    named = named_pulls(tasks)
 
     # The rest fall back to the PR thread their ticket opened, read once for
     # all of them; the highest thread number wins, as before.
