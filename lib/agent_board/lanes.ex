@@ -7,8 +7,6 @@ defmodule AgentBoard.Lanes do
   here, so they do not appear.
   """
 
-  use Gettext, backend: AgentBoardWeb.Gettext
-
   alias AgentBoard.{
     AgentBlock,
     AgentSignal,
@@ -23,6 +21,7 @@ defmodule AgentBoard.Lanes do
     Digest,
     MergeHistory,
     Queue,
+    Retry,
     RunTiming
   }
 
@@ -118,12 +117,7 @@ defmodule AgentBoard.Lanes do
     for task <- Map.get(board, :retrying, []) do
       block = AgentBlock.explain(Map.get(context.tickets, task.number), block_opts(context))
 
-      %{
-        id: task.id,
-        number: task.number,
-        title: task.title,
-        line: (block && block.line) || gettext("**Automatic retry.** Waiting for the agent.")
-      }
+      Retry.build(task, block)
     end
   end
 
