@@ -16,8 +16,7 @@ export LOG_LEVEL="${LOG_LEVEL:-info}"
 # output in Latin-1: the log got bytes that are not UTF-8.
 export LANG="${LANG:-en_US.UTF-8}"
 
-# The log rotates here, at every start, keeping one old file, as o_colmex's
-# hive does: launchd only appends, and the file reached a gigabyte. It applies
+# The log rotates here, at every start, keeping one old file. It applies
 # when AGENT_BOARD_LOG names the file (the plist sets it); a manual run keeps
 # writing to the terminal. The rotation reopens the log, so everything after
 # this point lands in the new file, not in the one launchd opened.

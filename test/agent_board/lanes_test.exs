@@ -1060,7 +1060,7 @@ defmodule AgentBoard.LanesTest do
     |> Comment.changeset(%{
       task_id: task.id,
       github_id: System.unique_integer([:positive]),
-      author: if(kind == "agent", do: "sallaumen-agent", else: "sallaumen"),
+      author: if(kind == "agent", do: "example-bot", else: "example"),
       body: body,
       kind: kind
     })

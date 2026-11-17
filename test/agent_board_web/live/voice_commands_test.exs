@@ -10,8 +10,8 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
     assert VoiceCommands.parse("Abrir atividade") == {:panel, "activity"}
     assert VoiceCommands.parse("Show AI calls") == {:panel, "ai"}
 
-    assert VoiceCommands.parse("Trocar para repo sallaumen/agent-board") ==
-             {:repository, "sallaumen/agent-board"}
+    assert VoiceCommands.parse("Trocar para repo example/agent-board") ==
+             {:repository, "example/agent-board"}
 
     assert VoiceCommands.parse("Abra tarefa #42") == {:task, 42}
     assert VoiceCommands.parse("Find PR 71") == {:pull_request, 71}
@@ -22,11 +22,11 @@ defmodule AgentBoardWeb.VoiceCommandsTest do
   end
 
   test "repository selection accepts only a tracked repository" do
-    {:ok, repo} = Board.add_repository("sallaumen", "agent-board")
+    {:ok, repo} = Board.add_repository("example", "agent-board")
     context = %{repos: [repo]}
 
-    assert %{result: %{kind: :success}, path: "/?repo=sallaumen%2Fagent-board"} =
-             VoiceCommands.resolve("repo sallaumen/agent-board", context)
+    assert %{result: %{kind: :success}, path: "/?repo=example%2Fagent-board"} =
+             VoiceCommands.resolve("repo example/agent-board", context)
 
     assert %{result: %{kind: :unknown}, path: nil} =
              VoiceCommands.resolve("repo other/private", context)

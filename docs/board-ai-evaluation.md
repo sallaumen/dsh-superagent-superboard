@@ -1,6 +1,6 @@
 # Reproducible evaluation of the board's answers
 
-The agent that programs in `sallaumen/arena-rogue` is another process. This campaign measures **only** `AgentBoardWeb.VoiceAnswer` → `AgentBoard.AI`: the AI's answer over a known board snapshot. No case creates an issue, task, comment or message. The fact set is an in-memory fixture, identified as `fixture/board-ai-eval-*`.
+The agent that programs in `example/atlas-relay` is another process. This campaign measures **only** `AgentBoardWeb.VoiceAnswer` → `AgentBoard.AI`: the AI's answer over a known board snapshot. No case creates an issue, task, comment or message. The fact set is an in-memory fixture, identified as `fixture/board-ai-eval-*`.
 
 ## Cases and oracle
 
@@ -54,7 +54,7 @@ The JSONL writes a `run` record first, then one `case` per question and, at the 
 
 ## Coverage distinct from the agent campaign
 
-This evaluation does not demonstrate that `dsh-superagent` programs well. The agent campaign uses a bounded issue in `arena-rogue` and follows issue → ticket → PR → gate → review → merge. Do not mix the two scores.
+This evaluation does not demonstrate that `dsh-superagent` programs well. The agent campaign uses a bounded issue in `atlas-relay` and follows issue → ticket → PR → gate → review → merge. Do not mix the two scores.
 
 A local round with 13 cases, complete answers and human review is in [evaluations/2026-11-05-board-ai-local.md](evaluations/2026-11-05-board-ai-local.md). It uses Ollama and does not replace the round with the production provider.
 The follow-up on the title-free projection for aggregate questions is in [evaluations/2026-11-06-board-ai-aggregate.md](evaluations/2026-11-06-board-ai-aggregate.md).

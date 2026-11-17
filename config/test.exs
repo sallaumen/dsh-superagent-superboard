@@ -1,5 +1,7 @@
 import Config
 
+config :agent_board, agent_login: "example-bot"
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

@@ -150,7 +150,7 @@ defmodule AgentBoard.AgentAccessTest do
   describe "overview/2" do
     test "groups the mentions of one person and hides whoever is cleared", context do
       %{superagent: superagent, state_dir: state_dir} = context
-      FakeManager.put_access(superagent.id, ["sallaumen", "Liberada"])
+      FakeManager.put_access(superagent.id, ["example", "Liberada"])
 
       database!(state_dir, fn conn ->
         mention!(conn, "t1", "amiga", 10, "2026-11-09T10:00:00.000Z")
@@ -161,7 +161,7 @@ defmodule AgentBoard.AgentAccessTest do
 
       assert [project] = AgentAccess.overview([superagent])
       assert project.state == :ok
-      assert Enum.map(project.allowed, & &1.login) == ["sallaumen", "Liberada"]
+      assert Enum.map(project.allowed, & &1.login) == ["example", "Liberada"]
       assert [request] = project.requests
       assert request.login == "amiga"
       assert request.mentions == 3
@@ -172,7 +172,7 @@ defmodule AgentBoard.AgentAccessTest do
 
     test "an issue already finished, or accepted later, does not run again", context do
       %{superagent: superagent, state_dir: state_dir, repo: repo} = context
-      FakeManager.put_access(superagent.id, ["sallaumen"])
+      FakeManager.put_access(superagent.id, ["example"])
 
       {:ok, _task} =
         %Board.Task{}
@@ -200,7 +200,7 @@ defmodule AgentBoard.AgentAccessTest do
 
     test "an issue the owner stopped or archived does not run again", context do
       %{superagent: superagent, state_dir: state_dir, repo: repo} = context
-      FakeManager.put_access(superagent.id, ["sallaumen"])
+      FakeManager.put_access(superagent.id, ["example"])
 
       for {number, attrs} <- [
             {30, %{state: "stopped"}},
@@ -234,7 +234,7 @@ defmodule AgentBoard.AgentAccessTest do
 
     test "a failed read of the refusals keeps who was waiting", context do
       %{superagent: superagent, state_dir: state_dir} = context
-      FakeManager.put_access(superagent.id, ["sallaumen"])
+      FakeManager.put_access(superagent.id, ["example"])
 
       database!(state_dir, fn conn ->
         mention!(conn, "t1", "amiga", 10, "2026-11-09T10:00:00.000Z")
@@ -245,7 +245,7 @@ defmodule AgentBoard.AgentAccessTest do
       assert length(good.requests) == 2
 
       File.rm!(Path.join(state_dir, "orchestrator.sqlite"))
-      FakeManager.put_access(superagent.id, ["sallaumen", "colega"])
+      FakeManager.put_access(superagent.id, ["example", "colega"])
 
       [kept] = AgentAccess.keep_last_good([good], AgentAccess.overview([superagent]))
 
@@ -263,19 +263,19 @@ defmodule AgentBoard.AgentAccessTest do
 
     test "a failed read keeps the last good lists, marked unavailable", context do
       %{superagent: superagent} = context
-      FakeManager.put_access(superagent.id, ["sallaumen", "amiga"])
+      FakeManager.put_access(superagent.id, ["example", "amiga"])
       [good] = AgentAccess.overview([superagent])
 
       FakeManager.put_access(superagent.id, {:error, :econnrefused})
       [kept] = AgentAccess.keep_last_good([good], AgentAccess.overview([superagent]))
 
       assert kept.state == :unavailable
-      assert Enum.map(kept.allowed, & &1.login) == ["sallaumen", "amiga"]
+      assert Enum.map(kept.allowed, & &1.login) == ["example", "amiga"]
     end
 
     test "summary counts the people waiting and names the refused issues", context do
       %{superagent: superagent, state_dir: state_dir, repo: repo} = context
-      FakeManager.put_access(superagent.id, ["sallaumen"])
+      FakeManager.put_access(superagent.id, ["example"])
 
       database!(state_dir, fn conn ->
         mention!(conn, "t1", "amiga", 10, "2026-11-09T10:00:00.000Z")
@@ -353,13 +353,13 @@ defmodule AgentBoard.AgentAccessTest do
 
   describe "grant/4" do
     test "clears the person and runs again only what was asked", %{superagent: superagent} do
-      FakeManager.put_access(superagent.id, ["sallaumen"])
+      FakeManager.put_access(superagent.id, ["example"])
 
       assert {:ok, %{login: "amiga", requeued: [10], failed: []}} =
                AgentAccess.grant(superagent, "@amiga", [%{number: 10, trigger_id: "t1"}])
 
       assert {:ok, %{allowed: allowed}} = FakeManager.access(superagent)
-      assert Enum.map(allowed, & &1.login) == ["sallaumen", "amiga"]
+      assert Enum.map(allowed, & &1.login) == ["example", "amiga"]
       assert FakeManager.requeued(superagent.id) == ["t1"]
     end
 
@@ -392,15 +392,15 @@ defmodule AgentBoard.AgentAccessTest do
 
   describe "revoke/3" do
     test "takes a person off the list", %{superagent: superagent} do
-      FakeManager.put_access(superagent.id, ["sallaumen", "amiga"])
+      FakeManager.put_access(superagent.id, ["example", "amiga"])
 
       assert {:ok, "amiga"} = AgentAccess.revoke(superagent, "amiga")
-      assert {:ok, %{allowed: [%{login: "sallaumen"}]}} = FakeManager.access(superagent)
+      assert {:ok, %{allowed: [%{login: "example"}]}} = FakeManager.access(superagent)
     end
 
     test "the person does not come back as waiting for the old mention", context do
       %{superagent: superagent, state_dir: state_dir} = context
-      FakeManager.put_access(superagent.id, ["sallaumen", "amiga"])
+      FakeManager.put_access(superagent.id, ["example", "amiga"])
 
       database!(state_dir, fn conn ->
         mention!(conn, "t1", "amiga", 10, "2026-01-01T10:00:00.000Z")
@@ -620,7 +620,7 @@ defmodule AgentBoard.AgentAccessTest do
 
     test "allow appends the id, keeps the rest and sends the revision", %{port: port} do
       answer(fn
-        "GET", _path, _body -> {200, settings([%{"id" => "sallaumen", "name" => "Dono"}])}
+        "GET", _path, _body -> {200, settings([%{"id" => "example", "name" => "Dono"}])}
         "PUT", _path, _body -> {200, %{"saved" => true}}
       end)
 
@@ -631,7 +631,7 @@ defmodule AgentBoard.AgentAccessTest do
       assert value["rules"] == [%{"id" => "copy", "enabled" => true}]
 
       assert value["sources"]["github"]["allowed"] == [
-               %{"id" => "sallaumen", "name" => "Dono"},
+               %{"id" => "example", "name" => "Dono"},
                %{"id" => "amiga"}
              ]
     end

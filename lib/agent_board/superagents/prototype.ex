@@ -7,8 +7,8 @@ defmodule AgentBoard.Superagents.Prototype do
   The board finds it, in order: the `:dsh_superagent_home` setting of the
   application (tests), the `DSH_SUPERAGENT_HOME` variable, the folder the
   board itself installed (`settings`, `dsh_superagent_home`), and last the
-  place it has always been on the owner's machine. A board that never
-  installed it reads no row and finds what it found before.
+  standard installation directory beside the DSH profiles. Existing legacy
+  checkouts remain usable if their manager exists.
 
   `install/0` is for a machine that does not have it: the public repository
   cloned under the dsh home and built, as the prototype's own install says,
@@ -29,10 +29,15 @@ defmodule AgentBoard.Superagents.Prototype do
   @spec home() :: String.t()
   def home do
     Application.get_env(:agent_board, :dsh_superagent_home) ||
-      System.get_env("DSH_SUPERAGENT_HOME") || Settings.get(@setting) || legacy()
+      System.get_env("DSH_SUPERAGENT_HOME") || Settings.get(@setting) || default_home()
   end
 
   # `:dsh_superagent_legacy_home` stands in for the owner's folder in tests.
+  defp default_home do
+    previous = legacy()
+    if File.regular?(Path.join(previous, "scripts/dsh-superagent")), do: previous, else: target()
+  end
+
   defp legacy,
     do: Application.get_env(:agent_board, :dsh_superagent_legacy_home) || Path.expand(@legacy)
 

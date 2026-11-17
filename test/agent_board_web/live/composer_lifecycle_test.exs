@@ -372,7 +372,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert [task] = Repo.all(Task)
     assert task.title == "Corrigir o gargalo"
     assert task.body =~ "Atacar a causa"
-    assert task.body =~ "@sallaumen-agent"
+    assert task.body =~ "@example-bot"
     # Its blocker was left out, so there is no number to name.
     refute task.body =~ "Depende de"
     assert Agent.get(counter, & &1) == 101
@@ -480,7 +480,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert first.body =~ "### Restrições\n- Sem quebrar o sync"
     assert String.starts_with?(second.body, "**Depende de:** #101")
     # It waits: the board calls the agent when #101 finishes.
-    refute second.body =~ "@sallaumen-agent"
+    refute second.body =~ "@example-bot"
     assert second.held
   end
 
@@ -1148,7 +1148,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     submit(view, %{"text" => "Refazer o placar", "executor" => "codex"})
 
     assert_received {:issue, sent}
-    refute sent["body"] =~ "@sallaumen-agent"
+    refute sent["body"] =~ "@example-bot"
     assert sent["labels"] == ["executor:codex"]
     assert has_element?(view, "#composer-receipt .ab-receipt__exec", "Codex")
 
@@ -1179,7 +1179,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
 
     submit(view, %{"text" => "Corrigir o contador"})
     assert %Task{executor: "dsh", body: body} = Repo.one(Task)
-    assert body =~ ~r/@sallaumen-agent\z/
+    assert body =~ ~r/@example-bot\z/
   end
 
   test "a single request has no kind and no size", %{conn: conn} do

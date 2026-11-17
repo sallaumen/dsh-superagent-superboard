@@ -20,14 +20,14 @@ defmodule AgentBoard.Sync.WorkerTest do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
 
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     Application.put_env(:agent_board, :github_client, fn -> client() end)
     on_exit(fn -> Application.delete_env(:agent_board, :github_client) end)
 
     Req.Test.stub(@stub, fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [
             %{
               "number" => 7,
@@ -57,7 +57,7 @@ defmodule AgentBoard.Sync.WorkerTest do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
 
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     Application.put_env(:agent_board, :github_client, fn -> client() end)
     on_exit(fn -> Application.delete_env(:agent_board, :github_client) end)
@@ -77,7 +77,7 @@ defmodule AgentBoard.Sync.WorkerTest do
       Req.Test.set_req_test_to_shared(%{})
       on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
 
-      {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+      {:ok, repo} = Board.add_repository("example", "atlas-relay")
       Application.put_env(:agent_board, :github_client, fn -> client() end)
       on_exit(fn -> Application.delete_env(:agent_board, :github_client) end)
       %{repo: repo}
@@ -86,10 +86,10 @@ defmodule AgentBoard.Sync.WorkerTest do
     # A retry re-reads every repository. When only some of them failed, the
     # failures are already events and the next cron run reads them again.
     test "one broken repository does not send the whole run back to Oban", %{repo: repo} do
-      {:ok, broken} = Board.add_repository("sallaumen", "renamed")
+      {:ok, broken} = Board.add_repository("example", "renamed")
 
       Req.Test.stub(@stub, fn conn ->
-        if String.starts_with?(conn.request_path, "/repos/sallaumen/renamed"),
+        if String.starts_with?(conn.request_path, "/repos/example/renamed"),
           do: Plug.Conn.send_resp(conn, 404, "not found"),
           else: Req.Test.json(conn, [])
       end)
@@ -118,8 +118,8 @@ defmodule AgentBoard.Sync.WorkerTest do
     end
 
     test "successive exhausted windows give each active repository a turn" do
-      {:ok, _} = Board.add_repository("sallaumen", "second")
-      {:ok, _} = Board.add_repository("sallaumen", "third")
+      {:ok, _} = Board.add_repository("example", "second")
+      {:ok, _} = Board.add_repository("example", "third")
       owner = self()
 
       Req.Test.stub(@stub, fn conn ->
@@ -127,10 +127,10 @@ defmodule AgentBoard.Sync.WorkerTest do
         Plug.Conn.send_resp(conn, 429, "slow down")
       end)
 
-      for name <- ["arena-rogue", "second", "third", "arena-rogue"] do
+      for name <- ["atlas-relay", "second", "third", "atlas-relay"] do
         assert {:snooze, 60} = Worker.perform(%Oban.Job{args: %{}})
         assert_received {:read, path}
-        assert path == "/repos/sallaumen/#{name}/issues"
+        assert path == "/repos/example/#{name}/issues"
         refute_received {:read, _}
       end
     end
@@ -138,7 +138,7 @@ defmodule AgentBoard.Sync.WorkerTest do
     test "stops at the first rate limit instead of asking for each remaining repository", %{
       repo: _repo
     } do
-      {:ok, _other} = Board.add_repository("sallaumen", "o_colmex")
+      {:ok, _other} = Board.add_repository("example", "o_portal")
       {:ok, calls} = Agent.start_link(fn -> 0 end)
 
       Req.Test.stub(@stub, fn conn ->
@@ -152,7 +152,7 @@ defmodule AgentBoard.Sync.WorkerTest do
   end
 
   test "perform/1 leaves the database alone with no GitHub token", _ctx do
-    {:ok, repo} = Board.add_repository("sallaumen", "sem-token")
+    {:ok, repo} = Board.add_repository("example", "sem-token")
     previous = Application.get_env(:agent_board, :github_token)
     Application.put_env(:agent_board, :github_token, "")
 

@@ -11,7 +11,7 @@ defmodule AgentBoard.AskTest do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
 
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     task =
       %Task{}
@@ -32,12 +32,12 @@ defmodule AgentBoard.AskTest do
 
   test "the comment appears immediately and the id is reconciled", %{task: task} do
     Req.Test.stub(@stub, fn conn ->
-      Req.Test.json(conn, %{"id" => 999, "user" => %{"login" => "sallaumen"}})
+      Req.Test.json(conn, %{"id" => 999, "user" => %{"login" => "example"}})
     end)
 
     assert {:ok, comment} = Board.ask(task, "hello", client())
     assert comment.github_id == 999
-    assert comment.author == "sallaumen"
+    assert comment.author == "example"
 
     assert [only] = Board.comments(task)
     assert only.body =~ "hello"
@@ -50,7 +50,7 @@ defmodule AgentBoard.AskTest do
       remote = %{
         "id" => 6_945_214_247,
         "body" => Jason.decode!(json)["body"],
-        "user" => %{"login" => "sallaumen"}
+        "user" => %{"login" => "example"}
       }
 
       assert [%{github_id: temp, author: "you", body: draft}] = Board.comments(task)
@@ -66,7 +66,7 @@ defmodule AgentBoard.AskTest do
     assert [^comment] = Board.comments(task)
 
     assert {comment.github_id, comment.author, comment.body} ==
-             {6_945_214_247, "sallaumen", "edit on GitHub"}
+             {6_945_214_247, "example", "edit on GitHub"}
   end
 
   test "a disconnected send and two identical messages reconcile by receipt, in either order", %{
@@ -96,7 +96,7 @@ defmodule AgentBoard.AskTest do
     assert pending_one.body == pending_two.body
     refute pending_one.body =~ "superboard-delivery"
 
-    remote = fn id, body -> %{"id" => id, "body" => body, "user" => %{"login" => "sallaumen"}} end
+    remote = fn id, body -> %{"id" => id, "body" => body, "user" => %{"login" => "example"}} end
     second = remote.(6945, body_two)
     first = remote.(6944, body_one)
     send(two, {:ack, second})
@@ -111,7 +111,7 @@ defmodule AgentBoard.AskTest do
     refute Board.store_comments(task, [first, second], "agent")
 
     assert Enum.sort(Enum.map(Board.comments(task), &{&1.github_id, &1.author, &1.body})) ==
-             [{6944, "sallaumen", pending_one.body}, {6945, "sallaumen", pending_two.body}]
+             [{6944, "example", pending_one.body}, {6945, "example", pending_two.body}]
   end
 
   test "stop_task works on a bare task", %{task: task} do
@@ -128,7 +128,7 @@ defmodule AgentBoard.AskTest do
     bare = Repo.get(Task, task.id)
 
     Req.Test.stub(@stub, fn conn ->
-      Req.Test.json(conn, %{"id" => 99, "user" => %{"login" => "sallaumen"}})
+      Req.Test.json(conn, %{"id" => 99, "user" => %{"login" => "example"}})
     end)
 
     assert {:ok, _} = Board.ask(bare, "hi", client())
@@ -147,7 +147,7 @@ defmodule AgentBoard.AskTest do
 
   test "a failed request keeps a synced comment stored under a negative id", %{task: task} do
     {:ok, synced} =
-      Board.upsert_comment(task, %{"body" => "no id from GitHub"}, "sallaumen-agent")
+      Board.upsert_comment(task, %{"body" => "no id from GitHub"}, "example-bot")
 
     assert synced.github_id < 0
 

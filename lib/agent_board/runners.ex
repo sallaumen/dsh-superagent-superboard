@@ -30,9 +30,6 @@ defmodule AgentBoard.Runners do
   # The Claude Code run is stopped by --max-budget-usd; this is only the
   # watchdog so a hung process does not stay "running" forever.
   @claude_timeout_seconds 7_200
-  @claude_default_bin "/Users/tavano/.asdf/installs/nodejs/22.15.1/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-darwin-arm64/claude"
-  @codex_default_bin "/opt/homebrew/bin/codex"
-
   # ---- settings ---------------------------------------------------------------
 
   @doc "Whether the global dispatch switch is paused."
@@ -748,9 +745,14 @@ defmodule AgentBoard.Runners do
     )
   end
 
-  def claude_bin, do: Application.get_env(:agent_board, :claude_bin, @claude_default_bin)
+  def claude_bin,
+    do:
+      Application.get_env(:agent_board, :claude_bin) || System.find_executable("claude") ||
+        "claude"
 
-  def codex_bin, do: Application.get_env(:agent_board, :codex_bin, @codex_default_bin)
+  def codex_bin,
+    do:
+      Application.get_env(:agent_board, :codex_bin) || System.find_executable("codex") || "codex"
 
   defp executable?(path) when is_binary(path) do
     case File.stat(path) do

@@ -8,7 +8,7 @@ defmodule AgentBoard.AgentBlockTest do
   @failed_at ~U[2026-11-07 17:10:00Z]
   @model "LlmError: DeepSeek Messages transport failed"
   @prepare "Error: The prepare command failed: fatal: unable to access " <>
-             "'https://github.com/sallaumen/arena-rogue.git/': Could not resolve host: github.com"
+             "'https://github.com/example/atlas-relay.git/': Could not resolve host: github.com"
 
   defp ticket(summary, history \\ [], latest \\ nil) do
     previous =

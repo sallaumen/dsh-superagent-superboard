@@ -11,7 +11,7 @@ defmodule AgentBoard.MetricsObservationsTest do
   defp at(seconds_ago), do: DateTime.add(@now, -seconds_ago, :second)
 
   setup do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     %{repo: repo, agent: %{ok: true, at: @now, tickets: [], error: nil}}
   end
 
@@ -47,8 +47,7 @@ defmodule AgentBoard.MetricsObservationsTest do
       "own_threads" => threads,
       "ended_outcome" => outcome,
       "ended_at" => ended_at,
-      "channel_urls" =>
-        Enum.map(numbers, &"https://github.com/sallaumen/arena-rogue/issues/#{&1}")
+      "channel_urls" => Enum.map(numbers, &"https://github.com/example/atlas-relay/issues/#{&1}")
     }
   end
 
@@ -81,7 +80,7 @@ defmodule AgentBoard.MetricsObservationsTest do
     assert Observations.read(repo, agent, now: @now, load: {:error, :x}).commits ==
              {:unknown, :never_synced}
 
-    Board.log_event(repo.id, "sync", "sallaumen/arena-rogue", %{"commits" => 0, "errors" => 0})
+    Board.log_event(repo.id, "sync", "example/atlas-relay", %{"commits" => 0, "errors" => 0})
     assert Observations.read(repo, agent, now: @now, load: {:error, :x}).commits == {:ok, []}
 
     %Commit{}

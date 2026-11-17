@@ -9,7 +9,7 @@ agent keeps working.
 
 ```mermaid
 flowchart TB
-    C["GitHub comment mentioning @sallaumen-agent"] --> S1
+    C["GitHub comment mentioning @example-bot"] --> S1
     S1["1 · TRIGGER<br/>the event, with its author and text"] --> S2
     S2["2 · THREAD<br/>github:&lt;issue number&gt; — the conversation it belongs to"] --> S3
     S3["3 · DECISION<br/>is this work? for whom? with what strength of mandate?"] --> S4
@@ -28,7 +28,7 @@ flowchart TB
 | Worker bin | the tools the executor may call | `~/.dsh/state/superagent/worker-bin/` |
 | Bot identity | the `gh` the worker uses | `~/.local/bin/gh-agent` (config `~/.config/gh-agent`) |
 | Worktrees | one checkout per assignment | `~/.dsh/state/superagent/work/` |
-| Team prompts | the three sections every session reads: Communication, Ticket scope, Delivery requirements | the orchestrator's prompt revisions, mirrored in [`prompts/`](prompts/) by `scripts/agent/prompts.sh` |
+| Team prompts | the three sections every session reads: Communication, Ticket scope, Delivery requirements | the orchestrator’s active revision; [shared defaults](prompts/) ship with the board, while `scripts/agent/prompts.sh` exports each profile locally |
 
 ## The tables
 
@@ -41,7 +41,7 @@ A ticket carries a **mandate** -- the reason it exists:
 ```json
 "mandate": {
   "strength": "explicit",
-  "basis": {"source": "github", "row": "issues", "sender": "sallaumen",
+  "basis": {"source": "github", "row": "issues", "sender": "example",
             "via": "addressed", "addressed": "mention"},
   "scope": "Combat feedback and game states"
 }
@@ -88,8 +88,7 @@ Projetos is the script's `--apply`. The contract's section "Ended tickets'
 folders" has the rules.
 
 The main checkout is written nowhere in this repository: the prepare command
-lives in the orchestrator's Execution settings (the panel), today
-`git -C /Users/tavano/src/arena-rogue worktree add -b "agent/$DSH_SUPERAGENT_NAME" …`.
+lives in each project’s Execution settings (the panel).
 The script reads it from each worktree's own `.git` file; `--repo DIR` names
 it when that file is gone. Directories under `work/` that match no ticket in
 the sqlite (an earlier database, another repository) are listed on stderr and

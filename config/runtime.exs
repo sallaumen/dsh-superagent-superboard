@@ -214,7 +214,9 @@ if config_env() == :prod do
   # Check `Plug.SSL` for all available options in `force_ssl`.
 end
 
-# Local executor paths: the Mac's CLI installation moves with the package
-# manager; an explicit env wins over the compiled default.
+# Explicit local overrides; otherwise the board uses registered sources,
+# the bot's local login and executables on the running machine's PATH.
+if path = System.get_env("AGENT_BOARD_STATE_DB"), do: config(:agent_board, :state_db, path)
+if login = System.get_env("AGENT_BOARD_BOT_LOGIN"), do: config(:agent_board, :agent_login, login)
 if bin = System.get_env("CLAUDE_BIN"), do: config(:agent_board, :claude_bin, bin)
 if bin = System.get_env("CODEX_BIN"), do: config(:agent_board, :codex_bin, bin)

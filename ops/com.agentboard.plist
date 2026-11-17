@@ -8,16 +8,16 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/sh</string>
-		<string>/Users/tavano/src/agent_board/scripts/service.sh</string>
+		<string>@CHECKOUT@/scripts/service.sh</string>
 	</array>
 
 	<key>WorkingDirectory</key>
-	<string>/Users/tavano/src/agent_board</string>
+	<string>@CHECKOUT@</string>
 
 	<key>EnvironmentVariables</key>
 	<dict>
 		<key>PATH</key>
-		<string>/Users/tavano/.asdf/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<string>@HOME@/.asdf/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
 		<key>MIX_ENV</key>
 		<string>dev</string>
 		<key>PORT</key>
@@ -27,7 +27,7 @@
 		<!-- service.sh rotates this file at start (50 MB, one old copy) and
 		     reopens it; the paths below catch only what fails before that. -->
 		<key>AGENT_BOARD_LOG</key>
-		<string>/Users/tavano/Library/Logs/AgentBoard.log</string>
+		<string>@HOME@/Library/Logs/AgentBoard.log</string>
 	</dict>
 
 	<!-- Without a ProcessType launchd starts the job as a "daemon" with light
@@ -44,9 +44,9 @@
 	<true/>
 
 	<key>StandardOutPath</key>
-	<string>/Users/tavano/Library/Logs/AgentBoard.log</string>
+	<string>@HOME@/Library/Logs/AgentBoard.log</string>
 
 	<key>StandardErrorPath</key>
-	<string>/Users/tavano/Library/Logs/AgentBoard.log</string>
+	<string>@HOME@/Library/Logs/AgentBoard.log</string>
 </dict>
 </plist>

@@ -11,7 +11,7 @@ defmodule AgentBoard.CreateRequestTest do
   setup do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     %{repo: repo}
   end
 
@@ -20,7 +20,7 @@ defmodule AgentBoard.CreateRequestTest do
 
   @signals %{
     "dsh" => %{
-      repository: "sallaumen/arena-rogue",
+      repository: "example/atlas-relay",
       state: :ready,
       load: %{running: 0, max_workers: 3}
     },
@@ -65,7 +65,7 @@ defmodule AgentBoard.CreateRequestTest do
     request =
       routed(repo, %{
         title: "Desbloquear #1417",
-        body: "Corpo\n\n@sallaumen-agent",
+        body: "Corpo\n\n@example-bot",
         key: Board.request_key(repo, "unblock", ["Desbloquear #1417", "Corpo"]),
         executor: "dsh",
         origin_task_id: blocked.id,
@@ -82,8 +82,8 @@ defmodule AgentBoard.CreateRequestTest do
     {:ok, counter} = Agent.start_link(fn -> 0 end)
     count_issues(counter)
 
-    key = Board.request_key(repo, "single", ["Add a boss", "Add a boss\n\n@sallaumen-agent"])
-    request = %{title: "Add a boss", body: "Add a boss\n\n@sallaumen-agent", key: key}
+    key = Board.request_key(repo, "single", ["Add a boss", "Add a boss\n\n@example-bot"])
+    request = %{title: "Add a boss", body: "Add a boss\n\n@example-bot", key: key}
 
     assert {:ok, first, :created} = Board.Requests.create_request(repo, request, client())
     assert {:ok, again, :existing} = Board.Requests.create_request(repo, request, client())
@@ -169,12 +169,12 @@ defmodule AgentBoard.CreateRequestTest do
     requests = [
       %{
         title: "Placar",
-        body: "Placar\n\n@sallaumen-agent",
+        body: "Placar\n\n@example-bot",
         key: Board.request_key(repo, "split", ["Placar"])
       },
       %{
         title: "Mapa",
-        body: "Mapa\n\n@sallaumen-agent",
+        body: "Mapa\n\n@example-bot",
         key: Board.request_key(repo, "split", ["Mapa"])
       }
     ]
@@ -335,7 +335,7 @@ defmodule AgentBoard.CreateRequestTest do
     Req.Test.stub(@stub, fn _conn -> flunk("GitHub must not be called") end)
 
     key = Board.request_key(repo, "single", ["Em andamento"])
-    body = "Em andamento\n\n@sallaumen-agent"
+    body = "Em andamento\n\n@example-bot"
 
     %Task{}
     |> Task.changeset(%{
@@ -372,7 +372,7 @@ defmodule AgentBoard.CreateRequestTest do
   test "a task for Claude Code opens an issue without the mention, labelled for it",
        %{repo: repo} do
     capture_issues()
-    body = "Refazer a tela\n\n@sallaumen-agent"
+    body = "Refazer a tela\n\n@example-bot"
     key = Board.request_key(repo, "single", ["Refazer a tela", body])
 
     request = routed(repo, %{title: "Refazer a tela", body: body, key: key, executor: "claude"})
@@ -380,7 +380,7 @@ defmodule AgentBoard.CreateRequestTest do
     assert {:ok, task, :created} = Board.Requests.create_request(repo, request, client())
 
     assert_received {:issue, sent}
-    refute sent["body"] =~ "@sallaumen-agent"
+    refute sent["body"] =~ "@example-bot"
     assert sent["labels"] == ["executor:claude"]
     assert %Task{executor: "claude", body: "Refazer a tela"} = Repo.get(Task, task.id)
 
@@ -400,7 +400,7 @@ defmodule AgentBoard.CreateRequestTest do
 
     assert {:ok, task, :created} = Board.Requests.create_request(repo, request, client())
 
-    assert_received {:issue, %{"body" => "Add a boss\n\n@sallaumen-agent", "labels" => labels}}
+    assert_received {:issue, %{"body" => "Add a boss\n\n@example-bot", "labels" => labels}}
     assert labels == ["executor:dsh"]
     assert Repo.get(Task, task.id).executor == "dsh"
   end
@@ -411,7 +411,7 @@ defmodule AgentBoard.CreateRequestTest do
     signals = Routing.Signals.read(fn -> {:error, :unreachable} end, fn -> %{} end)
 
     suggestion =
-      Routing.suggest(%{repository: "sallaumen/arena-rogue", work_type: "ui"}, signals)
+      Routing.suggest(%{repository: "example/atlas-relay", work_type: "ui"}, signals)
 
     request = %{
       title: "Refazer a tela",
@@ -465,14 +465,14 @@ defmodule AgentBoard.CreateRequestTest do
   test "the write door refuses a runner request for a repository the runner does not watch",
        %{repo: repo} do
     Req.Test.stub(@stub, fn _conn -> flunk("GitHub must not be called") end)
-    {:ok, watched} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, watched} = Board.add_repository("example", "o_portal")
 
     {:ok, _superagent} =
       AgentBoard.Superagents.create(%{
         repository_id: watched.id,
-        profile: "superagent-o-colmex",
+        profile: "superagent-o-portal",
         port: 3411,
-        state_dir: "/tmp/superagent-o-colmex"
+        state_dir: "/tmp/superagent-o-portal"
       })
 
     # The blocker task (`Unblock.request/4`) and a confirmed voice proposal
@@ -487,7 +487,7 @@ defmodule AgentBoard.CreateRequestTest do
     params = %{repository: repo, requests: [request], client: client()}
     phrase = Actions.phrase(:create_tasks, params)
 
-    assert {:ok, [{_request, {:error, "o DeepSeek só atende o sallaumen/o_colmex."}}]} =
+    assert {:ok, [{_request, {:error, "o DeepSeek só atende o example/o_portal."}}]} =
              Actions.run(:create_tasks, params, Actions.owner(:ui), confirm: phrase)
 
     assert Repo.aggregate(Task, :count) == 0
@@ -509,7 +509,7 @@ defmodule AgentBoard.CreateRequestTest do
 
   test "a request without an executor is opened as given, with no label", %{repo: repo} do
     capture_issues()
-    body = "Add a boss\n\n@sallaumen-agent"
+    body = "Add a boss\n\n@example-bot"
     key = Board.request_key(repo, "single", ["Add a boss", body])
 
     assert {:ok, task, :created} =
@@ -548,13 +548,13 @@ defmodule AgentBoard.CreateRequestTest do
       kind: "issue",
       number: 50,
       title: "Add a boss",
-      body: "Add a boss\n\n@sallaumen-agent",
+      body: "Add a boss\n\n@example-bot",
       state: "queued"
     })
     |> Repo.insert!()
 
-    key = Board.request_key(repo, "single", ["Add a boss", "Add a boss\n\n@sallaumen-agent"])
-    request = %{title: "Add a boss", body: "Add a boss\n\n@sallaumen-agent", key: key}
+    key = Board.request_key(repo, "single", ["Add a boss", "Add a boss\n\n@example-bot"])
+    request = %{title: "Add a boss", body: "Add a boss\n\n@example-bot", key: key}
 
     assert {:ok, task, :existing} = Board.Requests.create_request(repo, request, client())
     assert task.number == 50
@@ -571,13 +571,13 @@ defmodule AgentBoard.CreateRequestTest do
       kind: "issue",
       number: 50,
       title: "Add a boss",
-      body: "Add a boss\n\n@sallaumen-agent",
+      body: "Add a boss\n\n@example-bot",
       state: "done"
     })
     |> Repo.insert!()
 
-    key = Board.request_key(repo, "single", ["Add a boss", "Add a boss\n\n@sallaumen-agent"])
-    request = %{title: "Add a boss", body: "Add a boss\n\n@sallaumen-agent", key: key}
+    key = Board.request_key(repo, "single", ["Add a boss", "Add a boss\n\n@example-bot"])
+    request = %{title: "Add a boss", body: "Add a boss\n\n@example-bot", key: key}
 
     assert {:ok, _task, :created} = Board.Requests.create_request(repo, request, client())
     assert Agent.get(counter, & &1) == 1

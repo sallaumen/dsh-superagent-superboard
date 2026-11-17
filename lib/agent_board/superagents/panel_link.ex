@@ -39,7 +39,7 @@ defmodule AgentBoard.Superagents.PanelLink do
     end
   end
 
-  # The digit keeps "superagent" from matching the logs of "superagent-colmex".
+  # The digit keeps "superagent" from matching the logs of "superagent-portal".
   defp newest(dir, names, profile) do
     pattern = ~r/\Adsh-superagent-#{Regex.escape(profile)}-\d.*\.log\z/
 

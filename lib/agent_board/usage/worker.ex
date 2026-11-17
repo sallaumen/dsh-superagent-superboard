@@ -4,7 +4,7 @@ defmodule AgentBoard.Usage.Worker do
   own `usage` queue, it reads the files Claude Code, Codex and the DeepSeek
   Harness changed since the last run (`AgentBoard.Usage.Ledger.refresh/0`).
 
-  The first run reads every transcript on disk, a few minutes of work; the
+  With owner opt-in, the first run reads every transcript on disk, a few minutes of work; the
   next ones read only what changed. A run that outlasts the cron period is
   not doubled: the queue runs one job at a time and the next one only finds
   what is left. After it, the per-task costs the rows show are recomputed

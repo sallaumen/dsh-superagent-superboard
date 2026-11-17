@@ -13,7 +13,7 @@ defmodule AgentBoard.SyncRepoTest do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
 
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     %{repo: repo}
   end
 
@@ -25,8 +25,8 @@ defmodule AgentBoard.SyncRepoTest do
       "number" => number,
       "title" => "Issue #{number}",
       "state" => state,
-      "html_url" => "https://github.com/sallaumen/arena-rogue/issues/#{number}",
-      "user" => %{"login" => "sallaumen"},
+      "html_url" => "https://github.com/example/atlas-relay/issues/#{number}",
+      "user" => %{"login" => "example"},
       "created_at" => "2026-11-04T00:00:00Z"
     }
   end
@@ -38,7 +38,7 @@ defmodule AgentBoard.SyncRepoTest do
   test "an open issue becomes a queued task", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(7, "open")])
+        "/repos/example/atlas-relay/issues" -> Req.Test.json(conn, [issue(7, "open")])
         _ -> Req.Test.json(conn, [])
       end
     end)
@@ -52,7 +52,7 @@ defmodule AgentBoard.SyncRepoTest do
   test "the sync event summarises the error count", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [issue(9, "open") |> Map.put("title", nil)])
 
         _ ->
@@ -82,7 +82,7 @@ defmodule AgentBoard.SyncRepoTest do
   test "an invalid issue is logged, not swallowed", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [issue(9, "open") |> Map.put("title", nil)])
 
         _ ->
@@ -97,20 +97,20 @@ defmodule AgentBoard.SyncRepoTest do
   test "an approved review reaches the stored pull", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [
             %{
               "number" => 9,
               "title" => "A PR",
               "state" => "open",
               "html_url" => "https://github.com/x/y/pull/9",
-              "user" => %{"login" => "sallaumen"},
+              "user" => %{"login" => "example"},
               "created_at" => "2026-11-04T00:00:00Z",
               "head" => %{"sha" => "abc"}
             }
           ])
 
-        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+        "/repos/example/atlas-relay/pulls/9/reviews" ->
           Req.Test.json(conn, [%{"id" => 1, "state" => "APPROVED", "user" => %{"login" => "rev"}}])
 
         _ ->
@@ -130,7 +130,7 @@ defmodule AgentBoard.SyncRepoTest do
 
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [Map.put(issue(7, "open"), "body", long)])
 
         _ ->
@@ -146,7 +146,7 @@ defmodule AgentBoard.SyncRepoTest do
     for body <- ["first words", "edited words"] do
       stub_github(fn conn ->
         case conn.request_path do
-          "/repos/sallaumen/arena-rogue/issues" ->
+          "/repos/example/atlas-relay/issues" ->
             Req.Test.json(conn, [Map.put(issue(7, "open"), "body", body)])
 
           _ ->
@@ -163,7 +163,7 @@ defmodule AgentBoard.SyncRepoTest do
   test "a sync does not make an unchanged task look updated now", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(7, "open")])
+        "/repos/example/atlas-relay/issues" -> Req.Test.json(conn, [issue(7, "open")])
         _ -> Req.Test.json(conn, [])
       end
     end)
@@ -182,8 +182,8 @@ defmodule AgentBoard.SyncRepoTest do
         "number" => number,
         "title" => "PR #{number}",
         "state" => "open",
-        "html_url" => "https://github.com/sallaumen/arena-rogue/pull/#{number}",
-        "user" => %{"login" => "sallaumen-agent"},
+        "html_url" => "https://github.com/example/atlas-relay/pull/#{number}",
+        "user" => %{"login" => "example-bot"},
         "created_at" => "2026-11-04T00:00:00Z",
         "body" => body,
         "head" => Map.put(head, "sha", "abc")
@@ -192,17 +192,17 @@ defmodule AgentBoard.SyncRepoTest do
 
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [issue(7, "open")])
 
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [
             pull.(
               21,
-              %{"ref" => "agent/7-fix", "repo" => %{"full_name" => "sallaumen/arena-rogue"}},
+              %{"ref" => "agent/7-fix", "repo" => %{"full_name" => "example/atlas-relay"}},
               "Closes #7\n\nAlso see #3."
             ),
-            pull.(22, %{"ref" => "main", "repo" => %{"full_name" => "someone/arena-rogue"}}, nil),
+            pull.(22, %{"ref" => "main", "repo" => %{"full_name" => "someone/atlas-relay"}}, nil),
             pull.(23, %{"ref" => "gone", "repo" => nil}, "Fixes #7")
           ])
 
@@ -223,7 +223,7 @@ defmodule AgentBoard.SyncRepoTest do
     assert %{head_ref: nil, closes_issues: [7]} = stored.(23)
 
     task = Repo.one(from t in Task, where: t.number == 7)
-    session = %{git_branch: "agent/7-fix", origin_url: "https://github.com/sallaumen/arena-rogue"}
+    session = %{git_branch: "agent/7-fix", origin_url: "https://github.com/example/atlas-relay"}
 
     assert AgentBoard.Attribution.for_session(session, Board.attribution_index()) ==
              {:task, task.id, :branch}
@@ -232,14 +232,14 @@ defmodule AgentBoard.SyncRepoTest do
   test "all/1 syncs every active repo with the injected client", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(7, "open")])
+        "/repos/example/atlas-relay/issues" -> Req.Test.json(conn, [issue(7, "open")])
         _ -> Req.Test.json(conn, [])
       end
     end)
 
     assert Sync.all(client()) == 1
     assert Repo.one(from t in Task, where: t.number == 7) != nil
-    assert repo.name == "arena-rogue"
+    assert repo.name == "atlas-relay"
   end
 
   describe "the GitHub quota" do
@@ -252,13 +252,13 @@ defmodule AgentBoard.SyncRepoTest do
         "state" => if(merged_at, do: "closed", else: "open"),
         "merged_at" => merged_at,
         "html_url" => "https://github.com/x/y/pull/#{number}",
-        "user" => %{"login" => "sallaumen"},
+        "user" => %{"login" => "example"},
         "created_at" => "2026-11-04T00:00:00Z",
         "body" => nil,
         "head" => %{
           "ref" => "b",
           "sha" => sha,
-          "repo" => %{"full_name" => "sallaumen/arena-rogue"}
+          "repo" => %{"full_name" => "example/atlas-relay"}
         }
       }
     end
@@ -268,7 +268,7 @@ defmodule AgentBoard.SyncRepoTest do
 
       stub_github(fn conn ->
         cond do
-          conn.request_path == "/repos/sallaumen/arena-rogue/pulls" ->
+          conn.request_path == "/repos/example/atlas-relay/pulls" ->
             Req.Test.json(conn, pulls)
 
           String.ends_with?(conn.request_path, "/reviews") ->
@@ -358,7 +358,7 @@ defmodule AgentBoard.SyncRepoTest do
 
       stub_github(fn conn ->
         cond do
-          conn.request_path == "/repos/sallaumen/arena-rogue/pulls" ->
+          conn.request_path == "/repos/example/atlas-relay/pulls" ->
             Req.Test.json(conn, pulls)
 
           String.ends_with?(conn.request_path, "/check-runs") ->
@@ -391,7 +391,7 @@ defmodule AgentBoard.SyncRepoTest do
     defp stub_failing_read(pulls, failing, runs) do
       stub_github(fn conn ->
         cond do
-          conn.request_path == "/repos/sallaumen/arena-rogue/pulls" ->
+          conn.request_path == "/repos/example/atlas-relay/pulls" ->
             Req.Test.json(conn, pulls)
 
           String.ends_with?(conn.request_path, failing) ->
@@ -465,7 +465,7 @@ defmodule AgentBoard.SyncRepoTest do
     test "a failed check or review read counts in the sync's errors", %{repo: repo} do
       stub_github(fn conn ->
         cond do
-          conn.request_path == "/repos/sallaumen/arena-rogue/pulls" ->
+          conn.request_path == "/repos/example/atlas-relay/pulls" ->
             Req.Test.json(conn, [recent_pull(31, "abc", nil)])
 
           String.ends_with?(conn.request_path, "/reviews") ->
@@ -489,7 +489,7 @@ defmodule AgentBoard.SyncRepoTest do
   test "an old merged pull skips its reviews", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [
             %{
               "number" => 9,
@@ -503,7 +503,7 @@ defmodule AgentBoard.SyncRepoTest do
             }
           ])
 
-        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+        "/repos/example/atlas-relay/pulls/9/reviews" ->
           send(self(), :reviews_requested)
           Req.Test.json(conn, [])
 
@@ -531,17 +531,17 @@ defmodule AgentBoard.SyncRepoTest do
   test "a repository without issues still syncs its pulls", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Plug.Conn.send_resp(conn, 404, ~s({"message": "Not Found"}))
 
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [
             %{
               "number" => 9,
               "title" => "Only PRs",
               "state" => "open",
               "html_url" => "https://github.com/x/y/pull/9",
-              "user" => %{"login" => "sallaumen"},
+              "user" => %{"login" => "example"},
               "created_at" => "2026-11-04T00:00:00Z",
               "head" => %{"sha" => "abc"}
             }
@@ -560,7 +560,7 @@ defmodule AgentBoard.SyncRepoTest do
   test "a repository whose Issues are gone (410) still syncs", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Plug.Conn.send_resp(conn, 410, "{}")
+        "/repos/example/atlas-relay/issues" -> Plug.Conn.send_resp(conn, 410, "{}")
         _ -> Req.Test.json(conn, [])
       end
     end)
@@ -581,7 +581,7 @@ defmodule AgentBoard.SyncRepoTest do
     for failure <- failures do
       stub_github(fn conn ->
         case conn.request_path do
-          "/repos/sallaumen/arena-rogue/issues" -> failure.(conn)
+          "/repos/example/atlas-relay/issues" -> failure.(conn)
           _ -> Req.Test.json(conn, [])
         end
       end)
@@ -598,7 +598,7 @@ defmodule AgentBoard.SyncRepoTest do
   test "a merged pull still gets its rollups", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [
             %{
               "number" => 9,
@@ -606,16 +606,16 @@ defmodule AgentBoard.SyncRepoTest do
               "state" => "closed",
               "merged_at" => "2026-11-04T00:00:00Z",
               "html_url" => "https://github.com/x/y/pull/9",
-              "user" => %{"login" => "sallaumen"},
+              "user" => %{"login" => "example"},
               "created_at" => "2026-11-04T00:00:00Z",
               "head" => %{"sha" => "abc"}
             }
           ])
 
-        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+        "/repos/example/atlas-relay/pulls/9/reviews" ->
           Req.Test.json(conn, [%{"id" => 1, "state" => "APPROVED", "user" => %{"login" => "rev"}}])
 
-        "/repos/sallaumen/arena-rogue/commits/abc/check-runs" ->
+        "/repos/example/atlas-relay/commits/abc/check-runs" ->
           Req.Test.json(conn, %{
             "check_runs" => [
               %{"conclusion" => "success", "name" => "ci", "status" => "completed"}
@@ -657,7 +657,7 @@ defmodule AgentBoard.SyncRepoTest do
 
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/pulls/415/reviews" ->
+        "/repos/example/atlas-relay/pulls/415/reviews" ->
           send(owner, :review_page)
 
           if Plug.Conn.fetch_query_params(conn).query_params["page"] == "1" do
@@ -720,20 +720,20 @@ defmodule AgentBoard.SyncRepoTest do
   test "changes_requested wins over approved through the sync", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [
             %{
               "number" => 9,
               "title" => "A PR",
               "state" => "open",
               "html_url" => "https://github.com/x/y/pull/9",
-              "user" => %{"login" => "sallaumen"},
+              "user" => %{"login" => "example"},
               "created_at" => "2026-11-04T00:00:00Z",
               "head" => %{"sha" => "abc"}
             }
           ])
 
-        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+        "/repos/example/atlas-relay/pulls/9/reviews" ->
           Req.Test.json(conn, [
             %{"id" => 1, "state" => "APPROVED", "user" => %{"login" => "a"}},
             %{"id" => 2, "state" => "CHANGES_REQUESTED", "user" => %{"login" => "b"}}
@@ -753,20 +753,20 @@ defmodule AgentBoard.SyncRepoTest do
   test "a broken review fetch still stores the PR", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [
             %{
               "number" => 9,
               "title" => "A PR",
               "state" => "open",
               "html_url" => "https://github.com/x/y/pull/9",
-              "user" => %{"login" => "sallaumen"},
+              "user" => %{"login" => "example"},
               "created_at" => "2026-11-04T00:00:00Z",
               "head" => %{"sha" => "abc"}
             }
           ])
 
-        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+        "/repos/example/atlas-relay/pulls/9/reviews" ->
           Plug.Conn.send_resp(conn, 500, "boom")
 
         _ ->
@@ -784,14 +784,14 @@ defmodule AgentBoard.SyncRepoTest do
   test "an invalid pull logs a pull_error", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [
             %{
               "number" => 9,
               "title" => nil,
               "state" => "open",
               "html_url" => "https://github.com/x/y/pull/9",
-              "user" => %{"login" => "sallaumen"},
+              "user" => %{"login" => "example"},
               "created_at" => "2026-11-04T00:00:00Z",
               "head" => %{"sha" => "abc"}
             }
@@ -810,20 +810,20 @@ defmodule AgentBoard.SyncRepoTest do
   test "a broken review does not kill the sync", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [
             %{
               "number" => 9,
               "title" => "A PR",
               "state" => "open",
               "html_url" => "https://github.com/x/y/pull/9",
-              "user" => %{"login" => "sallaumen"},
+              "user" => %{"login" => "example"},
               "created_at" => "2026-11-04T00:00:00Z",
               "head" => %{"sha" => "abc"}
             }
           ])
 
-        "/repos/sallaumen/arena-rogue/pulls/9/reviews" ->
+        "/repos/example/atlas-relay/pulls/9/reviews" ->
           Plug.Conn.send_resp(conn, 500, "boom")
 
         _ ->
@@ -838,8 +838,8 @@ defmodule AgentBoard.SyncRepoTest do
   test "a broken conversation does not kill the sync", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(7, "open")])
-        "/repos/sallaumen/arena-rogue/issues/7/comments" -> Plug.Conn.send_resp(conn, 500, "boom")
+        "/repos/example/atlas-relay/issues" -> Req.Test.json(conn, [issue(7, "open")])
+        "/repos/example/atlas-relay/issues/7/comments" -> Plug.Conn.send_resp(conn, 500, "boom")
         _ -> Req.Test.json(conn, [])
       end
     end)
@@ -854,12 +854,12 @@ defmodule AgentBoard.SyncRepoTest do
   test "a comment without id does not duplicate across two syncs", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [issue(7, "open")])
 
-        "/repos/sallaumen/arena-rogue/issues/7/comments" ->
+        "/repos/example/atlas-relay/issues/7/comments" ->
           Req.Test.json(conn, [
-            %{"id" => nil, "user" => %{"login" => "sallaumen"}, "body" => "same"}
+            %{"id" => nil, "user" => %{"login" => "example"}, "body" => "same"}
           ])
 
         _ ->
@@ -877,13 +877,13 @@ defmodule AgentBoard.SyncRepoTest do
   test "the sync pulls the comments of the active tasks", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [issue(7, "open")])
 
-        "/repos/sallaumen/arena-rogue/issues/7/comments" ->
+        "/repos/example/atlas-relay/issues/7/comments" ->
           Req.Test.json(conn, [
-            %{"id" => 101, "user" => %{"login" => "sallaumen-agent"}, "body" => "On it."},
-            %{"id" => 102, "user" => %{"login" => "sallaumen"}, "body" => "Any progress?"}
+            %{"id" => 101, "user" => %{"login" => "example-bot"}, "body" => "On it."},
+            %{"id" => 102, "user" => %{"login" => "example"}, "body" => "Any progress?"}
           ])
 
         _ ->
@@ -915,16 +915,16 @@ defmodule AgentBoard.SyncRepoTest do
 
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [issue(8, "open"), issue(9, "open")])
 
-        "/repos/sallaumen/arena-rogue/issues/" <> rest ->
+        "/repos/example/atlas-relay/issues/" <> rest ->
           [number, "comments"] = String.split(rest, "/")
 
           Req.Test.json(conn, [
             %{
               "id" => String.to_integer(number) * 10,
-              "user" => %{"login" => "sallaumen-agent"},
+              "user" => %{"login" => "example-bot"},
               "body" => "Feito: o PR #28 está pronto para revisão."
             }
           ])
@@ -967,7 +967,7 @@ defmodule AgentBoard.SyncRepoTest do
   test "all/1 syncs every active repository with the given client", %{repo: _repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(11, "open")])
+        "/repos/example/atlas-relay/issues" -> Req.Test.json(conn, [issue(11, "open")])
         _ -> Req.Test.json(conn, [])
       end
     end)
@@ -979,7 +979,7 @@ defmodule AgentBoard.SyncRepoTest do
   test "a closed issue becomes a done task", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(8, "closed")])
+        "/repos/example/atlas-relay/issues" -> Req.Test.json(conn, [issue(8, "closed")])
         _ -> Req.Test.json(conn, [])
       end
     end)
@@ -992,7 +992,7 @@ defmodule AgentBoard.SyncRepoTest do
     for state <- ["open", "closed"] do
       stub_github(fn conn ->
         case conn.request_path do
-          "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(22, state)])
+          "/repos/example/atlas-relay/issues" -> Req.Test.json(conn, [issue(22, state)])
           _ -> Req.Test.json(conn, [])
         end
       end)
@@ -1006,7 +1006,7 @@ defmodule AgentBoard.SyncRepoTest do
   test "a stopped task keeps its state when its issue closes", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(23, "open")])
+        "/repos/example/atlas-relay/issues" -> Req.Test.json(conn, [issue(23, "open")])
         _ -> Req.Test.json(conn, [])
       end
     end)
@@ -1019,7 +1019,7 @@ defmodule AgentBoard.SyncRepoTest do
 
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue(23, "closed")])
+        "/repos/example/atlas-relay/issues" -> Req.Test.json(conn, [issue(23, "closed")])
         _ -> Req.Test.json(conn, [])
       end
     end)
@@ -1042,7 +1042,7 @@ defmodule AgentBoard.SyncRepoTest do
   defp sync_issue(repo, issue) do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" -> Req.Test.json(conn, [issue])
+        "/repos/example/atlas-relay/issues" -> Req.Test.json(conn, [issue])
         _ -> Req.Test.json(conn, [])
       end
     end)
@@ -1103,7 +1103,7 @@ defmodule AgentBoard.SyncRepoTest do
     end)
 
     ticket =
-      ~s({"channels":[{"address":{"url":"https://github.com/sallaumen/arena-rogue/issues/26"}}],"mandate":{"basis":{"scope":{"number":26}}},"assignments":[{"state":"ended"}],"ended":{"at":"2026-11-07T00:01:15.000Z","by":"executor","outcome":"#{outcome}"}})
+      ~s({"channels":[{"address":{"url":"https://github.com/example/atlas-relay/issues/26"}}],"mandate":{"basis":{"scope":{"number":26}}},"assignments":[{"state":"ended"}],"ended":{"at":"2026-11-07T00:01:15.000Z","by":"executor","outcome":"#{outcome}"}})
 
     :ok = Exqlite.Sqlite3.execute(db, "create table ticket (value text)")
     :ok = Exqlite.Sqlite3.execute(db, "insert into ticket (value) values ('#{ticket}')")
@@ -1145,7 +1145,7 @@ defmodule AgentBoard.SyncRepoTest do
             }
           })
 
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [updated])
 
         _ ->
@@ -1176,15 +1176,15 @@ defmodule AgentBoard.SyncRepoTest do
   test "a pull request becomes a merged task with its rollups", %{repo: repo} do
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [
             %{
               "number" => 9,
               "title" => "A PR",
               "state" => "closed",
               "merged_at" => "2026-11-04T00:00:00Z",
-              "html_url" => "https://github.com/sallaumen/arena-rogue/pull/9",
-              "user" => %{"login" => "sallaumen"},
+              "html_url" => "https://github.com/example/atlas-relay/pull/9",
+              "user" => %{"login" => "example"},
               "created_at" => "2026-11-04T00:00:00Z",
               "head" => %{"sha" => "abc"}
             }
@@ -1206,7 +1206,7 @@ defmodule AgentBoard.SyncRepoTest do
 
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [issue(11, "open") |> Map.put("title", title)])
 
         _ ->
@@ -1228,7 +1228,7 @@ defmodule AgentBoard.SyncRepoTest do
         "number" => number,
         "title" => "PR #{number}",
         "state" => "open",
-        "html_url" => "https://github.com/sallaumen/arena-rogue/pull/#{number}",
+        "html_url" => "https://github.com/example/atlas-relay/pull/#{number}",
         "user" => %{"login" => "s"},
         "head" => %{"sha" => "abc#{number}", "ref" => "b#{number}"},
         "created_at" => "2026-11-04T00:00:00Z",
@@ -1238,10 +1238,10 @@ defmodule AgentBoard.SyncRepoTest do
 
     stub_github(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/pulls" ->
+        "/repos/example/atlas-relay/pulls" ->
           Req.Test.json(conn, [pull.(1), pull.(2), pull.(3)])
 
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [])
 
         _other ->

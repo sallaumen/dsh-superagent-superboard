@@ -5,9 +5,9 @@ The before state is PR #225's command panel on `main` at `46a3fe8`:
 [3440 × 1440](../voice-actions/after-3440.png).
 
 The after state is this branch's answer panel:
-[1366 × 768](answer-1366.png) and [3440 × 1440](answer-3440.png).
+1366 × 768 and 3440 × 1440.
 
-WebKit loaded `sallaumen/o_colmex` with `?panel=voice`, submitted only the
+WebKit loaded `example/o_portal` with `?panel=voice`, submitted only the
 read-only question “What is running?”, and displayed the explicit “AI answer”
 label. The app used the local rehearsal fixture with a dummy provider key, so
 no model request or microphone capture occurred. The latest completed sync

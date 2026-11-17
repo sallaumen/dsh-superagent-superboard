@@ -118,7 +118,7 @@ defmodule AgentBoardWeb.InspectorTest do
     |> Comment.changeset(%{
       task_id: task.id,
       github_id: 1,
-      author: "sallaumen-agent",
+      author: "example-bot",
       kind: "agent",
       body: "Feito: https://github.com/fixture/inspector-pr/pull/42"
     })
@@ -290,7 +290,7 @@ defmodule AgentBoardWeb.InspectorTest do
     |> Comment.changeset(%{
       task_id: task.id,
       github_id: 3,
-      author: "sallaumen-agent",
+      author: "example-bot",
       kind: "agent",
       body:
         "Veja https://example.com/pr/1. e [o desenho](https://github.com/fixture/inspector-reply-files/blob/board-attachments/#{hash}/tela.png) <script>"
@@ -368,7 +368,7 @@ defmodule AgentBoardWeb.InspectorTest do
     |> Comment.changeset(%{
       task_id: task.id,
       github_id: 2,
-      author: "sallaumen-agent",
+      author: "example-bot",
       kind: "agent",
       body: "Entendido. <!-- dsh-superagent:abc123 -->"
     })
@@ -410,7 +410,7 @@ defmodule AgentBoardWeb.InspectorTest do
     |> Comment.changeset(%{
       task_id: task.id,
       github_id: 3,
-      author: "sallaumen-agent",
+      author: "example-bot",
       kind: "agent",
       body: """
       ## Relatório do agente
@@ -477,7 +477,7 @@ defmodule AgentBoardWeb.InspectorTest do
     |> Comment.changeset(%{
       task_id: task.id,
       github_id: 4,
-      author: "sallaumen-agent",
+      author: "example-bot",
       kind: "agent",
       body: "## Relatório do agente\n\n### Bloqueio\nFalta o mapa."
     })
@@ -520,7 +520,7 @@ defmodule AgentBoardWeb.InspectorTest do
         github_id: -1,
         author: "you",
         kind: "user",
-        body: "Pode entregar o menu.\n\n@sallaumen-agent"
+        body: "Pode entregar o menu.\n\n@example-bot"
       })
       |> Repo.insert!()
 
@@ -528,11 +528,11 @@ defmodule AgentBoardWeb.InspectorTest do
     assert length(Regex.scan(~r/class="[^"]*ab-msg--sending/, html)) == 1
     refute html =~ ~s(data-message-id="sending")
     assert html =~ "O GitHub ainda não confirmou"
-    confirmed = %{comment | github_id: 6_945_214_247, author: "sallaumen"}
+    confirmed = %{comment | github_id: 6_945_214_247, author: "example"}
     html = render_conversation(task, [confirmed], ask_sending: sending)
     refute html =~ "ab-msg--sending"
     refute html =~ ~s(data-message-id="sending")
-    assert html =~ "sallaumen"
+    assert html =~ "example"
     other = task(repo, 1417, "Outra conversa", "queued")
 
     html =

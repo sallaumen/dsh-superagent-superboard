@@ -203,7 +203,7 @@ defmodule AgentBoard.WorkpadTest do
              Workpad.parse("## Relatório do agente\n### Validação\nmix precommit: ok")
   end
 
-  test "the precommit line wins over other gates and whitespace collapses" do
+  test "when gates pass, show evidence with a SHA and collapse whitespace" do
     body = """
     ## Relatório do agente
     ### Validação
@@ -214,6 +214,20 @@ defmodule AgentBoard.WorkpadTest do
 
     assert %{validation: %{command: "mix precommit", passed?: true, sha: "44653e8"}} =
              Workpad.parse(body)
+  end
+
+  test "mixed toolchains show a failed or unfinished check before any successful gate" do
+    prefix = "## Relatório do agente\n### Validação\n"
+    backend = "mix precommit: passou em abc1234\n"
+
+    assert %{validation: %{command: "npm run test:ci", passed?: false, sha: "abc1234"}} =
+             Workpad.parse(prefix <> backend <> "`npm run test:ci`: failed at abc1234")
+
+    assert %{validation: %{command: "pytest", passed?: nil, sha: nil}} =
+             Workpad.parse(prefix <> backend <> "`pytest`: queued")
+
+    assert %{validation: %{command: "cargo test", passed?: true, sha: nil}} =
+             Workpad.parse(prefix <> "`cargo test`: passed")
   end
 
   test "a word of hex letters without a digit is not a sha" do
@@ -240,7 +254,7 @@ defmodule AgentBoard.WorkpadTest do
          "`mix test`: 2 failures em 1a3e618"},
         {"mix precommit: falhou (2 falhas)\nmix format: passou", false,
          "mix precommit: falhou (2 falhas)"},
-        {"mix format: falhou\nmix precommit: passou", true, "mix precommit: passou"},
+        {"mix format: falhou\nmix precommit: passou", false, "mix format: falhou"},
         {"mix test: passou, nenhum teste falhou", true, "mix test: passou, nenhum teste falhou"},
         {"mix test: passou (0 failed)", true, "mix test: passou (0 failed)"},
         {"mix precommit passed with no failing tests", true,

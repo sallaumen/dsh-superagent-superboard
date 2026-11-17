@@ -98,7 +98,7 @@ These are the rules from section 3.6 of the plan, in contract form.
 | **D5** | Who opens and merges the PRs? | **The owner's account**, with `gh` already authenticated and the same delivery policy as DSH; the bot token does not enter the runner. |
 
 D4 (which repositories enter the board) was already answered: only
-`sallaumen/arena-rogue` and `sallaumen/o_colmex`; use in other repositories
+`example/atlas-relay` and `example/o_portal`; use in other repositories
 appears as "fora do board" (outside the board), without a task.
 
 Smaller questions left for operations: reading Claude's quota without opening

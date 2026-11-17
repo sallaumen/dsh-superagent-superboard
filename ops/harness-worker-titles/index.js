@@ -5,13 +5,12 @@ import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 
 const worker = /^worker-([0-9a-f]{32})$/
-const aliases = new Map([['arena-rogue', 'AR'], ['o_colmex', 'COL'], ['dsh-superagent-superboard', 'SB']])
 const clean = value => String(value ?? '').replace(/[\p{Cc}\p{Cf}\s]+/gu, ' ').trim()
 
 export function projectTitle(repo, title, fallback) {
   const name = (repo || '').split('/').at(-1).toLowerCase()
   const words = name.normalize('NFKD').replace(/\p{M}/gu, '').match(/[a-z]+/g) || []
-  const code = aliases.get(name) || (words.length === 1 ? words[0].slice(0, 3) : words.slice(0, 3).map(w => w[0]).join('')).toUpperCase() || 'PRJ'
+  const code = (words.length === 1 ? words[0].slice(0, 3) : words.slice(0, 3).map(w => w[0]).join('')).toUpperCase() || 'PRJ'
   const prefix = code + ' - '
   const text = clean(title)
   return text && !/^(untitled|sem t[ií]tulo)$/iu.test(text)

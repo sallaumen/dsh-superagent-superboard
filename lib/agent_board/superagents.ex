@@ -14,9 +14,9 @@ defmodule AgentBoard.Superagents do
 
   @reconcile_pause_seconds 600
 
-  @dsh_state Path.expand("~/.dsh/state")
-  @dsh_profiles Path.expand("~/.dsh/profiles")
-  @archive_root Path.expand("~/.agent_board/archived-superagents")
+  @dsh_state "~/.dsh/state"
+  @dsh_profiles "~/.dsh/profiles"
+  @archive_root "~/.agent_board/archived-superagents"
 
   @topic "superagents"
 
@@ -82,7 +82,8 @@ defmodule AgentBoard.Superagents do
   end
 
   @doc "The directory the DSH profiles live in; overridable in tests."
-  def profiles_root, do: Application.get_env(:agent_board, :dsh_profiles_dir, @dsh_profiles)
+  def profiles_root,
+    do: Path.expand(Application.get_env(:agent_board, :dsh_profiles_dir, @dsh_profiles))
 
   @doc """
   Every DSH working profile on disk, with the port its `cordis.patch.yml`
@@ -796,7 +797,7 @@ defmodule AgentBoard.Superagents do
   end
 
   defp archive_dirs(superagent) do
-    root = Application.get_env(:agent_board, :superagent_archive_root, @archive_root)
+    root = Path.expand(Application.get_env(:agent_board, :superagent_archive_root, @archive_root))
     stamp = DateTime.utc_now() |> DateTime.to_unix()
     target = Path.join(root, "#{superagent.profile}-#{stamp}")
     System.cmd("/bin/mkdir", ["-p", target])

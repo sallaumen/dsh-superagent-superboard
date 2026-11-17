@@ -48,6 +48,9 @@ defmodule AgentBoard.Superagents.PrototypeTest do
   end
 
   test "a board that never installed it finds it where it always was", %{root: root} do
+    assert Prototype.home() == Prototype.target()
+    File.mkdir_p!(Path.join(root, "legacy/scripts"))
+    File.write!(Path.join(root, "legacy/scripts/dsh-superagent"), "")
     assert Prototype.home() == Path.join(root, "legacy")
     assert Prototype.manager() == Path.join(root, "legacy/scripts/dsh-superagent")
   end

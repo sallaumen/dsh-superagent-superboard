@@ -17,7 +17,7 @@ defmodule AgentBoardWeb.AttachmentControllerTest do
     end)
 
     on_exit(fn -> Application.delete_env(:agent_board, :github_client) end)
-    repo = Repo.insert!(%Repository{id: 2_147_483_648, owner: "sallaumen", name: "arena-rogue"})
+    repo = Repo.insert!(%Repository{id: 2_147_483_648, owner: "example", name: "atlas-relay"})
     %{repo: repo}
   end
 
@@ -39,7 +39,7 @@ defmodule AgentBoardWeb.AttachmentControllerTest do
     assert response_content_type(conn, :png) =~ "image/png"
     assert get_resp_header(conn, "x-content-type-options") == ["nosniff"]
 
-    path = "/repos/sallaumen/arena-rogue/contents/#{@hash}/mock.png"
+    path = "/repos/example/atlas-relay/contents/#{@hash}/mock.png"
     assert_received {:github, ^path, "ref=board-attachments"}
   end
 
@@ -50,7 +50,7 @@ defmodule AgentBoardWeb.AttachmentControllerTest do
       conn = get(conn, "/attachments/#{repo.id}/#{@hash}/#{name}")
 
       assert redirected_to(conn, 302) ==
-               "https://github.com/sallaumen/arena-rogue/blob/board-attachments/#{@hash}/#{name}"
+               "https://github.com/example/atlas-relay/blob/board-attachments/#{@hash}/#{name}"
     end
 
     refute_received {:github, _, _}

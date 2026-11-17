@@ -70,8 +70,13 @@ defmodule AgentBoard.Unblock do
   defp reply_to_agent?(comment) do
     body = value(comment, :body)
 
-    value(comment, :kind) == "user" and is_binary(body) and
-      String.contains?(body, "@" <> AgentAccess.bot_login())
+    with "user" <- value(comment, :kind),
+         true <- is_binary(body),
+         login when is_binary(login) <- AgentAccess.bot_login() do
+      String.contains?(body, "@" <> login)
+    else
+      _ -> false
+    end
   end
 
   defp comment_after?(%DateTime{}, _id, nil, _workpad_id), do: true

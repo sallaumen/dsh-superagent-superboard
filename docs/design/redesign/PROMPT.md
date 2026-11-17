@@ -18,8 +18,7 @@ Everything is in `docs/design/redesign/` (unzipped from the zip):
   the code. Ignore `<x-dc>`, `<helmet>`, `support.js` and `<script type="text/x-dc">` (they belong to the design
   editor); what matters is the markup and the styles inside them. Colors are literal hex; in the code use the
   tokens from `DESIGN.md`.
-- `renders/*.png` — a capture of each frame, for visual comparison.
-- `reference/board-atual-1920.png` and `reference/superagentes-atual.png` — how the board looks today.
+- Generate any new reference images from the HTML frames using fictional project data.
 
 Frames: `Main` (1920 board, working, dark), `Board1366Offline` (1366, no connection, light), `Board2560Idle`
 (2560 idle), `Board390` (mobile), `Inspector`, `Composer` (split request), `Superagentes`, `Voz`,
@@ -39,7 +38,7 @@ Frames: `Main` (1920 board, working, dark), `Board1366Offline` (1366, no connect
 3. **Do not invent features.** Preserve the functional structure of `BRIEF.md`. Items marked "hypothesis" in
    `DESIGN.md` §9 **must not** be implemented now; just list them in the final summary if you think one is
    trivial.
-4. **Sample data in the frames is examples.** Issue numbers, titles, values and the `o_colmex` PR titles are
+4. **Sample data in the frames is examples.** Issue numbers, titles, values and the `o_portal` PR titles are
    illustrative. Always use real data.
 5. **Stack.** Phoenix LiveView + HEEx + Tailwind (+ daisyUI only for behavior: dropdown, modal, tabs, toggle).
    No new UI libraries, no React. Function components in `core_components` or a board component module,

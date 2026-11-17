@@ -123,7 +123,7 @@ defmodule AgentBoardWeb.BoardWorkpadTest do
           "user" => %{"login" => "someone"},
           "body" => "see https://github.com/a/b/pull/9999999999"
         },
-        "sallaumen-agent"
+        "example-bot"
       )
 
     {:ok, view, html} = live(conn, ~p"/?repo=fixture/workpad")
@@ -182,12 +182,12 @@ defmodule AgentBoardWeb.BoardWorkpadTest do
         task,
         %{
           "id" => 1,
-          "user" => %{"login" => "sallaumen-agent"},
+          "user" => %{"login" => "example-bot"},
           "body" =>
             "This is by an automated agent, not a human.\n\n## Relatório do agente\n\n" <>
               sections
         },
-        "sallaumen-agent"
+        "example-bot"
       )
   end
 

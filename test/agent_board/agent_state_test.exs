@@ -144,20 +144,20 @@ defmodule AgentBoard.AgentStateTest do
       AgentState.normalize(%{
         "id" => "t1",
         "channels" => [
-          %{"address" => %{"url" => "https://github.com/sallaumen/arena-rogue/issues/12"}}
+          %{"address" => %{"url" => "https://github.com/example/atlas-relay/issues/12"}}
         ],
         "assignments" => [],
         "mandate" => %{"basis" => %{"scope" => %{"number" => 12}}}
       })
 
-    assert ticket["repository"] == "sallaumen/arena-rogue"
+    assert ticket["repository"] == "example/atlas-relay"
 
-    assert AgentState.same_repository?(ticket, %{owner: "sallaumen", name: "arena-rogue"})
-    refute AgentState.same_repository?(ticket, %{owner: "sallaumen", name: "o_colmex"})
+    assert AgentState.same_repository?(ticket, %{owner: "example", name: "atlas-relay"})
+    refute AgentState.same_repository?(ticket, %{owner: "example", name: "o_portal"})
 
     legacy = AgentState.normalize(%{"assignments" => [], "channels" => []})
     assert legacy["repository"] == nil
-    assert AgentState.same_repository?(legacy, %{owner: "sallaumen", name: "o_colmex"})
+    assert AgentState.same_repository?(legacy, %{owner: "example", name: "o_portal"})
   end
 
   test "two superagent state files are merged by repository" do
@@ -181,14 +181,14 @@ defmodule AgentBoard.AgentStateTest do
       Application.put_env(:agent_board, :state_dbs, previous)
     end)
 
-    for {path, repo, number} <- [{first, "arena-rogue", 71}, {second, "o_colmex", 72}] do
+    for {path, repo, number} <- [{first, "atlas-relay", 71}, {second, "o_portal", 72}] do
       {:ok, db} = Exqlite.Sqlite3.open(path)
       :ok = Exqlite.Sqlite3.execute(db, "create table ticket (value text)")
 
       ticket =
         @sample
         |> Map.put("channels", [
-          %{"address" => %{"url" => "https://github.com/sallaumen/#{repo}/issues/#{number}"}}
+          %{"address" => %{"url" => "https://github.com/example/#{repo}/issues/#{number}"}}
         ])
 
       insert(db, ticket)
@@ -201,8 +201,8 @@ defmodule AgentBoard.AgentStateTest do
     assert snapshot.ok
 
     assert snapshot.tickets |> Enum.map(& &1["repository"]) |> Enum.sort() == [
-             "sallaumen/arena-rogue",
-             "sallaumen/o_colmex"
+             "example/atlas-relay",
+             "example/o_portal"
            ]
   end
 

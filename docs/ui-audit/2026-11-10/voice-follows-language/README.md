@@ -42,9 +42,9 @@ Portuguese. Three stages followed neither.
 Isolated server on a copy of the real data, which carries the owner's saved
 `voice_language = pt-BR`:
 
-- [01-en-voice-panel](01-en-voice-panel.png): a browser with no language cookie. The panel is English, "Status" answers "Good afternoon. On the board: 50 recent merges.", the examples read "How is the board?".
-- [02-pt-voice-panel](02-pt-voice-panel.png): the same after choosing Portuguese: "Boa tarde. No quadro: 50 entregas recentes.", "Como está o quadro?".
-- [01-en-voice-settings](01-en-voice-settings.png), [02-pt-voice-settings](02-pt-voice-settings.png): the picker is gone; a line says where the language comes from.
+- 01-en-voice-panel: a browser with no language cookie. The panel is English, "Status" answers "Good afternoon. On the board: 50 recent merges.", the examples read "How is the board?".
+- 02-pt-voice-panel: the same after choosing Portuguese: "Boa tarde. No quadro: 50 entregas recentes.", "Como está o quadro?".
+- 01-en-voice-settings, 02-pt-voice-settings: the picker is gone; a line says where the language comes from.
 
 ## Not checked
 

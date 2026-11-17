@@ -11,7 +11,7 @@
 ## Why
 
 The agent has no queue: each mention becomes a ticket at once. Real splits
-started tasks before the tasks they depended on (o_colmex #1416 before #1415).
+started tasks before the tasks they depended on (o_portal #1416 before #1415).
 GitHub's blocked-by only draws an icon, so the order has to come from who
 writes the mention.
 

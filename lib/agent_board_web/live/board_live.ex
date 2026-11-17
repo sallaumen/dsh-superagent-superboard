@@ -291,7 +291,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp default_repo(repos) do
-    Enum.find(repos, &(&1.name == "o_colmex")) || List.first(repos)
+    List.first(repos)
   end
 
   defp repo_slug(nil), do: ""
@@ -1071,6 +1071,17 @@ defmodule AgentBoardWeb.BoardLive do
     else
       {:noreply, socket |> assign(:repos, repos) |> load(socket.assigns.repo)}
     end
+  end
+
+  def handle_info({:setting_changed, "import_executor_history"}, socket) do
+    if socket.assigns.panel == "settings" do
+      send_update(BoardComponents.Settings.Costs,
+        id: "settings-costs",
+        history_import_changed: true
+      )
+    end
+
+    {:noreply, socket}
   end
 
   def handle_info({:setting_changed, "dispatch_paused"}, socket) do

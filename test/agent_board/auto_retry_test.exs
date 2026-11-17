@@ -15,7 +15,7 @@ defmodule AgentBoard.AutoRetryTest do
   @failed_at ~U[2026-11-07 15:41:51Z]
   @model "LlmError: DeepSeek Messages transport failed"
   @prepare "Error: The prepare command failed: fatal: unable to access " <>
-             "'https://github.com/sallaumen/arena-rogue.git/': Could not resolve host: github.com"
+             "'https://github.com/example/atlas-relay.git/': Could not resolve host: github.com"
 
   setup do
     previous_api = Application.get_env(:agent_board, :orchestrator_api)
@@ -31,7 +31,7 @@ defmodule AgentBoard.AutoRetryTest do
     # An id outside the sandbox range keeps the broadcast topic private.
     repo =
       %Repository{}
-      |> Repository.changeset(%{owner: "sallaumen", name: "arena-rogue"})
+      |> Repository.changeset(%{owner: "example", name: "atlas-relay"})
       |> Ecto.Changeset.put_change(:id, 2_000_000 + System.unique_integer([:positive]))
       |> Repo.insert!()
 
@@ -102,7 +102,7 @@ defmodule AgentBoard.AutoRetryTest do
         %{
           "address" => %{
             "number" => 53,
-            "url" => Keyword.get(opts, :url, "https://github.com/sallaumen/arena-rogue/issues/53")
+            "url" => Keyword.get(opts, :url, "https://github.com/example/atlas-relay/issues/53")
           }
         }
       ],
@@ -353,21 +353,21 @@ defmodule AgentBoard.AutoRetryTest do
     defp own_superagent(port) do
       repository =
         %Repository{}
-        |> Repository.changeset(%{owner: "sallaumen", name: "o_colmex"})
+        |> Repository.changeset(%{owner: "example", name: "o_portal"})
         |> Ecto.Changeset.put_change(:id, 2_000_000 + System.unique_integer([:positive]))
         |> Repo.insert!()
 
       %Superagent{}
       |> Superagent.changeset(%{
         repository_id: repository.id,
-        profile: "superagent-colmex",
+        profile: "superagent-portal",
         port: port,
-        state_dir: "/tmp/superagent-colmex"
+        state_dir: "/tmp/superagent-portal"
       })
       |> Repo.insert!()
     end
 
-    @colmex_url "https://github.com/sallaumen/o_colmex/issues/7"
+    @portal_url "https://github.com/example/o_portal/issues/7"
 
     test "a repository with its own superagent is retried there, with the primary down" do
       own_superagent(3083)
@@ -375,7 +375,7 @@ defmodule AgentBoard.AutoRetryTest do
 
       assert [{"c1", "retried"}] =
                AutoRetry.tick(
-                 tickets: [ticket(@model, id: "c1", assignment: "c-a", url: @colmex_url)],
+                 tickets: [ticket(@model, id: "c1", assignment: "c-a", url: @portal_url)],
                  now: at(61)
                )
 
@@ -400,7 +400,7 @@ defmodule AgentBoard.AutoRetryTest do
       agents([1])
 
       tickets = [
-        ticket(@model, id: "c1", assignment: "c-a", url: @colmex_url),
+        ticket(@model, id: "c1", assignment: "c-a", url: @portal_url),
         ticket(@model, id: "t1", assignment: "t-a")
       ]
 

@@ -25,7 +25,7 @@ of each sheet, with nothing between).
 | `05-reduced-motion-cut.png` | #227 queued → running with `prefers-reduced-motion: reduce` | the state after the patch; `document.getAnimations()` was empty | no animation, state correct |
 
 Also observed: a broadcast with no change (`select 1` + `:board_updated`)
-started no animation; switching to o_colmex (scope 1 → 2) started none either.
+started no animation; switching to o_portal (scope 1 → 2) started none either.
 
 Capture artefact, not behaviour: in the last frames of sheet 04 the leaving
 card still shows at full opacity. Seeking a paused animation past its end

@@ -45,14 +45,14 @@ defmodule AgentBoard.OrchestratorTest do
       Req.Test.json(conn, %{
         "load" => %{"running" => 0, "queued" => 0, "maxWorkers" => 3},
         "paused" => true,
-        "setup" => %{"accounts" => %{"repository" => "sallaumen/arena-rogue"}}
+        "setup" => %{"accounts" => %{"repository" => "example/atlas-relay"}}
       })
     end)
 
     assert Orchestrator.dispatch_state() ==
              {:ok,
               %{
-                repository: "sallaumen/arena-rogue",
+                repository: "example/atlas-relay",
                 paused: true,
                 load: %{running: 0, queued: 0, max_workers: 3}
               }}

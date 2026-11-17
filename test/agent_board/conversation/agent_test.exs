@@ -40,7 +40,7 @@ defmodule AgentBoard.Conversation.AgentTest do
       end
     end)
 
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     %{repo: repo}
   end
 
@@ -95,7 +95,7 @@ defmodule AgentBoard.Conversation.AgentTest do
 
       Req.Test.json(conn, %{
         "number" => number,
-        "html_url" => "https://github.com/sallaumen/arena-rogue/issues/#{number}"
+        "html_url" => "https://github.com/example/atlas-relay/issues/#{number}"
       })
     end)
 
@@ -112,7 +112,7 @@ defmodule AgentBoard.Conversation.AgentTest do
 
       Req.Test.json(conn, %{
         "number" => 77,
-        "html_url" => "https://github.com/sallaumen/arena-rogue/issues/77"
+        "html_url" => "https://github.com/example/atlas-relay/issues/77"
       })
     end)
 
@@ -121,21 +121,21 @@ defmodule AgentBoard.Conversation.AgentTest do
         "request" => "refazer o placar",
         "title" => "Refazer o placar",
         "details" => ["o placar cabe na tela do celular"],
-        "repository" => "arena rogue",
+        "repository" => "atlas relay",
         "executor" => "claude"
       })
     end)
 
-    proposed = turn("Manda pro Claude refazer o placar do arena rogue", repo)
+    proposed = turn("Manda pro Claude refazer o placar do atlas relay", repo)
 
     assert proposed.reply ==
-             "Criar no arena-rogue a tarefa “Refazer o placar” para o Claude Code? " <>
+             "Criar no atlas-relay a tarefa “Refazer o placar” para o Claude Code? " <>
                "O board abre com o rótulo executor:claude; nada começa sozinho."
 
     turn("Sim.", repo)
 
     assert_received {:issue, sent}
-    refute sent["body"] =~ "@sallaumen-agent"
+    refute sent["body"] =~ "@example-bot"
     assert sent["labels"] == ["executor:claude"]
 
     task = Repo.get_by!(Task, repository_id: repo.id, number: 77)
@@ -158,23 +158,23 @@ defmodule AgentBoard.Conversation.AgentTest do
         "request" => "mostrar o placar",
         "title" => "Mostrar o placar",
         "details" => ["o placar aparece"],
-        "repository" => "arena rogue",
+        "repository" => "atlas relay",
         "executor" => "dsh"
       })
     end)
 
-    turn("Manda pro DeepSeek mostrar o placar do arena rogue", repo)
+    turn("Manda pro DeepSeek mostrar o placar do atlas relay", repo)
 
     # Between the proposal and the yes, Projects gives the runner another
     # repository: the proposal's executor is still DeepSeek.
-    {:ok, other} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, other} = Board.add_repository("example", "o_portal")
 
     {:ok, _superagent} =
       AgentBoard.Superagents.create(%{
         repository_id: other.id,
-        profile: "superagent-voice-o-colmex",
+        profile: "superagent-voice-o-portal",
         port: 3413,
-        state_dir: "/tmp/superagent-voice-o-colmex"
+        state_dir: "/tmp/superagent-voice-o-portal"
       })
 
     answered = turn("Sim.", repo)
@@ -197,17 +197,17 @@ defmodule AgentBoard.Conversation.AgentTest do
         "request" => "mostrar o placar",
         "title" => "Mostrar o placar",
         "details" => ["o placar aparece"],
-        "repository" => "arena rogue"
+        "repository" => "atlas relay"
       })
     end)
 
-    turn("Cria uma tarefa no arena rogue pra mostrar o placar", repo)
+    turn("Cria uma tarefa no atlas relay pra mostrar o placar", repo)
     turn("Sim.", repo)
 
     # No orchestrator answers in the test: the runner stays the board's
     # default, and its issue carries the mention it acts on.
     assert_received {:issue, sent}
-    assert sent["body"] =~ ~r/@sallaumen-agent\z/
+    assert sent["body"] =~ ~r/@example-bot\z/
     assert sent["labels"] == ["executor:dsh"]
 
     task = Repo.get_by!(Task, repository_id: repo.id, number: 78)
@@ -259,7 +259,7 @@ defmodule AgentBoard.Conversation.AgentTest do
           "cria outra tarefa sobre login",
           "valeu",
           "por favor",
-          "cria no colmex",
+          "cria no portal",
           "go ahead with login"
         ] do
       assert {neither, Agent.yes_or_no(neither)} == {neither, :none}
@@ -341,7 +341,7 @@ defmodule AgentBoard.Conversation.AgentTest do
     assert prompt =~ "Antes conversamos sobre o placar."
     assert prompt =~ "Placar"
     assert prompt =~ "pt-BR"
-    assert prompt =~ "sallaumen/arena-rogue"
+    assert prompt =~ "example/atlas-relay"
   end
 
   test "a request for work is refined, proposed, and created once on a spoken yes", %{repo: repo} do
@@ -356,18 +356,18 @@ defmodule AgentBoard.Conversation.AgentTest do
         "request" => "mostrar o volume da voz no cabeçalho",
         "title" => "Mostrar o volume da voz no cabeçalho",
         "details" => ["o volume aparece em porcentagem", "sem mudar o layout"],
-        "repository" => "arena rogue"
+        "repository" => "atlas relay"
       })
     end)
 
     proposed =
-      turn("Oi Claude, cria uma tarefa no arena rogue pra mostrar o volume, obrigado", repo)
+      turn("Oi Claude, cria uma tarefa no atlas relay pra mostrar o volume, obrigado", repo)
 
     assert proposed.listen
 
     # The proposal says the registry's sentence, the one the screen shows.
     assert proposed.reply ==
-             "Criar no arena-rogue a tarefa “Mostrar o volume da voz no cabeçalho”? " <>
+             "Criar no atlas-relay a tarefa “Mostrar o volume da voz no cabeçalho”? " <>
                "O board abre a issue no GitHub para o agente pegar quando estiver em execução."
 
     assert %Turn{proposal: %{"kind" => "create_task"}} = Conversation.pending_proposal()
@@ -376,7 +376,7 @@ defmodule AgentBoard.Conversation.AgentTest do
     refute_received {:called, :refine_request}
 
     created = turn("Sim, pode.", repo)
-    assert created.reply == "Pronto. A tarefa 42 entrou na fila do arena-rogue."
+    assert created.reply == "Pronto. A tarefa 42 entrou na fila do atlas-relay."
     assert Elixir.Agent.get(counter, & &1) == 42
 
     # The yes is a recorded decision: confirmed by the owner, by voice, on that sentence.
@@ -527,8 +527,8 @@ defmodule AgentBoard.Conversation.AgentTest do
   end
 
   test "a spoken project name matches the tracked repository", %{repo: repo} do
-    assert Agent.match_repository([repo], "Arena Rogue") == repo
-    assert Agent.match_repository([repo], "sallaumen/arena-rogue") == repo
+    assert Agent.match_repository([repo], "Atlas Relay") == repo
+    assert Agent.match_repository([repo], "example/atlas-relay") == repo
     assert Agent.match_repository([repo], "outro") == nil
   end
 
@@ -561,7 +561,7 @@ defmodule AgentBoard.Conversation.AgentTest do
     proposed = turn("corrige o botão de salvar", repo)
 
     assert proposed.listen
-    assert proposed.reply =~ "Criar no arena-rogue a tarefa “Corrigir o botão”?"
+    assert proposed.reply =~ "Criar no atlas-relay a tarefa “Corrigir o botão”?"
     assert %Turn{proposal: %{"kind" => "create_task"}} = Conversation.pending_proposal()
   end
 
@@ -619,7 +619,7 @@ defmodule AgentBoard.Conversation.AgentTest do
 
     Req.Test.stub(@stub, fn conn ->
       Elixir.Agent.update(posts, &(&1 + 1))
-      Req.Test.json(conn, %{"id" => 9001, "user" => %{"login" => "sallaumen"}})
+      Req.Test.json(conn, %{"id" => 9001, "user" => %{"login" => "example"}})
     end)
 
     script(fn %{name: :voice_agent} ->
@@ -642,7 +642,7 @@ defmodule AgentBoard.Conversation.AgentTest do
 
     comment = Repo.get_by!(AgentBoard.Board.Comment, task_id: task.id, kind: "user")
     assert comment.body =~ "Você já rodou os testes?"
-    assert comment.body =~ "@sallaumen-agent"
+    assert comment.body =~ "@example-bot"
   end
 
   test "repete says the last reply again without the model", %{repo: repo} do

@@ -248,7 +248,7 @@ defmodule AgentBoard.Usage.CodexTest do
       assert thread.tokens_used == 271_305_555
       assert thread.cwd == "/Users/me/projects/agent-board"
       assert thread.git_branch == "feat/x"
-      assert thread.git_origin_url == "https://github.com/sallaumen/agent-board.git"
+      assert thread.git_origin_url == "https://github.com/example/agent-board.git"
       assert thread.model == "gpt-6-sol"
       assert thread.source == "vscode"
       assert thread.archived == false
@@ -386,7 +386,7 @@ defmodule AgentBoard.Usage.CodexTest do
         '#{@thread}', '/Users/me/.codex/sessions/2026/11/05/rollout.jsonl', 1794038395,
         1794066000, 'vscode', 'user', 'Codex Desktop', 'openai', 'gpt-6-sol', 'xhigh',
         '/Users/me/projects/agent-board', 'feat/x', 'abc123',
-        'https://github.com/sallaumen/agent-board.git', '0.166.0', 271305555, 0
+        'https://github.com/example/agent-board.git', '0.166.0', 271305555, 0
       );
       CREATE VIEW threads AS
         SELECT *, json('#{@secret}') AS title, json('#{@secret}') AS preview,

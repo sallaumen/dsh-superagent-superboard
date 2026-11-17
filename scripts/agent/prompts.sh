@@ -1,25 +1,36 @@
 #!/bin/sh
-# The three team prompt sections -- Communication, Ticket scope and Delivery
-# requirements -- are the agent's policy. The orchestrator holds the active
-# text; git holds docs/agent/prompts/{communication,scope,delivery}.md plus
-# `revision`, the revision those files were read from. This script moves the
-# text between the two. A second agent keeps its own directory: name it in
-# SUPERAGENT_PROMPTS_DIR together with that agent's DSH_SUPERAGENT_PORT.
-#
+# Export and review a local profile's active policy outside this checkout.
+# The shared defaults in docs/agent/prompts are never a profile export.
 #   prompts.sh get    write the active sections and their revision to the files
 #   prompts.sh diff   compare the files with the active revision; exit 1 if they differ
 #   prompts.sh put    save the files as a new revision on top of the one in `revision`
 #
 # `put` refuses when the panel saved a newer revision than `revision`, so an
 # edit made in the panel is never overwritten unseen: run `get`, review the
-# change, commit it, then `put` again. Team skills and built-in overrides stay
+# change locally, then `put` again. Team skills and built-in overrides stay
 # in the orchestrator; `put` sends them back unchanged. Needs curl and jq.
 set -eu
 # shellcheck disable=SC1091
 . "$(dirname "$0")/_common.sh"
 
-ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-DIR="${SUPERAGENT_PROMPTS_DIR:-$ROOT/docs/agent/prompts}"
+DIR="${SUPERAGENT_PROMPTS_DIR:-$STATE_DIR/board-prompts}"
+# Resolve symlinks and non-existent parents before creating or writing anything.
+DIR=$(python3 - "$DIR" <<'PYTHON'
+from pathlib import Path
+import sys
+directory = Path(sys.argv[1]).expanduser().resolve()
+if any((p / ".git").exists() for p in (directory, *directory.parents)):
+    sys.exit("Export prompts outside a Git checkout.")
+print(directory)
+PYTHON
+)
+for leaf in communication.md scope.md delivery.md revision; do
+  if [ -L "$DIR/$leaf" ] || [ -d "$DIR/$leaf" ]; then
+    echo "A policy file must be a regular file in the local export directory." >&2
+    exit 2
+  fi
+done
+umask 077
 SECTIONS="communication scope delivery"
 HEADER="x-orchestrator-request: 1"
 
@@ -93,7 +104,7 @@ put() {
   REV=$(cat "$DIR/revision" 2>/dev/null || echo none)
   if [ "$REV" != "$ACTIVE" ]; then
     echo "REFUSED: the files come from revision $REV; the active one is $ACTIVE"
-    echo "  the panel saved since: run get, review the change, commit it, then put again"
+    echo "  the panel saved since: run get, review the change, then put again"
     exit 1
   fi
   if compare > /dev/null; then
@@ -112,7 +123,7 @@ put() {
   fi
   NEW=$(jq -r '.revision' "$OUT")
   echo "$NEW" > "$DIR/revision"
-  echo "saved revision $NEW (was $ACTIVE); commit $DIR/revision"
+  echo "saved revision $NEW (was $ACTIVE)"
 }
 
 case "${1:-}" in

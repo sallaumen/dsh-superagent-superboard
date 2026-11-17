@@ -42,7 +42,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
       end
     end)
 
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
     # These tests cover the paid voice and whole replies; the defaults are
     # the browser voice and short replies (covered in voice_speech_test).
     :ok = AgentBoard.Settings.put("voice_engine", "elevenlabs")
@@ -72,7 +72,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
     do: url |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query() |> Map.fetch!("text")
 
   defp board(conn) do
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     view
   end
 
@@ -203,7 +203,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
   test "the voice panel shows the conversation, takes typed words and forgets", %{conn: conn} do
     script(fn %{name: :voice_agent} -> reply("Pode deixar.") end)
-    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=voice")
+    {:ok, view, html} = live(conn, ~p"/?repo=example/atlas-relay&panel=voice")
     assert html =~ "SuperBoard Skills"
 
     view |> element("#voice-chat-form") |> render_submit(%{"text" => "lembra do placar"})
@@ -220,7 +220,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
   test "the voice panel lists what can be asked, and an example can be sent", %{conn: conn} do
     script(fn %{name: :voice_agent} -> reply("Nada falhando agora.") end)
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=voice")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay&panel=voice")
 
     assert has_element?(view, "#voice-commands:not([open])")
     assert has_element?(view, "#voice-commands h4", "Execuções do agente")
@@ -281,7 +281,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
   test "the history shows how long the agent took", %{conn: conn} do
     script(fn %{name: :voice_agent} -> reply("Pode deixar.") end)
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=voice")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay&panel=voice")
 
     view |> element("#voice-chat-form") |> render_submit(%{"text" => "oi"})
     render_async(view, 1_000)
@@ -291,7 +291,7 @@ defmodule AgentBoardWeb.VoiceConversationLiveTest do
 
   test "a spoken mais baixo lowers the volume the player uses at once", %{conn: conn} do
     script(fn _ -> flunk("the model must not be called") end)
-    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, html} = live(conn, ~p"/?repo=example/atlas-relay")
     assert html =~ ~s(data-volume="100")
 
     render_hook(view, "voice_turn", %{"text" => "mais baixo"})

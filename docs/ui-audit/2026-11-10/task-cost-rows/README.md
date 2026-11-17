@@ -17,7 +17,7 @@ attributed execution in the window is "—" too. Never a zero.
 
 ## Traced by hand
 
-arena-rogue #208 (task 52892), on a copy of the dev database and of the
+atlas-relay #208 (task 52892), on a copy of the dev database and of the
 runner's state:
 
 | Where | Value |
@@ -31,9 +31,9 @@ and 203 DeepSeek ledger rows), off the board's render path.
 
 ## Checked
 
-- [01](01-history-ended-1920-dark-en.png): arena-rogue, 49 of 50 rows priced (all DeepSeek, all floors), 1 "—".
-- [02](02-history-ended-390-light-pt.png): phone, Portuguese, no horizontal overflow.
-- o_colmex and dsh-superagent-superboard show "—" in the rig: only the arena-rogue runner's state was copied. The live board reads every superagent's state.
+- 01: atlas-relay, 49 of 50 rows priced (all DeepSeek, all floors), 1 "—".
+- 02: phone, Portuguese, no horizontal overflow.
+- o_portal and dsh-superagent-superboard show "—" in the rig: only the atlas-relay runner's state was copied. The live board reads every superagent's state.
 
 ## Not done
 

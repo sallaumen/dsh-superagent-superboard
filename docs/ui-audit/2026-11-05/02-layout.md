@@ -8,16 +8,16 @@ Continuation of 01-theme; baseline `80e3ee9` (#154). Same direction and constrai
 
 | Severity | Region | Evidence before | Fix |
 |---|---|---|---|
-| P2 | Columns and hierarchy | [1366](layout-before-1366.png), [3440](layout-before-3440.png): 30 merges stretch the whole page, leaving four columns practically empty and hiding actions. | Columns with their own scroll (55vh on desktop), fixed headers and keyboard focus. Activity in a native disclosure, with a limited, scrollable list. |
-| P2 | Titles | [Before](layout-before-1366.png): titles truncated to a single line, especially at laptop width. | Word breaking and the full title; the five columns kept. |
-| P2 | Mobile / activity / AI | [Before](baseline-mobile-ai.png), [layout at 375px](layout-before-375.png), [fixture](baseline-fixture-mobile.png): the 375px page had scrollWidth 664px; rigid rows overlapped. | Cohesive control groups, an adaptive grid for events, AI with wrap, shrinkable fields. |
-| P2 | Open / conversation | [Before](baseline-fixture.png): conversation below Activity, Split and AI. | Conversation right after the board; the title receives focus on mount, Close restores the focus of Open. |
+| P2 | Columns and hierarchy | 1366, 3440: 30 merges stretch the whole page, leaving four columns practically empty and hiding actions. | Columns with their own scroll (55vh on desktop), fixed headers and keyboard focus. Activity in a native disclosure, with a limited, scrollable list. |
+| P2 | Titles | Before: titles truncated to a single line, especially at laptop width. | Word breaking and the full title; the five columns kept. |
+| P2 | Mobile / activity / AI | Before, layout at 375px, fixture: the 375px page had scrollWidth 664px; rigid rows overlapped. | Cohesive control groups, an adaptive grid for events, AI with wrap, shrinkable fields. |
+| P2 | Open / conversation | Before: conversation below Activity, Split and AI. | Conversation right after the board; the title receives focus on mount, Close restores the focus of Open. |
 | P3 | Empty | `board_live.ex`: the instruction “Track one below” and “four columns” contradicted the screen. | Guidance to the header and five columns. |
 
-After: [1366×768](layout-after-1366.png), [3440×1440](layout-after-3440.png),
-[375×812](layout-after-375.png), [dark](layout-after-dark.png),
-[mobile Activity](layout-after-mobile-activity.png),
-[desktop fixture](layout-after-fixture-1366.png), [mobile fixture](layout-after-fixture-375.png).
+After: 1366×768, 3440×1440,
+375×812, dark,
+mobile Activity,
+desktop fixture, mobile fixture.
 Full-page captures use the viewport width; their height may exceed the viewport.
 
 WebKit: scrollWidth equal to the viewport at 1366, 3440 and 375 (including fixture).

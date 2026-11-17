@@ -4,7 +4,7 @@ defmodule AgentBoard.LocalCI.ReportTest do
   alias AgentBoard.LocalCI
   alias AgentBoard.LocalCI.Report
 
-  test "only precommit sentences provide evidence, and explicit failure wins" do
+  test "only explicitly reported local checks provide evidence, and explicit failure wins" do
     assert Report.gate("Remote CI passed. mix precommit scheduled.") == nil
 
     assert Report.gate("Remote failed. mix precommit passed with no failing tests.") == %{
@@ -14,8 +14,24 @@ defmodule AgentBoard.LocalCI.ReportTest do
 
     assert Report.gate("mix precommit  passed. A later mix precommit failed.") == %{
              state: :fail,
-             detail: "mix precommit passed."
+             detail: "A later mix precommit failed."
            }
+  end
+
+  test "a remote result, plan or command name cannot supply a local verdict" do
+    for summary <- [
+          "remote CI: `cargo test`: passed",
+          "Local CI: `green`: not run",
+          "Local CI: missing"
+        ] do
+      assert Report.gate(summary) == nil
+    end
+
+    assert Report.gate("PR #8: Local CI: `npm run test:ci`: passed at abc1234.") ==
+             %{state: :pass, detail: "PR #8: Local CI: `npm run test:ci`: passed at abc1234."}
+
+    assert %{state: :fail, detail: "CI local: `pytest`: falhou."} =
+             Report.gate("mix precommit passed. CI local: `pytest`: falhou.")
   end
 
   test "the evidence read by the board still limits the displayed excerpt to 220 characters" do

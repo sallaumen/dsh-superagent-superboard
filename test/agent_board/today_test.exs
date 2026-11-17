@@ -24,14 +24,14 @@ defmodule AgentBoard.TodayTest do
 
   test "needs and running come from both repositories, one item each, with the repository" do
     {:ok, arena} = Board.add_repository("fixture", "arena")
-    {:ok, colmex} = Board.add_repository("fixture", "colmex")
+    {:ok, portal} = Board.add_repository("fixture", "portal")
 
     blocked = task(arena, 1, "blocked")
     question = task(arena, 2, "question")
-    ready = task(colmex, 3, "ready")
-    running = task(colmex, 4, "running")
+    ready = task(portal, 3, "ready")
+    running = task(portal, 4, "running")
     _stopped = task(arena, 5, "blocked", %{stopped: true})
-    _archived = task(colmex, 6, "blocked", %{archived: true})
+    _archived = task(portal, 6, "blocked", %{archived: true})
 
     today = Overview.today()
 
@@ -40,10 +40,10 @@ defmodule AgentBoard.TodayTest do
     assert Enum.map(today.needs, & &1.repo) == [
              "fixture/arena",
              "fixture/arena",
-             "fixture/colmex"
+             "fixture/portal"
            ]
 
-    assert [%{id: running_id, repo: "fixture/colmex"}] = today.running
+    assert [%{id: running_id, repo: "fixture/portal"}] = today.running
     assert running_id == running.id
   end
 
@@ -81,12 +81,12 @@ defmodule AgentBoard.TodayTest do
 
   test "local day metrics and seven-day trend use stored times, including the midnight boundary" do
     {:ok, arena} = Board.add_repository("fixture", "arena-day")
-    {:ok, colmex} = Board.add_repository("fixture", "colmex-day")
+    {:ok, portal} = Board.add_repository("fixture", "portal-day")
     now = ~U[2026-11-09 02:30:00Z]
 
     seen = task(arena, 20, "queued")
-    task(colmex, 21, "queued", %{stopped: true})
-    task(colmex, 22, "blocked")
+    task(portal, 21, "queued", %{stopped: true})
+    task(portal, 22, "blocked")
 
     # At UTC 02:00 the owner's day (UTC-3) is still November 8.
     Repo.update_all(from(t in Task, where: t.id == ^seen.id),
@@ -95,7 +95,7 @@ defmodule AgentBoard.TodayTest do
 
     for {repo, number, at} <- [
           {arena, 30, ~U[2026-11-09 02:00:00Z]},
-          {colmex, 31, ~U[2026-11-08 02:00:00Z]},
+          {portal, 31, ~U[2026-11-08 02:00:00Z]},
           {arena, 32, ~U[2026-11-02 02:00:00Z]}
         ] do
       %PullRequest{}
@@ -121,8 +121,8 @@ defmodule AgentBoard.TodayTest do
     assert Enum.map(today.queue, & &1.id) == [seen.id]
 
     arena_day = Enum.find(today.projects, &(&1.name == "fixture/arena-day"))
-    colmex_day = Enum.find(today.projects, &(&1.name == "fixture/colmex-day"))
+    portal_day = Enum.find(today.projects, &(&1.name == "fixture/portal-day"))
     assert %{queued: 1, merged: 1, seen: 1, unknown: true} = arena_day
-    assert %{queued: 0, merged: 0, needs: 1, unknown: true} = colmex_day
+    assert %{queued: 0, merged: 0, needs: 1, unknown: true} = portal_day
   end
 end

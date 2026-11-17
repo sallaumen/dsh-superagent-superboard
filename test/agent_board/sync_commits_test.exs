@@ -13,7 +13,7 @@ defmodule AgentBoard.SyncCommitsTest do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
 
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     %{repo: repo}
   end
 
@@ -28,7 +28,7 @@ defmodule AgentBoard.SyncCommitsTest do
         "author" => %{"name" => "Lucas", "date" => at},
         "committer" => %{"name" => "GitHub", "date" => at}
       },
-      "author" => %{"login" => "sallaumen-agent"}
+      "author" => %{"login" => "example-bot"}
     }
   end
 
@@ -37,7 +37,7 @@ defmodule AgentBoard.SyncCommitsTest do
   test "commits are stored once, by sha, with their landing time", %{repo: repo} do
     stub(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/commits" ->
+        "/repos/example/atlas-relay/commits" ->
           Req.Test.json(conn, [
             commit("aaa", "2026-11-07T01:08:16Z"),
             commit("bbb", "2026-11-07T00:05:10Z", "Fix\nmore")
@@ -54,7 +54,7 @@ defmodule AgentBoard.SyncCommitsTest do
     commits = Repo.all(from c in Commit, where: c.repository_id == ^repo.id, order_by: c.sha)
     assert Enum.map(commits, & &1.sha) == ["aaa", "bbb"]
     assert hd(commits).committed_at == ~U[2026-11-07 01:08:16Z]
-    assert hd(commits).author == "sallaumen-agent"
+    assert hd(commits).author == "example-bot"
     assert hd(commits).message == "Add a thing"
 
     sync = Board.latest_sync(repo)
@@ -67,7 +67,7 @@ defmodule AgentBoard.SyncCommitsTest do
 
     stub(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/commits" ->
+        "/repos/example/atlas-relay/commits" ->
           send(test_pid, {:since, conn.query_params["since"]})
           Req.Test.json(conn, [commit("aaa", "2026-11-07T01:08:16Z")])
 
@@ -88,7 +88,7 @@ defmodule AgentBoard.SyncCommitsTest do
   test "a Link header with rel=next reads the next page", %{repo: repo} do
     stub(fn conn ->
       case {conn.request_path, conn.query_params["page"]} do
-        {"/repos/sallaumen/arena-rogue/commits", "1"} ->
+        {"/repos/example/atlas-relay/commits", "1"} ->
           conn
           |> Plug.Conn.put_resp_header(
             "link",
@@ -96,7 +96,7 @@ defmodule AgentBoard.SyncCommitsTest do
           )
           |> Req.Test.json([commit("aaa", "2026-11-07T01:08:16Z")])
 
-        {"/repos/sallaumen/arena-rogue/commits", "2"} ->
+        {"/repos/example/atlas-relay/commits", "2"} ->
           Req.Test.json(conn, [commit("bbb", "2026-11-07T00:08:16Z")])
 
         _ ->
@@ -113,17 +113,17 @@ defmodule AgentBoard.SyncCommitsTest do
   test "a failing commit read is one event; issues and pulls still sync", %{repo: repo} do
     stub(fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/commits" ->
+        "/repos/example/atlas-relay/commits" ->
           Plug.Conn.send_resp(conn, 500, "boom")
 
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [
             %{
               "number" => 7,
               "title" => "Issue 7",
               "state" => "open",
-              "html_url" => "https://github.com/sallaumen/arena-rogue/issues/7",
-              "user" => %{"login" => "sallaumen"}
+              "html_url" => "https://github.com/example/atlas-relay/issues/7",
+              "user" => %{"login" => "example"}
             }
           ])
 

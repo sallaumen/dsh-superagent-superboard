@@ -10,11 +10,11 @@ the mock before page load so it survived reloads.
 
 | View | Before | After |
 | --- | --- | --- |
-| Board and listening, 1366×768 | [board](before-1366.png) | [listening](after-listening-1366.png) |
-| New task, 1366×768 | [click-to-record form](before-create-1366.png) | [text-only form](after-create-1366.png) |
-| Board and command draft, 3440×1440 | [board](before-3440.png) | [editable draft](after-draft-3440.png) |
-| Command draft, 1366×768 | [board](before-1366.png) | [editable draft](after-draft-1366.png) |
-| Command draft, 375×812 | — | [narrow viewport](after-draft-375.png) |
+| Board and listening, 1366×768 | board | listening |
+| New task, 1366×768 | click-to-record form | text-only form |
+| Board and command draft, 3440×1440 | board | editable draft |
+| Command draft, 1366×768 | board | editable draft |
+| Command draft, 375×812 | — | narrow viewport |
 
 Observed with mocked media:
 

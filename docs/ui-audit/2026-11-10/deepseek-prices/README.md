@@ -32,7 +32,7 @@ Holidays are priced as peak (the board has no such calendar): those days read hi
 | DeepSeek total | ≥ US$ 20 (cache reads at zero) | ≈ US$ 71.38, by summing the 132 priced executions |
 | Hand computation from the raw messages, split by hour | | US$ 71.4 |
 | Peak tokens (ledger split vs. raw messages) | | input 3 395 684, cache 1 289 492 096: equal |
-| arena-rogue #208: row, Executions tab, inspector header | ≥ US$ 0.14 | ≈ US$ 0.40, 401 885 micro-US$ in all three, complete |
+| atlas-relay #208: row, Executions tab, inspector header | ≥ US$ 0.14 | ≈ US$ 0.40, 401 885 micro-US$ in all three, complete |
 
 Of 134 DeepSeek executions, 115 are complete, 17 are minimums and 2 have no
 price: 27.9 thousand messages record no model (6.5 + 0.85 billion cache

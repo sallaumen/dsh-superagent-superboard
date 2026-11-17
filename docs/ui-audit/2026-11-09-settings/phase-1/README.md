@@ -22,10 +22,10 @@ After, the four-section menu:
 
 | After | Viewport | Theme |
 |---|---|---|
-| [desktop-projects-dark.png](desktop-projects-dark.png) | 1280×900 | dark |
-| [desktop-projects-light.png](desktop-projects-light.png) | 1280×900 | light |
-| [mobile-projects-dark.png](mobile-projects-dark.png) | 390×844 | dark |
-| [mobile-projects-light.png](mobile-projects-light.png) | 390×844 | light |
+| desktop-projects-dark.png | 1280×900 | dark |
+| desktop-projects-light.png | 1280×900 | light |
+| mobile-projects-dark.png | 390×844 | dark |
+| mobile-projects-light.png | 390×844 | light |
 
 Observed:
 

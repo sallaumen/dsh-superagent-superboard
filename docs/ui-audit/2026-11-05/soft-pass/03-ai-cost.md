@@ -6,9 +6,9 @@ a zero cannot safely be presented as a zero-dollar charge.
 
 | Severity | Region | Evidence | Change |
 |---|---|---|---|
-| P2 | AI call details | [Before](03-before-ai.png), [after dark](03-after-ai-dark.png), [after light](03-after-ai-light.png) | Added per-call estimated cost from the stored microdollar value, preserving all six decimal places where needed. The panel labels the value as an estimate from model rates. |
-| P2 | Missing cost | [After dark](03-after-ai-dark.png); `board_components/presentation.ex` | Zero or missing recorded cost renders “unknown”; historical and unpriced calls do not imply free usage. |
-| P3 | Small dialog | [375×812](03-after-ai-mobile.png) | Metrics wrap without horizontal overflow. |
+| P2 | AI call details | Before, after dark, after light | Added per-call estimated cost from the stored microdollar value, preserving all six decimal places where needed. The panel labels the value as an estimate from model rates. |
+| P2 | Missing cost | After dark; `board_components/presentation.ex` | Zero or missing recorded cost renders “unknown”; historical and unpriced calls do not imply free usage. |
+| P3 | Small dialog | 375×812 | Metrics wrap without horizontal overflow. |
 
 The dark capture uses real saved calls: three newer calls have positive estimates
 ($0.000279, $0.000333 and $0.000306); two older calls show unknown. This is not

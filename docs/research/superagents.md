@@ -18,10 +18,10 @@ GitHub token in the board, exposing the API on the network.
 
 Today DeepSeek is the board's default executor (`Executors.default/0 == "dsh"`),
 but **who executes** is an external `dsh-superagent`, one per repository. The
-second `o_colmex` instance was created by hand:
+second `o_portal` instance was created by hand:
 
-- profile `superagent-colmex`, port 3083, state in
-  `~/.dsh/state/superagent-colmex`;
+- profile `superagent-portal`, port 3083, state in
+  `~/.dsh/state/superagent-portal`;
 - one `LaunchAgent` per profile (`ops/com.dsh.superagent*.plist`);
 - repository, CLI, executor, policy and prompt configuration done through the
   DSH panel/API;
@@ -159,7 +159,7 @@ database.
 ### 4.4 Migrating the two current agents
 
 A data migration creates the two rows (`superagent` → arena, port 3082;
-`superagent-colmex` → o_colmex, port 3083), with the current state dirs. The
+`superagent-portal` → o_portal, port 3083), with the current state dirs. The
 second profile's `LaunchAgent` can be removed after the board successfully
 reconciles both; until then, both paths coexist.
 
@@ -420,12 +420,11 @@ the UI; phase 4 is the only one that creates external processes.
 ## 15. Evidence of the current state (baseline)
 
 - `mix xref graph --format cycles --label compile-connected` → **No cycles found**.
-- Second profile in `~/.dsh/profiles/superagent-colmex`, port 3083,
-  `repository sallaumen/o_colmex`, health ready, `problem none`.
+- Second profile in `~/.dsh/profiles/superagent-portal`, port 3083,
+  `repository example/o_portal`, health ready, `problem none`.
 - `AgentState.paths/0` today reads
   `~/.dsh/state/superagent*/orchestrator.sqlite` (wildcard) — **temporary**;
   phase 1 replaces it with explicit rows.
 - `dsh_repositories` in Configurações → Despacho local (Settings → Local
-  dispatch); the `o_colmex` composer already suggests DeepSeek.
-- `ops/com.dsh.superagent.colmex.plist` exists as proof; phase 5 removes
-  per-profile plists in favor of the board reconciler.
+  dispatch); the `o_portal` composer already suggests DeepSeek.
+- Project-specific LaunchAgents have been retired in favor of the reconciler.

@@ -12,10 +12,10 @@ defmodule AgentBoardWeb.TodayTest do
 
   setup do
     {:ok, arena} = Board.add_repository("fixture", "arena")
-    {:ok, colmex} = Board.add_repository("fixture", "colmex")
+    {:ok, portal} = Board.add_repository("fixture", "portal")
 
     blocked = task(arena, 1, "blocked", "Fila do arena")
-    ready = task(colmex, 2, "ready", "Revisar o colmex")
+    ready = task(portal, 2, "ready", "Revisar o portal")
 
     ledger("claude_code", "session-1", "claude-opus-5-5")
     ledger("dsh", "ticket-1", "deepseek-flash")
@@ -33,7 +33,7 @@ defmodule AgentBoardWeb.TodayTest do
       }
     ])
 
-    %{arena: arena, colmex: colmex, blocked: blocked, ready: ready}
+    %{arena: arena, portal: portal, blocked: blocked, ready: ready}
   end
 
   defp task(repo, number, state, title) do
@@ -111,17 +111,17 @@ defmodule AgentBoardWeb.TodayTest do
     needs = view |> element("#today-needs") |> render()
 
     assert needs =~ "fixture/arena"
-    assert needs =~ "fixture/colmex"
+    assert needs =~ "fixture/portal"
     assert needs =~ "#1"
     assert needs =~ "#2"
     assert needs =~ "Fila do arena"
-    assert needs =~ "Revisar o colmex"
+    assert needs =~ "Revisar o portal"
   end
 
-  test "uma execução local de runner aparece no Rodando agora", %{conn: conn, colmex: colmex} do
+  test "uma execução local de runner aparece no Rodando agora", %{conn: conn, portal: portal} do
     task =
       Task.changeset(%Task{}, %{
-        repository_id: colmex.id,
+        repository_id: portal.id,
         kind: "issue",
         number: 77,
         title: "Rodando no Codex",
@@ -132,7 +132,7 @@ defmodule AgentBoardWeb.TodayTest do
 
     Repo.insert!(%AgentBoard.Runners.Execution{
       task_id: task.id,
-      repository_id: colmex.id,
+      repository_id: portal.id,
       executor: "codex",
       status: "running",
       run_dir: "/tmp/today-runner",
@@ -143,8 +143,8 @@ defmodule AgentBoardWeb.TodayTest do
 
     assert has_element?(view, "#today-running", "Rodando no Codex")
     assert has_element?(view, "#today-running", "Codex")
-    assert has_element?(view, "#today-running", "fixture/colmex")
-    assert has_element?(view, "#today-projects tr", "fixture/colmex 1 1 0")
+    assert has_element?(view, "#today-running", "fixture/portal")
+    assert has_element?(view, "#today-projects tr", "fixture/portal 1 1 0")
   end
 
   test "o gasto do dia mostra as três moedas, sem somar", %{conn: conn} do
@@ -167,11 +167,11 @@ defmodule AgentBoardWeb.TodayTest do
     assert has_element?(view, "#today-overview", "PRs mesclados hoje")
     assert has_element?(view, "#today-overview", "Issues vistas hoje")
     assert has_element?(view, "#today-projects", "fixture/arena")
-    assert has_element?(view, "#today-projects", "fixture/colmex")
+    assert has_element?(view, "#today-projects", "fixture/portal")
     assert has_element?(view, "#today-trend li", "hoje")
 
-    view |> element("#today-projects button", "fixture/colmex") |> render_click()
-    assert render(view) =~ "fixture/colmex"
+    view |> element("#today-projects button", "fixture/portal") |> render_click()
+    assert render(view) =~ "fixture/portal"
     refute has_element?(view, "#today")
   end
 
@@ -192,35 +192,35 @@ defmodule AgentBoardWeb.TodayTest do
   test "clicar num item de outro repositório abre a tarefa nele", %{conn: conn} do
     {:ok, view, _html} = live(conn, @path)
 
-    assert has_element?(view, "#today-needs", "Revisar o colmex")
+    assert has_element?(view, "#today-needs", "Revisar o portal")
 
-    view |> element("#today-needs button", "Revisar o colmex") |> render_click()
+    view |> element("#today-needs button", "Revisar o portal") |> render_click()
 
-    assert has_element?(view, "#conversation-title", "Revisar o colmex")
-    assert render(view) =~ "fixture/colmex"
+    assert has_element?(view, "#conversation-title", "Revisar o portal")
+    assert render(view) =~ "fixture/portal"
   end
 
   test "um broadcast de outro repositório atualiza o Hoje aberto", %{
     conn: conn,
-    colmex: colmex
+    portal: portal
   } do
     {:ok, view, _html} = live(conn, @path)
 
-    refute has_element?(view, "#today-needs", "Nova do colmex")
+    refute has_element?(view, "#today-needs", "Nova do portal")
 
     %Task{}
     |> Task.changeset(%{
-      repository_id: colmex.id,
+      repository_id: portal.id,
       kind: "issue",
       number: 9,
-      title: "Nova do colmex",
+      title: "Nova do portal",
       state: "blocked"
     })
     |> Repo.insert!()
 
-    Board.broadcast(colmex.id)
+    Board.broadcast(portal.id)
 
-    assert has_element?(view, "#today-needs", "Nova do colmex")
+    assert has_element?(view, "#today-needs", "Nova do portal")
   end
 
   test "the project the board last showed leaves Hoje when it is clicked", %{

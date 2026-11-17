@@ -163,7 +163,7 @@ defmodule AgentBoard.DailySummaryTest do
 
   describe "the content" do
     setup do
-      {:ok, repo} = Board.add_repository("sallaumen", "agent-board")
+      {:ok, repo} = Board.add_repository("example", "agent-board")
       %{repo: repo}
     end
 
@@ -179,7 +179,7 @@ defmodule AgentBoard.DailySummaryTest do
       # #4 was outside the window; #6 was closed twice and counts once.
       assert merged["issues"] == 2
       assert Enum.map(merged["items"], & &1["number"]) == [12, 11]
-      assert hd(merged["items"])["repo"] == "sallaumen/agent-board"
+      assert hd(merged["items"])["repo"] == "example/agent-board"
     end
 
     test "says what still needs the owner, blocked first", %{repo: repo} do
@@ -369,7 +369,7 @@ defmodule AgentBoard.DailySummaryTest do
       title: title,
       closes_issues: closes,
       state: "merged",
-      url: "https://github.com/sallaumen/agent-board/pull/#{number}",
+      url: "https://github.com/example/agent-board/pull/#{number}",
       merged_at: utc(merged_at)
     })
   end
@@ -382,7 +382,7 @@ defmodule AgentBoard.DailySummaryTest do
           number: number,
           title: title,
           state: state,
-          url: "https://github.com/sallaumen/agent-board/issues/#{number}"
+          url: "https://github.com/example/agent-board/issues/#{number}"
         },
         attrs
       )

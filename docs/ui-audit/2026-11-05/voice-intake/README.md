@@ -3,14 +3,14 @@
 Baseline: `9f9e8f4` (`main` before this change). The before images were captured
 from the existing board at `http://127.0.0.1:4002` with the Split panel open.
 The after images were captured from this worktree at
-`http://127.0.0.1:4003/?panel=intake&repo=sallaumen%2Fo_colmex`. No request was
+`http://127.0.0.1:4003/?panel=intake&repo=example%2Fo_portal`. No request was
 submitted and no real microphone was opened during the browser review.
 
 | Viewport | Before | After |
 | --- | --- | --- |
-| 1366×768 | [before-1366.png](before-1366.png) | [after-1366.png](after-1366.png) |
-| 3440×1440 | [before-3440.png](before-3440.png) | [after-3440.png](after-3440.png) |
-| 375×812 | [before-375.png](before-375.png) | [after-375.png](after-375.png) |
+| 1366×768 | before-1366.png | after-1366.png |
+| 3440×1440 | before-3440.png | after-3440.png |
+| 375×812 | before-375.png | after-375.png |
 
 WebKit accessibility snapshot: the native dialog retained its name and close
 button; the request became a labeled multiline textbox; the selected
@@ -21,13 +21,13 @@ logged one TLS/clear-channel warning during the second capture; it did not
 affect the dialog.
 
 After the voice panel and read-only command PRs landed, the second WebKit pass
-used the same worktree at port 4003. The [voice panel before this action](../voice-read-commands/voice-read-after-1366.png)
+used the same worktree at port 4003. The voice panel before this action
 had only the read-only command button. The new secondary action appears in
-[after-voice-1366.png](after-voice-1366.png),
-[after-voice-3440.png](after-voice-3440.png), and
-[after-voice-375.png](after-voice-375.png). Clicking it opened the prepared
-intake draft shown in [after-draft-1366.png](after-draft-1366.png) and
-[after-draft-375.png](after-draft-375.png).
+after-voice-1366.png,
+after-voice-3440.png, and
+after-voice-375.png. Clicking it opened the prepared
+intake draft shown in after-draft-1366.png and
+after-draft-375.png.
 
 This pass typed `Crie um painel de custo por modelo` into the command textarea,
 then clicked Prepare coding request. The intake displayed that exact text and the selected
@@ -45,7 +45,7 @@ final release validation.
 After the voice action confirmation PR landed, a final WebKit pass on the
 rebased branch again filled the command field and immediately clicked Prepare
 coding request. The intake opened with the exact edited text and
-`sallaumen/o_colmex`; [after-final-1366.png](after-final-1366.png) records the
+`example/o_portal`; after-final-1366.png records the
 result. Browser Back restored the voice draft and focused the voice panel
 heading. The console reported zero errors and warnings. No Split, task action,
 microphone capture, or paid AI call was triggered.

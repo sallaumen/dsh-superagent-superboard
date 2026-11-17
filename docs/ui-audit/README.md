@@ -3,9 +3,7 @@
 > **Historical record.** Counts, captures and states describe the revisions
 > from the time of the audit, not the current product.
 
-Each round records the baseline, the method (headless WebKit, isolated fixtures) and
-the local gate that passed. Captures without a report of their own are named here so
-they are not lost.
+The reports preserve their original observations and may describe images that are no longer distributed. Only screenshots from documented synthetic datasets belong in this archive. To reproduce an audit, start with an empty test database and add fictional repositories, users and tasks; do not use a copy of a personal board.
 
 ## 2026-11-05 — main audit and parallel passes
 
@@ -26,9 +24,9 @@ Specific passes, each with its own report:
 | [round2](2026-11-05/round2/README.md) | Second visual review on the real app (components, freshness, panels, feedback) |
 | [soft-pass](2026-11-05/soft-pass/01-foundation.md) | Visual foundation ([02 — surfaces](2026-11-05/soft-pass/02-surfaces.md), [03 — AI cost](2026-11-05/soft-pass/03-ai-cost.md)) |
 | [parallel-pass/reconnect](2026-11-05/parallel-pass/reconnect/README.md) | Reconnection in depth |
-| [parallel-pass/cards](2026-11-05/parallel-pass/cards/) | Cards (paired captures) |
-| [parallel-pass/css-cleanup](2026-11-05/parallel-pass/css-cleanup/) | CSS cleanup (paired captures) |
-| [parallel-pass/settings](2026-11-05/parallel-pass/settings/) | Settings menu (paired captures) |
+| parallel-pass/cards | Cards (paired captures) |
+| parallel-pass/css-cleanup | CSS cleanup (paired captures) |
+| parallel-pass/settings | Settings menu (paired captures) |
 | [empty-board-history](2026-11-05/empty-board-history/README.md) | Empty lanes and merged PR history |
 | [header-panels](2026-11-05/header-panels/README.md) | Header panels |
 | [intake-readiness](2026-11-05/intake-readiness/README.md) | Intake readiness gate |

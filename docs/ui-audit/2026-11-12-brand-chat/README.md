@@ -7,10 +7,10 @@ simulated setup checks and a local log sample; no real AI responses were request
 
 | Surface | Before | After |
 | --- | --- | --- |
-| Board and navigation | [Desktop](before-brand.png) | [Desktop](after-brand.png) · [Dark](after-brand-dark.png) · [Mobile, dark](after-brand-mobile.png) |
-| Chat | [Desktop](before-chat.png) · [Mobile](before-chat-mobile.png) | [Desktop](after-chat.png) · [Mobile](after-chat-mobile.png) · [Skill response](after-chat-response.png) |
-| AI and setup | [Setup](before-setup.png) | [Reopened after a successful check](after-setup.png) |
-| Logs | [Standalone panel](before-logs.png) | [Inside Settings](after-logs.png) |
+| Board and navigation | Desktop | Desktop · Dark · Mobile, dark |
+| Chat | Desktop · Mobile | Desktop · Mobile · Skill response |
+| AI and setup | Setup | Reopened after a successful check |
+| Logs | Standalone panel | Inside Settings |
 
 - Both “Super” labels start at the same horizontal position. The two favicon
   formats loaded; the mobile page fit the viewport without horizontal scrolling.

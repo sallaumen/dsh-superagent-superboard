@@ -8,11 +8,11 @@ Baseline `67029d2` (#161). Audit close on 2026-11-05.
 
 | Severity | Region | Evidence before | Fix |
 |---|---|---|---|
-| P1 | Create / flash | `board_live.ex` in the baseline, lines 133–135: the result of `Board.create_task` discarded before announcing “Task created”. [Fixture before](baseline-fixture.png) also shows the same error twice. | Handle success/error; the error appears once in the shared flash, with guidance. Tests with simulated GitHub cover 422 and success. [After](actions-after-fixture.png). |
-| P1 | Conversation / repo switch | `load/2` loaded a new repo without clearing `conversation`, `comments` or `intake`; `handle_info` did not reload the conversation comments. | Clear the context on switch and update the conversation on broadcasts. [Open after](actions-conversation.png), [another empty repo](actions-empty.png). |
-| P2 | Split / AI unavailable | [Before](layout-after-1366.png): Split enabled with `not_configured`; no loading feedback of its own. | Disable with an explanation, announce “Splitting…” during submit, update the call list on completion. [After](actions-after.png). |
+| P1 | Create / flash | `board_live.ex` in the baseline, lines 133–135: the result of `Board.create_task` discarded before announcing “Task created”. Fixture before also shows the same error twice. | Handle success/error; the error appears once in the shared flash, with guidance. Tests with simulated GitHub cover 422 and success. After. |
+| P1 | Conversation / repo switch | `load/2` loaded a new repo without clearing `conversation`, `comments` or `intake`; `handle_info` did not reload the conversation comments. | Clear the context on switch and update the conversation on broadcasts. Open after, another empty repo. |
+| P2 | Split / AI unavailable | Before: Split enabled with `not_configured`; no loading feedback of its own. | Disable with an explanation, announce “Splitting…” during submit, update the call list on completion. After. |
 | P2 | AI panel | `AI.recent/1` is global; `logged_in` only checks configuration; rehearsal also said logged_in. Empty list not explained. | Show “all repositories”, recent window, explicit empty, “configured · connection not verified” and “rehearsal · local fixtures”. No claim of validated authentication. |
-| P2 | Speak / Dictate | `assets/js/app.js` returned silently when the API did not exist. “Speak” in the conversation spoke the board, not the conversation. | Feedback region and the label “Speak board status”; errors/unavailability announced. [Speak](actions-speak.png), [API missing](actions-speech-unavailable.png). |
+| P2 | Speak / Dictate | `assets/js/app.js` returned silently when the API did not exist. “Speak” in the conversation spoke the board, not the conversation. | Feedback region and the label “Speak board status”; errors/unavailability announced. Speak, API missing. |
 | P2 | Stop / Archive | `board_live.ex` had buttons with no in-transit state and no explanation of the effect. | `Stopping…`/`Archiving…`, blocking while in transit and a title explaining closing the issue versus hiding it on the board. Not triggered on real tasks. |
 
 Extra interactive verification: temporary `MIX_ENV=test` server on `localhost:4005`,
@@ -33,9 +33,9 @@ the local evidence is sufficient per PIPELINES.md. No PR was merged.
 
 | Area | Result | Evidence / limit |
 |---|---|---|
-| 1366×768, light and dark | Verified | [light](final-light-1366.png), [dark](final-dark-1366.png); no overflow, active connection |
-| 3440×1440, light and dark | Verified | [light](final-light-3440.png), [dark](final-dark-3440.png); no overflow |
-| 375×812 extra | Verified | [light](final-light-375.png), [dark](final-dark-375.png); scrollWidth=375 |
+| 1366×768, light and dark | Verified | light, dark; no overflow, active connection |
+| 3440×1440, light and dark | Verified | light, dark; no overflow |
+| 375×812 extra | Verified | light, dark; scrollWidth=375 |
 | Theme / persistence / system / keyboard | Verified | PR #154; real toggle, reload, prefers-color-scheme and focus |
 | Contrast | Samples fixed | [measurements](final-contrast.txt): primary 5.38/5.36; semantic text over base100 between 5.99 and 7.38 in light, 6.19 and 7.11 in dark. Not equivalent to full WCAG certification. |
 | Connection / reconnection / sync_error | Verified | PR #161; disconnect/connect + Activity; zero errors in the app console |
@@ -49,7 +49,7 @@ the local evidence is sufficient per PIPELINES.md. No PR was merged.
 | Dictate | Unavailability verified | Feedback with missing APIs; real recognition and microphone permissions not evaluated |
 | Screen reader | Not run | Accessibility tree, names, aria-live and keyboard inspected; no real assistive reader used |
 
-Operational limit: the local sync of `sallaumen/o_colmex` keeps receiving GitHub HTTP
+Operational limit: the local sync of `example/o_portal` keeps receiving GitHub HTTP
 404. The audit fixed the signalling and preserved the saved data; it did not change
 credentials/permissions nor try to fix repository access.
 

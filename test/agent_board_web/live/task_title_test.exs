@@ -8,7 +8,7 @@ defmodule AgentBoardWeb.TaskTitleTest do
   alias AgentBoard.Board.{PullRequest, Task}
 
   test "a task without a url still renders its title", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %Task{}
     |> Task.changeset(%{
@@ -26,7 +26,7 @@ defmodule AgentBoardWeb.TaskTitleTest do
   end
 
   test "a merged pull request without a url still renders its title", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %PullRequest{}
     |> PullRequest.changeset(%{

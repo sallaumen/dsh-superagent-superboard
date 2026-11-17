@@ -21,6 +21,7 @@ defmodule AgentBoard.Workpad do
   @not_a_failure ~r/(?:\b(?:0|zero|no|not|none|nenhum[ao]?|sem|without|n[ãa]o)|n't)\s+(?:(?!pass)\w+\s+){0,2}?(?:falh(?:ou|aram|as?)|fail(?:ed|ing|ures?|s)?)\b|\b(?:falhou|failed)\b.{0,40}?\b(?:como esperado|as expected)\b/iu
   @sha ~r/\b(?=[0-9a-f]*\d)[0-9a-f]{7,40}\b/i
   @command ~r/^`?([^`:\n]{1,80}?)`?\s*:\s*(.+)$/u
+  @quoted_command ~r/^`([^`\n]+)`\s*:\s*(.*)$/u
   @list_marker ~r/^(?:[-*+]|\d+[.)])\s+/
 
   @typedoc "One gate, as the Validação section states it; `passed?` is nil when the line names no result."
@@ -165,11 +166,8 @@ defmodule AgentBoard.Workpad do
     if text == "" or text =~ @placeholder, do: nil, else: text
   end
 
-  # The gate line: the one naming `mix precommit` when there are several,
-  # else the first failing one, else the first. A list item or a `command: result` line starts a gate; a
-  # bare line continues the previous one (a wrapped line), fences are
-  # dropped. `command: result` splits on the first colon; the sha is any hex
-  # token of seven or more characters holding a digit.
+  # Read one line per gate (joining wrapped lines). Prefer the observed failure,
+  # regardless of tool; when all pass, display evidence with a commit if present.
   defp validation(nil), do: nil
 
   defp validation(text) do
@@ -180,24 +178,20 @@ defmodule AgentBoard.Workpad do
       |> Enum.reject(&(&1 == "" or &1 =~ @fence))
       |> Enum.reduce([], &gate_line/2)
       |> Enum.reverse()
+      |> Enum.map(&gate/1)
 
-    line =
-      (Enum.find(gates, &(&1 =~ ~r/mix precommit/i)) ||
-         Enum.find(gates, &failed?/1) || List.first(gates) || "")
-      |> String.replace(~r/\s+/, " ")
-
-    {command, result} = gate_parts(line)
-
-    %{command: command, passed?: passed?(result), sha: sha(line), detail: line}
+    Enum.find(gates, &(&1.passed? == false)) || Enum.find(gates, &is_nil(&1.passed?)) ||
+      Enum.find(gates, & &1.sha) || List.first(gates)
   end
 
-  defp failed?(gate) do
-    {_command, result} = gate_parts(gate)
-    passed?(result) == false
+  defp gate(line) do
+    detail = line |> String.replace(~r/\s+/, " ") |> String.trim()
+    {command, result} = gate_parts(detail)
+    %{command: command, passed?: reported_outcome(result), sha: sha(result), detail: detail}
   end
 
   defp gate_parts(line) do
-    case Regex.run(@command, line) do
+    case Regex.run(@quoted_command, line) || Regex.run(@command, line) do
       [_, command, result] -> {String.trim(command), result}
       nil -> {nil, line}
     end
@@ -206,17 +200,20 @@ defmodule AgentBoard.Workpad do
   defp gate_line(line, gates) do
     stripped = String.replace(line, @list_marker, "")
 
-    if gates == [] or stripped != line or stripped =~ @command do
+    if gates == [] or stripped != line or stripped =~ @quoted_command or stripped =~ @command do
       [stripped | gates]
     else
       [hd(gates) <> " " <> stripped | tl(gates)]
     end
   end
 
-  defp passed?(result) do
+  @doc "The outcome an executor actually reports, or nil for missing evidence."
+  @spec reported_outcome(String.t()) :: boolean() | nil
+  def reported_outcome(result) do
     cond do
       without_negated_failures(result) =~ @fail -> false
       result =~ @pass -> true
+      result =~ ~r/\b(?:failed|falhou)\b.{0,40}?\b(?:as expected|como esperado)\b/iu -> true
       true -> nil
     end
   end

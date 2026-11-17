@@ -22,9 +22,9 @@ defmodule AgentBoard.UnblockTest do
     id: 7,
     number: 1417,
     title: "Menu central do Ateliê",
-    url: "https://github.com/sallaumen/arena-rogue/issues/1417"
+    url: "https://github.com/example/atlas-relay/issues/1417"
   }
-  @repo %Repository{id: 1, owner: "sallaumen", name: "arena-rogue"}
+  @repo %Repository{id: 1, owner: "example", name: "atlas-relay"}
 
   test "reads the newest workpad that states a question or a blockage" do
     comments = [
@@ -48,7 +48,7 @@ defmodule AgentBoard.UnblockTest do
 
     reply = %{
       kind: "user",
-      body: "Use o menu restrito.\n\n@sallaumen-agent",
+      body: "Use o menu restrito.\n\n@example-bot",
       inserted_at: ~U[2026-11-09 08:01:00Z]
     }
 
@@ -62,7 +62,7 @@ defmodule AgentBoard.UnblockTest do
   test "a same-second reply resolves the workpad using local comment order" do
     at = ~U[2026-11-09 08:00:00Z]
     workpad = %{id: 10, kind: "agent", body: @workpad, inserted_at: at}
-    reply = %{id: 11, kind: "user", body: "Sim.\n\n@sallaumen-agent", inserted_at: at}
+    reply = %{id: 11, kind: "user", body: "Sim.\n\n@example-bot", inserted_at: at}
 
     refute Unblock.context([workpad, reply])
     assert Unblock.context([%{reply | id: 9}, workpad])
@@ -73,7 +73,7 @@ defmodule AgentBoard.UnblockTest do
 
     earlier_reply = %{
       kind: "user",
-      body: "Outra decisão.\n\n@sallaumen-agent",
+      body: "Outra decisão.\n\n@example-bot",
       inserted_at: ~U[2026-11-09 07:59:00Z]
     }
 
@@ -114,7 +114,7 @@ defmodule AgentBoard.UnblockTest do
     inputs = Unblock.ai_inputs(@task, @repo, context)
 
     assert inputs["issue"] == 1417
-    assert inputs["repository"] == "sallaumen/arena-rogue"
+    assert inputs["repository"] == "example/atlas-relay"
     assert inputs["question"] =~ "menu restrito"
     assert inputs["blockage"] =~ "#1416"
   end

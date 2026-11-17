@@ -12,7 +12,7 @@ test('session creation and cold listing from a second host agree, without losing
     const id = '0123456789abcdef0123456789abcdef', profile = join(root, 'state', 'superagent')
     mkdirSync(profile, {recursive:true})
     const header = {id:'worker-'+id, cwd:join(profile, 'work','hud-redesign-'+id.slice(0,12))}
-    const ticket = {title:'Redesign do HUD', execution:{directory:header.cwd},channels:[{address:{url:'https://github.com/owner/arena-rogue/issues/224'}}]}
+    const ticket = {title:'Redesign do HUD', execution:{directory:header.cwd},channels:[{address:{url:'https://github.com/owner/atlas-relay/issues/224'}}]}
     const db = new DatabaseSync(join(profile,'orchestrator.sqlite'))
     try {
       db.exec('CREATE TABLE ticket (id TEXT PRIMARY KEY, value TEXT); CREATE TABLE kv (key TEXT PRIMARY KEY,value TEXT)')
@@ -39,8 +39,8 @@ test('session creation and cold listing from a second host agree, without losing
   } finally { rmSync(root,{recursive:true,force:true}) }
 })
 test('prefixes are bounded, stable and never leave an untitled task', () => {
-  assert.equal(projectTitle('owner/o_colmex','Corrigir\nmenu'),'COL - Corrigir menu')
-  assert.equal(projectTitle('dsh-superagent-superboard','SB - Corrigir menu'),'SB - Corrigir menu')
+  assert.equal(projectTitle('owner/portal','Corrigir\nmenu'),'POR - Corrigir menu')
+  assert.equal(projectTitle('service-board','SB - Corrigir menu'),'SB - Corrigir menu')
   assert.equal(projectTitle('ação','Untitled','ajustar-menu'),'ACA - ajustar menu')
   assert.equal(projectTitle('one-two-three-four','Criar perfil'),'OTT - Criar perfil')
 })

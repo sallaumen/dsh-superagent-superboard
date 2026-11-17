@@ -6,10 +6,10 @@ making the work area easier to scan for long sessions.
 
 | Severity | Region | Evidence | Change |
 |---|---|---|---|
-| P2 | Overall composition | [Dark before](02-before-dark.png), [after](02-after-dark.png); [light before](02-before-light.png), [after](02-after-light.png) | Grouped header, version, work area and creation form on calm token-based surfaces, with restrained radii and space between regions. |
+| P2 | Overall composition | Dark before, after; light before, after | Grouped header, version, work area and creation form on calm token-based surfaces, with restrained radii and space between regions. |
 | P2 | Controls | Same before/after | Softer buttons and fields, clearer selected theme, primary Open action; 44px general target remains. No events or payloads changed. |
-| P3 | Ultrawide and mobile | [1366×768](02-after-1366.png), [3440×1440](02-after-3440.png), [375×812](02-after-mobile.png) | Content width capped at 1880px on ultrawide; no horizontal overflow at these widths. |
-| P3 | AI dialog | [After](02-after-ai.png) | Rounded token-based dialog with the same data and navigation. |
+| P3 | Ultrawide and mobile | 1366×768, 3440×1440, 375×812 | Content width capped at 1880px on ultrawide; no horizontal overflow at these widths. |
+| P3 | AI dialog | After | Rounded token-based dialog with the same data and navigation. |
 
 WebKit confirmed 30 loaded merged records, five visible plus 25 in a keyboard
 accessible disclosure, visible focus outline, dark/light switching and AI

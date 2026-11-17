@@ -11,14 +11,14 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/sh</string>
-		<string>/Users/tavano/src/agent_board/scripts/agent/keepalive.sh</string>
+		<string>@CHECKOUT@/scripts/agent/keepalive.sh</string>
 	</array>
 
 	<!-- Not the prototype: a launchd job may not read ~/Documents (privacy
 	     protection), so the asdf shims fail to resolve a cwd there. The
 	     tmux server the manager starts can, and dsh runs from it. -->
 	<key>WorkingDirectory</key>
-	<string>/Users/tavano</string>
+	<string>@HOME@</string>
 
 	<key>EnvironmentVariables</key>
 	<dict>
@@ -26,11 +26,11 @@
 		     /opt/homebrew/bin/asdf); gh-agent lives in ~/.local/bin. A tmux
 		     server this job starts keeps this PATH for the workers. -->
 		<key>PATH</key>
-		<string>/Users/tavano/.local/bin:/Users/tavano/.asdf/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+		<string>@HOME@/.local/bin:@HOME@/.asdf/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
 		<key>LANG</key>
 		<string>en_US.UTF-8</string>
 		<key>DSH_SUPERAGENT_HOME</key>
-		<string>/Users/tavano/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype</string>
+		<string>@PROTOTYPE@</string>
 	</dict>
 
 	<key>RunAtLoad</key>
@@ -46,9 +46,9 @@
 
 	<!-- keepalive.sh writes its own log; these catch only what fails before. -->
 	<key>StandardOutPath</key>
-	<string>/Users/tavano/Library/Logs/dsh-superagent-keepalive.log</string>
+	<string>@HOME@/Library/Logs/dsh-superagent-keepalive.log</string>
 
 	<key>StandardErrorPath</key>
-	<string>/Users/tavano/Library/Logs/dsh-superagent-keepalive.log</string>
+	<string>@HOME@/Library/Logs/dsh-superagent-keepalive.log</string>
 </dict>
 </plist>

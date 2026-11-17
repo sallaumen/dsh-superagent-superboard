@@ -1,7 +1,8 @@
 defmodule AgentBoard.Usage.HarnessTest do
   @moduledoc "What the coding agent's executor spent on a task, read from its local transcripts."
-  use ExUnit.Case, async: false
+  use AgentBoard.DataCase, async: false
 
+  alias AgentBoard.Settings
   alias AgentBoard.Usage.Harness
 
   @zstd System.find_executable("zstd")
@@ -263,6 +264,10 @@ defmodule AgentBoard.Usage.HarnessTest do
       old = stale |> Path.join("worker-old/session.v4.jsonl.zstd")
       File.touch!(old, ~U[2026-11-05 00:00:00Z] |> DateTime.to_unix())
 
+      assert %{status: :unavailable, reason: :import_disabled, signature: []} =
+               Harness.window(since, until)
+
+      :ok = Settings.put("import_executor_history", "true")
       usage = Harness.window(since, until)
 
       assert usage.status == :measured
@@ -273,6 +278,8 @@ defmodule AgentBoard.Usage.HarnessTest do
     end
 
     test "window/2 with no session changed has nothing to measure" do
+      :ok = Settings.put("import_executor_history", "true")
+
       assert Harness.window(~U[2026-11-06 11:00:00Z], ~U[2026-11-07 11:00:00Z]).status ==
                :none
     end

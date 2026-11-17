@@ -31,8 +31,8 @@ your answer at HH:MM; no signal since then" instead of calling the answer a repo
 Isolated server on a copy of the real data, with two tasks set to `running`
 34 minutes earlier, one small (#209) and one large (#208), and one question:
 
-- [01](01-needs-1920-dark-en.png): the small one is "Taking long", after the question; the large one is not listed.
-- [02](02-needs-item-dark-en.png), [03](03-needs-390-light-pt.png): the item, English dark and Portuguese light at 390 px, no horizontal overflow; its button opens the task.
+- 01: the small one is "Taking long", after the question; the large one is not listed.
+- 02, 03: the item, English dark and Portuguese light at 390 px, no horizontal overflow; its button opens the task.
 
 ## Not done
 

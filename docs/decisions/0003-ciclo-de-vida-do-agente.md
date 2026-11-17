@@ -11,7 +11,7 @@ Sources read, all by static reading; nothing was executed:
 
 | Side | Files | Prefix in citations |
 |---|---|---|
-| DSH (`/Users/tavano/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype`) | `src/core/tickets.ts`, `intake.ts`, `assignments.ts`, `model.ts`, `stage.ts`; `src/executor/dsh.ts`; `src/sources/github.ts`, `github-trigger.ts`, `github-pull.ts`; `src/app/effects.ts`, `runtime.ts`; `docs/001-domain.md`, `002-authorization.md`, `003-execution.md`, `007-architecture.md`; `prompts/`; `tests/core-engine.spec.ts` | `dsh:` |
+| DSH (`/Users/example/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype`) | `src/core/tickets.ts`, `intake.ts`, `assignments.ts`, `model.ts`, `stage.ts`; `src/executor/dsh.ts`; `src/sources/github.ts`, `github-trigger.ts`, `github-pull.ts`; `src/app/effects.ts`, `runtime.ts`; `docs/001-domain.md`, `002-authorization.md`, `003-execution.md`, `007-architecture.md`; `prompts/`; `tests/core-engine.spec.ts` | `dsh:` |
 | Board (this repository) | `lib/agent_board/sync.ex`, `live.ex`, `agent_state.ex`, `board.ex`, `work.ex`, `sync/freshness.ex`, `board/task.ex`; `docs/maintainer-contract.md`; `test/agent_board/sync_repo_test.exs` | no prefix |
 | Symphony | `SPEC.md` at `be10a1b` | `SPEC.md:` |
 
@@ -36,7 +36,7 @@ DSH vocabulary (`dsh: docs/001-domain.md:35-37`): a **Ticket** is open until it 
 
 **What the board should show.** A task whose ticket is alive on a closed issue, including after the board's Parar, appears in "Precisa de você" (Needs you) with the reason "o agente continua nesta issue fechada; o board não o parou" ("the agent continues on this closed issue; the board did not stop it") and the action that resolves it (stop through the DSH API, if the contract starts allowing a write; otherwise the `scripts/dsh-superagent` command or the DSH panel). "Parado" only when SQLite shows `ended.by == "human"`.
 
-**Not verified.** The reading is unambiguous in the code, but there was no execution. Experiment: open a test issue with `@sallaumen-agent` and a request that takes a few minutes; when `scripts/agent/tickets.sh 1` shows `progress`, run `gh issue close N`; wait for two polls (`pollSeconds`, 60 s by default); in SQLite (`$STATE_DIR/orchestrator.sqlite`, `scripts/agent/_common.sh:3-5`) check that `json_extract(value,'$.ended')` is still null and `$.inputs` gained no entry; let the worker finish and check the open PR and the worktree at `work/<nome>`; in the board, check `tasks.state` at each phase and repeat with the board's Parar instead of `gh issue close`.
+**Not verified.** The reading is unambiguous in the code, but there was no execution. Experiment: open a test issue with `@example-bot` and a request that takes a few minutes; when `scripts/agent/tickets.sh 1` shows `progress`, run `gh issue close N`; wait for two polls (`pollSeconds`, 60 s by default); in SQLite (`$STATE_DIR/orchestrator.sqlite`, `scripts/agent/_common.sh:3-5`) check that `json_extract(value,'$.ended')` is still null and `$.inputs` gained no entry; let the worker finish and check the open PR and the worktree at `work/<nome>`; in the board, check `tasks.state` at each phase and repeat with the board's Parar instead of `gh issue close`.
 
 ### 2. DSH restarts with a `running` Assignment
 
@@ -70,7 +70,7 @@ DSH vocabulary (`dsh: docs/001-domain.md:35-37`): a **Ticket** is open until it 
 
 **What the board should show.** A marker "follow-up entregue ao agente às HH:MM" ("follow-up delivered to the agent at HH:MM") (from `inputs[]` with `kind: trigger` and `human: true` after `startedAt`, `readAt` saying whether the worker has read it) and, if there is a hand-back (`disposition.handbacks`), "devolvido: <motivo>; aguardando avaliação" ("returned: <reason>; awaiting evaluation"). Never a second task for the same issue.
 
-**Not verified.** The real latency and the mid-turn read. Experiment: with a `progress` ticket on issue N, comment "@sallaumen-agent também X" within scope; within ≤ 60 s, in SQLite, `$.inputs` gains `{kind: trigger, human: true, deliveredTo: <assignment atual>}` and `readAt` fills in on the worker's next step; the `disposition` table has `fanout = [ticket]` without `evalId`; the `decision` and `ticket` tables gain no row. Repeat with an out-of-scope request: `disposition.handbacks` gains the entry and `thread.pending` receives the Trigger; check whether a ticket is born whose `origin.triggerId` is that comment.
+**Not verified.** The real latency and the mid-turn read. Experiment: with a `progress` ticket on issue N, comment "@example-bot também X" within scope; within ≤ 60 s, in SQLite, `$.inputs` gains `{kind: trigger, human: true, deliveredTo: <assignment atual>}` and `readAt` fills in on the worker's next step; the `disposition` table has `fanout = [ticket]` without `evalId`; the `decision` and `ticket` tables gain no row. Repeat with an out-of-scope request: `disposition.handbacks` gains the entry and `thread.pending` receives the Trigger; check whether a ticket is born whose `origin.triggerId` is that comment.
 
 ### 4. The ticket's PR is closed without merge by a person
 

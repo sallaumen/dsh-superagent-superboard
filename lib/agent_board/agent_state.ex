@@ -9,40 +9,27 @@ defmodule AgentBoard.AgentState do
   caller gets `{:error, reason}` and the UI marks that source unavailable.
   """
 
-  @prod_default "/state/superagent/orchestrator.sqlite"
-
-  @doc """
-  The ticket databases the board reads: an explicit `:state_dbs` list, the
-  single `:state_db`, or every local superagent profile (the two agents each
-  have their own state directory), falling back to the production path.
-  """
+  @doc "Read only registered agents or explicitly configured databases; never discover tickets by scanning a home directory."
   @spec paths() :: [String.t()]
   def paths do
     case Application.get_env(:agent_board, :state_dbs) do
-      [_ | _] = paths -> paths
+      paths when is_list(paths) -> paths
       _ -> configured_paths()
     end
   end
 
   defp configured_paths do
     case Application.get_env(:agent_board, :state_db) do
-      nil -> registered_or_fallback_paths()
+      nil -> registered_paths()
       path -> [path]
     end
   end
 
-  defp registered_or_fallback_paths do
-    case Superagents.state_paths() do
-      [] -> local_or_production_paths()
-      dirs -> Enum.map(dirs, &Path.join(&1, "orchestrator.sqlite"))
-    end
+  defp registered_paths do
+    Enum.map(Superagents.state_paths(), &Path.join(&1, "orchestrator.sqlite"))
   rescue
-    _exception -> local_or_production_paths()
-  end
-
-  defp local_or_production_paths do
-    local = Path.wildcard(Path.expand("~/.dsh/state/superagent*/orchestrator.sqlite"))
-    if local == [], do: [@prod_default], else: local
+    # Database unavailable during startup: do not broaden the scope of a read.
+    _exception -> []
   end
 
   @doc "Every ticket, normalized for the board. A read failure reads as no tickets."
@@ -61,7 +48,7 @@ defmodule AgentBoard.AgentState do
 
     case Enum.filter(results, &match?({:ok, _}, &1)) do
       [] ->
-        {:error, results |> Enum.map(&elem(&1, 1)) |> List.first()}
+        {:error, results |> Enum.map(&elem(&1, 1)) |> List.first(:no_registered_agent)}
 
       successes ->
         {:ok,

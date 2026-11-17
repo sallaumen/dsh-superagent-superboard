@@ -9,29 +9,29 @@ defmodule AgentBoardWeb.BoardControllerTest do
   @board_path "/api/board"
 
   test "GET /api/repos lists the tracked repositories", %{conn: conn} do
-    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _} = Board.add_repository("example", "atlas-relay")
 
     conn = get(conn, @repo_path)
-    assert %{"owner" => "sallaumen", "name" => "arena-rogue"} = hd(json_response(conn, 200))
+    assert %{"owner" => "example", "name" => "atlas-relay"} = hd(json_response(conn, 200))
   end
 
   test "POST /api/repos tracks a repository", %{conn: conn} do
-    conn = post(conn, @repo_path, %{owner: "sallaumen", name: "o_colmex"})
+    conn = post(conn, @repo_path, %{owner: "example", name: "o_portal"})
 
-    assert %{"owner" => "sallaumen", "name" => "o_colmex"} = json_response(conn, 201)
+    assert %{"owner" => "example", "name" => "o_portal"} = json_response(conn, 201)
   end
 
   test "POST /api/repos rejects a name with a slash", %{conn: conn} do
-    conn = post(conn, @repo_path, %{owner: "sallaumen", name: "a/b"})
+    conn = post(conn, @repo_path, %{owner: "example", name: "a/b"})
 
     assert %{"error" => _} = json_response(conn, 400)
   end
 
   test "GET /api/board returns the board for a tracked repository", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     task(repo, 1, "First task", "queued")
 
-    conn = get(conn, @board_path <> "?repo=sallaumen/arena-rogue")
+    conn = get(conn, @board_path <> "?repo=example/atlas-relay")
     body = json_response(conn, 200)
 
     assert [%{"title" => "First task"}] = body["queued"]
@@ -44,7 +44,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
   end
 
   test "POST /api/tasks creates a task through the injected client", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
 
     previous = Application.get_env(:agent_board, :github_client)
     on_exit(fn -> Application.put_env(:agent_board, :github_client, previous) end)
@@ -61,7 +61,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
       Req.Test.json(conn, %{"number" => 55, "html_url" => "https://github.com/x/y/issues/55"})
     end)
 
-    params = %{repo: "sallaumen/arena-rogue", title: "From the API", body: "hi"}
+    params = %{repo: "example/atlas-relay", title: "From the API", body: "hi"}
 
     # Creating is red: the first call runs nothing and answers the sentence.
     first = post(conn, "/api/tasks", params)
@@ -69,7 +69,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
     assert %{"error" => "confirmation_required", "confirm" => phrase} = json_response(first, 428)
 
     assert phrase ==
-             "Criar no arena-rogue a tarefa “From the API”? " <>
+             "Criar no atlas-relay a tarefa “From the API”? " <>
                "O board abre a issue no GitHub para o agente pegar quando estiver em execução."
 
     assert Repo.aggregate(Task, :count, :id) == 0
@@ -83,7 +83,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
   end
 
   test "POST /api/tasks names the executor, and an unknown one is a 400", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     test_pid = self()
 
     previous = Application.get_env(:agent_board, :github_client)
@@ -107,7 +107,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
     # to pt-BR by ConnCase, which would hide a reason stored in English).
     Gettext.put_locale(AgentBoardWeb.Gettext, "en")
 
-    params = %{repo: "sallaumen/arena-rogue", title: "Placar", body: "hi", executor: "codex"}
+    params = %{repo: "example/atlas-relay", title: "Placar", body: "hi", executor: "codex"}
     first = post(conn, "/api/tasks", params)
     assert %{"confirm" => phrase} = json_response(first, 428)
     assert phrase =~ "para o Codex"
@@ -135,13 +135,13 @@ defmodule AgentBoardWeb.BoardControllerTest do
   end
 
   test "POST /api/tasks with a sentence for other values is refused", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
 
     conn =
       post(conn, "/api/tasks", %{
-        repo: "sallaumen/arena-rogue",
+        repo: "example/atlas-relay",
         title: "Other title",
-        confirm: "Criar no arena-rogue a tarefa “From the API”? Pode."
+        confirm: "Criar no atlas-relay a tarefa “From the API”? Pode."
       })
 
     assert %{"error" => "confirmation_mismatch", "confirm" => phrase} = json_response(conn, 428)
@@ -150,7 +150,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
   end
 
   test "PATCH /api/tasks of an unknown id is 404", %{conn: conn} do
-    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _} = Board.add_repository("example", "atlas-relay")
 
     conn = patch(conn, "/api/tasks/999999", %{action: "archive"})
 
@@ -158,7 +158,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
   end
 
   test "PATCH /api/tasks archives a task", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     t = task(repo, 2, "Archive me", "queued")
 
     conn = patch(conn, "/api/tasks/#{t.id}", %{action: "archive"})
@@ -168,7 +168,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
   end
 
   test "PATCH /api/tasks stop with a failing GitHub is a 502, not a missing task", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     t = task(repo, 3, "Stop me", "queued")
 
     previous = Application.get_env(:agent_board, :github_client)
@@ -194,7 +194,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
   end
 
   test "PATCH /api/tasks resumes an archived task", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     t = task(repo, 3, "Resume me", "queued")
     {:ok, _} = Board.archive_task(t)
 
@@ -205,7 +205,7 @@ defmodule AgentBoardWeb.BoardControllerTest do
   end
 
   test "PATCH /api/tasks stops a task through the injected client", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     t = task(repo, 4, "Stop me", "queued")
 
     previous = Application.get_env(:agent_board, :github_client)
