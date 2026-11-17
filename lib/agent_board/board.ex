@@ -713,21 +713,34 @@ defmodule AgentBoard.Board do
   end
 
   @doc """
-  The workpad per task number, for every task of a repository whose newest
-  agent comment is one. The local CI reads Validação from it.
+  The most recent structured report per task for historical CI. Plain agent
+  acknowledgements do not erase a receipt; a newer structured report does
+  supersede it, even when its validation is empty. The active question and
+  blockage still use the newest comment, not this history.
   """
   @spec agent_workpads(integer()) :: %{optional(integer()) => Workpad.t()}
   def agent_workpads(repository_id) do
-    repository_id
-    |> latest_agent_bodies()
-    |> Repo.all()
-    |> Enum.flat_map(fn {number, body} ->
-      case Workpad.parse(body) do
-        nil -> []
-        workpad -> [{number, workpad}]
-      end
-    end)
-    |> Map.new()
+    # Narrow the result set before parsing; the parser still decides whether
+    # this is a real visible heading, not a quote or a hidden marker.
+    Repo.all(
+      from c in Comment,
+        join: t in Task,
+        on: t.id == c.task_id,
+        where: t.repository_id == ^repository_id and c.kind == "agent",
+        where: ilike(c.body, "%relat_rio do agente%"),
+        order_by: [asc: t.number, desc: c.inserted_at, desc: c.id],
+        select: {t.number, c.body}
+    )
+    |> Enum.reduce(%{}, &keep_latest_workpad/2)
+  end
+
+  defp keep_latest_workpad({number, _}, found) when is_map_key(found, number), do: found
+
+  defp keep_latest_workpad({number, body}, found) do
+    case Workpad.parse(body) do
+      nil -> found
+      workpad -> Map.put(found, number, workpad)
+    end
   end
 
   defp latest_agent_bodies(repository_id) do

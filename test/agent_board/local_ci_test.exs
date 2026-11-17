@@ -160,6 +160,46 @@ defmodule AgentBoard.LocalCITest do
              )
   end
 
+  test "a workpad without a PR link needs one exact full head and an actual verdict" do
+    receipt = gate("local script passed on " <> @head, true, @head)
+    check = fn workpads, heads -> LocalCI.by_pr(@repo, [], workpads: workpads, heads: heads) end
+
+    assert %{489 => %{state: :pass, sha: @head, head_sha: @head}} =
+             check.(%{480 => workpad(receipt)}, %{489 => @head})
+
+    assert %{} == check.(%{480 => workpad(receipt)}, %{488 => @head, 489 => @head})
+    assert %{} == check.(%{480 => workpad(%{receipt | sha: "44653e8"})}, %{489 => @head})
+    assert %{} == check.(%{480 => workpad(%{receipt | passed?: nil})}, %{489 => @head})
+    assert %{} == check.(%{480 => workpad(receipt)}, %{})
+
+    assert %{} ==
+             check.(%{480 => workpad(receipt), 481 => workpad(%{receipt | passed?: false})}, %{
+               489 => @head
+             })
+  end
+
+  test "inference never redirects a named ticket and cannot replace direct evidence" do
+    receipt = gate("local script passed", true, @head)
+    explicit = ticket([]) |> Map.merge(%{"numbers" => [480], "own_threads" => [15]})
+
+    assert %{15 => %{state: :stale}} =
+             statuses =
+             LocalCI.by_pr(@repo, [explicit],
+               workpads: %{480 => workpad(receipt)},
+               heads: %{15 => String.duplicate("a", 40), 489 => @head}
+             )
+
+    refute Map.has_key?(statuses, 489)
+
+    direct = workpad(%{receipt | passed?: false}, [489])
+
+    assert %{489 => %{state: :fail}} =
+             LocalCI.by_pr(@repo, [],
+               workpads: %{480 => workpad(receipt), 481 => direct},
+               heads: %{489 => @head}
+             )
+  end
+
   test "a workpad with an empty Validação and no ticket yields no gate" do
     status =
       LocalCI.by_pr(@repo, [],

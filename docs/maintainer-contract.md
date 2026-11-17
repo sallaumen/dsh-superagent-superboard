@@ -341,6 +341,12 @@ that already worked).
   (`pull_requests.head_sha`, written by the sync): a gate on another commit
   is `:stale`, shown as `CI local ?` with both shas in the tooltip, never as
   a pass. A head the sync has not written yet cannot contradict the gate.
+  For CI history, a plain acknowledgement cannot erase the last structured
+  executor workpad; the current question and blockage still use the newest
+  comment. If neither the ticket nor the workpad names a PR, a full 40-digit
+  SHA can link its validation to exactly one PR head in that repository.
+  Duplicate heads or conflicting inferred verdicts give no inferred status;
+  explicit evidence wins. A human self-review is not an executor workpad.
 - **Retomada** (resume) is an optional fifth section, written only when the
   agent stops without finishing: what is done, what is left, which files to
   read first and what can be skipped. `parse/1` returns it as `resume` (also
