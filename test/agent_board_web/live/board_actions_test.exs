@@ -270,6 +270,28 @@ defmodule AgentBoardWeb.BoardActionsTest do
     assert render(view) =~ "O sync roda a cada minuto."
   end
 
+  test "closing the conversation while GitHub is responding does not abandon the send",
+       %{conn: conn} = c do
+    parent = self()
+
+    Req.Test.stub(@stub, fn conn ->
+      send(parent, {:posting, self()})
+
+      receive do: (:ack ->
+                     Req.Test.json(conn, %{"id" => 6_945_214_247, "user" => %{"login" => "me"}}))
+    end)
+
+    {view, task} = open(conn, c.task)
+    view |> element("#ask-agent") |> render_submit(%{"body" => "Continue sem a aba."})
+    assert_receive {:posting, worker}, 2000
+    monitor = Process.monitor(worker)
+    GenServer.stop(view.pid, :normal)
+    assert Process.alive?(worker)
+    send(worker, :ack)
+    assert_receive {:DOWN, ^monitor, :process, ^worker, :normal}, 2000
+    assert [%{github_id: 6_945_214_247, author: "me"}] = Board.comments(task)
+  end
+
   test "answering an unblock request closes it immediately and after reload", %{conn: conn} = c do
     task = blocked_workpad(c.task)
     Req.Test.stub(@stub, &Req.Test.json(&1, %{"id" => 6, "user" => %{"login" => "me"}}))

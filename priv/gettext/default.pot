@@ -10414,3 +10414,6 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "One item per line. Your edits apply to the objective and every selected task."
 msgstr ""
+
+msgid "Not yet confirmed by GitHub"
+msgstr ""

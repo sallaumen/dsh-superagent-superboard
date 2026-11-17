@@ -2059,6 +2059,14 @@ the 10 s poller), never on a browser timer, and says when it was computed.
   isolation), `orchestrator_test.exs` and `live/throughput_test.exs` (the strip,
   `?` for the unread, the broadcast).
 
+A conversation send has one optimistic local row. GitHub receives the unchanged
+message and agent mention with a hidden, signed receipt scoped to that task.
+Either the POST response or the comment mirror can replace that receipt with the
+GitHub comment id, including after the tab closes. A late acknowledgement cannot
+overwrite an edit already mirrored. Distinct GitHub ids remain distinct even
+when their bodies match. If delivery is interrupted, an unconfirmed row is
+labelled as such; the board never reposts it automatically.
+
 ## Network paths
 
 - Every GitHub call goes through `AgentBoard.GitHub`. A 4xx/5xx is **not** a
