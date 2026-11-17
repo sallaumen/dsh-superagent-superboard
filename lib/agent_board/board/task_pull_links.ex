@@ -4,7 +4,8 @@ defmodule AgentBoard.Board.TaskPullLinks do
   import Ecto.Query
 
   alias AgentBoard.Board.{Comment, PullRequest, Repository, Task}
-  alias AgentBoard.{GitHub, Repo}
+  alias AgentBoard.Board.TaskPullLinks.Evidence
+  alias AgentBoard.Repo
 
   @doc """
   Task ids whose linked pull request is already merged or closed.
@@ -26,7 +27,12 @@ defmodule AgentBoard.Board.TaskPullLinks do
 
     tasks
     |> Enum.filter(fn task ->
-      number = linked_number(task, Map.get(comments_by_task, task.id, []), repositories)
+      number =
+        Evidence.named_number(
+          task.body,
+          Map.get(comments_by_task, task.id, []),
+          repositories[task.repository_id]
+        )
 
       case Map.get(pulls, {task.repository_id, number}) do
         %PullRequest{state: state} when state in ["merged", "closed"] -> true
@@ -62,7 +68,11 @@ defmodule AgentBoard.Board.TaskPullLinks do
       tasks
       |> Enum.map(fn task ->
         {task.repository_id,
-         linked_number(task, Map.get(comments_by_task, task.id, []), repositories)}
+         Evidence.named_number(
+           task.body,
+           Map.get(comments_by_task, task.id, []),
+           repositories[task.repository_id]
+         )}
       end)
       |> Enum.filter(fn {_repository_id, number} -> is_integer(number) end)
       |> Enum.uniq()
@@ -79,13 +89,6 @@ defmodule AgentBoard.Board.TaskPullLinks do
       )
       |> Map.new(&{{&1.repository_id, &1.number}, &1})
     end
-  end
-
-  defp linked_number(task, comments, repositories) do
-    repository = Map.get(repositories, task.repository_id)
-
-    Enum.find_value(Enum.reverse(comments), &pull_number(&1.body, repository)) ||
-      pull_number(task.body, repository)
   end
 
   @doc """
@@ -107,7 +110,12 @@ defmodule AgentBoard.Board.TaskPullLinks do
 
     named =
       Enum.reduce(tasks, %{}, fn task, acc ->
-        number = linked_number(task, Map.get(comments_by_task, task.id, []), repositories)
+        number =
+          Evidence.named_number(
+            task.body,
+            Map.get(comments_by_task, task.id, []),
+            repositories[task.repository_id]
+          )
 
         case Map.get(pulls, {task.repository_id, number}) do
           nil -> acc
@@ -162,23 +170,9 @@ defmodule AgentBoard.Board.TaskPullLinks do
         _ -> Repo.get(Repository, task.repository_id)
       end
 
-    number = linked_number(task, comments, %{task.repository_id => repository})
+    number = Evidence.named_number(task.body, comments, repository)
 
     if repository && number, do: find_pull_request(repository, number)
-  end
-
-  # Only a link to the task's own repository counts: the number alone would
-  # match this repository's PR of the same number.
-  defp pull_number(nil, _repository), do: nil
-  defp pull_number(_text, nil), do: nil
-
-  defp pull_number(text, %Repository{owner: owner, name: name}) do
-    ~r{https://github\.com/([^/\s]+)/([^/\s]+)/pull/(\d+)}
-    |> Regex.scan(text)
-    |> Enum.find_value(fn [_, link_owner, link_name, number] ->
-      if String.downcase("#{link_owner}/#{link_name}") == String.downcase("#{owner}/#{name}"),
-        do: GitHub.number(number)
-    end)
   end
 
   @doc "A saved pull request in one repository, regardless of its archive page."
