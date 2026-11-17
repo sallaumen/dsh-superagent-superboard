@@ -2,7 +2,20 @@ defmodule AgentBoard.Lanes.Attention.Blocked do
   @moduledoc "Evidence and actions for a blocked task's attention card."
   use Gettext, backend: AgentBoardWeb.Gettext
 
+  alias AgentBoard.AgentBlock
   alias AgentBoard.Lanes.Attention.ReportNotice
+
+  @doc "Explain only selected blocked candidates, retaining every candidate and its input order."
+  @spec explain([map()], map(), keyword()) :: [map()]
+  def explain(candidates, tickets, opts) do
+    Enum.map(candidates, fn
+      %{kind: :blocked, task: task} = candidate ->
+        Map.put(candidate, :block, AgentBlock.explain(tickets[task.number], opts))
+
+      candidate ->
+        candidate
+    end)
+  end
 
   @doc "Group distinct issue numbers by repository only for visible blocks without a ticket explanation."
   @spec report_numbers([map()]) :: %{optional(integer()) => [integer()]}
