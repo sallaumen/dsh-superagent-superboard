@@ -17,7 +17,7 @@ defmodule AgentBoard.TicketPollerTest do
   # the insert broadcast, so assert_receive below proves the poll broadcast.
   defp isolated_repo do
     %Repository{}
-    |> Repository.changeset(%{owner: "sallaumen", name: "arena-rogue"})
+    |> Repository.changeset(%{owner: "example", name: "atlas-relay"})
     |> Ecto.Changeset.put_change(:id, 1_000_000 + System.unique_integer([:positive]))
     |> Repo.insert!()
   end
@@ -200,12 +200,12 @@ defmodule AgentBoard.TicketPollerTest do
 
     other =
       %Repository{}
-      |> Repository.changeset(%{owner: "sallaumen", name: "o_colmex"})
+      |> Repository.changeset(%{owner: "example", name: "o_portal"})
       |> Ecto.Changeset.put_change(:id, 1_000_000 + System.unique_integer([:positive]))
       |> Repo.insert!()
 
     ticket = fn state ->
-      ~s({"channels":[{"address":{"url":"https://github.com/sallaumen/arena-rogue/issues/42"}}],"mandate":{"basis":{"scope":{"number":42}}},"assignments":[{"state":"#{state}"}]})
+      ~s({"channels":[{"address":{"url":"https://github.com/example/atlas-relay/issues/42"}}],"mandate":{"basis":{"scope":{"number":42}}},"assignments":[{"state":"#{state}"}]})
     end
 
     :ok =
@@ -289,7 +289,7 @@ defmodule AgentBoard.TicketPollerTest do
     assert Repo.get(Task, t.id).state == "blocked"
   end
 
-  # The runner's own record of arena-rogue #208: one Assignment, the waiting
+  # The runner's own record of atlas-relay #208: one Assignment, the waiting
   # report of 17:00, the owner's message read at 17:45.
   @answered ~s({"mandate":{"basis":{"scope":{"number":42}}},"assignments":[{"id":"a1","state":"running","startedAt":"2026-11-10T16:56:37.142Z","idleAt":"2026-11-10T17:00:44.619Z","report":{"state":"waiting","summary":"A chave da OpenAI esta sem creditos.","at":"2026-11-10T17:00:44.619Z"}}],"inputs":[{"kind":"trigger","human":true,"at":"2026-11-10T17:45:11.911Z","readAt":"2026-11-10T17:45:12.054Z","deliveredTo":"a1"}]})
 
@@ -314,7 +314,7 @@ defmodule AgentBoard.TicketPollerTest do
     |> Comment.changeset(%{
       task_id: t.id,
       github_id: 1,
-      author: "sallaumen-agent",
+      author: "example-bot",
       body: "Devo manter o chefe na onda 5?\n\n<!-- dsh-superagent:abc -->",
       kind: "agent"
     })
@@ -344,7 +344,7 @@ defmodule AgentBoard.TicketPollerTest do
     |> Comment.changeset(%{
       task_id: t.id,
       github_id: 2,
-      author: "sallaumen-agent",
+      author: "example-bot",
       body: "Devo manter o chefe na onda 5?\n\n<!-- dsh-superagent:abc -->",
       kind: "agent"
     })

@@ -163,8 +163,8 @@ defmodule AgentBoard.Voice.Commands do
       items: [
         %{
           say: %{
-            "pt-BR" => "Cria uma tarefa no arena rogue para mostrar o volume",
-            "en-US" => "Create a task in arena rogue to show the volume"
+            "pt-BR" => "Cria uma tarefa neste projeto para mostrar o volume",
+            "en-US" => "Create a task in this project to show the volume"
           },
           does: gettext_noop("refines the request and asks, naming the repository and the title"),
           mode: :confirm,
@@ -229,7 +229,7 @@ defmodule AgentBoard.Voice.Commands do
           try: false
         },
         %{
-          say: %{"pt-BR" => "Muda para o arena rogue", "en-US" => "Switch to arena rogue"},
+          say: %{"pt-BR" => "Muda para o projeto <nome>", "en-US" => "Switch to project <name>"},
           does: gettext_noop("switches project"),
           mode: :read,
           try: false

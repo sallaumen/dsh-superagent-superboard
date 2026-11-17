@@ -13,7 +13,7 @@ defmodule AgentBoard.Usage.ReportTest do
         source: source,
         execution_id: execution,
         day: day,
-        cwd: "/tmp/arena-rogue",
+        cwd: "/tmp/atlas-relay",
         git_branch: "feat/x",
         model: "deepseek-flash",
         requests: 1,
@@ -65,7 +65,7 @@ defmodule AgentBoard.Usage.ReportTest do
         execution_id: "ticket-1",
         at: at,
         day: day,
-        cwd: "/tmp/arena-rogue",
+        cwd: "/tmp/atlas-relay",
         git_branch: "feat/x",
         model: "deepseek-flash",
         input_tokens: 1_000_000,
@@ -137,7 +137,7 @@ defmodule AgentBoard.Usage.ReportTest do
         execution_id: "s1",
         at: at,
         day: ~D[2026-11-07],
-        cwd: "/tmp/arena-rogue",
+        cwd: "/tmp/atlas-relay",
         git_branch: "feat/x",
         model: "claude-opus-5-5",
         input_tokens: 1_000_000,
@@ -220,7 +220,7 @@ defmodule AgentBoard.Usage.ReportTest do
 
     ledger("claude_code", "session-3", day, %{
       model: "claude-opus-5-5",
-      cwd: "/tmp/forrozin-page",
+      cwd: "/tmp/catalog-page",
       git_branch: "main"
     })
 
@@ -232,7 +232,7 @@ defmodule AgentBoard.Usage.ReportTest do
     assert claude.merged.rate == 1.0
     assert_in_delta claude.merged.median_hours, 10.0, 0.1
     assert claude.direct == [{"fixture/panel", 1}]
-    assert claude.outside == [{"forrozin-page", 1}]
+    assert claude.outside == [{"catalog-page", 1}]
     assert claude.executions == 3
   end
 

@@ -11,10 +11,10 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
   alias AgentBoard.{Board, DailySummary, Repo}
   alias AgentBoard.DailySummary.Entry
 
-  @path "/?repo=sallaumen/arena-rogue"
+  @path "/?repo=example/atlas-relay"
 
   setup do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
     :ok
   end
 
@@ -77,13 +77,13 @@ defmodule AgentBoardWeb.DailySummaryLiveTest do
           "issues" => 1,
           "items" => [
             %{
-              "repo" => "sallaumen/arena-rogue",
+              "repo" => "example/atlas-relay",
               "number" => 12,
               "title" => "Menu",
               "url" => "u12"
             },
             %{
-              "repo" => "sallaumen/arena-rogue",
+              "repo" => "example/atlas-relay",
               "number" => 11,
               "title" => "Mapa",
               "url" => "u11"

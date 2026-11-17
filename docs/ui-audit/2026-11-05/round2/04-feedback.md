@@ -3,9 +3,9 @@
 | Severity | Region | Evidence | Correction |
 |---|---|---|---|
 | P2 | Motion | `assets/css/app.css:156`; `core_components.ex:460` | Card/dialog/flash entry is opacity-only, 120 ms, with no action delay. Reduced-motion disables animations/transitions. Broadcasts do not replay card entry. |
-| P2 | Loading | [Read-only panel open with simulated latency](04-loading.png) | Existing phx-click/submit loading state adds a dashed boundary and progress cursor. Existing submitting labels remain. |
-| P2 | Icons | [Before](04-before.png), [after](04-after.png) | Clock = Activity, scissors = Split, CPU = AI, X = Close. Useful text remains. Shared Heroicons are decorative/aria-hidden; control names come from text or aria-label. No icon claims successful sync/model health. |
-| P2 | Flash | [Duplicate behind the backdrop](04-flash-before.png), [single visible notice inside panel](04-flash.png) | The active panel owns visible feedback. Dismissal is immediate; global flash is hidden only while a modal is active. |
+| P2 | Loading | Read-only panel open with simulated latency | Existing phx-click/submit loading state adds a dashed boundary and progress cursor. Existing submitting labels remain. |
+| P2 | Icons | Before, after | Clock = Activity, scissors = Split, CPU = AI, X = Close. Useful text remains. Shared Heroicons are decorative/aria-hidden; control names come from text or aria-label. No icon claims successful sync/model health. |
+| P2 | Flash | Duplicate behind the backdrop, single visible notice inside panel | The active panel owns visible feedback. Dismissal is immediate; global flash is hidden only while a modal is active. |
 
 Computed WebKit results:
 
@@ -17,7 +17,7 @@ Computed WebKit results:
   This error was produced only in the isolated fixture with an offline AI adapter;
   no real model request, GitHub task or message was submitted.
 - Final light/dark checks: no horizontal overflow at **1366×768**, **3440×1440**,
-  **375×812**. [1600×900](final-1600.png), [AI panel](final-ai-panel.png).
+  **375×812**. 1600×900, AI panel.
 - Final console: zero errors or warnings; browser and task-owned servers closed.
 
 `scripts/ci-local.sh all`: **172 tests, 0 failures**, strict checks, Sobelow,

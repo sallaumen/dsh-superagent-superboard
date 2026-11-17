@@ -2,9 +2,9 @@
 
 | Severity | Region | Evidence | Correction |
 |---|---|---|---|
-| P1 | Header | [Before: socket live with a ten-minute-old completed sync](02-before.png); [after](02-after.png) | Last completed sync has locally advancing age. Delayed at 2 minutes; stale at 5 minutes, using warning/error tokens plus text. Thresholds reflect the one-minute sync cadence. |
-| P1 | Failed sync | [Saved data](02-saved-data.png) | The error timestamp is labeled last attempt, never last refresh. Saved-data age stays unknown; existing dated sync failure remains visible. |
-| P2 | Record age | [After](02-after.png), `board_components/data_age.ex` | Task/pull, activity, comment and AI timestamps carry a relative age plus full UTC date in title/datetime. Old activity alone does not imply unhealthy sync. |
+| P1 | Header | Before: socket live with a ten-minute-old completed sync; after | Last completed sync has locally advancing age. Delayed at 2 minutes; stale at 5 minutes, using warning/error tokens plus text. Thresholds reflect the one-minute sync cadence. |
+| P1 | Failed sync | Saved data | The error timestamp is labeled last attempt, never last refresh. Saved-data age stays unknown; existing dated sync failure remains visible. |
+| P2 | Record age | After, `board_components/data_age.ex` | Task/pull, activity, comment and AI timestamps carry a relative age plus full UTC date in title/datetime. Old activity alone does not imply unhealthy sync. |
 
 The age hook uses the server clock plus monotonic elapsed browser time, updates
 every 15 seconds and on tab visibility, and cleans up its timer. It performs no
@@ -13,7 +13,7 @@ timestamps cannot look fresh. This does not invent a runner heartbeat: the domai
 exposes a poller but no reliable last-successful-poll timestamp.
 
 WebKit verified stale state on isolated test records; real stored data at port
-4002 showed a sync failure with unknown saved-data age. [375 px](02-mobile.png)
+4002 showed a sync failure with unknown saved-data age. 375 px
 has no horizontal overflow. Browser closed. Only unsent input text and read-only
 operations; no actual tasks/messages created.
 

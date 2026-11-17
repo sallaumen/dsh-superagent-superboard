@@ -6,8 +6,9 @@ defmodule AgentBoard.ExecutorsTest do
   alias AgentBoard.Executors
 
   test "the mention follows the configured login" do
+    previous = Application.fetch_env!(:agent_board, :agent_login)
     Application.put_env(:agent_board, :agent_login, "other-bot")
-    on_exit(fn -> Application.delete_env(:agent_board, :agent_login) end)
+    on_exit(fn -> Application.put_env(:agent_board, :agent_login, previous) end)
 
     assert Executors.mention_suffix() == "\n\n@other-bot"
     assert Executors.issue_body("Add a boss\n\n@other-bot", "dsh") == "Add a boss\n\n@other-bot"
@@ -15,19 +16,19 @@ defmodule AgentBoard.ExecutorsTest do
   end
 
   test "the DeepSeek runner's issue ends with the bot's mention, once" do
-    assert Executors.issue_body("Add a boss", "dsh") == "Add a boss\n\n@sallaumen-agent"
+    assert Executors.issue_body("Add a boss", "dsh") == "Add a boss\n\n@example-bot"
 
-    assert Executors.issue_body("Add a boss\n\n@sallaumen-agent\n", "dsh") ==
-             "Add a boss\n\n@sallaumen-agent"
+    assert Executors.issue_body("Add a boss\n\n@example-bot\n", "dsh") ==
+             "Add a boss\n\n@example-bot"
   end
 
   test "another executor's issue mentions nobody, even inside the text" do
-    body = "Ask @sallaumen-agent later.\n\n@sallaumen-agent"
+    body = "Ask @example-bot later.\n\n@example-bot"
 
     for executor <- ["claude", "codex"] do
       result = Executors.issue_body(body, executor)
-      refute result =~ "@sallaumen-agent"
-      assert result == "Ask sallaumen-agent later."
+      refute result =~ "@example-bot"
+      assert result == "Ask example-bot later."
     end
   end
 

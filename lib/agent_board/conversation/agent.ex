@@ -113,7 +113,7 @@ defmodule AgentBoard.Conversation.Agent do
 
   # Every word is one of `allowed` or filler, and at least one is not filler
   # ("valeu" alone confirms nothing). English "no" is checked here, whole: in
-  # Portuguese it means "in the" ("cria no colmex").
+  # Portuguese it means "in the" ("cria no portal").
   defp only?(phrase, allowed) do
     words =
       phrase
@@ -960,7 +960,7 @@ defmodule AgentBoard.Conversation.Agent do
 
   defp find_task(_repo, _number), do: nil
 
-  @doc "The tracked repository a spoken name points at (`arena rogue` → `owner/arena-rogue`)."
+  @doc "The tracked repository a spoken name points at (`atlas relay` → `owner/atlas-relay`)."
   def match_repository(_repos, name) when name in [nil, ""], do: nil
 
   def match_repository(repos, name) do

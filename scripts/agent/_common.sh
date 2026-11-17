@@ -7,6 +7,12 @@ API="${SUPERAGENT_API:-http://127.0.0.1:${DSH_SUPERAGENT_PORT:-3082}/orchestrato
 DB="$STATE_DIR/orchestrator.sqlite"
 # The prototype checkout: its scripts/dsh-superagent starts, stops and checks
 # the orchestrator (keepalive.sh).
-DSH_SUPERAGENT_HOME="${DSH_SUPERAGENT_HOME:-$HOME/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype}"
+if [ -z "${DSH_SUPERAGENT_HOME:-}" ]; then
+  DSH_SUPERAGENT_HOME="${DSH_HOME:-$HOME/.dsh}/dsh-superagent"
+  legacy="$HOME/Documents/deepseek-harness/default-workspace/dsh-superagent-prototype"
+  if [ ! -f "$DSH_SUPERAGENT_HOME/scripts/dsh-superagent" ] && [ -f "$legacy/scripts/dsh-superagent" ]; then
+    DSH_SUPERAGENT_HOME="$legacy"
+  fi
+fi
 
 api() { curl -s -H "x-orchestrator-request: 1" "$API/state"; }

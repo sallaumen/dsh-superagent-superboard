@@ -94,14 +94,14 @@ how it runs:
 | Bugs and failures | "O que está falhando?" (what is failing?) | red CI on an open PR, blocked tasks, open runs whose last report failed, runs that ended without a merge, sync failure |
 | | "Teve erro na voz?" (was there a voice error?) | the voice's own recent errors |
 | Search | "Acha a tarefa sobre volume" (find the task about volume) | searches task titles and descriptions and PR titles, without accents ("botao" finds "botão") |
-| Requests | "Cria uma tarefa no arena rogue para …" (create a task in arena rogue for …) | refines and asks "Criar no arena-rogue a tarefa “…”?" |
+| Requests | "Cria uma tarefa no atlas relay para …" (create a task in atlas relay for …) | refines and asks "Criar no atlas-relay a tarefa “…”?" |
 | | "Cria direto: …" (create directly: …) | creates at once and says "Se não era isso, diga desfaz" (if that wasn't it, say undo) |
 | | "Desfaz" (undo) | closes the last task the voice created, in the last 10 minutes (local) |
 | | "Pergunta pro agente da 12 se …" (ask the agent of 12 whether …) | after the yes, comments on the issue and speaks the answer when it arrives |
 | | "Para a 7" / "Arquiva a 7" (stop 7 / archive 7) | says which one it is and what happens, and asks |
 | The conversation | "sim" / "não" (yes / no) | confirms or cancels the pending proposal (local) |
 | | "Repete", "mais devagar/rápido/alto/baixo" (repeat, slower/faster/louder/quieter) | local, no model |
-| | "Abre a 42", "Muda para o arena rogue", "Esquece a conversa", "Ajuda" (open 42, switch to arena rogue, forget the conversation, help) | navigates, switches project, erases the memory, opens the list |
+| | "Abre a 42", "Muda para o atlas relay", "Esquece a conversa", "Ajuda" (open 42, switch to atlas relay, forget the conversation, help) | navigates, switches project, erases the memory, opens the list |
 
 **How a read answers.** `voice_agent` picks `look` and the type (`task`, `runs`,
 `failures`, `search`, `activity`). The board reads its own data

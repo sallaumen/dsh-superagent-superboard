@@ -286,7 +286,7 @@ defmodule AgentBoard.SyncTest do
   end
 
   describe "a person's answer the worker read" do
-    # arena-rogue #208, 2026-11-10: the owner answered at 14:44, the worker read
+    # atlas-relay #208, 2026-11-10: the owner answered at 14:44, the worker read
     # it a second later and worked for 35 minutes under a "Blocked" card,
     # because the report it had written before the answer still said waiting.
     @waited ~U[2026-11-10 17:00:44Z]

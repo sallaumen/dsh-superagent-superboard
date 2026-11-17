@@ -12,7 +12,7 @@ fake orchestrator. Driven with the Playwright MCP (headless WebKit, one tab, clo
 and English. Lane states (3 running, 1 blocked, 1 question, 2 review, 17 queued, one 190-character
 title, two equal titles) were written into the copy only.
 
-The copy held 737 merged PRs within 7 days (arena-rogue 97, o_colmex 478, superboard 162) and 115 tasks
+The copy held 737 merged PRs within 7 days (atlas-relay 97, o_portal 478, superboard 162) and 115 tasks
 (112 `done`).
 
 | Window | `main` | Lanes | Days | Flow | Horizontal scroll |
@@ -29,7 +29,7 @@ The copy held 737 merged PRs within 7 days (arena-rogue 97, o_colmex 478, superb
 
 Zoom was emulated by the equivalent CSS width: 1920 at 125 % is 1536 (2 lane columns), at 150 % is 1280
 (1 lane column); 3440 and 5120 at 150 % are 2293 and 3413 (capped at 1980). Also covered: dark theme
-(1920, 3440, 390), inspector open at eight widths, idle and working board, o_colmex with 478 merges,
+(1920, 3440, 390), inspector open at eight widths, idle and working board, o_portal with 478 merges,
 frozen sync ("Sem conexão", `≥` counts, absolute ages), orchestrator down ("Agente fora do ar"),
 socket down ("Reconectando"), Tab order, `J`/`K`/`Enter`/`Esc`, browser back.
 
@@ -54,7 +54,7 @@ Class: **D** confirmed defect, **F** UX friction with observable impact, **S** p
 
 | # | Class | Finding | Evidence | Status |
 |---|---|---|---|---|
-| 1 | F | A merged PR never leads to its task. `pull_requests.closes_issues` already says which task it closes (87 of 97 in arena-rogue, 9 of 478 in o_colmex) | `a.ab-pr[target=_blank]`, `.archive-row a` | fixed in the second delivery (P1) |
+| 1 | F | A merged PR never leads to its task. `pull_requests.closes_issues` already says which task it closes (87 of 97 in atlas-relay, 9 of 478 in o_portal) | `a.ab-pr[target=_blank]`, `.archive-row a` | fixed in the second delivery (P1) |
 | 2 | F | A concluded task is in no list. History is PRs only: 15 done tasks have no closing PR and appear nowhere; a stopped task and an issue closed without a merge cannot be told apart from a merge | `Board.@task_states`, `Archive` | fixed: History lists ended tasks (#534) |
 | 3 | F | Cost of a task takes: knowing the task URL, the "Chamadas de IA" tab, and the "Executor do agente" block under the board's own calls. No PR and no list row shows any cost | `inspector.ex` | fixed: inspector header (#520), ended rows (#549), merged PR rows (#595) |
 | 4 | D | A board call under one cent read **$0.00**, in the row and in the total | `before-inspector-cost-1920.png` | fixed: `< $0.01` |
@@ -157,7 +157,7 @@ Known costs, said plainly:
 - At 5120 the panes are 2200 and 2560 px wide: sparse, though nothing stretches. Only emulated.
 - At 3440 with the inspector open a day column is 190 px, the narrowest it gets.
 
-Captures in `wide/`: `colmex-idle-en-dark-3440x1317.png` (the owner's case: idle, English, dark),
+Captures in `wide/`: `portal-idle-en-dark-3440x1317.png` (the owner's case: idle, English, dark),
 `busy-3440x1440.png`, `busy-dark-3440x1440.png`, `busy-3840x1080.png`, `busy-5120x1440.png`,
 `busy-2560x1440.png`, `busy-1920x1080.png`, `inspector-3440x1440.png`, `inspector-5120x1440.png`,
 `hoje-3440x1440.png`, `hoje-2560x1440.png`.
@@ -192,7 +192,7 @@ issue; otherwise "closed, no merged PR", stopped or archived) and opening the ta
 search by number or title is answered by the server and kept in the URL. **Merged PRs** is the second
 list, unchanged; "and N more" in the merged strip opens it.
 
-Walked on the copy of the real data (arena-rogue, 107 done, 1 stopped): 50 rows on the first page
+Walked on the copy of the real data (atlas-relay, 107 done, 1 stopped): 50 rows on the first page
 under "Today", "Yesterday, 9 Nov", "Sunday, 8 Nov"; `#184` finds one row and "arco" four; a row opens
 the inspector and back returns to History with the search in place; a reload keeps list and search;
 `Esc` closes the panel; no horizontal scroll at 390 px. Two new reads when the panel shows the list,
@@ -214,7 +214,7 @@ to the inspector. `closes_issues` is already on the rows `merge_log/2` and the h
 board load gains no query; the lookup happens on the click. A closed issue the board does not track
 answers with a notice.
 
-- Rejected: making the inspector the row's primary target. In o_colmex 98 % of the merged PRs have no
+- Rejected: making the inspector the row's primary target. In o_portal 98 % of the merged PRs have no
   task, so the same row would behave in two ways.
 - The relation is not 1:1 by schema. Today no PR closes two tasks and no task has two closing PRs, but
   `Attribution.task_for_pull/2` takes the first closed issue that is a task; the link follows that rule.

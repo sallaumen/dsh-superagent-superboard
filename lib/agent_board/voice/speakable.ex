@@ -4,9 +4,9 @@ defmodule AgentBoard.Voice.Speakable do
 
   The model and the board write for the screen: markdown, `#42`, links and
   `owner/repo` slugs. A voice reads those literally ("cerquilha quarenta e
-  dois", "sallaumen barra arena hífen rogue"). This module rewrites only what
+  dois", "example barra atlas hífen relay"). This module rewrites only what
   a listener would stumble on and leaves the words alone. A hyphen between
-  letters becomes a space ("arena-rogue", and "bem-vindo" reads the same).
+  letters becomes a space ("atlas-relay", and "bem-vindo" reads the same).
   """
 
   # owner/repo: both sides at least three characters of slug alphabet, so a

@@ -14,7 +14,7 @@ defmodule AgentBoard.Logs do
   service sets it) or `~/Library/Logs/AgentBoard.log`. The superagent sources
   are built from the profiles in `Superagents.list/0`, never from a value a
   browser sends: `superagent` reads `dsh-superagent-keepalive.log` and
-  `superagent-colmex` reads `dsh-superagent-colmex-keepalive.log` in
+  `superagent-portal` reads `dsh-superagent-portal-keepalive.log` in
   `~/Library/Logs` (or `:superagent_log_dir`).
 
   A source that has no file or cannot be read is reported as `:missing` or
@@ -125,8 +125,8 @@ defmodule AgentBoard.Logs do
 
   @doc """
   The keepalive log path for a profile: `superagent` ->
-  `dsh-superagent-keepalive.log`, `superagent-colmex` ->
-  `dsh-superagent-colmex-keepalive.log`. Returns nil for anything that is not
+  `dsh-superagent-keepalive.log`, `superagent-portal` ->
+  `dsh-superagent-portal-keepalive.log`. Returns nil for anything that is not
   a plain profile name.
   """
   @spec superagent_log_path(term()) :: String.t() | nil

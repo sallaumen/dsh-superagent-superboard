@@ -786,7 +786,7 @@ Agora and the detail):
 - **Voice asks** are a write and always confirmed: the conversation's
   `ask_task` action becomes a proposal naming the task and the question,
   and only the spoken yes posts it (`Board.ask/3`, a comment with
-  `@sallaumen-agent`). Its reply — the first new agent comment on the task
+  `@example-bot`). Its reply — the first new agent comment on the task
   after the confirmation that is not the workpad, within a day — is recorded
   once on a board update (`Conversation.arrived_answers/1`, claimed by the
   conditional `mark_answered/1` so a second tab stays quiet), joins the
@@ -984,7 +984,7 @@ Code (`claude`) or Codex (`codex`): `tasks.executor`, nil for an issue the
 sync found or a task created before the choice existed.
 
 - **The runner is dispatched by the mention, and only the runner.** Its
-  issue ends with `@sallaumen-agent`; anyone else's mentions nobody, and a
+  issue ends with `@example-bot`; anyone else's mentions nobody, and a
   mention inside the text loses its `@` (`Executors.issue_body/2`). Every
   board issue for an executor carries the label `executor:<name>`, which
   GitHub creates on first use.
@@ -1006,12 +1006,12 @@ sync found or a task created before the choice existed.
   carries the mention its confirmation always promised; before, a voice
   issue had none and the runner only observed it.
 - **Why the runner leaves those issues alone, and its limit.** The board
-  opens issues as `sallaumen`, a listed sender. An issue without the
+  opens issues as the owner, a listed sender. An issue without the
   mention is a `listedUnaddressed` message: the runner admits it as an
   *inferred* candidate and runs its evaluation, and with `eval.mode`
   `observe` (read 2026-11-07) an inferred acceptance only becomes
   `observed`, never a ticket (`dsh: src/policy.ts`, `assessmentOutcome`).
-  Observed live on 2026-11-07 with `sallaumen/arena-rogue#69` (decision
+  Observed live on 2026-11-07 with `example/atlas-relay#69` (decision
   `ignore`, strength `inferred`, no ticket) and before on `#14`. With
   `eval.mode` `auto`, an issue matching the copy or visual rule would become
   an inferred ticket; the unconditional guard is the runner's setting
@@ -1128,19 +1128,10 @@ flowchart LR
 DeepSeek is the board's default executor (`Executors.default/0`), and its
 work does not go through `Runners`: it is a separate `dsh-superagent` process
 that watches one GitHub repository and picks the issues whose body mentions
-`sallaumen-agent`. Claude Code and Codex are the opt-in local runners.
+the bot account configured on that installation. Claude Code and Codex are the opt-in local runners.
 
-- **One superagent per repository.** The primary profile (`superagent`, port
-  3082) watches `sallaumen/arena-rogue`; the `superagent-colmex` profile
-  (port 3083, state `~/.dsh/state/superagent-colmex`) watches
-  `sallaumen/o_colmex`. Each has its own LaunchAgent
-  (`ops/com.dsh.superagent*.plist`) running `scripts/agent/keepalive.sh`, and
-  the second profile is set through `DSH_SUPERAGENT_PROFILE`,
-  `DSH_SUPERAGENT_PORT` and `SUPERAGENT_STATE_DIR`.
-- **The board reads every local superagent state database**
-  (`~/.dsh/state/superagent*/orchestrator.sqlite`); tickets are merged by
-  repository, so the DeepSeek lane shows both. `AgentState.paths/0` also
-  accepts an explicit `:state_dbs` list.
+- **Connections belong to the owner.** No migration or fixture may register a project or agent on a new board. Only the repositories the owner registers appear as projects; only a connected agent has a profile. The initial project is the first one registered unless the URL selects one.
+- **Ticket sources are scoped.** Read registered agent state directories, or the explicitly configured `:state_dbs`/`:state_db` override. A GitHub-only installation with neither must not read tickets from unrelated profiles on the machine.
 - **A retry, the load and the ceiling go to the repository's agent.**
   `Orchestrator.client_for/1` binds the client to the port of the repository's
   superagent row, and a repository without a row uses the primary

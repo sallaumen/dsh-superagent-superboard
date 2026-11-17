@@ -13,21 +13,21 @@ state. No real project or GitHub repository was read or changed.
 
 | Capture | Viewport | Theme |
 |---|---|---|
-| [desktop-projects-list-dark.png](desktop-projects-list-dark.png) | 1280×900 | dark |
-| [desktop-projects-list-light.png](desktop-projects-list-light.png) | 1280×900 | light |
+| desktop-projects-list-dark.png | 1280×900 | dark |
+| desktop-projects-list-light.png | 1280×900 | light |
 | [desktop-projects-expanded-dark.png](desktop-projects-expanded-dark.png) | 1280×900 | dark |
 | [desktop-projects-expanded-light.png](desktop-projects-expanded-light.png) | 1280×900 | light |
-| [desktop-projects-add-dark.png](desktop-projects-add-dark.png) | 1280×900 | dark |
-| [desktop-projects-add-light.png](desktop-projects-add-light.png) | 1280×900 | light |
+| desktop-projects-add-dark.png | 1280×900 | dark |
+| desktop-projects-add-light.png | 1280×900 | light |
 | [mobile-projects-dark.png](mobile-projects-dark.png) | 390×844 | dark |
 | [mobile-projects-light.png](mobile-projects-light.png) | 390×844 | light |
 
 Before this phase, the same section was the old repository form plus the
 superagents table and the separate access section:
-[desktop dark](../phase-1/desktop-projects-dark.png) ·
-[desktop light](../phase-1/desktop-projects-light.png) ·
-[mobile dark](../phase-1/mobile-projects-dark.png) ·
-[mobile light](../phase-1/mobile-projects-light.png).
+desktop dark ·
+desktop light ·
+mobile dark ·
+mobile light.
 
 Observed:
 

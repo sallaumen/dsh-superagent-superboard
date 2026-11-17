@@ -15,7 +15,7 @@ defmodule AgentBoardWeb.SettingsSetupTest do
     Application.put_env(:agent_board, :setup_readers,
       config: [
         github: fn -> true end,
-        agents: fn -> [%{repository: "sallaumen/arena-rogue", model: "deepseek-flash"}] end,
+        agents: fn -> [%{repository: "example/atlas-relay", model: "deepseek-flash"}] end,
         cli: fn _executor -> true end,
         board_ai: fn -> %{provider: :deepseek, model: "deepseek-flash", fallbacks: [:gemini]} end,
         voice: fn -> false end
@@ -24,7 +24,7 @@ defmodule AgentBoardWeb.SettingsSetupTest do
         github: fn -> {:error, {:http, 401}} end,
         agents: fn ->
           send(test, :checked)
-          [%{repository: "sallaumen/arena-rogue", model: "deepseek-flash", answer: :ok}]
+          [%{repository: "example/atlas-relay", model: "deepseek-flash", answer: :ok}]
         end,
         cli: fn
           "codex" -> {:error, :logged_out}
@@ -36,7 +36,7 @@ defmodule AgentBoardWeb.SettingsSetupTest do
       ]
     )
 
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
     :ok
   end
 
@@ -80,7 +80,7 @@ defmodule AgentBoardWeb.SettingsSetupTest do
   test "the first section says which AI does what, in three classes, before any check", %{
     conn: conn
   } do
-    {:ok, view, _html} = live(conn, "/?repo=sallaumen/arena-rogue&panel=settings&section=setup")
+    {:ok, view, _html} = live(conn, "/?repo=example/atlas-relay&panel=settings&section=setup")
 
     assert has_element?(
              view,
@@ -117,19 +117,19 @@ defmodule AgentBoardWeb.SettingsSetupTest do
       end)
     )
 
-    {:ok, view, _html} = live(conn, "/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, "/?repo=example/atlas-relay")
     refute_received :config_read
 
-    render_patch(view, "/?repo=sallaumen/arena-rogue&panel=settings&section=projects")
+    render_patch(view, "/?repo=example/atlas-relay&panel=settings&section=projects")
     assert_received :config_read
     flush(:config_read)
 
     # Moving between sections of an open panel is not a new opening.
-    render_patch(view, "/?repo=sallaumen/arena-rogue&panel=settings&section=execution")
+    render_patch(view, "/?repo=example/atlas-relay&panel=settings&section=execution")
     refute_received :config_read
 
-    render_patch(view, "/?repo=sallaumen/arena-rogue")
-    render_patch(view, "/?repo=sallaumen/arena-rogue&panel=settings&section=projects")
+    render_patch(view, "/?repo=example/atlas-relay")
+    render_patch(view, "/?repo=example/atlas-relay&panel=settings&section=projects")
     assert_received :config_read
   end
 
@@ -142,7 +142,7 @@ defmodule AgentBoardWeb.SettingsSetupTest do
   end
 
   test "the check proves each part and points to the next step", %{conn: conn} do
-    {:ok, view, _html} = live(conn, "/?repo=sallaumen/arena-rogue&panel=settings&section=setup")
+    {:ok, view, _html} = live(conn, "/?repo=example/atlas-relay&panel=settings&section=setup")
 
     view |> element("#setup-check") |> render_click()
     render_async(view, 2_000)
@@ -168,7 +168,7 @@ defmodule AgentBoardWeb.SettingsSetupTest do
   test "a fresh tab restores the last successful check and a later failure keeps its date", %{
     conn: conn
   } do
-    url = "/?repo=sallaumen/arena-rogue&panel=settings&section=setup"
+    url = "/?repo=example/atlas-relay&panel=settings&section=setup"
     readers = Application.fetch_env!(:agent_board, :setup_readers)
 
     passing =
@@ -203,7 +203,7 @@ defmodule AgentBoardWeb.SettingsSetupTest do
     assert_received :checked
     assert has_element?(reopened, "#setup-row-github[data-state=failed]")
 
-    render_patch(reopened, "/?repo=sallaumen/arena-rogue")
+    render_patch(reopened, "/?repo=example/atlas-relay")
     render_patch(reopened, url)
 
     [failed_at, ^passed_at] =
@@ -231,7 +231,7 @@ defmodule AgentBoardWeb.SettingsSetupTest do
       ]
     )
 
-    {:ok, view, _html} = live(conn, "/?repo=sallaumen/arena-rogue&panel=settings")
+    {:ok, view, _html} = live(conn, "/?repo=example/atlas-relay&panel=settings")
 
     assert has_element?(view, ".settings-nav__item.is-current[phx-value-section=setup]")
 
@@ -245,7 +245,7 @@ defmodule AgentBoardWeb.SettingsSetupTest do
   end
 
   test "with everything set, Settings opens where it always did", %{conn: conn} do
-    {:ok, view, _html} = live(conn, "/?repo=sallaumen/arena-rogue&panel=settings")
+    {:ok, view, _html} = live(conn, "/?repo=example/atlas-relay&panel=settings")
 
     assert has_element?(view, ".settings-nav__item.is-current[phx-value-section=projects]")
 

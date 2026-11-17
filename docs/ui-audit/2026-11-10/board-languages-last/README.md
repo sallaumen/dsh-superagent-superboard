@@ -36,5 +36,5 @@ Logs panel English for a Portuguese viewer.
 
 ## Checked
 
-- [01](01-voice-commands-dark-en.png), [02](02-voice-commands-dark-pt.png): the list in both languages on a copy of the real data.
+- 01, 02: the list in both languages on a copy of the real data.
 - `voice_command_list_test.exs`: both languages, and every title and description has its Portuguese.

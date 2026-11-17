@@ -224,16 +224,16 @@ defmodule AgentBoard.LogsTest do
     sources =
       Logs.sources([
         %{profile: "superagent", repository: nil},
-        %{profile: "superagent-colmex", repository: nil}
+        %{profile: "superagent-portal", repository: nil}
       ])
 
-    assert [board, default, colmex] = sources
+    assert [board, default, portal] = sources
     assert board.id == "board"
     assert board.path == Path.join(dir, "board.log")
     assert default.id == "superagent:superagent"
     assert default.path == Path.join(dir, "dsh-superagent-keepalive.log")
-    assert colmex.id == "superagent:superagent-colmex"
-    assert colmex.path == Path.join(dir, "dsh-superagent-colmex-keepalive.log")
+    assert portal.id == "superagent:superagent-portal"
+    assert portal.path == Path.join(dir, "dsh-superagent-portal-keepalive.log")
 
     assert Logs.sources([%{profile: "../../etc/passwd"}]) == [board]
     assert Logs.superagent_log_path("../escape") == nil

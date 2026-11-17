@@ -2,10 +2,10 @@
 
 | Severity | Region | Evidence | Correction |
 |---|---|---|---|
-| P1 | Reconnection | Repository form recovery re-fired `select` and closed the conversation, removing its unsent input. Regression test: `repository form recovery does not close the current panel`. [Recovery](03-reconnecting.png) | Selecting the current repository is a no-op. Browser recovery retained URL, open dialog, exact input DOM node, draft and focus. |
+| P1 | Reconnection | Repository form recovery re-fired `select` and closed the conversation, removing its unsent input. Regression test: `repository form recovery does not close the current panel`. Recovery | Selecting the current repository is a no-op. Browser recovery retained URL, open dialog, exact input DOM node, draft and focus. |
 | P1 | Dialog lifecycle | WebKit retained an inert background when LiveView removed the native open attribute during a patch | LiveSocket preserves only the dialog's client-owned open attribute; the hook calls showModal/close. Content continues to receive normal LiveView patches. |
-| P2 | Density and navigation | [Before](03-before.png), [after](03-after.png), [real board](03-real-board.png) | Activity, Split and AI have explicit tools above the board; their content opens on demand. Conversation includes full task title/body and messages. |
-| P2 | History and keyboard | [Conversation](03-conversation.png), [Split](03-intake.png), [AI light](03-ai-light.png), [mobile](03-mobile.png) | Native dialogs with names, focus containment, Escape, return focus, and LiveView URL patches. Close uses Back for an owned panel entry, replace for direct URLs. |
+| P2 | Density and navigation | Before, after, real board | Activity, Split and AI have explicit tools above the board; their content opens on demand. Conversation includes full task title/body and messages. |
+| P2 | History and keyboard | Conversation, Split, AI light, mobile | Native dialogs with names, focus containment, Escape, return focus, and LiveView URL patches. Close uses Back for an owned panel entry, replace for direct URLs. |
 
 WebKit observations after the fixes:
 

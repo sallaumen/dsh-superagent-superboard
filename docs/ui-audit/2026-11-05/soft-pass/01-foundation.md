@@ -9,9 +9,9 @@ history count remain prominent and truthful.
 
 | Severity | Region | Evidence | Change |
 |---|---|---|---|
-| P2 | Whole board | [Dark before](01-before-dark.png), [dark after](01-after-dark.png); [light before](01-before-light.png), [light after](01-after-light.png) | Warm/slate daisyUI theme tokens replace cold black/white and saturated violet/orange. Semantic tokens remain distinct for error, warning and success. |
+| P2 | Whole board | Dark before, dark after; light before, light after | Warm/slate daisyUI theme tokens replace cold black/white and saturated violet/orange. Semantic tokens remain distinct for error, warning and success. |
 | P2 | Typography | Same captures; `assets/css/app.css`, `lib/agent_board_web/live/board_live.ex` | Sans for work titles and controls; mono for numbers, state, time and identifiers. The page no longer inherits monospace indiscriminately. |
-| P3 | Small screen | [375×812](01-after-mobile.png) | No horizontal overflow; content order and controls remain available. |
+| P3 | Small screen | 375×812 | No horizontal overflow; content order and controls remain available. |
 
 Computed colors in WebKit confirmed actual light/dark theme switching. The
 saved-data sync error stayed visible in both. The AI dialog opened and browser

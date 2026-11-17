@@ -10510,3 +10510,7 @@ msgstr ""
 
 msgid "Your previous proposal and edits are still available."
 msgstr ""
+
+#, elixir-autogen
+msgid "Connect your agent’s GitHub account to see how to request work."
+msgstr ""

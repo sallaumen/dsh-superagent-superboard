@@ -18,8 +18,8 @@ rest are questions for the model. English is no worse than Portuguese.
 Isolated server on a copy of the real data, measured in WebKit with the
 longest duration the tile shows ("23 h 59 min") written into each cell:
 
-- [01](01-cycle-1920-dark-en-tile.png): the tile at 1920.
-- [02](02-cycle-2560-inspector-dark-en-tile.png): the tile at 2560 with the inspector open.
+- 01: the tile at 1920.
+- 02: the tile at 2560 with the inspector open.
 - Rail width 224 px at 1280, 1440, 1920, 2560 and 3440, with and without the inspector.
 
 ## Left to the owner

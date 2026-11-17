@@ -19,14 +19,14 @@ defmodule AgentBoard.RoutingSignalsTest do
 
   test "the runner's state becomes its signal; Claude Code and Codex stay unknown" do
     state = %{
-      repository: "sallaumen/arena-rogue",
+      repository: "example/atlas-relay",
       paused: false,
       load: %{running: 0, queued: 0, max_workers: 3}
     }
 
     assert Signals.read(fn -> {:ok, state} end, fn -> %{} end) == %{
              "dsh" => %{
-               repository: "sallaumen/arena-rogue",
+               repository: "example/atlas-relay",
                state: :ready,
                load: %{running: 0, queued: 0, max_workers: 3}
              },

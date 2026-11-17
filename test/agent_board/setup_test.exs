@@ -14,9 +14,9 @@ defmodule AgentBoard.SetupTest do
     Keyword.merge(
       [
         github: fn -> {:ok, "octo"} end,
-        repositories: fn -> ["sallaumen/arena-rogue"] end,
+        repositories: fn -> ["example/atlas-relay"] end,
         agents: fn ->
-          [%{repository: "sallaumen/arena-rogue", model: "deepseek-flash", answer: :ok}]
+          [%{repository: "example/atlas-relay", model: "deepseek-flash", answer: :ok}]
         end,
         cli: fn _executor -> :ok end,
         board_ai: fn -> %{provider: :deepseek, model: "deepseek-flash", fallbacks: [:gemini]} end,
@@ -101,9 +101,9 @@ defmodule AgentBoard.SetupTest do
         ready(
           agents: fn ->
             [
-              %{repository: "sallaumen/arena-rogue", model: "deepseek-flash", answer: :ok},
+              %{repository: "example/atlas-relay", model: "deepseek-flash", answer: :ok},
               %{
-                repository: "sallaumen/o_colmex",
+                repository: "example/o_portal",
                 model: "deepseek-flash",
                 answer: {:error, :econnrefused}
               }
@@ -114,7 +114,7 @@ defmodule AgentBoard.SetupTest do
 
     assert %{state: :failed, detail: detail} = row(rows, :deepseek_agents)
     assert detail =~ "1 of 2"
-    assert detail =~ "sallaumen/o_colmex"
+    assert detail =~ "example/o_portal"
   end
 
   describe "a board with no agent yet" do
@@ -223,8 +223,8 @@ defmodule AgentBoard.SetupTest do
     rows =
       Setup.checklist(
         github: fn -> true end,
-        repositories: fn -> ["sallaumen/arena-rogue"] end,
-        agents: fn -> [%{repository: "sallaumen/arena-rogue", model: "deepseek-flash"}] end,
+        repositories: fn -> ["example/atlas-relay"] end,
+        agents: fn -> [%{repository: "example/atlas-relay", model: "deepseek-flash"}] end,
         cli: fn _executor -> true end,
         board_ai: fn -> %{provider: :deepseek, model: "deepseek-flash", fallbacks: []} end,
         voice: fn -> false end

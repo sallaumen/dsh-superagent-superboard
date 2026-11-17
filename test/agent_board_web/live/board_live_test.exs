@@ -26,22 +26,22 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "issues_unavailable is amber, not red", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
-    Board.log_event(repo.id, "issues_unavailable", "sallaumen/arena-rogue", %{"reason" => "404"})
+    Board.log_event(repo.id, "issues_unavailable", "example/atlas-relay", %{"reason" => "404"})
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert html =~ "is-stale"
     refute html =~ "is-halt"
   end
 
   test "a per-item error event is shown as an error", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     Board.log_event(repo.id, "issue_error", "#7", %{"reason" => "boom"})
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert html =~ "is-halt"
     assert html =~ "Erro ao ler #7"
@@ -49,11 +49,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the sync detail says 1 erro, not 1 erros", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
-    Board.log_event(repo.id, "sync", "sallaumen/arena-rogue", %{"errors" => 1, "issues" => 0})
+    Board.log_event(repo.id, "sync", "example/atlas-relay", %{"errors" => 1, "issues" => 0})
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert html =~ "1 erro"
     refute html =~ "1 erros"
@@ -61,11 +61,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "a long error payload is truncated in the activity", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     Board.log_event(repo.id, "sync_error", "x", %{"reason" => String.duplicate("boom ", 80)})
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert html =~ "…"
     refute html =~ String.duplicate("boom ", 80)
@@ -126,8 +126,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "a transcript outside the composer is a conversation turn, never a draft", %{conn: conn} do
-    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _} = Board.add_repository("example", "atlas-relay")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     render_hook(view, "voice_transcript", %{"text" => "  show blocked tasks  "})
 
@@ -138,16 +138,16 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "Speak status is disabled without ElevenLabs", %{conn: conn} do
-    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _} = Board.add_repository("example", "atlas-relay")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay&panel=settings")
     view |> element(".settings-nav__item[phx-value-section=voice]") |> render_click()
 
     assert has_element?(view, "#speak-status[disabled]")
   end
 
   test "a failed ask shows an error, not Question sent", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %Task{}
     |> Task.changeset(%{
@@ -159,7 +159,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     })
     |> Repo.insert!()
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     view |> element("[data-task]") |> render_click()
 
     view
@@ -177,7 +177,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the conversation opens in the inspector on small screens", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %Task{}
     |> Task.changeset(%{
@@ -193,8 +193,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     Board.upsert_comment(
       task,
-      %{"id" => 1, "user" => %{"login" => "sallaumen"}, "body" => "hi"},
-      "sallaumen-agent"
+      %{"id" => 1, "user" => %{"login" => "example"}, "body" => "hi"},
+      "example-bot"
     )
 
     {:ok, view, _html} = live(conn, ~p"/")
@@ -606,7 +606,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "a merged pull shows its review badge", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %PullRequest{}
     |> PullRequest.changeset(%{
@@ -738,7 +738,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   test "History words a pull's CI as the merge log does: a red remote check alone is unknown", %{
     conn: conn
   } do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     pull =
       %PullRequest{}
@@ -769,8 +769,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "a pull with no reviews says so instead of hiding the badge", %{conn: conn} do
-    # arena-rogue has few merged pulls, so one more still fits the 30 window.
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    # atlas-relay has few merged pulls, so one more still fits the 30 window.
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %PullRequest{}
     |> PullRequest.changeset(%{
@@ -786,8 +786,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/")
 
-    # the board opens on o_colmex; switch to arena-rogue
-    view |> element("#repo-select") |> render_change(%{"repo" => "sallaumen/arena-rogue"})
+    # the board opens on o_portal; switch to atlas-relay
+    view |> element("#repo-select") |> render_change(%{"repo" => "example/atlas-relay"})
 
     assert render(view) =~ "sem revisão"
     assert render(view) =~ "sem CI"
@@ -802,9 +802,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the version panel shows the running sha and a check button", %{conn: conn} do
-    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _} = Board.add_repository("example", "atlas-relay")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay&panel=settings")
     view |> element(".settings-nav__item[phx-value-section=system]") |> render_click()
 
     assert has_element?(view, ".settings-nav__item.is-current", "Sistema")
@@ -905,7 +905,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "Costs → calls shows the last calls", %{conn: conn} do
-    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _} = Board.add_repository("example", "atlas-relay")
 
     %Call{}
     |> Call.changeset(%{
@@ -922,7 +922,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     |> Repo.insert!()
 
     {:ok, view, _html} =
-      live(conn, ~p"/?repo=sallaumen/arena-rogue&panel=settings&section=costs&costs=calls")
+      live(conn, ~p"/?repo=example/atlas-relay&panel=settings&section=costs&costs=calls")
 
     assert has_element?(
              view,
@@ -955,9 +955,9 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the empty repository says there is nothing yet", %{conn: conn} do
-    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _} = Board.add_repository("example", "atlas-relay")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert has_element?(view, ".ab-empty", "Sem dados ainda.")
   end
@@ -1003,7 +1003,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
       task,
       %{
         "id" => 1,
-        "user" => %{"login" => "sallaumen-agent"},
+        "user" => %{"login" => "example-bot"},
         "body" => """
         This is by an automated agent, not a human.
 
@@ -1020,7 +1020,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
         ### Bloqueio
         """
       },
-      "sallaumen-agent"
+      "example-bot"
     )
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/workpad")
@@ -1068,10 +1068,10 @@ defmodule AgentBoardWeb.BoardLiveTest do
       task,
       %{
         "id" => 1,
-        "user" => %{"login" => "sallaumen-agent"},
+        "user" => %{"login" => "example-bot"},
         "body" => "Feito: o [PR #28](https://github.com/fixture/review/pull/28) está pronto."
       },
-      "sallaumen-agent"
+      "example-bot"
     )
 
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/review")
@@ -1089,8 +1089,8 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the repo query param selects a repository", %{conn: conn} do
-    {:ok, _} = Board.add_repository("sallaumen", "o_colmex")
-    {:ok, arena} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _} = Board.add_repository("example", "o_portal")
+    {:ok, arena} = Board.add_repository("example", "atlas-relay")
 
     %Task{}
     |> Task.changeset(%{
@@ -1102,19 +1102,19 @@ defmodule AgentBoardWeb.BoardLiveTest do
     })
     |> Repo.insert!()
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert html =~ "Arena only"
   end
 
   test "a board_updated message reloads the board", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
 
-    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, html} = live(conn, ~p"/?repo=example/atlas-relay")
     assert html =~ "Sem dados ainda."
 
     # a task appears behind the view's back
-    repo = Board.repository_by_slug("sallaumen/arena-rogue")
+    repo = Board.repository_by_slug("example/atlas-relay")
 
     %Task{}
     |> Task.changeset(%{
@@ -1159,19 +1159,19 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "switching repos moves the subscription to the new repository", %{conn: conn} do
-    {:ok, colmex} = Board.add_repository("sallaumen", "o_colmex")
-    {:ok, arena} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, portal} = Board.add_repository("example", "o_portal")
+    {:ok, arena} = Board.add_repository("example", "atlas-relay")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/o_colmex")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/o_portal")
 
-    old_topic = "board:#{colmex.id}"
+    old_topic = "board:#{portal.id}"
     new_topic = "board:#{arena.id}"
 
     assert subscribed?(view.pid, old_topic)
 
     view
     |> element("#repo-select")
-    |> render_change(%{"repo" => "sallaumen/arena-rogue"})
+    |> render_change(%{"repo" => "example/atlas-relay"})
 
     refute subscribed?(view.pid, old_topic)
     assert subscribed?(view.pid, new_topic)
@@ -1184,20 +1184,20 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "selecting a repository updates the url", %{conn: conn} do
-    {:ok, _} = Board.add_repository("sallaumen", "o_colmex")
-    {:ok, _} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _} = Board.add_repository("example", "o_portal")
+    {:ok, _} = Board.add_repository("example", "atlas-relay")
 
     {:ok, view, _html} = live(conn, ~p"/")
 
     view
     |> element("#repo-select")
-    |> render_change(%{"repo" => "sallaumen/arena-rogue"})
+    |> render_change(%{"repo" => "example/atlas-relay"})
 
-    assert_patch(view, "/?repo=sallaumen%2Farena-rogue")
+    assert_patch(view, "/?repo=example%2Fatlas-relay")
   end
 
   test "an unknown repository slug renders the empty board", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
 
     {:ok, _view, html} = live(conn, ~p"/?repo=nobody/nothing")
 
@@ -1205,7 +1205,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the sync line is announced politely", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
 
     {:ok, _view, html} = live(conn, ~p"/")
 
@@ -1214,7 +1214,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "external links open with noopener", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %PullRequest{}
     |> PullRequest.changeset(%{
@@ -1223,17 +1223,17 @@ defmodule AgentBoardWeb.BoardLiveTest do
       title: "Linked pull",
       state: "merged",
       merged_at: DateTime.utc_now(),
-      url: "https://github.com/sallaumen/arena-rogue/pull/501"
+      url: "https://github.com/example/atlas-relay/pull/501"
     })
     |> Repo.insert!()
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert html =~ ~s(rel="noopener noreferrer")
   end
 
   test "the controls carry accessible names", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
 
     {:ok, view, html} = live(conn, ~p"/")
 
@@ -1245,23 +1245,23 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the rail carries the brand and the current repository", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert has_element?(view, ".ab-rail .ab-brand[aria-label='Super Agent Super Board'] img")
-    assert has_element?(view, ".ab-top__repo h1", "arena-rogue")
+    assert has_element?(view, ".ab-top__repo h1", "atlas-relay")
     # The page's first heading is its h1; the rail's owner is a label.
-    assert has_element?(view, ".ab-rail p.ab-label", "sallaumen")
+    assert has_element?(view, ".ab-rail p.ab-label", "example")
     refute has_element?(view, ".ab-rail h3")
   end
 
   test "the browser tab names the board and what it shows", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
 
-    {:ok, view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
-    assert page_title(view) == "arena-rogue · Super Agent Super Board"
+    assert page_title(view) == "atlas-relay · Super Agent Super Board"
     refute html =~ "Phoenix Framework"
 
     view |> element(".ab-repo--today") |> render_click()
@@ -1269,7 +1269,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the board renders the work sections", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %Task{}
     |> Task.changeset(%{
@@ -1281,7 +1281,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
     })
     |> Repo.insert!()
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert html =~ "Agora"
     assert html =~ "Precisa de você"
@@ -1290,7 +1290,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the settings panel keeps named repository tracking fields", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
 
     {:ok, view, _html} = live(conn, ~p"/?panel=settings")
     view |> element(".settings-nav__item[phx-value-section=projects]") |> render_click()
@@ -1542,11 +1542,11 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the board renders the tracked repository", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
 
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "sallaumen/arena-rogue"
+    assert html =~ "example/atlas-relay"
   end
 
   test "the board renders without a repository and starts the setup", %{conn: conn} do
@@ -1562,7 +1562,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "a broadcast reaches the board subscribers", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     {:ok, _view, _html} = live(conn, ~p"/")
 
     assert Board.subscribe(repo.id) == :ok
@@ -1571,18 +1571,18 @@ defmodule AgentBoardWeb.BoardLiveTest do
     assert_receive :board_updated
   end
 
-  test "the board opens on o_colmex when it is tracked", %{conn: conn} do
-    {:ok, _arena} = Board.add_repository("sallaumen", "arena-rogue")
-    {:ok, _colmex} = Board.add_repository("sallaumen", "o_colmex")
+  test "the board opens on o_portal when it is tracked", %{conn: conn} do
+    {:ok, _arena} = Board.add_repository("example", "atlas-relay")
+    {:ok, _portal} = Board.add_repository("example", "o_portal")
 
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "o_colmex"
+    assert html =~ "o_portal"
   end
 
   test "an activity row with errors is highlighted", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
-    Board.log_event(repo.id, "sync", "sallaumen/arena-rogue", %{"pulls" => 1, "errors" => 2})
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
+    Board.log_event(repo.id, "sync", "example/atlas-relay", %{"pulls" => 1, "errors" => 2})
 
     {:ok, _view, html} = live(conn, ~p"/")
 
@@ -1591,23 +1591,23 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the beacon shows the last sync and its errors", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
-    Board.log_event(repo.id, "sync", "sallaumen/arena-rogue", %{"pulls" => 1, "errors" => 2})
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
+    Board.log_event(repo.id, "sync", "example/atlas-relay", %{"pulls" => 1, "errors" => 2})
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert html =~ "Com erros"
     assert html =~ "2 erros"
   end
 
   test "the activity panel shows the recorded events", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
-    Board.log_event(repo.id, "sync", "sallaumen/arena-rogue", %{"pulls" => 8})
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
+    Board.log_event(repo.id, "sync", "example/atlas-relay", %{"pulls" => 8})
 
     {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "Atividade"
-    assert html =~ "Leitura de sallaumen/arena-rogue"
+    assert html =~ "Leitura de example/atlas-relay"
     assert html =~ "8 PRs"
   end
 
@@ -1652,7 +1652,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "closing the conversation hides the panel", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %Task{}
     |> Task.changeset(%{
@@ -1674,7 +1674,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "two clients receive the same broadcast", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     {:ok, first, _html} = live(conn, ~p"/")
     {:ok, second, _html} = live(build_conn(), ~p"/")
@@ -1699,7 +1699,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "an old speak event does not start audio without ElevenLabs", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
     {:ok, view, _html} = live(conn, ~p"/?panel=settings")
     view |> element(".settings-nav__item[phx-value-section=voice]") |> render_click()
 
@@ -1748,7 +1748,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "opening a task shows the conversation panel", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %Task{}
     |> Task.changeset(%{
@@ -1769,7 +1769,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   end
 
   test "the network buttons disable while the request is in flight", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
     {:ok, view, html} = live(conn, ~p"/")
 
     assert html =~ "phx-disable-with"
@@ -1790,14 +1790,14 @@ defmodule AgentBoardWeb.BoardShellTest do
   alias AgentBoard.Board.{PullRequest, Task}
 
   test "the rail shows the attention marks of the current repository", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "rail")
-    Board.log_event(repo.id, "sync", "sallaumen/rail", %{"errors" => 0})
+    {:ok, repo} = Board.add_repository("example", "rail")
+    Board.log_event(repo.id, "sync", "example/rail", %{"errors" => 0})
     insert_task(repo, 1, "running")
     insert_task(repo, 2, "ready")
     insert_task(repo, 3, "blocked")
     insert_merged(repo, 4, "failure")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/rail")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/rail")
     current = "button.ab-repo[aria-current=true]"
 
     assert has_element?(view, current <> " .ab-repo__n--you", "1")
@@ -1806,11 +1806,11 @@ defmodule AgentBoardWeb.BoardShellTest do
   end
 
   test "a review need opens directly on the PR tab", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "review-tab")
-    Board.log_event(repo.id, "sync", "sallaumen/review-tab", %{"errors" => 0})
+    {:ok, repo} = Board.add_repository("example", "review-tab")
+    Board.log_event(repo.id, "sync", "example/review-tab", %{"errors" => 0})
     task = insert_task(repo, 1, "ready")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/review-tab")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/review-tab")
 
     view |> element("#task-#{task.id} button[data-panel-trigger]") |> render_click()
 
@@ -1818,11 +1818,11 @@ defmodule AgentBoardWeb.BoardShellTest do
   end
 
   test "a reconnect refreshes without a notice", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "reconnect")
-    Board.log_event(repo.id, "sync", "sallaumen/reconnect", %{"errors" => 0})
+    {:ok, repo} = Board.add_repository("example", "reconnect")
+    Board.log_event(repo.id, "sync", "example/reconnect", %{"errors" => 0})
     insert_task(repo, 1, "ready")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/reconnect")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/reconnect")
 
     task = insert_task(repo, 2, "running")
     render_hook(view, "board_reconnected", %{})
@@ -1832,10 +1832,10 @@ defmodule AgentBoardWeb.BoardShellTest do
   end
 
   test "a frozen board shows the saved-data banner and stops calling itself live", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "frozen")
-    Board.log_event(repo.id, "sync_error", "sallaumen/frozen", %{"reason" => "offline"})
+    {:ok, repo} = Board.add_repository("example", "frozen")
+    Board.log_event(repo.id, "sync_error", "example/frozen", %{"reason" => "offline"})
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/frozen")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/frozen")
 
     assert has_element?(view, ".ab-beacon[data-state=offline]", "Sem conexão")
     assert has_element?(view, "#board-page[data-frozen=true]")
@@ -1858,10 +1858,10 @@ defmodule AgentBoardWeb.BoardShellTest do
   end
 
   test "the beacon only says live when GitHub and the runner answered", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "fresh")
-    Board.log_event(repo.id, "sync", "sallaumen/fresh", %{"errors" => 0})
+    {:ok, repo} = Board.add_repository("example", "fresh")
+    Board.log_event(repo.id, "sync", "example/fresh", %{"errors" => 0})
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/fresh")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/fresh")
 
     assert has_element?(view, ".ab-beacon[data-state=live]", "Ao vivo")
     assert has_element?(view, ".ab-sync-pop", "Processo do agente")

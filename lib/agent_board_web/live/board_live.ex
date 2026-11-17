@@ -291,7 +291,7 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   defp default_repo(repos) do
-    Enum.find(repos, &(&1.name == "o_colmex")) || List.first(repos)
+    List.first(repos)
   end
 
   defp repo_slug(nil), do: ""

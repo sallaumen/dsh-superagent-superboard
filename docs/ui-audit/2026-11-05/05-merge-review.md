@@ -48,8 +48,8 @@ LiveView connected and the version panel above the columns. Disconnect/connect r
 `reconnecting → live`. Zero errors or warnings in the console. No mutating operations,
 messages, execution of Update & restart or real audio. Own browser and server closed.
 
-Captures: [1366 light](merged-review-light-1366.png),
-[1366 dark](merged-review-dark-1366.png),
-[3440 light](merged-review-light-3440.png),
-[3440 dark](merged-review-dark-3440.png),
-[375 light](merged-review-light-375.png), [375 dark](merged-review-dark-375.png).
+Captures: 1366 light,
+1366 dark,
+3440 light,
+3440 dark,
+375 light, 375 dark.

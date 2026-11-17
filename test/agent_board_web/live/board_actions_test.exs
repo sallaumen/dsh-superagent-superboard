@@ -396,7 +396,7 @@ defmodule AgentBoardWeb.BoardActionsTest do
     |> Comment.changeset(%{
       task_id: task.id,
       github_id: 4,
-      author: "sallaumen-agent",
+      author: "example-bot",
       kind: "agent",
       body: "## Relatório do agente\n\n### Pergunta\nDevo usar o menu restrito?"
     })

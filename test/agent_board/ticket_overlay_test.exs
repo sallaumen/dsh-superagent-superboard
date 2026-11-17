@@ -14,7 +14,7 @@ defmodule AgentBoard.TicketOverlayTest do
   setup do
     repo =
       %Repository{}
-      |> Repository.changeset(%{owner: "sallaumen", name: "arena-rogue"})
+      |> Repository.changeset(%{owner: "example", name: "atlas-relay"})
       |> Repo.insert!()
 
     %{repo: repo}

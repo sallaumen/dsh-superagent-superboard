@@ -104,7 +104,7 @@ Two systems run beside the board, and neither is on the board's critical path:
 
 | System | What it does | Documented in |
 |---|---|---|
-| `dsh-superagent` | watches GitHub for `@sallaumen-agent`, turns the mention into a ticket, runs the executor, opens the PR | [`docs/agent/how-it-works.md`](docs/agent/how-it-works.md) |
+| `dsh-superagent` | watches GitHub for `@example-bot`, turns the mention into a ticket, runs the executor, opens the PR | [`docs/agent/how-it-works.md`](docs/agent/how-it-works.md) |
 | `AgentBoard.AI` | refines a request into a spec, splits it into tasks, answers questions, speaks the board | [`docs/ai-layer.md`](docs/ai-layer.md) |
 
 The board **mirrors** both: the sync reads GitHub, the AI panel reads

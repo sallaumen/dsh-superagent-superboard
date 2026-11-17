@@ -13,16 +13,16 @@ broadcast that changed nothing) is in [docs/ui-motion.md](../../../ui-motion.md)
 Baseline `87511a9` (`main`), a development server of this branch on
 `http://127.0.0.1:4003` reading the shared development database and the real
 runner (the orchestrator API on `127.0.0.1:3082` and its sqlite), repository
-`sallaumen/arena-rogue`. Headless WebKit through the Playwright MCP, one tab,
+`example/atlas-relay`. Headless WebKit through the Playwright MCP, one tab,
 closed after the last capture. The captures show real data: the counts in them
 are what the tables held at 22:36–22:38 (UTC−3), not a fixture.
 
 | Capture | Viewport | What it shows |
 |---|---|---|
-| [after-1440.png](after-1440.png) | 1440 × 900, light | two rows of four tiles between the digest and the lanes; commits `7/h` after the first commit read, `+3` against the previous hour |
-| [after-390.png](after-390.png) | 390 × 844 | two tiles per row; the cycle table and the parallelism tile take the whole row; `scrollWidth == 390`, nothing clipped but screen-reader-only text |
-| [after-3440.png](after-3440.png) | 3440 × 1440 | one row of eight tiles, the strip as wide as the three lanes under it; `scrollWidth == 3440` |
-| [after-dark-1440.png](after-dark-1440.png) | 1440 × 900, dark, `prefers-reduced-motion: reduce` | the tokens carry the strip; the tint on a changed value is off |
+| after-1440.png | 1440 × 900, light | two rows of four tiles between the digest and the lanes; commits `7/h` after the first commit read, `+3` against the previous hour |
+| after-390.png | 390 × 844 | two tiles per row; the cycle table and the parallelism tile take the whole row; `scrollWidth == 390`, nothing clipped but screen-reader-only text |
+| after-3440.png | 3440 × 1440 | one row of eight tiles, the strip as wide as the three lanes under it; `scrollWidth == 3440` |
+| after-dark-1440.png | 1440 × 900, dark, `prefers-reduced-motion: reduce` | the tokens carry the strip; the tint on a changed value is off |
 
 Observed in the browser, not inferred from the screenshots:
 

@@ -26,7 +26,16 @@ defmodule AgentBoard.AgentAccess do
   @type project :: map()
 
   @doc "The bot's GitHub account, the name a person writes to ask for work."
-  def bot_login, do: Application.get_env(:agent_board, :agent_login, "sallaumen-agent")
+  @spec bot_login() :: String.t() | nil
+  def bot_login do
+    value =
+      Application.get_env(:agent_board, :agent_login) || AgentBoard.Superagents.Bot.local_login()
+
+    case normalize_login(value) do
+      {:ok, login} -> login
+      _ -> nil
+    end
+  end
 
   @doc "How many issues one confirmation may re-run."
   def rerun_limit, do: @rerun_limit

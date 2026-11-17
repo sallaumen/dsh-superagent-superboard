@@ -80,15 +80,15 @@ defmodule AgentBoard.Usage.OverviewTest do
 
   test "select/3 narrows by executor and project; outside is the sessions with no project" do
     runs = [
-      %{source: "dsh", project: "arena-rogue"},
-      %{source: "claude_code", project: "arena-rogue"},
+      %{source: "dsh", project: "atlas-relay"},
+      %{source: "claude_code", project: "atlas-relay"},
       %{source: "codex", project: nil}
     ]
 
     assert length(Overview.select(runs, "all", "all")) == 3
-    assert [%{source: "dsh"}] = Overview.select(runs, "dsh", "arena-rogue")
+    assert [%{source: "dsh"}] = Overview.select(runs, "dsh", "atlas-relay")
     assert [%{source: "codex"}] = Overview.select(runs, "all", "outside")
-    assert Overview.select(runs, "codex", "arena-rogue") == []
+    assert Overview.select(runs, "codex", "atlas-relay") == []
   end
 
   test "calls/2 narrows by engine, function and status and totals each function" do

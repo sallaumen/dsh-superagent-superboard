@@ -5,16 +5,12 @@ Use this guide after the [quick start](getting-started.md#track-a-github-reposit
 ## Run as a service
 
 The board is built to stay up. [ops/com.agentboard.plist](../ops/com.agentboard.plist)
-is an example launchd file with absolute paths from a checkout; before loading
-it, adjust `ProgramArguments`, `WorkingDirectory`, the log paths, and the `PATH`
-of your machine's toolchain. It runs
-[scripts/service.sh](../scripts/service.sh), whose defaults and overrides are in the
-[script matrix](../PIPELINES.md#script-matrix).
+is a template: render it from the checkout that should serve the board. The renderer uses that checkout, your home and your shell’s PATH and writes only to standard output. Review the result before installing the service.
 
 ```sh
 mkdir -p ~/Library/LaunchAgents
-cp ops/com.agentboard.plist ~/Library/LaunchAgents/com.agentboard.plist
-# Edit the copy with the paths described above before loading.
+python3 scripts/render-launchagent.py board > ~/Library/LaunchAgents/com.agentboard.plist
+plutil -lint ~/Library/LaunchAgents/com.agentboard.plist
 launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.agentboard.plist
 ```
 
@@ -76,6 +72,8 @@ events appear live in the voice panel. See
 [Voice conversation](voice-conversation.md#diagnosis-logs-and-backstage).
 
 ## Local secrets
+
+**Agent identity and data.** The board reads only the public username from the bot’s own local GitHub CLI configuration for mentions. To override it, set `AGENT_BOARD_BOT_LOGIN`. Without a configured bot, issues have no automatic mention. Registered profiles supply ticket paths; for an explicitly mounted read-only state database, set `AGENT_BOARD_STATE_DB`. The board does not scan unrelated profiles or add projects from them.
 
 `.env.local` feeds the environment before any config: `KEY=value` lines,
 comments with `#`, and a variable already defined in the shell is left alone. It

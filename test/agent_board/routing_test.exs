@@ -6,7 +6,7 @@ defmodule AgentBoard.RoutingTest do
 
   @ready %{
     "dsh" => %{
-      repository: "sallaumen/arena-rogue",
+      repository: "example/atlas-relay",
       state: :ready,
       load: %{running: 1, max_workers: 3}
     },
@@ -25,17 +25,17 @@ defmodule AgentBoard.RoutingTest do
   test "the reasons follow the viewer's language" do
     Gettext.put_locale(AgentBoardWeb.Gettext, "en")
 
-    asked = Routing.suggest(task("sallaumen/arena-rogue", %{requested: "codex"}), @ready)
+    asked = Routing.suggest(task("example/atlas-relay", %{requested: "codex"}), @ready)
     assert hd(asked.reasons) == "You asked for Codex."
 
-    ruled_out = Routing.suggest(task("sallaumen/o_colmex", %{requested: "dsh"}), @ready)
+    ruled_out = Routing.suggest(task("example/o_portal", %{requested: "dsh"}), @ready)
 
     assert hd(ruled_out.reasons) ==
-             "You asked for DeepSeek, but DeepSeek only serves sallaumen/arena-rogue."
+             "You asked for DeepSeek, but DeepSeek only serves example/atlas-relay."
   end
 
   test "the runner's repository goes to the DeepSeek, which the board dispatches itself" do
-    suggestion = Routing.suggest(task("sallaumen/arena-rogue"), @ready)
+    suggestion = Routing.suggest(task("example/atlas-relay"), @ready)
 
     assert suggestion.executor == "dsh"
     assert suggestion.mode == "suggest"
@@ -47,14 +47,14 @@ defmodule AgentBoard.RoutingTest do
   end
 
   test "another repository rules the DeepSeek out and says so" do
-    suggestion = Routing.suggest(task("sallaumen/o_colmex", %{work_type: "ui"}), @ready)
+    suggestion = Routing.suggest(task("example/o_portal", %{work_type: "ui"}), @ready)
 
     assert suggestion.executor == "claude"
 
-    assert [%{executor: "dsh", reason: "o DeepSeek só atende o sallaumen/arena-rogue."}] =
+    assert [%{executor: "dsh", reason: "o DeepSeek só atende o example/atlas-relay."}] =
              suggestion.ruled_out
 
-    assert "O DeepSeek só atende o sallaumen/arena-rogue." in suggestion.reasons
+    assert "O DeepSeek só atende o example/atlas-relay." in suggestion.reasons
     assert Enum.any?(suggestion.reasons, &(&1 =~ "vem antes do Codex na ordem fixa"))
     assert "A disponibilidade do Claude Code é desconhecida." in suggestion.reasons
     assert [%{executor: "codex"}] = suggestion.alternatives
@@ -62,9 +62,9 @@ defmodule AgentBoard.RoutingTest do
 
   test "a runner that watches both repositories serves both" do
     signals =
-      put_in(@ready, ["dsh", :repositories], ["sallaumen/arena-rogue", "sallaumen/o_colmex"])
+      put_in(@ready, ["dsh", :repositories], ["example/atlas-relay", "example/o_portal"])
 
-    suggestion = Routing.suggest(task("sallaumen/o_colmex"), signals)
+    suggestion = Routing.suggest(task("example/o_portal"), signals)
     assert suggestion.executor == "dsh"
     assert suggestion.ruled_out == []
   end
@@ -72,7 +72,7 @@ defmodule AgentBoard.RoutingTest do
   test "an unreadable runner stays the board's default, and says why" do
     signals = Map.put(@ready, "dsh", %{repository: nil, state: {:unavailable, "sem resposta"}})
 
-    for repository <- ["sallaumen/arena-rogue", "sallaumen/o_colmex"] do
+    for repository <- ["example/atlas-relay", "example/o_portal"] do
       suggestion = Routing.suggest(task(repository), signals)
 
       assert suggestion.executor == "dsh"
@@ -85,14 +85,14 @@ defmodule AgentBoard.RoutingTest do
 
   test "a paused runner is out" do
     signals = put_in(@ready, ["dsh", :state], :paused)
-    suggestion = Routing.suggest(task("sallaumen/arena-rogue"), signals)
+    suggestion = Routing.suggest(task("example/atlas-relay"), signals)
 
     assert suggestion.executor == "claude"
     assert "O DeepSeek está pausado." in suggestion.reasons
   end
 
   test "the owner's explicit choice decides" do
-    suggestion = Routing.suggest(task("sallaumen/arena-rogue", %{requested: "codex"}), @ready)
+    suggestion = Routing.suggest(task("example/atlas-relay", %{requested: "codex"}), @ready)
 
     assert suggestion.executor == "codex"
     assert hd(suggestion.reasons) == "Você pediu o Codex."
@@ -100,39 +100,39 @@ defmodule AgentBoard.RoutingTest do
   end
 
   test "an explicit choice the hard restriction rules out is named, not followed" do
-    suggestion = Routing.suggest(task("sallaumen/o_colmex", %{requested: "dsh"}), @ready)
+    suggestion = Routing.suggest(task("example/o_portal", %{requested: "dsh"}), @ready)
 
     assert suggestion.executor == "claude"
 
     assert hd(suggestion.reasons) ==
-             "Você pediu o DeepSeek, mas o DeepSeek só atende o sallaumen/arena-rogue."
+             "Você pediu o DeepSeek, mas o DeepSeek só atende o example/atlas-relay."
 
     # The ruled-out reason is not repeated after the lead.
     assert Enum.count(suggestion.reasons, &(&1 =~ "só atende")) == 1
   end
 
   test "an unknown name is no choice" do
-    assert Routing.suggest(task("sallaumen/arena-rogue", %{requested: "gpt"}), @ready).executor ==
+    assert Routing.suggest(task("example/atlas-relay", %{requested: "gpt"}), @ready).executor ==
              "dsh"
   end
 
   test "the expected cost is unknown without a usage ledger, and passed through when known" do
-    assert Routing.suggest(task("sallaumen/arena-rogue"), @ready).cost == :unknown
+    assert Routing.suggest(task("example/atlas-relay"), @ready).cost == :unknown
 
     signals = put_in(@ready, ["dsh", :cost], %{micros: 120_000, complete?: false})
 
-    assert Routing.suggest(task("sallaumen/arena-rogue"), signals).cost ==
+    assert Routing.suggest(task("example/atlas-relay"), signals).cost ==
              %{micros: 120_000, complete?: false}
   end
 
   test "an executor reported unavailable is out; when everyone is out there is no suggestion" do
     signals = %{
-      "dsh" => %{repository: "sallaumen/arena-rogue", state: :paused},
+      "dsh" => %{repository: "example/atlas-relay", state: :paused},
       "claude" => %{state: {:unavailable, "sem login"}},
       "codex" => %{state: {:unavailable, "cota semanal esgotada"}}
     }
 
-    suggestion = Routing.suggest(task("sallaumen/arena-rogue"), signals)
+    suggestion = Routing.suggest(task("example/atlas-relay"), signals)
 
     assert suggestion.executor == nil
     assert suggestion.cost == :unknown
@@ -141,7 +141,7 @@ defmodule AgentBoard.RoutingTest do
   end
 
   describe "plan/5" do
-    @repo %{owner: "sallaumen", name: "arena-rogue"}
+    @repo %{owner: "example", name: "atlas-relay"}
 
     test "keeps the request's executor and stores the line for the door" do
       planned =
@@ -160,7 +160,7 @@ defmodule AgentBoard.RoutingTest do
       assert planned.routing.suggestion.executor == "claude"
 
       assert hd(planned.routing.suggestion.reasons) ==
-               "Você pediu o DeepSeek, mas o DeepSeek só atende o sallaumen/arena-rogue."
+               "Você pediu o DeepSeek, mas o DeepSeek só atende o example/atlas-relay."
     end
 
     test "an explicit runner that does not watch the repository is refused, not replaced" do
@@ -168,7 +168,7 @@ defmodule AgentBoard.RoutingTest do
         Routing.plan(%{owner: "x", name: "watched"}, %{executor: "dsh"}, "dsh", "voice", @ready)
 
       assert planned.executor == "dsh"
-      assert planned.refused == "o DeepSeek só atende o sallaumen/arena-rogue."
+      assert planned.refused == "o DeepSeek só atende o example/atlas-relay."
     end
 
     test "an explicit runner that is only paused is not refused" do

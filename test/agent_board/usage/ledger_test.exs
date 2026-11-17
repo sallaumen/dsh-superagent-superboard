@@ -555,7 +555,7 @@ defmodule AgentBoard.Usage.LedgerTest do
       );
       INSERT INTO threads VALUES ('#{@thread}', 'rollout.jsonl', #{created_at}, #{created_at},
         'vscode', 'user', 'Codex Desktop', 'openai', 'gpt-6-sol', 'xhigh', '/w/agent-board',
-        'feat/x', 'abc', 'https://github.com/sallaumen/agent-board.git', '0.166.0',
+        'feat/x', 'abc', 'https://github.com/example/agent-board.git', '0.166.0',
         #{tokens_used}, 0, 'nunca lido');
       """)
 

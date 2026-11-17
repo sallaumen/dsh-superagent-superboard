@@ -32,14 +32,14 @@ serves two generated images. Nothing touched the live board or GitHub.
 
 | Capture | Shows |
 |---|---|
-| [01](01-inspector-1920-dark-en.png) | Inspector at 1920, dark, English: thumbnails, file chip, reply box |
-| [02](02-reply-box-dark-en.png) | The reply box with focus: one ring around words and Send |
-| [03](03-viewer-1920-dark-en.png) | The viewer with a wide image |
-| [04](04-viewer-tall-image-dark-en.png) | The viewer with a tall image |
-| [05](05-inspector-3440-light-pt.png) | 3440, light, Portuguese |
-| [06](06-viewer-3440-light-pt.png) | The viewer at 3440 |
-| [07](07-inspector-390-light-pt.png) | Phone: links and a reply's image |
-| [08](08-viewer-390-light-pt.png) | Phone: the viewer, 44 px buttons |
+| 01 | Inspector at 1920, dark, English: thumbnails, file chip, reply box |
+| 02 | The reply box with focus: one ring around words and Send |
+| 03 | The viewer with a wide image |
+| 04 | The viewer with a tall image |
+| 05 | 3440, light, Portuguese |
+| 06 | The viewer at 3440 |
+| 07 | Phone: links and a reply's image |
+| 08 | Phone: the viewer, 44 px buttons |
 
 Measured in WebKit: Send is 44 px tall and on the textarea's row at 1920 and
 390; the image fits the window in all three sizes; the download event delivers

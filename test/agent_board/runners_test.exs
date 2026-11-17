@@ -84,7 +84,7 @@ defmodule AgentBoard.RunnersTest do
     |> Comment.changeset(%{
       task_id: task.id,
       github_id: github_id,
-      author: "sallaumen-agent",
+      author: "example-bot",
       kind: "agent",
       body: body
     })

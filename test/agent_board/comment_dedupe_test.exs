@@ -6,7 +6,7 @@ defmodule AgentBoard.CommentDedupeTest do
   alias AgentBoard.Board.Task
 
   test "the same comment is not inserted twice" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     task =
       %Task{}
@@ -19,16 +19,16 @@ defmodule AgentBoard.CommentDedupeTest do
       })
       |> Repo.insert!()
 
-    comment = %{"id" => nil, "user" => %{"login" => "sallaumen"}, "body" => "same"}
+    comment = %{"id" => nil, "user" => %{"login" => "example"}, "body" => "same"}
 
-    Board.upsert_comment(task, comment, "sallaumen-agent")
-    Board.upsert_comment(task, comment, "sallaumen-agent")
+    Board.upsert_comment(task, comment, "example-bot")
+    Board.upsert_comment(task, comment, "example-bot")
 
     assert length(Board.comments(task)) == 1
   end
 
   test "comments stored in the same second keep the order they arrived in" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     task =
       %Task{}
@@ -42,20 +42,20 @@ defmodule AgentBoard.CommentDedupeTest do
       |> Repo.insert!()
 
     comment = fn id, body ->
-      %{"id" => id, "user" => %{"login" => "sallaumen"}, "body" => body}
+      %{"id" => id, "user" => %{"login" => "example"}, "body" => body}
     end
 
     for {id, body} <- [{1, "first"}, {2, "second"}, {3, "third"}],
-        do: Board.upsert_comment(task, comment.(id, body), "sallaumen-agent")
+        do: Board.upsert_comment(task, comment.(id, body), "example-bot")
 
     # an edit rewrites the row: without the id, the first comment comes back last
-    Board.upsert_comment(task, comment.(1, "first, edited"), "sallaumen-agent")
+    Board.upsert_comment(task, comment.(1, "first, edited"), "example-bot")
 
     assert Enum.map(Board.comments(task), & &1.body) == ["first, edited", "second", "third"]
   end
 
   test "an edited comment updates the stored body" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     task =
       %Task{}
@@ -70,13 +70,13 @@ defmodule AgentBoard.CommentDedupeTest do
 
     Board.upsert_comment(
       task,
-      %{"id" => 5, "user" => %{"login" => "sallaumen"}, "body" => "v1"},
+      %{"id" => 5, "user" => %{"login" => "example"}, "body" => "v1"},
       "agent"
     )
 
     Board.upsert_comment(
       task,
-      %{"id" => 5, "user" => %{"login" => "sallaumen"}, "body" => "v2"},
+      %{"id" => 5, "user" => %{"login" => "example"}, "body" => "v2"},
       "agent"
     )
 

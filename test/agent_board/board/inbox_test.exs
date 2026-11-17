@@ -5,8 +5,8 @@ defmodule AgentBoard.Board.InboxTest do
   alias AgentBoard.Board.Task
 
   test "recent replies form one conversation per task across projects" do
-    {:ok, first} = Board.add_repository("sallaumen", "arena-rogue")
-    {:ok, second} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, first} = Board.add_repository("example", "atlas-relay")
+    {:ok, second} = Board.add_repository("example", "o_portal")
     a = task(first, 11, "First task", "queued")
     b = task(second, 12, "Second task", "blocked")
 
@@ -20,13 +20,13 @@ defmodule AgentBoard.Board.InboxTest do
     assert Enum.find(inbox.messages, &(&1.task_id == a.id)).preview == "Qual opção você prefere?"
     # A Markdown link reads as its text, not as its markup.
     assert Enum.find(inbox.messages, &(&1.task_id == b.id)).preview == "Done: PR 199 was merged"
-    assert Enum.map(inbox.messages, & &1.repo) == ["sallaumen/o_colmex", "sallaumen/arena-rogue"]
+    assert Enum.map(inbox.messages, & &1.repo) == ["example/o_portal", "example/atlas-relay"]
     assert [%{task_id: id, state: "blocked"}] = inbox.alerts
     assert id == b.id
   end
 
   test "a running task enters the attention list only past the time its size allows" do
-    {:ok, repo} = Board.add_repository("sallaumen", "long-runs")
+    {:ok, repo} = Board.add_repository("example", "long-runs")
     now = DateTime.utc_now(:second)
     limit_passed = DateTime.add(now, -21 * 60, :second)
 
@@ -58,8 +58,8 @@ defmodule AgentBoard.Board.InboxTest do
   defp comment(task, id, body) do
     Board.upsert_comment(
       task,
-      %{"id" => id, "body" => body, "user" => %{"login" => "sallaumen-agent"}},
-      "sallaumen-agent"
+      %{"id" => id, "body" => body, "user" => %{"login" => "example-bot"}},
+      "example-bot"
     )
   end
 end

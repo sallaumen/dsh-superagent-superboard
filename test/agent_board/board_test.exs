@@ -6,9 +6,9 @@ defmodule AgentBoard.BoardTest do
   alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   test "a repository can be added" do
-    assert {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
-    assert repo.owner == "sallaumen"
-    assert repo.name == "arena-rogue"
+    assert {:ok, repo} = Board.add_repository("example", "atlas-relay")
+    assert repo.owner == "example"
+    assert repo.name == "atlas-relay"
   end
 
   test "a repository rejects a slash" do
@@ -23,7 +23,7 @@ defmodule AgentBoard.BoardTest do
   end
 
   test "the board groups the tasks by state" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     for {number, state} <- [{1, "running"}, {2, "ready"}, {3, "queued"}] do
       %Task{}
@@ -37,7 +37,7 @@ defmodule AgentBoard.BoardTest do
       |> Repo.insert!()
     end
 
-    {:ok, board} = Board.board("sallaumen/arena-rogue")
+    {:ok, board} = Board.board("example/atlas-relay")
     assert length(board.running) == 1
     assert length(board.ready) == 1
     assert length(board.queued) == 1
@@ -89,7 +89,7 @@ defmodule AgentBoard.BoardTest do
   end
 
   test "the merged column carries the review and CI rollups" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %PullRequest{}
     |> PullRequest.changeset(%{
@@ -103,7 +103,7 @@ defmodule AgentBoard.BoardTest do
     })
     |> Repo.insert!()
 
-    {:ok, board} = Board.board("sallaumen/arena-rogue")
+    {:ok, board} = Board.board("example/atlas-relay")
     assert [pr] = board.merged
     assert pr.review_state == "approved"
     assert pr.checks_state == "success"
@@ -196,7 +196,7 @@ defmodule AgentBoard.BoardTest do
   end
 
   test "archiving removes the task from the board" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     task =
       %Task{}
@@ -215,7 +215,7 @@ defmodule AgentBoard.BoardTest do
   end
 
   test "resuming brings a task back to the queue" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     task =
       %Task{}
@@ -235,7 +235,7 @@ defmodule AgentBoard.BoardTest do
   end
 
   test "an event is recorded" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     assert {:ok, _} = Board.log_event(repo.id, "sync", "test")
     assert length(Board.events(repo)) == 1
   end
@@ -261,14 +261,14 @@ defmodule AgentBoard.Board.ConversationTest do
   end
 
   test "a comment is upserted and listed" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     t = task(repo)
 
     assert {:ok, _} =
              Board.upsert_comment(
                t,
-               %{"id" => 1, "user" => %{"login" => "sallaumen-agent"}, "body" => "On it."},
-               "sallaumen-agent"
+               %{"id" => 1, "user" => %{"login" => "example-bot"}, "body" => "On it."},
+               "example-bot"
              )
 
     assert [comment] = Board.comments(t)
@@ -294,7 +294,7 @@ defmodule AgentBoard.Board.ConversationTest do
   """
 
   test "the newest agent comment's workpad decides the question, without a question mark" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     t = task(repo)
     agent_comment(t, 1, "Is the API ready?")
     agent_comment(t, 2, @workpad)
@@ -308,7 +308,7 @@ defmodule AgentBoard.Board.ConversationTest do
   end
 
   test "a workpad with an empty Pergunta is not a question, whatever its other text asks" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     t = task(repo)
     agent_comment(t, 1, String.replace(@workpad, "Devo manter o boss na arena\n", ""))
 
@@ -318,7 +318,7 @@ defmodule AgentBoard.Board.ConversationTest do
   end
 
   test "without a workpad the newest agent comment asks by its question mark, as before" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     t = task(repo)
     agent_comment(t, 1, @workpad)
     agent_comment(t, 2, "On it: which API should the board use?")
@@ -333,13 +333,13 @@ defmodule AgentBoard.Board.ConversationTest do
   end
 
   test "historical CI trusts executor comments only and a new empty workpad supersedes a receipt" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     t = task(repo)
 
     Board.upsert_comment(
       t,
       %{"id" => 1, "user" => %{"login" => "reader"}, "body" => @workpad},
-      "sallaumen-agent"
+      "example-bot"
     )
 
     assert Board.agent_workpads(repo.id) == %{}
@@ -351,7 +351,7 @@ defmodule AgentBoard.Board.ConversationTest do
   end
 
   test "the PR heads come from the sync, absent until it wrote one" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     for {number, head} <- [{28, "44653e8abcdef0123456789abcdef0123456789a"}, {29, nil}] do
       %PullRequest{}
@@ -372,20 +372,20 @@ defmodule AgentBoard.Board.ConversationTest do
     {:ok, _} =
       Board.upsert_comment(
         task,
-        %{"id" => id, "user" => %{"login" => "sallaumen-agent"}, "body" => body},
-        "sallaumen-agent"
+        %{"id" => id, "user" => %{"login" => "example-bot"}, "body" => body},
+        "example-bot"
       )
   end
 
   test "a user comment is marked as user" do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     t = task(repo)
 
     assert {:ok, _} =
              Board.upsert_comment(
                t,
-               %{"id" => 2, "user" => %{"login" => "sallaumen"}, "body" => "Please add a boss."},
-               "sallaumen-agent"
+               %{"id" => 2, "user" => %{"login" => "example"}, "body" => "Please add a boss."},
+               "example-bot"
              )
 
     assert [comment] = Board.comments(t)
@@ -393,7 +393,7 @@ defmodule AgentBoard.Board.ConversationTest do
   end
 
   test "events are limited and newest first", _ctx do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     for n <- 1..25 do
       Board.log_event(repo.id, "sync", "subject-#{n}", %{"n" => n})
@@ -421,7 +421,7 @@ defmodule AgentBoard.Board.ConversationTest do
   end
 
   test "a blocked task lands in the blocked column", _ctx do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     %Task{}
     |> Task.changeset(%{
@@ -433,7 +433,7 @@ defmodule AgentBoard.Board.ConversationTest do
     })
     |> Repo.insert!()
 
-    assert {:ok, board} = Board.board("sallaumen/arena-rogue")
+    assert {:ok, board} = Board.board("example/atlas-relay")
     assert Enum.any?(board.blocked, &(&1.number == 901))
     refute Enum.any?(board.queued, &(&1.number == 901))
   end
@@ -447,7 +447,7 @@ defmodule AgentBoard.BoardOverviewTest do
   alias AgentBoard.Board.{Comment, PullRequest, Task}
 
   test "the rail counts running, waiting and failing work per repository" do
-    {:ok, repo} = Board.add_repository("sallaumen", "attention")
+    {:ok, repo} = Board.add_repository("example", "attention")
 
     for {number, state} <- [{1, "running"}, {2, "ready"}, {3, "blocked"}] do
       insert_task(repo, number, state)
@@ -472,7 +472,7 @@ defmodule AgentBoard.BoardOverviewTest do
     |> Comment.changeset(%{
       task_id: linked.id,
       github_id: 100,
-      author: "sallaumen-agent",
+      author: "example-bot",
       kind: "agent",
       body: "Ready for review: https://github.com/fixture/resolved/pull/#{pull.number}"
     })
@@ -509,7 +509,7 @@ defmodule AgentBoard.BoardOverviewTest do
     |> Comment.changeset(%{
       task_id: running.id,
       github_id: 102,
-      author: "sallaumen",
+      author: "example",
       body: "Redo #{url}, it broke the build"
     })
     |> Repo.insert!()
@@ -541,8 +541,8 @@ defmodule AgentBoard.BoardOverviewTest do
   end
 
   test "a clean sync makes the repository known" do
-    {:ok, repo} = Board.add_repository("sallaumen", "known")
-    Board.log_event(repo.id, "sync", "sallaumen/known", %{"errors" => 0})
+    {:ok, repo} = Board.add_repository("example", "known")
+    Board.log_event(repo.id, "sync", "example/known", %{"errors" => 0})
 
     refute Overview.repo_overview()[repo.id].unknown
   end
@@ -550,10 +550,10 @@ defmodule AgentBoard.BoardOverviewTest do
   # The header calls a rate limit a delay that lifts by itself; the rail must
   # not call the same repository unknown.
   test "a rate-limited attempt keeps the repository known" do
-    {:ok, repo} = Board.add_repository("sallaumen", "limited")
-    Board.log_event(repo.id, "sync", "sallaumen/limited", %{"errors" => 0})
+    {:ok, repo} = Board.add_repository("example", "limited")
+    Board.log_event(repo.id, "sync", "example/limited", %{"errors" => 0})
 
-    Board.log_event(repo.id, "sync_error", "sallaumen/limited", %{
+    Board.log_event(repo.id, "sync_error", "example/limited", %{
       "reason" => "GitHub rate limited",
       "rate_limited" => true,
       "retry_after" => 300
@@ -563,16 +563,16 @@ defmodule AgentBoard.BoardOverviewTest do
   end
 
   test "a repository's last sync is found behind many newer events" do
-    {:ok, repo} = Board.add_repository("sallaumen", "quiet")
-    {:ok, busy} = Board.add_repository("sallaumen", "busy")
-    {:ok, sync} = Board.log_event(repo.id, "sync", "sallaumen/quiet", %{"errors" => 0})
+    {:ok, repo} = Board.add_repository("example", "quiet")
+    {:ok, busy} = Board.add_repository("example", "busy")
+    {:ok, sync} = Board.log_event(repo.id, "sync", "example/quiet", %{"errors" => 0})
 
     for i <- 1..30 do
-      Board.log_event(busy.id, "sync", "sallaumen/busy", %{"errors" => 0})
-      Board.log_event(repo.id, "comment", "sallaumen/quiet##{i}", %{})
+      Board.log_event(busy.id, "sync", "example/busy", %{"errors" => 0})
+      Board.log_event(repo.id, "comment", "example/quiet##{i}", %{})
     end
 
-    {:ok, busy_error} = Board.log_event(busy.id, "sync_error", "sallaumen/busy", %{})
+    {:ok, busy_error} = Board.log_event(busy.id, "sync_error", "example/busy", %{})
 
     overview = Overview.repo_overview()
     assert overview[repo.id].last_sync.id == sync.id
@@ -582,9 +582,9 @@ defmodule AgentBoard.BoardOverviewTest do
   end
 
   test "the sync snapshot keeps the last success apart from the failed attempt" do
-    {:ok, repo} = Board.add_repository("sallaumen", "snapshot")
-    Board.log_event(repo.id, "sync", "sallaumen/snapshot", %{"errors" => 0})
-    Board.log_event(repo.id, "sync_error", "sallaumen/snapshot", %{"reason" => "offline"})
+    {:ok, repo} = Board.add_repository("example", "snapshot")
+    Board.log_event(repo.id, "sync", "example/snapshot", %{"errors" => 0})
+    Board.log_event(repo.id, "sync_error", "example/snapshot", %{"reason" => "offline"})
 
     snapshot = Board.sync_snapshot(repo)
     assert snapshot.last_attempt.kind == "sync_error"
@@ -592,7 +592,7 @@ defmodule AgentBoard.BoardOverviewTest do
   end
 
   test "the change count sees state changes, new tasks and new merges" do
-    {:ok, repo} = Board.add_repository("sallaumen", "changes")
+    {:ok, repo} = Board.add_repository("example", "changes")
     task = insert_task(repo, 1, "ready")
     moved = %{task | state: "running"}
     fresh = insert_task(repo, 2, "queued")

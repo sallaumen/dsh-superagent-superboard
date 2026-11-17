@@ -252,7 +252,7 @@ defmodule AgentBoardWeb.VoiceUITest do
 
   test "a configured voice still has no click-to-record entrypoint", %{conn: conn} do
     with_key()
-    {:ok, _repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
 
     {:ok, view, _html} = live(conn, ~p"/")
     assert has_element?(view, "#voice-command-shortcut[phx-hook=VoiceCommand]")
@@ -262,7 +262,7 @@ defmodule AgentBoardWeb.VoiceUITest do
   end
 
   test "without a key the board offers text without browser dictation", %{conn: conn} do
-    {:ok, _repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, _repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
 
     {:ok, _view, html} = live(conn, ~p"/")
 
@@ -289,10 +289,10 @@ defmodule AgentBoardWeb.VoiceUITest do
     with_key()
     :ok = Settings.put("voice_narrate", "1")
 
-    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
     task = voice_task(repo, "Live task", "queued")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "running"}))
 
@@ -305,10 +305,10 @@ defmodule AgentBoardWeb.VoiceUITest do
     with_key()
     :ok = Settings.put("voice_narrate", "")
 
-    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
     task = voice_task(repo, "Live task", "queued")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "running"}))
 
@@ -328,10 +328,10 @@ defmodule AgentBoardWeb.VoiceUITest do
     with_key()
     :ok = Settings.put("voice_narrate", "1")
 
-    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
     task = voice_task(repo, "Live task", "queued")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     view |> element("#task-#{task.id}") |> render_click()
 
@@ -344,10 +344,10 @@ defmodule AgentBoardWeb.VoiceUITest do
     with_key()
     :ok = Settings.put("voice_alert_blocked", "1")
 
-    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
     task = voice_task(repo, "Live task", "running")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
     send(view.pid, :board_updated)
@@ -366,10 +366,10 @@ defmodule AgentBoardWeb.VoiceUITest do
     :ok = Settings.put("voice_narrate", "")
     :ok = Settings.put("voice_alert_question", "1")
 
-    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
     task = voice_task(repo, "Live task", "running")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "question"}))
     send(view.pid, :board_updated)
@@ -381,10 +381,10 @@ defmodule AgentBoardWeb.VoiceUITest do
     conn = Phoenix.ConnTest.build_conn()
     :ok = Settings.put("voice_alert_ready", "1")
 
-    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
     task = voice_task(repo, "Live task", "running")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "ready"}))
     send(view.pid, :board_updated)
@@ -397,10 +397,10 @@ defmodule AgentBoardWeb.VoiceUITest do
     with_key()
     :ok = Settings.put("voice_alert_question", "1")
 
-    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
     task = voice_task(repo, "Live task", "running")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
     send(view.pid, :board_updated)
@@ -515,15 +515,15 @@ defmodule AgentBoardWeb.VoiceUITest do
     with_key()
     :ok = Settings.put("voice_engine", "browser")
     :ok = Settings.put("voice_alert_blocked", "1")
-    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
-    task = voice_task(repo, "Ver **sallaumen/arena-rogue** #7", "running")
+    {:ok, repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
+    task = voice_task(repo, "Ver **example/atlas-relay** #7", "running")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
     send(view.pid, :board_updated)
 
     assert_push_event(view, "voice_play", %{url: url}, 1_000)
-    assert spoken(url) =~ "Ver arena rogue 7"
+    assert spoken(url) =~ "Ver atlas relay 7"
     refute_receive {_, _, "speak", _}, 100
   end
 
@@ -607,10 +607,10 @@ defmodule AgentBoardWeb.VoiceUITest do
 
   test "automatic alerts are off by default", %{conn: conn} do
     with_key()
-    {:ok, repo} = AgentBoard.Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = AgentBoard.Board.add_repository("example", "atlas-relay")
     task = voice_task(repo, "Live task", "running")
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     AgentBoard.Repo.update!(AgentBoard.Board.Task.changeset(task, %{state: "blocked"}))
     send(view.pid, :board_updated)
 

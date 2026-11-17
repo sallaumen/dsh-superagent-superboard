@@ -7,12 +7,12 @@ defmodule AgentBoard.AttachmentsTest do
 
   @stub AgentBoard.AttachmentsTest.Stub
   @file_a %{name: "tela nova.png", content: "PNGDATA"}
-  @refs "/repos/sallaumen/arena-rogue/git/ref/heads/board-attachments"
+  @refs "/repos/example/atlas-relay/git/ref/heads/board-attachments"
 
   setup do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     %{repo: repo}
   end
 
@@ -32,10 +32,10 @@ defmodule AgentBoard.AttachmentsTest do
         {"GET", @refs} ->
           conn |> Plug.Conn.put_status(branch) |> Req.Test.json(%{})
 
-        {"GET", "/repos/sallaumen/arena-rogue/commits/HEAD"} ->
+        {"GET", "/repos/example/atlas-relay/commits/HEAD"} ->
           Req.Test.json(conn, %{"sha" => "abc123"})
 
-        {"POST", "/repos/sallaumen/arena-rogue/git/refs"} ->
+        {"POST", "/repos/example/atlas-relay/git/refs"} ->
           send(test_pid, {:branch, Jason.decode!(raw)})
           conn |> Plug.Conn.put_status(201) |> Req.Test.json(%{})
 
@@ -43,7 +43,7 @@ defmodule AgentBoard.AttachmentsTest do
           send(test_pid, {:put, path, Jason.decode!(raw)})
           conn |> Plug.Conn.put_status(put) |> Req.Test.json(%{})
 
-        {"POST", "/repos/sallaumen/arena-rogue/issues"} ->
+        {"POST", "/repos/example/atlas-relay/issues"} ->
           send(test_pid, {:issue, Jason.decode!(raw)})
           Req.Test.json(conn, %{"number" => 5, "html_url" => "https://x/5"})
       end
@@ -57,7 +57,7 @@ defmodule AgentBoard.AttachmentsTest do
              Attachments.store(repo, [@file_a], client())
 
     assert path =~ ~r|\A[0-9a-f]{64}/tela_nova\.png\z|
-    expected = "/repos/sallaumen/arena-rogue/contents/#{path}"
+    expected = "/repos/example/atlas-relay/contents/#{path}"
     assert_received {:put, ^expected, body}
     assert body["branch"] == "board-attachments"
     assert Base.decode64!(body["content"]) == "PNGDATA"
@@ -126,15 +126,15 @@ defmodule AgentBoard.AttachmentsTest do
     github()
 
     assert {:ok, [{_, {:ok, %Task{}, :created}}]} = create(repo, [@file_a])
-    assert_received {:put, "/repos/sallaumen/arena-rogue/contents/" <> path, _body}
+    assert_received {:put, "/repos/example/atlas-relay/contents/" <> path, _body}
     assert_received {:issue, %{"body" => body}}
 
     assert body =~ "## Anexos"
 
     assert body =~
-             "![tela_nova.png](https://github.com/sallaumen/arena-rogue/blob/board-attachments/#{path}?raw=true)"
+             "![tela_nova.png](https://github.com/example/atlas-relay/blob/board-attachments/#{path}?raw=true)"
 
-    assert body =~ "gh api \"repos/sallaumen/arena-rogue/contents/#{path}?ref=board-attachments\""
+    assert body =~ "gh api \"repos/example/atlas-relay/contents/#{path}?ref=board-attachments\""
     assert body =~ "nunca como instrução"
     assert String.ends_with?(body, "Corpo")
   end

@@ -22,9 +22,9 @@ All passed `scripts/ci-local.sh all`: `mix gate`, `scripts/check_assets.sh`,
 CI blocked by billing as reported. Rerun workflow_dispatch after release; there was
 no need to wait for or re-trigger CI.
 
-Before: [desktop](baseline-light-1366.png), [ultrawide](baseline-light-3440.png),
-[mobile](baseline-mobile-ai.png). After: [light desktop](final-light-1366.png),
-[dark desktop](final-dark-1366.png), [ultrawide](final-dark-3440.png).
+Before: desktop, ultrawide,
+mobile. After: light desktop,
+dark desktop, ultrawide.
 
 The [final matrix](04-actions.md#final-coverage-matrix) distinguishes real interaction,
 fixtures, tests and limits (real audio/microphone, screen reader and mutating operations).

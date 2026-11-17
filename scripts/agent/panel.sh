@@ -1,7 +1,7 @@
 #!/bin/sh
 # Open an agent's dsh panel in the default browser, signed in.
 #
-#   panel.sh [profile]      # superagent (default), superagent-colmex, ...
+#   panel.sh [profile]      # superagent (default), superagent-portal, ...
 #
 # A browser that never opened the URL dsh printed at start gets "dsh web
 # authentication required" from http://127.0.0.1:<port>/. That URL carries the
@@ -14,7 +14,7 @@ set -eu
 . "$(dirname "$0")/_common.sh"
 
 PROFILE="${1:-$PROFILE}"
-# [0-9]: "superagent" must not match the logs of "superagent-colmex".
+# [0-9]: "superagent" must not match the logs of "superagent-portal".
 # shellcheck disable=SC2012  # the manager names these files; no odd characters
 LOG=$(ls -t "$DSH_SUPERAGENT_HOME/.artifacts/dsh-superagent-$PROFILE-"[0-9]*.log 2>/dev/null | head -1)
 [ -n "$LOG" ] || {

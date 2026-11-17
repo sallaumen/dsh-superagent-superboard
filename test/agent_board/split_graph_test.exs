@@ -10,7 +10,7 @@ defmodule AgentBoard.SplitGraphTest do
   setup do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     {:ok, counter} = Agent.start_link(fn -> 10 end)
     %{repo: repo, counter: counter}
   end
@@ -68,7 +68,7 @@ defmodule AgentBoard.SplitGraphTest do
         title: "Jogo",
         done_criterion: "Tudo mesclado.",
         request_key: Board.request_key(repo, "objective", ["jogo"]),
-        request_text: "Melhorar o jogo, @sallaumen-agent",
+        request_text: "Melhorar o jogo, @example-bot",
         spec: %{"goal" => "Melhorar", "language" => "pt"}
       }
     }
@@ -102,17 +102,17 @@ defmodule AgentBoard.SplitGraphTest do
     assert parent["body"] =~ "- #11 Dados"
     assert parent["body"] =~ "- #12 Tela"
     # A group of tasks is nobody's work: it must not wake the agent.
-    refute parent["body"] =~ "@sallaumen-agent"
+    refute parent["body"] =~ "@example-bot"
 
     assert %Objective{issue_number: 13} = Repo.one(Objective)
 
-    assert_received {:link, "/repos/sallaumen/arena-rogue/issues/13/sub_issues",
+    assert_received {:link, "/repos/example/atlas-relay/issues/13/sub_issues",
                      %{"sub_issue_id" => 1011}}
 
-    assert_received {:link, "/repos/sallaumen/arena-rogue/issues/13/sub_issues",
+    assert_received {:link, "/repos/example/atlas-relay/issues/13/sub_issues",
                      %{"sub_issue_id" => 1012}}
 
-    assert_received {:link, "/repos/sallaumen/arena-rogue/issues/12/dependencies/blocked_by",
+    assert_received {:link, "/repos/example/atlas-relay/issues/12/dependencies/blocked_by",
                      %{"issue_id" => 1011}}
   end
 
@@ -168,14 +168,14 @@ defmodule AgentBoard.SplitGraphTest do
         "title" => "Issue #{number}",
         "state" => "open",
         "html_url" => "https://x/#{number}",
-        "user" => %{"login" => "sallaumen"},
+        "user" => %{"login" => "example"},
         "labels" => labels
       }
     end
 
     Req.Test.stub(@stub, fn conn ->
       case conn.request_path do
-        "/repos/sallaumen/arena-rogue/issues" ->
+        "/repos/example/atlas-relay/issues" ->
           Req.Test.json(conn, [
             issue.(7, []),
             issue.(8, [%{"name" => SplitGraph.objective_label()}])

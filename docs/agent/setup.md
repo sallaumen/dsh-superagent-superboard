@@ -89,13 +89,14 @@ Nothing starts the orchestrator after a reboot on its own. The LaunchAgent
 every five minutes. The script asks the manager for `status` and, only when
 the orchestrator is down and was not stopped on purpose, runs
 `start --respect-stop`. A component error or a pending setup (status 2 or 3)
-needs a person and is logged, never restarted. The paths in the plist are
-this machine's; change them for another one.
+needs a person and is logged, never restarted. Render the template to resolve paths on this machine. Set `DSH_SUPERAGENT_HOME` if the manager is not at `~/.dsh/dsh-superagent`.
 
 Install it (once):
 
 ```sh
-cp ops/com.dsh.superagent.plist ~/Library/LaunchAgents/
+mkdir -p ~/Library/LaunchAgents
+python3 scripts/render-launchagent.py agent > ~/Library/LaunchAgents/com.dsh.superagent.plist
+plutil -lint ~/Library/LaunchAgents/com.dsh.superagent.plist
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dsh.superagent.plist
 launchctl print gui/$(id -u)/com.dsh.superagent | grep -E 'state|last exit'
 ```
@@ -137,7 +138,7 @@ on the machine where the agent runs. From a terminal, the same:
 
 ```sh
 scripts/agent/panel.sh                     # the primary agent
-scripts/agent/panel.sh superagent-colmex   # a second one, by profile
+scripts/agent/panel.sh superagent-portal   # a second one, by profile
 ```
 
 The script hands the URL to `open` and never prints it: the token is a
@@ -147,47 +148,8 @@ of agents is changed there or on the board's flow tile, without the panel.
 
 ### A second repository (optional)
 
-One superagent watches one repository. To have DeepSeek on `o_colmex` while
-the primary keeps `arena-rogue`, create a second profile and state:
+Add the repository in **Settings → Projects**. Choose **Connect Super Agent** only for the projects it should watch. The board provisions a separate profile and port for each one; it does not need another LaunchAgent.
 
-```sh
-cp -R ~/.dsh/profiles/superagent ~/.dsh/profiles/superagent-colmex
-# edit cordis.patch.yml: webserver port 3083, stateDir
-# ~/.dsh/state/superagent-colmex
-mkdir -p ~/.dsh/state/superagent-colmex
-cd <prototype>
-python3 scripts/dsh-superagent --profile superagent-colmex \
-  --url http://127.0.0.1:3083 start
-```
-
-In the new panel at `http://127.0.0.1:3083`, set the GitHub repository to
-`owner/second-repo`, the agent CLI to the same `gh-agent`, the executor
-directory/prepare command to the second clone, and the policy allowed list
-(changed afterwards in Configurações → Projetos, per person and project).
-The bot account needs write access to that repository (invite it, then accept
-the invitation as the bot).
-
-Install the second keepalive:
-
-```sh
-cp ops/com.dsh.superagent.colmex.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dsh.superagent.colmex.plist
-```
-
-There is no routing list to fill in: the board suggests DeepSeek for the
-repositories of the agents listed in Configurações → Projetos.
-
-`AgentState` reads both `~/.dsh/state/superagent*/orchestrator.sqlite` files,
-so the board shows both DeepSeek lanes without a restart of the agents.
-
-On a machine that never had an agent, the board does this document's steps
-3 and 4 itself: "Adicionar projeto" in Configurações → Projetos installs the
-first agent once `dsh` is on the machine and the bot is signed in (§2), and
-"IAs e setup" says which of the two is missing.
-
-An agent set up this way is not on the board yet. Configurações → Projetos
-lists it under "Agentes nesta máquina que o board não acompanha"; "Adicionar
-ao board" asks the agent which repository it serves and registers it.
 
 ## 5. Verify it is configured and alive
 
@@ -212,7 +174,7 @@ worth debugging until it is null.
 Open an issue in the tracked repository and mention the bot:
 
 ```
-@sallaumen-agent implement X
+@YOUR-BOT-LOGIN implement X
 ```
 
 Then:
@@ -273,46 +235,9 @@ only after `mix deps.get` runs there. `mix gate` fetches nothing on its own.
 
 ## 8. Merge policy
 
-The managed worker CLI enforces the [project merge checks](merge-checks.md). Delivery requirements tell the worker when to request that operation. The three team sections --
-Communication, Ticket scope and Delivery requirements -- are versioned in
-[`prompts/communication.md`](prompts/communication.md),
-[`prompts/scope.md`](prompts/scope.md) and
-[`prompts/delivery.md`](prompts/delivery.md) as the literal text the orchestrator holds, next to
-`revision`, the revision they were read from.
+The managed worker CLI enforces the [target project's merge checks](merge-checks.md). The board ships shared [communication](prompts/communication.md), [scope](prompts/scope.md) and [delivery](prompts/delivery.md) instructions for all projects. Review their differences and apply them in **Settings → Projects**. Additional project rules belong to the local profile; the shared files are not an export of any one person's agent.
 
-**Applying them is a click, not a command.** Those three files are the
-board's policy (`AgentBoard.Superagents.Policy`): they reach every board with
-an update, the Attention bell says when an agent holds another text, and
-Configurações → Projetos → the project's controls → "Instruções do agente"
-shows what differs and applies it. Nobody who uses the board needs a terminal
-for this. The script below is the maintainer's tool for the files themselves
-(reading what the dsh panel holds into git, comparing):
-
-```sh
-scripts/agent/prompts.sh get    # write the active sections and their revision to the files
-scripts/agent/prompts.sh diff   # compare the files with the active revision; exit 1 if they differ
-scripts/agent/prompts.sh put    # save the files as a new revision
-```
-
-The panel and the API (`GET`/`PUT http://127.0.0.1:3082/orchestrator/api/prompts`,
-header `x-orchestrator-request: 1`, body `{config, baseRevision}`) read and
-save the same text. `put` refuses when the panel saved a revision newer than
-`revision`, so an edit made there is never overwritten unseen: run `get`,
-review the change, commit it, then `put` again. To change the policy, edit
-the file in a PR, merge it, run `put`, and commit the new `revision`. Team
-skills and overrides of built-in parts stay in the orchestrator only.
-
-The second agent (`superagent-colmex`, port 3083) holds its own three
-sections, versioned in [`prompts/colmex/`](prompts/colmex/). The same
-commands reach it with its port and directory:
-
-```sh
-DSH_SUPERAGENT_PORT=3083 SUPERAGENT_PROMPTS_DIR=docs/agent/prompts/colmex scripts/agent/prompts.sh diff
-```
-
-Its Delivery section names a different gate, the one `o_colmex`'s AGENTS.md
-asks for: `mix format --check-formatted`, `mix lint` and the focused tests,
-with the full `mix precommit` for a broad-risk change.
+To inspect the active policy, run `scripts/agent/prompts.sh get`. The export goes to that profile's state folder (`board-prompts/`). `diff` compares that local copy; `put` saves a deliberate edit only if the base revision still matches. To use another location, set `SUPERAGENT_PROMPTS_DIR` to a local directory outside the checkout. For another profile, set the profile and its port. Propose changes to the shared defaults separately in a PR.
 
 Existing profiles keep their CLI and active revision until their owner adopts the
 guard and updates their prompts. Do not apply the prompt on its own.

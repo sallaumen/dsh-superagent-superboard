@@ -29,8 +29,8 @@ defmodule AgentBoardWeb.ThroughputTest do
     |> Repo.insert!()
   end
 
-  defp board(conn, slug \\ "sallaumen/arena-rogue") do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+  defp board(conn, slug \\ "example/atlas-relay") do
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     task!(repo, %{number: 1, state: "done", state_changed_at: ago(120)})
     task!(repo, %{number: 2, state: "queued"})
     pull!(repo, %{number: 10, opened_at: ago(900), merged_at: ago(60)})
@@ -64,11 +64,11 @@ defmodule AgentBoardWeb.ThroughputTest do
   end
 
   test "a commit read of zero is a zero, not a question mark", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     task!(repo, %{number: 2, state: "queued"})
-    Board.log_event(repo.id, "sync", "sallaumen/arena-rogue", %{"commits" => 0, "errors" => 0})
+    Board.log_event(repo.id, "sync", "example/atlas-relay", %{"commits" => 0, "errors" => 0})
 
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert html =~ ~s(data-key="commits" data-value="0")
     refute html =~ "ainda sem leitura dos commits"
@@ -85,7 +85,7 @@ defmodule AgentBoardWeb.ThroughputTest do
   end
 
   test "the clock label follows the reader's offset", %{conn: conn} do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     task!(repo, %{number: 2, state: "queued"})
 
     # The label is written at mount; reading the clock only after the render
@@ -96,7 +96,7 @@ defmodule AgentBoardWeb.ThroughputTest do
     {:ok, view, _html} =
       conn
       |> put_connect_params(%{"board_tz_offset" => 180})
-      |> live(~p"/?repo=sallaumen/arena-rogue")
+      |> live(~p"/?repo=example/atlas-relay")
 
     html = render(allow_view(view))
     later = local_minute(180)
@@ -114,8 +114,8 @@ defmodule AgentBoardWeb.ThroughputTest do
   end
 
   test "an empty board has no strip", %{conn: conn} do
-    {:ok, _repo} = Board.add_repository("sallaumen", "arena-rogue")
-    {:ok, _view, html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, _repo} = Board.add_repository("example", "atlas-relay")
+    {:ok, _view, html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     refute html =~ ~s(id="sec-flow")
   end

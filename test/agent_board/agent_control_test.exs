@@ -89,9 +89,9 @@ defmodule AgentBoard.AgentControlTest do
         %Superagent{}
         |> Superagent.changeset(%{
           repository_id: repo.id,
-          profile: "superagent-colmex",
+          profile: "superagent-portal",
           port: 3083,
-          state_dir: "/tmp/superagent-colmex"
+          state_dir: "/tmp/superagent-portal"
         })
         |> Repo.insert()
 

@@ -630,7 +630,7 @@ defmodule AgentBoard.Board do
 
   defp store_comment(task, comment, agent_login, receipt) do
     author = comment_author(comment)
-    kind = if author == agent_login, do: "agent", else: "user"
+    kind = if is_binary(agent_login) and author == agent_login, do: "agent", else: "user"
 
     attrs = %{
       task_id: task.id,

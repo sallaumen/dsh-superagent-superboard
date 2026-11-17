@@ -6,7 +6,7 @@ defmodule AgentBoard.ConversationAnswersTest do
   alias AgentBoard.Board.{Comment, Task}
 
   setup do
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     task =
       %Task{}

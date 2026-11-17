@@ -7,11 +7,11 @@ The domain under `lib/agent_board/` was not changed.
 
 | Severity | Region | Evidence | Correction |
 |---|---|---|---|
-| P2 | Merged history | [Before, #183 main](adapted-before-1600.png), [after](adapted-after-real-1600.png); `board_components/archive.ex` | Independent archive, five visible records, disclosure for the other 25 loaded records. “latest 30 loaded” is explicit because 30 is not a GitHub total. |
-| P2 | Header | [Before](adapted-before-1600.png), [after](adapted-after-real-1600.png); `board_components/header.ex` | Identity, repository, health, age, actions and settings form distinct zones. Native settings disclosure remains open through LiveView patches. |
-| P2 | Version | [After](adapted-after-real-1600.png); `components/system_panel.ex` | Semantic status chip, unknown values shown as unknown, update action emphasized only when the backend reports behind. |
-| P2 | AI measurements | [Real AI panel](adapted-after-real-ai.png); `board_components/ai.ex`, `board_components/presentation.ex`; `board_live_test.exs` | Call identity and provider/model lead. Latency and usage are labeled. Missing values say unknown; zero stays zero. AI remains in the existing single-page dialog. |
-| P3 | Dense empty lanes | [After](adapted-after-real-1600.png); `board_components/column.ex` | Four compact active lanes with counts. Merged history no longer extends the work grid. |
+| P2 | Merged history | Before, #183 main, after; `board_components/archive.ex` | Independent archive, five visible records, disclosure for the other 25 loaded records. “latest 30 loaded” is explicit because 30 is not a GitHub total. |
+| P2 | Header | Before, after; `board_components/header.ex` | Identity, repository, health, age, actions and settings form distinct zones. Native settings disclosure remains open through LiveView patches. |
+| P2 | Version | After; `components/system_panel.ex` | Semantic status chip, unknown values shown as unknown, update action emphasized only when the backend reports behind. |
+| P2 | AI measurements | Real AI panel; `board_components/ai.ex`, `board_components/presentation.ex`; `board_live_test.exs` | Call identity and provider/model lead. Latency and usage are labeled. Missing values say unknown; zero stays zero. AI remains in the existing single-page dialog. |
+| P3 | Dense empty lanes | After; `board_components/column.ex` | Four compact active lanes with counts. Merged history no longer extends the work grid. |
 
 The before capture is the current #183 main result at 1600×900. The after
 captures use the real saved board at `localhost:4002`, with 30 merged pulls.
@@ -22,10 +22,10 @@ The theme uses daisyUI tokens for both modes.
 ## Browser checks
 
 WebKit headless, one tab, read-only UI interactions. The after capture above is
-1600×900. [1366×768](adapted-after-real-1366.png),
-[3440×1440](adapted-after-real-3440.png),
-[375×812](adapted-after-real-375.png), and
-[light 1600×900](adapted-after-real-light-1600.png) had no horizontal overflow.
+1600×900. 1366×768,
+3440×1440,
+375×812, and
+light 1600×900 had no horizontal overflow.
 Light/dark changed `data-theme` and the computed background. Enter expanded
 Merged and displayed exactly 25 more records. Enter expanded Repositories;
 Tab moved to Owner with a computed solid 2px focus outline. The AI dialog

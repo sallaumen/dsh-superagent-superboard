@@ -26,7 +26,7 @@ Rubric per case: 2 = facts and limits respected; 1 = incomplete answer without a
 
 ## Consequences for the implementation
 
-- [PR #236](https://github.com/sallaumen/agent-board/pull/236) already prevents the paid call when the exact total of a lane is smaller than the number of loaded cards. The contradictory case now fails before the model.
-- The campaign of [PR #235](https://github.com/sallaumen/agent-board/pull/235) flags echoes and archive claims, but keeps human review mandatory; the two freshness/contradiction errors illustrate why.
+- [PR #236](https://github.com/sallaumen/dsh-superagent-superboard/pull/236) already prevents the paid call when the exact total of a lane is smaller than the number of loaded cards. The contradictory case now fails before the model.
+- The campaign of [PR #235](https://github.com/sallaumen/dsh-superagent-superboard/pull/235) flags echoes and archive claims, but keeps human review mandatory; the two freshness/contradiction errors illustrate why.
 - The protection against injection in titles and the interpretation of freshness still need a change and a new controlled comparison. The experimental prompt-only change was rejected: it fixed one archive claim, but started echoing the hostile instruction.
 - Before considering the production answers reliable, a round with a valid real provider, an audited report and case-by-case review is required. The local code gate does not replace that quality evaluation.

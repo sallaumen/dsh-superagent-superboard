@@ -46,17 +46,30 @@ defmodule AgentBoard.Executors do
 
   @doc "What the board appends to call the runner: a blank line and the bot's mention."
   @spec mention_suffix() :: String.t()
-  def mention_suffix, do: "\n\n@" <> AgentAccess.bot_login()
+  def mention_suffix do
+    case AgentAccess.bot_login() do
+      nil -> ""
+      login -> "\n\n@" <> login
+    end
+  end
 
   @doc "The text without the mention that ends it."
   @spec strip_mention(String.t()) :: String.t()
-  def strip_mention(text),
-    do: String.replace(text, ~r/\s*@#{Regex.escape(AgentAccess.bot_login())}\s*\z/i, "")
+  def strip_mention(text) do
+    case AgentAccess.bot_login() do
+      nil -> text
+      login -> String.replace(text, ~r/\s*@#{Regex.escape(login)}\s*\z/i, "")
+    end
+  end
 
   @doc "A text that names the bot without calling it: the runner reads a mention as work."
   @spec without_mention(String.t()) :: String.t()
-  def without_mention(text),
-    do: String.replace(text, ~r/@(#{Regex.escape(AgentAccess.bot_login())})\b/i, "\\1")
+  def without_mention(text) do
+    case AgentAccess.bot_login() do
+      nil -> text
+      login -> String.replace(text, ~r/@(#{Regex.escape(login)})\b/i, "\\1")
+    end
+  end
 
   @doc "The body of an issue that must not start anything yet."
   @spec held_body(String.t()) :: String.t()

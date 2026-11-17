@@ -172,21 +172,21 @@ defmodule AgentBoard.Usage.ClaudeCodeTest do
     test "names the PRs each session linked, once, in order", %{root: root} do
       a =
         write(root, "proj/s1.jsonl", [
-          pr_link_line("s1", "sallaumen/o_colmex", 41),
+          pr_link_line("s1", "example/o_portal", 41),
           assistant_line("m1", "s1"),
-          pr_link_line("s1", "sallaumen/o_colmex", 41),
-          pr_link_line("s1", "sallaumen/o_colmex", 42),
+          pr_link_line("s1", "example/o_portal", 41),
+          pr_link_line("s1", "example/o_portal", 42),
           ~s({"type":"pr-link","sessionId":"s1","prRepository":"x/y","prNumber":"7"})
         ])
 
-      b = write(root, "proj/s2.jsonl", [pr_link_line("s2", "sallaumen/arena-rogue", 9)])
+      b = write(root, "proj/s2.jsonl", [pr_link_line("s2", "example/atlas-relay", 9)])
 
       assert ClaudeCode.pr_links([a, b]) == %{
                "s1" => [
-                 %{repository: "sallaumen/o_colmex", number: 41},
-                 %{repository: "sallaumen/o_colmex", number: 42}
+                 %{repository: "example/o_portal", number: 41},
+                 %{repository: "example/o_portal", number: 42}
                ],
-               "s2" => [%{repository: "sallaumen/arena-rogue", number: 9}]
+               "s2" => [%{repository: "example/atlas-relay", number: 9}]
              }
 
       assert {:ok, %{skipped: 1, messages: [_]}} = ClaudeCode.read_file(a)

@@ -4,7 +4,7 @@ Workflow: `async-state` (Elixir Agent Kit 0.8.0), medium.
 
 ## The report
 
-arena-rogue #208 showed "Blocked". The owner answered at 14:44, the agent
+atlas-relay #208 showed "Blocked". The owner answered at 14:44, the agent
 replied "On it" at 14:45 and worked until 15:20. The card stayed "Blocked" for
 those 35 minutes.
 
@@ -37,9 +37,9 @@ instead of from the old report (it would otherwise mark the task silent at once)
 Isolated server on a copy of the real data, with a throwaway runner state
 holding one ticket in the shape of #208's:
 
-- [01](01-before-answer-1920-dark-en.png): the waiting ticket puts #209 in Needs you as Blocked.
-- [02](02-after-answer-1920-dark-en.png): the answer is recorded as read; within one poll, **without a reload**, the task is in Now, Needs you is empty and the header says "it is working on #209".
-- [03](03-now-card-dark-en.png): the card.
+- 01: the waiting ticket puts #209 in Needs you as Blocked.
+- 02: the answer is recorded as read; within one poll, **without a reload**, the task is in Now, Needs you is empty and the header says "it is working on #209".
+- 03: the card.
 
 Tests: the rule (`sync_test.exs`, six cases), the runner's JSON to the field
 (`agent_state_test.exs`), sqlite to the task's state (`ticket_poller_test.exs`),

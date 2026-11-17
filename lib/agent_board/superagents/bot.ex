@@ -17,6 +17,45 @@ defmodule AgentBoard.Superagents.Bot do
   def cli,
     do: Application.get_env(:agent_board, :agent_gh_cli, Path.expand("~/.local/bin/gh-agent"))
 
+  @doc "The public login in the bot's local gh configuration. Never falls back to the owner's identity."
+  @spec local_login() :: String.t() | nil
+  def local_login do
+    dir = config()
+
+    with {:ok, %{mtime: mtime, inode: inode, size: size}} <-
+           File.stat(Path.join(dir, "hosts.yml")) do
+      version = {dir, inode, mtime, size, System.monotonic_time(:second)}
+
+      case :persistent_term.get({__MODULE__, :local_login}, nil) do
+        {^version, login} ->
+          login
+
+        _ ->
+          login = configured_login(dir)
+          if login, do: :persistent_term.put({__MODULE__, :local_login}, {version, login})
+          login
+      end
+    else
+      _ -> nil
+    end
+  end
+
+  defp configured_login(dir) do
+    with gh when is_binary(gh) <- System.find_executable("gh"),
+         {output, 0} <-
+           System.cmd(gh, ["config", "get", "user", "--host", "github.com"],
+             env: [{"GH_CONFIG_DIR", dir}],
+             stderr_to_stdout: true
+           ),
+         {:ok, name} <- AgentBoard.AgentAccess.normalize_login(String.trim(output)) do
+      name
+    else
+      _ -> nil
+    end
+  rescue
+    ErlangError -> nil
+  end
+
   @doc "Whether a sign-in for the bot is on this machine. No network."
   def signed_in?, do: File.regular?(Path.join(config(), "hosts.yml"))
 

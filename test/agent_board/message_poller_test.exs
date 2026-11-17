@@ -10,7 +10,7 @@ defmodule AgentBoard.MessagePollerTest do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
 
-    {:ok, repository} = Board.add_repository("sallaumen", "inbox-fixture")
+    {:ok, repository} = Board.add_repository("example", "inbox-fixture")
 
     task =
       %Task{}
@@ -33,8 +33,8 @@ defmodule AgentBoard.MessagePollerTest do
     %{
       "id" => id,
       "body" => body,
-      "issue_url" => "https://api.github.com/repos/sallaumen/inbox-fixture/issues/71",
-      "user" => %{"login" => "sallaumen-agent"}
+      "issue_url" => "https://api.github.com/repos/example/inbox-fixture/issues/71",
+      "user" => %{"login" => "example-bot"}
     }
   end
 
@@ -132,7 +132,7 @@ defmodule AgentBoard.MessagePollerTest do
     sync_at = DateTime.add(now, -30 * 60)
 
     for {kind, at} <- [{"sync", sync_at}, {"sync_error", now}, {"sync", DateTime.add(now, -60)}] do
-      {:ok, event} = Board.log_event(repository.id, kind, "sallaumen/inbox-fixture")
+      {:ok, event} = Board.log_event(repository.id, kind, "example/inbox-fixture")
       Repo.update_all(from(e in Event, where: e.id == ^event.id), set: [inserted_at: at])
     end
 
@@ -150,7 +150,7 @@ defmodule AgentBoard.MessagePollerTest do
   end
 
   test "a sync just before the boot still reads ten minutes back", %{repository: repository} do
-    {:ok, event} = Board.log_event(repository.id, "sync", "sallaumen/inbox-fixture")
+    {:ok, event} = Board.log_event(repository.id, "sync", "example/inbox-fixture")
     at = DateTime.utc_now() |> DateTime.add(-60) |> DateTime.truncate(:second)
     Repo.update_all(from(e in Event, where: e.id == ^event.id), set: [inserted_at: at])
     test_pid = self()

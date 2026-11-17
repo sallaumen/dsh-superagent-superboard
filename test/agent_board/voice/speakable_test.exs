@@ -5,8 +5,8 @@ defmodule AgentBoard.Voice.SpeakableTest do
   alias AgentBoard.Voice.Speakable
 
   test "screen notation becomes words a listener follows" do
-    assert Speakable.clean("O PR #28 de **sallaumen/arena-rogue** passou.") ==
-             "O PR 28 de arena rogue passou."
+    assert Speakable.clean("O PR #28 de **example/atlas-relay** passou.") ==
+             "O PR 28 de atlas relay passou."
 
     assert Speakable.clean(
              "Veja [o PR](https://github.com/x/y/pull/1) e https://example.com agora."
@@ -15,8 +15,8 @@ defmodule AgentBoard.Voice.SpeakableTest do
 
     assert Speakable.clean("- primeiro item\n- segundo `item`") == "primeiro item segundo item"
 
-    assert Speakable.clean("12 tarefas no arena-rogue, de 2-3 dias.") ==
-             "12 tarefas no arena rogue, de 2-3 dias."
+    assert Speakable.clean("12 tarefas no atlas-relay, de 2-3 dias.") ==
+             "12 tarefas no atlas relay, de 2-3 dias."
   end
 
   test "ordinary sentences are left alone" do

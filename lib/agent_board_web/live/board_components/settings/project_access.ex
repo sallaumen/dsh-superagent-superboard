@@ -559,10 +559,16 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectAccess do
   defp check_icon(false), do: "close"
 
   defp how_to_ask(repository) do
-    gettext(
-      "To ask the agent for work, open an issue in %{repository} and write @%{bot} in its body.",
-      repository: repository,
-      bot: AgentAccess.bot_login()
-    )
+    case AgentAccess.bot_login() do
+      nil ->
+        gettext("Connect your agent’s GitHub account to see how to request work.")
+
+      bot ->
+        gettext(
+          "To ask the agent for work, open an issue in %{repository} and write @%{bot} in its body.",
+          repository: repository,
+          bot: bot
+        )
+    end
   end
 end

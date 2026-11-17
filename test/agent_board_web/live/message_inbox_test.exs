@@ -7,8 +7,8 @@ defmodule AgentBoardWeb.MessageInboxTest do
   alias AgentBoard.Board.Task
 
   test "message and attention windows stay separate and open the right dialogue", %{conn: conn} do
-    {:ok, first} = Board.add_repository("sallaumen", "arena-rogue")
-    {:ok, second} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, first} = Board.add_repository("example", "atlas-relay")
+    {:ok, second} = Board.add_repository("example", "o_portal")
 
     task =
       %Task{}
@@ -26,9 +26,9 @@ defmodule AgentBoardWeb.MessageInboxTest do
       %{
         "id" => 3001,
         "body" => "Tenho uma pergunta para você",
-        "user" => %{"login" => "sallaumen-agent"}
+        "user" => %{"login" => "example-bot"}
       },
-      "sallaumen-agent"
+      "example-bot"
     )
 
     {:ok, view, _html} = live(conn, "/?repo=#{first.owner}/#{first.name}")
@@ -41,7 +41,7 @@ defmodule AgentBoardWeb.MessageInboxTest do
 
     assert_patch(
       view,
-      "/?panel=conversation&repo=sallaumen%2Fo_colmex&tab=conversa&task=#{task.id}"
+      "/?panel=conversation&repo=example%2Fo_portal&tab=conversa&task=#{task.id}"
     )
 
     assert has_element?(view, "#conversation .ab-msg", "Tenho uma pergunta para você")
@@ -55,8 +55,8 @@ defmodule AgentBoardWeb.MessageInboxTest do
   end
 
   test "a reply from another project updates the open board", %{conn: conn} do
-    {:ok, first} = Board.add_repository("sallaumen", "arena-rogue")
-    {:ok, second} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, first} = Board.add_repository("example", "atlas-relay")
+    {:ok, second} = Board.add_repository("example", "o_portal")
 
     task =
       %Task{}
@@ -74,8 +74,8 @@ defmodule AgentBoardWeb.MessageInboxTest do
 
     Board.upsert_comment(
       task,
-      %{"id" => 3002, "body" => "Resposta ao vivo", "user" => %{"login" => "sallaumen-agent"}},
-      "sallaumen-agent"
+      %{"id" => 3002, "body" => "Resposta ao vivo", "user" => %{"login" => "example-bot"}},
+      "example-bot"
     )
 
     Board.broadcast(second.id)
@@ -85,8 +85,8 @@ defmodule AgentBoardWeb.MessageInboxTest do
   test "mark all clears the current replies, while a later edit becomes unread again", %{
     conn: conn
   } do
-    {:ok, first} = Board.add_repository("sallaumen", "arena-rogue")
-    {:ok, second} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, first} = Board.add_repository("example", "atlas-relay")
+    {:ok, second} = Board.add_repository("example", "o_portal")
 
     first_task = task(first, 81, "Revisar interface", "ready")
     second_task = task(second, 82, "Responder à Yasme", "question")
@@ -140,8 +140,8 @@ defmodule AgentBoardWeb.MessageInboxTest do
   test "one reply can be marked seen without opening its task or clearing another reply", %{
     conn: conn
   } do
-    {:ok, first} = Board.add_repository("sallaumen", "arena-rogue")
-    {:ok, second} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, first} = Board.add_repository("example", "atlas-relay")
+    {:ok, second} = Board.add_repository("example", "o_portal")
     first_task = task(first, 83, "Primeiro diálogo", "running")
     second_task = task(second, 84, "Segundo diálogo", "question")
     comment(first_task, 5001, "Primeira resposta")
@@ -171,7 +171,7 @@ defmodule AgentBoardWeb.MessageInboxTest do
   end
 
   test "an outdated read action keeps the edited reply unread", %{conn: conn} do
-    {:ok, repository} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, repository} = Board.add_repository("example", "o_portal")
     task = task(repository, 85, "Resposta que mudou", "running")
     comment(task, 5003, "Resposta inicial")
     old_version = Board.inbox().messages |> hd() |> Map.fetch!(:version)
@@ -204,8 +204,8 @@ defmodule AgentBoardWeb.MessageInboxTest do
   defp comment(task, id, body) do
     Board.upsert_comment(
       task,
-      %{"id" => id, "body" => body, "user" => %{"login" => "sallaumen-agent"}},
-      "sallaumen-agent"
+      %{"id" => id, "body" => body, "user" => %{"login" => "example-bot"}},
+      "example-bot"
     )
   end
 end

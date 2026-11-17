@@ -3,7 +3,7 @@
 > **Historical record:** a proposal from 5 November 2026, before the AI layer was
 > implemented. The text below preserves the diagnosis, the projections and the
 > phases of that proposal; it does not describe the current state nor a list of
-> tasks still pending. The references to `o_colmex` are the survey from that time,
+> tasks still pending. The references to `o_portal` are the survey from that time,
 > not an inventory verified by this repository. To work on the implementation,
 > see the [AI rules](maintainer-contract.md#ai-calls) and the entry points
 > [AgentBoard.AI](../lib/agent_board/ai.ex) and
@@ -13,13 +13,13 @@ The board today **mirrors** the agent's work: it syncs GitHub, shows the board,
 speaks the summary. It does not **call** any model. The `ask` is a GitHub
 comment; the `Voice` is a template. This document maps what is missing for the
 board to have its own AI layer — short, cheap and transparent — and what of it
-can be borrowed from `o_colmex`, which has already solved this problem.
+can be borrowed from `o_portal`, which has already solved this problem.
 
-## 1. What `o_colmex` already has
+## 1. What `o_portal` already has
 
 | Contract | What it does | File |
 |---|---|---|
-| `Engine` (behaviour) | the port to a model: `run/1` and `status/0`; one adapter per engine, Mox in the tests | `lib/colmex/brain/engine.ex` |
+| `Engine` (behaviour) | the port to a model: `run/1` and `status/0`; one adapter per engine, Mox in the tests | `lib/portal/brain/engine.ex` |
 | `Request` / `Result` | input (model, system, prompt, caps, schema, tier, route) and output (text, json, tokens, cost in micros, `parse_state`) | `brain/request.ex`, `brain/result.ex` |
 | `Registry` | **literal list of the allowed calls**; the prompt is code, a worker does not invent a prompt | `brain/registry.ex` |
 | `Router` | picks the engine by `tier`, remaining quota and `recommended`; it only switches on a definitive response | `brain/engines/router.ex` |
@@ -227,7 +227,7 @@ invent**. A pipeline that always returns tasks is worse than one that asks.
 
 ## 9. Open decisions
 
-- **"GM"**: is it Gemini? `o_colmex` today has Claude CLI, Codex CLI and DeepSeek.
+- **"GM"**: is it Gemini? `o_portal` today has Claude CLI, Codex CLI and DeepSeek.
   If it is Gemini, the adapter is OpenAI-compatible too and enters phase 4.
 - **Keys**: does `DEEPSEEK_API_KEY` already exist in the runner's environment?
   The board needs its own.

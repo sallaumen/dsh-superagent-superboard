@@ -122,7 +122,7 @@ defmodule AgentBoard.ActionsTest do
   defp request(repo, title),
     do: %{
       title: title,
-      body: "corpo\n\n@sallaumen-agent",
+      body: "corpo\n\n@example-bot",
       key: Board.request_key(repo, "t", [title])
     }
 
@@ -552,7 +552,7 @@ defmodule AgentBoard.ActionsTest do
       assert path =~ "/issues/21/comments"
       assert body =~ "<!-- agent-board:private issue-21 -->"
       assert body =~ PrivateContext.shared_path(repo, "issue-21")
-      refute body =~ "@sallaumen-agent"
+      refute body =~ "@example-bot"
       assert %Decision{action: "share_private_context", outcome: "ok"} = last()
     end
 

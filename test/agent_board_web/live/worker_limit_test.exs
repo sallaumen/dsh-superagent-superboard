@@ -40,7 +40,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
     end)
 
     # The strip shows only on a board with tasks.
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
 
     insert_task(repo)
 
@@ -63,9 +63,9 @@ defmodule AgentBoardWeb.WorkerLimitTest do
     %Superagent{}
     |> Superagent.changeset(%{
       repository_id: repo.id,
-      profile: "superagent-colmex",
+      profile: "superagent-portal",
       port: port,
-      state_dir: "/tmp/superagent-colmex"
+      state_dir: "/tmp/superagent-portal"
     })
     |> Repo.insert!()
   end
@@ -87,7 +87,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
         Req.Test.transport_error(conn, :econnrefused)
     end)
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     render_async(view, 2_000)
 
     assert_receive {:agent, "GET", "/orchestrator/api/state"}
@@ -111,7 +111,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
       conn -> runner(conn, runner)
     end)
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     render_async(view, 2_000)
 
     assert has_element?(view, "#flow-load [data-key='load-max']", "?")
@@ -123,7 +123,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
     runner: runner
   } do
     own_agent(repo, 3083)
-    {:ok, other} = Board.add_repository("sallaumen", "o_colmex")
+    {:ok, other} = Board.add_repository("example", "o_portal")
     insert_task(other)
     test = self()
 
@@ -143,11 +143,11 @@ defmodule AgentBoardWeb.WorkerLimitTest do
         end
     end)
 
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     render_async(view, 2_000)
     assert has_element?(view, "#flow-load [data-key='load-max']", "3")
 
-    render_patch(view, ~p"/?repo=sallaumen/o_colmex")
+    render_patch(view, ~p"/?repo=example/o_portal")
     assert_receive {:held, agent}
     assert has_element?(view, "#flow-load [data-key='load-max']", "?")
 
@@ -169,7 +169,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
     conn: conn,
     runner: runner
   } do
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     html = render_async(view, 2_000)
     assert html =~ "Mais um agente"
 
@@ -198,7 +198,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
       })
 
     Agent.update(runner, &%{&1 | max: 6})
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     render_async(view, 5_000)
 
     view |> element("#flow-load button[aria-label='Mais um agente']") |> render_click()
@@ -208,7 +208,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
 
   test "the minus button stops at one agent", %{conn: conn, runner: runner} do
     Agent.update(runner, &%{&1 | max: 1})
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     render_async(view, 2_000)
 
     assert has_element?(view, "#flow-load button[aria-label='Menos um agente'][disabled]")
@@ -216,7 +216,7 @@ defmodule AgentBoardWeb.WorkerLimitTest do
 
   test "a conflict says the settings changed and writes nothing", %{conn: conn, runner: runner} do
     Agent.update(runner, &Map.put(&1, :conflict, true))
-    {:ok, view, _html} = live(conn, ~p"/?repo=sallaumen/arena-rogue")
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
     render_async(view, 2_000)
 
     html = view |> element("#flow-load button[aria-label='Mais um agente']") |> render_click()

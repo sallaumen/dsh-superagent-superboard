@@ -21,10 +21,10 @@ defmodule AgentBoard.RoutingSignalsAgentTest do
       restore(:orchestrator_client, previous_client)
     end)
 
-    # The primary (port 1) is paused; o_colmex's own agent (3083) is ready.
+    # The primary (port 1) is paused; o_portal's own agent (3083) is ready.
     Req.Test.stub(@stub, fn conn ->
       {repository, paused} =
-        if conn.port == 3083, do: {"fixture/colmex", false}, else: {"fixture/arena", true}
+        if conn.port == 3083, do: {"fixture/portal", false}, else: {"fixture/arena", true}
 
       Req.Test.json(conn, %{
         "paused" => paused,
@@ -34,18 +34,18 @@ defmodule AgentBoard.RoutingSignalsAgentTest do
     end)
 
     {:ok, arena} = Board.add_repository("fixture", "arena")
-    {:ok, colmex} = Board.add_repository("fixture", "colmex")
+    {:ok, portal} = Board.add_repository("fixture", "portal")
 
     %Superagent{}
     |> Superagent.changeset(%{
-      repository_id: colmex.id,
-      profile: "superagent-colmex",
+      repository_id: portal.id,
+      profile: "superagent-portal",
       port: 3083,
-      state_dir: "/tmp/superagent-colmex"
+      state_dir: "/tmp/superagent-portal"
     })
     |> Repo.insert!()
 
-    %{arena: arena, colmex: colmex}
+    %{arena: arena, portal: portal}
   end
 
   defp restore(key, nil), do: Application.delete_env(:agent_board, key)
@@ -53,9 +53,9 @@ defmodule AgentBoard.RoutingSignalsAgentTest do
 
   test "a repository with its own agent is routed by that agent's state", %{
     arena: arena,
-    colmex: colmex
+    portal: portal
   } do
-    assert %{"dsh" => %{state: :ready}} = Signals.read_for(colmex, fn -> %{} end)
+    assert %{"dsh" => %{state: :ready}} = Signals.read_for(portal, fn -> %{} end)
     assert %{"dsh" => %{state: :paused}} = Signals.read_for(arena, fn -> %{} end)
   end
 end

@@ -10,7 +10,7 @@ defmodule AgentBoard.ReleaseTest do
   setup do
     Req.Test.set_req_test_to_shared(%{})
     on_exit(fn -> Req.Test.set_req_test_to_private(%{}) end)
-    {:ok, repo} = Board.add_repository("sallaumen", "arena-rogue")
+    {:ok, repo} = Board.add_repository("example", "atlas-relay")
     %{repo: repo}
   end
 
@@ -60,10 +60,9 @@ defmodule AgentBoard.ReleaseTest do
 
     assert [{2, :ok}] = Release.tick(client())
 
-    assert_received {:comment, "/repos/sallaumen/arena-rogue/issues/2/comments",
-                     %{"body" => body}}
+    assert_received {:comment, "/repos/example/atlas-relay/issues/2/comments", %{"body" => body}}
 
-    assert body =~ "@sallaumen-agent"
+    assert body =~ "@example-bot"
     assert %Task{held: false, released_at: %DateTime{}} = Repo.get!(Task, held.id)
 
     assert [] = Release.tick(client())
@@ -153,7 +152,7 @@ defmodule AgentBoard.ReleaseTest do
     assert [{2, :ok}] = Release.tick(client())
     assert_received {:comment, _path, %{"body" => body}}
     assert body =~ "#2 T2"
-    assert String.ends_with?(body, "@sallaumen-agent")
+    assert String.ends_with?(body, "@example-bot")
   end
 
   test "the owner can call again a task the agent never took", %{repo: repo} do
@@ -164,7 +163,7 @@ defmodule AgentBoard.ReleaseTest do
     phrase = Actions.phrase(:release_task, params)
 
     assert :ok = Actions.run(:release_task, params, Actions.owner(:ui), confirm: phrase)
-    assert_received {:comment, "/repos/sallaumen/arena-rogue/issues/2/comments", _body}
+    assert_received {:comment, "/repos/example/atlas-relay/issues/2/comments", _body}
     assert %Task{released_at: again} = Repo.get!(Task, stuck.id)
     assert DateTime.compare(again, called) == :gt
   end
@@ -205,7 +204,7 @@ defmodule AgentBoard.ReleaseTest do
       Map.merge(
         %{
           title: title,
-          body: "Corpo de #{title}\n\n@sallaumen-agent",
+          body: "Corpo de #{title}\n\n@example-bot",
           key: Board.request_key(repo, "split", [title]),
           language: "pt",
           depends_on: Enum.map(depends_on, &Board.request_key(repo, "split", [&1]))
@@ -221,7 +220,7 @@ defmodule AgentBoard.ReleaseTest do
       Board.Requests.create_requests(repo, requests, client())
 
       assert_received {:issue, 1, %{"body" => free}}
-      assert free =~ "@sallaumen-agent"
+      assert free =~ "@example-bot"
       assert_received {:issue, 2, %{"body" => waiting}}
       refute waiting =~ "@"
       assert waiting =~ "**Depende de:** #1"

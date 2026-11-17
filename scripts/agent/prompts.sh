@@ -1,25 +1,24 @@
 #!/bin/sh
-# The three team prompt sections -- Communication, Ticket scope and Delivery
-# requirements -- are the agent's policy. The orchestrator holds the active
-# text; git holds docs/agent/prompts/{communication,scope,delivery}.md plus
-# `revision`, the revision those files were read from. This script moves the
-# text between the two. A second agent keeps its own directory: name it in
-# SUPERAGENT_PROMPTS_DIR together with that agent's DSH_SUPERAGENT_PORT.
-#
+# Export and review a local profile's active policy outside this checkout.
+# The shared defaults in docs/agent/prompts are never a profile export.
 #   prompts.sh get    write the active sections and their revision to the files
 #   prompts.sh diff   compare the files with the active revision; exit 1 if they differ
 #   prompts.sh put    save the files as a new revision on top of the one in `revision`
 #
 # `put` refuses when the panel saved a newer revision than `revision`, so an
 # edit made in the panel is never overwritten unseen: run `get`, review the
-# change, commit it, then `put` again. Team skills and built-in overrides stay
+# change locally, then `put` again. Team skills and built-in overrides stay
 # in the orchestrator; `put` sends them back unchanged. Needs curl and jq.
 set -eu
 # shellcheck disable=SC1091
 . "$(dirname "$0")/_common.sh"
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-DIR="${SUPERAGENT_PROMPTS_DIR:-$ROOT/docs/agent/prompts}"
+DIR="${SUPERAGENT_PROMPTS_DIR:-$STATE_DIR/board-prompts}"
+# Resolve symlinks and non-existent parents before creating or writing anything.
+DIR=$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$DIR")
+case "$DIR/" in "$ROOT/"*) echo "Use a prompt directory outside the board checkout." >&2; exit 2;; esac
+umask 077
 SECTIONS="communication scope delivery"
 HEADER="x-orchestrator-request: 1"
 
