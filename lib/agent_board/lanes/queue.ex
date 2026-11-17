@@ -6,6 +6,15 @@ defmodule AgentBoard.Lanes.Queue do
 
   @compact_limit 8
 
+  @doc "Collect origin and blocker task IDs once, preserving their first occurrence."
+  @spec related_ids([map()]) :: [integer()]
+  def related_ids(rows) do
+    rows
+    |> Enum.flat_map(&[&1.origin_task_id, &1.blocker_for_task_id])
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
   @doc "Number of rows on the compact queue page."
   @spec compact_limit() :: pos_integer()
   def compact_limit, do: @compact_limit
