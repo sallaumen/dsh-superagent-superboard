@@ -7,6 +7,22 @@ defmodule AgentBoard.Lanes.CITest do
   alias AgentBoard.Lanes.MergeHistory
   alias AgentBoard.LocalCI
 
+  test "failed check names discard blanks and duplicates without changing their order" do
+    assert CI.failed_check_names(" tests, lint, ,tests, segurança , lint ") ==
+             ["tests", "lint", "segurança"]
+  end
+
+  test "missing or blank failed check names stay absent" do
+    for failed <- [nil, "", "  ", ", ,,, "] do
+      assert CI.failed_check_names(failed) == []
+    end
+  end
+
+  test "normalization retains full names for the presentation layer to shorten" do
+    name = String.duplicate("á", 81)
+    assert CI.failed_check_names(name) == [name]
+  end
+
   test "green remote checks cannot validate a local pass recorded for another commit" do
     Gettext.put_locale(AgentBoardWeb.Gettext, "en")
 

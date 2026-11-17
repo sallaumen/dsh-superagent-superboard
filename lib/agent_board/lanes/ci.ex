@@ -8,6 +8,18 @@ defmodule AgentBoard.Lanes.CI do
           | {:fail, :local_fail}
           | {:unknown, :stale | :remote_failure | :pending | :no_checks | :incomplete}
 
+  @doc "Normalize mirrored failed-check names, retaining their first occurrence."
+  @spec failed_check_names(String.t() | nil) :: [String.t()]
+  def failed_check_names(nil), do: []
+
+  def failed_check_names(failed) when is_binary(failed) do
+    failed
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.uniq()
+  end
+
   @doc "Local evidence takes precedence. A gate for another head stays unknown even with green remote checks."
   @spec classify(PullRequest.t(), map() | nil) :: verdict()
   def classify(_pull, %{state: :pass}), do: {:pass, :local_pass}
