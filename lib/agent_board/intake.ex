@@ -9,6 +9,9 @@ defmodule AgentBoard.Intake do
   """
 
   alias AgentBoard.AI
+  alias AgentBoard.Intake.ReviewGuides
+
+  @type digest :: String.t() | %{text: String.t(), paths: [String.t()], url: String.t()} | nil
 
   @type spec :: map()
   @type task :: map()
@@ -23,17 +26,33 @@ defmodule AgentBoard.Intake do
   def over_limit?(count, limit), do: is_integer(limit) and count > limit
 
   @doc "Refines a rough request into a specification."
-  @spec refine(String.t(), String.t() | nil) :: {:ok, spec()} | {:error, term()}
+  @spec refine(String.t(), digest()) :: {:ok, spec()} | {:error, term()}
   def refine(text, digest \\ nil),
     do: call(:refine_request, with_digest(%{text: text}, digest), :refine_request)
 
   @doc "Splits a specification into tasks."
-  @spec propose(spec(), String.t() | nil, pos_integer() | nil) ::
+  @spec propose(spec(), digest(), pos_integer() | nil) ::
           {:ok, [task()]} | {:error, term()}
   def propose(spec, digest \\ nil, limit \\ nil) do
+    propose_review(spec, digest, limit, nil)
+  end
+
+  defp propose_review(spec, digest, limit, original) do
     inputs = with_digest(%{spec: spec}, digest)
+    inputs = if original, do: Map.put(inputs, :original_request, original), else: inputs
     inputs = if is_integer(limit), do: Map.put(inputs, :max_tasks, limit), else: inputs
-    call(:propose_tasks, inputs, :propose_tasks)
+
+    with {:ok, tasks} <- call(:propose_tasks, inputs, :propose_tasks),
+         :ok <- verify_proposal(tasks) do
+      guides = ReviewGuides.available(if(is_map(digest), do: digest))
+      {:ok, Enum.map(tasks, &ReviewGuides.attach(&1, guides))}
+    end
+  end
+
+  # Reject a missing proof at generation, without silently dropping a dependency.
+  # A human can still clear the proposed scenario deliberately during review.
+  defp verify_proposal(tasks) do
+    if Enum.any?(tasks, &(&1.verification == "")), do: {:error, :malformed_output}, else: :ok
   end
 
   @doc """
@@ -44,30 +63,31 @@ defmodule AgentBoard.Intake do
   turns an unclear request into confident, wrong work. When the model could
   not pin the request down, the result is the questions and no tasks.
   """
-  @spec run(String.t(), String.t() | nil, pos_integer() | nil) ::
+  @spec run(String.t(), digest(), pos_integer() | nil) ::
           {:ok,
            %{spec: spec(), tasks: [task()], status: :ready | :needs_clarification | :no_tasks}}
           | {:error, term()}
   def run(text, digest \\ nil, limit \\ nil) do
     with {:ok, spec} <- refine(text, digest) do
-      maybe_propose(spec, digest, limit)
+      maybe_propose(spec, digest, limit, text)
     end
   end
 
+  defp with_digest(inputs, %{text: text}), do: with_digest(inputs, text)
   defp with_digest(inputs, nil), do: inputs
   defp with_digest(inputs, digest), do: Map.put(inputs, :repository, digest)
 
-  defp maybe_propose(%{"blocking_questions" => [_ | _]} = spec, _digest, _limit),
+  defp maybe_propose(%{"blocking_questions" => [_ | _]} = spec, _digest, _limit, _text),
     do: needs_clarification(spec)
 
-  defp maybe_propose(%{"ready" => true} = spec, digest, limit) do
-    with {:ok, tasks} <- propose(spec, digest, limit) do
+  defp maybe_propose(%{"ready" => true} = spec, digest, limit, text) do
+    with {:ok, tasks} <- propose_review(spec, digest, limit, text) do
       status = if tasks == [], do: :no_tasks, else: :ready
       {:ok, %{spec: spec, tasks: tasks, status: status}}
     end
   end
 
-  defp maybe_propose(spec, _digest, _limit), do: needs_clarification(spec)
+  defp maybe_propose(spec, _digest, _limit, _text), do: needs_clarification(spec)
 
   defp needs_clarification(spec),
     do: {:ok, %{spec: spec, tasks: [], status: :needs_clarification}}
@@ -83,8 +103,15 @@ defmodule AgentBoard.Intake do
     |> Enum.map(fn {task, index} -> edit_task(task, edits[Integer.to_string(index)]) end)
   end
 
-  defp edit_task(task, %{"title" => title, "body" => body, "acceptance" => acceptance}) do
-    %{task | title: title, body: body, acceptance: edited_lines(acceptance)}
+  defp edit_task(task, %{"title" => title, "body" => body, "acceptance" => acceptance} = edits) do
+    task = %{task | title: title, body: body, acceptance: edited_lines(acceptance)}
+
+    task =
+      if is_binary(edits["verification"]),
+        do: Map.put(task, :verification, String.trim(edits["verification"])),
+        else: task
+
+    if is_list(edits["guides"]), do: ReviewGuides.select(task, edits["guides"]), else: task
   end
 
   defp edit_task(task, _no_edit), do: task
@@ -206,6 +233,9 @@ defmodule AgentBoard.Intake do
     %{
       title: task["title"],
       source_title: task["title"],
+      verification: String.trim(task["verification"]),
+      review_method: task["review_method"],
+      project_guide: task["project_guide"],
       body: task["body"],
       kind: task["kind"],
       acceptance: task["acceptance"] || [],

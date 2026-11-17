@@ -311,6 +311,28 @@ defmodule AgentBoardWeb.BoardComponents.Composer do
                   rows="4"
                 >{Enum.join(task.acceptance, "\n")}</textarea>
               </details>
+              <div class="ab-split__detail">
+                <label for={"composer-proof-#{index}"} class="ab-label">{gettext("How to verify")}</label>
+                <textarea
+                  id={"composer-proof-#{index}"}
+                  name={"task_edits[#{index}][verification]"}
+                  rows="3"
+                >{Map.get(task, :verification, "")}</textarea>
+                <fieldset :if={Map.get(task, :guides, []) != []} class="ab-split__guides">
+                  <legend class="ab-label">{gettext("Include guides in this issue")}</legend>
+                  <input type="hidden" name={"task_edits[#{index}][guides][]"} value="" />
+                  <label :for={guide <- task.guides} class="ab-attach__opt">
+                    <input
+                      type="checkbox"
+                      name={"task_edits[#{index}][guides][]"}
+                      value={guide.id}
+                      checked={guide.id in task.selected_guides}
+                    />
+                    <span>{guide.id}</span>
+                    <span :if={guide.scope == :local} class="ab-meta">{gettext("On this computer")}</span>
+                  </label>
+                </fieldset>
+              </div>
             </div>
           </div>
 

@@ -735,7 +735,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
   end
 
   defp repository_digest(repo) do
-    if GitHub.configured?(), do: RepoDigest.read(repo, GitHub.client())
+    if GitHub.configured?(), do: RepoDigest.snapshot(repo, GitHub.client())
   end
 
   defp start_enqueue(socket, [], _shown),

@@ -10425,3 +10425,12 @@ msgstr "O DeepSeek está pausado neste projeto."
 #, elixir-autogen, elixir-format
 msgid "Open agent maintenance"
 msgstr "Abrir manutenção do agente"
+
+msgid "How to verify"
+msgstr "Como verificar"
+
+msgid "Include guides in this issue"
+msgstr "Incluir guias nesta issue"
+
+msgid "On this computer"
+msgstr "Neste computador"

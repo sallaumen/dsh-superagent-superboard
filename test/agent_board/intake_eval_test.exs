@@ -2,9 +2,9 @@ defmodule AgentBoard.IntakeEvalTest do
   @moduledoc """
   The five evaluation cases, as a regression net.
 
-  They do not call a model: each stub is a real answer captured from
+  They do not call a model: the cases originated from captures of
   `deepseek-flash`, so the pipeline is tested against what the model
-  actually returns -- including the fields it invents and the schemas it
+  returned, with added synthetic review fields for the current schema -- including the fields it invents and the schemas it
   ignores. `scripts/eval-intake.sh` is the live counterpart.
   """
   use AgentBoard.DataCase, async: false
@@ -55,7 +55,7 @@ defmodule AgentBoard.IntakeEvalTest do
   test "a concrete request becomes a goal and a task list" do
     stub_responses(
       ~s({"goal":"Tornar o board rápido e confiável","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"}),
-      ~s({"tasks":[{"title":"Medir baseline","body":"mede","kind":"bug","acceptance":["p95"],"depends_on":[],"size":"S"},{"title":"Corrigir gargalo","body":"corrige","kind":"bug","acceptance":["teste"],"depends_on":[0],"size":"M"}]})
+      ~s({"tasks":[{"title":"Medir baseline","body":"mede","kind":"bug","acceptance":["p95"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"S"},{"title":"Corrigir gargalo","body":"corrige","kind":"bug","acceptance":["teste"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[0],"size":"M"}]})
     )
 
     assert {:ok, %{spec: spec, tasks: tasks}} = Intake.run("o board ta lento")
@@ -81,7 +81,7 @@ defmodule AgentBoard.IntakeEvalTest do
   test "a task with a missing acceptance criterion is dropped" do
     stub_responses(
       ~s({"goal":"x","constraints":[],"non_goals":[],"risks":[],"blocking_questions":[],"open_questions":[],"assumptions":[],"ready":true,"language":"pt"}),
-      ~s({"tasks":[{"title":"boa","body":"b","kind":"bug","acceptance":["a"],"depends_on":[],"size":"S"},{"title":"ruim","body":"b","kind":"bug","acceptance":[],"depends_on":[],"size":"M"}]})
+      ~s({"tasks":[{"title":"boa","body":"b","kind":"bug","acceptance":["a"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"S"},{"title":"ruim","body":"b","kind":"bug","acceptance":[],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"M"}]})
     )
 
     assert {:ok, %{tasks: tasks}} = Intake.run("x")

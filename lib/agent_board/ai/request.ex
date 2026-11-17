@@ -40,6 +40,9 @@ defmodule AgentBoard.AI.Request do
     "Maximum tasks: #{limit}.\n\n" <> prompt(Map.delete(inputs, :max_tasks))
   end
 
+  defp prompt(%{original_request: original} = inputs),
+    do: "Original request:\n#{original}\n\n" <> prompt(Map.delete(inputs, :original_request))
+
   defp prompt(%{text: text, repository: digest}),
     do: "Request:\n#{text}\n\n#{repository(digest)}"
 

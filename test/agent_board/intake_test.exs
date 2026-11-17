@@ -45,8 +45,8 @@ defmodule AgentBoard.IntakeTest do
   test "propose drops a task that cannot close on its own" do
     tasks = """
     {"tasks":[
-      {"title":"medir","body":"mede o tempo","kind":"bug","acceptance":["p95 < 200ms"],"depends_on":[],"size":"S"},
-      {"title":"","body":"sem titulo","kind":"bug","acceptance":[],"depends_on":[],"size":"M"}
+      {"title":"medir","body":"mede o tempo","kind":"bug","acceptance":["p95 < 200ms"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"S"},
+      {"title":"","body":"sem titulo","kind":"bug","acceptance":[],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"M"}
     ]}
     """
 
@@ -60,9 +60,9 @@ defmodule AgentBoard.IntakeTest do
   test "dropping a task keeps every dependency pointing at the same task" do
     tasks = """
     {"tasks":[
-      {"title":"","body":"sem titulo","kind":"bug","acceptance":[],"depends_on":[],"size":"M"},
-      {"title":"medir","body":"mede","kind":"bug","acceptance":["a"],"depends_on":[],"size":"S"},
-      {"title":"corrigir","body":"corrige","kind":"bug","acceptance":["b"],"depends_on":[0,1],"size":"S"}
+      {"title":"","body":"sem titulo","kind":"bug","acceptance":[],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"M"},
+      {"title":"medir","body":"mede","kind":"bug","acceptance":["a"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"S"},
+      {"title":"corrigir","body":"corrige","kind":"bug","acceptance":["b"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[0,1],"size":"S"}
     ]}
     """
 
@@ -75,8 +75,8 @@ defmodule AgentBoard.IntakeTest do
   test "a dependency on itself or outside the list is not a dependency" do
     tasks = """
     {"tasks":[
-      {"title":"medir","body":"mede","kind":"bug","acceptance":["a"],"depends_on":[0,7,-1],"size":"S"},
-      {"title":"corrigir","body":"corrige","kind":"bug","acceptance":["b"],"depends_on":[0,0],"size":"S"}
+      {"title":"medir","body":"mede","kind":"bug","acceptance":["a"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[0,7,-1],"size":"S"},
+      {"title":"corrigir","body":"corrige","kind":"bug","acceptance":["b"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[0,0],"size":"S"}
     ]}
     """
 
@@ -85,12 +85,33 @@ defmodule AgentBoard.IntakeTest do
     assert {:ok, [%{depends_on: []}, %{depends_on: [0]}]} = Intake.propose(%{"goal" => "x"})
   end
 
+  test "a proposal cannot look ready with an empty verification scenario" do
+    doc = %{
+      "tasks" => [
+        %{
+          "title" => "Hit",
+          "body" => "Show impact",
+          "kind" => "ui",
+          "acceptance" => ["Only the target reacts"],
+          "project_guide" => "",
+          "review_method" => "motion",
+          "verification" => "   ",
+          "depends_on" => [],
+          "size" => "S"
+        }
+      ]
+    }
+
+    Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, answer(Jason.encode!(doc))) end)
+    assert {:error, :malformed_output} = Intake.propose(%{"goal" => "Readable damage"})
+  end
+
   test "a cycle from the model loses the edge that closes it" do
     tasks = """
     {"tasks":[
-      {"title":"a","body":"a","kind":"bug","acceptance":["a"],"depends_on":[2],"size":"S"},
-      {"title":"b","body":"b","kind":"bug","acceptance":["b"],"depends_on":[0],"size":"S"},
-      {"title":"c","body":"c","kind":"bug","acceptance":["c"],"depends_on":[1],"size":"S"}
+      {"title":"a","body":"a","kind":"bug","acceptance":["a"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[2],"size":"S"},
+      {"title":"b","body":"b","kind":"bug","acceptance":["b"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[0],"size":"S"},
+      {"title":"c","body":"c","kind":"bug","acceptance":["c"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[1],"size":"S"}
     ]}
     """
 
@@ -103,8 +124,8 @@ defmodule AgentBoard.IntakeTest do
   test "propose keeps the split's kind of work and size" do
     tasks = """
     {"tasks":[
-      {"title":"tela","body":"refaz a tela","kind":"ui","acceptance":["a tela abre"],"depends_on":[],"size":"S"},
-      {"title":"medir","body":"mede","kind":"research","acceptance":["p95"],"depends_on":[],"size":"L"}
+      {"title":"tela","body":"refaz a tela","kind":"ui","acceptance":["a tela abre"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"S"},
+      {"title":"medir","body":"mede","kind":"research","acceptance":["p95"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"L"}
     ]}
     """
 
@@ -118,7 +139,7 @@ defmodule AgentBoard.IntakeTest do
   test "a kind outside the board's list is a malformed split, not a guess" do
     tasks = """
     {"tasks":[
-      {"title":"tela","body":"refaz","kind":"feature","acceptance":["abre"],"depends_on":[],"size":"S"}
+      {"title":"tela","body":"refaz","kind":"feature","acceptance":["abre"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"S"}
     ]}
     """
 
@@ -139,8 +160,8 @@ defmodule AgentBoard.IntakeTest do
   test "run chains refine and split" do
     tasks = """
     {"tasks":[
-      {"title":"medir","body":"mede","kind":"bug","acceptance":["p95"],"depends_on":[],"size":"S"},
-      {"title":"corrigir","body":"corrige","kind":"bug","acceptance":["teste"],"depends_on":[0],"size":"M"}
+      {"title":"medir","body":"mede","kind":"bug","acceptance":["p95"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[],"size":"S"},
+      {"title":"corrigir","body":"corrige","kind":"bug","acceptance":["teste"],"project_guide":"","review_method":"regression","verification":"Run the example and compare the outcome.","depends_on":[0],"size":"M"}
     ]}
     """
 
