@@ -21,6 +21,10 @@ defmodule AgentBoard.Lanes.Attention.Selection do
     end
   end
 
+  @doc "The selected review tasks that need linked PR evidence, in board order."
+  @spec review_tasks([candidate()]) :: [map()]
+  def review_tasks(visible), do: for(%{kind: :review, task: task} <- visible, do: task)
+
   defp candidates(board, context) do
     lane(board, :blocked, :blocked) ++
       running_lane(board, context) ++

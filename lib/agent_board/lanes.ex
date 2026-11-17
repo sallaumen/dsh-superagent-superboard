@@ -53,13 +53,18 @@ defmodule AgentBoard.Lanes do
   board only knows that no ticket names the issue, and says that.
   """
   def needs(repository, board, opts \\ []) do
-    context = needs_context(repository, board, opts)
+    context = needs_context(repository, opts)
 
     %{waiting: waiting, visible: visible} = Attention.Selection.plan(board, context)
+
+    pulls =
+      visible |> Attention.Selection.review_tasks() |> Board.linked_pull_requests(context.tickets)
+
     visible = explain_blocks(visible, context)
 
     context =
       Map.merge(context, %{
+        pulls: pulls,
         questions: visible_questions(visible, repository),
         blockages: visible_blockages(visible)
       })
@@ -134,13 +139,12 @@ defmodule AgentBoard.Lanes do
     }
   end
 
-  defp needs_context(repository, board, opts) do
+  defp needs_context(repository, opts) do
     context = ticket_context(opts)
 
     Map.merge(context, %{
       repository: repository,
       last_visit: Keyword.get(opts, :last_visit),
-      pulls: Board.linked_pull_requests(Map.get(board, :ready, []), context.tickets),
       local_ci: Keyword.get(opts, :local_ci, %{}),
       silences: Keyword.get(opts, :silences, %{}),
       stall_after: Keyword.get(opts, :stall_after, AgentSignal.stall_after())

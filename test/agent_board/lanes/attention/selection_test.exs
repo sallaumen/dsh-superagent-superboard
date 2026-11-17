@@ -43,6 +43,17 @@ defmodule AgentBoard.Lanes.Attention.SelectionTest do
     assert Selection.plan(board, %{@ctx | agent: :down}) == %{visible: independent, waiting: 6}
   end
 
+  test "review evidence follows selected reviews, including when an outage hides blocked tasks" do
+    board = %{ready: [%{id: 8}, %{id: 2}], blocked: [%{id: 3}], question: [%{id: 7}]}
+
+    for agent <- [:up, :down] do
+      page = Selection.plan(board, %{@ctx | agent: agent})
+      assert Selection.review_tasks(page.visible) == [%{id: 8}, %{id: 2}]
+    end
+
+    assert Selection.review_tasks([%{kind: :question, task: %{id: 7}}]) == []
+  end
+
   test "zero waiting still shows an outage, while an available agent leaves an empty list alone" do
     assert Selection.plan(%{}, %{@ctx | agent: :down}) == %{waiting: 0, visible: []}
     assert Selection.plan(%{}, %{@ctx | agent: :up}) == %{waiting: nil, visible: []}
