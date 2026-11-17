@@ -676,10 +676,7 @@ defmodule AgentBoard.Board do
   @doc "The Bloqueio of the newest agent comment's workpad, or nil."
   @spec agent_blockage(integer(), integer()) :: String.t() | nil
   def agent_blockage(repository_id, number) do
-    case agent_workpad(repository_id, number) do
-      %{blockage: blockage} -> blockage
-      nil -> nil
-    end
+    repository_id |> newest_agent_comment(number) |> Workpad.blockage_text()
   end
 
   @doc """
