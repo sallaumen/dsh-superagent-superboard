@@ -796,6 +796,16 @@ defmodule AgentBoard.Board do
     )
   end
 
+  @doc "Attributed PR comment reports, with the current head for lineage checks."
+  @spec pull_evidence(integer()) :: [PullRequest.t()]
+  def pull_evidence(repository_id) do
+    Repo.all(
+      from p in PullRequest,
+        where: p.repository_id == ^repository_id and p.reported_evidence != ^%{},
+        select: struct(p, [:number, :head_sha, :reported_evidence])
+    )
+  end
+
   @doc "The head sha per PR number, as the sync last saw it; a PR synced before the column is absent."
   @spec pull_heads(integer()) :: %{optional(integer()) => String.t()}
   def pull_heads(repository_id) do

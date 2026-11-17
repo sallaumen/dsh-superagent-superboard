@@ -867,6 +867,7 @@ defmodule AgentBoardWeb.BoardLive do
         local_ci =
           LocalCI.by_pr(repo, agent.tickets,
             workpads: Board.agent_workpads(repo.id),
+            pulls: Board.pull_evidence(repo.id),
             heads: heads
           )
 

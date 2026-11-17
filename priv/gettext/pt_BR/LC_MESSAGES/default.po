@@ -10532,3 +10532,119 @@ msgstr "A importação está ativa. Se parar, os registros já importados serão
 
 msgid "Local executor history import is off"
 msgstr "A importação do histórico local dos executores está desativada"
+
+#: lib/agent_board/lanes/review.ex:16
+#, elixir-autogen, elixir-format
+msgid "Changes requested in report"
+msgstr "Alterações solicitadas no relato"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:16
+#, elixir-autogen, elixir-format
+msgid "GitHub review"
+msgstr "Revisão do GitHub"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:50
+#, elixir-autogen, elixir-format
+msgid "Independent review"
+msgstr "Revisão independente"
+
+#: lib/agent_board/lanes/review.ex:15
+#, elixir-autogen, elixir-format
+msgid "Independent review reported"
+msgstr "Revisão independente relatada"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:49
+#, elixir-autogen, elixir-format
+msgid "Local CI"
+msgstr "CI local"
+
+#: lib/agent_board/lanes/ci/badge.ex:35
+#, elixir-autogen, elixir-format
+msgid "Local CI report incomplete"
+msgstr "Relato de CI local incompleto"
+
+#: lib/agent_board/lanes/ci/badge.ex:32
+#, elixir-autogen, elixir-format
+msgid "Local CI reported: failed"
+msgstr "CI local relatado: falhou"
+
+#: lib/agent_board/lanes/ci/badge.ex:29
+#, elixir-autogen, elixir-format
+msgid "Local CI reported: passed"
+msgstr "CI local relatado: passou"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:35
+#, elixir-autogen, elixir-format
+msgid "Open source comment"
+msgstr "Abrir comentário de origem"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:30
+#, elixir-autogen, elixir-format
+msgid "PR head"
+msgstr "Commit atual do PR"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:24
+#, elixir-autogen, elixir-format
+msgid "Reported by %{author}"
+msgstr "Relatado por %{author}"
+
+#: lib/agent_board/local_ci.ex:99
+#, elixir-autogen, elixir-format
+msgid "Reported by %{author} in a PR comment for %{sha}. Commands: %{commands}. This is a reported result, not a GitHub check."
+msgstr "Relatado por %{author} em um comentário do PR para %{sha}. Comandos: %{commands}. Este é um resultado relatado, não um check do GitHub."
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:28
+#, elixir-autogen, elixir-format
+msgid "Reported commit"
+msgstr "Commit relatado"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:41
+#, elixir-autogen, elixir-format
+msgid "Reports describe checks and reviews performed outside GitHub. The board has not independently verified their execution; they do not replace required GitHub approvals."
+msgstr "Os relatos descrevem checks e revisões realizados fora do GitHub. O board não verificou sua execução de forma independente; eles não substituem aprovações exigidas no GitHub."
+
+#: lib/agent_board/lanes/review.ex:18
+#, elixir-autogen, elixir-format
+msgid "Review report incomplete"
+msgstr "Relato de revisão incompleto"
+
+#: lib/agent_board/lanes/review.ex:17
+#, elixir-autogen, elixir-format
+msgid "Review report outdated"
+msgstr "Relato de revisão desatualizado"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:26
+#, elixir-autogen, elixir-format
+msgid "Reviewer named in the report"
+msgstr "Revisor identificado no relato"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:14
+#, elixir-autogen, elixir-format
+msgid "Validation sources"
+msgstr "Fontes da validação"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:56
+#, elixir-autogen, elixir-format
+msgid "incomplete report"
+msgstr "relato incompleto"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:60
+#, elixir-autogen, elixir-format
+msgid "none configured"
+msgstr "nenhum configurado"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:28
+#, elixir-autogen, elixir-format
+msgid "not provided"
+msgstr "não informado"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:55
+#, elixir-autogen, elixir-format
+msgid "outdated commit"
+msgstr "commit desatualizado"
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:51
+#: lib/agent_board_web/live/board_components/validation_sources.ex:57
+#, elixir-autogen, elixir-format
+msgid "passed"
+msgstr "passou"

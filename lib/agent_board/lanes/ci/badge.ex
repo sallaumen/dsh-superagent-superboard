@@ -25,6 +25,15 @@ defmodule AgentBoard.Lanes.CI.Badge do
     }
   end
 
+  defp ci_words(:local_pass, _pull, %{scope: :pr_comment} = local),
+    do: {gettext("Local CI reported: passed"), local.detail}
+
+  defp ci_words(:local_fail, _pull, %{scope: :pr_comment} = local),
+    do: {gettext("Local CI reported: failed"), local.detail}
+
+  defp ci_words(:incomplete, _pull, local),
+    do: {gettext("Local CI report incomplete"), local.detail}
+
   defp ci_words(:local_pass, pull, local),
     do: {gettext("Local CI passed"), local_title(local, pull)}
 

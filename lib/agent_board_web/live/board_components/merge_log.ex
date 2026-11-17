@@ -131,6 +131,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
       <.pr_body pr={@pr} />
     </button>
     <.github_link :if={@pr.url} number={@pr.number} url={@pr.url} />
+    <AgentBoardWeb.BoardComponents.ValidationSources.sources pull={@pr.evidence_pull} />
     """
   end
 
@@ -148,6 +149,7 @@ defmodule AgentBoardWeb.BoardComponents.MergeLog do
     >
       <.pr_body pr={@pr} />
     </a>
+    <AgentBoardWeb.BoardComponents.ValidationSources.sources pull={@pr.evidence_pull} />
     """
   end
 

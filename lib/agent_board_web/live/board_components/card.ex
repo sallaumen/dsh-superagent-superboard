@@ -2,6 +2,8 @@ defmodule AgentBoardWeb.BoardComponents.Card do
   @moduledoc "The board's card region. Events are handled by BoardLive."
   use AgentBoardWeb, :live_component
 
+  alias AgentBoard.Lanes.Review
+
   alias AgentBoardWeb.BoardComponents.DataAge
   alias AgentBoardWeb.BoardComponents.MergeLog
 
@@ -37,6 +39,7 @@ defmodule AgentBoardWeb.BoardComponents.Card do
           <span :if={is_nil(@item.url)}>{@item.title || gettext("unknown")}</span>
         <% end %>
       </div>
+      <AgentBoardWeb.BoardComponents.ValidationSources.sources :if={@state == :merged} pull={@item} />
       <div class="item-signals">
         <span :if={review_badge(@item)} class={review_badge_class(@item)}>{review_badge(@item)}</span>
         <span class={ci_class(@ci)} title={elem(@ci, 2)}>{elem(@ci, 1)}</span>
@@ -59,13 +62,9 @@ defmodule AgentBoardWeb.BoardComponents.Card do
   defp ci_class({"fail", _note, _title}), do: "text-error"
   defp ci_class(_ci), do: "text-base-content/75"
 
-  defp review_badge(%{review_state: "approved"}), do: gettext("approved")
-  defp review_badge(%{review_state: "changes_requested"}), do: gettext("changes requested")
-  defp review_badge(%{review_state: "pending"}), do: gettext("review pending")
-  # "none" is a real answer: the pull has no reviews. Saying it is more honest
-  # than hiding the badge and letting the reader guess.
-  defp review_badge(%{review_state: "none"}), do: gettext("no review")
-  defp review_badge(_item), do: nil
+  defp review_badge(%{review_state: _} = item), do: Review.label(item)
+
+  defp review_badge(_), do: nil
 
   defp review_badge_class(%{review_state: "approved"}), do: "text-success"
   defp review_badge_class(%{review_state: "changes_requested"}), do: "text-error"

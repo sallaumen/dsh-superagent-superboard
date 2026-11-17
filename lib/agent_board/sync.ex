@@ -26,7 +26,7 @@ defmodule AgentBoard.Sync do
 
   alias AgentBoard.Board.{Commit, PullRequest, Repository, SplitGraph, Task}
 
-  alias AgentBoard.Sync.{PullReviews, ReopenedTickets}
+  alias AgentBoard.Sync.{PullEvidence, PullReviews, ReopenedTickets}
 
   @doc "Sync every active repository. Returns how many it touched."
   def all(client \\ GitHub.client()), do: client |> run() |> length()
@@ -157,6 +157,7 @@ defmodule AgentBoard.Sync do
     end)
 
     PullReviews.repair_one(client, repository)
+    PullEvidence.refresh_one(client, repository)
     commits = sync_commits(client, repository)
 
     apply_tickets(repository, issues, client)
@@ -192,6 +193,7 @@ defmodule AgentBoard.Sync do
             e.kind in [
               "issue_error",
               "pull_error",
+              "pull_evidence_error",
               "review_error",
               "check_error",
               "comment_error",
@@ -494,6 +496,8 @@ defmodule AgentBoard.Sync do
 
     %PullRequest{repository_id: repository.id, number: pull["number"]}
     |> PullRequest.changeset(%{
+      evidence_source_updated_at: to_dt(pull["updated_at"]),
+      evidence_refresh_at: PullEvidence.refresh_at(existing, pull, now),
       title: title(pull["title"]),
       state: state,
       url: pull["html_url"],
@@ -522,6 +526,8 @@ defmodule AgentBoard.Sync do
            :checks_changed_at,
            :head_sha,
            :head_ref,
+           :evidence_source_updated_at,
+           :evidence_refresh_at,
            :closes_issues,
            :merged_at,
            :updated_at

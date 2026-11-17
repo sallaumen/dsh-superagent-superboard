@@ -322,6 +322,17 @@ defmodule AgentBoard.GitHub do
     |> body!()
   end
 
+  @doc "All conversation comments on one pull request, including pagination."
+  def pull_comments(client, owner, repo, number) do
+    pages(
+      client,
+      "/repos/#{owner}/#{repo}/issues/#{number}/comments",
+      [per_page: 100],
+      fn _ -> true end,
+      :all
+    )
+  end
+
   @doc "One page of recently updated issue comments across a repository."
   def repository_issue_comments(client, owner, repo, since, page \\ 1) do
     response =

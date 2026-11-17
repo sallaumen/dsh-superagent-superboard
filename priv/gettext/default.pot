@@ -10532,3 +10532,119 @@ msgstr ""
 
 msgid "Local executor history import is off"
 msgstr ""
+
+#: lib/agent_board/lanes/review.ex:16
+#, elixir-autogen, elixir-format
+msgid "Changes requested in report"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:16
+#, elixir-autogen, elixir-format
+msgid "GitHub review"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:50
+#, elixir-autogen, elixir-format
+msgid "Independent review"
+msgstr ""
+
+#: lib/agent_board/lanes/review.ex:15
+#, elixir-autogen, elixir-format
+msgid "Independent review reported"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:49
+#, elixir-autogen, elixir-format
+msgid "Local CI"
+msgstr ""
+
+#: lib/agent_board/lanes/ci/badge.ex:35
+#, elixir-autogen, elixir-format
+msgid "Local CI report incomplete"
+msgstr ""
+
+#: lib/agent_board/lanes/ci/badge.ex:32
+#, elixir-autogen, elixir-format
+msgid "Local CI reported: failed"
+msgstr ""
+
+#: lib/agent_board/lanes/ci/badge.ex:29
+#, elixir-autogen, elixir-format
+msgid "Local CI reported: passed"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:35
+#, elixir-autogen, elixir-format
+msgid "Open source comment"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:30
+#, elixir-autogen, elixir-format
+msgid "PR head"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:24
+#, elixir-autogen, elixir-format
+msgid "Reported by %{author}"
+msgstr ""
+
+#: lib/agent_board/local_ci.ex:99
+#, elixir-autogen, elixir-format
+msgid "Reported by %{author} in a PR comment for %{sha}. Commands: %{commands}. This is a reported result, not a GitHub check."
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:28
+#, elixir-autogen, elixir-format
+msgid "Reported commit"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:41
+#, elixir-autogen, elixir-format
+msgid "Reports describe checks and reviews performed outside GitHub. The board has not independently verified their execution; they do not replace required GitHub approvals."
+msgstr ""
+
+#: lib/agent_board/lanes/review.ex:18
+#, elixir-autogen, elixir-format
+msgid "Review report incomplete"
+msgstr ""
+
+#: lib/agent_board/lanes/review.ex:17
+#, elixir-autogen, elixir-format
+msgid "Review report outdated"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:26
+#, elixir-autogen, elixir-format
+msgid "Reviewer named in the report"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:14
+#, elixir-autogen, elixir-format
+msgid "Validation sources"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:56
+#, elixir-autogen, elixir-format
+msgid "incomplete report"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:60
+#, elixir-autogen, elixir-format
+msgid "none configured"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:28
+#, elixir-autogen, elixir-format
+msgid "not provided"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:55
+#, elixir-autogen, elixir-format
+msgid "outdated commit"
+msgstr ""
+
+#: lib/agent_board_web/live/board_components/validation_sources.ex:51
+#: lib/agent_board_web/live/board_components/validation_sources.ex:57
+#, elixir-autogen, elixir-format
+msgid "passed"
+msgstr ""

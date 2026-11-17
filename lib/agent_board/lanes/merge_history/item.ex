@@ -1,6 +1,7 @@
 defmodule AgentBoard.Lanes.MergeHistory.Item do
   @moduledoc "One visible merge in the board's history, in the reader's locale."
-  use Gettext, backend: AgentBoardWeb.Gettext
+
+  alias AgentBoard.Lanes.Review
 
   alias AgentBoard.Board.PullRequest
   alias AgentBoard.Lanes.CI
@@ -22,14 +23,10 @@ defmodule AgentBoard.Lanes.MergeHistory.Item do
       ciNote: badge.note,
       ciTitle: badge.title,
       ciLocal: badge.local,
-      review: review_label(pull.review_state),
+      review: Review.label(pull),
+      evidence_pull: pull,
       at: Time.local_time(pull.merged_at, offset),
       cost: cost
     }
   end
-
-  defp review_label("approved"), do: gettext("approved")
-  defp review_label("changes_requested"), do: gettext("changes requested")
-  defp review_label("pending"), do: gettext("review pending")
-  defp review_label(_state), do: gettext("no review")
 end

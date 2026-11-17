@@ -1805,6 +1805,16 @@ what needs the owner in every repository, one list, repository on each item.
 
 ## History
 
+PR conversation receipts live separately in `pull_requests.reported_evidence`;
+they never overwrite native `checks_state` or `review_state`. The regular sync
+refreshes at most one due recent PR conversation per repository, with all pages,
+cache invalidation by the PR update stamp/head, and failure isolation. Only an
+explicit current-head report from an owner/member/collaborator supplies the
+reported label. Sources remain inspectable in the history and PR inspector;
+self-review never becomes independent approval, and reports never authorize a
+merge. The accepted format and limitations are in
+[reported validation](agent/merge-checks.md#reported-validation-in-pr-comments).
+
 The History panel (`?panel=history`) is where ended work is found again.
 
 - **Ended tasks** is its first list: every issue task in `done`, `closed`,
