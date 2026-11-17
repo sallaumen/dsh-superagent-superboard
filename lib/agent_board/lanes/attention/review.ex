@@ -22,17 +22,29 @@ defmodule AgentBoard.Lanes.Attention.Review do
     {why(pull, summary), actions}
   end
 
-  defp why(%PullRequest{number: number}, _summary),
-    do: gettext("**PR #%{number} ready for review**", number: number)
+  @doc "Prefer the linked PR; otherwise use a bounded report summary or leave the PR unidentified."
+  @spec subject(PullRequest.t() | nil, String.t() | nil) ::
+          {:pull, integer()} | {:summary, String.t()} | :unidentified
+  def subject(%PullRequest{number: number}, _summary), do: {:pull, number}
 
-  defp why(nil, summary) do
+  def subject(nil, summary) do
     case ReportQuote.summary(summary) do
-      summary when is_binary(summary) ->
+      summary when is_binary(summary) -> {:summary, summary}
+      _ -> :unidentified
+    end
+  end
+
+  defp why(pull, summary) do
+    case subject(pull, summary) do
+      {:pull, number} ->
+        gettext("**PR #%{number} ready for review**", number: number)
+
+      {:summary, summary} ->
         gettext("**Ready for review**, PR not identified. The agent said: %{summary}",
           summary: summary
         )
 
-      _ ->
+      :unidentified ->
         gettext("**Ready for review**, PR not identified by the board. Open the conversation.")
     end
   end
