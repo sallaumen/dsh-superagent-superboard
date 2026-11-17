@@ -3,7 +3,8 @@
 #
 # Roda antes de `mix assets.build` no pipeline frontend (make frontend,
 # scripts/ci-local.sh frontend e o job "frontend · assets" da CI).
-# Somente leitura: não gera nem altera arquivos.
+# Não altera fontes. O teste de dependências instala um pacote em diretório
+# temporário, removido ao terminar; requer acesso ao registro npm.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,6 +50,7 @@ if ! "$harness_node" -e "require('node:sqlite')" >/dev/null 2>&1 && [[ -n "${RUN
   done
 fi
 "$harness_node" --test ops/harness-worker-titles/worker-titles.test.mjs || fail "Harness worker titles require Node 22.19+ or 24+ with node:sqlite"
+"$harness_node" --test test/harness/*.mjs || fail "Harness dependency security regressions failed"
 
 if ((errors > 0)); then
   echo "check_assets: $errors problema(s)." >&2
