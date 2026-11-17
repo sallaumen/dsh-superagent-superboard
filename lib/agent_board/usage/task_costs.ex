@@ -83,8 +83,14 @@ defmodule AgentBoard.Usage.TaskCosts do
         )
       )
 
-    costs = stored().by_task
+    pull_entries(pulls, task_ids, stored().by_task)
+  end
 
+  @doc "Attach the first tracked closing issue's cost to each pull; never substitute a later priced issue."
+  @spec pull_entries([map()], map(), %{optional(integer()) => [entry()]}) :: %{
+          optional(integer()) => [entry()]
+        }
+  def pull_entries(pulls, task_ids, costs) do
     for pull <- pulls,
         task_id = Enum.find_value(pull.closes_issues || [], &task_ids[&1]),
         entries = costs[task_id],
