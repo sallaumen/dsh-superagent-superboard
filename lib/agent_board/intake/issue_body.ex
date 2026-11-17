@@ -29,6 +29,7 @@ defmodule AgentBoard.Intake.IssueBody do
       constraints: "Restrições",
       non_goals: "Fora do escopo",
       assumptions: "Suposições",
+      decisions: "Decisões",
       open_questions: "Perguntas em aberto",
       depends_on: "Depende de",
       read_first: "Leia essas issues antes de começar e confira o que já foi entregue."
@@ -53,6 +54,7 @@ defmodule AgentBoard.Intake.IssueBody do
       constraints: "Constraints",
       non_goals: "Out of scope",
       assumptions: "Assumptions",
+      decisions: "Decisions",
       open_questions: "Open questions",
       depends_on: "Depends on",
       read_first: "Read those issues before starting and check what was already delivered."
@@ -66,7 +68,7 @@ defmodule AgentBoard.Intake.IssueBody do
 
   @private_section ~r/^## (?:Contexto privado|Private context)\n<!-- agent-board:private [a-z0-9-]+ -->\n.*\n.*\n.*\n\n?/m
 
-  @lists ~w(constraints non_goals assumptions open_questions)a
+  @lists ~w(constraints non_goals assumptions decisions open_questions)a
 
   @doc "The body of one task, with the decisions of the request it came from."
   @spec render(map(), map()) :: String.t()

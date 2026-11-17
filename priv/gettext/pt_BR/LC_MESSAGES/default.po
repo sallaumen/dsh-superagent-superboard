@@ -3947,8 +3947,8 @@ msgstr "Fora do escopo"
 
 #: lib/agent_board_web/live/board_components/composer.ex:555
 #, elixir-autogen, elixir-format
-msgid "Still open. These go in each issue; if one changes the work, edit the request and split again."
-msgstr "Ainda em aberto. Estas perguntas vão em cada issue; se alguma mudar o trabalho, edite o pedido e divida de novo."
+msgid "Answer what you can. Answers become decisions in every issue; blank questions stay open."
+msgstr "Responda o que já foi definido. Cada issue recebe as decisões; perguntas sem resposta continuam em aberto."
 
 #: lib/agent_board_web/live/board_components/composer.ex:780
 #, elixir-autogen, elixir-format

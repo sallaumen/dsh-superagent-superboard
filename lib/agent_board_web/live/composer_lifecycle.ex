@@ -525,6 +525,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
   # owner leaves a task out. The key reads the title the model proposed, so
   # an edited task is still the same request on a retry.
   defp split_requests(repo, text, spec, tasks, selected) do
+    spec = Intake.reviewed_spec(spec)
     keys = split_keys(repo, text, tasks)
 
     tasks
@@ -862,7 +863,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
       done_criterion: gettext("All tasks merged."),
       request_key: Board.request_key(repo, "objective", [text]),
       request_text: text,
-      spec: intake && intake.spec
+      spec: intake && Intake.reviewed_spec(intake.spec)
     }
   end
 
