@@ -33,7 +33,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
 
   alias AgentBoard.{Actions, AI, Board, Executors, GitHub, Intake, Titles}
   alias AgentBoard.Board.{Attachments, PrivateContext, RequestBatch}
-  alias AgentBoard.Intake.{IssueBody, RepoDigest}
+  alias AgentBoard.Intake.{Clarifications, IssueBody, RepoDigest}
   alias AgentBoard.Routing
   alias AgentBoard.Routing.Signals
   alias AgentBoardWeb.{BoardNavigation, FailureText, Locale}
@@ -64,7 +64,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
       composer_retry: nil,
       composer_job: nil,
       composer_receipt: nil,
-      composer_answers: "",
+      composer_answers: %{},
       composer_attachments: [],
       composer_private: new_private(),
       composer_routing: nil,
@@ -105,6 +105,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
         do:
           assign(socket,
             intake: nil,
+            composer_answers: %{},
             composer_selected: MapSet.new(),
             composer_error: nil,
             composer_retry: nil
@@ -118,7 +119,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
       composer_text: text,
       composer_max_tasks: max_tasks,
       composer_title: edited_title(params, text, socket.assigns.composer_title),
-      composer_answers: params["answers"] || socket.assigns.composer_answers
+      composer_answers: answer_fields(socket, params)
     )
     |> choose_executor(params["executor"])
   end
@@ -182,28 +183,100 @@ defmodule AgentBoardWeb.ComposerLifecycle do
       socket.assigns.composer_job ->
         socket
 
+      match?(%{status: :needs_clarification}, socket.assigns.intake) ->
+        socket
+
       text == "" ->
         composer_error(socket, gettext("Write the request before splitting."))
 
       true ->
         socket
-        |> assign(composer_split: true, composer_selected: MapSet.new())
+        |> assign(composer_split: true)
         |> start_split(text)
     end
   end
 
   @doc "Back to a single request; a job in flight keeps the split."
   def unsplit(socket) do
-    if socket.assigns.composer_job,
-      do: socket,
-      else:
-        assign(socket,
-          composer_split: false,
-          composer_error: nil,
-          composer_retry: nil,
-          intake: nil,
-          composer_selected: MapSet.new()
-        )
+    if socket.assigns.composer_job do
+      socket
+    else
+      text = Clarifications.context(socket.assigns.composer_text, reviewed_pairs(socket))
+
+      assign(socket,
+        composer_text: text,
+        composer_split: false,
+        composer_error: nil,
+        composer_retry: nil,
+        intake: nil,
+        composer_selected: MapSet.new(),
+        composer_answers: %{}
+      )
+    end
+  end
+
+  defp reviewed_pairs(socket) do
+    assigns = socket.assigns
+
+    pairs =
+      case assigns.intake do
+        %{status: :ready, spec: spec} ->
+          Clarifications.pairs(spec["open_questions"] || [], spec["answers"] || %{})
+
+        %{status: :needs_clarification, spec: spec} ->
+          Clarifications.pairs(Clarifications.questions(spec), assigns.composer_answers)
+
+        _ ->
+          []
+      end
+
+    Clarifications.merge(applied_pairs(assigns.intake), pairs)
+  end
+
+  defp applied_pairs(%{history: pairs}), do: pairs
+  defp applied_pairs(_), do: []
+
+  defp answer_fields(
+         %{assigns: %{intake: %{status: :needs_clarification, spec: spec, round: round}}} = socket,
+         %{"round" => round} = params
+       ) do
+    Clarifications.fields(
+      Clarifications.questions(spec),
+      socket.assigns.composer_answers,
+      params["clarify"]
+    )
+  end
+
+  defp answer_fields(socket, _), do: socket.assigns.composer_answers
+
+  @doc "A clarification submit can only call AI, even if its proposal has since become ready."
+  def answer(
+        %{
+          assigns: %{
+            composer_job: nil,
+            intake: %{status: :needs_clarification, text: text, spec: spec, round: round}
+          }
+        } = socket,
+        %{"text" => submitted, "round" => round} = params
+      )
+      when is_binary(submitted) do
+    if String.trim(submitted) == text, do: answer_round(socket, spec, text, params), else: socket
+  end
+
+  def answer(socket, _stale), do: socket
+
+  defp answer_round(socket, spec, text, params) do
+    fields = answer_fields(socket, params)
+    socket = assign(socket, composer_answers: fields)
+
+    if Clarifications.sufficient?(spec, fields) do
+      start_split(socket, text)
+    else
+      composer_error(
+        socket,
+        gettext("Answer the required questions before asking AI to continue.")
+      )
+    end
   end
 
   @doc "The send button: a split, the answers, or a single request."
@@ -219,9 +292,6 @@ defmodule AgentBoardWeb.ComposerLifecycle do
 
     # The sentence the composer showed when the person pressed send.
     shown = composer_phrase(socket.assigns)
-
-    socket =
-      assign(socket, composer_answers: params["answers"] || socket.assigns.composer_answers)
 
     cond do
       # A second submit while the first is in flight: the job is the receipt.
@@ -266,25 +336,12 @@ defmodule AgentBoardWeb.ComposerLifecycle do
   @doc "Cancel the job in flight; its late result changes nothing."
   def cancel(socket), do: cancel_job(socket)
 
-  @doc "Send the current words as one request, dropping the proposal."
-  def single(socket) do
-    text = String.trim(socket.assigns.composer_text)
-    socket = ensure_routing(socket)
-    shown = composer_phrase(socket.assigns)
-    socket = assign(socket, composer_split: false, intake: nil, composer_selected: MapSet.new())
-
-    if text == "",
-      do: socket,
-      else: start_single(socket, text, socket.assigns.composer_title, shown)
-  end
-
   @doc "Dictation continues the draft: it arrives whole and has no undo."
   def dictate(socket, dictated) do
     text = with_dictated(socket.assigns.composer_text, dictated)
 
     socket
-    |> assign(composer_text: text, composer_error: nil)
-    |> invalidate_intake_if_changed(text)
+    |> change(%{"text" => text})
   end
 
   @doc "A `{:composer_timeout, ref}` message: only the job with that ref is failed."
@@ -384,7 +441,7 @@ defmodule AgentBoardWeb.ComposerLifecycle do
       composer_error: nil,
       composer_retry: nil,
       composer_receipt: nil,
-      composer_answers: "",
+      composer_answers: %{},
       composer_attachments: [],
       composer_private: new_private(),
       intake: nil,
@@ -445,36 +502,19 @@ defmodule AgentBoardWeb.ComposerLifecycle do
           true ->
             requests =
               socket.assigns.repo
-              |> split_requests(text, spec, tasks, selected)
+              |> split_requests(
+                Clarifications.context(text, applied_pairs(socket.assigns.intake)),
+                spec,
+                tasks,
+                selected
+              )
               |> for_executor(socket.assigns)
 
             start_enqueue(socket, requests, shown)
         end
 
-      %{status: :needs_clarification, text: ^text} ->
-        answer_and_split(socket, text)
-
-      _ ->
-        start_split(socket, text)
-    end
-  end
-
-  # The answers become part of the request (the issue carries them too) and
-  # the model splits the answered text.
-  defp answer_and_split(socket, text) do
-    case String.trim(socket.assigns.composer_answers || "") do
-      "" ->
-        composer_error(
-          socket,
-          gettext("Answer the questions or edit the request before splitting again.")
-        )
-
-      answers ->
-        answered = text <> "\n\n" <> gettext("Answers:") <> "\n" <> answers
-
+      _not_ready ->
         socket
-        |> assign(composer_text: answered, composer_answers: "", intake: nil)
-        |> start_split(answered)
     end
   end
 
@@ -666,9 +706,6 @@ defmodule AgentBoardWeb.ComposerLifecycle do
             %{status: :ready, text: ^text, tasks: [_ | _] = tasks, spec: spec} ->
               split_requests(repo, text, spec, tasks, selected)
 
-            %{status: :no_tasks} ->
-              single_requests(repo, text, title)
-
             _ ->
               []
           end
@@ -725,11 +762,13 @@ defmodule AgentBoardWeb.ComposerLifecycle do
         max_tasks = socket.assigns.composer_max_tasks
         job = composer_job(:split, text, 1)
         repo = socket.assigns.repo
+        pairs = reviewed_pairs(socket)
+        prompt = Clarifications.context(text, pairs)
 
         socket
-        |> assign(composer_job: job, composer_error: nil, composer_retry: nil, intake: nil)
+        |> assign(composer_job: job, composer_error: nil, composer_retry: nil)
         |> start_async({:composer, job.ref}, fn ->
-          {:split, text, Intake.run(text, repository_digest(repo), max_tasks)}
+          {:split, text, pairs, Intake.run(prompt, repository_digest(repo), max_tasks)}
         end)
     end
   end
@@ -877,7 +916,9 @@ defmodule AgentBoardWeb.ComposerLifecycle do
   # The request behind the group is kept with it; the key makes a retry find
   # the objective of its first attempt.
   defp split_objective(socket, repo) do
-    text = socket.assigns.composer_text
+    text =
+      Clarifications.context(socket.assigns.composer_text, applied_pairs(socket.assigns.intake))
+
     intake = socket.assigns.intake
 
     %{
@@ -908,16 +949,27 @@ defmodule AgentBoardWeb.ComposerLifecycle do
       else: String.trim_trailing(draft) <> "\n" <> dictated
   end
 
-  defp invalidate_intake_if_changed(socket, text) do
-    case socket.assigns.intake do
-      %{text: ^text} -> socket
-      _ -> assign(socket, :intake, nil)
-    end
-  end
+  defp show_intake_result(socket, repo, text, round, history, %{
+         spec: spec,
+         tasks: tasks,
+         status: status
+       }) do
+    spec = if status == :ready, do: Clarifications.apply_to_spec(spec, history), else: spec
+    fields = Map.new(history, fn {q, a} -> {Intake.question_key(q), a} end)
 
-  defp show_intake_result(socket, repo, text, %{spec: spec, tasks: tasks, status: status}) do
     socket
-    |> assign(intake: %{spec: spec, tasks: tasks, status: status, text: text, repo_id: repo.id})
+    |> assign(
+      composer_answers: fields,
+      intake: %{
+        spec: spec,
+        tasks: tasks,
+        status: status,
+        text: text,
+        round: to_string(round),
+        history: history,
+        repo_id: repo.id
+      }
+    )
     |> refresh_ai()
   end
 
@@ -932,16 +984,16 @@ defmodule AgentBoardWeb.ComposerLifecycle do
 
   defp composer_timeout, do: Application.get_env(:agent_board, :composer_timeout_ms, 120_000)
 
-  defp finish_job(socket, _job, {:ok, {:split, text, {:ok, result}}}, _load) do
+  defp finish_job(socket, job, {:ok, {:split, text, pairs, {:ok, result}}}, _load) do
     socket
     |> assign(composer_job: nil)
-    |> show_intake_result(socket.assigns.repo, text, result)
+    |> show_intake_result(socket.assigns.repo, text, job.ref, pairs, result)
     |> assign(
       composer_selected: initial_selection(result.tasks, socket.assigns.composer_max_tasks)
     )
   end
 
-  defp finish_job(socket, _job, {:ok, {:split, text, {:error, reason}}}, _load) do
+  defp finish_job(socket, _job, {:ok, {:split, text, _pairs, {:error, reason}}}, _load) do
     socket
     |> assign(composer_job: nil)
     |> composer_error(split_failure(reason), {:split, text})

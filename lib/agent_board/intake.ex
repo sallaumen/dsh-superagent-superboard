@@ -161,7 +161,7 @@ defmodule AgentBoard.Intake do
     spec
     |> Map.delete("answers")
     |> Map.put("open_questions", open)
-    |> Map.put("decisions", decisions)
+    |> Map.put("decisions", Enum.uniq((spec["decisions"] || []) ++ decisions))
   end
 
   def reviewed_spec(spec), do: spec

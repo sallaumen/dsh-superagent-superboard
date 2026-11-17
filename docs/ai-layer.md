@@ -143,8 +143,8 @@ local validation discards tasks without a title, body or acceptance criteria.
 ```
 free text
   → :refine_request        (JSON validated by the schema; runs outside the LiveView process)
-  → ready=false?           (show questions and an answer box; the answer enters the
-                            request as "Respostas:" and the answered text is split again)
+  → ready=false?           (show one field per question; submit the original request
+                            and its question/answer pairs to AI without publishing)
   → :propose_tasks         (validated list; depends_on is an index)
   → local validation       (discards a task without a title, body or acceptance)
   → empty list?            (say nothing usable was proposed; offer to try again

@@ -346,13 +346,13 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
 
     # The job is on screen while the model answers; the submit is disabled.
     assert has_element?(view, "#composer-progress", "Dividindo")
-    assert has_element?(view, "#composer-form button.ab-btn--primary[disabled]")
+    refute has_element?(view, "#composer-submit:not([disabled])")
 
     send(model, :answer)
     render_async(view, 2_000)
 
-    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
-    assert has_element?(view, "#composer-form button", "Pôr 2 na fila")
+    assert has_element?(view, "#composer-form", "2 tarefas prontas para revisão")
+    assert has_element?(view, "#composer-form button", "Publicar 2 tarefas no GitHub")
     # The split's kind and size, in the board's words, before anything is sent.
     assert has_element?(view, "label[for=composer-task-0] .ab-work", "bug")
     assert has_element?(view, "label[for=composer-task-0] .ab-work", "P")
@@ -363,7 +363,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     |> element("#composer-form")
     |> render_change(%{"text" => "O board está lento", "tasks" => ["1"]})
 
-    assert has_element?(view, "#composer-form button", "Pôr 1 na fila")
+    assert has_element?(view, "#composer-form button", "Publicar 1 tarefa no GitHub")
 
     submit(view, %{"text" => "O board está lento", "tasks" => ["1"]})
 
@@ -515,7 +515,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert refine =~ "lib/brand_live.ex"
     assert_received {:propose, propose}
     assert propose =~ "lib/brand_live.ex"
-    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
+    assert has_element?(view, "#composer-form", "2 tarefas prontas para revisão")
   end
 
   test "a repository that cannot be read does not stop the split", %{conn: conn} do
@@ -526,7 +526,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     type(view, "O board está lento")
     split(view)
 
-    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
+    assert has_element?(view, "#composer-form", "2 tarefas prontas para revisão")
   end
 
   defp github_with_files do
@@ -606,8 +606,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     refute has_element?(view, "#composer-private", Path.basename(source) <> "/")
 
     # Sent as one request, then a new one starts empty.
-    render_click(view, "composer_single", %{})
-    render_async(view, 2000)
+    submit(view, %{"text" => "Trocar o logo"})
     assert has_element?(view, "#composer-receipt", "1 pedido na fila")
 
     view |> element("#composer-receipt button", "Novo pedido") |> render_click()
@@ -1193,46 +1192,149 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     refute has_element?(view, "#composer-receipt .ab-work")
   end
 
-  test "open questions get an answer box and the answered request is split again",
+  test "answers stay paired through AI retries, distinct rounds, review and explicit publication",
        %{conn: conn} do
-    github()
+    counter = github(capture: self())
+    test_pid = self()
+    q1 = "Quem reage?"
+    q2 = "E a câmera?"
+    q3 = "E o HUD?"
+    extra = "Qual cena?"
+    k = &AgentBoard.Intake.question_key/1
+    request = "Revisar impacto"
 
     script(fn
       %{name: :refine_request, prompt: prompt} ->
-        if prompt =~ "Respostas:" do
-          Scripted.answer(@refined)
-        else
-          Scripted.answer(%{
-            @refined
-            | "ready" => false,
-              "blocking_questions" => [],
-              "open_questions" => ["Dois testes automatizados ou duas tarefas?"]
-          })
+        send(test_pid, {:refine, prompt})
+
+        cond do
+          prompt =~ "HUD visível" -> Scripted.answer(%{@refined | "open_questions" => [extra]})
+          prompt =~ "Parada" -> Scripted.answer(%{@refined | "blocking_questions" => [q3]})
+          true -> Scripted.answer(%{@refined | "blocking_questions" => [q1, q2]})
         end
+
+      %{name: :propose_tasks, prompt: prompt} ->
+        send(test_pid, {:proposal, prompt})
+        Scripted.answer(@tasks)
+    end)
+
+    view = open_composer(conn)
+    type(view, "  " <> request)
+    split(view)
+    assert_received {:refine, _}
+    assert has_element?(view, "#composer-answer-submit[disabled]")
+    refute has_element?(view, "#composer-submit")
+    refute has_element?(view, "#composer-split")
+
+    round = fn ->
+      html = view |> element("input[name=round]") |> render()
+      [_, value] = Regex.run(~r/value="([0-9]+)"/, html)
+      value
+    end
+
+    first = %{
+      "round" => round.(),
+      "text" => "  " <> request,
+      "clarify" => %{k.(q1) => "Só o alvo"}
+    }
+
+    submit(view, first)
+    assert has_element?(view, "#composer-error")
+    refute_received {:refine, _}
+
+    filled = put_in(first, ["clarify", k.(q2)], "Parada")
+    submit(view, put_in(filled, ["clarify", "forged"], "unknown question"))
+    assert_received {:refine, prompt}
+    assert prompt =~ "Quem reage? — Só o alvo"
+    assert prompt =~ "E a câmera? — Parada"
+    refute prompt =~ "unknown question"
+    assert has_element?(view, "#composer-clarify-#{k.(q3)}")
+    render_hook(view, "composer_answer", filled)
+    refute_received {:refine, _}
+    second = %{"round" => round.(), "text" => request, "clarify" => %{k.(q3) => "HUD visível"}}
+    submit(view, second)
+    assert_received {:refine, last}
+    assert_received {:proposal, proposal}
+
+    for text <- [last, proposal],
+        expected <- [
+          request,
+          "Quem reage? — Só o alvo",
+          "E a câmera? — Parada",
+          "E o HUD? — HUD visível"
+        ],
+        do: assert(text =~ expected)
+
+    assert has_element?(view, "#composer-applied", q2)
+    assert has_element?(view, "#composer-open-questions", "Decisões opcionais")
+    refute view |> element("#composer-text") |> render() =~ "Parada"
+    render_hook(view, "composer_answer", second)
+    assert Agent.get(counter, & &1) == 100
+    edits = %{"tasks" => ["0"], "shared_context" => %{"answers" => %{k.(extra) => "Fase 1"}}}
+    view |> element("#composer-form") |> render_change(edits)
+    refute_received {:refine, _}
+    refute_received {:proposal, _}
+    assert Agent.get(counter, & &1) == 100
+    submit(view, Map.merge(edits, %{"tasks" => ["0"], "text" => request}))
+    assert_received {:github_issue, _, posted}
+
+    for value <- [
+          "Quem reage? — Só o alvo",
+          "E a câmera? — Parada",
+          "E o HUD? — HUD visível",
+          "Qual cena? — Fase 1"
+        ],
+        do: assert(posted =~ value)
+
+    assert Agent.get(counter, & &1) == 101
+  end
+
+  test "a failed AI regeneration keeps the reviewed proof and selection without publishing", %{
+    conn: conn
+  } do
+    counter = github()
+
+    script(fn
+      %{name: :refine_request} ->
+        Scripted.answer(%{@refined | "open_questions" => ["Com qual carga?"]})
 
       %{name: :propose_tasks} ->
         Scripted.answer(@tasks)
     end)
 
     view = open_composer(conn)
-    type(view, "Separe em dois testes e manda ver")
+    type(view, "O board está lento")
     split(view)
 
-    assert has_element?(view, "#composer-form", "Dois testes automatizados ou duas tarefas?")
-    assert has_element?(view, "#composer-answers")
-    assert has_element?(view, "#composer-form button", "Dividir com as respostas")
-    refute has_element?(view, ".ab-split__item")
+    edits = %{
+      "tasks" => ["1"],
+      "shared_context" => %{
+        "answers" => %{AgentBoard.Intake.question_key("Com qual carga?") => "50 tickets"}
+      },
+      "task_edits" => %{
+        "1" => %{
+          "title" => "Corrigir o gargalo",
+          "body" => "Atacar a causa.",
+          "acceptance" => "Medir p95",
+          "verification" => "Comparar a mesma fila"
+        }
+      }
+    }
 
-    # Without an answer the split does not run again.
-    submit(view, %{"text" => "Separe em dois testes e manda ver", "answers" => ""})
-    assert has_element?(view, "#composer-error", "Responda as perguntas")
+    view |> element("#composer-form") |> render_change(edits)
+    script(fn _ -> Scripted.malformed() end)
+    split(view)
 
-    submit(view, %{"text" => "Separe em dois testes e manda ver", "answers" => "Duas tarefas."})
+    assert has_element?(
+             view,
+             "#composer-error",
+             "A proposta anterior e suas edições continuam disponíveis."
+           )
 
-    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
-    textarea = view |> element("#composer-text") |> render()
-    assert textarea =~ "Respostas:"
-    assert textarea =~ "Duas tarefas."
+    assert has_element?(view, "#composer-proof-1", "Comparar a mesma fila")
+    assert has_element?(view, "#composer-task-1[checked]")
+    refute has_element?(view, "#composer-task-0[checked]")
+    assert Agent.get(counter, & &1) == 100
   end
 
   test "a malformed answer is a named failure with a retry, not inspect/1", %{conn: conn} do
@@ -1245,7 +1347,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
 
     assert has_element?(view, "#composer-error", "fora do formato esperado")
     refute view |> element("#composer-form") |> render() =~ "malformed_output"
-    assert has_element?(view, "#composer-error button", "Tentar de novo")
+    assert has_element?(view, "#composer-error button", "Tentar novamente com IA")
     assert Repo.aggregate(Task, :count) == 0
 
     # A checkbox or title change keeps the failure on screen; new words clear it.
@@ -1260,11 +1362,11 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     assert has_element?(view, "#composer-error")
 
     happy_model()
-    view |> element("#composer-error button", "Tentar de novo") |> render_click()
+    view |> element("#composer-error button", "Tentar novamente com IA") |> render_click()
     render_async(view, 2000)
 
     refute has_element?(view, "#composer-error")
-    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
+    assert has_element?(view, "#composer-form", "2 tarefas prontas para revisão")
   end
 
   test "a model that never answers times out", %{conn: conn} do
@@ -1283,9 +1385,9 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     render_async(view, 1_000)
 
     assert has_element?(view, "#composer-error", "não terminou em 0 s")
-    assert has_element?(view, "#composer-error button", "Tentar de novo")
+    assert has_element?(view, "#composer-error button", "Tentar novamente com IA")
     refute has_element?(view, "#composer-progress")
-    refute has_element?(view, "#composer-form", "Vai virar")
+    refute has_element?(view, "#composer-form", "tarefas prontas para revisão")
   end
 
   test "cancelling a split drops its result and frees the form", %{conn: conn} do
@@ -1308,7 +1410,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     refute has_element?(view, "#composer-progress")
     refute has_element?(view, "#composer-form button.ab-btn--primary[disabled]")
     render_async(view, 1_000)
-    refute has_element?(view, "#composer-form", "Vai virar")
+    refute has_element?(view, "#composer-form", "tarefas prontas para revisão")
   end
 
   test "a proposal survives closing and reopening the panel", %{conn: conn} do
@@ -1323,7 +1425,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     render_async(view, 2000)
 
     view |> element("#open-create") |> render_click()
-    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
+    assert has_element?(view, "#composer-form", "2 tarefas prontas para revisão")
     assert has_element?(view, "#composer-text", "Pedido que fecha no meio")
   end
 
@@ -1339,10 +1441,12 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     type(view, "Pedido sem tarefas")
     split(view)
 
-    assert has_element?(view, "#composer-form", "não propôs nenhuma tarefa")
+    assert has_element?(view, "#composer-form", "Nenhuma tarefa para revisar")
 
-    view |> element("#composer-form button", "Enviar como pedido único") |> render_click()
-    render_async(view, 2000)
+    view |> element("#composer-unsplit") |> render_click()
+    assert Agent.get(counter, & &1) == 100
+    assert has_element?(view, "#composer-submit", "Criar issue no GitHub")
+    submit(view, %{"text" => "Pedido sem tarefas"})
 
     assert has_element?(view, "#composer-receipt", "1 pedido na fila")
     assert Repo.one(Task).title == "Pedido sem tarefas"
@@ -1435,7 +1539,7 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     send(model, :answer)
     render_async(view, 2000)
 
-    assert has_element?(view, "#composer-form", "Vai virar 2 tarefas")
+    assert has_element?(view, "#composer-form", "2 tarefas prontas para revisão")
     assert Agent.get(counter, & &1) == 100
     assert Repo.aggregate(AgentBoard.AI.Call, :count) == 2
   end

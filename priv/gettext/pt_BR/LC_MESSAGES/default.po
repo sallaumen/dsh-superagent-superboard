@@ -10434,3 +10434,79 @@ msgstr "Incluir guias nesta issue"
 
 msgid "On this computer"
 msgstr "Neste computador"
+
+msgid "Draft"
+msgstr "Rascunho"
+
+msgid "Editing this draft does not change GitHub."
+msgstr "Editar aqui não altera o GitHub."
+
+msgid "Clarify the request"
+msgstr "Perguntas para preparar a proposta"
+
+msgid "Answer at least one question. AI will use the question and answer together to prepare a draft."
+msgstr "Responda a pelo menos uma pergunta. A IA receberá a pergunta junto com a resposta para preparar a proposta."
+
+msgid "Answer each question. AI will use these pairs to prepare a draft."
+msgstr "Responda a cada pergunta. A IA usará as perguntas e suas respostas para preparar a proposta."
+
+msgid "Answers used in this proposal"
+msgstr "Respostas usadas nesta proposta"
+
+msgid "No tasks to review. Ask AI again or return to a single issue draft."
+msgstr "Nenhuma tarefa para revisar. Peça outra proposta à IA ou volte ao rascunho de uma issue."
+
+msgid "Optional decisions"
+msgstr "Decisões opcionais"
+
+msgid "Your answers go into each selected issue when published. Editing here does not call AI. Leave a question blank to keep it open."
+msgstr "Ao publicar, suas respostas vão para cada issue selecionada. Editar aqui não consulta a IA. Deixe em branco para manter a pergunta em aberto."
+
+msgid "Regenerate with AI"
+msgstr "Refazer proposta com IA"
+
+msgid "Plan with AI"
+msgstr "Planejar com IA"
+
+msgid "Review as one issue"
+msgstr "Revisar como issue única"
+
+msgid "Create issue on GitHub"
+msgstr "Criar issue no GitHub"
+
+msgid "Send answers to AI"
+msgstr "Enviar respostas à IA"
+
+msgid "Retry with AI"
+msgstr "Tentar novamente com IA"
+
+msgid "A separate GitHub issue will group these tasks."
+msgstr "Uma issue adicional no GitHub vai agrupar essas tarefas."
+
+msgid "Answer the required questions before asking AI to continue."
+msgstr "Responda às perguntas necessárias antes de continuar com a IA."
+
+msgid "Ask AI for a new proposal. This replaces the proposed tasks without publishing them."
+msgstr "Solicita outra proposta à IA. Substitui as tarefas propostas sem publicá-las."
+
+msgid "Publish 1 task on GitHub"
+msgid_plural "Publish %{count} tasks on GitHub"
+msgstr[0] "Publicar 1 tarefa no GitHub"
+msgstr[1] "Publicar %{count} tarefas no GitHub"
+
+msgid "1 task ready for review"
+msgid_plural "%{count} tasks ready for review"
+msgstr[0] "1 tarefa pronta para revisão"
+msgstr[1] "%{count} tarefas prontas para revisão"
+
+msgid "Select tasks to publish"
+msgstr "Selecione tarefas para publicar"
+
+msgid "Change the plan"
+msgstr "Alterar o plano"
+
+msgid "A new AI proposal replaces the task edits. Returning to one issue keeps your request and answers in a draft."
+msgstr "Uma nova proposta da IA substitui as edições das tarefas. Ao voltar para uma issue única, o pedido e suas respostas continuam no rascunho."
+
+msgid "Your previous proposal and edits are still available."
+msgstr "A proposta anterior e suas edições continuam disponíveis."
