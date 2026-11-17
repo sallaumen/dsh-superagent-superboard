@@ -1,6 +1,8 @@
 defmodule AgentBoard.Lanes.RunTiming do
   @moduledoc "Time limits for a running task, calculated from its observed timestamps."
 
+  alias AgentBoard.Time
+
   # Minutes of work the owner allows a running task before being told, by
   # size (2026-11-10: small 20, large 60). A task without a size, as most
   # issues opened on GitHub are, waits as long as a large one.
@@ -16,6 +18,22 @@ defmodule AgentBoard.Lanes.RunTiming do
   @doc "Since when a running task works: time spent waiting is not work."
   @spec working_since(map()) :: DateTime.t() | nil
   def working_since(task), do: task.state_changed_at || task.started_at
+
+  @doc "The observed start, nonnegative elapsed seconds and size allowance used by a long-run notice."
+  @spec slow_details(map(), DateTime.t()) :: %{
+          since: DateTime.t() | nil,
+          elapsed_seconds: non_neg_integer() | nil,
+          limit_minutes: pos_integer()
+        }
+  def slow_details(task, now) do
+    since = working_since(task)
+
+    %{
+      since: since,
+      elapsed_seconds: Time.age_seconds(since, now),
+      limit_minutes: div(slow_after(task.size), 60)
+    }
+  end
 
   @doc "The moment a running task passes the time its size allows, or nil."
   @spec slow_at(map()) :: DateTime.t() | nil
