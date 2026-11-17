@@ -10417,3 +10417,11 @@ msgstr ""
 
 msgid "Not yet confirmed by GitHub"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "DeepSeek is paused for this project."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Open agent maintenance"
+msgstr ""

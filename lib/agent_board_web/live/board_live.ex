@@ -3325,6 +3325,9 @@ defmodule AgentBoardWeb.BoardLive do
             selected={@composer_selected}
             job={@composer_job}
             receipt={@composer_receipt}
+            maintenance_path={
+              ComposerLifecycle.paused_agent_path(@repo, @superagents, @composer_receipt)
+            }
             answers={@composer_answers}
             ai_status={@ai_status}
             voice_configured={@voice.configured}

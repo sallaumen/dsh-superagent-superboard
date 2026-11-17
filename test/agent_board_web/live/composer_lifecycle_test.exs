@@ -98,22 +98,26 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     {:ok, counter} = Agent.start_link(fn -> Keyword.get(opts, :start, 100) end)
     refuse = Keyword.get(opts, :refuse, [])
 
-    Req.Test.stub(@stub, fn conn ->
-      {:ok, body, conn} = Plug.Conn.read_body(conn)
-      issue = Jason.decode!(body)
-      title = issue["title"]
-      if recipient = opts[:capture], do: send(recipient, {:github_issue, title, issue["body"]})
+    Req.Test.stub(@stub, fn
+      %{method: "GET"} = conn ->
+        Req.Test.json(conn, [])
 
-      if title in refuse do
-        Plug.Conn.send_resp(conn, 500, "boom")
-      else
-        number = Agent.get_and_update(counter, &{&1 + 1, &1 + 1})
+      conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        issue = Jason.decode!(body)
+        title = issue["title"]
+        if recipient = opts[:capture], do: send(recipient, {:github_issue, title, issue["body"]})
 
-        Req.Test.json(conn, %{
-          "number" => number,
-          "html_url" => "https://github.com/fixture/lifecycle/issues/#{number}"
-        })
-      end
+        if title in refuse do
+          Plug.Conn.send_resp(conn, 500, "boom")
+        else
+          number = Agent.get_and_update(counter, &{&1 + 1, &1 + 1})
+
+          Req.Test.json(conn, %{
+            "number" => number,
+            "html_url" => "https://github.com/fixture/lifecycle/issues/#{number}"
+          })
+        end
     end)
 
     counter
@@ -171,6 +175,54 @@ defmodule AgentBoardWeb.ComposerLifecycleTest do
     view |> element("#open-create") |> render_click()
     refute has_element?(view, "#composer-receipt")
     assert has_element?(view, "#composer-text", "")
+  end
+
+  test "a paused DeepSeek receipt opens maintenance for its project without resuming it", %{
+    conn: conn,
+    repo: repo
+  } do
+    github()
+
+    {:ok, agent} =
+      AgentBoard.Superagents.create(%{
+        repository_id: repo.id,
+        profile: "superagent-lifecycle",
+        state_dir: "/tmp/superagent-lifecycle",
+        port: 3135
+      })
+
+    {:ok, _} = AgentBoard.Superagents.observe(agent, %{state: "paused"})
+    view = open_composer(conn)
+    request = "Ajustar a mira"
+    type(view, request)
+    submit(view, %{"text" => request, "executor" => "dsh"})
+    link = element(view, "#composer-paused-agent a")
+    assert has_element?(view, "#composer-receipt", "#101")
+    render_click(link)
+
+    assert has_element?(
+             view,
+             "#project-#{agent.id}-view-maintenance button[phx-value-action=resume]"
+           )
+
+    assert AgentBoard.Superagents.get(agent.id).observed_state == "paused"
+  end
+
+  test "a pause in another project, a different executor or a finished issue does not explain this receipt" do
+    repo = %{id: 5, owner: "fixture", name: "game"}
+    agent = %{repository_id: 5, observed_state: "paused"}
+    task = %{repository_id: 5, executor: "dsh", state: "queued"}
+
+    for {agents, item} <- [
+          {[%{agent | repository_id: 6}], task},
+          {[%{agent | observed_state: "ready"}], task},
+          {[agent], %{task | executor: "codex"}},
+          {[agent], %{task | state: "merged"}}
+        ] do
+      refute AgentBoardWeb.ComposerLifecycle.paused_agent_path(repo, agents, %{
+               items: [%{outcome: :existing, task: item}]
+             })
+    end
   end
 
   # Typing fast: each keystroke's change carries the title field's value as
