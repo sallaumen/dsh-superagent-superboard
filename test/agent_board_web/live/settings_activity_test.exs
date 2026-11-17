@@ -51,6 +51,7 @@ defmodule AgentBoardWeb.SettingsActivityTest do
     assert has_element?(view, ".settings-activity__row", "Os mesmos 6 se repetem nas 2 leituras")
 
     view |> element("button", "Ver os erros") |> render_click()
+    render_async(view, 2_000)
 
     assert has_element?(view, ~s(.settings-activity__error-list[aria-live="polite"]), "boom 1")
     assert has_element?(view, ".settings-activity__error-list", "boom 2")
