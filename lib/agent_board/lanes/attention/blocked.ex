@@ -4,6 +4,18 @@ defmodule AgentBoard.Lanes.Attention.Blocked do
 
   alias AgentBoard.Lanes.Attention.ReportNotice
 
+  @doc "Group distinct issue numbers by repository only for visible blocks without a ticket explanation."
+  @spec report_numbers([map()]) :: %{optional(integer()) => [integer()]}
+  def report_numbers(candidates) do
+    for(
+      %{kind: :blocked, block: nil, task: %{repository_id: repo, number: n}} <- candidates,
+      is_integer(n),
+      do: {repo, n}
+    )
+    |> Enum.uniq()
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+  end
+
   @doc "Use the explained failure for both text and actions, otherwise quote the recorded blockage or ticket summary."
   @spec content(map(), map() | nil, String.t() | nil, String.t() | nil) :: {String.t(), [map()]}
   def content(task, nil, recorded, summary),
