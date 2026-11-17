@@ -20,6 +20,28 @@ defmodule AgentBoard.Board.TaskPullLinks.Evidence do
         do: {task.id, {task.repository_id, number}}
   end
 
+  @doc "Candidate ticket PRs, highest number first, only for tasks still without a saved named PR."
+  @spec thread_refs([map()], map(), map()) :: %{optional(integer()) => [{integer(), integer()}]}
+  def thread_refs(tasks, tickets, named) do
+    for task <- tasks,
+        not Map.has_key?(named, task.id),
+        numbers = get_in(tickets, [task.number, "own_threads"]),
+        is_list(numbers) and numbers != [],
+        into: %{} do
+      refs = numbers |> Enum.sort(:desc) |> Enum.map(&{task.repository_id, &1})
+      {task.id, refs}
+    end
+  end
+
+  @doc "Keep the first observed pull in each task's ordered thread candidates."
+  @spec thread_matches(map(), map()) :: map()
+  def thread_matches(candidates, pulls) do
+    for {id, refs} <- candidates,
+        pull = Enum.find_value(refs, &Map.get(pulls, &1)),
+        into: %{},
+        do: {id, pull}
+  end
+
   # Only a link to the task's own repository counts: the number alone would
   # match this repository's PR of the same number.
   defp pull_number(nil, _repository), do: nil

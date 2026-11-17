@@ -82,40 +82,9 @@ defmodule AgentBoard.Board.TaskPullLinks do
   def linked_pull_requests(tasks, tickets) do
     named = named_pulls(tasks)
 
-    # The rest fall back to the PR thread their ticket opened, read once for
-    # all of them; the highest thread number wins, as before.
-    unnamed = Enum.reject(tasks, &Map.has_key?(named, &1.id))
-    threads = Map.new(unnamed, &{&1.id, own_threads(Map.get(tickets, &1.number))})
-    thread_pulls = ticket_pulls(unnamed, threads)
-
-    Enum.reduce(unnamed, named, fn task, acc ->
-      pull =
-        threads
-        |> Map.fetch!(task.id)
-        |> Enum.sort(:desc)
-        |> Enum.find_value(&Map.get(thread_pulls, {task.repository_id, &1}))
-
-      if pull, do: Map.put(acc, task.id, pull), else: acc
-    end)
-  end
-
-  defp own_threads(nil), do: []
-  defp own_threads(ticket), do: ticket["own_threads"] || []
-
-  defp ticket_pulls(tasks, threads) do
-    numbers = threads |> Map.values() |> List.flatten() |> Enum.uniq()
-
-    if numbers == [] do
-      %{}
-    else
-      repository_ids = Enum.uniq(Enum.map(tasks, & &1.repository_id))
-
-      Repo.all(
-        from p in PullRequest,
-          where: p.repository_id in ^repository_ids and p.number in ^numbers
-      )
-      |> Map.new(&{{&1.repository_id, &1.number}, &1})
-    end
+    threads = Evidence.thread_refs(tasks, tickets, named)
+    thread_pulls = threads |> Enum.flat_map(fn {_id, refs} -> refs end) |> pulls_by_ref()
+    Map.merge(named, Evidence.thread_matches(threads, thread_pulls))
   end
 
   @doc """

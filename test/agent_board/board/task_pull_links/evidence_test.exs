@@ -6,6 +6,26 @@ defmodule AgentBoard.Board.TaskPullLinks.EvidenceTest do
   @repo %Repository{id: 2, owner: "Fixture", name: "Board"}
   @body "https://github.com/fixture/board/pull/3"
 
+  test "only unnamed tasks use ticket threads, taking the highest observed number in their own repo" do
+    tasks = for n <- 1..4, do: %{id: n, number: n + 10, repository_id: 2}
+
+    tickets = %{
+      11 => %{"own_threads" => [15]},
+      12 => %{"own_threads" => [3, 15, 8]},
+      13 => %{"own_threads" => [15]}
+    }
+
+    threads = Evidence.thread_refs(tasks, tickets, %{1 => :named})
+    assert threads == %{2 => [{2, 15}, {2, 8}, {2, 3}], 3 => [{2, 15}]}
+
+    assert Evidence.thread_matches(threads, %{
+             {7, 15} => :foreign,
+             {2, 8} => :newer,
+             {2, 3} => :older
+           }) ==
+             %{2 => :newer}
+  end
+
   test "named refs keep task IDs distinct when pull numbers and even issue numbers coincide" do
     other = %Repository{id: 7, owner: "Other", name: "Board"}
     first = %{id: 10, repository_id: 2, number: 1, body: @body}
