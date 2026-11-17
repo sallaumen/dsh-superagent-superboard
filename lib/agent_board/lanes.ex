@@ -93,8 +93,7 @@ defmodule AgentBoard.Lanes do
   end
 
   defp visible_questions(visible, repository) do
-    numbers =
-      for %{kind: :question, task: %{number: number}} <- visible, is_integer(number), do: number
+    numbers = Attention.Question.report_numbers(visible)
 
     if numbers == [], do: %{}, else: Board.agent_questions(repository.id, numbers)
   end
