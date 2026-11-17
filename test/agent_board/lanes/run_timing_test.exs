@@ -28,6 +28,35 @@ defmodule AgentBoard.Lanes.RunTimingTest do
     refute RunTiming.slow?(task, @start)
   end
 
+  test "slow details count a resumed run from its new start" do
+    resumed = DateTime.add(@start, 3600)
+    task = %{size: "S", started_at: @start, state_changed_at: resumed}
+
+    assert RunTiming.slow_details(task, DateTime.add(resumed, 300)) ==
+             %{since: resumed, elapsed_seconds: 300, limit_minutes: 20}
+  end
+
+  test "slow details use the original start as fallback and share the size allowance" do
+    for {size, minutes} <- [{"S", 20}, {"M", 40}, {"L", 60}, {nil, 60}, {"XL", 60}] do
+      task = %{size: size, state_changed_at: nil, started_at: @start}
+
+      assert RunTiming.slow_details(task, DateTime.add(@start, 3600)) ==
+               %{since: @start, elapsed_seconds: 3600, limit_minutes: minutes}
+    end
+  end
+
+  test "missing time stays unknown and a future start never gives a negative duration" do
+    task = %{size: nil, state_changed_at: nil, started_at: nil}
+
+    assert RunTiming.slow_details(task, @start) ==
+             %{since: nil, elapsed_seconds: nil, limit_minutes: 60}
+
+    future = DateTime.add(@start, 60)
+
+    assert RunTiming.slow_details(%{task | started_at: future}, @start) ==
+             %{since: future, elapsed_seconds: 0, limit_minutes: 60}
+  end
+
   describe "the next moment a running task needs attention" do
     @now ~U[2026-11-10 12:00:00.000Z]
 

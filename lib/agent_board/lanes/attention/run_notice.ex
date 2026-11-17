@@ -23,13 +23,13 @@ defmodule AgentBoard.Lanes.Attention.RunNotice do
   @doc "Explain the elapsed run and its size limit, adding a last signal only when observed."
   @spec slow(map(), %{seconds: non_neg_integer()} | nil, DateTime.t(), integer()) :: String.t()
   def slow(task, silence, now, offset) do
-    since = RunTiming.working_since(task)
-    limit = div(RunTiming.slow_after(task.size), 60)
+    %{since: since, elapsed_seconds: elapsed, limit_minutes: limit} =
+      RunTiming.slow_details(task, now)
 
     [
       gettext("**Working since %{time} (%{ago}).**",
         time: Time.local_time(since, offset),
-        ago: Time.ago(Time.age_seconds(since, now))
+        ago: Time.ago(elapsed)
       ),
       slow_limit(task.size, limit),
       case silence do
