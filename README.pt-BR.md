@@ -25,4 +25,6 @@ O Super Board é um painel local para projetos no GitHub. Veja quais issues est�
 - **Planejamento:** escolha DeepSeek, Gemini ou OpenAI como provedor da IA do painel para refinar e dividir pedidos.
 - **Execução com DeepSeek:** o [Super Agent](https://github.com/deepseek-ai/dsh-superagent-prototype) é um projeto separado e roda no [DeepSeek Harness](https://www.deepseek.com/en/harness/). No cartão **Paralelismo**, `2 de 4` indica duas vagas ocupadas; os tickets na fila aparecem à parte.
 
+![Exemplo de paralelismo do DeepSeek: dois dos quatro workers estão ocupados. Os tickets em espera são contados à parte. Execuções de Claude Code e Codex ficam fora desse limite.](docs/assets/readme/worker-capacity-pt.svg)
+
 [Operação e diagnóstico](docs/operations.md) · [API JSON](docs/api.md) · [Como contribuir](CONTRIBUTING.md)

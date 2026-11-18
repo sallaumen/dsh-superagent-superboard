@@ -25,4 +25,6 @@ Super Board is a local dashboard for GitHub projects. See which issues are waiti
 - **Planning:** choose DeepSeek, Gemini or OpenAI as the board’s AI provider for refining and splitting requests.
 - **DeepSeek execution:** the separate [Super Agent](https://github.com/deepseek-ai/dsh-superagent-prototype) runs inside [DeepSeek Harness](https://www.deepseek.com/en/harness/). Its **Parallelism** counter shows busy workers, not total tasks: `2 of 4` means two slots are in use; waiting tickets are counted separately.
 
+![Example DeepSeek parallelism: two of four workers are busy. Waiting tickets are counted separately. Claude Code and Codex runs use separate capacity.](docs/assets/readme/worker-capacity-en.svg)
+
 [Operations and troubleshooting](docs/operations.md) · [JSON API](docs/api.md) · [Contributing](CONTRIBUTING.md)
