@@ -197,6 +197,12 @@ Each worker gets a fresh worktree. Read the target repository’s contributor in
 
 For example, a repository that pins the [Elixir Agent Kit](https://github.com/sallaumen/elixir-agent-kit) may require `mix deps.get` before opening its practice index. A different repository may use entirely different tooling or have no skill pack. Optional skills belong in the target project or local executor configuration; no one needs to install a global skill for every profile.
 
+### Optional design skills in a worker project
+
+A project that adopts [Hallmark 2.0.0](https://github.com/Nutlope/hallmark/tree/04977e15f3dfd6ee4b74c887dac3eb52665d6c92/skills/hallmark) for new public pages can place the reviewed skill directory, including its scripts and references, at `.agents/skills/hallmark/` in that project's repository. Codex and DeepSeek Harness can discover it there. A Codex Cloud task needs the files in its checkout or environment. Check that the executor can list the skill and read a referenced theme before reporting it available. ChatGPT workspaces have a separate [skill upload and sharing flow](https://help.openai.com/en/articles/20001066-skills-in-chatgpt).
+
+For the board's own ticket inspector or settings, follow the [board design system](../design/redesign/DESIGN.md). Use Hallmark on an existing page only if the task names it. An audit produces findings. Validate any later interface change against the rendered LiveView and its real actions, since Hallmark's static checker skips HEEx. This choice belongs to the target project and requires no change to shared worker prompts or running profiles.
+
 ## 8. Merge policy
 
 The managed worker CLI enforces the [target project's merge checks](merge-checks.md). The board ships shared [communication](prompts/communication.md), [scope](prompts/scope.md) and [delivery](prompts/delivery.md) instructions for all projects. Review their differences and apply them in **Settings → Projects**. Additional project rules belong to the local profile; the shared files are not an export of any one person's agent.
