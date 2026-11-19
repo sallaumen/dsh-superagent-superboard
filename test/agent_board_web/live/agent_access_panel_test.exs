@@ -386,7 +386,24 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
     settled(view)
 
     assert has_element?(view, ".ab-insp__refused", "não está liberado")
-    assert has_element?(view, "#open-agent-access")
+    slug = "#{repo.owner}/#{repo.name}"
+    assert has_element?(view, "#open-agent-access[phx-value-project='#{slug}']")
+
+    view |> element("#inspector-tab-atividade") |> render_click()
+    inspector = assert_patch(view)
+    view |> element(".ab-insp__refused button") |> render_click()
+    access = assert_patch(view)
+
+    assert %{"repo" => ^slug, "project" => ^slug, "area" => "access"} =
+             URI.decode_query(URI.parse(access).query)
+
+    {:ok, reopened, _html} = live(conn, access)
+    send(reopened.pid, :board_updated)
+    assert has_element?(reopened, "#board-page[data-panel=settings]")
+    reopened |> element("#panel-settings button[phx-click=close]") |> render_click()
+    assert_patch(reopened, inspector)
+    assert has_element?(reopened, "#conversation[data-task-id='#{task.id}']")
+    assert has_element?(reopened, "#inspector-tab-atividade[aria-selected=true]")
   end
 
   defp last_decision do

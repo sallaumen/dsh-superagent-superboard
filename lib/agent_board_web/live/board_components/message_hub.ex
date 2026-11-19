@@ -101,6 +101,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
                 class={["ab-hub-item", unread?(item, @seen) && "is-unread"]}
                 phx-click="open_inbox_task"
                 phx-value-id={item.task_id}
+                data-panel-trigger
                 data-board-menu-link
                 aria-label={message_item_label(item, @seen)}
               >
@@ -180,6 +181,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
                 phx-click="show_panel"
                 phx-value-panel="settings"
                 phx-value-section={item.section}
+                data-panel-trigger
                 data-board-menu-link
               >
                 <span class="ab-hub-item__meta"><span>{item[:kind] ||
@@ -197,6 +199,7 @@ defmodule AgentBoardWeb.BoardComponents.MessageHub do
                 class="ab-hub-item"
                 phx-click="open_inbox_task"
                 phx-value-id={item.task_id}
+                data-panel-trigger
                 data-board-menu-link
                 aria-label={
                   gettext("Open task #%{number} in %{repo}: %{kind}",

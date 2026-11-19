@@ -182,7 +182,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
         <dt>{gettext("Source")}</dt>
         <dd>
           {if @tile.status == :measured,
-            do: gettext("main orchestrator, now"),
+            do: gettext("agent serving this project, now"),
             else: Metrics.reason(@tile.reason)}
         </dd>
       </div>
@@ -194,7 +194,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
 
   # The ceiling is changed where it is read: minus and plus save
   # `executor.maxWorkers` in the runner (`Orchestrator.set_max_workers/2`).
-  defp limit(%{tile: %{status: :measured}} = assigns) do
+  defp limit(%{tile: %{max: max_workers}} = assigns) when is_integer(max_workers) do
     range = Orchestrator.worker_range()
     assigns = assign(assigns, min: range.first, max: range.last)
 
@@ -373,7 +373,8 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
 
   attr :tile, :map, required: true
 
-  defp capacity(%{tile: %{status: :unknown}} = assigns) do
+  defp capacity(%{tile: %{max: max, running: running}} = assigns)
+       when is_nil(max) or is_nil(running) do
     ~H"""
     <svg
       class="ab-flow__spark is-unknown"
@@ -388,11 +389,11 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
   end
 
   defp capacity(assigns) do
-    max = max(assigns.tile.max, 1)
-    width = 96 / max
+    max = assigns.tile.max
+    width = 96 / max(max, 1)
 
     slots =
-      for index <- 0..(max - 1) do
+      for index <- 0..(max - 1)//1 do
         %{x: index * width + 0.5, w: max(width - 1, 1), on?: index < assigns.tile.running}
       end
 
@@ -408,7 +409,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
         gettext("%{running} of %{max} orchestrator slots in use, %{queued} waiting",
           running: @tile.running,
           max: @tile.max,
-          queued: @tile.queued
+          queued: Metrics.count(@tile.queued)
         )
       }
     >
@@ -431,7 +432,7 @@ defmodule AgentBoardWeb.BoardComponents.Throughput do
   defp title(%{kind: :depth}), do: gettext("tasks in queue now")
 
   defp title(%{kind: :load}),
-    do: gettext("Main orchestrator slots in use now; superagents have their own limits")
+    do: gettext("Slots in use on the agent serving this project")
 
   defp delta_tone(%{status: :unknown}), do: nil
   defp delta_tone(%{kind: :rate, delta: delta}) when delta > 0, do: "ab-tag--agent"

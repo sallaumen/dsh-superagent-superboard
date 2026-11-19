@@ -391,6 +391,13 @@ defmodule AgentBoardWeb.BoardAgentFailureTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=fixture/failures")
     render_async(view, 5_000)
 
+    view |> element("#diagnose-project-agent", "Diagnosticar agente") |> render_click()
+
+    assert %{"project" => "fixture/failures", "area" => "maintenance"} =
+             URI.decode_query(URI.parse(assert_patch(view)).query)
+
+    refute_received :primary_started
+    render_patch(view, ~p"/?repo=fixture/failures")
     view |> element("#agent-restart-trigger", "Religar o agente") |> render_click()
 
     assert has_element?(

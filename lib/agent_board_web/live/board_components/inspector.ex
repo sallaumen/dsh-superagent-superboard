@@ -106,11 +106,17 @@ defmodule AgentBoardWeb.BoardComponents.Inspector do
         <div :if={@agent_refused and @task.state == "queued"} class="ab-insp__refused" role="status">
           <span>{gettext("The agent ignored this issue: its author is not allowed on this project.")}</span>
           <button
+            id={"review-task-access-#{@task.id}"}
             type="button"
             class="ab-btn ab-btn--sm"
             phx-click="show_panel"
             phx-value-panel="settings"
             phx-value-section="projects"
+            phx-value-project={"#{@task.repository.owner}/#{@task.repository.name}"}
+            phx-value-area="access"
+            data-panel-trigger
+            aria-haspopup="dialog"
+            aria-controls="panel-settings"
           >{gettext("Review access")}</button>
         </div>
 
