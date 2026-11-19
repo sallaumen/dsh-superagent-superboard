@@ -56,7 +56,7 @@ defmodule AgentBoard.SetupTest do
     assert %{id: :github} = Setup.next_step(rows)
   end
 
-  test "without a key the board's own AI is missing, and without ElevenLabs the voice is the browser's" do
+  test "without a key the board AI is missing, and without ElevenLabs written input stays available" do
     rows =
       Setup.verify(
         ready(
@@ -68,7 +68,8 @@ defmodule AgentBoard.SetupTest do
     assert %{state: :missing, fix: %{href: "https://platform.deepseek.com/api_keys"}} =
              row(rows, :board_ai)
 
-    assert %{state: :off} = row(rows, :voice)
+    assert %{state: :off, detail: guidance} = row(rows, :voice)
+    assert guidance =~ "Wispr Flow"
     assert %{id: :board_ai} = Setup.next_step(rows)
   end
 

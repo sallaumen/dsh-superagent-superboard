@@ -217,6 +217,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
           class="ab-link"
           phx-click="select_section"
           phx-value-section="costs"
+          phx-value-costs="agents"
           phx-target={@parent}
         >{gettext("What they spent is in Costs")}</button>
       </div>
@@ -254,6 +255,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
             class="ab-link"
             phx-click="select_section"
             phx-value-section="costs"
+            phx-value-costs="calls"
             phx-target={@parent}
           >{gettext("Each call, with its tokens and cost, is in Costs")}</button>
         </section>
@@ -411,7 +413,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Execution do
   def ai_line(%{provider: nil}),
     do:
       gettext(
-        "No AI key: the board's own calls answer an error. Set one in .env.local; AI and setup says which."
+        "No AI key: the board's own calls answer an error. See AI and integrations for available providers."
       )
 
   def ai_line(%{provider: :rehearsal}),

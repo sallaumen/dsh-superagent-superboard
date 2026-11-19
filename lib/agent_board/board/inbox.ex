@@ -19,7 +19,7 @@ defmodule AgentBoard.Board.Inbox do
 
   @doc """
   The providers that cannot serve right now, for the Attention bell: the
-  ElevenLabs plan spent (the computer voice speaks), the board's daily AI
+  ElevenLabs plan spent (replies stay written), the board's daily AI
   budget spent, and a provider whose newest board call in the last day was
   refused for its limit or balance. Each item opens the settings section
   that explains it. Derived on each read; nothing is stored.
@@ -58,7 +58,7 @@ defmodule AgentBoard.Board.Inbox do
       %{
         key: "elevenlabs",
         title: gettext("ElevenLabs credits spent"),
-        detail: gettext("The computer voice speaks instead."),
+        detail: gettext("Replies stay written while speech is unavailable."),
         section: "costs"
       }
     end

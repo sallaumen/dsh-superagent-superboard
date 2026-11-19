@@ -81,7 +81,9 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Activity do
     ~H"""
     <section id={@id} class="settings-activity" aria-labelledby="settings-activity-title">
       <header class="settings-activity__head">
-        <h4 id="settings-activity-title">{gettext("Activity")}</h4>
+        <h4 id="settings-activity-title">
+          {gettext("Activity for %{project}", project: "#{@repo.owner}/#{@repo.name}")}
+        </h4>
         <p class="ab-meta">{gettext("Last 20 events")}</p>
       </header>
 

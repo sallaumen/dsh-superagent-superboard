@@ -1635,7 +1635,7 @@ defmodule AgentBoard.Actions do
   defp describe(:bot_missing),
     do:
       gettext(
-        "the agent has no GitHub sign-in on this machine yet. AI and setup shows the command that signs it in."
+        "the agent has no GitHub sign-in on this machine yet. AI and integrations shows the command that signs it in."
       )
 
   defp describe({:prototype_in_the_way, path}),

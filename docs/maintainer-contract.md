@@ -276,7 +276,7 @@ and is recorded as `automatic`.
 | `change_setting` | yellow | one board preference: the ElevenLabs voice (volume, speed, alert scenarios, voice, model…) or the daily summary (on/off, the hour) | UI: voice menu and daily summary settings. Voice: "mais devagar/alto" (slower/louder). API: `PUT /api/voice/settings` |
 | `dismiss_summary` | yellow | takes the day's summary off the screen (the row stays) | UI: one click on the summary card |
 | `forget_conversation` | red | deletes the voice conversation's memory | UI: "Esquecer conversa" asks the sentence in the browser. Voice: proposal and yes |
-| `check_setup` | green | runs free setup reads and records only the validation timestamp and outcome counts | UI: one click in AI and setup |
+| `check_setup` | green | runs free setup reads and records only the validation timestamp and outcome counts | UI: one click in AI and integrations |
 | `sync_merged_pull` | green | queues verification of one ticket PR in its named repository | system: ticket poller |
 | `sync_now` | green | queues a sync (a read of GitHub) | UI: one click |
 | `update_board` | yellow | fast-forwards this checkout to `origin/main` | UI: "Atualizar", shown only when behind |
@@ -822,7 +822,7 @@ Agora and the detail):
 A fresh `mix setup` creates the schema with no tracked repositories. Adding a repository is the operator’s choice. Existing installations keep their projects.
 
 What the board needs to work, in dependency order, is one contract
-(`AgentBoard.Setup`), read by Settings (AI and setup, the first section) and
+(`AgentBoard.Setup`), read by Settings (AI and integrations, the first section) and
 by nothing else that computes it on its own. Each row has a class (`:work`
 GitHub, the projects, the DeepSeek superagents, Claude Code and Codex;
 `:board_ai` the provider of the board's own calls; `:voice` ElevenLabs or the
@@ -870,7 +870,7 @@ browser), a state and the fix for the next step.
 
 ## What each agent has installed
 
-Configurações → IAs e setup ends with the skills, plugins and MCP servers of
+Configurações → IA e integrações ends with the skills, plugins and MCP servers of
 each executor on this machine (`AgentBoard.Executors.ToolInventory.inventory/1`, shown by
 `Settings.Setup`), read when the section comes into view and never stored.
 
@@ -1110,7 +1110,7 @@ flowchart LR
   "Reading additional input from stdin" when its stdin was a pipe, so the
   redirect is required and `runners_script_test.exs` covers it.
 - **A missing executor binary refuses before starting** (`:runner_missing`);
-  Settings → AI and setup says whether each one is installed and signed in
+  Settings → AI and integrations says whether each one is installed and signed in
   (`AgentBoard.Setup`), and names the path when it is missing.
 - **A runner that cannot start fails the row**, never silently: the run
   directory keeps the error and the next tick records it. A Claude Code
@@ -2061,7 +2061,7 @@ the 10 s poller), never on a browser timer, and says when it was computed.
 - The orchestrator is never asked from the browser and never retried in the
   same render. Each load asks it in the background (`start_async`) and renders
   with the last answer (`?`, "no observed data", until the first one); the
-  answer then replaces the Parallelism tile, and the lanes only when the agent
+  answer then replaces the Parallelism tile. A partial load preserves each valid count and shows unknown for a missing or invalid one. An incomplete reading alone does not make the agent unavailable. The worker limit and occupied slots refer to the agent serving this project. The lanes update when the agent
   went up or down. A runner that accepts and never answers therefore holds no
   render and no click (`board_agent_failure_test.exs`).
 - The tests: `metrics_test.exs` (windows, the reader's clock including a

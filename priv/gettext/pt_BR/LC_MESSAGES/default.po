@@ -10648,3 +10648,163 @@ msgstr "commit desatualizado"
 #, elixir-autogen, elixir-format
 msgid "passed"
 msgstr "passou"
+
+#, elixir-autogen, elixir-format
+msgid "Without an ElevenLabs key, replies stay written. Type in Chat or use external dictation such as Wispr Flow."
+msgstr "Sem chave da ElevenLabs, as respostas ficam por escrito. Digite no Chat ou use um ditado externo, como o Wispr Flow."
+
+#, elixir-autogen, elixir-format
+msgid "Replies stay written while speech is unavailable."
+msgstr "As respostas ficam por escrito enquanto o áudio está indisponível."
+
+#, elixir-autogen, elixir-format
+msgid "plan spent until %{date}; replies stay written"
+msgstr "plano esgotado até %{date}. As respostas ficam por escrito"
+
+#, elixir-autogen, elixir-format
+msgid "speech refused for insufficient credits; replies stay written until %{time}"
+msgstr "áudio recusado por falta de créditos. As respostas ficam por escrito até %{time}"
+
+#, elixir-autogen, elixir-format
+msgid "Agent settings for %{project}"
+msgstr "Ajustes do agente de %{project}"
+
+#, elixir-autogen, elixir-format
+msgid "Connect a different repository"
+msgstr "Conectar outro repositório"
+
+#, elixir-autogen, elixir-format
+msgid "some capacity figures were not reported"
+msgstr "o agente não informou todos os dados de capacidade"
+
+#, elixir-autogen, elixir-format
+msgid "agent serving this project, now"
+msgstr "agente que atende este projeto, agora"
+
+#, elixir-autogen, elixir-format
+msgid "Slots in use on the agent serving this project"
+msgstr "Vagas em uso no agente que atende este projeto"
+
+#, elixir-autogen, elixir-format
+msgid "the agent has no GitHub sign-in on this machine yet. AI and integrations shows the command that signs it in."
+msgstr "o agente ainda não tem login no GitHub nesta máquina. IA e integrações mostra o comando que faz o login."
+
+#, elixir-autogen, elixir-format
+msgid "This would be the machine's first agent, and it has no GitHub sign-in yet. AI and integrations shows the command that signs the agent's account in; then add the project again."
+msgstr "Este seria o primeiro agente da máquina e ele ainda não tem login no GitHub. IA e integrações mostra o comando para entrar com a conta do agente. Depois, adicione o projeto novamente."
+
+#: lib/agent_board_web/live/board_components/settings/activity.ex:85
+#, elixir-autogen, elixir-format
+msgid "Activity for %{project}"
+msgstr "Atividade de %{project}"
+
+#: lib/agent_board_web/live/board_components/settings/execution.ex:415
+#, elixir-autogen, elixir-format
+msgid "No AI key: the board's own calls answer an error. See AI and integrations for available providers."
+msgstr "Sem chave de IA para responder às chamadas do board. Veja os provedores em IA e integrações."
+
+#: lib/agent_board_web/live/board_components/settings/logs.ex:37
+#, elixir-autogen, elixir-format
+msgid "Warnings and errors from the board and the agents on this machine."
+msgstr "Avisos e erros do board e dos agentes desta máquina."
+
+#: lib/agent_board_web/live/board_components/settings/logs.ex:38
+#, elixir-autogen, elixir-format
+msgid "Sync activity for %{project}"
+msgstr "Atividade de sincronização de %{project}"
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:314
+#, elixir-autogen, elixir-format
+msgid "%{count} tracked repository"
+msgid_plural "%{count} tracked repositories"
+msgstr[0] "%{count} repositório acompanhado"
+msgstr[1] "%{count} repositórios acompanhados"
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:334
+#, elixir-autogen, elixir-format
+msgid "Back to projects"
+msgstr "Voltar aos projetos"
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:376
+#: lib/agent_board_web/live/board_components/settings/projects.ex:969
+#, elixir-autogen, elixir-format
+msgid "Connect the Super Agent to %{project}"
+msgstr "Conectar o Super Agent a %{project}"
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:381
+#, elixir-autogen, elixir-format
+msgid "This repository is unavailable for a new agent. Choose a project below."
+msgstr "Este repositório está indisponível para conectar um agente. Escolha um projeto abaixo."
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:765
+#, elixir-autogen, elixir-format
+msgid "Capacity and maintenance"
+msgstr "Capacidade e manutenção"
+
+#: lib/agent_board_web/live/board_components/settings/projects.ex:814
+#, elixir-autogen, elixir-format
+msgid "Concurrent task limit"
+msgstr "Limite de tarefas simultâneas"
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex:166
+#, elixir-autogen, elixir-format
+msgid "To change the provider for every project, set AI_PROVIDER to deepseek, gemini or openai in .env.local with its API key, then restart the board."
+msgstr "Para trocar o provedor em todos os projetos, defina AI_PROVIDER como deepseek, gemini ou openai no .env.local, configure a chave correspondente e reinicie o board."
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex:396
+#, elixir-autogen, elixir-format
+msgid "Planning AI calls and costs"
+msgstr "Chamadas e custos da IA de planejamento"
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex:398
+#, elixir-autogen, elixir-format
+msgid "Choose the executor in New request for each task. DeepSeek takes assigned issues through GitHub. Claude Code and Codex run on this machine."
+msgstr "Em Novo pedido, escolha quem vai executar cada tarefa. O DeepSeek recebe as issues pelo GitHub. Claude Code e Codex executam nesta máquina."
+
+#: lib/agent_board_web/live/board_components/settings/setup.ex:402
+#, elixir-autogen, elixir-format
+msgid "The board uses ElevenLabs credits to speak and transcribe. You can always type in Chat."
+msgstr "O board usa créditos da ElevenLabs para falar e transcrever. Você também pode digitar no Chat."
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex:227
+#: lib/agent_board_web/live/board_components/settings_menu.ex:472
+#, elixir-autogen, elixir-format
+msgid "AI and integrations"
+msgstr "IA e integrações"
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex:229
+#, elixir-autogen, elixir-format
+msgid "Check the planning AI and the integrations available to this board."
+msgstr "Confira a IA de planejamento e as integrações disponíveis para este board."
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex:283
+#: lib/agent_board_web/live/board_components/settings_menu.ex:474
+#, elixir-autogen, elixir-format
+msgid "Task execution"
+msgstr "Execução de tarefas"
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex:285
+#, elixir-autogen, elixir-format
+msgid "These limits apply to local tasks across projects. Choose who writes the code in New request."
+msgstr "Estes limites valem para tarefas locais de todos os projetos. Em Novo pedido, escolha quem vai programar."
+
+#: lib/agent_board_web/live/board_components/settings_menu.ex:333
+#, elixir-autogen, elixir-format
+msgid "Voice settings apply across the board. Hear the current status on demand, or schedule the daily written summary."
+msgstr "Os ajustes de voz valem para todo o board. Você pode ouvir o estado atual quando quiser e agendar o resumo diário por escrito."
+
+#, elixir-autogen, elixir-format
+msgid "Diagnose agent"
+msgstr "Diagnosticar agente"
+
+#, elixir-autogen, elixir-format
+msgid "No running tasks in this project."
+msgstr "Nenhuma tarefa em execução neste projeto."
+
+#, elixir-autogen, elixir-format
+msgid "Capacity unavailable"
+msgstr "Capacidade indisponível"
+
+#, elixir-autogen, elixir-format
+msgid "Agent slots: %{used} of %{limit} in use"
+msgstr "Vagas do agente: %{used} de %{limit} em uso"

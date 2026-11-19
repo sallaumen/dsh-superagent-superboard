@@ -90,7 +90,7 @@ against free fixtures. Tests never read `.env.local`. `AGENT_BOARD_ENV_FILE`
 chooses another file (for example, in a worktree). The loader lives in
 [config/runtime.exs](../config/runtime.exs).
 
-A key changes only after a restart. **Settings → AI and setup** shows which
+A key changes only after a restart. **Settings → AI and integrations** shows which
 AI does what and, on "Check the setup", proves each part without spending:
 
 | Part | Needs | Fix it with |

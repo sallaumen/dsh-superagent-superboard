@@ -10,6 +10,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Logs do
   attr :paused, :boolean, required: true
   attr :timer, :boolean, required: true
 
+  attr :activity_path, :string, default: nil
+  attr :project, :string, default: nil
   attr :filters, :map, required: true
 
   def section(assigns) do
@@ -31,6 +33,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Logs do
       data-logs-paused={to_string(@paused)}
     >
       <h3 id="logs-title">{gettext("Logs")}</h3>
+      <p class="settings-pane__intro">
+        {gettext("Warnings and errors from the board and the agents on this machine.")}
+        <.link :if={@activity_path} patch={@activity_path} class="ab-link">{gettext(
+          "Sync activity for %{project}",
+          project: @project
+        )}</.link>
+      </p>
       <div class="ab-logs__head">
         <p class="ab-meta" role="status">
           {ngettext("%{count} warning", "%{count} warnings", @counts.warning)} · {ngettext(

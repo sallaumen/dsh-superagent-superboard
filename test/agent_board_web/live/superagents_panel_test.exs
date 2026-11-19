@@ -308,7 +308,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert has_element?(view, panel <> " option[value='30'][selected]")
 
     view
-    |> element("#project-#{superagent.id}-leftovers-form")
+    |> element("#project-#{superagent.id}-leftovers-form[phx-auto-recover=ignore]")
     |> render_change(%{"days" => "never"})
 
     assert Leftovers.days(superagent) == :never
@@ -501,7 +501,7 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
 
     {:ok, view, _html} = live(conn, "/?repo=fixture/pool-one&panel=settings&section=projects")
 
-    assert has_element?(view, "#settings-projects-title", "2 conectados")
+    assert has_element?(view, "#settings-projects-title", "2 repositórios acompanhados")
     assert has_element?(view, "#project-#{first.id} .ab-project__agent-count", "2")
     assert has_element?(view, "#project-#{second.id} .ab-project__agent-count", "4")
 
@@ -616,15 +616,44 @@ defmodule AgentBoardWeb.SuperagentsPanelTest do
     assert has_element?(view, row, "fixture/tracked-only")
     assert has_element?(view, row, "Sem agente")
     refute has_element?(view, "#tracked-#{with_agent.id}")
-    assert has_element?(view, "#settings-projects-title", "2 conectados")
+    assert has_element?(view, "#settings-projects-title", "2 repositórios acompanhados")
 
-    view |> element("#{row} button", "Conectar agente") |> render_click()
+    view |> element("#{row} a", "Conectar o Super Agent a fixture/tracked-only") |> render_click()
 
-    assert_patch(view, "/?panel=settings&path=agent&repo=fixture%2Fwith-agent&section=projects")
+    assert_patch(
+      view,
+      "/?panel=settings&path=agent&project=fixture%2Ftracked-only&repo=fixture%2Fwith-agent&section=projects"
+    )
+
     assert has_element?(view, "#agent-install")
     assert has_element?(view, "#track-repo input[name=owner][value=fixture]")
-    assert has_element?(view, "#track-repo input[name=name][value=tracked-only]")
+    assert has_element?(view, "#track-repo input[name=name][value=tracked-only][readonly]")
+    assert has_element?(view, "#project-connect-title", "fixture/tracked-only")
+
+    {:ok, reopened, _} =
+      live(
+        conn,
+        AgentBoardWeb.BoardNavigation.settings_path(with_agent, "projects", %{
+          "path" => "agent",
+          "project" => "fixture/tracked-only"
+        })
+      )
+
+    assert has_element?(reopened, "#track-repo input[name=name][value=tracked-only][readonly]")
     refute has_element?(view, "#add-project-confirm")
+
+    {:ok, directory, _} =
+      live(conn, AgentBoardWeb.BoardNavigation.settings_path(tracked, "projects"))
+
+    directory |> element(".ab-projects__heading a", "Adicionar projeto") |> render_click()
+    assert has_element?(directory, "#project-setup-options a", "Conectar outro repositório")
+
+    directory
+    |> element("#project-setup-options a", "Conectar o Super Agent a fixture/tracked-only")
+    |> render_click()
+
+    assert has_element?(directory, "#track-repo input[name=name][value=tracked-only][readonly]")
+    assert has_element?(directory, "#project-connect-title", "fixture/tracked-only")
   end
 
   test "a board with only tracked repositories is not empty", %{conn: conn} do

@@ -38,6 +38,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
   def windows, do: @days
 
   attr :active, :boolean, default: false
+  attr :origin, :map, default: %{}
   attr :repo, :map, default: nil
   attr :params, :map, default: %{}
   attr :tickets, :list, default: []
@@ -140,7 +141,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
       end
 
     filters = Map.take(socket.assigns, Map.get(@filters, page, []))
-    {:noreply, push_patch(socket, to: costs_path(socket.assigns.repo, page, days, filters))}
+
+    {:noreply,
+     push_patch(socket,
+       to: costs_path(socket.assigns.repo, page, days, filters, socket.assigns[:origin] || %{})
+     )}
   end
 
   def handle_event("costs_filter", params, socket) do
@@ -152,11 +157,20 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
       end)
 
     {:noreply,
-     push_patch(socket, to: costs_path(socket.assigns.repo, page, socket.assigns.days, filters))}
+     push_patch(socket,
+       to:
+         costs_path(
+           socket.assigns.repo,
+           page,
+           socket.assigns.days,
+           filters,
+           socket.assigns[:origin] || %{}
+         )
+     )}
   end
 
   @doc "The URL of a page, its window and its filters."
-  def costs_path(repo, page, days, filters \\ %{}) do
+  def costs_path(repo, page, days, filters \\ %{}, origin \\ %{}) do
     query = %{"costs" => page, "days" => days}
 
     query =
@@ -166,7 +180,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
       |> Map.new(fn {key, value} -> {Atom.to_string(key), value} end)
       |> Map.merge(query)
 
-    BoardNavigation.settings_path(repo, "costs", query)
+    BoardNavigation.settings_path(repo, "costs", query, origin)
   end
 
   @impl true
@@ -969,14 +983,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
 
   @doc """
   The ElevenLabs plan in words, from `Account.snapshot/0`: what this period
-  used and when it renews, or that the computer voice speaks because it is
-  spent. Nil before the account was ever read.
+  used and when it renews, or that replies stay written while it is spent. Nil before the account was ever read.
   """
   @spec account(Account.t() | nil, DateTime.t(), integer()) :: String.t() | nil
   def account(%{subscription: %{} = sub} = state, now, offset) do
     cond do
       Account.plan_spent?(state, now) ->
-        gettext("plan spent until %{date}: the computer voice speaks",
+        gettext("plan spent until %{date}; replies stay written",
           date: day_or_dash(sub.resets_at, offset)
         )
 
@@ -1003,7 +1016,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Costs do
 
   defp refused_text(state, offset),
     do:
-      gettext("a speech was refused for credits: the computer voice speaks until %{time}",
+      gettext("speech refused for insufficient credits; replies stay written until %{time}",
         time: Time.local_time(state.refused_until, offset)
       )
 
