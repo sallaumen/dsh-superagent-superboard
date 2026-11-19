@@ -47,6 +47,7 @@ defmodule AgentBoardWeb.BoardComponents.Concluded do
           :if={@list == "tasks"}
           id="history-search"
           class="ab-history__search"
+          phx-auto-recover="ignore"
           phx-change="history_search"
           phx-submit="history_search"
         >

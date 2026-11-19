@@ -1774,10 +1774,18 @@ defmodule AgentBoardWeb.BoardLive do
 
   # Typing in the search replaces the entry: back leaves History, it does not
   # walk through every keystroke.
-  def handle_event("history_search", %{"q" => query}, socket) do
-    path = BoardNavigation.history_path(socket.assigns.repo, "tasks", String.trim(query))
+  def handle_event(
+        "history_search",
+        %{"q" => query},
+        %{assigns: %{panel: "history", history_list: "tasks", repo: %{} = repo}} = socket
+      )
+      when is_binary(query) do
+    path = BoardNavigation.history_path(repo, "tasks", String.trim(query))
     {:noreply, push_patch(socket, to: path, replace: true)}
   end
+
+  # A debounced change from the previous panel may arrive after navigation.
+  def handle_event("history_search", _params, socket), do: {:noreply, socket}
 
   def handle_event("load_more_ended", _params, socket) do
     case {socket.assigns.repo, socket.assigns.ended} do

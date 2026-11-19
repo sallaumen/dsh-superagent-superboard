@@ -399,6 +399,8 @@ defmodule AgentBoardWeb.AgentAccessPanelTest do
 
     {:ok, reopened, _html} = live(conn, access)
     send(reopened.pid, :board_updated)
+    assert has_element?(reopened, "#history-search[phx-auto-recover=ignore]")
+    reopened |> form("#history-search", %{q: "old query"}) |> render_change()
     assert has_element?(reopened, "#board-page[data-panel=settings]")
     reopened |> element("#panel-settings button[phx-click=close]") |> render_click()
     assert_patch(reopened, inspector)
