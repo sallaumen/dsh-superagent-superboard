@@ -138,20 +138,14 @@ async function review(browser, url, blockedId) {
       await page.locator("#settings-system-title").waitFor();
       await capture("settings");
       const selected = page.locator(".settings-nav__item[aria-current=page]");
-      const selectedIsVisible = () => page.waitForFunction(() => {
-        const strip = document.querySelector(".settings-nav__items").getBoundingClientRect();
-        const r = document.querySelector(".settings-nav__item[aria-current=page]").getBoundingClientRect();
-        return r.left >= strip.left - 1 && r.right <= strip.right + 1;
-      });
-      await selectedIsVisible();
       await page.locator(".settings-nav__item[phx-value-section=logs]").press("Enter");
       await page.waitForURL(/section=logs/);
       await page.goBack();
       await page.waitForURL(/section=system/);
-      await selectedIsVisible();
+      await selected.filter({hasText: "Sistema"}).waitFor();
       assert.ok(await reachable(selected), "Active settings section outside viewport");
       await page.setViewportSize({width:320,height:568});
-      await selectedIsVisible();
+      assert.ok(await reachable(selected), "Current section unreachable at 320 px");
       await capture("settings-current-section");
       await page.setViewportSize({width,height});
 
@@ -208,6 +202,34 @@ async function review(browser, url, blockedId) {
       await search.fill(" ");
       await count.waitFor({state:"detached"});
       await search.fill("");
+    }
+    await page.setViewportSize({width: 375, height: 812});
+    for (const [locale, name] of [["pt-BR", "Configurações"], ["en", "Settings"]]) {
+      await ctx.addCookies([{name: "board_locale", value: locale, url: origin}]);
+      await page.goto(url);
+      await page.locator(".phx-connected").first().waitFor();
+      await page.locator("#mobile-nav summary").click();
+      await page.locator("#mobile-nav").getByRole("button", {name, exact: true}).click();
+
+      const items = page.locator(".settings-nav__item");
+      const current = items.and(page.locator("[aria-current=page]"));
+      await current.waitFor();
+      assert.equal(await items.count(), 7);
+      const overflows = await page.locator(".settings-nav__items").evaluate(el => el.scrollWidth > el.clientWidth + 1);
+      assert.ok(!overflows, locale + ": section menu scrolls horizontally");
+      for (const item of await items.all()) {
+        const label = await item.locator(".settings-nav__label").innerText();
+        assert.ok(await reachable(item), locale + ": section hidden on open: " + label);
+        assert.ok((await item.boundingBox()).height >= 44, label + ": small touch target");
+      }
+      for (const item of await items.all()) {
+        const key = await item.getAttribute("phx-value-section");
+        await item.click();
+        await page.waitForURL(u => u.searchParams.get("section") === key);
+        await page.locator(key === "logs" ? "#logs-title" : "#settings-" + key + "-title").waitFor();
+        assert.equal(await current.getAttribute("phx-value-section"), key);
+      }
+      await page.screenshot({path: path.join(evidence, "375-settings-" + locale + ".png")});
     }
     assert.deepEqual(errors, [], "Browser console or page errors: " + errors.join("; "));
   } finally {
