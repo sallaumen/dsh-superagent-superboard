@@ -3155,15 +3155,20 @@ defmodule AgentBoardWeb.BoardLive do
                       else: gettext("No data yet.")}
                   </h2>
                   <p>
-                    {if @sync_snapshot.last_success,
-                      do:
-                        gettext(
-                          "The agent watches this repository but has not received a task yet. Write or dictate the first request; it enters the queue and appears in Now when the agent picks it up."
-                        ),
-                      else:
-                        gettext(
+                    <%= cond do %>
+                      <% is_nil(@sync_snapshot.last_success) -> %>
+                        {gettext(
                           "Waiting for the first sync. When GitHub responds, the board will show tasks, merges, and what needs your attention."
                         )}
+                      <% Enum.any?(@superagents, &(&1.repository_id == @repo.id)) -> %>
+                        {gettext(
+                          "The agent watches this repository but has not received a task yet. Write or dictate the first request; it enters the queue and appears in Now when the agent picks it up."
+                        )}
+                      <% true -> %>
+                        {gettext(
+                          "GitHub tracking is on. No agent is connected to this board for this repository."
+                        )}
+                    <% end %>
                   </p>
                   <button
                     type="button"
