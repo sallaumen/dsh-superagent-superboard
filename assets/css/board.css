@@ -1730,11 +1730,16 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 @media (max-width: 760px) {
   #panel-settings.board-dialog { inset: 8px 8px 72px; width: auto; height: auto; max-height: none; margin: 0 auto; }
   .settings-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  .settings-nav { padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--line); overflow: visible; }
-  .settings-nav__items { flex-direction: row; gap: 1px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
-  .settings-nav__item { flex: none; width: auto; min-height: 44px; padding: 8px; gap: 4px; font-size: 12.5px; white-space: nowrap; }
+  .settings-nav { padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--line); max-height: 50dvh; }
+  .settings-nav__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(45%, 10rem), 1fr));
+    gap: var(--space-1) var(--space-2);
+  }
+  .settings-nav__item { min-width: 0; min-height: 44px; padding: 8px 10px; gap: 4px; }
+  .settings-nav__item.is-current { box-shadow: inset 3px 0 currentColor; }
+  .settings-nav__label { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
   .settings-nav__marks { gap: 4px; }
-  .settings-nav__marks, .settings-nav__hint { margin-left: 0; }
   .settings-nav__foot { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 6px 0 0; border-top: 0; }
   .settings-nav__foot-link { min-height: 32px; }
   .settings-content { padding: 22px 20px 32px; }
@@ -1742,7 +1747,6 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 @media (max-width: 480px) {
   .settings-nav__foot { align-items: center; padding-top: 0; }
   .settings-nav__foot-line + .settings-nav__foot-line { display: none; }
-  .settings-nav__item { padding: 8px 10px; }
   .settings-content { padding: 20px 16px 28px; }
   .settings-pause { padding: 14px; }
 }
@@ -1846,6 +1850,8 @@ dialog.board-dialog[open] { position: fixed; inset: 0; margin: auto; height: max
 @container board (max-width: 640px) {
   .ab-top { position: relative; }
   .ab-mobilebar[open] .ab-mobilebar__list {
+    max-height: 55dvh;
+    overflow-y: auto;
     position: absolute;
     top: calc(100% + 6px);
     left: 0;
