@@ -37,6 +37,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
 
   @areas ~w(merge access instructions maintenance)
 
+  attr :origin, :map, default: %{}
   attr :project_selection, :any, default: {nil, nil}
   attr :project_path, :string, required: true
   attr :repo, :map, default: nil
@@ -57,7 +58,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
        expanded: nil,
        detail: "merge",
        workers: 1,
-       prefill: %{},
+       origin: %{},
        installed: [],
        guard_targets: [],
        guards: %{}
@@ -71,6 +72,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   end
 
   def update(assigns, socket) do
+    previous = socket.assigns[:project_selection]
     socket = assign(socket, assigns)
 
     socket =
@@ -112,8 +114,62 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
        detail: detail,
        github_configured?: GitHub.configured?()
      )
+     |> select_connection(socket.assigns.project_path, slug, tracked)
+     |> reveal_project(previous, socket.assigns.project_selection)
      |> sync_guards()
      |> read_profiles()}
+  end
+
+  defp select_connection(socket, "agent", slug, tracked) when is_binary(slug) do
+    repo = Enum.find(tracked, &("#{&1.owner}/#{&1.name}" == slug))
+    assign(socket, connect_project: repo, missing_target: is_nil(repo))
+  end
+
+  defp select_connection(socket, _path, _slug, _tracked),
+    do: assign(socket, connect_project: nil, missing_target: false)
+
+  defp reveal_project(socket, previous, {slug, _area} = current)
+       when previous != current and is_binary(slug) do
+    filter = String.downcase(String.trim(socket.assigns.query))
+
+    if String.contains?(String.downcase(slug), filter),
+      do: socket,
+      else: assign(socket, query: "")
+  end
+
+  defp reveal_project(socket, _previous, _current), do: socket
+
+  def agent_target(nil, _agents), do: %{"path" => "agent"}
+
+  def agent_target(repo, agents) do
+    project = "#{repo.owner}/#{repo.name}"
+
+    if Enum.any?(agents, &(&1.repository_id == repo.id)),
+      do: %{"project" => project, "area" => "maintenance"},
+      else: %{"project" => project, "path" => "agent"}
+  end
+
+  def agent_target_label(%{"area" => _, "project" => slug}),
+    do: gettext("Agent settings for %{project}", project: slug)
+
+  def agent_target_label(%{"project" => slug}),
+    do: gettext("Connect the Super Agent to %{project}", project: slug)
+
+  def agent_target_label(_target), do: gettext("Connect the Super Agent")
+
+  defp active_setup_path?(_path, %{"project" => _}), do: false
+  defp active_setup_path?("list", %{"path" => "github"}), do: true
+  defp active_setup_path?(path, %{"path" => path}), do: true
+  defp active_setup_path?(_path, _target), do: false
+
+  defp setup_paths(repo, agents) do
+    target = agent_target(repo, agents)
+
+    [
+      {%{"path" => "github"}, gettext("Use GitHub only")},
+      {target, agent_target_label(target)}
+    ] ++
+      if(repo, do: [{%{"path" => "agent"}, gettext("Connect a different repository")}], else: [])
   end
 
   defp selected_id(projects, slug),
@@ -236,15 +292,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
     end
   end
 
-  def handle_event("prefill_project", %{"owner" => owner, "name" => name}, socket) do
-    {:noreply,
-     socket
-     |> assign(prefill: %{"owner" => owner, "name" => name})
-     |> push_patch(
-       to: BoardNavigation.settings_path(socket.assigns.repo, "projects", %{"path" => "agent"})
-     )}
-  end
-
   def handle_event("refresh_profiles", _params, socket) do
     {:noreply,
      socket |> read_profiles() |> BoardNotice.notify(:info, gettext("Profile list refreshed."))}
@@ -304,8 +351,8 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         <h3 id="settings-projects-title">
           {gettext("Projects")}
           <small :if={@repos != []}>· {ngettext(
-            "%{count} connected",
-            "%{count} connected",
+            "%{count} tracked repository",
+            "%{count} tracked repositories",
             length(@repos)
           )}</small>
         </h3>
@@ -318,11 +365,12 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             BoardNavigation.settings_path(
               @repo,
               "projects",
-              if(@setup_open, do: %{}, else: %{"path" => "github"})
+              if(@setup_open, do: %{}, else: %{"path" => "github"}),
+              @origin
             )
           }
         >
-          {if @setup_open, do: gettext("Close"), else: gettext("Add project")}
+          {if @setup_open, do: gettext("Back to projects"), else: gettext("Add project")}
         </.link>
       </header>
       <p
@@ -338,29 +386,30 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
       </p>
 
       <div id="project-setup-options" hidden={!@setup_open}>
-        <nav class="setup-paths" aria-label={gettext("Project setup")}>
+        <nav
+          :if={!@connect_project && !@missing_target}
+          class="setup-paths"
+          aria-label={gettext("Project setup")}
+        >
           <.link
-            :for={
-              {path, label} <- [
-                {"github", gettext("Use GitHub only")},
-                {"agent", gettext("Connect the Super Agent")}
-              ]
-            }
-            patch={BoardNavigation.settings_path(@repo, "projects", %{"path" => path})}
-            aria-current={
-              (@project_path == path || (@project_path == "list" && path == "github")) && "page"
-            }
-            class={[
-              "ab-btn",
-              (@project_path == path || (@project_path == "list" && path == "github")) &&
-                "ab-btn--primary"
-            ]}
+            :for={{target, label} <- setup_paths(@repo, @superagents)}
+            patch={BoardNavigation.settings_path(@repo, "projects", target, @origin)}
+            aria-current={active_setup_path?(@project_path, target) && "page"}
+            class={["ab-btn", active_setup_path?(@project_path, target) && "ab-btn--primary"]}
           >
             {label}
           </.link>
         </nav>
+        <h4 :if={@connect_project} id="project-connect-title" class="ab-projects__target">
+          {gettext("Connect the Super Agent to %{project}",
+            project: "#{@connect_project.owner}/#{@connect_project.name}"
+          )}
+        </h4>
+        <p :if={@missing_target} class="ab-meta" role="status">
+          {gettext("This repository is unavailable for a new agent. Choose a project below.")}
+        </p>
         <section
-          :if={@project_path == "agent"}
+          :if={@project_path == "agent" && !@missing_target}
           class="ab-project-add"
           id="agent-install"
           aria-labelledby="agent-install-title"
@@ -427,7 +476,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
           </div>
         </section>
         <section
-          :if={@project_path == "agent" && @installed != []}
+          :if={@project_path == "agent" && !@connect_project && !@missing_target && @installed != []}
           id="installed-agents"
           class="ab-project-add"
           aria-labelledby="installed-agents-title"
@@ -462,11 +511,14 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
         </section>
 
         <section
+          :if={!@missing_target}
           id="add-project"
           class="ab-project-add"
           aria-labelledby="add-project-title"
         >
-          <h3 id="add-project-title" class="sr-only">{gettext("Add project")}</h3>
+          <h3 id="add-project-title" class="sr-only">
+            {if @connect_project, do: gettext("Review agent setup"), else: gettext("Add project")}
+          </h3>
           <p :if={@project_path != "agent" and @github_configured?} class="ab-meta">
             {gettext(
               "A GitHub token is configured. Enter the repository owner and name. Tracking does not start an agent."
@@ -490,14 +542,21 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
           <form id="track-repo" phx-submit="add_project" class="ab-project-add__form">
             <label>
               <span>{gettext("Owner")}</span>
-              <input name="owner" placeholder="octocat" value={@prefill["owner"]} required />
+              <input
+                name="owner"
+                placeholder="octocat"
+                value={@connect_project && @connect_project.owner}
+                readonly={!!@connect_project}
+                required
+              />
             </label>
             <label>
               <span>{gettext("Repository")}</span>
               <input
                 name="name"
                 placeholder={gettext("project-name")}
-                value={@prefill["name"]}
+                value={@connect_project && @connect_project.name}
+                readonly={!!@connect_project}
                 required
               />
             </label>
@@ -645,6 +704,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
           <button
             type="button"
             class="ab-project__row"
+            data-settings-target={to_string(expanded?(@expanded, superagent))}
             aria-expanded={to_string(expanded?(@expanded, superagent))}
             aria-controls={"project-#{superagent.id}-details"}
             phx-click="toggle_project"
@@ -730,7 +790,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
                     {"merge", gettext("Quality & merge")},
                     {"access", gettext("Access")},
                     {"instructions", gettext("Instructions")},
-                    {"maintenance", gettext("Maintenance")}
+                    {"maintenance", gettext("Capacity and maintenance")}
                   ]
                 }
                 type="button"
@@ -779,7 +839,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             <div id={"project-#{superagent.id}-view-maintenance"} hidden={@detail != "maintenance"}>
               <div class="ab-project__agent-controls">
                 <div class="ab-project__agents">
-                  <span class="ab-meta">{gettext("Concurrent tasks")}</span>
+                  <span class="ab-meta">{gettext("Concurrent task limit")}</span>
                   <button
                     type="button"
                     class="ab-btn ab-btn--sm ab-btn--icon"
@@ -907,6 +967,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             type="button"
             class="ab-project__row"
             phx-click="toggle_project"
+            data-settings-target={to_string(@expanded == "repo-#{repo.id}")}
             phx-value-id={"repo-#{repo.id}"}
             phx-target={@myself}
             aria-expanded={to_string(@expanded == "repo-#{repo.id}")}
@@ -922,6 +983,18 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
             hidden={@expanded != "repo-#{repo.id}"}
             class="ab-project__details"
           >
+            <.link
+              :if={!@provisioning}
+              class="ab-btn ab-btn--sm"
+              patch={
+                BoardNavigation.settings_path(
+                  @repo,
+                  "projects",
+                  %{"path" => "agent", "project" => "#{repo.owner}/#{repo.name}"},
+                  @origin
+                )
+              }
+            >{gettext("Connect the Super Agent to %{project}", project: "#{repo.owner}/#{repo.name}")}</.link>
             <.live_component
               module={ProjectMerge}
               id={"tracked-#{repo.id}-merge-policy"}
@@ -931,22 +1004,6 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
               enforcement={:no_agent}
               visible={@active and @expanded == "repo-#{repo.id}"}
             />
-            <button
-              type="button"
-              class="ab-btn ab-btn--sm"
-              aria-label={
-                gettext("Connect an agent for %{project}", project: "#{repo.owner}/#{repo.name}")
-              }
-              phx-click={
-                JS.push("prefill_project",
-                  value: %{owner: repo.owner, name: repo.name},
-                  target: @myself
-                )
-              }
-              disabled={@provisioning}
-            >
-              {gettext("Connect agent…")}
-            </button>
           </div>
         </li>
       </ul>
@@ -997,7 +1054,13 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Projects do
   defp navigate(socket, params),
     do:
       push_patch(socket,
-        to: BoardNavigation.settings_path(socket.assigns.repo, "projects", params)
+        to:
+          BoardNavigation.settings_path(
+            socket.assigns.repo,
+            "projects",
+            params,
+            socket.assigns.origin
+          )
       )
 
   defp max_workers, do: Orchestrator.worker_range().last

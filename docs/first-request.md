@@ -10,7 +10,7 @@ For example, **define the CSV columns** before **implementing the export**. Anot
 
 ## Choose an executor
 
-The AI that plans the work and the agent that writes code are separate choices. Configure the board’s provider in [local settings](operations.md#local-secrets). Choose an executor when you submit the request:
+The AI that plans the work and the agent that writes code are separate choices. Check the planning provider in **Settings → AI and integrations**. To change it across projects, set `AI_PROVIDER` to `deepseek`, `gemini` or `openai` with its key in [local settings](operations.md#local-secrets), then restart the board. Choose an executor when you submit the request:
 
 | Executor | How work starts |
 | --- | --- |

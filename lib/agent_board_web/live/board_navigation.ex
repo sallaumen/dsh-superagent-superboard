@@ -59,8 +59,8 @@ defmodule AgentBoardWeb.BoardNavigation do
   The settings panel URL, keeping the section alive across a restart. `extra`
   carries a section's own state (Costs: its page and window).
   """
-  def settings_path(repo, section \\ nil, extra \\ %{}) do
-    query = Map.merge(extra, %{"panel" => "settings"})
+  def settings_path(repo, section \\ nil, extra \\ %{}, origin \\ %{}) do
+    query = extra |> Map.merge(origin) |> Map.put("panel", "settings")
     query = if repo, do: Map.put(query, "repo", "#{repo.owner}/#{repo.name}"), else: query
 
     query =
@@ -128,7 +128,9 @@ defmodule AgentBoardWeb.BoardNavigation do
     view = if params["view"] == "hoje", do: "hoje", else: nil
 
     section = settings_section(panel, params["section"])
-    {path, pending} = project_setup(section, params["path"], socket.assigns.project_pending)
+
+    pending = pending_project(socket.assigns, params["project"])
+    {path, pending} = project_setup(section, params["path"], pending)
 
     assign(socket,
       project_pending: pending,
@@ -137,14 +139,18 @@ defmodule AgentBoardWeb.BoardNavigation do
       comments: [],
       inspector_tab: "conversa",
       settings_section: section,
+      settings_origin: settings_origin(panel, params),
       project_path: path,
-      project_selection: {params["project"], params["area"]},
+      project_selection: {string_param(params["project"]), string_param(params["area"])},
       settings_costs: costs_params(params),
       history_list: if(params["list"] == "prs", do: "prs", else: "tasks"),
-      history_query: String.slice(params["q"] || "", 0, 120),
+      history_query: String.slice(string_param(params["q"]) || "", 0, 120),
       view: view
     )
   end
+
+  defp string_param(value) when is_binary(value), do: value
+  defp string_param(_value), do: nil
 
   defp project_setup("projects", "agent", pending), do: {"agent", pending}
 
@@ -166,7 +172,7 @@ defmodule AgentBoardWeb.BoardNavigation do
       outcome: params["outcome"],
       page: params["costs"],
       days:
-        case Integer.parse(params["days"] || "") do
+        case Integer.parse(string_param(params["days"]) || "") do
           {days, ""} -> days
           _ -> nil
         end
@@ -208,8 +214,54 @@ defmodule AgentBoardWeb.BoardNavigation do
 
   def open_panel(socket, _panel), do: socket
 
-  def open_panel(socket, "settings", section),
-    do: push_patch(socket, to: settings_path(socket.assigns.repo, section))
+  def open_panel(socket, "settings", section), do: open_panel(socket, "settings", section, %{})
+
+  def open_panel(socket, "settings", section, params) do
+    extra = Map.take(params, ["project", "area", "path"])
+
+    origin =
+      case socket.assigns do
+        %{panel: "conversation", conversation: %Task{id: id}, inspector_tab: tab} ->
+          %{"task" => id, "tab" => tab}
+
+        _ ->
+          %{}
+      end
+
+    push_patch(socket, to: settings_path(socket.assigns.repo, section, extra, origin))
+  end
+
+  def settings_exit_path(socket) do
+    repo = socket.assigns.repo
+    origin = socket.assigns.settings_origin
+
+    case task(repo, origin["task"]) do
+      nil -> path(repo)
+      task -> path(repo, "conversation", task.id, origin["tab"])
+    end
+  end
+
+  defp pending_project(
+         %{panel: "settings", project_selection: {slug, _}, project_pending: pending},
+         slug
+       ),
+       do: pending
+
+  defp pending_project(_assigns, _slug), do: nil
+
+  defp settings_origin("settings", params) do
+    case Board.parse_id(params["task"]) do
+      nil ->
+        %{}
+
+      id ->
+        Map.reject(%{"task" => id, "tab" => tab_param(params["tab"])}, fn {_key, value} ->
+          is_nil(value)
+        end)
+    end
+  end
+
+  defp settings_origin(_panel, _params), do: %{}
 
   defp task(nil, _id), do: nil
 

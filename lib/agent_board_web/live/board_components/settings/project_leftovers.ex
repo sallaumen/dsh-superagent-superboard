@@ -184,6 +184,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.ProjectLeftovers do
         id={"project-#{@superagent.id}-leftovers-form"}
         class="ab-leftovers__keep"
         phx-change="keep"
+        phx-auto-recover="ignore"
         phx-target={@myself}
       >
         <label for={"project-#{@superagent.id}-leftovers-days"}>{gettext("Keep them for")}</label>

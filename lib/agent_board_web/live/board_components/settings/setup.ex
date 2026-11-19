@@ -1,6 +1,6 @@
 defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
   @moduledoc """
-  Settings → AI and setup: which AI does what, in three classes, whether each
+  Settings → AI and integrations: which AI does what, in three classes, whether each
   part is ready (`AgentBoard.Setup`) and the next step when one is not.
 
   Without a click the rows come from configuration only; "Check the setup"
@@ -162,6 +162,11 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
       >
         <h4 id={"setup-class-#{class}-title"}>{title}</h4>
         <p class="settings-pane__intro">{text}</p>
+        <p :if={class == :board_ai} class="settings-pane__note">
+          {gettext(
+            "To change the provider for every project, set AI_PROVIDER to deepseek, gemini or openai in .env.local with its API key, then restart the board."
+          )}
+        </p>
         <ul class="setup__rows">
           <li
             :for={row <- @by_class[class]}
@@ -188,6 +193,7 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
             class="ab-more"
             phx-click="select_section"
             phx-value-section={section}
+            phx-value-costs={section == "costs" && "calls"}
             phx-target={@parent}
           >
             {label}
@@ -383,18 +389,18 @@ defmodule AgentBoardWeb.BoardComponents.Settings.Setup do
   # Who the AI works for, what it costs and where its details are.
   defp classes do
     [
-      {:work, gettext("Who does the work"),
-       gettext(
-         "The agents that write the code of each task, on GitHub. DeepSeek takes the issues by itself; Claude Code and Codex run on this Mac when you dispatch a task."
-       ), [{"projects", gettext("Projects")}, {"execution", gettext("Execution and ceilings")}]},
       {:board_ai, gettext("The board's own AI"),
        gettext(
          "Refines and splits your requests, answers questions, suggests unblocks and talks by voice. It pays per use with the API key, and stops at the daily ceiling of %{tokens} tokens.",
          tokens: AgentBoardWeb.Numbers.grouped(Budget.cap())
-       ), [{"execution", gettext("Its calls and costs")}]},
+       ), [{"costs", gettext("Planning AI calls and costs")}]},
+      {:work, gettext("Who does the work"),
+       gettext(
+         "Choose the executor in New request for each task. DeepSeek takes assigned issues through GitHub. Claude Code and Codex run on this machine."
+       ), [{"projects", gettext("Projects")}, {"execution", gettext("Execution and ceilings")}]},
       {:voice, gettext("Voice"),
        gettext(
-         "Speaking and listening. ElevenLabs sounds better and spends the plan's credits; without it the browser speaks and listens for free."
+         "The board uses ElevenLabs credits to speak and transcribe. You can always type in Chat."
        ), [{"voice", gettext("Voice and summary")}]}
     ]
   end

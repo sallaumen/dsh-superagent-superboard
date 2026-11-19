@@ -503,7 +503,9 @@ defmodule AgentBoard.Setup do
         Map.merge(row, %{
           state: :off,
           detail:
-            gettext("No ElevenLabs key: the board speaks and listens with the browser, free."),
+            gettext(
+              "Without an ElevenLabs key, replies stay written. Type in Chat or use external dictation such as Wispr Flow."
+            ),
           fix: %{
             href: @key_pages.elevenlabs,
             label: gettext("Get an ElevenLabs key")

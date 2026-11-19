@@ -79,6 +79,35 @@ defmodule AgentBoardWeb.AddProjectTest do
     end)
   end
 
+  test "an agent confirmation is scoped to the repository being connected", %{conn: conn} do
+    with_sources(fn ->
+      {:ok, first} = Board.add_repository("fixture", "one")
+      {:ok, _} = Board.add_repository("fixture", "two")
+
+      path = fn slug ->
+        AgentBoardWeb.BoardNavigation.settings_path(first, "projects", %{
+          "path" => "agent",
+          "project" => slug
+        })
+      end
+
+      {:ok, view, _} = live(conn, path.("fixture/one"))
+
+      view
+      |> element("#track-repo")
+      |> render_submit(%{"owner" => "fixture", "name" => "one", "create_agent" => "true"})
+
+      assert has_element?(view, "#add-project-confirm")
+      render_patch(view, path.("fixture/two"))
+      refute has_element?(view, "#add-project-confirm")
+      assert has_element?(view, "#track-repo input[name=name][value=two][readonly]")
+      render_patch(view, path.("fixture/gone"))
+      refute has_element?(view, "#track-repo")
+      assert has_element?(view, "#settings-projects [role=status]", "Escolha um projeto")
+      assert Superagents.list() == []
+    end)
+  end
+
   test "the workers typed above the agent's limit are provisioned at the limit", %{conn: conn} do
     {:ok, _repo} = Board.add_repository("fixture", "base-limit")
 

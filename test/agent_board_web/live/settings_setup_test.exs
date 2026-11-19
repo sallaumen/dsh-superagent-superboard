@@ -85,11 +85,18 @@ defmodule AgentBoardWeb.SettingsSetupTest do
     assert has_element?(
              view,
              ".settings-nav__item:first-child[phx-value-section=setup]",
-             "IAs e setup"
+             "IA e integrações"
            )
 
     assert has_element?(view, "#setup-class-work h4", "Quem faz o trabalho")
     assert has_element?(view, "#setup-class-board_ai h4", "A IA do próprio board")
+    assert has_element?(view, "#setup-class-board_ai", "AI_PROVIDER")
+
+    assert has_element?(
+             view,
+             "#setup-class-board_ai [phx-value-section=costs][phx-value-costs=calls]"
+           )
+
     assert has_element?(view, "#setup-class-voice h4", "Voz")
 
     # Without a click nothing is proved: a key that is set is only configured.

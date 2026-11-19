@@ -8,7 +8,7 @@ defmodule AgentBoard.ElevenLabs.Account do
   was just refused with `quota_exceeded`. The latter holds for an hour: a long
   text can be refused while a short one would still pass, so the paid voice
   is tried again after it. While spent, `VoiceSpeech` sends every utterance
-  to the computer voice and the Attention bell says so. Readers take the
+  to written replies and the Attention bell says so. Readers take the
   state from `:persistent_term`; only this process and `mark_spent/1` write it.
   """
   use GenServer
@@ -80,7 +80,7 @@ defmodule AgentBoard.ElevenLabs.Account do
 
   def plan_spent?(_state, _now), do: false
 
-  @doc "Whether a speech refused for credits still holds the computer voice."
+  @doc "Whether insufficient credits still prevent speech."
   @spec refused?(t() | nil, DateTime.t()) :: boolean()
   def refused?(%{refused_until: %DateTime{} = until}, now),
     do: DateTime.compare(now, until) == :lt
@@ -88,13 +88,13 @@ defmodule AgentBoard.ElevenLabs.Account do
   def refused?(_state, _now), do: false
 
   @doc """
-  A speech was refused for credits: the computer voice speaks for the next
+  Speech was refused for credits: replies stay written for the next
   hour, the activity feed says it once, and the account is read again.
   """
   @spec mark_spent(DateTime.t()) :: :ok
   def mark_spent(now \\ DateTime.utc_now()) do
     unless spent?(now) do
-      Activity.record(:tts, :error, "ElevenLabs credits spent: the computer voice speaks for now")
+      Activity.record(:tts, :error, "ElevenLabs credits spent: replies stay written")
     end
 
     put(%{state() | refused_until: DateTime.add(now, @refused_for, :second)})

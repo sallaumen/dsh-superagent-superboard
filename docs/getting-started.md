@@ -26,7 +26,7 @@ docker run --name dsh-board-postgres -d -p 127.0.0.1:5434:5432 \
    PORT=4002 mix phx.server
    ```
 
-3. A fresh board has **no projects**. Visit [localhost:4002](http://127.0.0.1:4002). Choose **Settings → AI and setup → Use GitHub only**, enter the repository owner and name, and select **Track repository**. Use separate fields: for `octocat/Hello-World`, enter `octocat` as the owner and `Hello-World` as the name. Open the project from the sidebar. The scheduled GitHub sync runs about every five minutes; seeing **No agent** on a tracked project is expected. If it stays empty, check **Settings → System → Activity** for the last sync.
+3. A fresh board has **no projects**. Visit [localhost:4002](http://127.0.0.1:4002). Choose **Settings → AI and integrations → Use GitHub only**, enter the repository owner and name, and select **Track repository**. Use separate fields: for `octocat/Hello-World`, enter `octocat` as the owner and `Hello-World` as the name. Open the project from the sidebar. The scheduled GitHub sync runs about every five minutes; seeing **No agent** on a tracked project is expected. If it stays empty, check **Settings → System → Activity** for the last sync.
 
 You can stop here. To publish your first request or try voice, follow the [first request walkthrough](first-request.md).
 
@@ -55,7 +55,7 @@ You can stop here. To publish your first request or try voice, follow the [first
 2. For the default DeepSeek API provider, set `DEEPSEEK_API_KEY` in the board’s `.env.local` and restart the board. For another provider, configure it in [Harness](https://www.deepseek.com/en/harness/).
 3. [Sign in as the bot](agent/setup.md#2-the-bot-identity) and verify its GitHub login. Leave profile creation to the board.
 
-Open **Settings → Projects → Connect the Super Agent**, then choose the path that matches your machine:
+For a tracked repository, select it on the board and open **Settings → AI and integrations → Connect the Super Agent**. Check the owner and repository in the heading. For another repository, choose **Projects → Add project → Connect a different repository**. Then choose the path that matches your machine:
 
 | What you have | Next step |
 | --- | --- |

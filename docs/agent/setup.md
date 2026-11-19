@@ -227,7 +227,7 @@ its last report said.
 
 ### Names in the Harness Sessions list
 
-Open **Settings → AI and setup → Harness session names**. The check compares the
+Open **Settings → AI and integrations → Harness session names**. The check compares the
 managed home patch and installed files with this checkout; it makes no writes.
 Use **Recheck installation** after running the command. An installed status is
 evidence on the board host, not proof a running Harness profile has loaded it.

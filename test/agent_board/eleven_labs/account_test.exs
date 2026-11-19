@@ -71,7 +71,7 @@ defmodule AgentBoard.ElevenLabs.AccountTest do
              "plan: 4,177 of 10,000 characters this period, renews 5 Dec"
   end
 
-  test "a spent plan sends every utterance to the computer voice until it renews" do
+  test "a spent plan keeps replies written until it renews" do
     subscription(10_000, 10_000)
     :ok = Account.refresh()
     voice = %{engine: "elevenlabs", configured: true}
@@ -81,7 +81,7 @@ defmodule AgentBoard.ElevenLabs.AccountTest do
     refute VoiceSpeech.elevenlabs?(voice, :call)
 
     assert Costs.account(Account.snapshot(), ~U[2026-11-11 12:00:00Z], 180) ==
-             "plan spent until 5 Dec: the computer voice speaks"
+             "plan spent until 5 Dec; replies stay written"
 
     assert [%{key: "elevenlabs", section: "costs"}] = Inbox.providers()
   end

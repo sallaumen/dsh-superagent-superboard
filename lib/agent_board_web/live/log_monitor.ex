@@ -43,7 +43,16 @@ defmodule AgentBoardWeb.LogMonitor do
   @doc "Only known source IDs and levels enter the URL; source paths are server owned."
   def filter(%{assigns: %{logs_open: true}} = socket, params) do
     values = filters(params, socket.assigns.logs_sources)
-    push_patch(socket, to: BoardNavigation.settings_path(socket.assigns.repo, "logs", values))
+
+    push_patch(socket,
+      to:
+        BoardNavigation.settings_path(
+          socket.assigns.repo,
+          "logs",
+          values,
+          socket.assigns.settings_origin
+        )
+    )
   end
 
   def filter(socket, _params), do: socket

@@ -10,10 +10,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   alias AgentBoardWeb.BoardNavigation
   alias AgentBoardWeb.Components.{SystemPanel, VoicePanel}
 
-  @section_keys ~w(setup projects execution costs voice system logs)
-
   attr :active, :boolean, default: false
   attr :repo, :map, default: nil
+  attr :origin, :map, default: %{}
   attr :project_selection, :any, default: {nil, nil}
   attr :project_path, :string, default: "github"
   attr :version, :map, required: true
@@ -46,10 +45,10 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
   def update(assigns, socket) do
     previous = socket.assigns[:section]
     opening = assigns[:active] == true and socket.assigns[:active] != true
-    socket = assign(socket, Map.delete(assigns, :section))
+    socket = socket |> assign(Map.delete(assigns, :section)) |> assign_new(:origin, fn -> %{} end)
 
     # The panel stays mounted while closed: configuration is read on each
-    # opening only. A required part missing opens AI and setup and marks it.
+    # opening only. A required part missing opens AI and integrations and marks it.
     socket =
       if opening,
         do: assign(socket, setup_next: AgentBoard.Setup.next_step(AgentBoard.Setup.checklist())),
@@ -60,7 +59,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
     {:ok, assign(socket, section: section)}
   end
 
-  defp select_section(key, _previous, _opening, _next) when key in @section_keys, do: key
+  defp select_section(key, _previous, _opening, _next) when is_binary(key), do: key
 
   defp select_section(_key, previous, opening, next)
        when previous == "logs" or (opening and is_nil(previous)),
@@ -76,12 +75,20 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
       key ->
         extra =
-          if key == "projects" and params["path"] == "agent", do: %{"path" => "agent"}, else: %{}
+          Map.take(params, ["path", "project", "area", "costs"])
 
         {:noreply,
          socket
          |> assign(section: key)
-         |> push_patch(to: BoardNavigation.settings_path(socket.assigns[:repo], key, extra))}
+         |> push_patch(
+           to:
+             BoardNavigation.settings_path(
+               socket.assigns[:repo],
+               key,
+               extra,
+               socket.assigns.origin
+             )
+         )}
     end
   end
 
@@ -90,12 +97,24 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
     assigns =
       assigns
       |> assign(:sections, sections())
+      |> assign(:agent_target, Projects.agent_target(assigns.repo, assigns.superagents))
       |> assign(:project_errors, project_errors(assigns.superagents))
 
     ~H"""
     <div id={@id} class="settings-layout">
       <nav class="settings-nav" aria-label={gettext("Settings sections")}>
-        <div id="settings-section-navigation" class="settings-nav__items" phx-hook="SettingsNav">
+        <div
+          id="settings-section-navigation"
+          class="settings-nav__items"
+          phx-hook="SettingsNav"
+          data-location={
+            @active &&
+              Enum.join(
+                [@section, @project_path, elem(@project_selection, 0), elem(@project_selection, 1)],
+                "/"
+              )
+          }
+        >
           <button
             :for={{key, label} <- @sections}
             type="button"
@@ -205,24 +224,22 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane settings-pane--setup"
           aria-labelledby="settings-setup-title"
         >
-          <h3 id="settings-setup-title">{gettext("AI and setup")}</h3>
+          <h3 id="settings-setup-title">{gettext("AI and integrations")}</h3>
           <p class="settings-pane__intro">
-            {gettext(
-              "Choose how to connect a project. You can check other integrations separately below."
-            )}
+            {gettext("Check the planning AI and the integrations available to this board.")}
           </p>
           <div class="setup-paths" aria-label={gettext("Project setup")} role="group">
             <.link
-              patch={BoardNavigation.settings_path(@repo, "projects", %{"path" => "github"})}
+              patch={BoardNavigation.settings_path(@repo, "projects", %{"path" => "github"}, @origin)}
               class="ab-btn"
             >
               {gettext("Use GitHub only")}
             </.link>
             <.link
-              patch={BoardNavigation.settings_path(@repo, "projects", %{"path" => "agent"})}
+              patch={BoardNavigation.settings_path(@repo, "projects", @agent_target, @origin)}
               class="ab-btn"
             >
-              {gettext("Connect the Super Agent")}
+              {Projects.agent_target_label(@agent_target)}
             </.link>
           </div>
           <.live_component
@@ -242,6 +259,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           <.live_component
             module={Projects}
             id="settings-projects"
+            origin={@origin}
             project_path={@project_path}
             project_selection={@project_selection}
             repo={@repo}
@@ -260,10 +278,10 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
           class="settings-pane settings-pane--execution"
           aria-labelledby="settings-execution-title"
         >
-          <h3 id="settings-execution-title">{gettext("Execution")}</h3>
+          <h3 id="settings-execution-title">{gettext("Task execution")}</h3>
           <p class="settings-pane__intro">
             {gettext(
-              "Claude Code and Codex run on this machine; DeepSeek runs through GitHub. Here are their caps and models."
+              "These limits apply to local tasks across projects. Choose who writes the code in New request."
             )}
           </p>
           <.live_component
@@ -294,6 +312,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
             id="settings-costs"
             active={@active == true and @section == "costs"}
             repo={@repo}
+            origin={@origin}
             params={@costs}
             tickets={@tickets}
             tz_offset={@tz_offset}
@@ -310,7 +329,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
               <h3 id="settings-voice-title">{gettext("Voice and summary")}</h3>
               <p class="settings-pane__intro">
                 {gettext(
-                  "How you talk to the board, when it answers aloud and the summary of the day."
+                  "Voice settings apply across the board. Hear the current status on demand, or schedule the daily written summary."
                 )}
               </p>
               <button
@@ -319,6 +338,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                 class="ab-link"
                 phx-click="select_section"
                 phx-value-section="costs"
+                phx-value-costs="voice"
                 phx-target={@myself}
               >{gettext("The ElevenLabs plan and what the voice spent are in Costs")}</button>
             </div>
@@ -357,6 +377,11 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
         <AgentBoardWeb.BoardComponents.Settings.Logs.section
           :if={@active and @section == "logs"}
+          activity_path={
+            @repo &&
+              BoardNavigation.settings_path(@repo, "system", %{}, @origin) <> "#settings-activity"
+          }
+          project={@repo && "#{@repo.owner}/#{@repo.name}"}
           {@log_view}
         />
         <section
@@ -392,7 +417,7 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
                   <input
                     type="hidden"
                     name="return_to"
-                    value={BoardNavigation.settings_path(@repo, @section)}
+                    value={BoardNavigation.settings_path(@repo, @section, %{}, @origin)}
                   />
                   <button
                     type="submit"
@@ -432,9 +457,9 @@ defmodule AgentBoardWeb.BoardComponents.SettingsMenu do
 
   defp sections do
     [
-      {"setup", gettext("AI and setup")},
+      {"setup", gettext("AI and integrations")},
       {"projects", gettext("Projects")},
-      {"execution", gettext("Execution")},
+      {"execution", gettext("Task execution")},
       {"costs", gettext("Costs")},
       {"voice", gettext("Voice and summary")},
       {"system", gettext("System")},

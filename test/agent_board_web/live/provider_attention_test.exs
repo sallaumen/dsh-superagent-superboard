@@ -27,12 +27,12 @@ defmodule AgentBoardWeb.ProviderAttentionTest do
 
     assert has_element?(view, "#attention-inbox .ab-hub-menu__count", "1")
     assert has_element?(view, "#attention-elevenlabs", "Créditos da ElevenLabs esgotados")
-    assert has_element?(view, "#attention-elevenlabs", "A voz do computador fala no lugar.")
+    assert has_element?(view, "#attention-elevenlabs", "As respostas ficam por escrito")
 
     view |> element("#attention-elevenlabs button") |> render_click()
     assert_patch(view)
     assert has_element?(view, "#settings-costs-title")
-    assert has_element?(view, "#costs-voice", "a voz do computador fala")
+    assert has_element?(view, "#costs-voice", "As respostas ficam por escrito")
   end
 
   test "Costs → Voz lists each request and filters by outcome in the URL", %{conn: conn} do

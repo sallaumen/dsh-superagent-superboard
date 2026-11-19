@@ -26,7 +26,7 @@ docker run --name dsh-board-postgres -d -p 127.0.0.1:5434:5432 \
    PORT=4002 mix phx.server
    ```
 
-3. Uma instalação nova começa **sem projetos**. Abra [localhost:4002](http://127.0.0.1:4002). Para mudar o idioma, use **Settings → System → Board language**. Em **Configurações → IAs e setup → Usar só o GitHub**, informe o dono e o nome do repositório e clique em **Acompanhar repositório**. Use campos separados: em `octocat/Hello-World`, o dono é `octocat` e o nome é `Hello-World`. Abra o projeto na lateral. A sincronização automática roda aproximadamente a cada cinco minutos; **Sem agente** é esperado nesse modo. Se continuar vazio, verifique **Configurações → Sistema → Atividade**.
+3. Uma instalação nova começa **sem projetos**. Abra [localhost:4002](http://127.0.0.1:4002). Para mudar o idioma, use **Settings → System → Board language**. Em **Configurações → IA e integrações → Usar só o GitHub**, informe o dono e o nome do repositório e clique em **Acompanhar repositório**. Use campos separados: em `octocat/Hello-World`, o dono é `octocat` e o nome é `Hello-World`. Abra o projeto na lateral. A sincronização automática roda aproximadamente a cada cinco minutos; **Sem agente** é esperado nesse modo. Se continuar vazio, verifique **Configurações → Sistema → Atividade**.
 
 ## Conectar o Super Agent
 
@@ -53,7 +53,7 @@ Esta etapa é opcional. O [DeepSeek Harness](https://www.deepseek.com/en/harness
 2. Para o provedor padrão da API DeepSeek, defina `DEEPSEEK_API_KEY` no `.env.local` e reinicie o board. Para usar outro provedor, configure-o no [Harness](https://www.deepseek.com/en/harness/).
 3. [Entre com a conta do bot](agent/setup.md#2-the-bot-identity) e confira o login do GitHub. Deixe o board criar o perfil do projeto.
 
-Abra **Configurações → Projetos → Conectar o Super Agent** e escolha o caminho da sua máquina:
+Para um repositório já acompanhado, abra-o no quadro e entre em **Configurações → IA e integrações → Conectar o Super Agent**. O título mostra o dono e o repositório que receberá o agente. Para cadastrar outro repositório, use **Projetos → Adicionar projeto → Conectar outro repositório**. Escolha o caminho da sua máquina:
 
 | O que você tem | Próximo passo |
 | --- | --- |
@@ -91,7 +91,7 @@ Por exemplo: **definir as colunas do CSV** vem antes de **implementar a exporta�
 
 ## Escolher um executor
 
-O provedor que ajuda a planejar o pedido é independente do agente que escreve o código. Ao enviar um pedido, você pode aceitar a sugestão do painel ou escolher outro executor:
+Em **Configurações → IA e integrações**, confira o provedor de planejamento do board. Para trocá-lo em todos os projetos, defina `AI_PROVIDER` como `deepseek`, `gemini` ou `openai` no `.env.local`, configure a chave correspondente e reinicie o board. Ao enviar um pedido, você pode aceitar a sugestão do painel ou escolher outro executor:
 
 | Executor | Como começa |
 | --- | --- |

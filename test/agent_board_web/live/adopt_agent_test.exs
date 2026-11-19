@@ -60,7 +60,7 @@ defmodule AgentBoardWeb.AdoptAgentTest do
       )
 
     File.rename!(profile, profile <> ".later")
-    view |> element(".ab-projects nav a", "Conectar o Super Agent") |> render_click()
+    view |> element(".ab-projects nav a", "Conectar outro repositório") |> render_click()
     refute has_element?(view, "#installed-agents")
     File.rename!(profile <> ".later", profile)
     view |> element("#agent-install button", "Buscar perfis novamente") |> render_click()
