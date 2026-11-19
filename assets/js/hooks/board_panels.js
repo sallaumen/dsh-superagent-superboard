@@ -7,7 +7,7 @@ export const BoardPanels = {
         this.pendingEntry = Boolean(history.state?.boardPanelFrom)
         return
       }
-      const trigger = event.target.closest('[data-panel-trigger]')
+      const trigger = event.target.closest('[data-panel-trigger], [data-board-menu-link], [phx-click="open"]')
       if (!trigger) return
       this.opener = trigger
       this.focusReply = trigger.dataset.focusReply === 'true'

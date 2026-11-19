@@ -171,7 +171,6 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                   :if={action[:task_id]}
                   id={"#{dom_id(need)}-open"}
                   data-focus-reply={if need.kind == :question, do: "true"}
-                  data-panel-trigger
                   type="button"
                   class={["ab-btn ab-btn--sm", action_class(need.kind)]}
                   phx-click="open"
