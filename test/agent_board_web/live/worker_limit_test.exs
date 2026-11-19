@@ -115,6 +115,33 @@ defmodule AgentBoardWeb.WorkerLimitTest do
     render_async(view, 2_000)
 
     assert has_element?(view, "#flow-load [data-key='load-max']", "?")
+    assert has_element?(view, "#now-capacity", "Capacidade indisponível")
+  end
+
+  test "an agent with a partial reading stays online and hides the unknown limit", %{conn: conn} do
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, %{"load" => %{"running" => 1, "queued" => 0}})
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
+    render_async(view, 2_000)
+
+    assert has_element?(view, "#now-capacity", "1 de ? em uso")
+    assert has_element?(view, "#flow-load [data-key='load-max']", "?")
+    refute has_element?(view, "#flow-load button[phx-click=set_max_workers]")
+    refute has_element?(view, "#need-agent-down")
+  end
+
+  test "a measured idle agent has zero occupied slots", %{conn: conn} do
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, %{"load" => %{"running" => 0, "queued" => 0, "maxWorkers" => 3}})
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
+    render_async(view, 2_000)
+
+    assert has_element?(view, "#now-capacity", "0 de 3 em uso")
+    refute has_element?(view, "#now-capacity", "indisponível")
   end
 
   test "switching repository does not show the previous repository's answer", %{

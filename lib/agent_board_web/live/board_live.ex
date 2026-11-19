@@ -122,6 +122,7 @@ defmodule AgentBoardWeb.BoardLive do
         objectives: [],
         superagents: [],
         agent_access_projects: [],
+        access_waiting_project: nil,
         agent_access: %{count: 0, refused: MapSet.new()},
         project_pending: nil,
         provisioning: false,
@@ -137,6 +138,7 @@ defmodule AgentBoardWeb.BoardLive do
         highlight_changes: false,
         panel: nil,
         settings_section: nil,
+        settings_origin: %{},
         project_path: "github",
         project_selection: {nil, nil},
         settings_costs: %{page: nil, days: nil},
@@ -401,6 +403,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp agent_status({:ok, _load}), do: :up
   defp agent_status({:error, :not_configured}), do: :unknown
   defp agent_status({:error, :unknown}), do: :unknown
+  defp agent_status({:error, :malformed}), do: :unknown
   defp agent_status({:error, _reason}), do: :down
 
   # The silences are read once per render, with the real clock: the ticket
@@ -1299,13 +1302,24 @@ defmodule AgentBoardWeb.BoardLive do
   # The list on screen can be older than a removal in another tab.
   # Only the agent's loopback API and its local database: no GitHub quota.
   defp refresh_agent_access(%{assigns: %{superagents: []}} = socket) do
-    assign(socket, agent_access_projects: [], agent_access: AgentAccess.summary([]))
+    assign(socket,
+      agent_access_projects: [],
+      agent_access: AgentAccess.summary([]),
+      access_waiting_project: nil
+    )
   end
 
   defp refresh_agent_access(socket) do
     superagents = socket.assigns.superagents
 
     start_async(socket, :agent_access, fn -> AgentAccess.overview(superagents) end)
+  end
+
+  defp single_waiting_project(projects) do
+    case Enum.filter(projects, &(&1.requests != [])) do
+      [project] -> project.repository
+      _ -> nil
+    end
   end
 
   defp superagent_gone(socket) do
@@ -1383,7 +1397,7 @@ defmodule AgentBoardWeb.BoardLive do
   defp first_agent_blocked(:bot_missing),
     do:
       gettext(
-        "This would be the machine's first agent, and it has no GitHub sign-in yet. AI and setup shows the command that signs the agent's account in; then add the project again."
+        "This would be the machine's first agent, and it has no GitHub sign-in yet. AI and integrations shows the command that signs the agent's account in; then add the project again."
       )
 
   defp track_project(socket, owner, name) do
@@ -1735,7 +1749,8 @@ defmodule AgentBoardWeb.BoardLive do
       %Task{} = task ->
         {:noreply,
          push_patch(socket,
-           to: BoardNavigation.path(socket.assigns.repo, "conversation", task.id, tab)
+           to: BoardNavigation.path(socket.assigns.repo, "conversation", task.id, tab),
+           replace: true
          )}
 
       _ ->
@@ -1744,8 +1759,8 @@ defmodule AgentBoardWeb.BoardLive do
   end
 
   @impl true
-  def handle_event("show_panel", %{"panel" => "settings", "section" => section}, socket) do
-    {:noreply, BoardNavigation.open_panel(socket, "settings", section)}
+  def handle_event("show_panel", %{"panel" => "settings", "section" => section} = params, socket) do
+    {:noreply, BoardNavigation.open_panel(socket, "settings", section, params)}
   end
 
   def handle_event("show_panel", %{"panel" => "history", "list" => list}, socket)
@@ -1759,10 +1774,18 @@ defmodule AgentBoardWeb.BoardLive do
 
   # Typing in the search replaces the entry: back leaves History, it does not
   # walk through every keystroke.
-  def handle_event("history_search", %{"q" => query}, socket) do
-    path = BoardNavigation.history_path(socket.assigns.repo, "tasks", String.trim(query))
+  def handle_event(
+        "history_search",
+        %{"q" => query},
+        %{assigns: %{panel: "history", history_list: "tasks", repo: %{} = repo}} = socket
+      )
+      when is_binary(query) do
+    path = BoardNavigation.history_path(repo, "tasks", String.trim(query))
     {:noreply, push_patch(socket, to: path, replace: true)}
   end
+
+  # A debounced change from the previous panel may arrive after navigation.
+  def handle_event("history_search", _params, socket), do: {:noreply, socket}
 
   def handle_event("load_more_ended", _params, socket) do
     case {socket.assigns.repo, socket.assigns.ended} do
@@ -1782,6 +1805,20 @@ defmodule AgentBoardWeb.BoardLive do
 
       _ ->
         {:noreply, socket}
+    end
+  end
+
+  def handle_event(
+        "add_project",
+        params,
+        %{assigns: %{project_path: "agent", project_selection: {slug, _}}} = socket
+      )
+      when is_binary(slug) do
+    with %{active: true} = repo <- Board.repository_by_slug(slug),
+         nil <- Superagents.get_by_repository(repo) do
+      provision_project(socket, repo.owner, repo.name, params)
+    else
+      _unavailable -> {:noreply, socket}
     end
   end
 
@@ -2168,6 +2205,14 @@ defmodule AgentBoardWeb.BoardLive do
     do: {:noreply, ComposerLifecycle.reset(socket)}
 
   @impl true
+  def handle_event(
+        "close",
+        _params,
+        %{assigns: %{panel: "settings", settings_origin: %{"task" => _}}} = socket
+      ) do
+    {:noreply, push_patch(socket, to: BoardNavigation.settings_exit_path(socket), replace: true)}
+  end
+
   def handle_event("close", _params, socket) do
     {:noreply,
      socket
@@ -2503,7 +2548,11 @@ defmodule AgentBoardWeb.BoardLive do
     projects = AgentAccess.keep_last_good(socket.assigns.agent_access_projects, fresh)
 
     {:noreply,
-     assign(socket, agent_access_projects: projects, agent_access: AgentAccess.summary(projects))}
+     assign(socket,
+       agent_access_projects: projects,
+       agent_access: AgentAccess.summary(projects),
+       access_waiting_project: single_waiting_project(projects)
+     )}
   end
 
   # The badge keeps its last reading; the ticker tries again.
@@ -2835,6 +2884,7 @@ defmodule AgentBoardWeb.BoardLive do
             live={@freshness.live?}
             version={@version}
             access_waiting={@agent_access.count}
+            access_project={@access_waiting_project}
           />
 
           <main id="board-work" class="ab-main">
@@ -2940,6 +2990,8 @@ defmodule AgentBoardWeb.BoardLive do
                         phx-click="show_panel"
                         phx-value-panel="settings"
                         phx-value-section="projects"
+                        phx-value-project={@access_waiting_project}
+                        phx-value-area={@access_waiting_project && "access"}
                         data-panel-trigger
                         aria-haspopup="dialog"
                         aria-controls="panel-settings"
@@ -3103,15 +3155,20 @@ defmodule AgentBoardWeb.BoardLive do
                       else: gettext("No data yet.")}
                   </h2>
                   <p>
-                    {if @sync_snapshot.last_success,
-                      do:
-                        gettext(
-                          "The agent watches this repository but has not received a task yet. Write or dictate the first request; it enters the queue and appears in Now when the agent picks it up."
-                        ),
-                      else:
-                        gettext(
+                    <%= cond do %>
+                      <% is_nil(@sync_snapshot.last_success) -> %>
+                        {gettext(
                           "Waiting for the first sync. When GitHub responds, the board will show tasks, merges, and what needs your attention."
                         )}
+                      <% Enum.any?(@superagents, &(&1.repository_id == @repo.id)) -> %>
+                        {gettext(
+                          "The agent watches this repository but has not received a task yet. Write or dictate the first request; it enters the queue and appears in Now when the agent picks it up."
+                        )}
+                      <% true -> %>
+                        {gettext(
+                          "GitHub tracking is on. No agent is connected to this board for this repository."
+                        )}
+                    <% end %>
                   </p>
                   <button
                     type="button"
@@ -3128,6 +3185,7 @@ defmodule AgentBoardWeb.BoardLive do
                 <div :if={not empty?(@board)} class="ab-lanes">
                   <.now_lane
                     running={@work.running}
+                    capacity={@orchestrator}
                     gates={@gate_snapshots}
                     preflights={@preflights}
                     retrying={@work.retrying}
@@ -3139,6 +3197,7 @@ defmodule AgentBoardWeb.BoardLive do
                   />
                   <.needs_you
                     needs={@work.needs}
+                    project={repo_slug(@repo)}
                     gates={@gate_snapshots}
                     max={if @needs_expanded, do: 999, else: 5}
                     selected={@conversation && @conversation.id}
@@ -3416,6 +3475,7 @@ defmodule AgentBoardWeb.BoardLive do
             voice={@voice}
             dispatch_paused={@dispatch_paused}
             active={@panel == "settings"}
+            origin={@settings_origin}
             section={@settings_section}
             project_path={@project_path}
             project_selection={@project_selection}

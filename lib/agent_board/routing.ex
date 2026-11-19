@@ -300,7 +300,7 @@ defmodule AgentBoard.Routing do
     if is_binary(dsh[:repository]) do
       load =
         case dsh[:load] do
-          %{running: running, max_workers: max} ->
+          %{running: running, max_workers: max} when is_integer(running) and is_integer(max) ->
             " " <> gettext("Now: %{running} of %{max} running.", running: running, max: max)
 
           _ ->

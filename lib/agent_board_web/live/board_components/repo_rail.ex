@@ -13,6 +13,7 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
   attr :overview, :map, default: %{}
   attr :live, :boolean, default: false
   attr :access_waiting, :integer, default: 0
+  attr :access_project, :string, default: nil
   attr :version, :map, default: nil
 
   @impl true
@@ -116,6 +117,8 @@ defmodule AgentBoardWeb.BoardComponents.RepoRail do
           phx-click="show_panel"
           phx-value-panel="settings"
           phx-value-section="projects"
+          phx-value-project={@access_project}
+          phx-value-area={@access_project && "access"}
           data-panel-trigger
           aria-haspopup="dialog"
           aria-controls="panel-settings"

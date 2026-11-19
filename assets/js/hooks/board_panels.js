@@ -2,12 +2,20 @@
 export const BoardPanels = {
   mounted() {
     this.onTrigger = event => {
-      const trigger = event.target.closest('[data-panel-trigger]')
+      if (event.target.closest('[phx-click="inspector_tab"]')) {
+        // An inspector tab replaces the current detail, retaining its way back.
+        this.pendingEntry = Boolean(history.state?.boardPanelFrom)
+        return
+      }
+      const trigger = event.target.closest('[data-panel-trigger], [data-board-menu-link], [phx-click="open"]')
       if (!trigger) return
       this.opener = trigger
+      this.focusReply = trigger.dataset.focusReply === 'true'
       // A card's title button has no id of its own; its card does, and carries focus for J/K.
       this.openerId = trigger.id || trigger.closest('[data-task]')?.id
       this.openerMenuId = trigger.closest('[data-board-menu]')?.id
+      const focusId = this.openerMenuId || this.openerId
+      if (focusId) history.replaceState({...history.state, boardFocus: focusId}, '')
       this.pendingEntry = true
     }
     this.onPanelIntent = () => { this.pendingEntry = true }
@@ -47,6 +55,9 @@ export const BoardPanels = {
   sync() {
     const selected = this.el.dataset.panel
     const openingInspector = selected === 'conversation' && this.activePanel !== 'conversation'
+    const returningToInspector = openingInspector && this.activePanel === 'settings'
+    const taskId = this.el.querySelector('#conversation')?.dataset.taskId
+    if (taskId) this.lastTaskId = taskId
     this.el.querySelectorAll('.board-dialog').forEach(dialog => {
       const wanted = dialog.id === `panel-${selected}`
       if (wanted && !dialog.open) {
@@ -66,7 +77,11 @@ export const BoardPanels = {
     this.activePanel = selected
     document.body.classList.toggle('board-panel-open', hasDialog)
     if (openingInspector) {
-      this.el.querySelector('#conversation .ab-insp__bar button')?.focus({preventScroll: true})
+      const access = returningToInspector && document.getElementById(`review-task-access-${taskId}`)
+      const reply = this.focusReply && this.el.querySelector('#ask-body:not(:disabled)')
+      const initial = access || reply || this.el.querySelector('#conversation .ab-insp__bar button')
+      this.focusReply = false
+      initial?.focus({preventScroll: true})
     }
     this.syncInert()
     window.dispatchEvent(new Event('board:voice-context'))
@@ -86,12 +101,16 @@ export const BoardPanels = {
     this.restoreFrame = requestAnimationFrame(() => {
       const opener = this.opener?.isConnected ? this.opener : document.getElementById(this.openerId)
       const menuSummary = this.openerMenuId && document.getElementById(this.openerMenuId)?.querySelector('summary')
-      const focusTarget = menuSummary || opener || this.el.querySelector('#board-tools button')
+      const saved = document.getElementById(history.state?.boardFocus)
+      const savedControl = saved?.matches('[data-board-menu]') ? saved.querySelector('summary') : saved
+      const task = this.lastTaskId && document.getElementById(`task-${this.lastTaskId}`)
+      const focusTarget = savedControl || menuSummary || opener || task || this.el.querySelector('#board-tools button')
       if (!this.el.dataset.panel) {
         focusTarget?.focus({preventScroll: true})
         this.opener = null
         this.openerId = null
         this.openerMenuId = null
+        this.lastTaskId = null
       }
     })
   },

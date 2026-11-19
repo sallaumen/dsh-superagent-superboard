@@ -16,6 +16,7 @@ defmodule AgentBoardWeb.BoardLiveTest do
   alias AgentBoard.AI.Call
   alias AgentBoard.{Board, Repo}
   alias AgentBoard.Board.{PullRequest, Task}
+  alias AgentBoard.Superagents.Superagent
   alias AgentBoardWeb.BoardComponents.PeakRate
 
   test "the page CSP lets the voice play blob media", %{conn: conn} do
@@ -960,6 +961,31 @@ defmodule AgentBoardWeb.BoardLiveTest do
     {:ok, view, _html} = live(conn, ~p"/?repo=example/atlas-relay")
 
     assert has_element?(view, ".ab-empty", "Sem dados ainda.")
+  end
+
+  test "an empty synced board describes the agent connected to its own repository", %{conn: conn} do
+    {:ok, observed} = Board.add_repository("fixture", "observe-only")
+    {:ok, connected} = Board.add_repository("fixture", "with-agent")
+
+    Repo.insert!(
+      Superagent.changeset(%Superagent{}, %{
+        repository_id: connected.id,
+        profile: "fixture-connected",
+        port: 3991,
+        state_dir: "/nonexistent-test/empty-connected"
+      })
+    )
+
+    for repo <- [observed, connected] do
+      Board.log_event(repo.id, "sync", "#{repo.owner}/#{repo.name}", %{"errors" => 0})
+    end
+
+    {:ok, view, _html} = live(conn, ~p"/?repo=fixture/observe-only")
+    assert has_element?(view, ".ab-empty", "O GitHub está sendo acompanhado.")
+    refute has_element?(view, ".ab-empty", "O agente acompanha este repositório")
+
+    render_patch(view, ~p"/?repo=fixture/with-agent")
+    assert has_element?(view, ".ab-empty", "O agente acompanha este repositório")
   end
 
   test "a blocked task lands in Precisa de você and marks the rail", %{conn: conn} do

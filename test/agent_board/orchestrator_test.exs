@@ -132,6 +132,14 @@ defmodule AgentBoard.OrchestratorTest do
     end
   end
 
+  test "a partial load preserves observed zeroes and does not fill gaps" do
+    Req.Test.stub(@stub, fn conn ->
+      Req.Test.json(conn, %{"load" => %{"running" => 0, "queued" => -1}})
+    end)
+
+    assert {:ok, %{running: 0, queued: nil, max_workers: nil}} = Orchestrator.load()
+  end
+
   test "a body without load is malformed" do
     Req.Test.stub(@stub, fn conn -> Req.Test.json(conn, %{"health" => %{}}) end)
     assert Orchestrator.load() == {:error, :malformed}

@@ -20,6 +20,7 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
   attr :preflights, :map, default: %{}
   attr :gates, :map, default: %{}
   attr :running, :list, required: true
+  attr :capacity, :any, default: {:error, :unknown}
   attr :frozen, :boolean, default: false
   attr :frozen_at, :any, default: nil
   attr :sync_at, :any, default: nil
@@ -41,8 +42,19 @@ defmodule AgentBoardWeb.BoardComponents.NowLane do
         </span>
       </div>
 
+      <p id="now-capacity" class="ab-meta">
+        <%= case @capacity do %>
+          <% {:ok, %{running: used, max_workers: limit}} when is_integer(used) or is_integer(limit) -> %>
+            {gettext("Agent slots: %{used} of %{limit} in use",
+              used: AgentBoard.Metrics.count(used),
+              limit: AgentBoard.Metrics.count(limit)
+            )}
+          <% _ -> %>
+            {gettext("Capacity unavailable")}
+        <% end %>
+      </p>
       <div :if={@running == [] and @retrying == []} class="ab-sec__empty">
-        <.glyph kind={:queue} />{gettext("No agents working.")}
+        <.glyph kind={:queue} />{gettext("No running tasks in this project.")}
         <span :if={@next_queued} class="ab-meta">
           {gettext("Next in queue: %{task}.", task: @next_queued)}
         </span>

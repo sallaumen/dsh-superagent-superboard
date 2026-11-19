@@ -242,11 +242,18 @@ defmodule AgentBoard.Metrics do
 
   @doc "The load tile: running workers out of the ceiling, and the runner's own queue."
   def load_tile({:ok, %{running: running, queued: queued, max_workers: max}}) do
+    {status, reason} =
+      cond do
+        is_nil(running) and is_nil(queued) and is_nil(max) -> {:unknown, :malformed}
+        is_nil(running) or is_nil(queued) or is_nil(max) -> {:partial, :partial_load}
+        true -> {:measured, nil}
+      end
+
     %{
       key: "load",
       kind: :load,
-      status: :measured,
-      reason: nil,
+      status: status,
+      reason: reason,
       running: running,
       queued: queued,
       max: max
@@ -298,6 +305,7 @@ defmodule AgentBoard.Metrics do
   def reason(:never_synced), do: gettext("no commit reading yet")
   def reason(:not_configured), do: gettext("orchestrator not configured")
   def reason(:unreachable), do: gettext("orchestrator unreachable")
+  def reason(:partial_load), do: gettext("some capacity figures were not reported")
   def reason(:malformed), do: gettext("orchestrator response lacks load")
   def reason({:http, status}), do: gettext("orchestrator returned HTTP %{status}", status: status)
   def reason(:agent_unavailable), do: gettext("agent status unavailable")

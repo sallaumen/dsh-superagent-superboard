@@ -9,6 +9,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
 
   attr :gates, :map, default: %{}
   attr :needs, :list, required: true
+  attr :project, :string, default: nil
   attr :max, :integer, default: 5
   attr :selected, :any, default: nil
   attr :last_visit, :any, default: nil
@@ -55,7 +56,7 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
 
           <article
             id={dom_id(need)}
-            class="ab-need"
+            class={["ab-need", need.kind == :agent_down && "ab-need--outage"]}
             aria-current={to_string(not is_nil(@selected) and @selected == need[:id])}
             data-task={need[:id]}
             tabindex={if need[:id], do: "0"}
@@ -110,6 +111,20 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
               compact
             />
             <div class="ab-need__actions">
+              <button
+                :if={need.kind == :agent_down and @project}
+                id="diagnose-project-agent"
+                type="button"
+                class="ab-btn ab-btn--sm ab-btn--quiet"
+                phx-click="show_panel"
+                phx-value-panel="settings"
+                phx-value-section="projects"
+                phx-value-project={@project}
+                phx-value-area="maintenance"
+                data-panel-trigger
+                aria-haspopup="dialog"
+                aria-controls="panel-settings"
+              >{gettext("Diagnose agent")}</button>
               <%= for action <- need.actions do %>
                 <.live_component
                   :if={action[:restart_agent]}
@@ -154,6 +169,8 @@ defmodule AgentBoardWeb.BoardComponents.NeedsYou do
                 >{action.label}</button>
                 <button
                   :if={action[:task_id]}
+                  id={"#{dom_id(need)}-open"}
+                  data-focus-reply={if need.kind == :question, do: "true"}
                   type="button"
                   class={["ab-btn ab-btn--sm", action_class(need.kind)]}
                   phx-click="open"

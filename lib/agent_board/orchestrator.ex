@@ -13,7 +13,11 @@ defmodule AgentBoard.Orchestrator do
   @min_workers 1
   @max_workers 16
 
-  @type load :: %{running: integer(), queued: integer(), max_workers: integer()}
+  @type load :: %{
+          running: non_neg_integer() | nil,
+          queued: non_neg_integer() | nil,
+          max_workers: non_neg_integer() | nil
+        }
 
   @doc "The current load, or the reason it is unknown."
   @spec load(Req.Request.t() | nil) :: {:ok, load()} | {:error, term()}
@@ -45,9 +49,9 @@ defmodule AgentBoard.Orchestrator do
            repository: repository(get_in(body, ["setup", "accounts", "repository"])),
            paused: body["paused"] == true,
            load: %{
-             running: int(load["running"]),
-             queued: int(load["queued"]),
-             max_workers: int(load["maxWorkers"])
+             running: observed_count(load["running"]),
+             queued: observed_count(load["queued"]),
+             max_workers: observed_count(load["maxWorkers"])
            }
          }}
 
@@ -281,6 +285,6 @@ defmodule AgentBoard.Orchestrator do
   defp repository(value) when is_binary(value) and value != "", do: value
   defp repository(_value), do: nil
 
-  defp int(value) when is_integer(value), do: value
-  defp int(_value), do: 0
+  defp observed_count(value) when is_integer(value) and value >= 0, do: value
+  defp observed_count(_value), do: nil
 end
